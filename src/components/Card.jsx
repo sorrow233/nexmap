@@ -55,13 +55,22 @@ export default function Card({
         };
     }, [isDragging, dragOffset, id, onMove]);
 
-    const lastMessage = data.messages && data.messages.length > 0
+    const lastMessageRaw = data.messages && data.messages.length > 0
         ? data.messages[data.messages.length - 1].content
         : "Empty conversation";
 
-    const previewText = lastMessage.length > 150
-        ? lastMessage.substring(0, 150) + "..."
-        : lastMessage;
+    // Parse to show only content in preview, ignoring thoughts
+    // Safe check if window.parseModelOutput is available (loaded by index.html)
+    const { thoughts, content } = (window.parseModelOutput && typeof window.parseModelOutput === 'function')
+        ? window.parseModelOutput(lastMessageRaw)
+        : { thoughts: null, content: lastMessageRaw };
+
+    // If only thoughts exist and content is empty, show a placeholder instead of raw thoughts
+    const displayContent = content || (thoughts ? "Thinking..." : lastMessageRaw);
+
+    const previewText = displayContent.length > 150
+        ? displayContent.substring(0, 150) + "..."
+        : displayContent;
 
     return (
         <div
