@@ -67,6 +67,7 @@ export default function Card({
         <div
             ref={cardRef}
             onMouseDown={handleMouseDown}
+            onDoubleClick={(e) => { e.stopPropagation(); onExpand(id); }}
             style={{
                 transform: `translate(${x}px, ${y}px)`,
                 width: '320px',

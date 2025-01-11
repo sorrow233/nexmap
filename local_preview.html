@@ -76,11 +76,43 @@
             // 2. Shim lucide-react (modular icon imports)
             if (window.lucide) {
                 const iconNames = ['Settings', 'Sparkles', 'Loader2', 'Trash2', 'Maximize2', 'X', 'Send'];
+                // Helper to render Lucide icons from their definitions
+                const LucideIcon = ({ name, size = 24, ...props }) => {
+                    const iconData = window.lucide?.icons?.[name];
+
+                    if (!iconData) {
+                        // Fallback if icon not found
+                        return <span {...props}>⚙️</span>;
+                    }
+
+                    // iconData is an array of [elementType, attributes] tuples
+                    // e.g., [['path', {d: 'M12...'}], ['circle', {cx: '12', cy: '12', r: '3'}]]
+                    const children = iconData.map(([elementType, attrs], idx) =>
+                        React.createElement(elementType, { key: idx, ...attrs })
+                    );
+
+                    return React.createElement('svg', {
+                        xmlns: 'http://www.w3.org/2000/svg',
+                        width: size,
+                        height: size,
+                        viewBox: '0 0 24 24',
+                        fill: 'none',
+                        stroke: 'currentColor',
+                        strokeWidth: '2',
+                        strokeLinecap: 'round',
+                        strokeLinejoin: 'round',
+                        ...props
+                    }, children);
+                };
+
                 iconNames.forEach(name => {
-                    const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
                     window[name] = (props) => {
-                        useEffect(() => { window.lucide.createIcons(); }, []);
-                        return <i data-lucide={kebab} {...props}></i>;
+                        // Special handling for the actual icons available in the global lucide object
+                        if (window.lucide && window.lucide.icons && window.lucide.icons[name]) {
+                            return <LucideIcon name={name} {...props} />;
+                        }
+                        // Fallback
+                        return <i data-lucide={name.toLowerCase()} {...props}></i>;
                     };
                 });
             }
