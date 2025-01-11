@@ -101,6 +101,21 @@ export default function App() {
 }
 
 function AppContent() {
+    // Inject global font style
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            body, #root, .font-lxgw, .prose, .prose * {
+                font-family: "LXGW WenKai", "楷体", "KaiTi", serif !important;
+            }
+            .font-mono {
+                font-family: inherit !important; /* Force override even monos if user hates them */
+            }
+        `;
+        document.head.appendChild(style);
+        return () => style.remove();
+    }, []);
+
 
     const [view, setView] = useState('gallery'); // 'gallery' | 'canvas'
     const [boardsList, setBoardsList] = useState([]);
