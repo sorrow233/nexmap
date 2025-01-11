@@ -15,6 +15,11 @@
     <!-- Fonts: LXGW WenKai (Regular) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-web/style.css" />
 
+    <!-- Firebase (Compat for simple local usage) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <script>
         // Environment Shim
         window.process = { env: { NODE_ENV: 'development' } };
@@ -221,6 +226,7 @@
             // 3. Load Order (Dependencies First)
             const files = [
                 './src/services/config.js',
+                './src/services/firebase.js',
                 './src/services/llm.js',
                 './src/services/storage.js',
                 './src/utils/format.js',
@@ -246,6 +252,13 @@
                     // Service Integration: Expose LLM named exports
                     if (file.includes('llm.js') && window.LLM) {
                         Object.assign(window, window.LLM);
+                    }
+                    // Service Integration: Expose Firebase exports
+                    if (file.includes('firebase.js') && window.FirebaseService) {
+                        Object.assign(window, window.FirebaseService);
+                    }
+                    if (file.includes('storage.js') && window.StorageService) {
+                        Object.assign(window, window.StorageService);
                     }
                 } catch (e) {
                     console.error("Loader Error in " + file, e);
@@ -274,6 +287,8 @@
             text = text.replace(/^export\s+default\s+/gm, '');
             // - Strip named exports (handling async, const, function, etc.)
             text = text.replace(/^export\s+(async\s+)?(const|function|class|let|var)\s+/gm, '$1$2 ');
+            // - Strip named export lists (e.g. export { foo, bar };)
+            text = text.replace(/^export\s+\{[\s\S]*?\};?$/gm, '');
 
             // - Shim import.meta.env for browser (avoids syntax error)
             // Universal shim: replace 'import.meta' with an object that has an 'env' property

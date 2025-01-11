@@ -138,7 +138,7 @@ export default function Card({
                 </div>
             </div>
 
-            <div className="p-4 bg-slate-50/50 flex-grow min-h-[100px] max-h-[200px] overflow-hidden relative">
+            <div className="p-4 bg-slate-50/50 h-48 overflow-hidden relative group-hover:bg-slate-50 transition-colors">
                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap text-xs font-lxgw">
                     {previewText}
                 </p>

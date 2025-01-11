@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
-import { StorageService } from './services/storage';
+import { auth, googleProvider } from './services/firebase';
+import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud } from './services/storage';
 import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
 
 // Settings Modal Component
@@ -119,6 +121,56 @@ function AppContent() {
 
     const [view, setView] = useState('gallery'); // 'gallery' | 'canvas'
     const [boardsList, setBoardsList] = useState([]);
+
+    // Auth State
+    const [user, setUser] = useState(null);
+    useEffect(() => {
+        if (!auth) return;
+        let unsubDb = null;
+
+        const unsubscribe = auth.onAuthStateChanged((u) => {
+            setUser(u);
+
+            // Clean up previous listener if switching users (rare but safe)
+            if (unsubDb) {
+                unsubDb();
+                unsubDb = null;
+            }
+
+            if (u) {
+                // Sync from cloud
+                unsubDb = listenForBoardUpdates(u.uid, (cloudBoards) => {
+                    // Update state. 
+                    // Note: This replaces local list. If offline creation happened, it might be lost unless we merge.
+                    // For now, cloud is truth.
+                    setBoardsList(cloudBoards);
+                });
+            }
+        });
+
+        return () => {
+            unsubscribe();
+            if (unsubDb) unsubDb();
+        };
+    }, []);
+
+    const handleLogin = async () => {
+        try {
+            await auth.signInWithPopup(googleProvider);
+        } catch (e) {
+            console.error("Login failed", e);
+            alert("Login failed: " + e.message);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await auth.signOut();
+        } catch (e) {
+            console.error("Logout failed", e);
+        }
+    };
+
     const [currentBoardId, setCurrentBoardId] = useState(null);
 
     const [cards, setCards] = useState([]);
@@ -135,11 +187,10 @@ function AppContent() {
 
     // 1. Initial Load
     useEffect(() => {
-        if (!window.StorageService) return;
-        const list = window.StorageService.getBoardsList();
+        const list = loadBoardsMetadata();
         setBoardsList(list);
 
-        const lastId = window.StorageService.getCurrentBoardId();
+        const lastId = getCurrentBoardId();
         if (lastId && list.some(b => b.id === lastId)) {
             handleSelectBoard(lastId);
         }
@@ -185,26 +236,39 @@ function AppContent() {
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length >= 0) {
             // Save connections too!
-            window.StorageService.saveBoard(currentBoardId, { cards, connections });
+            saveBoard(currentBoardId, { cards, connections });
+
+            // Cloud Save (Debounced ideally, but here direct)
+            if (user) {
+                // We use a timeout to debounce slightly to avoid hammering Firestore on every keystroke/drag
+                const timeoutId = setTimeout(() => {
+                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections });
+                }, 1000);
+                return () => clearTimeout(timeoutId);
+            }
+
             // Sync metadata in list without full re-fetch
             setBoardsList(prev => prev.map(b =>
                 b.id === currentBoardId ? { ...b, updatedAt: Date.now(), cardCount: cards.length } : b
             ));
         }
-    }, [cards, connections, currentBoardId, view]);
+    }, [cards, connections, currentBoardId, view, user]);
 
     const handleCreateBoard = async (customName = null, initialPrompt = null) => {
-        if (!window.StorageService) return;
-
         let name = customName;
         // If not custom name provided (e.g. from gallery input), fallback to prompt
         if (!name) {
-            name = prompt('Name your board:', `Board ${boardsList.length + 1}`);
+            name = prompt('Name your board:', `Board ${boardsList.length + 1} `);
             if (!name) return;
         }
 
-        const newBoard = window.StorageService.createBoard(name);
+        const newBoard = createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
+
+        // Cloud Sync
+        if (user) {
+            saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [] });
+        }
 
         // Optimize: Set state immediately to switch view
         await handleSelectBoard(newBoard.id);
@@ -297,25 +361,36 @@ function AppContent() {
     };
 
     const handleSelectBoard = (id) => {
-        if (!window.StorageService) return;
-        const data = window.StorageService.loadBoard(id);
+        const data = loadBoard(id);
         setCards(data.cards || []);
         setConnections(data.connections || []);
         setCurrentBoardId(id);
-        window.StorageService.setCurrentBoardId(id);
+        setCurrentBoardId(id);
+        setView('canvas');
+    };
+
+    const handleLoadBoard = (id) => { // Renamed from handleSelectBoard for clarity in gallery
+        const data = loadBoard(id);
+        setCards(data.cards || []);
+        setConnections(data.connections || []);
+        setCurrentBoardId(id);
+        setCurrentBoardId(id);
         setView('canvas');
     };
 
     const handleDeleteBoard = (id) => {
         if (!confirm('Are you sure? All chat history in this board will be gone.')) return;
-        window.StorageService.deleteBoard(id);
+        deleteBoard(id);
+        if (user) {
+            deleteBoardFromCloud(user.uid, id);
+        }
         setBoardsList(prev => prev.filter(b => b.id !== id));
     };
 
     const handleBackToGallery = () => {
         if (currentBoardId) {
-            window.StorageService.saveBoard(currentBoardId, { cards, connections });
-            window.StorageService.setCurrentBoardId(null);
+            saveBoard(currentBoardId, { cards, connections });
+            setCurrentBoardId(null);
         }
         setView('gallery');
         setCurrentBoardId(null);
@@ -428,9 +503,9 @@ function AppContent() {
             if (contextSourceIds.length > 0) {
                 const selectedCards = cards.filter(c => contextSourceIds.includes(c.id));
                 const contextText = selectedCards.map(c =>
-                    `Context from card "${c.data.title}":\n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')}`
+                    `Context from card "${c.data.title}": \n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')} `
                 ).join('\n\n---\n\n');
-                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context.]\n\n${contextText}` }];
+                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context.]\n\n${contextText} ` }];
             }
 
             // Stream response with context + "No Internal Monologue" instruction
@@ -470,17 +545,17 @@ function AppContent() {
         if (neighborIds.length > 0) {
             const neighbors = cards.filter(c => neighborIds.includes(c.id));
             const contextText = neighbors.map(c =>
-                `Context from linked card "${c.data.title}":\n${c.data.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}`
+                `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')} `
             ).join('\n\n---\n\n');
 
             if (contextText.trim()) {
-                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText}` });
+                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others.Here is their recent context:]\n\n${contextText} ` });
             }
         }
 
         const systemInstruction = { role: 'system', content: "You are a helpful assistant. Use <thinking> tags for your internal thought process." };
 
-
+        return [systemInstruction, ...contextMessages, ...newMessages];
         // Wrapper for ChatModal to use
     };
 
@@ -575,12 +650,41 @@ function AppContent() {
     if (view === 'gallery') {
         return (
             <React.Fragment>
-                <BoardGallery
-                    boards={boardsList}
-                    onSelectBoard={handleSelectBoard}
-                    onCreateBoard={handleCreateBoard}
-                    onDeleteBoard={handleDeleteBoard}
-                />
+                <div className="bg-slate-900 min-h-screen text-slate-200 p-8 font-lxgw relative overflow-hidden">
+                    {/* Ambient Background */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
+
+                    <div className="max-w-7xl mx-auto relative z-10">
+                        <div className="flex justify-between items-center mb-12">
+                            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                                Neural Canvas
+                            </h1>
+                            <div className="flex items-center gap-4">
+                                {user ? (
+                                    <div className="flex items-center gap-3 bg-slate-800 rounded-full pl-2 pr-4 py-1.5 border border-slate-700">
+                                        {user.photoURL && <img src={user.photoURL} className="w-6 h-6 rounded-full" alt="User avatar" />}
+                                        <span className="text-sm font-medium">{user.displayName}</span>
+                                        <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white ml-2">Sign Out</button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={handleLogin}
+                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-medium transition-all shadow-lg hover:shadow-blue-500/25"
+                                    >
+                                        Sign In with Google
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <BoardGallery
+                            boards={boardsList}
+                            onCreateBoard={handleCreateBoard}
+                            onSelectBoard={handleLoadBoard}
+                            onDeleteBoard={handleDeleteBoard}
+                        />
+                    </div>
+                </div>
                 <div className="fixed bottom-10 right-10">
                     <button
                         onClick={() => setIsSettingsOpen(true)}
