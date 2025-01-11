@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Chat Canvas - Local Preview</title>
+    <!-- Core Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        // Environment Shim
+        window.process = { env: { NODE_ENV: 'development' } };
+
+        // Tailwind Design System
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e' },
+                        canvas: '#f8fafc'
+                    },
+                    animation: { 'fade-in': 'fadeIn 0.2s ease-out', 'slide-up': 'slideUp 0.3s ease-out' },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Inter', system-ui, sans-serif;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root" class="h-screen w-screen relative"></div>
+
+    <script type="text/babel">
+        /**
+         * LOCAL PREVIEW LOADER
+         * Adapts standard Vite/React ES Modules for in-browser execution without Node.js.
+         */
+
+        const run = async () => {
+            const { useEffect } = React;
+
+            // 1. Expose React core to global scope
+            Object.assign(window, React);
+
+            // 2. Shim lucide-react (modular icon imports)
+            if (window.lucide) {
+                const iconNames = ['Settings', 'Sparkles', 'Loader2', 'Trash2', 'Maximize2', 'X', 'Send'];
+                iconNames.forEach(name => {
+                    const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                    window[name] = (props) => {
+                        useEffect(() => { window.lucide.createIcons(); }, []);
+                        return <i data-lucide={kebab} {...props}></i>;
+                    };
+                });
+            }
+
+            // 3. Load Order (Dependencies First)
+            const files = [
+                './src/services/llm.js',
+                './src/components/Card.jsx',
+                './src/components/ChatModal.jsx',
+                './src/components/Canvas.jsx',
+                './src/App.jsx'
+            ];
+
+            // 4. Transform and Execute
+            for (const file of files) {
+                try {
+                    const code = await loadFile(file);
+                    const output = Babel.transform(code, {
+                        presets: ['react'],
+                        filename: file // helpful for debugging
+                    }).code;
+
+                    // Evaluate in global scope
+                    (0, eval)(output);
+
+                    // Service Integration: Expose LLM named exports
+                    if (file.includes('llm.js') && window.LLM) {
+                        Object.assign(window, window.LLM);
+                    }
+                } catch (e) {
+                    console.error("Loader Error in " + file, e);
+                    showError(file, e.message);
+                }
+            }
+
+            // 5. Bootstrap React Application
+            if (window.App) {
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+                root.render(<window.App />);
+            } else {
+                showError("App.jsx", "Failed to initialize App component.");
+            }
+        };
+
+        const loadFile = async (path) => {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            let text = await res.text();
+
+            // Transform ES Modules to Global Scripts for Babel Standalone
+            // - Strip standard imports
+            text = text.replace(/^import\s+.*?;?$/gm, '// import stripped');
+            // - Strip "export default"
+            text = text.replace(/^export\s+default\s+/gm, '');
+            // - Strip named exports (handling async, const, function, etc.)
+            text = text.replace(/^export\s+(async\s+)?(const|function|class|let|var)\s+/gm, '$1$2 ');
+
+            return text;
+        };
+
+        const showError = (file, message) => {
+            const container = document.body;
+            const errorDiv = document.createElement('div');
+            errorDiv.className = "fixed bottom-4 right-4 z-[9999] bg-white border-l-4 border-red-500 p-4 shadow-2xl rounded animate-slide-up max-w-md";
+            errorDiv.innerHTML = `
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 text-red-500">❌</div>
+                    <div class="ml-3">
+                        <p class="text-sm font-bold text-slate-800">Error in ${file}</p>
+                        <p class="text-xs text-slate-600 mt-1">${message}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(errorDiv);
+        };
+
+        run();
+    </script>
+</body>
+
+</html>
