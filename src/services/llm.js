@@ -70,7 +70,7 @@ export async function chatCompletion(messages, model = null) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: model,
+                model: modelToUse,
                 messages: messages,
                 temperature: 0.7,
                 thinking_level: "minimal"
