@@ -148,7 +148,8 @@ export const deleteBoardFromCloud = async (userId, boardId) => {
 const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, saveBoard, loadBoard, deleteBoard,
-    listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud
+    listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
+    saveUserSettings, loadUserSettings
 };
 
 if (typeof window !== 'undefined') {
