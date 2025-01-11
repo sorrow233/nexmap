@@ -75,14 +75,14 @@ export default function Canvas({
     return (
         <div
             ref={canvasRef}
-            className="w-full h-full overflow-hidden bg-[#f0f4f8] relative cursor-grab active:cursor-grabbing canvas-bg"
+            className="w-full h-full overflow-hidden bg-slate-900 relative cursor-grab active:cursor-grabbing canvas-bg"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
             style={{
-                backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
+                backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px)',
                 backgroundSize: '24px 24px',
                 backgroundPosition: `${offset.x}px ${offset.y}px`
             }}
