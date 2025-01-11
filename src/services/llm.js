@@ -53,9 +53,9 @@ export const setModel = (model) => localStorage.setItem(STORAGE_MODEL, model);
 
 
 
-export async function chatCompletion(messages, model = null) {
-    const apiKey = getApiKey();
-    const baseUrl = getBaseUrl();
+export async function chatCompletion(messages, model = null, config = {}) {
+    const apiKey = config.apiKey || getApiKey();
+    const baseUrl = config.baseUrl || getBaseUrl();
     const modelToUse = model || getModel();
 
     if (!apiKey) throw new Error("API Key is missing.");
