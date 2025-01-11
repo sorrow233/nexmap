@@ -95,8 +95,14 @@ export async function streamChatCompletion(messages, onToken, model = 'google/ge
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                     try {
                         const json = JSON.parse(line.substring(6));
-                        const content = json.choices[0]?.delta?.content;
+                        let content = json.choices[0]?.delta?.content;
                         if (content) {
+                            // Aggressive filtering for "Thinking" artifacts
+                            // 1. Remove <thinking> tags if model uses them
+                            // 2. Remove common "Thinking..." prefixes if they appear at start (handled in App.jsx mostly, but safety here)
+                            // Note: Streaming makes this tricky as we might split the tag. 
+                            // Current simple approach: Pass raw, let UI/App.jsx handle accumulation and cleaning.
+                            // BUT, we can inject a system instruction to the model to avoid it.
                             onToken(content);
                         }
                     } catch (e) {

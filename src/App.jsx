@@ -107,11 +107,16 @@ function AppContent() {
     const [currentBoardId, setCurrentBoardId] = useState(null);
 
     const [cards, setCards] = useState([]);
+    const [connections, setConnections] = useState([]); // Array<{ from: id, to: id }>
     const [selectedIds, setSelectedIds] = useState([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [expandedCardId, setExpandedCardId] = useState(null);
     const [promptInput, setPromptInput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // Connection Mode State
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [connectionStartId, setConnectionStartId] = useState(null);
 
     // 1. Initial Load
     useEffect(() => {
@@ -125,16 +130,17 @@ function AppContent() {
         }
     }, []);
 
-    // 2. Auto-Save Cards whenever they change
+    // 2. Auto-Save Cards & Connections
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length >= 0) {
-            window.StorageService.saveBoard(currentBoardId, { cards });
+            // Save connections too!
+            window.StorageService.saveBoard(currentBoardId, { cards, connections });
             // Sync metadata in list without full re-fetch
             setBoardsList(prev => prev.map(b =>
                 b.id === currentBoardId ? { ...b, updatedAt: Date.now(), cardCount: cards.length } : b
             ));
         }
-    }, [cards, currentBoardId, view]);
+    }, [cards, connections, currentBoardId, view]);
 
     const handleCreateBoard = async (customName = null, initialPrompt = null) => {
         if (!window.StorageService) return;
@@ -240,6 +246,7 @@ function AppContent() {
         if (!window.StorageService) return;
         const data = window.StorageService.loadBoard(id);
         setCards(data.cards || []);
+        setConnections(data.connections || []);
         setCurrentBoardId(id);
         window.StorageService.setCurrentBoardId(id);
         setView('canvas');
@@ -253,12 +260,47 @@ function AppContent() {
 
     const handleBackToGallery = () => {
         if (currentBoardId) {
-            window.StorageService.saveBoard(currentBoardId, { cards });
+            window.StorageService.saveBoard(currentBoardId, { cards, connections });
             window.StorageService.setCurrentBoardId(null);
         }
         setView('gallery');
         setCurrentBoardId(null);
         setCards([]);
+        setConnections([]);
+    };
+
+    // --- Connection Logic ---
+    const getConnectedGraph = (startId, visited = new Set()) => {
+        if (visited.has(startId)) return visited;
+        visited.add(startId);
+
+        // Find all direct neighbors
+        const neighbors = connections
+            .filter(c => c.from === startId || c.to === startId)
+            .map(c => c.from === startId ? c.to : c.from);
+
+        neighbors.forEach(nid => getConnectedGraph(nid, visited));
+        return visited;
+    };
+
+    const handleConnect = (sourceId) => {
+        if (isConnecting && connectionStartId) {
+            if (connectionStartId !== sourceId) {
+                // Create connection
+                // Avoid duplicates
+                if (!connections.some(c =>
+                    (c.from === connectionStartId && c.to === sourceId) ||
+                    (c.from === sourceId && c.to === connectionStartId)
+                )) {
+                    setConnections(prev => [...prev, { from: connectionStartId, to: sourceId }]);
+                }
+            }
+            setIsConnecting(false);
+            setConnectionStartId(null);
+        } else {
+            setIsConnecting(true);
+            setConnectionStartId(sourceId);
+        }
     };
 
     const handleCreateCard = async () => {
@@ -317,18 +359,29 @@ function AppContent() {
             ));
 
             // Contextual Logic: If cards are selected, use them as context
+            // PLUS: Check connected cards
             let contextMessages = [];
-            if (selectedIds.length > 0) {
-                const selectedCards = cards.filter(c => selectedIds.includes(c.id));
+
+            // 1. Explicitly selected cards
+            let contextSourceIds = [...selectedIds];
+
+            // 2. If creating from gallery prompt (no explicit selection), or even if distinct, 
+            // check connections of the creating card???? Wait, new card has no connections yet.
+            // But if we are replying in an existing card (handleUpdateCard flow), we check its connections.
+            // Here 'handleCreateCard' creates a NEW card, which has no connections yet.
+
+            // Logic for manual selections:
+            if (contextSourceIds.length > 0) {
+                const selectedCards = cards.filter(c => contextSourceIds.includes(c.id));
                 const contextText = selectedCards.map(c =>
                     `Context from card "${c.data.title}":\n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')}`
                 ).join('\n\n---\n\n');
-
-                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context. Use the following information to answer the next prompt if relevant.]\n\n${contextText}` }];
+                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context.]\n\n${contextText}` }];
             }
 
-            // Stream response with context
-            const requestMessages = [...contextMessages, { role: 'user', content: promptInput }];
+            // Stream response with context + "No Internal Monologue" instruction
+            const systemInstruction = { role: 'system', content: "You are a helpful assistant. Do not output your internal thinking process or <thinking> tags to the user. Just provide the final answer directly." };
+            const requestMessages = [systemInstruction, ...contextMessages, { role: 'user', content: promptInput }];
 
             await streamChatCompletion(
                 requestMessages,
@@ -350,8 +403,59 @@ function AppContent() {
         }
     };
 
+    // Chat completion wrapper for existing cards (ChatModal) to use connections
+    const generateResponseForCard = async (cardId, newMessages) => {
+        // Find connected context
+        const connectedIds = Array.from(getConnectedGraph(cardId));
+        // Filter out self
+        const neighborIds = connectedIds.filter(id => id !== cardId);
+
+        let contextMessages = [];
+        if (neighborIds.length > 0) {
+            const neighbors = cards.filter(c => neighborIds.includes(c.id));
+            const contextText = neighbors.map(c =>
+                `Context from linked card "${c.data.title}":\n${c.data.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}`
+            ).join('\n\n---\n\n');
+
+            if (contextText.trim()) {
+                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText}` });
+            }
+        }
+
+        const systemInstruction = { role: 'system', content: "You are a helpful assistant. Do not output your internal thinking process or <thinking> tags to the user. Just provide the final answer directly." };
+
+        return [...contextMessages, systemInstruction, ...newMessages]; // Return full history? No, ChatModal manages history. 
+        // Wait, ChatModal calls streamChatCompletion directly? No, it calls onUpdate.
+        // We need to inject this logic into ChatModal or expose a wrapper.
+        // Current ChatModal implementation might use LLM service directly. We should pass a "prepareMessages" prop?
+        // Simpler: We'll modify ChatModal to accept `context` prop.
+    };
+
     const handleUpdateCard = (id, newData) => {
         setCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c));
+    };
+
+    // Group Drag Logic
+    const handleCardMove = (id, newX, newY) => {
+        setCards(prev => {
+            const sourceCard = prev.find(c => c.id === id);
+            if (!sourceCard) return prev;
+
+            const dx = newX - sourceCard.x;
+            const dy = newY - sourceCard.y;
+
+            if (dx === 0 && dy === 0) return prev;
+
+            // Find all connected cards
+            const connectedIds = getConnectedGraph(id);
+
+            return prev.map(c => {
+                if (connectedIds.has(c.id)) {
+                    return { ...c, x: c.x + dx, y: c.y + dy };
+                }
+                return c;
+            });
+        });
     };
 
     const handleBatchDelete = () => {
@@ -436,11 +540,24 @@ function AppContent() {
     return (
         <React.Fragment>
             <Canvas
-                cards={cards}
-                onUpdateCards={setCards}
+                cards={cards} // Pass all cards
+                connections={connections} // New prop
+                selectedIds={selectedIds} // Pass selection state
+                onUpdateCards={setCards} // This is for what? Canvas uses local state? Canvas needs refactoring for group drag.
+                onCardMove={handleCardMove} // Use our new group move handler
                 onSelectionChange={setSelectedIds}
                 onExpandCard={setExpandedCardId}
+                onConnect={handleConnect} // New handler
+                isConnecting={isConnecting}
+                connectionStartId={connectionStartId}
             />
+
+            {/* Teaching Bubble for Connections */}
+            {cards.length > 1 && connections.length === 0 && (
+                <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80">
+                    💡 Tip: Click the "Link" icon on cards to connect them together!
+                </div>
+            )}
 
             {/* Premium Top Navigation */}
             <div className="fixed top-8 left-8 z-50 flex items-center gap-4">
