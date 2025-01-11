@@ -17,6 +17,7 @@ dist/
 .env.test.local
 .env.production.local
 src/services/config.js
+debug_config.py
 
 # Logs
 npm-debug.log*
