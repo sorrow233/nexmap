@@ -43,8 +43,7 @@ export const setApiKey = (key) => localStorage.setItem(STORAGE_KEY, key);
 const STORAGE_MODEL = 'mixboard_llm_model';
 const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp'; // Updated default
 
-export const getApiKey = () => localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
-export const setApiKey = (key) => localStorage.setItem(STORAGE_KEY, key);
+
 
 export const getBaseUrl = () => localStorage.getItem(STORAGE_BASE_URL) || DEFAULT_BASE_URL;
 export const setBaseUrl = (url) => localStorage.setItem(STORAGE_BASE_URL, url);
