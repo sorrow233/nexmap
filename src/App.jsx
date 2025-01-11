@@ -51,7 +51,55 @@ function SettingsModal({ isOpen, onClose }) {
     );
 }
 
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ErrorBoundary caught an error", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/80 backdrop-blur">
+                    <div className="bg-red-50 p-6 rounded-2xl border border-red-200 max-w-2xl shadow-xl">
+                        <h2 className="text-xl font-bold text-red-700 mb-4">Something went wrong</h2>
+                        <pre className="whitespace-pre-wrap text-sm text-red-600 font-mono bg-red-100 p-4 rounded-lg overflow-auto max-h-[60vh]">
+                            {this.state.error?.toString()}
+                            {this.state.error?.stack}
+                        </pre>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="mt-6 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                            Reload Page
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 export default function App() {
+    return (
+        <ErrorBoundary>
+            <AppContent />
+        </ErrorBoundary>
+    );
+}
+
+function AppContent() {
+
     const [cards, setCards] = useState([]);
     const [selectedIds, setSelectedIds] = useState([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -60,9 +108,8 @@ export default function App() {
     const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
-        if (!getApiKey()) {
-            setIsSettingsOpen(true);
-        }
+        // Removed check for explicit API key since we have a default now, 
+        // but still good to keep settings accessible if needed.
     }, []);
 
     const handleCreateCard = async () => {
@@ -79,7 +126,7 @@ export default function App() {
             data: {
                 title: "Generating...",
                 messages: [{ role: 'user', content: promptInput }],
-                model: "gpt-3.5-turbo"
+                model: "google/gemini-3-flash-preview"
             }
         };
 
@@ -132,7 +179,7 @@ export default function App() {
                 onExpandCard={setExpandedCardId}
             />
 
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
                 <div className="glass-panel rounded-2xl p-2 flex gap-2 shadow-xl transition-all duration-300 focus-within:ring-2 ring-brand-500/50">
                     <button
                         onClick={() => setIsSettingsOpen(true)}
@@ -159,7 +206,7 @@ export default function App() {
             </div>
 
             {selectedIds.length > 0 && (
-                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
                     <span className="text-sm font-semibold text-slate-600">{selectedIds.length} items</span>
                     <div className="h-4 w-px bg-slate-300"></div>
                     <button
