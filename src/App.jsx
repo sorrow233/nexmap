@@ -222,6 +222,9 @@ function AppContent() {
                 }));
             };
 
+            // Allow thinking, but we'll parse it out in UI if needed.
+            // const systemInstruction = { role: 'system', content: "You are a helpful assistant." };
+
             await streamChatCompletion(
                 [{ role: 'user', content: text }],
                 updateCardContent
@@ -380,7 +383,9 @@ function AppContent() {
             }
 
             // Stream response with context + "No Internal Monologue" instruction
-            const systemInstruction = { role: 'system', content: "You are a helpful assistant. Do not output your internal thinking process or <thinking> tags to the user. Just provide the final answer directly." };
+            // Stream response with context + "No Internal Monologue" instruction
+            // Revert suppression. Allow model to think.
+            const systemInstruction = { role: 'system', content: "You are a helpful assistant. Use <thinking> tags for your internal thought process." };
             const requestMessages = [systemInstruction, ...contextMessages, { role: 'user', content: promptInput }];
 
             await streamChatCompletion(
@@ -422,13 +427,15 @@ function AppContent() {
             }
         }
 
-        const systemInstruction = { role: 'system', content: "You are a helpful assistant. Do not output your internal thinking process or <thinking> tags to the user. Just provide the final answer directly." };
+        const systemInstruction = { role: 'system', content: "You are a helpful assistant. Use <thinking> tags for your internal thought process." };
 
-        return [...contextMessages, systemInstruction, ...newMessages]; // Return full history? No, ChatModal manages history. 
-        // Wait, ChatModal calls streamChatCompletion directly? No, it calls onUpdate.
-        // We need to inject this logic into ChatModal or expose a wrapper.
-        // Current ChatModal implementation might use LLM service directly. We should pass a "prepareMessages" prop?
-        // Simpler: We'll modify ChatModal to accept `context` prop.
+
+        // Wrapper for ChatModal to use
+    };
+
+    const handleChatGenerate = async (cardId, messages, onToken) => {
+        const fullMessages = await generateResponseForCard(cardId, messages);
+        await streamChatCompletion(fullMessages, onToken);
     };
 
     const handleUpdateCard = (id, newData) => {
@@ -632,10 +639,12 @@ function AppContent() {
                     isOpen={!!expandedCardId}
                     onClose={() => setExpandedCardId(null)}
                     onUpdate={handleUpdateCard}
+                    onGenerateResponse={handleChatGenerate}
                 />
             )}
         </React.Fragment>
     );
 }
+
 
 if (typeof window !== 'undefined') window.App = App;

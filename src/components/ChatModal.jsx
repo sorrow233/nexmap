@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send } from 'lucide-react';
 import { chatCompletion } from '../services/llm';
 
-export default function ChatModal({ card, isOpen, onClose, onUpdate }) {
+export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
@@ -41,33 +41,27 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate }) {
         };
 
         try {
-            // We pass the messages EXCEPT the empty assistant one we just added for context
+            // Use the parent's generator which handles context/connections
+            // onGenerateResponse(card.id, newMessages, onTokenCallback)
             const contextMessages = updatedMessages.slice(0, -1);
 
-            await window.LLM.streamChatCompletion(contextMessages, (token) => {
-                // Due to closure, we need to be careful. But since we use functional state update in appendToken (via parent), it technically requires onUpdate to support functional updates.
-                // However, onUpdate in App.jsx currently takes (id, newData). 
-                // We need to fix this interaction. 
-                // For now, let's implement a ref-based approach or assume App.jsx logic allows getting current state? 
-                // Actually, let's just re-implement a localized state updater for the stream and sync once at the end? 
-                // No, user wants to see it stream.
-                // Let's modify onUpdate to simply pass the accumulated string.
-
-                // WAIT: The App.jsx onUpdateCard is: setCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c));
-                // It doesn't support functional updates for 'newData'.
-                // We might need to handle this carefully.
-                // Actually, we can use a local mutable variable for the accumulation during the stream and call onUpdate with the full new object.
-            });
-
-            // Re-implementation with correct closure handling:
-            let accumulatedContent = "";
-            await window.LLM.streamChatCompletion(contextMessages, (token) => {
-                accumulatedContent += token;
-
-                // We need to construct the FULL new messages array every time for onUpdate
-                const newMessages = [...contextMessages, { role: 'assistant', content: accumulatedContent }];
-                onUpdate(card.id, { ...card.data, messages: newMessages });
-            });
+            // If parent provided onGenerateResponse, use it. Otherwise fallback (though we should always have it now)
+            if (onGenerateResponse) {
+                let accumulatedContent = "";
+                await onGenerateResponse(card.id, contextMessages, (token) => {
+                    accumulatedContent += token;
+                    const newMessages = [...contextMessages, { role: 'assistant', content: accumulatedContent }];
+                    onUpdate(card.id, { ...card.data, messages: newMessages });
+                });
+            } else {
+                // Fallback (legacy)
+                let accumulatedContent = "";
+                await window.LLM.streamChatCompletion(contextMessages, (token) => {
+                    accumulatedContent += token;
+                    const newMessages = [...contextMessages, { role: 'assistant', content: accumulatedContent }];
+                    onUpdate(card.id, { ...card.data, messages: newMessages });
+                });
+            }
 
         } catch (error) {
             console.error(error);
