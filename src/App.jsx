@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Sparkles, Loader2, Trash2 } from 'lucide-react';
+import { Settings, Sparkles, Loader2, Trash2, RefreshCw } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
-import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, generateTitle, chatCompletion } from './services/llm';
+import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
 
 // Settings Modal Component
 function SettingsModal({ isOpen, onClose }) {
@@ -116,16 +116,20 @@ function AppContent() {
         if (!promptInput.trim()) return;
 
         const newId = Date.now();
-        const x = window.innerWidth / 2 - 160 + (Math.random() * 40 - 20) - 200;
-        const y = window.innerHeight / 2 - 100 + (Math.random() * 40 - 20);
+        const initialX = window.innerWidth / 2 - 160 + (Math.random() * 40 - 20) - 200;
+        const initialY = window.innerHeight / 2 - 100 + (Math.random() * 40 - 20);
 
+        // Initial empty assistant message
         const newCard = {
             id: newId,
-            x: Math.max(0, x),
-            y: Math.max(0, y),
+            x: Math.max(0, initialX),
+            y: Math.max(0, initialY),
             data: {
-                title: "Generating...",
-                messages: [{ role: 'user', content: promptInput }],
+                title: "Thinking...",
+                messages: [
+                    { role: 'user', content: promptInput },
+                    { role: 'assistant', content: '' } // Placeholder for streaming
+                ],
                 model: "google/gemini-3-flash-preview"
             }
         };
@@ -134,28 +138,64 @@ function AppContent() {
         setPromptInput('');
         setIsGenerating(true);
 
-        try {
-            const titlePromise = generateTitle(promptInput);
-            const responsePromise = chatCompletion(newCard.data.messages);
-
-            const [title, response] = await Promise.all([titlePromise, responsePromise]);
-
+        // Update function for streaming content
+        const updateCardContent = (contentChunk) => {
             setCards(prev => prev.map(c => {
                 if (c.id === newId) {
-                    return {
-                        ...c,
-                        data: {
-                            ...c.data,
-                            title: title,
-                            messages: [...c.data.messages, { role: 'assistant', content: response }]
-                        }
-                    };
+                    const msgs = [...c.data.messages];
+                    const lastMsg = msgs[msgs.length - 1];
+                    let newContent = lastMsg.content + contentChunk;
+
+                    // Simple filter to remove "Thinking" lines (e.g. **Thinking...**) from the START of the message
+                    // We only filter if the message is relatively short to avoid false positives later
+                    if (newContent.length < 500) {
+                        newContent = newContent.replace(/^\*\*.*?\*\*\s*\n?/gm, '').trim();
+                    }
+
+                    msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
+                    return { ...c, data: { ...c.data, messages: msgs } };
                 }
                 return c;
             }));
+        };
+
+        try {
+            // Use user input directly as title (truncated if too long)
+            const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : promptInput;
+
+            setCards(prev => prev.map(c =>
+                c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
+            ));
+
+            // Contextual Logic: If cards are selected, use them as context
+            let contextMessages = [];
+            if (selectedIds.length > 0) {
+                const selectedCards = cards.filter(c => selectedIds.includes(c.id));
+                const contextText = selectedCards.map(c =>
+                    `Context from card "${c.data.title}":\n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')}`
+                ).join('\n\n---\n\n');
+
+                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context. Use the following information to answer the next prompt if relevant.]\n\n${contextText}` }];
+            }
+
+            // Stream response with context
+            const requestMessages = [...contextMessages, { role: 'user', content: promptInput }];
+
+            await streamChatCompletion(
+                requestMessages,
+                updateCardContent
+            );
 
         } catch (error) {
-            alert("Failed to generate: " + error.message);
+            console.error(error);
+            setCards(prev => prev.map(c => {
+                if (c.id === newId) {
+                    const msgs = [...c.data.messages];
+                    msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
+                    return { ...c, data: { ...c.data, messages: msgs } };
+                }
+                return c;
+            }));
         } finally {
             setIsGenerating(false);
         }
@@ -168,6 +208,57 @@ function AppContent() {
     const handleBatchDelete = () => {
         setCards(prev => prev.filter(c => !selectedIds.includes(c.id)));
         setSelectedIds([]);
+    };
+
+    const handleRegenerate = async () => {
+        const targets = cards.filter(c => selectedIds.includes(c.id));
+        if (targets.length === 0) return;
+
+        // Reset selected cards to "Thinking..." state by removing last assistant msg or adding one
+        setCards(prev => prev.map(c => {
+            if (selectedIds.includes(c.id)) {
+                const newMsgs = [...c.data.messages];
+                // If last was assistant, remove it to retry. If user, just append.
+                if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
+                    newMsgs.pop();
+                }
+                // Add placeholder
+                newMsgs.push({ role: 'assistant', content: '' });
+                return { ...c, data: { ...c.data, messages: newMsgs } };
+            }
+            return c;
+        }));
+
+        setIsGenerating(true);
+
+        try {
+            await Promise.all(targets.map(async (card) => {
+                const currentMsgs = [...card.data.messages];
+                // Remove the assistant msg if it existed (we want the prompt stack)
+                if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
+                    currentMsgs.pop();
+                }
+
+                // Define updater for this specific card
+                const updateThisCard = (chunk) => {
+                    setCards(prev => prev.map(c => {
+                        if (c.id === card.id) {
+                            const msgs = [...c.data.messages];
+                            const last = msgs[msgs.length - 1];
+                            msgs[msgs.length - 1] = { ...last, content: last.content + chunk };
+                            return { ...c, data: { ...c.data, messages: msgs } };
+                        }
+                        return c;
+                    }));
+                };
+
+                await streamChatCompletion(currentMsgs, updateThisCard);
+            }));
+        } catch (e) {
+            console.error("Regeneration failed", e);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
@@ -208,6 +299,15 @@ function AppContent() {
             {selectedIds.length > 0 && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
                     <span className="text-sm font-semibold text-slate-600">{selectedIds.length} items</span>
+                    <div className="h-4 w-px bg-slate-300"></div>
+                    <button
+                        onClick={handleRegenerate}
+                        className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+                        title="Regenerate response for selected cards"
+                    >
+                        <RefreshCw size={16} />
+                        <span className="text-sm font-medium">Retry</span>
+                    </button>
                     <div className="h-4 w-px bg-slate-300"></div>
                     <button
                         onClick={handleBatchDelete}

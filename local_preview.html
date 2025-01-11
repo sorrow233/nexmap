@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <script>
         // Environment Shim
@@ -55,6 +56,103 @@
             background-color: #cbd5e1;
             border-radius: 4px;
         }
+
+        /* Markdown Typography */
+        .prose {
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .prose h1,
+        .prose h2,
+        .prose h3 {
+            color: #0f172a;
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .prose h1 {
+            font-size: 1.5rem;
+        }
+
+        .prose h2 {
+            font-size: 1.25rem;
+        }
+
+        .prose h3 {
+            font-size: 1.1rem;
+        }
+
+        .prose p {
+            margin-bottom: 0.75em;
+        }
+
+        .prose ul,
+        .prose ol {
+            margin-bottom: 0.75em;
+            padding-left: 1.5em;
+        }
+
+        .prose ul {
+            list-style-type: disc;
+        }
+
+        .prose ol {
+            list-style-type: decimal;
+        }
+
+        .prose blockquote {
+            border-left: 4px solid #e2e8f0;
+            padding-left: 1em;
+            font-style: italic;
+            color: #64748b;
+        }
+
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1em;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: monospace;
+            margin-bottom: 1em;
+        }
+
+        .prose code {
+            background-color: #f1f5f9;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25em;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #0f172a;
+        }
+
+        .prose pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Custom styles for user bubbles */
+        .user-bubble .prose {
+            color: white;
+        }
+
+        .user-bubble .prose code {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .user-bubble .prose pre {
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .user-bubble .prose h1,
+        .user-bubble .prose h2,
+        .user-bubble .prose h3 {
+            color: white;
+        }
     </style>
 </head>
 
@@ -70,12 +168,13 @@
         const run = async () => {
             const { useEffect } = React;
 
-            // 1. Expose React core to global scope
+            // 1. Expose React core and marked to global scope
             Object.assign(window, React);
+            window.marked = marked;
 
             // 2. Shim lucide-react (modular icon imports)
             if (window.lucide) {
-                const iconNames = ['Settings', 'Sparkles', 'Loader2', 'Trash2', 'Maximize2', 'X', 'Send'];
+                const iconNames = ['Settings', 'Sparkles', 'Loader2', 'Trash2', 'Maximize2', 'X', 'Send', 'RefreshCw', 'LayoutGrid', 'Plus', 'Clock', 'FileText', 'ArrowLeft', 'Menu'];
                 // Helper to render Lucide icons from their definitions
                 const LucideIcon = ({ name, size = 24, ...props }) => {
                     const iconData = window.lucide?.icons?.[name];
@@ -120,8 +219,11 @@
             // 3. Load Order (Dependencies First)
             const files = [
                 './src/services/llm.js',
+                './src/services/storage.js',
+                './src/utils/format.js',
                 './src/components/Card.jsx',
                 './src/components/ChatModal.jsx',
+                './src/components/BoardGallery.jsx',
                 './src/components/Canvas.jsx',
                 './src/App.jsx'
             ];
