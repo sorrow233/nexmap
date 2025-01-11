@@ -1,9 +1,26 @@
-// Import config (gitignored)
-// For Vite, we might use import.meta.env, but for dual compatibility we use a config file
-import { API_CONFIG } from './config';
+// Config management:
+// 1. Local Preview uses global 'window.API_CONFIG' loaded from config.js
+// 2. Vite Build uses 'import.meta.env'
+// 3. We removed 'import { API_CONFIG } from ./config' to avoid build errors on Vercel where file is ignored.
 
-const DEFAULT_KEY = API_CONFIG?.apiKey || "";
-const DEFAULT_BASE_URL = API_CONFIG?.baseUrl || 'https://api.gmi-serving.com/v1';
+const getEnvVar = (key) => {
+    // Check global API_CONFIG (Local Preview)
+    if (typeof window !== 'undefined' && window.API_CONFIG && window.API_CONFIG[key]) {
+        return window.API_CONFIG[key];
+    }
+    // Check Vite Env (Production/Dev)
+    try {
+        if (import.meta && import.meta.env) {
+            return import.meta.env[`VITE_${key}`] || import.meta.env[key];
+        }
+    } catch (e) {
+        // import.meta might not exist in some environments
+    }
+    return "";
+};
+
+const DEFAULT_KEY = getEnvVar('apiKey');
+const DEFAULT_BASE_URL = getEnvVar('baseUrl') || 'https://api.gmi-serving.com/v1';
 
 const STORAGE_KEY = 'mixboard_llm_key';
 const STORAGE_BASE_URL = 'mixboard_llm_base_url';
