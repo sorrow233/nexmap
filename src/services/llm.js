@@ -1,14 +1,17 @@
+// Import config (gitignored)
+// For Vite, we might use import.meta.env, but for dual compatibility we use a config file
+import { API_CONFIG } from './config';
+
+const DEFAULT_KEY = API_CONFIG?.apiKey || "";
+const DEFAULT_BASE_URL = API_CONFIG?.baseUrl || 'https://api.gmi-serving.com/v1';
+
 const STORAGE_KEY = 'mixboard_llm_key';
 const STORAGE_BASE_URL = 'mixboard_llm_base_url';
-
-
-// User provided default key
-const DEFAULT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImEwOTQzMmQyLWI5OWEtNDQxOC05OGRjLThhZjcyMWU1NzYzMyIsInNjb3BlIjoiaWVfbW9kZWwiLCJjbGllbnRJZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMCJ9.mbOmWTCQKseHX7Nzi3Se27xPx_ATycNbQx2lZh_d5V4";
 
 export const getApiKey = () => localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
 export const setApiKey = (key) => localStorage.setItem(STORAGE_KEY, key);
 
-export const getBaseUrl = () => localStorage.getItem(STORAGE_BASE_URL) || 'https://api.gmi-serving.com/v1';
+export const getBaseUrl = () => localStorage.getItem(STORAGE_BASE_URL) || DEFAULT_BASE_URL;
 export const setBaseUrl = (url) => localStorage.setItem(STORAGE_BASE_URL, url);
 
 
