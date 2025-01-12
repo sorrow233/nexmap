@@ -128,7 +128,43 @@ function AppContent() {
         if (lastId && list.some(b => b.id === lastId)) {
             handleSelectBoard(lastId);
         }
+        if (lastId && list.some(b => b.id === lastId)) {
+            handleSelectBoard(lastId);
+        }
     }, []);
+
+    // Global Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ignore if typing in an input or textarea
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+
+            // Delete / Backspace -> Delete selected
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedIds.length > 0) {
+                    handleBatchDelete();
+                }
+            }
+
+            // R -> Regenerate selected
+            if (e.key === 'r' || e.key === 'R') {
+                if (selectedIds.length > 0) {
+                    handleRegenerate();
+                }
+            }
+
+            // L -> Link (Connect)
+            // If one card is selected, start connection from it
+            if (e.key === 'l' || e.key === 'L') {
+                if (selectedIds.length === 1) {
+                    handleConnect(selectedIds[0]);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedIds, cards]); // Re-bind when selection changes so handlers use fresh state
 
     // 2. Auto-Save Cards & Connections
     useEffect(() => {

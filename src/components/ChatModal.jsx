@@ -74,7 +74,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" style={{ perspective: '1000px' }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" style={{ perspective: '1000px', fontFamily: '"LXGW WenKai Screen", system-ui, sans-serif' }}>
             <div
                 className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity"
                 onClick={onClose}

@@ -86,7 +86,12 @@ export default function Card({
     // Clean up thinking tags for preview
     previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
     if (!previewText) previewText = "Thinking..."; // If only thought exists
-    previewText = previewText.replace(/^\*\*Thinking\.\.\.\*\*\s*/, '').substring(0, 100);
+
+    // Show truncated preview (END of content)
+    // If longer than 100 chars, show "..." then the end
+    if (previewText.length > 100) {
+        previewText = "..." + previewText.slice(-100);
+    }
 
 
     const zIndex = isSelected ? 50 : 1;
