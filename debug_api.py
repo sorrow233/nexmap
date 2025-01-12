@@ -1,10 +1,16 @@
-
 import aiohttp
 import asyncio
 import json
+import os
 
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiZjI1ZDc0LTQ4NjctNDZlZC04ZGRlLTg0OTIxNGU3NTJhYyIsInNjb3BlIjoiaWVfbW9kZWwiLCJjbGllbnRJZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMCJ9.lfIcQ8NILupuATAbrlblQ1OBkDezf7L1E4Rpv6Qa5m0"
-BASE_URL = "https://api.gmi-serving.com/v1"
+# Try to load from git-ignored local config, fallback to environment variable
+try:
+    import debug_config
+    API_KEY = getattr(debug_config, 'API_KEY', os.environ.get("LLM_API_KEY", ""))
+    BASE_URL = getattr(debug_config, 'BASE_URL', os.environ.get("LLM_BASE_URL", "https://api.gmi-serving.com/v1"))
+except ImportError:
+    API_KEY = os.environ.get("LLM_API_KEY", "YOUR_KEY_HERE")
+    BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.gmi-serving.com/v1")
 
 async def test_stream():
     url = f"{BASE_URL.rstrip('/')}/chat/completions"

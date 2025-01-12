@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Sparkles, Loader2, Trash2, RefreshCw } from 'lucide-react';
+import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
+import BoardGallery from './components/BoardGallery';
+import { StorageService } from './services/storage';
 import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
 
 // Settings Modal Component
@@ -100,6 +102,10 @@ export default function App() {
 
 function AppContent() {
 
+    const [view, setView] = useState('gallery'); // 'gallery' | 'canvas'
+    const [boardsList, setBoardsList] = useState([]);
+    const [currentBoardId, setCurrentBoardId] = useState(null);
+
     const [cards, setCards] = useState([]);
     const [selectedIds, setSelectedIds] = useState([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -107,10 +113,153 @@ function AppContent() {
     const [promptInput, setPromptInput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
+    // 1. Initial Load
     useEffect(() => {
-        // Removed check for explicit API key since we have a default now, 
-        // but still good to keep settings accessible if needed.
+        if (!window.StorageService) return;
+        const list = window.StorageService.getBoardsList();
+        setBoardsList(list);
+
+        const lastId = window.StorageService.getCurrentBoardId();
+        if (lastId && list.some(b => b.id === lastId)) {
+            handleSelectBoard(lastId);
+        }
     }, []);
+
+    // 2. Auto-Save Cards whenever they change
+    useEffect(() => {
+        if (view === 'canvas' && currentBoardId && cards.length >= 0) {
+            window.StorageService.saveBoard(currentBoardId, { cards });
+            // Sync metadata in list without full re-fetch
+            setBoardsList(prev => prev.map(b =>
+                b.id === currentBoardId ? { ...b, updatedAt: Date.now(), cardCount: cards.length } : b
+            ));
+        }
+    }, [cards, currentBoardId, view]);
+
+    const handleCreateBoard = async (customName = null, initialPrompt = null) => {
+        if (!window.StorageService) return;
+
+        let name = customName;
+        // If not custom name provided (e.g. from gallery input), fallback to prompt
+        if (!name) {
+            name = prompt('Name your board:', `Board ${boardsList.length + 1}`);
+            if (!name) return;
+        }
+
+        const newBoard = window.StorageService.createBoard(name);
+        setBoardsList(prev => [newBoard, ...prev]);
+
+        // Optimize: Set state immediately to switch view
+        await handleSelectBoard(newBoard.id);
+
+        // If there's an initial prompt (Quick Start), trigger card creation immediately
+        if (initialPrompt) {
+            // Slight delay to ensure canvas is ready
+            setTimeout(() => {
+                setPromptInput(initialPrompt);
+                // We need to trigger handleCreateCard but state might not be fully flushed ???
+                // Actually better to just directly call logic or set useEffect trigger.
+                // Let's call a helper to avoid duplication, but we need updated 'cards' reference...
+                // Simplify: Just set the input and let user hit enter? No, they want "Start".
+                // We will manually trigger a card creation with a hack or refactor.
+                // Refactor: handleCreateCardWithText(text)
+                createCardWithText(initialPrompt, newBoard.id);
+            }, 100);
+        }
+    };
+
+    // Refactored helper to create card without depending on state 'promptInput'
+    const createCardWithText = async (text, boardId) => {
+        if (!text.trim()) return;
+
+        const newId = Date.now();
+        const initialX = window.innerWidth / 2 - 200;
+        const initialY = window.innerHeight / 2 - 150;
+
+        const newCard = {
+            id: newId,
+            x: Math.max(0, initialX),
+            y: Math.max(0, initialY),
+            data: {
+                title: text.length > 20 ? text.substring(0, 20) + '...' : text,
+                messages: [
+                    { role: 'user', content: text },
+                    { role: 'assistant', content: '' }
+                ],
+                model: "google/gemini-3-flash-preview"
+            }
+        };
+
+        setCards(prev => [...prev, newCard]);
+        setIsGenerating(true);
+
+        // ... logic for streaming ...
+        // Re-using the streaming logic is tricky without duplication. 
+        // Let's extract the core streaming logic or just copy-paste for safety in this task.
+        // For robustness, I'll basically dup the core stream logic here but targeted at this new card.
+        // Ideally this would be a unified function `generateResponse(cardId, messages)`
+
+        try {
+            const updateCardContent = (contentChunk) => {
+                setCards(prev => prev.map(c => {
+                    if (c.id === newId) {
+                        const msgs = [...c.data.messages];
+                        const lastMsg = msgs[msgs.length - 1];
+                        let newContent = lastMsg.content + contentChunk;
+                        if (newContent.length < 500) {
+                            newContent = newContent.replace(/^\*\*.*?\*\*\s*\n?/gm, '').trim();
+                        }
+                        msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
+                        return { ...c, data: { ...c.data, messages: msgs } };
+                    }
+                    return c;
+                }));
+            };
+
+            await streamChatCompletion(
+                [{ role: 'user', content: text }],
+                updateCardContent
+            );
+
+        } catch (error) {
+            console.error(error);
+            setCards(prev => prev.map(c => {
+                if (c.id === newId) {
+                    const msgs = [...c.data.messages];
+                    msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
+                    return { ...c, data: { ...c.data, messages: msgs } };
+                }
+                return c;
+            }));
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleSelectBoard = (id) => {
+        if (!window.StorageService) return;
+        const data = window.StorageService.loadBoard(id);
+        setCards(data.cards || []);
+        setCurrentBoardId(id);
+        window.StorageService.setCurrentBoardId(id);
+        setView('canvas');
+    };
+
+    const handleDeleteBoard = (id) => {
+        if (!confirm('Are you sure? All chat history in this board will be gone.')) return;
+        window.StorageService.deleteBoard(id);
+        setBoardsList(prev => prev.filter(b => b.id !== id));
+    };
+
+    const handleBackToGallery = () => {
+        if (currentBoardId) {
+            window.StorageService.saveBoard(currentBoardId, { cards });
+            window.StorageService.setCurrentBoardId(null);
+        }
+        setView('gallery');
+        setCurrentBoardId(null);
+        setCards([]);
+    };
 
     const handleCreateCard = async () => {
         if (!promptInput.trim()) return;
@@ -261,6 +410,29 @@ function AppContent() {
         }
     };
 
+    if (view === 'gallery') {
+        return (
+            <React.Fragment>
+                <BoardGallery
+                    boards={boardsList}
+                    onSelectBoard={handleSelectBoard}
+                    onCreateBoard={handleCreateBoard}
+                    onDeleteBoard={handleDeleteBoard}
+                />
+                <div className="fixed bottom-10 right-10">
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-brand-600 hover:scale-110 transition-all border border-slate-100"
+                        title="Settings"
+                    >
+                        <Settings size={24} />
+                    </button>
+                </div>
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            </React.Fragment>
+        );
+    }
+
     return (
         <React.Fragment>
             <Canvas
@@ -270,6 +442,22 @@ function AppContent() {
                 onExpandCard={setExpandedCardId}
             />
 
+            {/* Premium Top Navigation */}
+            <div className="fixed top-8 left-8 z-50 flex items-center gap-4">
+                <button
+                    onClick={handleBackToGallery}
+                    className="glass-panel px-6 py-3 rounded-2xl flex items-center gap-2 text-slate-700 font-bold hover:text-brand-600 transition-all active:scale-95 shadow-xl border-white/50"
+                >
+                    <LayoutGrid size={20} className="text-brand-500" />
+                    Gallery
+                </button>
+                <div className="h-10 w-[2px] bg-slate-200/50" />
+                <h2 className="text-slate-800 font-black tracking-tight text-lg">
+                    {boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
+                </h2>
+            </div>
+
+            {/* Chat Input Bar */}
             <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
                 <div className="glass-panel rounded-2xl p-2 flex gap-2 shadow-xl transition-all duration-300 focus-within:ring-2 ring-brand-500/50">
                     <button
@@ -284,7 +472,7 @@ function AppContent() {
                         onChange={e => setPromptInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
                         className="flex-grow bg-transparent outline-none text-slate-700 placeholder-slate-400 font-medium"
-                        placeholder="Type a prompt to create a new board..."
+                        placeholder="Type a prompt to create a new card..."
                     />
                     <button
                         onClick={handleCreateCard}

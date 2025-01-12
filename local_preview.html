@@ -174,7 +174,7 @@
 
             // 2. Shim lucide-react (modular icon imports)
             if (window.lucide) {
-                const iconNames = ['Settings', 'Sparkles', 'Loader2', 'Trash2', 'Maximize2', 'X', 'Send', 'RefreshCw', 'LayoutGrid', 'Plus', 'Clock', 'FileText', 'ArrowLeft', 'Menu'];
+                const iconNames = ['Settings', 'Sparkles', 'Loader2', 'Trash2', 'Maximize2', 'X', 'Send', 'RefreshCw', 'LayoutGrid', 'Plus', 'Clock', 'FileText', 'ArrowLeft', 'Menu', 'ChevronRight'];
                 // Helper to render Lucide icons from their definitions
                 const LucideIcon = ({ name, size = 24, ...props }) => {
                     const iconData = window.lucide?.icons?.[name];
@@ -220,6 +220,7 @@
             const files = [
                 './src/services/config.js',
                 './src/services/llm.js',
+                './src/services/storage.js',
                 './src/utils/format.js',
                 './src/components/Card.jsx',
                 './src/components/ChatModal.jsx',
