@@ -79,22 +79,22 @@ export default function Card({
     const cardContent = data.data || {};
     const messages = cardContent.messages || [];
 
-    const lastMessageRaw = messages.length > 0
-        ? messages[messages.length - 1].content
-        : "Empty conversation";
+    // Generate preview text (last message from assistant or user)
+    const lastMessage = messages[messages.length - 1];
+    let previewText = lastMessage?.content || "No messages yet";
 
-    // Parse to show only content in preview, ignoring thoughts
-    // (This is just for the card preview text)
-    const previewText = lastMessageRaw.replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
-        .replace(/^\*\*Thinking\.\.\.\*\*\s*/, '')
-        .substring(0, 100);
+    // Clean up thinking tags for preview
+    previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+    if (!previewText) previewText = "Thinking..."; // If only thought exists
+    previewText = previewText.replace(/^\*\*Thinking\.\.\.\*\*\s*/, '').substring(0, 100);
+
 
     const zIndex = isSelected ? 50 : 1;
 
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[320px] bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col transition-shadow duration-200 select-none pointer-events-auto
+            className={`absolute w-[320px] bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col transition-shadow duration-200 select-none pointer-events-auto group
                 ${isSelected ? 'ring-2 ring-brand-500 shadow-2xl shadow-brand-500/20' : ''}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
                 ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
