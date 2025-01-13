@@ -34,16 +34,46 @@ const getEnvVar = (key) => {
 const DEFAULT_KEY = getEnvVar('apiKey');
 const DEFAULT_BASE_URL = getEnvVar('baseUrl') || 'https://api.gmi-serving.com/v1';
 
-const STORAGE_KEY = 'mixboard_llm_key';
+const STORAGE_KEY_PREFIX = 'mixboard_llm_key_';
 const STORAGE_BASE_URL = 'mixboard_llm_base_url';
-
-export const getApiKey = () => localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
-export const setApiKey = (key) => localStorage.setItem(STORAGE_KEY, key);
-
 const STORAGE_MODEL = 'mixboard_llm_model';
-const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp'; // Updated default
+const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp';
 
+// Helper to get provider ID from base URL
+const getProviderIdFromUrl = (url) => {
+    if (!url) return 'custom';
+    if (url.includes('gmi-serving.com')) return 'gmicloud';
+    if (url.includes('siliconflow.cn')) return 'siliconflow';
+    if (url.includes('deepseek.com')) return 'deepseek';
+    if (url.includes('openai.com')) return 'openai';
+    if (url.includes('generativelanguage.googleapis.com')) return 'gemini';
+    if (url.includes('openrouter.ai')) return 'openrouter';
+    return 'custom';
+};
 
+// Get API Key for a specific provider
+export const getApiKeyForProvider = (providerId) => {
+    return localStorage.getItem(STORAGE_KEY_PREFIX + providerId) || DEFAULT_KEY;
+};
+
+// Set API Key for a specific provider  
+export const setApiKeyForProvider = (providerId, key) => {
+    localStorage.setItem(STORAGE_KEY_PREFIX + providerId, key);
+};
+
+// Get current provider's API Key based on current base URL
+export const getApiKey = () => {
+    const currentUrl = getBaseUrl();
+    const providerId = getProviderIdFromUrl(currentUrl);
+    return getApiKeyForProvider(providerId);
+};
+
+// Set API Key (backwards compatible - sets for current provider)
+export const setApiKey = (key) => {
+    const currentUrl = getBaseUrl();
+    const providerId = getProviderIdFromUrl(currentUrl);
+    setApiKeyForProvider(providerId, key);
+};
 
 export const getBaseUrl = () => localStorage.getItem(STORAGE_BASE_URL) || DEFAULT_BASE_URL;
 export const setBaseUrl = (url) => localStorage.setItem(STORAGE_BASE_URL, url);

@@ -11,9 +11,6 @@ import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, gener
 // Settings Modal Component
 function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
-    const [key, setKey] = useState(getApiKey());
-    const [url, setUrl] = useState(getBaseUrl());
-    const [model, setModelState] = useState(getModel());
 
     // Provider Presets
     const PROVIDERS = [
@@ -33,6 +30,24 @@ function SettingsModal({ isOpen, onClose, user }) {
         return found ? found.id : 'custom';
     });
 
+
+    const [url, setUrl] = useState(getBaseUrl());
+    const [model, setModelState] = useState(getModel());
+    const [key, setKey] = useState(() => {
+        // Load key for current provider
+        const currentUrl = getBaseUrl();
+        const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
+        const pid = found ? found.id : 'custom';
+        return localStorage.getItem(`mixboard_llm_key_${pid}`) || '';
+    });
+
+    const [providerId, setProviderId] = useState(() => {
+        // Try to guess provider based on URL
+        const currentUrl = getBaseUrl();
+        const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
+        return found ? found.id : 'custom';
+    });
+
     const handleProviderChange = (e) => {
         const pid = e.target.value;
         setProviderId(pid);
@@ -40,6 +55,9 @@ function SettingsModal({ isOpen, onClose, user }) {
         if (p && p.id !== 'custom') {
             setUrl(p.baseUrl);
             if (p.model) setModelState(p.model);
+            // Load the API key for this provider
+            const providerKey = localStorage.getItem(`mixboard_llm_key_${pid}`) || '';
+            setKey(providerKey);
         }
     };
 
@@ -64,13 +82,24 @@ function SettingsModal({ isOpen, onClose, user }) {
     };
 
     const handleSave = async () => {
+        // Save to provider-specific key
+        localStorage.setItem(`mixboard_llm_key_${providerId}`, key);
+
+        // Also save to global storage for backwards compatibility
         setApiKey(key);
         setBaseUrl(url);
         setModel(model);
 
         if (user) {
+            // Save all provider keys to cloud
+            const allKeys = {};
+            PROVIDERS.forEach(p => {
+                const k = localStorage.getItem(`mixboard_llm_key_${p.id}`);
+                if (k) allKeys[p.id] = k;
+            });
+
             await saveUserSettings(user.uid, {
-                apiKey: key,
+                apiKeys: allKeys, // Store all keys
                 baseUrl: url,
                 model: model,
                 updatedAt: Date.now()
@@ -296,13 +325,17 @@ function AppContent() {
                 // Load User Settings
                 loadUserSettings(u.uid).then(settings => {
                     if (settings) {
+                        // Restore all provider keys
+                        if (settings.apiKeys) {
+                            Object.entries(settings.apiKeys).forEach(([providerId, key]) => {
+                                localStorage.setItem(`mixboard_llm_key_${providerId}`, key);
+                            });
+                        }
+                        // Backwards compatibility: single apiKey
                         if (settings.apiKey) setApiKey(settings.apiKey);
+
                         if (settings.baseUrl) setBaseUrl(settings.baseUrl);
                         if (settings.model) setModel(settings.model);
-                        // Force refresh UI if settings modal is open? 
-                        // Actually, settings are read from localStorage in SettingsModal on mount, 
-                        // so we need to force a re-render or notify user.
-                        // Simplest: just update. Next time they open settings or use LLM it works.
                         console.log("Settings synced from cloud");
                     }
                 });
