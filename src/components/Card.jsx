@@ -1,4 +1,3 @@
-```javascript
 import React, { useState, useEffect, useRef } from 'react';
 import { Maximize2, Link, ArrowRight } from 'lucide-react';
 import { formatTime } from '../utils/format';
@@ -105,9 +104,9 @@ export default function Card({
         <div
             ref={cardRef}
             className={`absolute w - [320px] bg - white rounded - 2xl shadow - xl border border - slate - 100 flex flex - col transition - shadow duration - 200 select - none pointer - events - auto group
-                ${ isSelected ? 'ring-2 ring-brand-500 shadow-2xl shadow-brand-500/20' : '' }
-                ${ isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : '' }
-                ${ isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : '' }
+                ${isSelected ? 'ring-2 ring-brand-500 shadow-2xl shadow-brand-500/20' : ''}
+                ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
 `}
             style={{
                 left: data.x,
@@ -128,7 +127,7 @@ export default function Card({
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={(e) => { e.stopPropagation(); onConnect && onConnect(data.id); }}
-                        className={`p - 1.5 rounded - lg transition - colors ${ isConnecting ? 'text-green-600 bg-green-50' : 'text-slate-400 hover:text-brand-600 hover:bg-brand-50' } `}
+                        className={`p - 1.5 rounded - lg transition - colors ${isConnecting ? 'text-green-600 bg-green-50' : 'text-slate-400 hover:text-brand-600 hover:bg-brand-50'} `}
                         title={isConnecting ? "Click to connect" : "Link this card"}
                     >
                         <Link size={14} />

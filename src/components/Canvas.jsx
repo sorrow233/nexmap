@@ -5,19 +5,15 @@ import Card from './Card';
 export default function Canvas({
     cards,
     connections = [],
-    selectedIds = [], // Receive selection state
+    selectedIds = [],
     onUpdateCards,
     onCardMove,
+    onDragEnd,
     onSelectionChange,
     onExpandCard,
     onConnect,
     isConnecting,
-    onSelectionChange,
-    onExpandCard,
-    onConnect,
-    isConnecting,
-    connectionStartId,
-    onDragEnd
+    connectionStartId
 }) {
     const canvasRef = useRef(null);
     const [panning, setPanning] = useState(false);
