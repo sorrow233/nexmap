@@ -139,7 +139,7 @@ export default function Card({
             </div>
 
             <div className="p-4 bg-slate-50/50 flex-grow min-h-[100px] max-h-[200px] overflow-hidden relative">
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap font-mono text-xs">
+                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap text-xs font-lxgw">
                     {previewText}
                 </p>
                 <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>

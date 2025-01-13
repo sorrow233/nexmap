@@ -12,8 +12,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Fonts -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-web/style.css" />
+    <!-- Fonts: LXGW WenKai (Regular) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-web/style.css" />
 
     <script>
         // Environment Shim
@@ -274,6 +274,10 @@
             text = text.replace(/^export\s+default\s+/gm, '');
             // - Strip named exports (handling async, const, function, etc.)
             text = text.replace(/^export\s+(async\s+)?(const|function|class|let|var)\s+/gm, '$1$2 ');
+
+            // - Shim import.meta.env for browser (avoids syntax error)
+            // Universal shim: replace 'import.meta' with an object that has an 'env' property
+            text = text.replace(/import\.meta/g, '({env: {}})');
 
             return text;
         };

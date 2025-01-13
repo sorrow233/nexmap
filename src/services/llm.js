@@ -5,11 +5,23 @@
 
 const getEnvVar = (key) => {
     // Check global API_CONFIG (Local Preview)
+    // In local preview, API_CONFIG is a global const, not on window.
+    try {
+        // @ts-ignore
+        if (typeof API_CONFIG !== 'undefined' && API_CONFIG[key]) {
+            return API_CONFIG[key];
+        }
+    } catch (e) { }
+
     if (typeof window !== 'undefined' && window.API_CONFIG && window.API_CONFIG[key]) {
         return window.API_CONFIG[key];
     }
+
     // Check Vite Env (Production/Dev)
     try {
+        // Check for import.meta.env shim or real thing
+        // We use string access to avoid syntax errors if parser is strict about import.meta
+        // But since weshimmed it in local_preview, this code is what remains.
         if (import.meta && import.meta.env) {
             return import.meta.env[`VITE_${key}`] || import.meta.env[key];
         }
