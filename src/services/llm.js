@@ -103,7 +103,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
                 model: modelToUse,
                 messages: messages,
                 temperature: 0.7,
-                thinking_level: "minimal"
+                thinking_level: "high"
             })
         });
 
@@ -147,7 +147,7 @@ export async function streamChatCompletion(messages, onToken, model = null) {
                 messages: messages,
                 temperature: 0.7,
                 stream: true,
-                thinking_level: "minimal"
+                thinking_level: "high"
             })
         });
 
