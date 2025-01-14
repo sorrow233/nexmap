@@ -171,8 +171,7 @@ export default function Canvas({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
+
             // onWheel handled natively for passive: false support
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px)',
