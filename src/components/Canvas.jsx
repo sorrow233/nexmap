@@ -20,6 +20,19 @@ export default function Canvas({
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [scale, setScale] = useState(1);
 
+    // Config for smooth feel
+    const ZOOM_sensitivity = 0.005; // Finer control
+    const PAN_sensitivity = 1.0;
+
+    // Ref to access current state in native event listeners without closure staleness
+    const stateRef = useRef({ scale: 1, offset: { x: 0, y: 0 } });
+
+    // Sync ref with state
+    useEffect(() => {
+        stateRef.current.scale = scale;
+        stateRef.current.offset = offset;
+    }, [scale, offset]);
+
     // Convert screen to canvas coordinates
     const toCanvasCoords = (clientX, clientY) => {
         return {
@@ -111,33 +124,100 @@ export default function Canvas({
         if (!canvas) return;
 
         const handleNativeWheel = (e) => {
+            e.preventDefault(); // Stop browser back/forward swipe & zoom
+
             if (e.ctrlKey || e.metaKey) {
-                e.preventDefault(); // Critical: Stop browser pinch-to-zoom
-                const delta = -e.deltaY * 0.01; // Adjusted sensitivity for trackpad
-                setScale(prev => Math.min(Math.max(0.2, prev + delta), 4));
+                // PINCH ZOOM (Trackpad) or Ctrl+Wheel
+                const currentScale = stateRef.current.scale;
+                const currentOffset = stateRef.current.offset;
+
+                // Calculate cursor position relative to canvas (before zoom)
+                // (mouseX - offsetX) / scale = canvasX
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                const canvasX = (mouseX - currentOffset.x) / currentScale;
+                const canvasY = (mouseY - currentOffset.y) / currentScale;
+
+                // Calculate new scale
+                // Mac trackpad gives small deltaY for pinch
+                const delta = -e.deltaY * ZOOM_sensitivity;
+                const newZoom = Math.min(Math.max(0.1, currentScale + delta), 5); // 0.1x to 5x
+
+                // Calculate new offset to keep canvasX/Y under mouseX/Y
+                // mouseX = newOffsetX + canvasX * newZoom
+                // newOffsetX = mouseX - canvasX * newZoom
+                const newOffsetX = mouseX - canvasX * newZoom;
+                const newOffsetY = mouseY - canvasY * newZoom;
+
+                setScale(newZoom);
+                setOffset({ x: newOffsetX, y: newOffsetY });
+
             } else {
-                e.preventDefault(); // Stop browser back/forward swipe navigation on trackpad?
-                // Actually we might want swipe navigation if not panning? 
-                // But for canvas, we generally want to capture all scroll for panning.
-                setOffset(prev => ({
-                    x: prev.x - e.deltaX,
-                    y: prev.y - e.deltaY
-                }));
+                // PANNING (Trackpad swipe or Mouse Wheel)
+                const currentOffset = stateRef.current.offset;
+                setOffset({
+                    x: currentOffset.x - e.deltaX * PAN_sensitivity,
+                    y: currentOffset.y - e.deltaY * PAN_sensitivity
+                });
             }
         };
 
-        // Safari Gesture Events (Pinch-to-zoom on trackpad/iOS)
+        // Safari Gesture Events (Native Pinch-to-zoom on trackpad/iOS)
+        // Note: gesturestart/change/end are non-standard but vital for smooth Safari pinch
+        let startScale = 1;
+
         const handleGestureStart = (e) => {
             e.preventDefault();
+            startScale = stateRef.current.scale;
         };
 
         const handleGestureChange = (e) => {
             e.preventDefault();
-            // e.scale is the scale factor relative to the start of the gesture
-            // This simple implementation adds delta based on scale difference
-            // For more complex implementation, we'd multiply current scale.
-            const delta = (e.scale - 1) * 0.1;
-            setScale(prev => Math.min(Math.max(0.2, prev + delta), 4));
+
+            const currentOffset = stateRef.current.offset;
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            // Calculate center before zoom
+            const canvasX = (mouseX - currentOffset.x) / startScale; // Note: use startScale approximation for stability? 
+            // Better: use current rendered scale. But for Gesture, e.scale is relative to start.
+            // Let's use standard continuous zoom:
+
+            const newScale = Math.min(Math.max(0.1, startScale * e.scale), 5);
+
+            // BUT, we need to know what 'scale' was just a moment ago to calculate offset delta?
+            // Actually, we can recalculate offset from scratch based on startScale if we tracked startOffset.
+            // Let's keep it simple: just map e.scale relative to startScale.
+
+            // Re-calculate target offset based on the NEW scale
+            // Where was the mouse relative to the canvas at the START of the gesture?
+            // This is hard because mouse might move. 
+            // Simplest robust way: 
+            // Just use the math: newOffset = mouse - (mouse - oldOffset) * (newScale / oldScale)
+            // But doing this incrementally is tricky.
+            // Standard gesture implementation:
+
+            setScale(newScale);
+
+            // To properly center zoom, we strictly need to adjust offset. 
+            // For now, let's just apply scale. Trackpad usually uses 'wheel' with ctrlKey for pinch,
+            // 'gesture*' is more often for iOS or full-page zoom. 
+            // However, on Mac Safari, 'gesturechange' is fired for pinch.
+
+            // Let's apply the same logic as wheel zoom if possible?
+            // The issue is e.scale is absolute cumulative scale for the gesture.
+
+            const oldScale = stateRef.current.scale;
+            // Avoid divide by zero or tiny updates
+            if (Math.abs(newScale - oldScale) < 0.001) return;
+
+            const canvasX_live = (mouseX - currentOffset.x) / oldScale;
+            const canvasY_live = (mouseY - currentOffset.y) / oldScale;
+
+            const newOffsetX = mouseX - canvasX_live * newScale;
+            const newOffsetY = mouseY - canvasY_live * newScale;
+
+            setOffset({ x: newOffsetX, y: newOffsetY });
         };
 
         const handleGestureEnd = (e) => {
@@ -155,7 +235,7 @@ export default function Canvas({
             canvas.removeEventListener('gesturechange', handleGestureChange);
             canvas.removeEventListener('gestureend', handleGestureEnd);
         };
-    }, []); // Empty deps because we use setScale(prev => ...) functionality
+    }, []); // Empty deps
 
     /* Removed React onWheel prop since we handle it natively */
 
