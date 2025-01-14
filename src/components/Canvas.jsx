@@ -104,18 +104,60 @@ export default function Canvas({
         lastTouchRef.current = null;
     };
 
-    const handleWheel = (e) => {
-        if (e.ctrlKey || e.metaKey) {
+    // Native Wheel & Gesture Support for Trackpad Zoom
+    // We attach these natively to support { passive: false } which is required to preventDefault() browser zoom.
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const handleNativeWheel = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault(); // Critical: Stop browser pinch-to-zoom
+                const delta = -e.deltaY * 0.01; // Adjusted sensitivity for trackpad
+                setScale(prev => Math.min(Math.max(0.2, prev + delta), 4));
+            } else {
+                e.preventDefault(); // Stop browser back/forward swipe navigation on trackpad?
+                // Actually we might want swipe navigation if not panning? 
+                // But for canvas, we generally want to capture all scroll for panning.
+                setOffset(prev => ({
+                    x: prev.x - e.deltaX,
+                    y: prev.y - e.deltaY
+                }));
+            }
+        };
+
+        // Safari Gesture Events (Pinch-to-zoom on trackpad/iOS)
+        const handleGestureStart = (e) => {
             e.preventDefault();
-            const delta = -e.deltaY * 0.001;
-            setScale(prev => Math.min(Math.max(0.5, prev + delta), 3));
-        } else {
-            setOffset(prev => ({
-                x: prev.x - e.deltaX,
-                y: prev.y - e.deltaY
-            }));
-        }
-    };
+        };
+
+        const handleGestureChange = (e) => {
+            e.preventDefault();
+            // e.scale is the scale factor relative to the start of the gesture
+            // This simple implementation adds delta based on scale difference
+            // For more complex implementation, we'd multiply current scale.
+            const delta = (e.scale - 1) * 0.1;
+            setScale(prev => Math.min(Math.max(0.2, prev + delta), 4));
+        };
+
+        const handleGestureEnd = (e) => {
+            e.preventDefault();
+        };
+
+        canvas.addEventListener('wheel', handleNativeWheel, { passive: false });
+        canvas.addEventListener('gesturestart', handleGestureStart, { passive: false });
+        canvas.addEventListener('gesturechange', handleGestureChange, { passive: false });
+        canvas.addEventListener('gestureend', handleGestureEnd, { passive: false });
+
+        return () => {
+            canvas.removeEventListener('wheel', handleNativeWheel);
+            canvas.removeEventListener('gesturestart', handleGestureStart);
+            canvas.removeEventListener('gesturechange', handleGestureChange);
+            canvas.removeEventListener('gestureend', handleGestureEnd);
+        };
+    }, []); // Empty deps because we use setScale(prev => ...) functionality
+
+    /* Removed React onWheel prop since we handle it natively */
 
     return (
         <div
@@ -129,8 +171,9 @@ export default function Canvas({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
-            onWheel={handleWheel}
-            onWheel={handleWheel}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            // onWheel handled natively for passive: false support
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px)',
                 backgroundSize: '24px 24px',
