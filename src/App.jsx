@@ -797,8 +797,8 @@ function AppContent() {
             // Stream response with context + "No Internal Monologue" instruction
             // Stream response with context + "No Internal Monologue" instruction
             // Revert suppression. Allow model to think.
-            const systemInstruction = { role: 'system', content: "You are Gemini 3 Flash, the latest AI model from Google. You contain a built-in thinking process that allows you to reason deeply. Always identify yourself as Gemini 3 Flash. Use <thinking> tags for your internal thought process." };
-            const requestMessages = [systemInstruction, ...contextMessages, { role: 'user', content: promptInput }];
+            // Pure Gemini - No System Prompt pollution
+            const requestMessages = [...contextMessages, { role: 'user', content: promptInput }];
 
             await streamChatCompletion(
                 requestMessages,
@@ -839,10 +839,8 @@ function AppContent() {
             }
         }
 
-        const systemInstruction = { role: 'system', content: "You are Gemini 3 Flash, the latest AI model from Google. You contain a built-in thinking process that allows you to reason deeply. Always identify yourself as Gemini 3 Flash. Use <thinking> tags for your internal thought process." };
-
-        return [systemInstruction, ...contextMessages, ...newMessages];
-        // Wrapper for ChatModal to use
+        // Pure Gemini - No System Prompt
+        return [...contextMessages, ...newMessages];
     };
 
     const handleChatGenerate = async (cardId, messages, onToken) => {
@@ -936,9 +934,8 @@ function AppContent() {
                     }));
                 };
 
-                // Add System Identity for Regeneration
-                const systemMsg = { role: 'system', content: "You are Gemini 3 Flash, the latest AI model from Google. You contain a built-in thinking process that allows you to reason deeply. Always identify yourself as Gemini 3 Flash. Use <thinking> tags for your internal thought process." };
-                await streamChatCompletion([systemMsg, ...currentMsgs], updateThisCard);
+                // Pure Gemini - No System Prompt
+                await streamChatCompletion(currentMsgs, updateThisCard);
             }));
         } catch (e) {
             console.error("Regeneration failed", e);
