@@ -40,14 +40,24 @@ const STORAGE_BASE_URL = 'mixboard_llm_base_url';
 export const getApiKey = () => localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
 export const setApiKey = (key) => localStorage.setItem(STORAGE_KEY, key);
 
+const STORAGE_MODEL = 'mixboard_llm_model';
+const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp'; // Updated default
+
+export const getApiKey = () => localStorage.getItem(STORAGE_KEY) || DEFAULT_KEY;
+export const setApiKey = (key) => localStorage.setItem(STORAGE_KEY, key);
+
 export const getBaseUrl = () => localStorage.getItem(STORAGE_BASE_URL) || DEFAULT_BASE_URL;
 export const setBaseUrl = (url) => localStorage.setItem(STORAGE_BASE_URL, url);
 
+export const getModel = () => localStorage.getItem(STORAGE_MODEL) || DEFAULT_MODEL;
+export const setModel = (model) => localStorage.setItem(STORAGE_MODEL, model);
 
 
-export async function chatCompletion(messages, model = 'google/gemini-3-flash-preview') {
+
+export async function chatCompletion(messages, model = null) {
     const apiKey = getApiKey();
     const baseUrl = getBaseUrl();
+    const modelToUse = model || getModel();
 
     if (!apiKey) throw new Error("API Key is missing.");
 
@@ -81,9 +91,10 @@ export async function chatCompletion(messages, model = 'google/gemini-3-flash-pr
     }
 }
 
-export async function streamChatCompletion(messages, onToken, model = 'google/gemini-3-flash-preview') {
+export async function streamChatCompletion(messages, onToken, model = null) {
     const apiKey = getApiKey();
     const baseUrl = getBaseUrl();
+    const modelToUse = model || getModel();
 
     if (!apiKey) throw new Error("API Key is missing.");
 
@@ -159,6 +170,6 @@ export async function generateTitle(text) {
 // For Local Preview Loader compatibility
 if (typeof window !== 'undefined') {
     window.LLM = {
-        getApiKey, setApiKey, getBaseUrl, setBaseUrl, chatCompletion, generateTitle, streamChatCompletion
+        getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, chatCompletion, generateTitle, streamChatCompletion
     };
 }

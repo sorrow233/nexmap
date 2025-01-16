@@ -6,48 +6,136 @@ import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
 import { auth, googleProvider } from './services/firebase';
 import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud } from './services/storage';
-import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
+import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
 
 // Settings Modal Component
 function SettingsModal({ isOpen, onClose }) {
     if (!isOpen) return null;
     const [key, setKey] = useState(getApiKey());
     const [url, setUrl] = useState(getBaseUrl());
+    const [model, setModelState] = useState(getModel());
+
+    // Provider Presets
+    const PROVIDERS = [
+        { id: 'custom', name: 'Custom (自定义)', baseUrl: '', model: '' },
+        { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', model: 'deepseek-ai/DeepSeek-V2.5' },
+        { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
+        { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
+        { id: 'gemini', name: 'Google Gemini (OpenAI Compatible)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash-exp' },
+        { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'auto' },
+    ];
+
+    const [providerId, setProviderId] = useState(() => {
+        // Try to guess provider based on URL
+        const currentUrl = getBaseUrl();
+        const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
+        return found ? found.id : 'custom';
+    });
+
+    const handleProviderChange = (e) => {
+        const pid = e.target.value;
+        setProviderId(pid);
+        const p = PROVIDERS.find(x => x.id === pid);
+        if (p && p.id !== 'custom') {
+            setUrl(p.baseUrl);
+            if (p.model) setModelState(p.model);
+        }
+    };
 
     const handleSave = () => {
         setApiKey(key);
         setBaseUrl(url);
+        setModel(model);
         onClose();
+        // Reload to ensure fresh network instances if needed, though not strictly required
+        // location.reload(); 
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center">
-            <div className="bg-white p-6 rounded-2xl w-96 shadow-2xl animate-fade-in">
-                <h2 className="text-xl font-bold mb-4">Settings</h2>
-                <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center font-sans">
+            <div className="bg-white p-8 rounded-3xl w-[500px] shadow-2xl animate-fade-in border border-slate-100">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-brand-50 rounded-2xl text-brand-600">
+                        <Settings size={28} />
+                    </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700">API Key</label>
+                        <h2 className="text-2xl font-bold text-slate-800">Connection Settings</h2>
+                        <p className="text-slate-500 text-sm">Configure your LLM provider</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Provider Selector */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Provider (服务商)</label>
+                        <div className="relative">
+                            <select
+                                value={providerId}
+                                onChange={handleProviderChange}
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-brand-500 outline-none font-medium text-slate-700 transition-all hover:bg-slate-100"
+                            >
+                                {PROVIDERS.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <ArrowLeft className="rotate-[-90deg]" size={16} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* API Key */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">API Key</label>
                         <input
                             type="password"
                             value={key}
                             onChange={e => setKey(e.target.value)}
-                            className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm"
                             placeholder="sk-..."
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700">Base URL</label>
-                        <input
-                            type="text"
-                            value={url}
-                            onChange={e => setUrl(e.target.value)}
-                            className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                            placeholder="https://api.openai.com/v1"
-                        />
+
+                    {/* Advanced Fields (URL & Model) */}
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Base URL</label>
+                            <input
+                                type="text"
+                                value={url}
+                                onChange={e => {
+                                    setUrl(e.target.value);
+                                    setProviderId('custom'); // Switch to custom if edited
+                                }}
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-xs text-slate-600"
+                                placeholder="https://api..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Model Name</label>
+                            <input
+                                type="text"
+                                value={model}
+                                onChange={e => setModelState(e.target.value)}
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm"
+                                placeholder="e.g. gpt-4o, deepseek-chat"
+                            />
+                        </div>
                     </div>
-                    <div className="flex justify-end gap-2 mt-6">
-                        <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                        <button onClick={handleSave} className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700">Save</button>
+
+                    <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+                        <button
+                            onClick={onClose}
+                            className="px-6 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="px-8 py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 shadow-lg shadow-brand-500/30 hover:scale-105 active:scale-95 transition-all"
+                        >
+                            Save Settings
+                        </button>
                     </div>
                 </div>
             </div>
