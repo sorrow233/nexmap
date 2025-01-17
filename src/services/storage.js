@@ -142,6 +142,28 @@ export const deleteBoardFromCloud = async (userId, boardId) => {
 };
 
 
+
+export const saveUserSettings = async (userId, settings) => {
+    if (!db || !userId) return;
+    try {
+        await db.collection('users').doc(userId).collection('settings').doc('config').set(settings, { merge: true });
+    } catch (e) {
+        console.error("Save settings failed", e);
+    }
+};
+
+export const loadUserSettings = async (userId) => {
+    if (!db || !userId) return null;
+    try {
+        const doc = await db.collection('users').doc(userId).collection('settings').doc('config').get();
+        return doc.exists ? doc.data() : null;
+    } catch (e) {
+        console.error("Load settings failed", e);
+        return null;
+    }
+};
+
+
 // Compatibility for Local Preview (which expects window.StorageService for legacy reasons or we update App)
 // App.jsx now imports named exports.
 // But we still expose it just in case.
