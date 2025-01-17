@@ -90,70 +90,185 @@ export async function chatCompletion(messages, model = null, config = {}) {
 
     if (!apiKey) throw new Error("API Key is missing.");
 
-    const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+    // Detect if we should use Native Gemini API
+    // Logic: If provider is GMI Cloud (gmicloud) OR model name starts with 'google/' but NOT using openai endpoint
+    // To be safe, let's look for 'gmi-serving' in baseUrl as a strong signal
+    const isNativeGemini = baseUrl.includes('gmi-serving.com') || (baseUrl.includes('googleapis.com') && !baseUrl.includes('openai'));
 
-    try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: modelToUse,
-                messages: messages,
-                ...(config.temperature && { temperature: config.temperature }),
-                ...(config.tools && { tools: config.tools }),
-                ...(config.tool_choice && { tool_choice: config.tool_choice })
-            })
-        });
+    // Inject Current Date/Time to System Prompt or User Message
+    // This is critical for the model to know it's 2025, not 2024.
+    const now = new Date();
+    const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
 
-        if (!response.ok) {
-            let errorMsg = 'Failed to fetch from LLM';
-            try {
-                const err = await response.json();
-                errorMsg = err.error?.message || errorMsg;
-            } catch (e) {
-                errorMsg = await response.text();
+    if (isNativeGemini) {
+        // --- NATIVE GEMINI API MODE ---
+        // Endpoint: /v1/models/{model}:generateContent
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:generateContent`;
+
+        // Convert Messages to Native Format
+        // OpenAI: [{role: 'user', content: '...'}, ...]
+        // Gemini: contents: [{role: 'user', parts: [{text: '...'}]}, ...]
+        // Note: System prompts in Gemini are properly handled via 'system_instruction' but GMI might behave differently.
+        // Safer approach: Prepend system prompt to first user message or use 'user' role for system instructions if strictly following chat history.
+        // GMI's native endpoint expects 'user' and 'model' roles.
+
+        const contents = messages.map(msg => ({
+            role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+        }));
+
+        // Inject Date Context into the last user message to ensure it's picked up
+        // Or append as a new user part
+        if (contents.length > 0) {
+            const lastMsg = contents[contents.length - 1];
+            if (lastMsg.role === 'user') {
+                lastMsg.parts[0].text = `[System: ${dateContext}]\n\n${lastMsg.parts[0].text}`;
             }
-            throw new Error(errorMsg);
         }
 
-        const data = await response.json();
-        return data.choices[0].message.content;
-    } catch (error) {
-        console.error("LLM Error:", error);
-        throw error;
+        const requestBody = {
+            contents: contents,
+            tools: [
+                {
+                    google_search: {} // Force Google Search Grounding
+                }
+            ],
+            generationConfig: {
+                temperature: config.temperature !== undefined ? config.temperature : 0.7,
+                maxOutputTokens: 2000
+            }
+        };
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                let errorMsg = 'Failed to fetch from LLM';
+                try {
+                    const err = await response.json();
+                    // Native Error Format
+                    errorMsg = err.error?.message || JSON.stringify(err);
+                } catch (e) {
+                    errorMsg = await response.text();
+                }
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+            // Native Response Parsing
+            // data.candidates[0].content.parts[0].text
+            if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts) {
+                return data.candidates[0].content.parts[0].text;
+            } else {
+                return ""; // No content generated
+            }
+
+        } catch (error) {
+            console.error("LLM Native Error:", error);
+            throw error;
+        }
+
+    } else {
+        // --- OPENAI COMPATIBLE MODE (Legacy/Other Providers) ---
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelToUse,
+                    messages: messages, // OpenAI format
+                    ...(config.temperature && { temperature: config.temperature }),
+                    ...(config.tools && { tools: config.tools }),
+                    ...(config.tool_choice && { tool_choice: config.tool_choice })
+                })
+            });
+
+            if (!response.ok) {
+                let errorMsg = 'Failed to fetch from LLM';
+                try {
+                    const err = await response.json();
+                    errorMsg = err.error?.message || errorMsg;
+                } catch (e) {
+                    errorMsg = await response.text();
+                }
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        } catch (error) {
+            console.error("LLM Error:", error);
+            throw error;
+        }
     }
 }
 
 export async function streamChatCompletion(messages, onToken, model = null, config = {}) {
+    // Current Streaming Implementation needs major refactor for Native API
+    // Native API streaming endpoint: ...:streamGenerateContent
+    // Response format: stream of JSON objects, each containing a candidate chunk
+
     const apiKey = getApiKey();
     const baseUrl = getBaseUrl();
     const modelToUse = model || getModel();
 
     if (!apiKey) throw new Error("API Key is missing.");
 
-    const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+    const isNativeGemini = baseUrl.includes('gmi-serving.com') || (baseUrl.includes('googleapis.com') && !baseUrl.includes('openai'));
 
-    try {
+    // Inject Date Context
+    const now = new Date();
+    const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
+
+    if (isNativeGemini) {
+        // --- NATIVE GEMINI STREAMING ---
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:streamGenerateContent?alt=sse`;
+        // Note: GMI Cloud specifically supports SSE via ?alt=sse or similar standard. 
+        // Official Google API uses a different streaming protocol (REST stream of JSONs). 
+        // GMI Cloud documentation usually implies OpenAI compatibility for streaming, OR Native streaming.
+        // Let's assume Native REST Streaming (Chunked Transfer Encoding) of JSON objects if NOT using /chat/completions.
+        // BUT wait, standard browser fetch stream handling works for line-delimited JSON or concat JSON.
+
+        // Let's TRY using the standard OpenAI-compatible endpoint for Streaming FIRST if possible?
+        // NO, User explicitly wants "Native + Searching". 
+        // Native Streaming URL: /models/{model}:streamGenerateContent
+
+        const contents = messages.map(msg => ({
+            role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+        }));
+
+        if (contents.length > 0) {
+            const lastMsg = contents[contents.length - 1];
+            if (lastMsg.role === 'user') {
+                lastMsg.parts[0].text = `[System: ${dateContext}]\n\n${lastMsg.parts[0].text}`;
+            }
+        }
+
         const requestBody = {
-            model: modelToUse,
-            messages: messages,
-            ...(config?.temperature !== undefined && { temperature: config.temperature }),
-            stream: true,
-            ...(config.tools && { tools: config.tools }),
-            ...(config.tool_choice && { tool_choice: config.tool_choice })
+            contents: contents,
+            tools: [
+                {
+                    google_search: {}
+                }
+            ],
+            generationConfig: {
+                temperature: config?.temperature !== undefined ? config.temperature : 0.7,
+                maxOutputTokens: 2000
+            }
         };
-
-        // Debug: Log actual request to verify parameters
-        console.log('🔍 [LLM Debug] Sending request:', {
-            endpoint,
-            model: requestBody.model,
-            thinking_level: requestBody.thinking_level,
-            temperature: requestBody.temperature,
-            messageCount: messages.length
-        });
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -165,49 +280,116 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
         });
 
         if (!response.ok) {
-            let errorMsg = 'Failed to fetch from LLM';
-            try {
-                const err = await response.json();
-                errorMsg = err.error?.message || errorMsg;
-            } catch (e) {
-                errorMsg = await response.text();
-            }
-            throw new Error(errorMsg);
+            throw new Error(`Native Stream Failed: ${response.statusText}`);
         }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
+        let buffer = "";
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            buffer += decoder.decode(value, { stream: true });
 
-            for (const line of lines) {
-                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            // Native API returns a JSON array of objects, but streamed.
+            // Typically it comes as independent JSON objects like:
+            // [{...}]\n[{...}] OR [ \n { ... }, \n { ... } ]
+            // We need to parse valid JSON objects from the buffer.
+
+            // Heuristic parsers for "JSON Stream"
+            let bracketOpenIndex = buffer.indexOf('{');
+            while (bracketOpenIndex !== -1) {
+                let bracketCloseIndex = -1;
+                let openCount = 0;
+                // Find matching closing brace
+                for (let i = bracketOpenIndex; i < buffer.length; i++) {
+                    if (buffer[i] === '{') openCount++;
+                    if (buffer[i] === '}') openCount--;
+                    if (openCount === 0) {
+                        bracketCloseIndex = i;
+                        break;
+                    }
+                }
+
+                if (bracketCloseIndex !== -1) {
+                    const jsonStr = buffer.substring(bracketOpenIndex, bracketCloseIndex + 1);
+                    buffer = buffer.substring(bracketCloseIndex + 1); // Advance buffer
+
                     try {
-                        const json = JSON.parse(line.substring(6));
-                        let content = json.choices[0]?.delta?.content;
-                        if (content) {
-                            // Aggressive filtering for "Thinking" artifacts
-                            // 1. Remove <thinking> tags if model uses them
-                            // 2. Remove common "Thinking..." prefixes if they appear at start (handled in App.jsx mostly, but safety here)
-                            // Note: Streaming makes this tricky as we might split the tag. 
-                            // Current simple approach: Pass raw, let UI/App.jsx handle accumulation and cleaning.
-                            // BUT, we can inject a system instruction to the model to avoid it.
-                            onToken(content);
+                        const json = JSON.parse(jsonStr);
+                        // Extract content
+                        // candidates[0].content.parts[0].text
+                        if (json.candidates && json.candidates[0].content && json.candidates[0].content.parts) {
+                            const text = json.candidates[0].content.parts[0].text;
+                            if (text) onToken(text);
                         }
                     } catch (e) {
-                        console.warn("Error parsing stream chunk", e);
+                        console.warn("Stream JSON Parse Error", e);
                     }
+
+                    bracketOpenIndex = buffer.indexOf('{');
+                } else {
+                    break; // Wait for more data
                 }
             }
         }
-    } catch (error) {
-        console.error("Streaming Error:", error);
-        throw error;
+
+    } else {
+        // --- OPENAI COMPATIBLE STREAMING ---
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+
+        try {
+            const requestBody = {
+                model: modelToUse,
+                messages: messages,
+                ...(config?.temperature !== undefined && { temperature: config.temperature }),
+                stream: true,
+                ...(config.tools && { tools: config.tools }),
+                ...(config.tool_choice && { tool_choice: config.tool_choice })
+            };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                let errorMsg = await response.text();
+                throw new Error(errorMsg);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                        try {
+                            const json = JSON.parse(line.substring(6));
+                            let content = json.choices[0]?.delta?.content;
+                            if (content) {
+                                onToken(content);
+                            }
+                        } catch (e) { }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Streaming Error:", error);
+            throw error;
+        }
     }
 }
 
