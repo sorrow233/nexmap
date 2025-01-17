@@ -38,10 +38,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 const lastMsg = msgs[msgs.length - 1];
                 msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
                 return { ...currentData, messages: msgs };
-                const msgs = [...currentData.messages];
-                const lastMsg = msgs[msgs.length - 1];
-                msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
-                return { ...currentData, messages: msgs };
+
             });
         };
 

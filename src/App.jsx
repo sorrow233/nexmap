@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft } from 'lucide-react';
+import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
@@ -43,13 +43,31 @@ function SettingsModal({ isOpen, onClose }) {
         }
     };
 
+    const [testStatus, setTestStatus] = useState('idle'); // idle, testing, success, error
+    const [testMessage, setTestMessage] = useState('');
+
+    const handleTestConnection = async () => {
+        setTestStatus('testing');
+        setTestMessage('');
+        try {
+            await chatCompletion(
+                [{ role: 'user', content: 'Hi' }],
+                model,
+                { apiKey: key, baseUrl: url }
+            );
+            setTestStatus('success');
+            setTestMessage('Connection Successful!');
+        } catch (error) {
+            setTestStatus('error');
+            setTestMessage(error.message || 'Connection Failed');
+        }
+    };
+
     const handleSave = () => {
         setApiKey(key);
         setBaseUrl(url);
         setModel(model);
         onClose();
-        // Reload to ensure fresh network instances if needed, though not strictly required
-        // location.reload(); 
     };
 
     return (
@@ -80,7 +98,7 @@ function SettingsModal({ isOpen, onClose }) {
                                 ))}
                             </select>
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                <ArrowLeft className="rotate-[-90deg]" size={16} />
+                                <ChevronDown size={16} />
                             </div>
                         </div>
                     </div>
@@ -137,6 +155,34 @@ function SettingsModal({ isOpen, onClose }) {
                         >
                             Save Settings
                         </button>
+                    </div>
+
+                    {/* Test Status Indicator */}
+                    <div className="flex items-center justify-between pt-2">
+                        <button
+                            onClick={handleTestConnection}
+                            disabled={!key || !url || testStatus === 'testing'}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                                ${testStatus === 'testing' ? 'bg-slate-100 text-slate-400' : 'bg-brand-50 text-brand-600 hover:bg-brand-100'}
+                            `}
+                        >
+                            {testStatus === 'testing' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                            Test Connection
+                        </button>
+
+                        {testStatus === 'success' && (
+                            <div className="flex items-center gap-2 text-green-600 text-sm font-medium animate-fade-in">
+                                <CheckCircle2 size={16} />
+                                <span>{testMessage}</span>
+                            </div>
+                        )}
+
+                        {testStatus === 'error' && (
+                            <div className="flex items-center gap-2 text-red-500 text-sm font-medium animate-fade-in max-w-[200px] truncate" title={testMessage}>
+                                <AlertCircle size={16} />
+                                <span>{testMessage}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
