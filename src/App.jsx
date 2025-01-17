@@ -18,6 +18,7 @@ function SettingsModal({ isOpen, onClose }) {
     // Provider Presets
     const PROVIDERS = [
         { id: 'custom', name: 'Custom (自定义)', baseUrl: '', model: '' },
+        { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', model: 'google/gemini-3-flash-preview' },
         { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', model: 'deepseek-ai/DeepSeek-V2.5' },
         { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
         { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
