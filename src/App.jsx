@@ -5,11 +5,11 @@ import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
 import { auth, googleProvider } from './services/firebase';
-import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud } from './services/storage';
+import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
 import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
 
 // Settings Modal Component
-function SettingsModal({ isOpen, onClose }) {
+function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
     const [key, setKey] = useState(getApiKey());
     const [url, setUrl] = useState(getBaseUrl());
@@ -63,10 +63,19 @@ function SettingsModal({ isOpen, onClose }) {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setApiKey(key);
         setBaseUrl(url);
         setModel(model);
+
+        if (user) {
+            await saveUserSettings(user.uid, {
+                apiKey: key,
+                baseUrl: url,
+                model: model,
+                updatedAt: Date.now()
+            });
+        }
         onClose();
     };
 
@@ -279,6 +288,20 @@ function AppContent() {
                     // Note: This replaces local list. If offline creation happened, it might be lost unless we merge.
                     // For now, cloud is truth.
                     setBoardsList(cloudBoards);
+                });
+
+                // Load User Settings
+                loadUserSettings(u.uid).then(settings => {
+                    if (settings) {
+                        if (settings.apiKey) setApiKey(settings.apiKey);
+                        if (settings.baseUrl) setBaseUrl(settings.baseUrl);
+                        if (settings.model) setModel(settings.model);
+                        // Force refresh UI if settings modal is open? 
+                        // Actually, settings are read from localStorage in SettingsModal on mount, 
+                        // so we need to force a re-render or notify user.
+                        // Simplest: just update. Next time they open settings or use LLM it works.
+                        console.log("Settings synced from cloud");
+                    }
                 });
             }
         });
@@ -829,8 +852,13 @@ function AppContent() {
                         <Settings size={24} />
                     </button>
                 </div>
-                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-            </React.Fragment>
+                {isSettingsOpen && (
+                    <SettingsModal
+                        isOpen={isSettingsOpen}
+                        onClose={() => setIsSettingsOpen(false)}
+                        user={user}
+                    />
+                )}</React.Fragment>
         );
     }
 
