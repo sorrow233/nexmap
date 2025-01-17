@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send } from 'lucide-react';
-import { chatCompletion } from '../services/llm';
+import { X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { chatCompletion, streamChatCompletion } from '../services/llm';
+import { marked } from 'marked';
 
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse }) {
     if (!isOpen || !card) return null;
@@ -37,7 +38,24 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 const lastMsg = msgs[msgs.length - 1];
                 msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
                 return { ...currentData, messages: msgs };
+                const msgs = [...currentData.messages];
+                const lastMsg = msgs[msgs.length - 1];
+                msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
+                return { ...currentData, messages: msgs };
             });
+        };
+
+        const parseModelOutput = (text) => {
+            // Simple parsing to separate thoughts from content if needed
+            // For now just return as is or implement thinking tag parsing
+            const thinkMatch = text.match(/<thinking>([\s\S]*?)<\/thinking>/);
+            if (thinkMatch) {
+                return {
+                    thoughts: thinkMatch[1].trim(),
+                    content: text.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim()
+                };
+            }
+            return { thoughts: null, content: text };
         };
 
         try {
@@ -56,7 +74,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             } else {
                 // Fallback (legacy)
                 let accumulatedContent = "";
-                await window.LLM.streamChatCompletion(contextMessages, (token) => {
+                await streamChatCompletion(contextMessages, (token) => {
                     accumulatedContent += token;
                     const newMessages = [...contextMessages, { role: 'assistant', content: accumulatedContent }];
                     onUpdate(card.id, { ...card.data, messages: newMessages });
@@ -86,7 +104,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 <div className="h-16 px-6 border-b border-slate-200/50 flex justify-between items-center bg-white/40 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center">
-                            <window.Sparkles size={16} />
+                            <Sparkles size={16} />
                         </div>
                         <h3 className="font-bold text-slate-800 text-lg tracking-tight">
                             {card.data.title || 'New Conversation'}
@@ -106,7 +124,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                         const isUser = m.role === 'user';
                         const { thoughts, content } = (isUser || !m.content)
                             ? { thoughts: null, content: m.content }
-                            : (window.parseModelOutput ? window.parseModelOutput(m.content) : { thoughts: null, content: m.content });
+                            : parseModelOutput(m.content);
 
                         return (
                             <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
@@ -122,7 +140,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                     {thoughts && (
                                         <details className="mb-3 group">
                                             <summary className="text-xs font-semibold text-slate-400 cursor-pointer list-none flex items-center gap-1 hover:text-brand-600 transition-colors">
-                                                <window.Sparkles size={10} className="opacity-50" />
+                                                <Sparkles size={10} className="opacity-50" />
                                                 Thinking Process
                                                 <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] ml-1">(Click to expand)</span>
                                             </summary>
@@ -135,7 +153,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                         className={`prose max-w-none text-sm sm:text-base ${isUser ? 'user-bubble' : ''}`}
                                         dangerouslySetInnerHTML={{
                                             __html: content
-                                                ? (window.marked ? window.marked.parse(content) : content)
+                                                ? (marked ? marked.parse(content) : content)
                                                 : (!thoughts ? '<span class="opacity-50 italic">Generating...</span>' : '<span class="opacity-50 italic">Finishing thought...</span>')
                                         }}
                                     />
@@ -146,7 +164,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     {isStreaming && (
                         <div className="flex justify-start">
                             <div className="bg-white/50 px-4 py-2 rounded-full text-xs font-medium text-brand-600 border border-brand-100 animate-pulse flex items-center gap-2">
-                                <window.Loader2 size={12} className="animate-spin" />
+                                <Loader2 size={12} className="animate-spin" />
                                 Typing...
                             </div>
                         </div>
