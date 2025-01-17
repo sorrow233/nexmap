@@ -78,8 +78,14 @@ export async function chatCompletion(messages, model = null, config = {}) {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || 'Failed to fetch from LLM');
+            let errorMsg = 'Failed to fetch from LLM';
+            try {
+                const err = await response.json();
+                errorMsg = err.error?.message || errorMsg;
+            } catch (e) {
+                errorMsg = await response.text();
+            }
+            throw new Error(errorMsg);
         }
 
         const data = await response.json();
@@ -107,7 +113,7 @@ export async function streamChatCompletion(messages, onToken, model = null) {
                 'Authorization': `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: model,
+                model: modelToUse,
                 messages: messages,
                 temperature: 0.7,
                 stream: true,
@@ -116,8 +122,14 @@ export async function streamChatCompletion(messages, onToken, model = null) {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || 'Failed to fetch from LLM');
+            let errorMsg = 'Failed to fetch from LLM';
+            try {
+                const err = await response.json();
+                errorMsg = err.error?.message || errorMsg;
+            } catch (e) {
+                errorMsg = await response.text();
+            }
+            throw new Error(errorMsg);
         }
 
         const reader = response.body.getReader();
