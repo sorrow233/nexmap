@@ -170,8 +170,8 @@ export default function Card({
             <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-white/5">
                 <div className="flex items-center gap-2 max-w-[60%]">
                     <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate">
-                        {cardContent.model?.replace('google/', '') || 'Gemini'}
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title={cardContent.title}>
+                        {cardContent.title || 'New Conversation'}
                     </div>
                 </div>
                 <div className="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
