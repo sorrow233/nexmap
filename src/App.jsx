@@ -560,7 +560,7 @@ function AppContent() {
 
     // 2. Auto-Save Cards & Connections
     useEffect(() => {
-        if (view === 'canvas' && currentBoardId && cards.length >= 0) {
+        if (view === 'canvas' && currentBoardId && cards.length > 0) {
             // Save connections too!
             saveBoard(currentBoardId, { cards, connections });
 
