@@ -41,12 +41,7 @@ function SettingsModal({ isOpen, onClose, user }) {
         return localStorage.getItem(`mixboard_llm_key_${pid}`) || '';
     });
 
-    const [providerId, setProviderId] = useState(() => {
-        // Try to guess provider based on URL
-        const currentUrl = getBaseUrl();
-        const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
-        return found ? found.id : 'custom';
-    });
+
 
     const handleProviderChange = (e) => {
         const pid = e.target.value;
