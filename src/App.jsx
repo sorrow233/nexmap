@@ -622,13 +622,10 @@ function AppContent() {
                 if (c.id === newId) {
                     const msgs = [...c.data.messages];
                     const lastMsg = msgs[msgs.length - 1];
-                    let newContent = lastMsg.content + contentChunk;
+                    const newContent = lastMsg.content + contentChunk;
 
-                    // Filter out thinking tags completely
-                    // Remove <thinking>...</thinking> content
-                    const cleanedContent = newContent.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
-
-                    msgs[msgs.length - 1] = { ...lastMsg, content: cleanedContent };
+                    // Keep original content - ChatModal will handle thinking tag display
+                    msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
                     return { ...c, data: { ...c.data, messages: msgs } };
                 }
                 return c;
