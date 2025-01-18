@@ -103,11 +103,10 @@ export default function Card({
     return (
         <div
             ref={cardRef}
-            className={`absolute w - [320px] bg - white rounded - 2xl shadow - xl border border - slate - 100 flex flex - col transition - shadow duration - 200 select - none pointer - events - auto group
+            className={`absolute w-[320px] bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col transition-shadow duration-200 select-none pointer-events-auto group
                 ${isSelected ? 'ring-2 ring-brand-500 shadow-2xl shadow-brand-500/20' : ''}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
-                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
-`}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
             style={{
                 left: data.x,
                 top: data.y,
