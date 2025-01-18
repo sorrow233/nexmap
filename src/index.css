@@ -31,20 +31,21 @@ body,
     }
 
     .glass-panel {
-        background: rgba(255, 255, 255, 0.8);
-        @apply backdrop-blur-md border border-white/40;
+        background: rgba(15, 23, 42, 0.6);
+        /* Slate-900 with opacity */
+        @apply backdrop-blur-xl border border-white/10 shadow-2xl;
     }
 
-    /* Custom Typography for Markdown (Emulating tailwindcss/typography) */
+    /* Custom Typography for Markdown (Dark Mode) */
     .prose {
-        @apply text-slate-700;
+        @apply text-slate-300;
     }
 
     .prose h1,
     .prose h2,
     .prose h3,
     .prose h4 {
-        @apply font-bold text-slate-800 mt-6 mb-3;
+        @apply font-bold text-slate-100 mt-6 mb-3;
     }
 
     .prose h1 {
@@ -64,15 +65,15 @@ body,
     }
 
     .prose strong {
-        @apply font-bold text-slate-900;
+        @apply font-bold text-slate-50;
     }
 
     .prose ul {
-        @apply list-disc list-outside ml-5 mb-4;
+        @apply list-disc list-outside ml-5 mb-4 marker:text-slate-500;
     }
 
     .prose ol {
-        @apply list-decimal list-outside ml-5 mb-4;
+        @apply list-decimal list-outside ml-5 mb-4 marker:text-slate-500;
     }
 
     .prose li {
@@ -80,35 +81,28 @@ body,
     }
 
     .prose blockquote {
-        @apply border-l-4 border-slate-300 pl-4 italic text-slate-600 my-4;
+        @apply border-l-4 border-slate-600 pl-4 italic text-slate-400 my-4;
     }
 
     .prose code {
-        @apply font-mono text-sm bg-slate-100 px-1 py-0.5 rounded text-pink-600;
+        @apply font-mono text-sm bg-slate-800 px-1 py-0.5 rounded text-pink-400 border border-white/10;
     }
 
     .prose pre {
-        @apply bg-slate-800 text-slate-100 p-4 rounded-lg overflow-x-auto my-4 text-sm;
+        @apply bg-slate-900/50 text-slate-200 p-4 rounded-lg overflow-x-auto my-4 text-sm border border-white/10;
     }
 
     .prose pre code {
-        @apply bg-transparent p-0 text-slate-100;
+        @apply bg-transparent p-0 text-slate-200 border-none;
     }
 
-    /* Invert styles for user bubbles */
+    /* User Bubbles remain similar but adapted */
     .user-bubble.prose {
         @apply text-white;
     }
 
-    .user-bubble.prose h1,
-    .user-bubble.prose h2,
-    .user-bubble.prose h3,
-    .user-bubble.prose strong {
-        @apply text-white;
-    }
-
     .user-bubble.prose code {
-        @apply bg-white/20 text-white;
+        @apply bg-white/20 text-white border-transparent;
     }
 
     .user-bubble.prose pre {
