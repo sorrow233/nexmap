@@ -1,16 +1,68 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { chatCompletion, streamChatCompletion } from '../services/llm';
 import { marked } from 'marked';
 
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
+    const [images, setImages] = useState([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleImageUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        files.forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setImages(prev => [...prev, {
+                    file,
+                    previewUrl: URL.createObjectURL(file),
+                    base64: e.target.result.split(',')[1],
+                    mimeType: file.type
+                }]);
+            };
+            reader.readAsDataURL(file);
+        });
+        // Reset input
+        e.target.value = '';
+    };
+
+    const removeImage = (index) => {
+        setImages(prev => {
+            const newImages = [...prev];
+            URL.revokeObjectURL(newImages[index].previewUrl);
+            newImages.splice(index, 1);
+            return newImages;
+        });
+    };
+
+    const handlePaste = (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                const file = items[i].getAsFile();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setImages(prev => [...prev, {
+                        file,
+                        previewUrl: URL.createObjectURL(file),
+                        base64: event.target.result.split(',')[1],
+                        mimeType: file.type
+                    }]);
+                };
+                reader.readAsDataURL(file);
+                e.preventDefault();
+            }
+        }
     };
 
     useEffect(() => {
@@ -18,9 +70,24 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     }, [card.data.messages, card.data.messages.length, isStreaming]);
 
     const handleSend = async () => {
-        if (!input.trim() || isStreaming) return;
+        if ((!input.trim() && images.length === 0) || isStreaming) return;
 
-        const userMsg = { role: 'user', content: input };
+        let content = input;
+        if (images.length > 0) {
+            content = [
+                { type: 'text', text: input },
+                ...images.map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }))
+            ];
+        }
+
+        const userMsg = { role: 'user', content };
         const initialAssistantMsg = { role: 'assistant', content: '' };
 
         const updatedMessages = [...card.data.messages, userMsg, initialAssistantMsg];
@@ -28,6 +95,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         // Optimistic update
         onUpdate(card.id, { ...card.data, messages: updatedMessages });
         setInput('');
+        setImages([]);
         setIsStreaming(true);
 
         // Helper to update the last message in the card
@@ -122,9 +190,23 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 <div className="flex-grow overflow-y-auto p-8 space-y-8 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/30">
                     {card.data.messages.map((m, i) => {
                         const isUser = m.role === 'user';
-                        const { thoughts, content } = (isUser || !m.content)
-                            ? { thoughts: null, content: m.content }
-                            : parseModelOutput(m.content);
+
+                        // Handle multimodal content (array) vs string
+                        let textContent = "";
+                        let msgImages = [];
+
+                        if (Array.isArray(m.content)) {
+                            m.content.forEach(part => {
+                                if (part.type === 'text') textContent += part.text;
+                                if (part.type === 'image') msgImages.push(part);
+                            });
+                        } else {
+                            textContent = m.content || "";
+                        }
+
+                        const { thoughts, content } = (isUser || !textContent)
+                            ? { thoughts: null, content: textContent }
+                            : parseModelOutput(textContent);
 
                         return (
                             <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up group`}>
@@ -138,6 +220,20 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                     }
                                     transition-transform duration-200 hover:scale-[1.005]
                                 `}>
+                                    {/* Image Rendering */}
+                                    {msgImages.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {msgImages.map((img, idx) => (
+                                                <img
+                                                    key={idx}
+                                                    src={`data:${img.source.media_type};base64,${img.source.data}`}
+                                                    alt="User Upload"
+                                                    className="max-w-full h-auto max-h-[300px] rounded-xl border border-white/20"
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
                                     {thoughts && (
                                         <details className="mb-4 group/think">
                                             <summary className="text-xs font-bold text-brand-600 dark:text-brand-400/50 cursor-pointer list-none flex items-center gap-2 hover:text-brand-700 dark:hover:text-brand-400 transition-all uppercase tracking-widest">
@@ -179,21 +275,64 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
 
                 {/* Input Area */}
                 <div className="p-4 sm:p-6 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-200 dark:border-white/5 backdrop-blur-md">
+                    {/* Image Previews */}
+                    {images.length > 0 && (
+                        <div className="flex gap-3 mb-4 overflow-x-auto pb-2 custom-scrollbar">
+                            {images.map((img, idx) => (
+                                <div key={idx} className="relative shrink-0 group/img">
+                                    <div className="absolute top-1 right-1 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => removeImage(idx)}
+                                            className="bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                    <img
+                                        src={img.previewUrl}
+                                        alt="Preview"
+                                        className="h-20 w-auto rounded-xl border border-slate-200 dark:border-white/10 shadow-sm"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     <div className="relative group">
                         <textarea
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                            className="w-full p-4 pr-14 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-2xl focus:bg-slate-50 dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500/50 transition-all outline-none resize-none h-[80px] text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                            placeholder="Type a message to continue..."
+                            onPaste={handlePaste}
+                            className="w-full p-4 pl-4 pr-24 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-2xl focus:bg-slate-50 dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500/50 transition-all outline-none resize-none h-[80px] text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            placeholder="Type a message or paste an image..."
                         />
-                        <button
-                            onClick={handleSend}
-                            disabled={isStreaming || !input.trim()}
-                            className="absolute bottom-3 right-3 p-2.5 bg-brand-600 text-white rounded-xl shadow-lg shadow-brand-500/30 hover:bg-brand-500 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:shadow-none transition-all duration-200"
-                        >
-                            <Send size={18} />
-                        </button>
+
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                multiple
+                                onChange={handleImageUpload}
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isStreaming}
+                                className="p-2.5 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all"
+                                title="Upload Image"
+                            >
+                                <ImageIcon size={20} />
+                            </button>
+                            <button
+                                onClick={handleSend}
+                                disabled={isStreaming || (!input.trim() && images.length === 0)}
+                                className="p-2.5 bg-brand-600 text-white rounded-xl shadow-lg shadow-brand-500/30 hover:bg-brand-500 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:shadow-none transition-all duration-200"
+                            >
+                                <Send size={18} />
+                            </button>
+                        </div>
                     </div>
                     <div className="text-center mt-2">
                         <span className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-600 font-semibold">{card.data.model || 'AI Model'}</span>

@@ -83,6 +83,104 @@ export const setModel = (model) => localStorage.setItem(STORAGE_MODEL, model);
 
 
 
+// Helper to format messages for Native Gemini API
+const formatGeminiMessages = (messages) => {
+    // 1. Inject date context into the first user message
+    const now = new Date();
+    const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
+
+    // Filter and Deep Copy
+    let processedMessages = messages.filter(m => {
+        if (!m.content) return false;
+        if (typeof m.content === 'string') return m.content.trim() !== '';
+        if (Array.isArray(m.content)) return m.content.length > 0;
+        return false;
+    }).map(m => JSON.parse(JSON.stringify(m))); // Deep copy for safety
+
+    if (processedMessages.length > 0) {
+        const firstUserMsgIndex = processedMessages.findIndex(m => m.role === 'user');
+        if (firstUserMsgIndex !== -1) {
+            const msg = processedMessages[firstUserMsgIndex];
+            if (typeof msg.content === 'string') {
+                msg.content = `${dateContext}\n\n${msg.content}`;
+            } else if (Array.isArray(msg.content)) {
+                // If array, prepend text part
+                const textPart = msg.content.find(p => p.type === 'text');
+                if (textPart) {
+                    textPart.text = `${dateContext}\n\n${textPart.text}`;
+                } else {
+                    msg.content.unshift({ type: 'text', text: dateContext });
+                }
+            }
+        }
+    }
+
+    // 2. Map to Native Format
+    const rawContents = processedMessages.map(msg => {
+        const role = msg.role === 'user' || msg.role === 'system' ? 'user' : 'model';
+        let parts = [];
+
+        if (typeof msg.content === 'string') {
+            parts = [{ text: msg.content }];
+        } else if (Array.isArray(msg.content)) {
+            parts = msg.content.map(part => {
+                if (part.type === 'text') {
+                    return { text: part.text };
+                } else if (part.type === 'image') {
+                    return {
+                        inline_data: {
+                            mime_type: part.source.media_type,
+                            data: part.source.data
+                        }
+                    };
+                }
+                return null;
+            }).filter(p => p);
+        }
+
+        return { role, parts };
+    });
+
+    // 3. Merge consecutive messages with the same role
+    const contents = [];
+    for (const msg of rawContents) {
+        if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
+            const prev = contents[contents.length - 1];
+            // Merge parts
+            prev.parts.push(...msg.parts);
+        } else {
+            contents.push(msg);
+        }
+    }
+
+    return contents;
+};
+
+// Helper to format messages for OpenAI API
+const formatOpenAIMessages = (messages) => {
+    return messages.map(msg => {
+        if (Array.isArray(msg.content)) {
+            return {
+                role: msg.role,
+                content: msg.content.map(part => {
+                    if (part.type === 'text') {
+                        return { type: 'text', text: part.text };
+                    } else if (part.type === 'image') {
+                        return {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${part.source.media_type};base64,${part.source.data}`
+                            }
+                        };
+                    }
+                    return null;
+                }).filter(p => p)
+            };
+        }
+        return msg;
+    });
+};
+
 export async function chatCompletion(messages, model = null, config = {}) {
     const apiKey = config.apiKey || getApiKey();
     const baseUrl = config.baseUrl || getBaseUrl();
@@ -90,64 +188,23 @@ export async function chatCompletion(messages, model = null, config = {}) {
 
     if (!apiKey) throw new Error("API Key is missing.");
 
-    // Detect if we should use Native Gemini API
-    // Logic: If provider is GMI Cloud (gmicloud) OR model name starts with 'google/' but NOT using openai endpoint
-    // To be safe, let's look for 'gmi-serving' in baseUrl as a strong signal
     const isNativeGemini = baseUrl.includes('gmi-serving.com') || (baseUrl.includes('googleapis.com') && !baseUrl.includes('openai'));
-
-    // Inject Current Date/Time to System Prompt or User Message
-    // This is critical for the model to know it's 2025, not 2024.
-    const now = new Date();
-    const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
 
     if (isNativeGemini) {
         // --- NATIVE GEMINI API MODE ---
-        // Endpoint: /v1/models/{model}:generateContent
-
-        // Refactor: Strip 'google/' prefix to match working Python script
         let cleanModel = modelToUse;
         if (cleanModel.startsWith('google/')) {
             cleanModel = cleanModel.replace('google/', '');
         }
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
 
-        // 1. Inject date context and FILTER out empty messages
-        const filteredMessages = messages.filter(m => m.content && m.content.trim() !== '');
-
-        const messagesWithDate = [...filteredMessages];
-        if (messagesWithDate.length > 0) {
-            const firstUserMsgIndex = messagesWithDate.findIndex(m => m.role === 'user');
-            if (firstUserMsgIndex !== -1) {
-                messagesWithDate[firstUserMsgIndex] = {
-                    ...messagesWithDate[firstUserMsgIndex],
-                    content: `${dateContext}\n\n${messagesWithDate[firstUserMsgIndex].content}`
-                };
-            }
-        }
-
-        // Convert Messages to Native Format
-        const contentsRaw = messagesWithDate.map(msg => ({
-            role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
-            parts: [{ text: msg.content }]
-        }));
-
-        // Merge consecutive roles
-        const contents = [];
-        for (const msg of contentsRaw) {
-            if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
-                contents[contents.length - 1].parts[0].text += "\n\n" + msg.parts[0].text;
-            } else {
-                contents.push(msg);
-            }
-        }
-
-
+        const contents = formatGeminiMessages(messages);
 
         const requestBody = {
             contents: contents,
             tools: [
                 {
-                    google_search: {} // Force Google Search Grounding
+                    google_search: {}
                 }
             ],
             generationConfig: {
@@ -170,7 +227,6 @@ export async function chatCompletion(messages, model = null, config = {}) {
                 let errorMsg = 'Failed to fetch from LLM';
                 try {
                     const err = await response.json();
-                    // Native Error Format
                     errorMsg = err.error?.message || JSON.stringify(err);
                 } catch (e) {
                     errorMsg = await response.text();
@@ -179,12 +235,10 @@ export async function chatCompletion(messages, model = null, config = {}) {
             }
 
             const data = await response.json();
-            // Native Response Parsing
-            // data.candidates[0].content.parts[0].text
             if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts) {
                 return data.candidates[0].content.parts[0].text;
             } else {
-                return ""; // No content generated
+                return "";
             }
 
         } catch (error) {
@@ -193,7 +247,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
         }
 
     } else {
-        // --- OPENAI COMPATIBLE MODE (Legacy/Other Providers) ---
+        // --- OPENAI COMPATIBLE MODE ---
         const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
         try {
@@ -205,7 +259,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
                 },
                 body: JSON.stringify({
                     model: modelToUse,
-                    messages: messages, // OpenAI format
+                    messages: formatOpenAIMessages(messages),
                     ...(config.temperature && { temperature: config.temperature }),
                     ...(config.tools && { tools: config.tools }),
                     ...(config.tool_choice && { tool_choice: config.tool_choice })
@@ -233,10 +287,6 @@ export async function chatCompletion(messages, model = null, config = {}) {
 }
 
 export async function streamChatCompletion(messages, onToken, model = null, config = {}) {
-    // Current Streaming Implementation needs major refactor for Native API
-    // Native API streaming endpoint: ...:streamGenerateContent
-    // Response format: stream of JSON objects, each containing a candidate chunk
-
     const apiKey = getApiKey();
     const baseUrl = getBaseUrl();
     const modelToUse = model || getModel();
@@ -245,56 +295,15 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
 
     const isNativeGemini = baseUrl.includes('gmi-serving.com') || (baseUrl.includes('googleapis.com') && !baseUrl.includes('openai'));
 
-    // Inject Date Context
-    const now = new Date();
-    const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
-
     if (isNativeGemini) {
         // --- NATIVE GEMINI PSEUDO-STREAMING ---
-        // The :streamGenerateContent endpoint is unstable on GMI Cloud.
-        // Solution: Use the working :generateContent endpoint (with Search Grounding)
-        // then simulate streaming by chunking the response.
-
-        // Refactor: Match Python script logic for URL construction
-        // Remove 'google/' prefix if present, as Native API expects just the model ID
         let cleanModel = modelToUse;
         if (cleanModel.startsWith('google/')) {
             cleanModel = cleanModel.replace('google/', '');
         }
 
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
-
-        // 1. Inject date context and FILTER out empty messages
-        const filteredMessages = messages.filter(m => m.content && m.content.trim() !== '');
-
-        const messagesWithDate = [...filteredMessages];
-        if (messagesWithDate.length > 0) {
-            const firstUserMsgIndex = messagesWithDate.findIndex(m => m.role === 'user');
-            if (firstUserMsgIndex !== -1) {
-                messagesWithDate[firstUserMsgIndex] = {
-                    ...messagesWithDate[firstUserMsgIndex],
-                    content: `${dateContext}\n\n${messagesWithDate[firstUserMsgIndex].content}`
-                };
-            }
-        }
-
-        // 2. Map messages to Native format
-        let rawContents = messagesWithDate.map(msg => ({
-            role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
-            parts: [{ text: msg.content }]
-        }));
-
-        // 3. Merge consecutive messages with the same role (Critical for Gemini API)
-        const contents = [];
-        for (const msg of rawContents) {
-            if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
-                // Merge into previous message
-                const prev = contents[contents.length - 1];
-                prev.parts[0].text += "\n\n" + msg.parts[0].text;
-            } else {
-                contents.push(msg);
-            }
-        }
+        const contents = formatGeminiMessages(messages);
 
         const requestBody = {
             contents: contents,
@@ -321,29 +330,26 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
 
             if (!response.ok) {
                 let errorMsg = await response.text();
-                // Extract useful error message if JSON
                 try {
                     const jsonErr = JSON.parse(errorMsg);
                     if (jsonErr.error && jsonErr.error.message) {
                         errorMsg = jsonErr.error.message;
                     }
                 } catch (e) { }
-                console.error('[Native API Debug]', { endpoint, status: response.status, messagesCount: messages.length });
-                throw new Error(`Native API Error: ${errorMsg}. Check API key, model name, and message format.`);
+                console.error('[Native API Debug]', { endpoint, status: response.status });
+                throw new Error(`Native API Error: ${errorMsg}`);
             }
 
             const data = await response.json();
 
-            // Extract full content
             if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts) {
                 const fullText = data.candidates[0].content.parts[0].text || "";
 
-                // Simulate Streaming by chunking
-                const chunkSize = 15; // chars per chunk
+                // Simulate Streaming
+                const chunkSize = 15;
                 for (let i = 0; i < fullText.length; i += chunkSize) {
                     const chunk = fullText.slice(i, i + chunkSize);
                     onToken(chunk);
-                    // Small delay for typing effect
                     await new Promise(resolve => setTimeout(resolve, 8));
                 }
             }
@@ -360,7 +366,7 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
         try {
             const requestBody = {
                 model: modelToUse,
-                messages: messages,
+                messages: formatOpenAIMessages(messages),
                 ...(config?.temperature !== undefined && { temperature: config.temperature }),
                 stream: true,
                 ...(config.tools && { tools: config.tools }),
