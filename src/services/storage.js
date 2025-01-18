@@ -199,14 +199,20 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
                 onUpdate(metadataList);
 
-                // Now background sync content to IDB
-                for (const b of cloudBoards) {
-                    // We directly use idbSet to avoid double metadata update
-                    idbSet(BOARD_PREFIX + b.id, {
-                        cards: b.cards || [],
-                        connections: b.connections || []
-                    });
-                }
+                // DISABLED: Cloud-to-local sync causes data loss
+                // Firebase doesn't support complex nested objects (multimodal content)
+                // so cloud data is often stale/empty, overwriting good local IDB data
+                // TODO: Implement proper conflict resolution or serialize data before cloud save
+
+                // // Now background sync content to IDB
+                // for (const b of cloudBoards) {
+                //     // We directly use idbSet to avoid double metadata update
+                //     idbSet(BOARD_PREFIX + b.id, {
+                //         cards: b.cards || [],
+                //         connections: b.connections || []
+                //     });
+                // }
+
 
             }, (error) => {
                 console.error("Firestore sync error:", error);
