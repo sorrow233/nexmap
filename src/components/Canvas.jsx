@@ -12,7 +12,12 @@ export default function Canvas({
     onExpandCard,
     onConnect,
     isConnecting,
-    connectionStartId
+    onSelectionChange,
+    onExpandCard,
+    onConnect,
+    isConnecting,
+    connectionStartId,
+    onDragEnd
 }) {
     const canvasRef = useRef(null);
     const [panning, setPanning] = useState(false);
@@ -140,6 +145,7 @@ export default function Canvas({
                         onConnect={() => onConnect && onConnect(card.id)}
                         isConnecting={isConnecting}
                         isConnectionStart={connectionStartId === card.id}
+                        onDragEnd={onDragEnd} // Pass it down
                     />
                 ))}
             </div>
