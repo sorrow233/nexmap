@@ -624,13 +624,11 @@ function AppContent() {
                     const lastMsg = msgs[msgs.length - 1];
                     let newContent = lastMsg.content + contentChunk;
 
-                    // Simple filter to remove "Thinking" lines (e.g. **Thinking...**) from the START of the message
-                    // We only filter if the message is relatively short to avoid false positives later
-                    if (newContent.length < 500) {
-                        newContent = newContent.replace(/^\*\*.*?\*\*\s*\n?/gm, '').trim();
-                    }
+                    // Filter out thinking tags completely
+                    // Remove <thinking>...</thinking> content
+                    const cleanedContent = newContent.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
 
-                    msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
+                    msgs[msgs.length - 1] = { ...lastMsg, content: cleanedContent };
                     return { ...c, data: { ...c.data, messages: msgs } };
                 }
                 return c;
