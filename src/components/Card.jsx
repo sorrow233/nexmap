@@ -198,7 +198,10 @@ export default function Card({
             </div>
 
             <div className="p-4 h-48 overflow-hidden relative transition-colors">
-                <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw">
+                <p
+                    className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-text cursor-text card-content-text"
+                    onMouseDown={(e) => e.stopPropagation()} // Stop propagation to prevent card drag/select but allow text select
+                >
                     {previewText}
                 </p>
                 <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent pointer-events-none"></div>

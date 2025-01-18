@@ -519,6 +519,9 @@ function AppContent() {
 
             // Command/Ctrl + C -> Copy
             if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+                // If text is selected, allow default browser copy behavior
+                if (window.getSelection()?.toString()) return;
+
                 e.preventDefault();
                 handleCopy();
             }
