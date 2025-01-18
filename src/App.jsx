@@ -580,7 +580,7 @@ function AppContent() {
         }
     }, [cards, connections, currentBoardId, view, user]);
 
-    const handleCreateBoard = async (customName = null, initialPrompt = null) => {
+    const handleCreateBoard = async (customName = null, initialPrompt = null, initialImages = []) => {
         let name = customName;
         // If not custom name provided (e.g. from gallery input), fallback to prompt
         if (!name) {
@@ -610,27 +610,43 @@ function AppContent() {
                 // Simplify: Just set the input and let user hit enter? No, they want "Start".
                 // We will manually trigger a card creation with a hack or refactor.
                 // Refactor: handleCreateCardWithText(text)
-                createCardWithText(initialPrompt, newBoard.id);
+                createCardWithText(initialPrompt, newBoard.id, initialImages);
             }, 100);
         }
     };
 
     // Refactored helper to create card without depending on state 'promptInput'
-    const createCardWithText = async (text, boardId) => {
-        if (!text.trim()) return;
+    const createCardWithText = async (text, boardId, images = []) => {
+        if (!text.trim() && images.length === 0) return;
 
         const newId = Date.now();
         const initialX = window.innerWidth / 2 - 200;
         const initialY = window.innerHeight / 2 - 150;
+
+        // Construct Content
+        let content = text;
+        if (images.length > 0) {
+            content = [
+                { type: 'text', text: text },
+                ...images.map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }))
+            ];
+        }
 
         const newCard = {
             id: newId,
             x: Math.max(0, initialX),
             y: Math.max(0, initialY),
             data: {
-                title: text.length > 20 ? text.substring(0, 20) + '...' : text,
+                title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'Image Input'),
                 messages: [
-                    { role: 'user', content: text },
+                    { role: 'user', content: content },
                     { role: 'assistant', content: '' }
                 ],
                 model: "google/gemini-3-flash-preview"
@@ -641,11 +657,6 @@ function AppContent() {
         setIsGenerating(true);
 
         // ... logic for streaming ...
-        // Re-using the streaming logic is tricky without duplication. 
-        // Let's extract the core streaming logic or just copy-paste for safety in this task.
-        // For robustness, I'll basically dup the core stream logic here but targeted at this new card.
-        // Ideally this would be a unified function `generateResponse(cardId, messages)`
-
         try {
             const updateCardContent = (contentChunk) => {
                 setCards(prev => prev.map(c => {
@@ -664,7 +675,7 @@ function AppContent() {
             // const systemInstruction = { role: 'system', content: "You are a helpful assistant." };
 
             await streamChatCompletion(
-                [{ role: 'user', content: text }],
+                [{ role: 'user', content: content }],
                 updateCardContent
             );
 
