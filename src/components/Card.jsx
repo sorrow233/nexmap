@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Maximize2, Link, ArrowRight, Copy } from 'lucide-react';
+import { Maximize2, Link, ArrowRight, Copy, Sparkles } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 

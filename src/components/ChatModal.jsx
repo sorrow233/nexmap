@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, ChevronDown } from 'lucide-react';
 import { chatCompletion, streamChatCompletion } from '../services/llm';
 import { marked } from 'marked';
 
