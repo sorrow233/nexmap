@@ -98,25 +98,28 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             <div className="bg-white/80 backdrop-blur-xl w-[900px] max-w-full h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-white/50 overflow-hidden animate-fade-in relative z-10 font-sans">
 
                 {/* Header */}
-                <div className="h-16 px-6 border-b border-slate-200/50 flex justify-between items-center bg-white/40 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center">
-                            <Sparkles size={16} />
+                <div className="h-20 px-8 border-b border-slate-200/30 flex justify-between items-center bg-white/60 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-500/30">
+                            <Sparkles size={20} />
                         </div>
-                        <h3 className="font-bold text-slate-800 text-lg tracking-tight">
-                            {card.data.title || 'New Conversation'}
-                        </h3>
+                        <div>
+                            <h3 className="font-bold text-slate-800 text-xl tracking-tight leading-tight">
+                                {card.data.title || 'New Conversation'}
+                            </h3>
+                            <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-brand-600/60 mt-0.5">Neural Canvas Mode</p>
+                        </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200/50 hover:text-slate-800 transition-colors"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100/80 hover:text-slate-800 transition-all active:scale-90"
                     >
-                        <X size={18} />
+                        <X size={22} />
                     </button>
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-grow overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/30">
+                <div className="flex-grow overflow-y-auto p-8 space-y-8 custom-scrollbar bg-slate-50/20">
                     {card.data.messages.map((m, i) => {
                         const isUser = m.role === 'user';
                         const { thoughts, content } = (isUser || !m.content)
@@ -124,34 +127,35 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                             : parseModelOutput(m.content);
 
                         return (
-                            <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+                            <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up group`}>
                                 <div className={`
-                                    max-w-[85%] sm:max-w-[75%] 
-                                    p-4 sm:p-5 
-                                    rounded-2xl shadow-sm text-sm sm:text-base leading-relaxed
+                                    max-w-[85%] sm:max-w-[80%] 
+                                    p-5 sm:p-6 
+                                    rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-sm sm:text-base leading-relaxed
                                     ${isUser
-                                        ? 'bg-brand-600 text-white rounded-tr-sm shadow-brand-500/20'
-                                        : 'bg-white text-slate-800 rounded-tl-sm border border-slate-100 shadow-slate-200/50'
+                                        ? 'bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-tr-none shadow-brand-500/20'
+                                        : 'bg-white/80 backdrop-blur-md text-slate-800 rounded-tl-none border border-white/60'
                                     }
+                                    transition-transform duration-200 hover:scale-[1.005]
                                 `}>
                                     {thoughts && (
-                                        <details className="mb-3 group">
-                                            <summary className="text-xs font-semibold text-slate-400 cursor-pointer list-none flex items-center gap-1 hover:text-brand-600 transition-colors">
-                                                <Sparkles size={10} className="opacity-50" />
+                                        <details className="mb-4 group/think">
+                                            <summary className="text-xs font-bold text-brand-600/50 cursor-pointer list-none flex items-center gap-2 hover:text-brand-600 transition-all uppercase tracking-widest">
+                                                <div className="w-1 h-1 rounded-full bg-brand-500 animate-ping"></div>
                                                 Thinking Process
-                                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] ml-1">(Click to expand)</span>
+                                                <ChevronDown size={10} className="group-open/think:rotate-180 transition-transform" />
                                             </summary>
-                                            <div className="mt-2 p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-500 whitespace-pre-wrap border border-slate-100 leading-normal">
+                                            <div className="mt-3 p-4 bg-slate-50/50 rounded-2xl text-xs font-mono text-slate-500 whitespace-pre-wrap border border-slate-100/50 leading-relaxed italic">
                                                 {thoughts}
                                             </div>
                                         </details>
                                     )}
                                     <div
-                                        className={`prose max-w-none text-sm sm:text-base ${isUser ? 'user-bubble' : ''}`}
+                                        className={`prose max-w-none text-sm sm:text-[15px] font-lxgw ${isUser ? 'user-bubble prose-invert' : 'prose-slate'}`}
                                         dangerouslySetInnerHTML={{
                                             __html: content
                                                 ? (marked ? marked.parse(content) : content)
-                                                : (!thoughts ? '<span class="opacity-50 italic">Generating...</span>' : '<span class="opacity-50 italic">Finishing thought...</span>')
+                                                : (!thoughts ? '<span class="opacity-50 italic">Synthesizing...</span>' : '<span class="opacity-50 italic">Finishing execution...</span>')
                                         }}
                                     />
                                 </div>
@@ -159,10 +163,14 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                         );
                     })}
                     {isStreaming && (
-                        <div className="flex justify-start">
-                            <div className="bg-white/50 px-4 py-2 rounded-full text-xs font-medium text-brand-600 border border-brand-100 animate-pulse flex items-center gap-2">
-                                <Loader2 size={12} className="animate-spin" />
-                                Typing...
+                        <div className="flex justify-start animate-pulse">
+                            <div className="bg-brand-50/50 px-5 py-2.5 rounded-full text-xs font-bold text-brand-600 border border-brand-100/50 flex items-center gap-2">
+                                <div className="flex gap-1">
+                                    <span className="w-1 h-1 bg-brand-600 rounded-full animate-bounce"></span>
+                                    <span className="w-1 h-1 bg-brand-600 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                                    <span className="w-1 h-1 bg-brand-600 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                                </div>
+                                AI is composing...
                             </div>
                         </div>
                     )}

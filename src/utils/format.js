@@ -24,26 +24,29 @@ export function parseModelOutput(content) {
     const parts = content.split('\n\n\n');
 
     if (parts.length > 1) {
-        // Last part is likely content, previous parts are thoughts.
-        // We join thoughts back with double newlines for cleaner display
-        const thoughts = parts.slice(0, parts.length - 1).join('\n\n').trim();
+        const thoughtsPart = parts.slice(0, parts.length - 1).join('\n\n').trim();
         const finalContent = parts[parts.length - 1].trim();
 
-        // Edge case: if we are streaming and just hit a \n\n\n but no content yet
-        if (!finalContent && content.endsWith('\n\n\n')) {
-            return { thoughts: content.trim(), content: '' };
+        // Only treat as thoughts if it actually looks like thoughts (starts with ** or contains thinking keywords)
+        if (thoughtsPart.startsWith('**') || thoughtsPart.toLowerCase().includes('thinking')) {
+            // Edge case: if we are streaming and just hit a \n\n\n but no content yet
+            if (!finalContent && content.endsWith('\n\n\n')) {
+                return { thoughts: thoughtsPart, content: '' };
+            }
+            return { thoughts: thoughtsPart, content: finalContent };
         }
-
-        return { thoughts, content: finalContent };
     }
 
-    // 3. Fallback: If no triple newline found yet.
-    // If it starts with **, and we are streaming (length < 1000?), treat as thoughts.
-    // This prevents the "Thought" text from flashing as "Content" initially.
-    if (content.trim().startsWith('**')) {
-        return { thoughts: content, content: '' };
+    // 3. Strict Thinking Tag Check (Standard for o1-like models)
+    const thinkMatch = content.match(/<thinking>([\s\S]*?)<\/thinking>/i);
+    if (thinkMatch) {
+        return {
+            thoughts: thinkMatch[1].trim(),
+            content: content.replace(/<thinking>[\s\S]*?<\/thinking>/i, '').trim()
+        };
     }
 
+    // 4. Default: No thoughts found, keep everything as content (including bold headers)
     return { thoughts: null, content };
 }
 
