@@ -119,7 +119,20 @@ export default function Card({
 
     // Generate preview text (last message from assistant or user)
     const lastMessage = messages[messages.length - 1];
-    let previewText = lastMessage?.content || "No messages yet";
+
+    // Helper to extract text from multimodal content
+    const getPreviewContent = (content) => {
+        if (!content) return "No messages yet";
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+            const text = content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+            const hasImage = content.some(p => p.type === 'image' || p.type === 'image_url');
+            return (hasImage ? '[Image] ' : '') + text;
+        }
+        return "Unknown content";
+    };
+
+    let previewText = getPreviewContent(lastMessage?.content);
 
     // Clean up thinking tags for preview
     previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
@@ -134,7 +147,7 @@ export default function Card({
     // Copy handler
     const handleCopy = async (e) => {
         e.stopPropagation();
-        const textToCopy = lastMessage?.content || '';
+        const textToCopy = getPreviewContent(lastMessage?.content) || '';
         try {
             await navigator.clipboard.writeText(textToCopy);
             // Optional: Show a brief success indicator
@@ -151,9 +164,9 @@ export default function Card({
         <div
             ref={cardRef}
             className={`absolute w-[320px] rounded-2xl flex flex-col select-none pointer-events-auto group
-                bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)]
+                bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border border-slate-300 dark:border-white/10 shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)]
                 ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 cursor-grab'}
-                ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:scale-[1.01]'}
+                ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:scale-[1.01] hover:border-brand-300 dark:hover:border-white/20'}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
                 ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
             style={{
@@ -167,31 +180,31 @@ export default function Card({
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
         >
             {/* Top Bar - Model + Buttons */}
-            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-white/5">
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
                 <div className="flex items-center gap-2 max-w-[60%]">
                     <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title={cardContent.title}>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={cardContent.title}>
                         {cardContent.title || 'New Conversation'}
                     </div>
                 </div>
                 <div className="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                         onClick={handleCopy}
-                        className="p-1.5 text-slate-500 hover:text-brand-400 hover:bg-white/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-500 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Copy response"
                     >
                         <Copy size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
-                        className="p-1.5 text-slate-500 hover:text-green-400 hover:bg-white/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Create connection"
                     >
                         <Link size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
-                        className="p-1.5 text-slate-500 hover:text-brand-400 hover:bg-white/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-500 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Expand"
                     >
                         <Maximize2 size={14} />
@@ -201,12 +214,12 @@ export default function Card({
 
             <div className="p-4 h-48 overflow-hidden relative transition-colors">
                 <p
-                    className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-text cursor-text card-content-text"
+                    className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-text cursor-text card-content-text"
                     onMouseDown={(e) => e.stopPropagation()} // Stop propagation to prevent card drag/select but allow text select
                 >
                     {previewText}
                 </p>
-                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white/90 via-white/40 dark:from-slate-900/90 dark:via-slate-900/40 to-transparent pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white via-white/40 dark:from-slate-900/90 dark:via-slate-900/40 to-transparent pointer-events-none"></div>
             </div>
 
             <div className="px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center border-t border-white/5">
