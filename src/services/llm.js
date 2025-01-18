@@ -114,8 +114,19 @@ export async function chatCompletion(messages, model = null, config = {}) {
         // 1. Inject date context and FILTER out empty messages
         const filteredMessages = messages.filter(m => m.content && m.content.trim() !== '');
 
+        const messagesWithDate = [...filteredMessages];
+        if (messagesWithDate.length > 0) {
+            const firstUserMsgIndex = messagesWithDate.findIndex(m => m.role === 'user');
+            if (firstUserMsgIndex !== -1) {
+                messagesWithDate[firstUserMsgIndex] = {
+                    ...messagesWithDate[firstUserMsgIndex],
+                    content: `${dateContext}\n\n${messagesWithDate[firstUserMsgIndex].content}`
+                };
+            }
+        }
+
         // Convert Messages to Native Format
-        const contentsRaw = filteredMessages.map(msg => ({
+        const contentsRaw = messagesWithDate.map(msg => ({
             role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
             parts: [{ text: msg.content }]
         }));
