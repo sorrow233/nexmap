@@ -233,13 +233,25 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
 
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:generateContent`;
 
-        // 1. Map messages to Native format
-        let rawContents = messages.map(msg => ({
+        // 1. Inject date context into first user message
+        const messagesWithDate = [...messages];
+        if (messagesWithDate.length > 0) {
+            const firstUserMsgIndex = messagesWithDate.findIndex(m => m.role === 'user');
+            if (firstUserMsgIndex !== -1) {
+                messagesWithDate[firstUserMsgIndex] = {
+                    ...messagesWithDate[firstUserMsgIndex],
+                    content: `${dateContext}\n\n${messagesWithDate[firstUserMsgIndex].content}`
+                };
+            }
+        }
+
+        // 2. Map messages to Native format
+        let rawContents = messagesWithDate.map(msg => ({
             role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
             parts: [{ text: msg.content }]
         }));
 
-        // 2. Merge consecutive messages with the same role (Critical for Gemini API)
+        // 3. Merge consecutive messages with the same role (Critical for Gemini API)
         const contents = [];
         for (const msg of rawContents) {
             if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
@@ -283,7 +295,8 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
                         errorMsg = jsonErr.error.message;
                     }
                 } catch (e) { }
-                throw new Error(`Native Search Failed: ${errorMsg}`);
+                console.error('[Native API Debug]', { endpoint, status: response.status, messagesCount: messages.length });
+                throw new Error(`Native API Error: ${errorMsg}. Check API key, model name, and message format.`);
             }
 
             const data = await response.json();
