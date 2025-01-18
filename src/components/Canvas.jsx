@@ -242,7 +242,7 @@ export default function Canvas({
     return (
         <div
             ref={canvasRef}
-            className="w-full h-full overflow-hidden bg-slate-950 relative cursor-grab active:cursor-grabbing canvas-bg"
+            className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative cursor-grab active:cursor-grabbing canvas-bg transition-colors duration-500"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -254,7 +254,7 @@ export default function Canvas({
 
             // onWheel handled natively for passive: false support
             style={{
-                backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px)',
+                backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)', // Works effectively on both light/dark
                 backgroundSize: '24px 24px',
                 backgroundPosition: `${offset.x}px ${offset.y}px`
             }}
@@ -283,10 +283,10 @@ export default function Canvas({
                                 y1={startY}
                                 x2={endX}
                                 y2={endY}
-                                stroke="#94a3b8" // slate-400
+                                stroke="currentColor" // Use current text color for simplicity or fixed
+                                className="text-slate-300 dark:text-slate-600 opacity-60"
                                 strokeWidth="3"
                                 strokeDasharray="6 4" // Dashed line styling
-                                className="opacity-60"
                             />
                         );
                     })}
