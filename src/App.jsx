@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play } from 'lucide-react';
+import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
@@ -387,7 +387,9 @@ function AppContent() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [expandedCardId, setExpandedCardId] = useState(null);
     const [promptInput, setPromptInput] = useState('');
+    const [globalImages, setGlobalImages] = useState([]); // Global input images
     const [isGenerating, setIsGenerating] = useState(false);
+    const globalFileInputRef = React.useRef(null);
 
     // Connection Mode State
     const [isConnecting, setIsConnecting] = useState(false);
@@ -755,12 +757,77 @@ function AppContent() {
         }
     };
 
+    const handleGlobalImageUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        files.forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setGlobalImages(prev => [...prev, {
+                    file,
+                    previewUrl: URL.createObjectURL(file),
+                    base64: e.target.result.split(',')[1],
+                    mimeType: file.type
+                }]);
+            };
+            reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+    };
+
+    const removeGlobalImage = (index) => {
+        setGlobalImages(prev => {
+            const newImages = [...prev];
+            URL.revokeObjectURL(newImages[index].previewUrl);
+            newImages.splice(index, 1);
+            return newImages;
+        });
+    };
+
+    const handleGlobalPaste = (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                const file = items[i].getAsFile();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setGlobalImages(prev => [...prev, {
+                        file,
+                        previewUrl: URL.createObjectURL(file),
+                        base64: event.target.result.split(',')[1],
+                        mimeType: file.type
+                    }]);
+                };
+                reader.readAsDataURL(file);
+                e.preventDefault();
+            }
+        }
+    };
+
     const handleCreateCard = async () => {
-        if (!promptInput.trim()) return;
+        if (!promptInput.trim() && globalImages.length === 0) return;
 
         const newId = Date.now();
         const initialX = window.innerWidth / 2 - 160 + (Math.random() * 40 - 20) - 200;
         const initialY = window.innerHeight / 2 - 100 + (Math.random() * 40 - 20);
+
+        // Construct Content
+        let content = promptInput;
+        if (globalImages.length > 0) {
+            content = [
+                { type: 'text', text: promptInput },
+                ...globalImages.map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }))
+            ];
+        }
 
         // Initial empty assistant message
         const newCard = {
@@ -770,7 +837,7 @@ function AppContent() {
             data: {
                 title: "Thinking...",
                 messages: [
-                    { role: 'user', content: promptInput },
+                    { role: 'user', content: content },
                     { role: 'assistant', content: '' } // Placeholder for streaming
                 ],
                 model: "google/gemini-3-flash-preview"
@@ -781,6 +848,7 @@ function AppContent() {
         setCards(newCardState);
         addToHistory(newCardState, connections);
         setPromptInput('');
+        setGlobalImages([]); // Clear images
         setIsGenerating(true);
 
         // Update function for streaming content
@@ -801,7 +869,7 @@ function AppContent() {
 
         try {
             // Use user input directly as title (truncated if too long)
-            const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : promptInput;
+            const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : (promptInput || 'Image Input');
 
             setCards(prev => prev.map(c =>
                 c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
@@ -814,11 +882,6 @@ function AppContent() {
             // 1. Explicitly selected cards
             let contextSourceIds = [...selectedIds];
 
-            // 2. If creating from gallery prompt (no explicit selection), or even if distinct, 
-            // check connections of the creating card???? Wait, new card has no connections yet.
-            // But if we are replying in an existing card (handleUpdateCard flow), we check its connections.
-            // Here 'handleCreateCard' creates a NEW card, which has no connections yet.
-
             // Logic for manual selections:
             if (contextSourceIds.length > 0) {
                 const selectedCards = cards.filter(c => contextSourceIds.includes(c.id));
@@ -829,10 +892,10 @@ function AppContent() {
             }
 
             // Stream response with context + "No Internal Monologue" instruction
-            // Stream response with context + "No Internal Monologue" instruction
             // Revert suppression. Allow model to think.
             // Pure Gemini - No System Prompt pollution
-            const requestMessages = [...contextMessages, { role: 'user', content: promptInput }];
+            // Ensure content is passed correctly (if string or array)
+            const requestMessages = [...contextMessages, { role: 'user', content: content }];
 
             await streamChatCompletion(
                 requestMessages,
@@ -1075,6 +1138,29 @@ function AppContent() {
 
             {/* Chat Input Bar */}
             <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
+                {/* Global Image Previews */}
+                {globalImages.length > 0 && (
+                    <div className="flex gap-3 mb-2 overflow-x-auto pb-2 custom-scrollbar justify-center">
+                        {globalImages.map((img, idx) => (
+                            <div key={idx} className="relative shrink-0 group/img">
+                                <div className="absolute top-1 right-1 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => removeGlobalImage(idx)}
+                                        className="bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                                <img
+                                    src={img.previewUrl}
+                                    alt="Preview"
+                                    className="h-16 w-auto rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-white"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="glass-panel rounded-2xl p-2 flex gap-2 shadow-xl transition-all duration-300 focus-within:ring-2 ring-brand-500/50">
                     <button
                         onClick={() => setIsSettingsOpen(true)}
@@ -1082,17 +1168,38 @@ function AppContent() {
                     >
                         <Settings size={20} />
                     </button>
+
+                    <div className="relative flex-grow">
+                        <input
+                            type="text"
+                            value={promptInput}
+                            onChange={e => setPromptInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
+                            onPaste={handleGlobalPaste}
+                            className="w-full h-full bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium px-2"
+                            placeholder="Type a prompt to create a new card..."
+                        />
+                    </div>
+
                     <input
-                        type="text"
-                        value={promptInput}
-                        onChange={e => setPromptInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
-                        className="flex-grow bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium"
-                        placeholder="Type a prompt to create a new card..."
+                        type="file"
+                        ref={globalFileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        multiple
+                        onChange={handleGlobalImageUpload}
                     />
                     <button
+                        onClick={() => globalFileInputRef.current?.click()}
+                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
+                        title="Upload Image"
+                    >
+                        <ImageIcon size={20} />
+                    </button>
+
+                    <button
                         onClick={handleCreateCard}
-                        disabled={isGenerating || !promptInput.trim()}
+                        disabled={isGenerating || (!promptInput.trim() && globalImages.length === 0)}
                         className="p-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-all active:scale-95"
                     >
                         {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
