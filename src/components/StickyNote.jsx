@@ -141,9 +141,9 @@ export default function StickyNote({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[280px] min-h-[320px] rounded-[2rem] flex flex-col select-none pointer-events-auto group transition-all duration-300
+            className={`absolute w-[280px] min-h-[320px] rounded-[2rem] flex flex-col select-none pointer-events-auto group
                 ${glassStyle}
-                ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'hover:scale-[1.01] cursor-grab'}
+                ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 hover:scale-[1.01] cursor-grab'}
                 ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:border-white/50'}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
                 ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
