@@ -13,11 +13,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     const PROVIDERS = [
         { id: 'custom', name: 'Custom (自定义)', baseUrl: '', models: '' },
         { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', models: 'google/gemini-3-flash-preview, google/gemini-1.5-pro, google/gemini-1.5-flash' },
-        { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', models: 'deepseek-ai/DeepSeek-V2.5, deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, deepseek-ai/DeepSeek-V3' },
+        { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', models: 'deepseek-ai/DeepSeek-V2.5, deepseek-ai/DeepSeek-V3, deepseek-ai/DeepSeek-R1-Distill-Qwen-32B' },
         { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', models: 'deepseek-chat, deepseek-reasoner' },
-        { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: 'gpt-4o, gpt-4o-mini, gpt-4-turbo' },
+        { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: 'gpt-4o, gpt-4o-mini, o1-preview, o1-mini' },
         { id: 'gemini', name: 'Google Gemini (Compatible)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', models: 'gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash' },
-        { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', models: 'auto, google/gemini-2.0-flash-001, deepseek/deepseek-chat' },
+        { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', models: 'auto, google/gemini-pro-1.5, deepseek/deepseek-chat' },
     ];
 
     const [providerId, setProviderId] = useState(() => {
@@ -27,7 +27,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     });
 
     const [url, setUrl] = useState(getBaseUrl());
-    const [model, setModelState] = useState(getModel());
+    const [models, setModelsState] = useState(getModel());
     const [key, setKey] = useState(() => {
         const currentUrl = getBaseUrl();
         const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
@@ -92,6 +92,17 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setApiKey(key);
         setBaseUrl(url);
         setModel(models);
+
+        // Update Global Model List
+        const currentModels = JSON.parse(localStorage.getItem('mixboard_my_models') || '[]');
+        // Remove existing for this provider and re-add from current state
+        const otherProviderModels = currentModels.filter(m => m.providerId !== providerId);
+        const newProviderModels = models.split(',').map(m => m.trim()).filter(m => m).map(m => ({
+            name: m,
+            value: m,
+            providerId: providerId
+        }));
+        localStorage.setItem('mixboard_my_models', JSON.stringify([...otherProviderModels, ...newProviderModels]));
 
         // Save S3 Settings
         saveS3Config(s3Config);
