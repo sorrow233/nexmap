@@ -45,38 +45,72 @@ body,
     /* Typography Defaults (Light Mode) */
     .prose {
         @apply text-slate-700;
+        font-family: "LXGW WenKai Screen", "LXGW WenKai Mono TC", sans-serif;
+        font-size: 15px;
+        line-height: 1.85;
+        letter-spacing: 0.015em;
     }
 
     .prose h1,
     .prose h2,
     .prose h3,
     .prose h4 {
-        @apply font-bold text-slate-800 mt-6 mb-3;
+        @apply font-bold text-slate-800 mt-12 mb-6;
+        line-height: 1.4;
+    }
+
+    .prose p {
+        @apply mb-8;
     }
 
     .prose strong {
-        @apply font-bold text-slate-900;
+        @apply font-bold text-slate-900 mx-0.5;
     }
 
     .prose ul,
     .prose ol {
-        @apply marker:text-slate-400;
+        @apply marker:text-slate-400 my-6 pl-5;
+    }
+
+    .prose li {
+        @apply mb-2;
     }
 
     .prose blockquote {
-        @apply border-slate-300 text-slate-500;
+        @apply border-l-4 border-slate-200 pl-6 italic text-slate-500 my-10;
     }
 
     .prose code {
-        @apply bg-slate-100 text-pink-600 border-slate-200;
+        @apply bg-slate-100/50 text-indigo-600 px-1.5 py-0.5 rounded border border-slate-200 text-[0.85em] font-mono;
     }
 
     .prose pre {
-        @apply bg-slate-50 text-slate-700 border-slate-200;
+        @apply bg-slate-50/50 text-slate-700 border border-slate-200 rounded-2xl p-6 my-10 overflow-x-auto;
     }
 
     .prose pre code {
-        @apply bg-transparent text-slate-700;
+        @apply bg-transparent text-slate-700 p-0 border-none;
+    }
+
+    /* Table Support */
+    .prose table {
+        @apply w-full border-collapse my-10 text-[0.95em];
+    }
+
+    .prose thead {
+        @apply bg-slate-50 border-b border-slate-200;
+    }
+
+    .prose th {
+        @apply px-4 py-3 text-left font-bold text-slate-800 border border-slate-200;
+    }
+
+    .prose td {
+        @apply px-4 py-3 border border-slate-200 text-slate-600;
+    }
+
+    .prose tr:nth-child(even) {
+        @apply bg-slate-50/30;
     }
 
     /* Typography Overrides (Dark Mode) */
@@ -101,32 +135,47 @@ body,
     }
 
     .dark .prose blockquote {
-        @apply border-slate-600 text-slate-400;
+        @apply border-slate-800 text-slate-400;
     }
 
     .dark .prose code {
-        @apply bg-slate-800 text-pink-400 border-white/10;
+        @apply bg-white/5 text-indigo-300 border-white/10;
     }
 
     .dark .prose pre {
-        @apply bg-slate-900/50 text-slate-200 border-white/10;
+        @apply bg-slate-950/40 text-slate-200 border-white/5;
     }
 
     .dark .prose pre code {
         @apply text-slate-200;
     }
 
-    /* User Bubbles (Always Light/Brand on dark, or Brand on white) */
-    /* We generally keep user bubbles colored (Brand), so text is white */
-    .user-bubble.prose {
-        @apply text-white;
+    .dark .prose thead {
+        @apply bg-white/5 border-white/10;
     }
 
-    .user-bubble.prose code {
-        @apply bg-white/20 text-white border-transparent;
+    .dark .prose th {
+        @apply text-slate-100 border-white/10;
     }
 
-    .user-bubble.prose pre {
-        @apply bg-black/30 border border-white/20;
+    .dark .prose td {
+        @apply text-slate-400 border-white/10;
+    }
+
+    .dark .prose tr:nth-child(even) {
+        @apply bg-white/[0.02];
+    }
+
+    /* Reader Container */
+    .reader-width {
+        max-width: 48rem;
+        /* ~768px - standard for reading flow */
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* User Bubbles - Simplified for Prompt-style */
+    .user-prompt {
+        @apply bg-slate-100/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 p-6 rounded-3xl mb-12 italic text-slate-600 dark:text-slate-400;
     }
 }

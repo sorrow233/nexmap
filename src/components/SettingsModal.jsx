@@ -1,42 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, ChevronDown, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box } from 'lucide-react';
-import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, chatCompletion } from '../services/llm';
-import { saveUserSettings } from '../services/storage';
+import { Settings, ChevronDown, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box, Image as ImageIcon } from 'lucide-react';
 import { getS3Config, saveS3Config } from '../services/s3';
+import { loadSettings, saveSettings, saveUserSettings } from '../services/storage';
 
 export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
 
     const [activeTab, setActiveTab] = useState('llm'); // 'llm' or 'storage'
 
-    // --- LLM State ---
-    const PROVIDERS = [
-        { id: 'custom', name: 'Custom (自定义)', baseUrl: '', models: '' },
-        { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', models: 'google/gemini-3-flash-preview, google/gemini-3-pro-preview, google/gemini-1.5-pro, google/gemini-1.5-flash' },
-        { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', models: 'deepseek-ai/DeepSeek-V2.5, deepseek-ai/DeepSeek-V3, deepseek-ai/DeepSeek-R1-Distill-Qwen-32B' },
-        { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', models: 'deepseek-chat, deepseek-reasoner' },
-        { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: 'gpt-4o, gpt-4o-mini, o1-preview, o1-mini' },
-        { id: 'gemini', name: 'Google Gemini (Compatible)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', models: 'gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash' },
-        { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', models: 'auto, google/gemini-pro-1.5, deepseek/deepseek-chat' },
-    ];
-
-    const [providerId, setProviderId] = useState(() => {
-        const currentUrl = getBaseUrl();
-        const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
-        return found ? found.id : 'custom';
-    });
-
-    const [url, setUrl] = useState(getBaseUrl());
-    const [models, setModelsState] = useState(getModel());
-    const [key, setKey] = useState(() => {
-        const currentUrl = getBaseUrl();
-        const found = PROVIDERS.find(p => p.id !== 'custom' && p.baseUrl === currentUrl);
-        const pid = found ? found.id : 'custom';
-        return localStorage.getItem(`mixboard_llm_key_${pid}`) || '';
-    });
+    const [settings, setSettings] = useState(null);
+    const [providerId, setProviderId] = useState('gmicloud');
+    const [url, setUrl] = useState('');
+    const [models, setModelsState] = useState('');
+    const [key, setKey] = useState('');
+    const [imageModel, setImageModel] = useState('');
 
     const [testStatus, setTestStatus] = useState('idle');
     const [testMessage, setTestMessage] = useState('');
+
+    useEffect(() => {
+        const init = async () => {
+            const s = await loadSettings();
+            setSettings(s);
+            const pid = s.activeProvider;
+            setProviderId(pid);
+            const p = s.providers[pid];
+            setUrl(p.baseUrl);
+            setModelsState(p.models);
+            setKey(p.apiKey);
+            setImageModel(p.defaultImageModel || 'black-forest-labs/FLUX.1-schnell');
+        };
+        init();
+    }, []);
 
     // --- Storage State ---
     const [s3Config, setS3Config] = useState({
@@ -57,13 +52,22 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     // --- Handlers ---
     const handleProviderChange = (e) => {
         const pid = e.target.value;
+
+        // Save current provider's data before switching
+        if (settings && settings.providers[providerId]) {
+            settings.providers[providerId].apiKey = key;
+            settings.providers[providerId].baseUrl = url;
+            settings.providers[providerId].models = models;
+            settings.providers[providerId].defaultImageModel = imageModel;
+        }
+
         setProviderId(pid);
-        const p = PROVIDERS.find(x => x.id === pid);
-        if (p && p.id !== 'custom') {
+        const p = settings.providers[pid];
+        if (p) {
             setUrl(p.baseUrl);
-            if (p.models) setModelsState(p.models);
-            const providerKey = localStorage.getItem(`mixboard_llm_key_${pid}`) || '';
-            setKey(providerKey);
+            setModelsState(p.models);
+            setKey(p.apiKey || '');
+            setImageModel(p.defaultImageModel || 'black-forest-labs/FLUX.1-schnell');
         }
     };
 
@@ -87,41 +91,44 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     const handleSave = async () => {
-        // Save LLM Settings
-        localStorage.setItem(`mixboard_llm_key_${providerId}`, key);
-        setApiKey(key);
-        setBaseUrl(url);
-        setModel(models);
+        if (!settings) return;
 
-        // Update Global Model List
-        const currentModels = JSON.parse(localStorage.getItem('mixboard_my_models') || '[]');
-        // Remove existing for this provider and re-add from current state
-        const otherProviderModels = currentModels.filter(m => m.providerId !== providerId);
-        const newProviderModels = models.split(',').map(m => m.trim()).filter(m => m).map(m => ({
-            name: m,
-            value: m,
-            providerId: providerId
-        }));
-        localStorage.setItem('mixboard_my_models', JSON.stringify([...otherProviderModels, ...newProviderModels]));
+        const updatedSettings = {
+            ...settings,
+            activeProvider: providerId,
+            providers: {
+                ...settings.providers,
+                [providerId]: {
+                    ...settings.providers[providerId],
+                    apiKey: key,
+                    baseUrl: url,
+                    models: models,
+                    defaultImageModel: imageModel,
+                    model: settings.providers[providerId].model || models.split(',')[0].trim()
+                }
+            }
+        };
+
+        await saveSettings(updatedSettings);
+
+        // Update Global Model List for dropdown compatibility
+        const allMyModels = [];
+        Object.values(updatedSettings.providers).forEach(p => {
+            if (p.models) {
+                p.models.split(',').forEach(m => {
+                    const val = m.trim();
+                    if (val) allMyModels.push({ name: val, value: val, providerId: p.id });
+                });
+            }
+        });
+        localStorage.setItem('mixboard_my_models', JSON.stringify(allMyModels));
 
         // Save S3 Settings
         saveS3Config(s3Config);
 
         // Cloud Sync (User Settings)
         if (user) {
-            const allKeys = {};
-            PROVIDERS.forEach(p => {
-                const k = localStorage.getItem(`mixboard_llm_key_${p.id}`);
-                if (k) allKeys[p.id] = k;
-            });
-
-            await saveUserSettings(user.uid, {
-                apiKeys: allKeys,
-                baseUrl: url,
-                model: models,
-                s3Config: s3Config,
-                updatedAt: Date.now()
-            });
+            await saveUserSettings(user.uid, updatedSettings);
         }
         onClose();
     };
@@ -179,7 +186,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                         onChange={handleProviderChange}
                                         className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl appearance-none focus:ring-2 focus:ring-brand-500 outline-none font-medium text-slate-700 dark:text-slate-200 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
                                     >
-                                        {PROVIDERS.map(p => (
+                                        {settings && Object.values(settings.providers).map(p => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>
@@ -235,6 +242,36 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none resize-none"
                                             placeholder="model-1, model-2..."
                                         />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider italic">Default Image Model</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <ImageIcon size={14} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={imageModel}
+                                            onChange={e => setImageModel(e.target.value)}
+                                            className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none"
+                                            placeholder="black-forest-labs/FLUX.1-schnell"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider italic">Global Default (New Cards)</label>
+                                    <div className="relative">
+                                        <select
+                                            value={settings?.activeProvider}
+                                            onChange={(e) => {
+                                                // Simplified: just show current active model for preview
+                                            }}
+                                            className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-bold text-slate-400 dark:text-slate-600 focus:border-brand-500 outline-none appearance-none cursor-not-allowed"
+                                            disabled
+                                        >
+                                            <option value="">Managed via Quick Switcher</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -392,7 +429,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         Save Configuration
                     </button>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

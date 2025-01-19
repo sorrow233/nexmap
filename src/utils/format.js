@@ -50,6 +50,13 @@ export function parseModelOutput(content) {
     return { thoughts: null, content };
 }
 
+export function formatTime(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 if (typeof window !== 'undefined') {
     window.parseModelOutput = parseModelOutput;
+    window.formatTime = formatTime;
 }

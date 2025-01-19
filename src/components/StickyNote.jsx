@@ -10,6 +10,7 @@ export default function StickyNote({
     onUpdate,
     onDragEnd,
     onConnect,
+    onExpand,
     isConnecting,
     isConnectionStart,
     scale
@@ -157,6 +158,7 @@ export default function StickyNote({
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             onPaste={handlePaste}
+            onDoubleClick={(e) => { e.stopPropagation(); onExpand && onExpand(); }}
         >
             {/* Header / Controls */}
             <div className="flex justify-between items-center p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -219,7 +221,7 @@ export default function StickyNote({
                     onChange={handleContentChange}
                     onPaste={handlePaste}
                     placeholder="Write a note..."
-                    className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-relaxed text-lg
+                    className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg
                         ${isDragging ? 'cursor-grabbing' : 'cursor-text'}`}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}

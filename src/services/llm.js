@@ -3,6 +3,8 @@
 // 2. Vite Build uses 'import.meta.env'
 // 3. We removed 'import { API_CONFIG } from ./config' to avoid build errors on Vercel where file is ignored.
 
+import { loadSettings } from './storage';
+
 const getEnvVar = (key) => {
     // Check global API_CONFIG (Local Preview)
     // In local preview, API_CONFIG is a global const, not on window.
@@ -545,4 +547,51 @@ if (typeof window !== 'undefined') {
     window.LLM = {
         getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, chatCompletion, generateTitle, streamChatCompletion
     };
+}
+
+/**
+ * Generate an image from a prompt.
+ * Uses OpenAI-compatible /v1/images/generations endpoint.
+ */
+export async function imageGeneration(prompt, model = null, config = {}) {
+    const settings = await loadSettings();
+    const provider = config.provider || settings.activeProvider || 'gmi';
+    const providerConfig = settings.providers[provider];
+
+    if (!providerConfig || !providerConfig.apiKey) {
+        throw new Error(`Provider ${provider} is not configured.`);
+    }
+
+    const targetModel = model || providerConfig.defaultImageModel || 'black-forest-labs/FLUX.1-schnell';
+    const baseUrl = providerConfig.baseUrl || 'https://api.gmi.cloud/v1';
+
+    console.log(`[LLM] Generating image with ${targetModel} on ${provider}...`);
+
+    try {
+        const response = await fetch(`${baseUrl}/images/generations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${providerConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: targetModel,
+                prompt: prompt,
+                n: 1,
+                size: config.size || "1024x1024",
+                response_format: "url"
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || `API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result.data[0].url;
+    } catch (error) {
+        console.error('[LLM] Image generation failed:', error);
+        throw error;
+    }
 }
