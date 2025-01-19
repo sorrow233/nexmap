@@ -60,6 +60,50 @@ export default function Canvas({
         setPanning(false);
     };
 
+    // Touch Support for Panning
+    const lastTouchRef = useRef(null);
+
+    const handleTouchStart = (e) => {
+        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+            setPanning(true);
+            if (e.touches.length > 0) {
+                lastTouchRef.current = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            }
+            if (onSelectionChange) onSelectionChange([]);
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (panning && e.touches.length > 0) {
+            e.preventDefault(); // Prevent body scroll
+            const touch = e.touches[0];
+            const lastTouch = lastTouchRef.current;
+
+            if (lastTouch) {
+                const deltaX = touch.clientX - lastTouch.x;
+                const deltaY = touch.clientY - lastTouch.y;
+
+                setOffset(prev => ({
+                    x: prev.x + deltaX,
+                    y: prev.y + deltaY
+                }));
+
+                lastTouchRef.current = {
+                    x: touch.clientX,
+                    y: touch.clientY
+                };
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setPanning(false);
+        lastTouchRef.current = null;
+    };
+
     const handleWheel = (e) => {
         if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
@@ -81,6 +125,11 @@ export default function Canvas({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onWheel={handleWheel}
             onWheel={handleWheel}
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px)',
