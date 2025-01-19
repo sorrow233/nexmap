@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
@@ -11,7 +11,8 @@ import {
     chatCompletion,
     streamChatCompletion,
     generateTitle,
-    imageGeneration
+    imageGeneration,
+    getApiConfig
 } from './services/llm';
 import { uploadImageToS3, getS3Config } from './services/s3';
 
@@ -453,6 +454,18 @@ function AppContent() {
     }, [view, currentBoardId, boardsList]);
 
     // 2. Auto-Save Cards & Connections
+    const globalPromptInputRef = useRef(null);
+
+    // Auto-resize reset for global input
+    useEffect(() => {
+        if (globalPromptInputRef.current) {
+            globalPromptInputRef.current.style.height = 'auto';
+            if (promptInput) {
+                globalPromptInputRef.current.style.height = Math.min(globalPromptInputRef.current.scrollHeight, 200) + 'px';
+            }
+        }
+    }, [promptInput]);
+
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length > 0) {
             // Save connections too!
@@ -543,7 +556,7 @@ function AppContent() {
                     { role: 'user', content: content },
                     { role: 'assistant', content: '' }
                 ],
-                model: "google/gemini-3-flash-preview"
+                model: getApiConfig().model || "google/gemini-2.0-flash-exp"
             }
         };
 
@@ -571,6 +584,7 @@ function AppContent() {
             await streamChatCompletion(
                 [{ role: 'user', content: content }],
                 updateCardContent
+                // No model passed, uses global default
             );
 
         } catch (error) {
@@ -839,9 +853,10 @@ function AppContent() {
             ];
         }
 
-        // Resolve default model and provider from explicit settings
-        const defaultModel = localStorage.getItem('mixboard_default_model_value') || "google/gemini-3-flash-preview";
-        const defaultProviderId = localStorage.getItem('mixboard_default_provider_id') || "gmicloud";
+        // Resolve default model (v2 config)
+        const apiConfig = getApiConfig();
+        const defaultModel = apiConfig.model || "google/gemini-2.0-flash-exp";
+        const defaultProviderId = "gmicloud"; // Legacy field, keeping for schema compatibility
 
         // Initial empty assistant message
         const newCard = {
@@ -915,7 +930,7 @@ function AppContent() {
             await streamChatCompletion(
                 requestMessages,
                 updateCardContent,
-                defaultModel,
+                null, // Use global config model
                 { providerId: defaultProviderId }
             );
 
@@ -1004,8 +1019,9 @@ function AppContent() {
             const newX = sourceCard.x + Math.cos(angle) * dist;
             const newY = sourceCard.y + Math.sin(angle) * dist;
 
-            const defaultModel = localStorage.getItem('mixboard_default_model_value') || sourceCard.data.model;
-            const defaultProviderId = localStorage.getItem('mixboard_default_provider_id') || sourceCard.data.providerId;
+            const apiConfig = getApiConfig();
+            const defaultModel = sourceCard.data.model || apiConfig.model || "google/gemini-2.0-flash-exp";
+            const defaultProviderId = sourceCard.data.providerId || "gmicloud";
 
             const newCard = {
                 id: newId,
@@ -1353,6 +1369,7 @@ function AppContent() {
 
                     <div className="relative flex-grow">
                         <textarea
+                            ref={globalPromptInputRef}
                             value={promptInput}
                             onChange={e => setPromptInput(e.target.value)}
                             onKeyDown={e => {
