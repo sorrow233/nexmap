@@ -60,7 +60,10 @@ export const uploadImageToS3 = async (file) => {
     // Construct Public URL
     if (publicDomain) {
         // Remove trailing slash if present
-        const domain = publicDomain.replace(/\/$/, "");
+        let domain = publicDomain.replace(/\/$/, "");
+        if (!domain.startsWith('http')) {
+            domain = `https://${domain}`;
+        }
         return `${domain}/${filename}`;
     }
 

@@ -107,6 +107,7 @@ export const createBoard = async (name) => {
 
 export const saveBoard = async (id, data) => {
     // data: { cards, connections }
+    console.log('[Storage] saveBoard called. Board:', id, 'Cards:', data.cards?.length || 0, 'Total data size:', JSON.stringify(data).length);
     const list = getBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
@@ -118,6 +119,36 @@ export const saveBoard = async (id, data) => {
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
     }
     await idbSet(BOARD_PREFIX + id, data);
+    console.log('[Storage] saveBoard complete for', id);
+};
+
+// Helper: Download image from S3 URL and convert to base64
+const downloadImageAsBase64 = async (url) => {
+    try {
+        console.log('[S3 Download] Fetching:', url);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            throw new Error('Received HTML content instead of image (fetch likely redirected to SPA index)');
+        }
+
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64 = reader.result.split(',')[1];
+                console.log('[S3 Download] Success:', url.substring(0, 50) + '...');
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('[S3 Download] Failed:', error);
+        return null;
+    }
 };
 
 export const loadBoard = async (id) => {
@@ -128,24 +159,73 @@ export const loadBoard = async (id) => {
         console.warn("IDB read failed for board", id, e);
     }
 
-    if (stored) return stored;
-
-    // Fallback: Check localStorage (Migration path)
-    // We check this OUTSIDE the first try/catch so that if IDB fails hard, we still try LS.
-    try {
-        const legacy = localStorage.getItem(BOARD_PREFIX + id);
-        if (legacy) {
-            console.log("Found legacy data in localStorage for board:", id);
-            const parsed = JSON.parse(legacy);
-            // Migrate to IDB in background
-            idbSet(BOARD_PREFIX + id, parsed).catch(e => console.error("Migration save failed", e));
-            return parsed;
+    if (!stored) {
+        // Fallback: Check localStorage (Migration path)
+        try {
+            const legacy = localStorage.getItem(BOARD_PREFIX + id);
+            if (legacy) {
+                console.log("Found legacy data in localStorage for board:", id);
+                const parsed = JSON.parse(legacy);
+                // Migrate to IDB in background
+                idbSet(BOARD_PREFIX + id, parsed).catch(e => console.error("Migration save failed", e));
+                stored = parsed;
+            }
+        } catch (e) {
+            console.error("Legacy localStorage load failed", e);
         }
-    } catch (e) {
-        console.error("Legacy localStorage load failed", e);
     }
 
-    return { cards: [], connections: [] };
+    if (!stored) {
+        return { cards: [], connections: [] };
+    }
+
+    // Process S3 URL images: download and convert to base64
+    try {
+        const processedCards = await Promise.all((stored.cards || []).map(async (card) => {
+            try {
+                const processedMessages = await Promise.all((card.data?.messages || []).map(async (msg) => {
+                    if (Array.isArray(msg.content)) {
+                        const processedContent = await Promise.all(msg.content.map(async (part) => {
+                            // Detect URL type image (from S3 sync)
+                            if (part.type === 'image' && part.source?.type === 'url' && part.source?.url) {
+                                console.log('[S3 Download] Detected URL image, downloading:', part.source.url.substring(0, 50));
+                                const base64 = await downloadImageAsBase64(part.source.url);
+                                if (base64) {
+                                    console.log('[S3 Download] Successfully converted to base64');
+                                    return {
+                                        ...part,
+                                        source: {
+                                            type: 'base64',
+                                            media_type: part.source.media_type,
+                                            data: base64,
+                                            s3Url: part.source.url // Keep S3 URL reference
+                                        }
+                                    };
+                                }
+                                // Download failed, keep URL as fallback
+                                console.warn('[S3 Download] Failed, keeping URL fallback:', part.source.url);
+                            } else if (part.type === 'image' && part.source?.type === 'base64') {
+                                // Base64 image - pass through unchanged
+                                console.log('[Load Board] Base64 image detected, data length:', part.source.data?.length || 0);
+                            }
+                            return part;
+                        }));
+                        return { ...msg, content: processedContent };
+                    }
+                    return msg;
+                }));
+                return { ...card, data: { ...card.data, messages: processedMessages } };
+            } catch (e) {
+                console.error('[Load Board] Card processing error:', e);
+                return card; // Return original card on error
+            }
+        }));
+
+        return { ...stored, cards: processedCards };
+    } catch (e) {
+        console.error('[Load Board] S3 processing error:', e);
+        return stored; // Return original data on error
+    }
 };
 
 export const deleteBoard = async (id) => {
@@ -174,11 +254,68 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                     cloudBoards.push(boardData);
 
                     // Sync content to local storage (IDB)
+                    // CRITICAL: Smart Merge that favors local base64 but accepts cloud updates/S3 URLs
                     if (boardData.id) {
-                        promises.push(saveBoard(boardData.id, {
-                            cards: boardData.cards || [],
-                            connections: boardData.connections || []
-                        }));
+                        promises.push((async () => {
+                            try {
+                                const localData = await idbGet(BOARD_PREFIX + boardData.id);
+                                if (!localData || !localData.cards) {
+                                    // First time loading from cloud (e.g. on Device B)
+                                    await saveBoard(boardData.id, {
+                                        cards: boardData.cards || [],
+                                        connections: boardData.connections || []
+                                    });
+                                    return;
+                                }
+
+                                // Merge: We use cloud structure but preserve local base64
+                                const mergedCards = (boardData.cards || []).map(cloudCard => {
+                                    const localCard = localData.cards.find(c => c.id === cloudCard.id);
+                                    if (!localCard) return cloudCard; // New card from another device
+
+                                    const mergedMessages = (cloudCard.data?.messages || []).map((cloudMsg, msgIdx) => {
+                                        const localMsg = localCard.data?.messages?.[msgIdx];
+                                        if (!localMsg || !Array.isArray(cloudMsg.content) || !Array.isArray(localMsg.content)) return cloudMsg;
+
+                                        const mergedContent = cloudMsg.content.map((cloudPart, partIdx) => {
+                                            const localPart = localMsg.content[partIdx];
+                                            if (cloudPart.type === 'image' && localPart?.type === 'image') {
+                                                // If we have local base64, keep it but also take the cloud's S3 URL
+                                                return {
+                                                    ...cloudPart,
+                                                    source: {
+                                                        ...cloudPart.source,
+                                                        ...(localPart.source?.type === 'base64' ? {
+                                                            type: 'base64',
+                                                            data: localPart.source.data
+                                                        } : {}),
+                                                        ...(cloudPart.source?.url ? { s3Url: cloudPart.source.url } : {})
+                                                    }
+                                                };
+                                            }
+                                            return cloudPart;
+                                        });
+                                        return { ...cloudMsg, content: mergedContent };
+                                    });
+
+                                    return {
+                                        ...cloudCard,
+                                        data: { ...cloudCard.data, messages: mergedMessages }
+                                    };
+                                });
+
+                                // Merge: Keep local-only cards too (to prevent deletion if cloud is stale)
+                                const localOnlyCards = localData.cards.filter(lc => !boardData.cards?.find(cc => cc.id === lc.id));
+                                const finalCards = [...mergedCards, ...localOnlyCards];
+
+                                await saveBoard(boardData.id, {
+                                    cards: finalCards,
+                                    connections: boardData.connections || localData.connections || []
+                                });
+                            } catch (e) {
+                                console.error("[Firebase Sync] Merge failed", e);
+                            }
+                        })());
                     }
                 });
 
@@ -197,28 +334,14 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 })).sort((a, b) => b.updatedAt - a.updatedAt);
 
                 localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
-                onUpdate(metadataList);
 
-                // DISABLED: Cloud-to-local sync causes data loss
-                // Firebase doesn't support complex nested objects (multimodal content)
-                // so cloud data is often stale/empty, overwriting good local IDB data
-                // TODO: Implement proper conflict resolution or serialize data before cloud save
-
-                // // Now background sync content to IDB
-                // for (const b of cloudBoards) {
-                //     // We directly use idbSet to avoid double metadata update
-                //     idbSet(BOARD_PREFIX + b.id, {
-                //         cards: b.cards || [],
-                //         connections: b.connections || []
-                //     });
-                // }
-
-
+                const updatedBoardIds = cloudBoards.map(b => b.id);
+                onUpdate(metadataList, updatedBoardIds);
             }, (error) => {
                 console.error("Firestore sync error:", error);
             });
-    } catch (e) {
-        console.error("Setup sync failed", e);
+    } catch (err) {
+        console.error("listenForBoardUpdates fatal error:", err);
         return () => { };
     }
 };
@@ -231,10 +354,53 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
 
         if (!meta) return;
 
+        // Clean base64 data before syncing to Firebase
+        const cleanedContent = {
+            cards: (boardContent.cards || []).map(card => ({
+                ...card,
+                data: {
+                    ...card.data,
+                    messages: (card.data.messages || []).map(msg => {
+                        if (Array.isArray(msg.content)) {
+                            return {
+                                ...msg,
+                                content: msg.content.map(part => {
+                                    // Strip base64 from all images before Firebase sync
+                                    // This prevents "nested entity" errors
+                                    if (part.type === 'image' && part.source) {
+                                        // Has S3 URL: use URL type
+                                        if (part.source.s3Url) {
+                                            return {
+                                                type: 'image',
+                                                source: {
+                                                    type: 'url',
+                                                    media_type: part.source.media_type,
+                                                    url: part.source.s3Url
+                                                }
+                                            };
+                                        }
+                                        // No S3 URL yet (upload pending): DON'T sync to Firebase
+                                        // Return a placeholder to avoid errors
+                                        if (part.source.type === 'base64' && !part.source.s3Url) {
+                                            console.warn('[Cloud Save] Skipping image without S3 URL (upload pending)');
+                                            return null; // Will be filtered out
+                                        }
+                                    }
+                                    // Keep base64 for non-image or users without S3
+                                    return part;
+                                }).filter(Boolean) // Remove nulls
+                            };
+                        }
+                        return msg;
+                    })
+                }
+            })),
+            connections: boardContent.connections || []
+        };
+
         const fullBoard = {
             ...meta,
-            cards: boardContent.cards || [],
-            connections: boardContent.connections || []
+            ...cleanedContent
         };
 
         await db.collection('users').doc(userId).collection('boards').doc(boardId).set(fullBoard);
