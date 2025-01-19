@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip, StickyNote } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip, StickyNote, RefreshCw } from 'lucide-react';
 import { chatCompletion, streamChatCompletion } from '../services/llm';
 import { marked } from 'marked';
 
@@ -240,6 +240,53 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         }
     };
 
+    const handleRetry = async () => {
+        if (isStreaming) return;
+
+        // Find the last assistant message (which should be the error)
+        const messages = [...card.data.messages];
+        if (messages.length < 2) return;
+
+        const lastAssistantIndex = messages.findLastIndex(m => m.role === 'assistant');
+        if (lastAssistantIndex === -1) return;
+
+        // Pop all messages after the last user message that caused the error
+        // Or just pop the error content
+        const truncatedMessages = messages.slice(0, lastAssistantIndex);
+        const freshAssistantMsg = { role: 'assistant', content: '' };
+        const newMessages = [...truncatedMessages, freshAssistantMsg];
+
+        // Update state
+        onUpdate(card.id, { ...card.data, messages: newMessages });
+        setIsStreaming(true);
+
+        try {
+            // Re-trigger the generation logic
+            if (onGenerateResponse) {
+                let accumulatedContent = "";
+                await onGenerateResponse(card.id, truncatedMessages, (token) => {
+                    accumulatedContent += token;
+                    const updatedWithStream = [...truncatedMessages, { role: 'assistant', content: accumulatedContent }];
+                    onUpdate(card.id, { ...card.data, messages: updatedWithStream });
+                });
+            } else {
+                let accumulatedContent = "";
+                await streamChatCompletion(truncatedMessages, (token) => {
+                    accumulatedContent += token;
+                    const updatedWithStream = [...truncatedMessages, { role: 'assistant', content: accumulatedContent }];
+                    onUpdate(card.id, { ...card.data, messages: updatedWithStream });
+                });
+            }
+        } catch (error) {
+            console.error('[Retry Error]', error);
+            const errorMessages = [...newMessages];
+            errorMessages[errorMessages.length - 1].content = "⚠️ Error: " + error.message;
+            onUpdate(card.id, { ...card.data, messages: errorMessages });
+        } finally {
+            setIsStreaming(false);
+        }
+    };
+
     const [selection, setSelection] = useState(null);
     const modalRef = useRef(null);
 
@@ -403,30 +450,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                 <span className="text-[10px] uppercase tracking-[0.2em] font-black text-brand-600 dark:text-brand-400">
                                     {card.type === 'note' ? 'Neural Notepad' : 'Neural Reader'}
                                 </span>
-                                <div className="h-3 w-px bg-slate-200 dark:bg-white/10" />
-                                {card.type !== 'note' && (
-                                    <div className="relative group/model">
-                                        <select
-                                            value={`${card.data.providerId || ''}:${card.data.model || 'auto'}`}
-                                            onChange={(e) => {
-                                                const [pid, mval] = e.target.value.split(':');
-                                                onUpdate(card.id, { ...card.data, model: mval, providerId: pid });
-                                            }}
-                                            className="appearance-none bg-transparent text-[10px] font-bold text-slate-400 dark:text-slate-500 pr-4 cursor-pointer hover:text-brand-500 transition-all outline-none"
-                                        >
-                                            <option value=":auto">Auto Intelligence</option>
-                                            {(() => {
-                                                const myModels = JSON.parse(localStorage.getItem('mixboard_my_models') || '[]');
-                                                return myModels.map(m => (
-                                                    <option key={`${m.providerId}:${m.value}`} value={`${m.providerId}:${m.value}`}>
-                                                        {m.name}
-                                                    </option>
-                                                ));
-                                            })()}
-                                        </select>
-                                        <ChevronDown size={10} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                                    </div>
-                                )}
                                 {card.type === 'note' && (
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Captured Insight</span>
                                 )}
@@ -530,6 +553,21 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                                         : (!thoughts ? '<span class="opacity-30 italic font-sans">Synthesizing...</span>' : '<span class="opacity-30 italic font-sans">Deep thoughts complete. Formulating...</span>')
                                                 }}
                                             />
+                                            {/* Retry Button for Errors */}
+                                            {!isStreaming && content && (content.includes('⚠️ Error:') || content.includes('Error: Native API Error')) && (
+                                                <div className="mt-6 animate-fade-in">
+                                                    <button
+                                                        onClick={handleRetry}
+                                                        className="flex items-center gap-2 px-6 py-2.5 bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 dark:text-brand-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border border-brand-500/20"
+                                                    >
+                                                        <RefreshCw size={14} className={isStreaming ? 'animate-spin' : ''} />
+                                                        Retry Generation
+                                                    </button>
+                                                    <p className="text-[10px] text-slate-400 mt-2 ml-1 italic">
+                                                        If error persists, check your API key or try another model in settings.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -573,7 +611,12 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                             <textarea
                                 value={input}
                                 onChange={e => setInput(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                        e.preventDefault();
+                                        handleSend();
+                                    }
+                                }}
                                 onPaste={handlePaste}
                                 className="flex-grow bg-transparent outline-none resize-none h-12 py-3 px-2 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-sans text-lg"
                                 placeholder={card.type === 'note' ? "Ask AI to refine this note..." : "Refine this thought..."}

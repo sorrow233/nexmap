@@ -21,8 +21,8 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     const handleQuickStart = (e) => {
         if ((!quickPrompt.trim() && images.length === 0)) return;
 
-        // If user pressed Enter (and not holding Shift)
-        if (e.key === 'Enter' && !e.shiftKey) {
+        // If user pressed Enter (and not holding Shift and not in IME composition)
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault(); // Prevent newline if it was textarea, but here it is input.
             const title = quickPrompt.length > 30 ? quickPrompt.substring(0, 30) + '...' : (quickPrompt || 'New Image Board');
             onCreateBoard(title, quickPrompt, images);
