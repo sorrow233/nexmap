@@ -30,7 +30,7 @@ export default function Card({
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
 
         e.stopPropagation();
-        onSelect(data.id);
+        onSelect(data.id, e);
 
         // Initial setup
         const initialDragOffset = {

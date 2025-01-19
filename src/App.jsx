@@ -318,10 +318,56 @@ function AppContent() {
 
 
             // L -> Link (Connect)
-            // If one card is selected, start connection from it
+            // If multiple cards are selected, link them in sequence
             if (e.key === 'l' || e.key === 'L') {
-                if (selectedIds.length === 1) {
+                if (selectedIds.length > 1) {
+                    // Chain link: 1->2, 2->3, etc.
+                    const newConns = [...connections];
+                    let added = false;
+                    for (let i = 0; i < selectedIds.length - 1; i++) {
+                        const from = selectedIds[i];
+                        const to = selectedIds[i + 1];
+                        // Avoid duplicates
+                        if (!newConns.some(c => (c.from === from && c.to === to) || (c.from === to && c.to === from))) {
+                            newConns.push({ from, to });
+                            added = true;
+                        }
+                    }
+                    if (added) {
+                        setConnections(newConns);
+                        addToHistory(cards, newConns);
+                        console.log(`[Batch Link] Created links for ${selectedIds.length} cards`);
+                    }
+                } else if (selectedIds.length === 1) {
+                    // Original single-card connection mode
                     handleConnect(selectedIds[0]);
+                }
+            }
+
+            // C -> Cut (Disconnect)
+            if (e.key === 'c' || e.key === 'C') {
+                // Handle different from Command+C (copy)
+                if (e.metaKey || e.ctrlKey) return;
+
+                if (selectedIds.length > 1) {
+                    // Remove all connections between selected cards
+                    const newConns = connections.filter(c =>
+                        !(selectedIds.includes(c.from) && selectedIds.includes(c.to))
+                    );
+                    if (newConns.length !== connections.length) {
+                        setConnections(newConns);
+                        addToHistory(cards, newConns);
+                        console.log(`[Batch Unlink] Removed internal links for ${selectedIds.length} cards`);
+                    }
+                } else if (selectedIds.length === 1) {
+                    // Remove all connections involving this card
+                    const targetId = selectedIds[0];
+                    const newConns = connections.filter(c => c.from !== targetId && c.to !== targetId);
+                    if (newConns.length !== connections.length) {
+                        setConnections(newConns);
+                        addToHistory(cards, newConns);
+                        console.log(`[Single Unlink] Removed all links for card ${targetId}`);
+                    }
                 }
             }
 
@@ -829,11 +875,14 @@ function AppContent() {
 
             if (dx === 0 && dy === 0) return prev;
 
-            // Find all connected cards
-            const connectedIds = getConnectedGraph(id);
+            // Determine which IDs to move:
+            // 1. If the card being dragged is selected, move all selected cards
+            // 2. Otherwise, move the connected graph
+            const isSelected = selectedIds.includes(id);
+            const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
 
             return prev.map(c => {
-                if (connectedIds.has(c.id)) {
+                if (moveIds.has(c.id)) {
                     return { ...c, x: c.x + dx, y: c.y + dy };
                 }
                 return c;

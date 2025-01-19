@@ -50,14 +50,21 @@ export default function Canvas({
         }
     };
 
-    const handleCardSelect = (id) => {
+    const handleCardSelect = (id, e) => {
         if (!onSelectionChange) return;
-        // Simple single selection or toggle for now
-        // TODO: Shift+Click logic if needed, but keeping simple for fix
-        const newSelection = selectedIds.includes(id) ? [] : [id];
-        // Or if we want additive:
-        // const newSelection = [id]; 
-        onSelectionChange(newSelection);
+
+        const isAdditive = e && (e.shiftKey || e.metaKey || e.ctrlKey);
+
+        if (isAdditive) {
+            // Toggle selection
+            const newSelection = selectedIds.includes(id)
+                ? selectedIds.filter(sid => sid !== id)
+                : [...selectedIds, id];
+            onSelectionChange(newSelection);
+        } else {
+            // Standard single selection
+            onSelectionChange([id]);
+        }
     };
 
     const handleMouseMove = (e) => {
