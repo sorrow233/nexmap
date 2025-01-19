@@ -132,16 +132,26 @@ export default function Card({
         return "Unknown content";
     };
 
-    let previewText = getPreviewContent(lastMessage?.content);
+    let previewText = "";
+    const marks = data.data?.marks || [];
 
-    // Clean up thinking tags for preview
-    previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
-    if (!previewText) previewText = "Thinking..."; // If only thought exists
+    if (marks.length > 0) {
+        // If there are marks, show them joined by "..."
+        previewText = marks.join(' ... ');
+    } else {
+        // Fallback to existing last message logic
+        previewText = getPreviewContent(lastMessage?.content);
+        // Clean up thinking tags for preview
+        previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+    }
+
+    if (!previewText) previewText = "Thinking...";
 
     // Show truncated preview (END of content)
-    // If longer than 100 chars, show "..." then the end
-    if (previewText.length > 100) {
-        previewText = "..." + previewText.slice(-100);
+    if (previewText.length > 150) {
+        previewText = marks.length > 0
+            ? previewText.slice(0, 150) + "..."
+            : "..." + previewText.slice(-120);
     }
 
     // Copy handler

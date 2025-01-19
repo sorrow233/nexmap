@@ -240,14 +240,96 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         }
     };
 
+    const [selection, setSelection] = useState(null);
+    const modalRef = useRef(null);
+
+    const handleTextSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.toString().trim().length > 0 && !isStreaming) {
+            const range = sel.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            // Ensure the selection is within our messages container
+            const container = modalRef.current?.querySelector('.messages-container');
+            if (container && container.contains(range.commonAncestorContainer)) {
+                setSelection({
+                    text: sel.toString(),
+                    rect: {
+                        top: rect.top,
+                        left: rect.left + rect.width / 2
+                    }
+                });
+                return;
+            }
+        }
+        setSelection(null);
+    };
+
+    const addMark = (e) => {
+        e.stopPropagation();
+        if (!selection) return;
+
+        const currentMarks = card.data.marks || [];
+        if (!currentMarks.includes(selection.text)) {
+            onUpdate(card.id, {
+                ...card.data,
+                marks: [...currentMarks, selection.text]
+            });
+        }
+
+        // Clear selection
+        window.getSelection()?.removeAllRanges();
+        setSelection(null);
+    };
+
+    // Helper to render content with highlights
+    const renderContent = (content) => {
+        if (!content) return '';
+        let html = marked ? marked.parse(content) : content;
+
+        // Apply marks from card.data.marks
+        if (card.data.marks && card.data.marks.length > 0) {
+            card.data.marks.forEach(mark => {
+                // Escaping special characters for regex
+                const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`(${escapedMark})`, 'gi');
+                // Use a marker to avoid overlapping/double highlighting if possible, 
+                // but for simple cases, a direct replace with <mark> is okay.
+                // We wrap in a custom class for styling.
+                html = html.replace(regex, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">$1</mark>');
+            });
+        }
+        return html;
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" style={{ perspective: '1000px', fontFamily: '"LXGW WenKai", "楷体", "KaiTi", serif' }}>
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+            style={{ perspective: '1000px', fontFamily: '"LXGW WenKai", "楷体", "KaiTi", serif' }}
+            onMouseUp={handleTextSelection}
+        >
             <div
                 className="absolute inset-0 bg-slate-900/20 dark:bg-slate-950/60 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
 
-            <div className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl w-[900px] max-w-full h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-slate-200 dark:border-white/10 overflow-hidden animate-fade-in relative z-10 font-sans transition-colors duration-500">
+            <div
+                ref={modalRef}
+                className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl w-[900px] max-w-full h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-slate-200 dark:border-white/10 overflow-hidden animate-fade-in relative z-10 font-sans transition-colors duration-500"
+            >
+                {/* Floating Mark Button */}
+                {selection && (
+                    <button
+                        onClick={addMark}
+                        className="fixed z-[110] bg-brand-600 text-white px-3 py-1.5 rounded-full shadow-xl text-xs font-bold flex items-center gap-1.5 -translate-x-1/2 -translate-y-[120%] animate-bounce-in transition-all hover:bg-brand-500 active:scale-95"
+                        style={{
+                            top: selection.rect.top,
+                            left: selection.rect.left
+                        }}
+                    >
+                        <Sparkles size={12} />
+                        Mark
+                    </button>
+                )}
 
                 {/* Header */}
                 <div className="h-20 px-8 border-b border-slate-200 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/40 shrink-0">
@@ -256,9 +338,20 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                             <Sparkles size={20} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xl tracking-tight leading-tight">
-                                {card.data.title || 'New Conversation'}
-                            </h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xl tracking-tight leading-tight">
+                                    {card.data.title || 'New Conversation'}
+                                </h3>
+                                {card.data.marks?.length > 0 && (
+                                    <button
+                                        onClick={() => onUpdate(card.id, { ...card.data, marks: [] })}
+                                        className="text-[10px] bg-slate-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 px-2 py-1 rounded-md transition-colors"
+                                        title="Clear all marks"
+                                    >
+                                        Clear Marks ({card.data.marks.length})
+                                    </button>
+                                )}
+                            </div>
                             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-brand-600 dark:text-brand-400/60 mt-0.5">Neural Canvas Mode</p>
                         </div>
                     </div>
@@ -271,7 +364,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-grow overflow-y-auto p-8 space-y-8 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/30">
+                <div className="messages-container flex-grow overflow-y-auto p-8 space-y-8 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/30">
                     {card.data.messages.map((m, i) => {
                         const isUser = m.role === 'user';
 
@@ -315,7 +408,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                                 } else if (img.source.type === 'url') {
                                                     imgSrc = img.source.url;
                                                 } else {
-                                                    // Fallback: try S3 URL if present, otherwise null
                                                     imgSrc = img.source.s3Url || null;
                                                 }
 
@@ -347,7 +439,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                         className={`prose max-w-none text-sm sm:text-[15px] font-lxgw ${isUser ? 'user-bubble prose-invert' : 'dark:prose-invert prose-slate'}`}
                                         dangerouslySetInnerHTML={{
                                             __html: content
-                                                ? (marked ? marked.parse(content) : content)
+                                                ? renderContent(content)
                                                 : (isUser ? '' : (!thoughts ? '<span class="opacity-50 italic">Synthesizing...</span>' : '<span class="opacity-50 italic">Finishing execution...</span>'))
                                         }}
                                     />
@@ -439,5 +531,8 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         </div>
     );
 }
+
+if (typeof window !== 'undefined') window.ChatModal = ChatModal;
+
 
 if (typeof window !== 'undefined') window.ChatModal = ChatModal;
