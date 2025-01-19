@@ -242,7 +242,11 @@ const formatOpenAIMessages = (messages) => {
 export async function chatCompletion(messages, model = null, config = {}) {
     const apiKey = config.apiKey || getApiKey();
     const baseUrl = config.baseUrl || getBaseUrl();
-    const modelToUse = model || getModel();
+    let modelToUse = model || getModel();
+    // If the model name is a comma-separated list, use the first one
+    if (modelToUse && modelToUse.includes(',')) {
+        modelToUse = modelToUse.split(',')[0].trim();
+    }
 
     if (!apiKey) throw new Error("API Key is missing.");
 
@@ -349,7 +353,10 @@ export async function chatCompletion(messages, model = null, config = {}) {
 export async function streamChatCompletion(messages, onToken, model = null, config = {}) {
     const apiKey = getApiKey();
     const baseUrl = getBaseUrl();
-    const modelToUse = model || getModel();
+    let modelToUse = model || getModel();
+    if (modelToUse && modelToUse.includes(',')) {
+        modelToUse = modelToUse.split(',')[0].trim();
+    }
 
     if (!apiKey) throw new Error("API Key is missing.");
 
