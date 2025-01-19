@@ -1068,7 +1068,7 @@ function AppContent() {
             </div>
 
             {selectedIds.length > 0 && (
-                <div className="fixed top-6 left-1/2 -translate-x-1/2 glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
+                <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
                     <span className="text-sm font-semibold text-slate-600">{selectedIds.length} items</span>
                     <div className="h-4 w-px bg-slate-300"></div>
                     <button
