@@ -102,7 +102,9 @@ export async function chatCompletion(messages, model = null, config = {}) {
             body: JSON.stringify({
                 model: modelToUse,
                 messages: messages,
-                temperature: 0.7,
+                ...(config.temperature && { temperature: config.temperature }),
+                ...(config.tools && { tools: config.tools }),
+                ...(config.tool_choice && { tool_choice: config.tool_choice }),
                 thinking_level: "high"
             })
         });
@@ -126,7 +128,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
     }
 }
 
-export async function streamChatCompletion(messages, onToken, model = null) {
+export async function streamChatCompletion(messages, onToken, model = null, config = {}) {
     const apiKey = getApiKey();
     const baseUrl = getBaseUrl();
     const modelToUse = model || getModel();
@@ -145,7 +147,7 @@ export async function streamChatCompletion(messages, onToken, model = null) {
             body: JSON.stringify({
                 model: modelToUse,
                 messages: messages,
-                temperature: 0.7,
+                ...(model && config?.temperature && { temperature: config.temperature }),
                 stream: true,
                 thinking_level: "high"
             })
