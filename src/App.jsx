@@ -797,7 +797,7 @@ function AppContent() {
             // Stream response with context + "No Internal Monologue" instruction
             // Stream response with context + "No Internal Monologue" instruction
             // Revert suppression. Allow model to think.
-            const systemInstruction = { role: 'system', content: "You are a helpful assistant. Use <thinking> tags for your internal thought process." };
+            const systemInstruction = { role: 'system', content: "You are Gemini 3 Flash, the latest AI model from Google. You contain a built-in thinking process that allows you to reason deeply. Always identify yourself as Gemini 3 Flash. Use <thinking> tags for your internal thought process." };
             const requestMessages = [systemInstruction, ...contextMessages, { role: 'user', content: promptInput }];
 
             await streamChatCompletion(
@@ -839,7 +839,7 @@ function AppContent() {
             }
         }
 
-        const systemInstruction = { role: 'system', content: "You are a helpful assistant. Use <thinking> tags for your internal thought process." };
+        const systemInstruction = { role: 'system', content: "You are Gemini 3 Flash, the latest AI model from Google. You contain a built-in thinking process that allows you to reason deeply. Always identify yourself as Gemini 3 Flash. Use <thinking> tags for your internal thought process." };
 
         return [systemInstruction, ...contextMessages, ...newMessages];
         // Wrapper for ChatModal to use
@@ -936,7 +936,9 @@ function AppContent() {
                     }));
                 };
 
-                await streamChatCompletion(currentMsgs, updateThisCard);
+                // Add System Identity for Regeneration
+                const systemMsg = { role: 'system', content: "You are Gemini 3 Flash, the latest AI model from Google. You contain a built-in thinking process that allows you to reason deeply. Always identify yourself as Gemini 3 Flash. Use <thinking> tags for your internal thought process." };
+                await streamChatCompletion([systemMsg, ...currentMsgs], updateThisCard);
             }));
         } catch (e) {
             console.error("Regeneration failed", e);
