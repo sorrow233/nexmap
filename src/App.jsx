@@ -167,6 +167,50 @@ function AppContent() {
         };
     }, []);
 
+    // Auto Arrange Logic
+    const handleAutoArrange = () => {
+        if (cards.length === 0) return;
+
+        const sortedCards = [...cards].sort((a, b) => {
+            // Function to extract number from start of text
+            const getNum = (card) => {
+                let text = card.data.title || "";
+                if (card.data.messages && card.data.messages.length > 0) {
+                    // Try to get text from first user message if title is generic
+                    const firstMsg = card.data.messages[0];
+                    if (typeof firstMsg.content === 'string') {
+                        text = firstMsg.content;
+                    } else if (Array.isArray(firstMsg.content) && firstMsg.content[0]?.text) {
+                        text = firstMsg.content[0].text;
+                    }
+                }
+
+                const match = text.match(/^(\d+)[.、]/);
+                return match ? parseInt(match[1], 10) : Infinity; // Non-numbered go to end
+            };
+
+            const numA = getNum(a);
+            const numB = getNum(b);
+
+            if (numA === numB) return 0;
+            return numA - numB;
+        });
+
+        // Layout Parameters
+        const startX = 100;
+        const startY = 200;
+        const gap = 50;
+        const cardWidth = 320; // Approx card width
+
+        const newCards = sortedCards.map((card, index) => ({
+            ...card,
+            x: startX + index * (cardWidth + gap),
+            y: startY
+        }));
+
+        setCards(newCards);
+    };
+
     const handleLogin = async () => {
         try {
             await auth.signInWithPopup(googleProvider);
@@ -1476,6 +1520,16 @@ function AppContent() {
                         title="Add Sticky Note"
                     >
                         <StickyNote size={20} />
+                    </button>
+
+                    <div className="w-px h-8 bg-slate-700/50 mx-1" />
+
+                    <button
+                        onClick={handleAutoArrange}
+                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
+                        title="Auto Arrange (01. 02. ...)"
+                    >
+                        <AlignStartHorizontal size={20} />
                     </button>
 
                     <div className="w-px h-8 bg-slate-700/50 mx-1" />
