@@ -961,24 +961,14 @@ function AppContent() {
             newCard.data.messages[0].content = content;
         }
 
-        setCards(prev => [...prev, newCard]);
-        if (autoConnections.length > 0) {
-            setConnections(prev => [...prev, ...autoConnections]);
-            addToHistory(cards, [...connections, ...autoConnections]); // Save history
-        } else {
-            // Just standard history save if needed? 
-            // setCards already triggers standard history if we don't batch it.
-            // But we might want to batch this operation.
-            // Current component logic seems to rely on separate history? 
-            // Actually, addToHistory takes current snapshot. 
-            // Let's wait for next render cycle? No, passing computed new state is better.
-        }
-
-        setIsGenerating(true);
-
         const newCardState = [...cards, newCard];
         setCards(newCardState);
-        addToHistory(newCardState, connections);
+        const finalConnections = [...connections, ...autoConnections];
+        setConnections(finalConnections);
+        addToHistory(newCardState, finalConnections);
+        setPromptInput('');
+        setGlobalImages([]); // Clear images
+        setGeneratingCardIds(prev => new Set(prev).add(newId));
         setPromptInput('');
         setGlobalImages([]); // Clear images
         setGeneratingCardIds(prev => new Set(prev).add(newId));
