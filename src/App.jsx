@@ -1495,198 +1495,161 @@ function AppContent() {
                         <Settings size={20} />
                     </button>
 
-                    <div className="relative flex-grow">
-                        <textarea
-                            ref={globalPromptInputRef}
-                            value={promptInput}
-                            onChange={e => setPromptInput(e.target.value)}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.nativeEvent.isComposing) {
-                                    e.preventDefault();
-                                    handleCreateCard();
-                                }
-                            }}
-                            onPaste={handleGlobalPaste}
-                            rows={1}
-                            className="w-full bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium px-2 py-3 resize-none custom-scrollbar min-h-[48px] max-h-[200px]"
-                            placeholder="Type a prompt to create a new card..."
-                            onInput={(e) => {
-                                e.target.style.height = 'auto';
-                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                            }}
-                        />
-                    </div>
+                    {/* Floating Gemini Input Bar */}
+                    <div className="fixed bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4">
+                        <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
 
-                    <input
-                        type="file"
-                        ref={globalFileInputRef}
-                        className="hidden"
-                        accept="image/*"
-                        multiple
-                        onChange={handleGlobalImageUpload}
-                    />
-                    <button
-                        onClick={() => globalFileInputRef.current?.click()}
-                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
-                        title="Upload Image"
-                    >
-                        <ImageIcon size={20} />
-                    </button>
-
-                    <div className="relative">
-                        <button
-                            onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
-                            className="h-12 flex items-center gap-2 px-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all group"
-                            title="Switch Model"
-                        >
-                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400 group-hover:scale-110 transition-transform">
-                                <Settings size={18} />
-                            </div>
-                            <div className="flex flex-col items-start pr-1 hidden sm:flex">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Model</span>
-                                <span className="text-xs font-semibold text-slate-300 truncate max-w-[80px]">
-                                    {currentModelName.split('/').pop()}
-                                </span>
-                            </div>
-                        </button>
-
-                        {isSwitcherOpen && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setIsSwitcherOpen(false)}
-                                />
-                                <div className="absolute bottom-full left-0 mb-3 w-64 glass-panel rounded-2xl border border-slate-700/50 shadow-2xl z-50 overflow-hidden animate-slide-up">
-                                    <div className="p-3 border-b border-slate-700/50 bg-slate-800/30">
-                                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2">Quick Switch</h3>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto p-2 py-1 custom-scrollbar">
-                                        {availableModels.map(model => (
-                                            <button
-                                                key={model}
-                                                onClick={async () => {
-                                                    const settings = await loadSettings();
-                                                    settings.providers[settings.activeProvider].model = model;
-                                                    await saveSettings(settings);
-                                                    setCurrentModelName(model);
-                                                    setIsSwitcherOpen(false);
-                                                }}
-                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all ${currentModelName === model
-                                                    ? 'bg-brand-500/10 text-brand-400 font-bold'
-                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                                                    }`}
-                                            >
-                                                <span className="truncate">{model.split('/').pop()}</span>
-                                                {currentModelName === model && <div className="w-1.5 h-1.5 rounded-full bg-brand-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="p-2 pt-1 border-t border-slate-700/50 bg-slate-800/20">
-                                        <button
-                                            onClick={() => {
-                                                setIsSettingsOpen(true);
-                                                setIsSwitcherOpen(false);
-                                            }}
-                                            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-400 hover:bg-brand-500/5 transition-all uppercase tracking-widest"
-                                        >
-                                            <Settings size={14} />
-                                            Advanced Settings
-                                        </button>
-                                    </div>
+                            <div className="flex items-end gap-2 px-2">
+                                {/* Left Actions */}
+                                <div className="flex gap-1 pb-2">
+                                    <button
+                                        onClick={() => globalFileInputRef.current?.click()}
+                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                        title="Upload Image"
+                                    >
+                                        <ImageIcon size={20} />
+                                    </button>
+                                    {/* Input for file upload */}
+                                    <input
+                                        type="file"
+                                        ref={globalFileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handleGlobalImageUpload}
+                                    />
+                                    <button
+                                        onClick={handleCreateNote}
+                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                        title="Add Sticky Note"
+                                    >
+                                        <StickyNote size={20} />
+                                    </button>
                                 </div>
-                            </>
-                        )}
+
+                                {/* Input Area */}
+                                <div className="flex-1 relative">
+                                    <textarea
+                                        ref={globalPromptInputRef}
+                                        value={promptInput}
+                                        onInput={(e) => {
+                                            setPromptInput(e.target.value);
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                                e.preventDefault();
+                                                handleCreateCard();
+                                            }
+                                        }}
+                                        placeholder={
+                                            cards.length === 0
+                                                ? "Start a new board..."
+                                                : selectedIds.length > 0
+                                                    ? `Ask about ${selectedIds.length} selected items...`
+                                                    : "Type to create or ask..."
+                                        }
+                                        className="w-full bg-transparent text-slate-200 placeholder-slate-500 text-base p-3 focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px] scrollbar-hide"
+                                        rows={1}
+                                    />
+                                    {/* Image Previews in Input */}
+                                    {globalImages.length > 0 && (
+                                        <div className="flex gap-2 p-2 overflow-x-auto">
+                                            {globalImages.map((img, index) => (
+                                                <div key={index} className="relative group shrink-0">
+                                                    <img
+                                                        src={img.previewUrl}
+                                                        alt="Upload preview"
+                                                        className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                                                    />
+                                                    <button
+                                                        onClick={() => removeGlobalImage(index)}
+                                                        className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right Actions & Submit */}
+                                <div className="flex gap-1 pb-2 items-center">
+                                    {/* Auto Arrange (Mini) */}
+                                    <button
+                                        onClick={handleAutoArrange}
+                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                        title="Auto Arrange"
+                                    >
+                                        <AlignStartHorizontal size={20} />
+                                    </button>
+
+                                    {/* Settings (Mini) */}
+                                    <button
+                                        onClick={() => setIsSettingsOpen(true)}
+                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                        title="Settings"
+                                    >
+                                        <Settings size={20} />
+                                    </button>
+
+                                    <div className="w-px h-6 bg-white/10 mx-1" />
+
+                                    <button
+                                        onClick={handleCreateCard}
+                                        disabled={(!promptInput.trim() && globalImages.length === 0)}
+                                        className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
+                                    >
+                                        {isGenerating ? (
+                                            <Loader2 size={20} className="animate-spin" />
+                                        ) : (
+                                            <Sparkles size={20} className="fill-white" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>            </div>
+
+                {selectedIds.length > 0 && (
+                    <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
+                        <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
+                        <div className="h-4 w-px bg-slate-300"></div>
+                        <button
+                            onClick={handleRegenerate}
+                            className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+                            title="Regenerate response for selected cards"
+                        >
+                            <RefreshCw size={16} />
+                            <span className="text-sm font-medium">Retry</span>
+                        </button>
+                        <div className="h-4 w-px bg-slate-300"></div>
+                        <button
+                            onClick={handleBatchDelete}
+                            className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            <Trash2 size={16} />
+                            <span className="text-sm font-medium">Delete</span>
+                        </button>
                     </div>
+                )}
 
-                    <button
-                        onClick={handleCreateNote}
-                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
-                        title="Add Sticky Note"
-                    >
-                        <StickyNote size={20} />
-                    </button>
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-                    <div className="w-px h-8 bg-slate-700/50 mx-1" />
-
-                    <button
-                        onClick={handleAutoArrange}
-                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
-                        title="Auto Arrange (01. 02. ...)"
-                    >
-                        <AlignStartHorizontal size={20} />
-                    </button>
-
-                    <div className="w-px h-8 bg-slate-700/50 mx-1" />
-
-                    <button
-                        onClick={handleAutoArrange}
-                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
-                        title="Auto Arrange (01. 02. ...)"
-                    >
-                        <AlignStartHorizontal size={20} />
-                    </button>
-
-                    {/* Topic Expansion Button */}
-                    {selectedIds.length === 1 && (() => {
-                        const card = cards.find(c => c.id === selectedIds[0]);
-                        return card?.data?.marks?.length > 0;
-                    })() && (
-                            <button
-                                onClick={() => handleExpandTopics(selectedIds[0])}
-                                className="flex items-center gap-2 px-4 py-2 text-brand-500 hover:text-brand-400 hover:bg-brand-500/10 rounded-xl transition-all animate-pulse"
-                                title="Expand topics from highlights"
-                            >
-                                <Sparkles size={20} className="fill-brand-500/20" />
-                                <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap">Expand Topics</span>
-                            </button>
-                        )}
-
-                    <button
-                        onClick={handleCreateCard}
-                        disabled={(!promptInput.trim() && globalImages.length === 0)}
-                        className="p-3 bg-brand-600 text-white rounded-xl hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-brand-500/25 flex-shrink-0"
-                    >
-                        <Sparkles size={20} />
-                    </button>
-                </div>
+                {expandedCardId && (
+                    <ChatModal
+                        card={cards.find(c => c.id === expandedCardId)}
+                        isOpen={!!expandedCardId}
+                        onClose={() => setExpandedCardId(null)}
+                        onUpdate={handleUpdateCard}
+                        onGenerateResponse={handleChatGenerate}
+                        isGenerating={generatingCardIds.has(expandedCardId)}
+                        onCreateNote={handleCreateNote}
+                    />
+                )}
             </div>
-
-            {selectedIds.length > 0 && (
-                <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
-                    <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
-                    <div className="h-4 w-px bg-slate-300"></div>
-                    <button
-                        onClick={handleRegenerate}
-                        className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
-                        title="Regenerate response for selected cards"
-                    >
-                        <RefreshCw size={16} />
-                        <span className="text-sm font-medium">Retry</span>
-                    </button>
-                    <div className="h-4 w-px bg-slate-300"></div>
-                    <button
-                        onClick={handleBatchDelete}
-                        className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                        <Trash2 size={16} />
-                        <span className="text-sm font-medium">Delete</span>
-                    </button>
-                </div>
-            )}
-
-            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-
-            {expandedCardId && (
-                <ChatModal
-                    card={cards.find(c => c.id === expandedCardId)}
-                    isOpen={!!expandedCardId}
-                    onClose={() => setExpandedCardId(null)}
-                    onUpdate={handleUpdateCard}
-                    onGenerateResponse={handleChatGenerate}
-                    isGenerating={generatingCardIds.has(expandedCardId)}
-                    onCreateNote={handleCreateNote}
-                />
-            )}
         </React.Fragment>
     );
 }
