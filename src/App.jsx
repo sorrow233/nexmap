@@ -628,8 +628,8 @@ function AppContent() {
 
             await streamChatCompletion(
                 [{ role: 'user', content: content }],
-                updateCardContent
-                // No model passed, uses global default
+                updateCardContent,
+                null
             );
 
         } catch (error) {
