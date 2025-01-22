@@ -1356,7 +1356,7 @@ function AppContent() {
     if (view === 'gallery') {
         return (
             <React.Fragment>
-                <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-hidden transition-colors duration-500">
+                <div className="bg-slate-50 dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto transition-colors duration-500 custom-scrollbar">
                     {/* Ambient Background */}
                     <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
                     <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
