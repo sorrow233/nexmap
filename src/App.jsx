@@ -102,6 +102,7 @@ function AppContent() {
 
 
     const [view, setView] = useState('gallery'); // 'gallery' | 'canvas'
+    const [isGenerating, setIsGenerating] = useState(false);
     const [boardsList, setBoardsList] = useState([]);
 
     // Track initialization to avoid first history push being empty
