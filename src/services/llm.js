@@ -37,7 +37,7 @@ const DEFAULT_BASE_URL = getEnvVar('baseUrl') || 'https://api.gmi-serving.com/v1
 const STORAGE_KEY_PREFIX = 'mixboard_llm_key_';
 const STORAGE_BASE_URL = 'mixboard_llm_base_url';
 const STORAGE_MODEL = 'mixboard_llm_model';
-const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp';
+const DEFAULT_MODEL = 'google/gemini-3-flash-preview';
 
 // Helper to get provider ID from base URL
 const getProviderIdFromUrl = (url) => {
@@ -138,19 +138,30 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
     const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
     try {
+        const requestBody = {
+            model: modelToUse,
+            messages: messages,
+            ...(config?.temperature !== undefined && { temperature: config.temperature }),
+            stream: true,
+            thinking_level: "high"
+        };
+
+        // Debug: Log actual request to verify parameters
+        console.log('🔍 [LLM Debug] Sending request:', {
+            endpoint,
+            model: requestBody.model,
+            thinking_level: requestBody.thinking_level,
+            temperature: requestBody.temperature,
+            messageCount: messages.length
+        });
+
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`,
             },
-            body: JSON.stringify({
-                model: modelToUse,
-                messages: messages,
-                ...(model && config?.temperature && { temperature: config.temperature }),
-                stream: true,
-                thinking_level: "high"
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
