@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Maximize2, Link, ArrowRight } from 'lucide-react';
+import { Maximize2, Link, ArrowRight, Copy } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 
@@ -131,6 +131,19 @@ export default function Card({
         previewText = "..." + previewText.slice(-100);
     }
 
+    // Copy handler
+    const handleCopy = async (e) => {
+        e.stopPropagation();
+        const textToCopy = lastMessage?.content || '';
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            // Optional: Show a brief success indicator
+            console.log('✅ Copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
 
     const zIndex = isSelected ? 50 : 1;
 
@@ -151,27 +164,32 @@ export default function Card({
             onTouchStart={handleTouchStart}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
         >
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl backdrop-blur-sm">
-                <div className="flex items-center gap-2 overflow-hidden">
-                    <div className="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0 animate-pulse"></div>
-                    <h3 className="font-bold text-slate-700 truncate text-sm" title={cardContent.title}>
-                        {cardContent.title || "New Card"}
-                    </h3>
+            {/* Top Bar - Model + Buttons */}
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100">
+                <div className="text-xs font-mono text-slate-400 truncate flex-shrink">
+                    {cardContent.model || 'No model'}
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 ml-2 flex-shrink-0">
                     <button
-                        onClick={(e) => { e.stopPropagation(); onConnect && onConnect(data.id); }}
-                        className={`p - 1.5 rounded - lg transition - colors ${isConnecting ? 'text-green-600 bg-green-50' : 'text-slate-400 hover:text-brand-600 hover:bg-brand-50'} `}
-                        title={isConnecting ? "Click to connect" : "Link this card"}
+                        onClick={handleCopy}
+                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                        title="Copy response"
                     >
-                        <Link size={14} />
+                        <Copy size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
+                        className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Create connection"
+                    >
+                        <Link size={16} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
                         className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                         title="Expand"
                     >
-                        <Maximize2 size={14} />
+                        <Maximize2 size={16} />
                     </button>
                 </div>
             </div>
