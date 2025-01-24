@@ -413,10 +413,25 @@ function AppContent() {
         }
     };
 
-    const handleCopy = () => {
+    const handleCopy = async () => {
         if (selectedIds.length === 0) return;
         const selectedCards = cards.filter(c => selectedIds.includes(c.id));
         setClipboard(selectedCards);
+
+        // Also copy text content to system clipboard for external pasting with Cmd+C
+        try {
+            const textContent = selectedCards.map(c => {
+                const lastMsg = c.data.messages[c.data.messages.length - 1];
+                return lastMsg ? lastMsg.content : '';
+            }).join('\n\n---\n\n');
+
+            if (textContent) {
+                await navigator.clipboard.writeText(textContent);
+                console.log("Copied to system clipboard");
+            }
+        } catch (e) {
+            console.error("Failed to copy to system clipboard", e);
+        }
     };
 
     const handlePaste = () => {
