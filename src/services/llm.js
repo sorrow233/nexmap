@@ -104,8 +104,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
                 messages: messages,
                 ...(config.temperature && { temperature: config.temperature }),
                 ...(config.tools && { tools: config.tools }),
-                ...(config.tool_choice && { tool_choice: config.tool_choice }),
-                thinking_level: "high"
+                ...(config.tool_choice && { tool_choice: config.tool_choice })
             })
         });
 
