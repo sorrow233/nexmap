@@ -233,8 +233,9 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
     const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
 
     if (isNativeGemini) {
-        // --- NATIVE GEMINI STREAMING ---
-        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:streamGenerateContent?alt=sse`;
+        // --- NATIVE GEMINI PSEUDO-STREAMING ---
+        // The :streamGenerateContent endpoint is unstable. Use :generateContent instead and simulate streaming.
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:generateContent`;
         // Note: GMI Cloud specifically supports SSE via ?alt=sse or similar standard. 
         // Official Google API uses a different streaming protocol (REST stream of JSONs). 
         // GMI Cloud documentation usually implies OpenAI compatibility for streaming, OR Native streaming.
