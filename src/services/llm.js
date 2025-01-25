@@ -143,7 +143,8 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
             messages: messages,
             ...(config?.temperature !== undefined && { temperature: config.temperature }),
             stream: true,
-            thinking_level: "high"
+            ...(config.tools && { tools: config.tools }),
+            ...(config.tool_choice && { tool_choice: config.tool_choice })
         };
 
         // Debug: Log actual request to verify parameters
