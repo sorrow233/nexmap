@@ -103,19 +103,32 @@ export async function chatCompletion(messages, model = null, config = {}) {
     if (isNativeGemini) {
         // --- NATIVE GEMINI API MODE ---
         // Endpoint: /v1/models/{model}:generateContent
-        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:generateContent`;
+
+        // Refactor: Strip 'google/' prefix to match working Python script
+        let cleanModel = modelToUse;
+        if (cleanModel.startsWith('google/')) {
+            cleanModel = cleanModel.replace('google/', '');
+        }
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
+
+        // 1. Inject date context and FILTER out empty messages
+        const filteredMessages = messages.filter(m => m.content && m.content.trim() !== '');
 
         // Convert Messages to Native Format
-        // OpenAI: [{role: 'user', content: '...'}, ...]
-        // Gemini: contents: [{role: 'user', parts: [{text: '...'}]}, ...]
-        // Note: System prompts in Gemini are properly handled via 'system_instruction' but GMI might behave differently.
-        // Safer approach: Prepend system prompt to first user message or use 'user' role for system instructions if strictly following chat history.
-        // GMI's native endpoint expects 'user' and 'model' roles.
-
-        const contents = messages.map(msg => ({
+        const contentsRaw = filteredMessages.map(msg => ({
             role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
             parts: [{ text: msg.content }]
         }));
+
+        // Merge consecutive roles
+        const contents = [];
+        for (const msg of contentsRaw) {
+            if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
+                contents[contents.length - 1].parts[0].text += "\n\n" + msg.parts[0].text;
+            } else {
+                contents.push(msg);
+            }
+        }
 
 
 
@@ -231,7 +244,14 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
         // Solution: Use the working :generateContent endpoint (with Search Grounding)
         // then simulate streaming by chunking the response.
 
-        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:generateContent`;
+        // Refactor: Match Python script logic for URL construction
+        // Remove 'google/' prefix if present, as Native API expects just the model ID
+        let cleanModel = modelToUse;
+        if (cleanModel.startsWith('google/')) {
+            cleanModel = cleanModel.replace('google/', '');
+        }
+
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
 
         // 1. Inject date context into first user message
         const messagesWithDate = [...messages];
