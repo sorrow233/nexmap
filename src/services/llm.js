@@ -117,14 +117,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
             parts: [{ text: msg.content }]
         }));
 
-        // Inject Date Context into the last user message to ensure it's picked up
-        // Or append as a new user part
-        if (contents.length > 0) {
-            const lastMsg = contents[contents.length - 1];
-            if (lastMsg.role === 'user') {
-                lastMsg.parts[0].text = `[System: ${dateContext}]\n\n${lastMsg.parts[0].text}`;
-            }
-        }
+
 
         const requestBody = {
             contents: contents,
@@ -251,12 +244,7 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
             parts: [{ text: msg.content }]
         }));
 
-        if (contents.length > 0) {
-            const lastMsg = contents[contents.length - 1];
-            if (lastMsg.role === 'user') {
-                lastMsg.parts[0].text = `[System: ${dateContext}]\n\n${lastMsg.parts[0].text}`;
-            }
-        }
+
 
         const requestBody = {
             contents: contents,
