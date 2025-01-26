@@ -253,8 +253,10 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
 
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
 
-        // 1. Inject date context into first user message
-        const messagesWithDate = [...messages];
+        // 1. Inject date context and FILTER out empty messages
+        const filteredMessages = messages.filter(m => m.content && m.content.trim() !== '');
+
+        const messagesWithDate = [...filteredMessages];
         if (messagesWithDate.length > 0) {
             const firstUserMsgIndex = messagesWithDate.findIndex(m => m.role === 'user');
             if (firstUserMsgIndex !== -1) {
