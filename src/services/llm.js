@@ -227,24 +227,29 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
 
     if (isNativeGemini) {
         // --- NATIVE GEMINI PSEUDO-STREAMING ---
-        // The :streamGenerateContent endpoint is unstable. Use :generateContent instead and simulate streaming.
+        // The :streamGenerateContent endpoint is unstable on GMI Cloud.
+        // Solution: Use the working :generateContent endpoint (with Search Grounding)
+        // then simulate streaming by chunking the response.
+
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${modelToUse}:generateContent`;
-        // Note: GMI Cloud specifically supports SSE via ?alt=sse or similar standard. 
-        // Official Google API uses a different streaming protocol (REST stream of JSONs). 
-        // GMI Cloud documentation usually implies OpenAI compatibility for streaming, OR Native streaming.
-        // Let's assume Native REST Streaming (Chunked Transfer Encoding) of JSON objects if NOT using /chat/completions.
-        // BUT wait, standard browser fetch stream handling works for line-delimited JSON or concat JSON.
 
-        // Let's TRY using the standard OpenAI-compatible endpoint for Streaming FIRST if possible?
-        // NO, User explicitly wants "Native + Searching". 
-        // Native Streaming URL: /models/{model}:streamGenerateContent
-
-        const contents = messages.map(msg => ({
+        // 1. Map messages to Native format
+        let rawContents = messages.map(msg => ({
             role: msg.role === 'user' || msg.role === 'system' ? 'user' : 'model',
             parts: [{ text: msg.content }]
         }));
 
-
+        // 2. Merge consecutive messages with the same role (Critical for Gemini API)
+        const contents = [];
+        for (const msg of rawContents) {
+            if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
+                // Merge into previous message
+                const prev = contents[contents.length - 1];
+                prev.parts[0].text += "\n\n" + msg.parts[0].text;
+            } else {
+                contents.push(msg);
+            }
+        }
 
         const requestBody = {
             contents: contents,
@@ -259,70 +264,47 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
             }
         };
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody)
-        });
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify(requestBody)
+            });
 
-        if (!response.ok) {
-            throw new Error(`Native Stream Failed: ${response.statusText}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            // Native API returns a JSON array of objects, but streamed.
-            // Typically it comes as independent JSON objects like:
-            // [{...}]\n[{...}] OR [ \n { ... }, \n { ... } ]
-            // We need to parse valid JSON objects from the buffer.
-
-            // Heuristic parsers for "JSON Stream"
-            let bracketOpenIndex = buffer.indexOf('{');
-            while (bracketOpenIndex !== -1) {
-                let bracketCloseIndex = -1;
-                let openCount = 0;
-                // Find matching closing brace
-                for (let i = bracketOpenIndex; i < buffer.length; i++) {
-                    if (buffer[i] === '{') openCount++;
-                    if (buffer[i] === '}') openCount--;
-                    if (openCount === 0) {
-                        bracketCloseIndex = i;
-                        break;
+            if (!response.ok) {
+                let errorMsg = await response.text();
+                // Extract useful error message if JSON
+                try {
+                    const jsonErr = JSON.parse(errorMsg);
+                    if (jsonErr.error && jsonErr.error.message) {
+                        errorMsg = jsonErr.error.message;
                     }
-                }
+                } catch (e) { }
+                throw new Error(`Native Search Failed: ${errorMsg}`);
+            }
 
-                if (bracketCloseIndex !== -1) {
-                    const jsonStr = buffer.substring(bracketOpenIndex, bracketCloseIndex + 1);
-                    buffer = buffer.substring(bracketCloseIndex + 1); // Advance buffer
+            const data = await response.json();
 
-                    try {
-                        const json = JSON.parse(jsonStr);
-                        // Extract content
-                        // candidates[0].content.parts[0].text
-                        if (json.candidates && json.candidates[0].content && json.candidates[0].content.parts) {
-                            const text = json.candidates[0].content.parts[0].text;
-                            if (text) onToken(text);
-                        }
-                    } catch (e) {
-                        console.warn("Stream JSON Parse Error", e);
-                    }
+            // Extract full content
+            if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts) {
+                const fullText = data.candidates[0].content.parts[0].text || "";
 
-                    bracketOpenIndex = buffer.indexOf('{');
-                } else {
-                    break; // Wait for more data
+                // Simulate Streaming by chunking
+                const chunkSize = 15; // chars per chunk
+                for (let i = 0; i < fullText.length; i += chunkSize) {
+                    const chunk = fullText.slice(i, i + chunkSize);
+                    onToken(chunk);
+                    // Small delay for typing effect
+                    await new Promise(resolve => setTimeout(resolve, 8));
                 }
             }
+
+        } catch (error) {
+            console.error("Native Search Pseudo-Stream Error:", error);
+            throw error;
         }
 
     } else {
