@@ -629,9 +629,6 @@ function AppContent() {
                         const msgs = [...c.data.messages];
                         const lastMsg = msgs[msgs.length - 1];
                         let newContent = lastMsg.content + contentChunk;
-                        if (newContent.length < 500) {
-                            newContent = newContent.replace(/^\*\*.*?\*\*\s*\n?/gm, '').trim();
-                        }
                         msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
                         return { ...c, data: { ...c.data, messages: msgs } };
                     }

@@ -150,8 +150,8 @@ export default function Card({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[320px] bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col transition-shadow duration-200 select-none pointer-events-auto group
-                ${isSelected ? 'ring-2 ring-brand-500 shadow-2xl shadow-brand-500/20' : ''}
+            className={`absolute w-[320px] bg-white/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/40 flex flex-col transition-all duration-300 select-none pointer-events-auto group
+                ${isSelected ? 'ring-2 ring-brand-500/50 shadow-[0_20px_50px_rgba(37,99,235,0.25)] scale-[1.02]' : 'hover:scale-[1.01] hover:shadow-[0_15px_40px_rgba(0,0,0,0.1)]'}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
                 ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
             style={{
@@ -165,45 +165,51 @@ export default function Card({
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
         >
             {/* Top Bar - Model + Buttons */}
-            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100">
-                <div className="text-xs font-mono text-slate-400 truncate flex-shrink">
-                    {cardContent.model || 'No model'}
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-200/20">
+                <div className="flex items-center gap-2 max-w-[60%]">
+                    <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">
+                        {cardContent.model?.replace('google/', '') || 'Gemini'}
+                    </div>
                 </div>
-                <div className="flex gap-1 ml-2 flex-shrink-0">
+                <div className="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                         onClick={handleCopy}
-                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-white/50 rounded-lg transition-all"
                         title="Copy response"
                     >
-                        <Copy size={16} />
+                        <Copy size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
-                        className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-white/50 rounded-lg transition-all"
                         title="Create connection"
                     >
-                        <Link size={16} />
+                        <Link size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
-                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-white/50 rounded-lg transition-all"
                         title="Expand"
                     >
-                        <Maximize2 size={16} />
+                        <Maximize2 size={14} />
                     </button>
                 </div>
             </div>
 
-            <div className="p-4 bg-slate-50/50 h-48 overflow-hidden relative group-hover:bg-slate-50 transition-colors">
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap text-xs font-lxgw">
+            <div className="p-4 h-48 overflow-hidden relative transition-colors">
+                <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap font-lxgw">
                     {previewText}
                 </p>
-                <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white/90 via-white/40 to-transparent pointer-events-none"></div>
             </div>
 
-            <div className="px-4 py-2 bg-white text-xs text-slate-400 flex justify-between items-center border-t border-slate-50">
-                <span>{messages.length} msgs</span>
-                <span className="uppercase tracking-wider font-bold text-[10px]">{cardContent.model || 'GPT-3.5'}</span>
+            <div className="px-4 py-2 text-[10px] text-slate-400 flex justify-between items-center border-t border-slate-100/50">
+                <span className="font-medium bg-slate-100/50 px-2 py-0.5 rounded-full">{messages.length} messages</span>
+                <span className="flex items-center gap-1 font-semibold text-brand-600/70">
+                    <Sparkles size={8} />
+                    {cardContent.model?.includes('flash') ? 'FAST' : 'PRO'}
+                </span>
             </div>
         </div>
     );
