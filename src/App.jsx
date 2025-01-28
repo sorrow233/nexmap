@@ -1651,7 +1651,7 @@ function AppContent() {
                     onCreateNote={handleCreateNote}
                 />
             )}
-        </React.Fragment >
+        </React.Fragment>
     );
 }
 
