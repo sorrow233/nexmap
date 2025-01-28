@@ -245,7 +245,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
 
     console.log('[LLM] Chat Completion:', { model: modelToUse, baseUrl });
 
-    const isNativeGemini = baseUrl.includes('googleapis.com') || baseUrl.includes('gmi-serving.com');
+    const isNativeGemini = baseUrl.includes('googleapis.com');
 
     if (isNativeGemini) {
         return await nativeGeminiCompletion(messages, modelToUse, apiKey, baseUrl, config);
@@ -380,7 +380,7 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
 
     console.log('[LLM] Stream Completion:', { model: modelToUse, baseUrl });
 
-    const isNativeGemini = baseUrl.includes('googleapis.com') || baseUrl.includes('gmi-serving.com');
+    const isNativeGemini = baseUrl.includes('googleapis.com');
 
     if (isNativeGemini) {
         // Pseudo-streaming for Gemini
