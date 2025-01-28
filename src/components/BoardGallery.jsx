@@ -238,7 +238,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
-                {boards.map((board, index) => (
+                {[...boards].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).map((board, index) => (
                     <div
                         key={board.id}
                         onClick={() => onSelectBoard(board.id)}
