@@ -1587,15 +1587,6 @@ function AppContent() {
                                     <AlignStartHorizontal size={20} />
                                 </button>
 
-                                {/* Settings (Mini) */}
-                                <button
-                                    onClick={() => setIsSettingsOpen(true)}
-                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                    title="Settings"
-                                >
-                                    <Settings size={20} />
-                                </button>
-
                                 <div className="w-px h-6 bg-white/10 mx-1" />
 
                                 <button
@@ -1618,6 +1609,21 @@ function AppContent() {
             {selectedIds.length > 0 && (
                 <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
                     <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
+
+                    {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
+                        <>
+                            <div className="h-4 w-px bg-slate-300"></div>
+                            <button
+                                onClick={() => handleExpandTopics(selectedIds[0])}
+                                className="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
+                                title="Expand marked topics into new cards"
+                            >
+                                <Sparkles size={16} />
+                                <span className="text-sm font-medium">Expand Topic</span>
+                            </button>
+                        </>
+                    )}
+
                     <div className="h-4 w-px bg-slate-300"></div>
                     <button
                         onClick={handleRegenerate}
