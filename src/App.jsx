@@ -12,7 +12,8 @@ import {
     streamChatCompletion,
     generateTitle,
     imageGeneration,
-    getApiConfig
+    getApiConfig, // Keep for legacy if needed, or better use getActiveConfig
+    getActiveConfig
 } from './services/llm';
 import { uploadImageToS3, getS3Config } from './services/s3';
 
@@ -644,7 +645,7 @@ function AppContent() {
                     { role: 'user', content: content },
                     { role: 'assistant', content: '' }
                 ],
-                model: getApiConfig().model || "google/gemini-2.0-flash-exp"
+                model: getActiveConfig().model || "gemini-2.0-flash-exp"
             }
         };
 
@@ -1043,14 +1044,11 @@ function AppContent() {
         try {
             // Use user input directly as title (truncated if too long)
             const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : (promptInput || 'Image Input');
-
             setCards(prev => prev.map(c =>
                 c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
             ));
 
-            // Contextual Logic: If cards are selected, use them as context
-            // PLUS: Check connected cards
-            let contextMessages = [];
+            let contextMessages = []; // Initialize contextMessages here, as it's used later
 
             // 1. Explicitly selected cards
             let contextSourceIds = [...selectedIds];
@@ -1118,8 +1116,8 @@ function AppContent() {
 
             const sequence = String(nextNum).padStart(2, '0');
             const newEntry = initialContent
-                ? `\n\n${sequence}. ${initialContent}`
-                : `\n\n${sequence}. `;
+                ? `\n\n${sequence}. ${initialContent} `
+                : `\n\n${sequence}.`;
 
             const updatedNote = {
                 ...existingNote,
@@ -1138,8 +1136,8 @@ function AppContent() {
             const newId = Date.now();
             const sequence = "01";
             const prefixedContent = initialContent
-                ? `${sequence}. ${initialContent}`
-                : `${sequence}. `;
+                ? `${sequence}. ${initialContent} `
+                : `${sequence}.`;
 
             // Calculate center position using current pan and zoom
             const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
@@ -1198,8 +1196,6 @@ function AppContent() {
             const newX = sourceCard.x + Math.cos(angle) * dist;
             const newY = sourceCard.y + Math.sin(angle) * dist;
 
-            const apiConfig = getApiConfig();
-            const defaultModel = sourceCard.data.model || apiConfig.model || "google/gemini-2.0-flash-exp";
             const defaultProviderId = sourceCard.data.providerId || "gmicloud";
 
             const newCard = {
@@ -1266,7 +1262,7 @@ function AppContent() {
             ).join('\n\n---\n\n');
 
             if (contextText.trim()) {
-                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText} ` });
+                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others.Here is their recent context:]\n\n${contextText} ` });
             }
         }
 

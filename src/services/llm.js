@@ -1,238 +1,155 @@
-// Simplified API Configuration System
-// Version 2.0 - Single source of truth, no multi-provider complexity
+// Optimized Multi-Provider LLM System
+// Version 3.0 - Robust, Extensible, and Context-Aware
 
 import { loadSettings } from './storage';
 
-// Configuration Storage Keys
-const CONFIG_VERSION = 'v2';
-const API_CONFIG_KEY = `mixboard_api_config_${CONFIG_VERSION}`;
+/**
+ * 核心配置管理
+ */
+const CONFIG_KEY = 'mixboard_providers_v3';
 
-// Default configuration
-const DEFAULT_CONFIG = {
-    apiKey: '',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    model: 'gemini-2.0-flash-exp'
+// 默认提供的基础模板
+const DEFAULT_PROVIDERS = {
+    'google': {
+        id: 'google',
+        name: 'Google Gemini',
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        apiKey: '',
+        model: 'gemini-2.0-flash-exp',
+        protocol: 'gemini'
+    },
+    'openai-compatible': {
+        id: 'openai-compatible',
+        name: 'OpenAI Compatible',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: '',
+        model: 'gpt-4o',
+        protocol: 'openai'
+    }
 };
 
 /**
- * Get current API configuration
- * Returns a validated config object
+ * 获取完整的提供者列表和当前激活的 ID
  */
-export const getApiConfig = () => {
+export const getProviderSettings = () => {
     try {
-        const stored = localStorage.getItem(API_CONFIG_KEY);
-        if (stored) {
-            const config = JSON.parse(stored);
-            // Validate required fields
-            if (config.apiKey && config.baseUrl && config.model) {
-                // Runtime Correction for invalid legacy models
-                if (config.model.includes('gemini-3')) {
-                    console.warn('[API Config] Correcting invalid model:', config.model);
-                    config.model = 'gemini-2.0-flash-exp';
-                    // Optional: persist correction back to storage to fix it permanently
-                    localStorage.setItem(API_CONFIG_KEY, JSON.stringify(config));
-                }
+        const stored = localStorage.getItem(CONFIG_KEY);
+        const settings = stored ? JSON.parse(stored) : null;
 
-                console.log('[API Config] Loaded:', { baseUrl: config.baseUrl, model: config.model });
-                return config;
+        // Migration Logic: Check for V2 config if V3 is missing
+        if (!settings) {
+            console.log('[LLM Config] V3 missing, checking for V2 legacy...');
+            const v2ConfigStr = localStorage.getItem('mixboard_api_config_v2');
+            if (v2ConfigStr) {
+                try {
+                    const v2Config = JSON.parse(v2ConfigStr);
+                    // Migrate V2 to Google slot if it looks like Gemini
+                    if (v2Config.model.includes('gemini')) {
+                        const migrated = JSON.parse(JSON.stringify(DEFAULT_PROVIDERS));
+                        migrated.google.apiKey = v2Config.apiKey || '';
+                        migrated.google.model = v2Config.model || 'gemini-2.0-flash-exp';
+                        // Keep baseUrl if custom, otherwise use default
+                        if (v2Config.baseUrl && !v2Config.baseUrl.includes('googleapis.com')) {
+                            // Actually V2 was hardcoded forgoogleapis mostly, but if custom?
+                            // Let's safe bet: use migrated key
+                        }
+                        console.log('[LLM Config] Migrated V2 to V3 Google Provider');
+                        return { providers: migrated, activeId: 'google' };
+                    }
+                } catch (e) { console.warn('Migration failed', e); }
             }
+            return { providers: DEFAULT_PROVIDERS, activeId: 'google' };
         }
+
+        return settings;
     } catch (e) {
-        console.error('[API Config] Failed to load:', e);
+        console.error('[LLM Config] Load failed:', e);
+        return { providers: DEFAULT_PROVIDERS, activeId: 'google' };
     }
-
-    console.log('[API Config] Using defaults');
-    return { ...DEFAULT_CONFIG };
 };
 
 /**
- * Save API configuration
- * Forces cache clear by using versioned key
+ * 保存配置
  */
-export const setApiConfig = (config) => {
-    const validated = {
-        apiKey: config.apiKey || '',
-        baseUrl: config.baseUrl || DEFAULT_CONFIG.baseUrl,
-        model: config.model || DEFAULT_CONFIG.model
-    };
-
-    localStorage.setItem(API_CONFIG_KEY, JSON.stringify(validated));
-    console.log('[API Config] Saved:', { baseUrl: validated.baseUrl, model: validated.model });
-
-    return validated;
+export const saveProviderSettings = (providers, activeId) => {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify({ providers, activeId }));
 };
 
 /**
- * Clear all API configuration
- * Useful for debugging and forcing re-authentication
+ * 获取当前正在使用的配置
  */
-export const clearApiConfig = () => {
-    // Clear all versions
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('mixboard_api_config_')) {
-            localStorage.removeItem(key);
+export const getActiveConfig = () => {
+    const { providers, activeId } = getProviderSettings();
+    return providers[activeId] || DEFAULT_PROVIDERS['google'];
+};
+
+// Backwards compatibility alias
+export const getApiConfig = () => {
+    return getActiveConfig();
+};
+
+// --- 协议适配器 ---
+
+/**
+ * Gemini 原生协议转换
+ */
+const formatToGemini = (messages) => {
+    const contents = [];
+    let systemInstruction = "";
+
+    messages.forEach(msg => {
+        if (msg.role === 'system') {
+            systemInstruction += (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)) + "\n";
+            return;
         }
-    });
-    console.log('[API Config] Cleared all configurations');
-};
 
-/**
- * Detect authentication method based on base URL
- */
-const getAuthMethod = (baseUrl) => {
-    if (baseUrl.includes('googleapis.com')) {
-        return 'query'; // Google official API uses ?key=
-    }
-    return 'bearer'; // Most others use Bearer token
-};
-
-/**
- * Helper to format messages for Native Gemini API
- */
-const formatGeminiMessages = (messages) => {
-    const now = new Date();
-    const dateContext = `Current Date and Time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}.`;
-
-    let processedMessages = messages.filter(m => {
-        if (!m.content) return false;
-        if (typeof m.content === 'string') return m.content.trim() !== '';
-        if (Array.isArray(m.content)) return m.content.length > 0;
-        return false;
-    }).map(m => JSON.parse(JSON.stringify(m)));
-
-    if (processedMessages.length > 0) {
-        const firstUserMsgIndex = processedMessages.findIndex(m => m.role === 'user');
-        if (firstUserMsgIndex !== -1) {
-            const msg = processedMessages[firstUserMsgIndex];
-            if (typeof msg.content === 'string') {
-                msg.content = `${dateContext}\n\n${msg.content}`;
-            } else if (Array.isArray(msg.content)) {
-                const textPart = msg.content.find(p => p.type === 'text');
-                if (textPart) {
-                    textPart.text = `${dateContext}\n\n${textPart.text}`;
-                } else {
-                    msg.content.unshift({ type: 'text', text: dateContext });
-                }
-            }
-        }
-    }
-
-    const rawContents = processedMessages.map(msg => {
-        const role = msg.role === 'user' || msg.role === 'system' ? 'user' : 'model';
+        const role = msg.role === 'assistant' ? 'model' : 'user';
         let parts = [];
 
         if (typeof msg.content === 'string') {
             parts = [{ text: msg.content }];
         } else if (Array.isArray(msg.content)) {
             parts = msg.content.map(part => {
-                if (part.type === 'text') {
-                    return { text: part.text };
-                } else if (part.type === 'image') {
-                    return {
-                        inline_data: {
-                            mime_type: part.source.media_type,
-                            data: part.source.data
-                        }
-                    };
-                }
-                return null;
-            }).filter(p => p);
-        }
-
-        return { role, parts };
-    });
-
-    const contents = [];
-    for (const msg of rawContents) {
-        if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
-            contents[contents.length - 1].parts.push(...msg.parts);
-        } else {
-            contents.push(msg);
-        }
-    }
-
-    return contents;
-};
-
-/**
- * Helper to download image from URL and convert to Base64
- */
-const fetchImageBase64 = async (url) => {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64data = reader.result.split(',')[1];
-            resolve({
-                data: base64data,
-                mimeType: blob.type
-            });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-};
-
-/**
- * Helper to resolve remote images to Base64
- */
-const resolveRemoteImages = async (messages) => {
-    const resolvedMessages = JSON.parse(JSON.stringify(messages));
-
-    for (const msg of resolvedMessages) {
-        if (Array.isArray(msg.content)) {
-            for (const part of msg.content) {
-                if (part.type === 'image' && part.source && part.source.type === 'url') {
-                    try {
-                        const { data, mimeType } = await fetchImageBase64(part.source.url);
-                        part.source = {
-                            type: 'base64',
-                            media_type: mimeType,
-                            data: data
-                        };
-                    } catch (e) {
-                        console.error("Failed to resolve remote image", e);
+                if (part.type === 'text') return { text: part.text };
+                if (part.type === 'image') return {
+                    inline_data: {
+                        mime_type: part.source.media_type,
+                        data: part.source.data
                     }
-                }
-            }
+                };
+                return null;
+            }).filter(Boolean);
         }
-    }
-    return resolvedMessages;
+
+        // Gemini 不允许连续相同角色的消息，需要合并
+        if (contents.length > 0 && contents[contents.length - 1].role === role) {
+            contents[contents.length - 1].parts.push(...parts);
+        } else {
+            contents.push({ role, parts });
+        }
+    });
+
+    return { contents, systemInstruction };
 };
 
 /**
- * Helper to format messages for OpenAI API
+ * OpenAI 协议转换
  */
-const formatOpenAIMessages = (messages) => {
+const formatToOpenAI = (messages) => {
     return messages.map(msg => {
         if (Array.isArray(msg.content)) {
             return {
                 role: msg.role,
                 content: msg.content.map(part => {
-                    if (part.type === 'text') {
-                        return { type: 'text', text: part.text };
-                    } else if (part.type === 'image') {
-                        if (part.source.type === 'base64') {
-                            return {
-                                type: 'image_url',
-                                image_url: {
-                                    url: `data:${part.source.media_type};base64,${part.source.data}`
-                                }
-                            };
-                        }
-                        if (part.source.type === 'url') {
-                            return {
-                                type: 'image_url',
-                                image_url: {
-                                    url: part.source.url
-                                }
-                            };
-                        }
+                    if (part.type === 'text') return { type: 'text', text: part.text };
+                    if (part.type === 'image') {
+                        return {
+                            type: 'image_url',
+                            image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` }
+                        };
                     }
                     return null;
-                }).filter(p => p)
+                }).filter(Boolean)
             };
         }
         return msg;
