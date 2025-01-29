@@ -10,18 +10,18 @@ const CONFIG_KEY = 'mixboard_providers_v3';
 const DEFAULT_PROVIDERS = {
     'google': {
         id: 'google',
-        name: 'Google Gemini',
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        name: 'GMI Gemini (Native)',
+        baseUrl: 'https://api.gmi-serving.com/v1',
         apiKey: '',
-        model: 'gemini-2.0-flash-exp',
+        model: 'google/gemini-3-flash-preview',
         protocol: 'gemini'
     },
     'openai-compatible': {
         id: 'openai-compatible',
-        name: 'OpenAI Compatible',
-        baseUrl: 'https://api.openai.com/v1',
+        name: 'GMI OpenAI (Compatible)',
+        baseUrl: 'https://api.gmi-serving.com/v1',
         apiKey: '',
-        model: 'gpt-4o',
+        model: 'google/gemini-3-flash-preview',
         protocol: 'openai'
     }
 };
@@ -41,19 +41,24 @@ export const getProviderSettings = () => {
             if (v2ConfigStr) {
                 try {
                     const v2Config = JSON.parse(v2ConfigStr);
-                    // Migrate V2 to Google slot if it looks like Gemini
-                    if (v2Config.model.includes('gemini')) {
-                        const migrated = JSON.parse(JSON.stringify(DEFAULT_PROVIDERS));
-                        migrated.google.apiKey = v2Config.apiKey || '';
-                        migrated.google.model = v2Config.model || 'gemini-2.0-flash-exp';
-                        // Keep baseUrl if custom, otherwise use default
-                        if (v2Config.baseUrl && !v2Config.baseUrl.includes('googleapis.com')) {
-                            // Actually V2 was hardcoded forgoogleapis mostly, but if custom?
-                            // Let's safe bet: use migrated key
-                        }
-                        console.log('[LLM Config] Migrated V2 to V3 Google Provider');
-                        return { providers: migrated, activeId: 'google' };
-                    }
+                    // Standard migration for GMI Serving
+                    const migrated = JSON.parse(JSON.stringify(DEFAULT_PROVIDERS));
+
+                    // Migrate API Key
+                    const apiKey = v2Config.apiKey || '';
+                    migrated.google.apiKey = apiKey;
+                    migrated['openai-compatible'].apiKey = apiKey;
+
+                    // Migrate Model - prioritize gemini-3-flash-preview
+                    const targetModel = (v2Config.model && v2Config.model.includes('gemini'))
+                        ? 'google/gemini-3-flash-preview'
+                        : (v2Config.model || 'google/gemini-3-flash-preview');
+
+                    migrated.google.model = targetModel;
+                    migrated['openai-compatible'].model = targetModel;
+
+                    console.log('[LLM Config] Migrated V2 to V3 GMI Providers');
+                    return { providers: migrated, activeId: 'google' };
                 } catch (e) { console.warn('Migration failed', e); }
             }
             return { providers: DEFAULT_PROVIDERS, activeId: 'google' };
@@ -186,7 +191,11 @@ export async function chatCompletion(messages, model = null, config = {}) {
  * Native Gemini API completion
  */
 async function nativeGeminiCompletion(messages, model, apiKey, baseUrl, config = {}) {
-    let cleanModel = model.startsWith('google/') ? model.replace('google/', '') : model;
+    // GMI Native endpoint expects the model without 'google/' prefix if using GMI base URL
+    let cleanModel = (baseUrl.includes('gmi'))
+        ? model.replace('google/', '')
+        : model;
+
     const authMethod = getAuthMethod(baseUrl);
 
     let endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;

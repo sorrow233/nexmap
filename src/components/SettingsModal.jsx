@@ -144,8 +144,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             key={p.id}
                                             onClick={() => setActiveId(p.id)}
                                             className={`relative p-4 rounded-xl border-2 text-left transition-all ${activeId === p.id
-                                                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
-                                                    : 'border-slate-100 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                                ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                                                : 'border-slate-100 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
                                                 }`}
                                         >
                                             <div className="font-bold text-slate-800 dark:text-slate-100">{p.name}</div>
@@ -174,7 +174,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             value={currentProvider.apiKey || ''}
                                             onChange={e => handleUpdateProvider('apiKey', e.target.value)}
                                             className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
-                                            placeholder="sk-..."
+                                            placeholder="GMI API Key"
                                         />
                                     </div>
                                 </div>
@@ -189,13 +189,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             value={currentProvider.baseUrl || ''}
                                             onChange={e => handleUpdateProvider('baseUrl', e.target.value)}
                                             className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
-                                            placeholder="https://api.openai.com/v1"
+                                            placeholder="https://api.gmi-serving.com/v1"
                                         />
                                     </div>
                                     <p className="text-xs text-slate-400 mt-1 ml-1">
                                         {currentProvider.protocol === 'gemini'
-                                            ? 'Example: https://generativelanguage.googleapis.com/v1beta'
-                                            : 'Example: https://api.openai.com/v1 (or your custom proxy)'}
+                                            ? 'Example: https://api.gmi-serving.com/v1 (GMI Native)'
+                                            : 'Example: https://api.gmi-serving.com/v1 (GMI OpenAI Compatible)'}
                                     </p>
                                 </div>
 
