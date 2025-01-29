@@ -109,6 +109,13 @@ function AppContent() {
     // Track initialization to avoid first history push being empty
     const [isInitialized, setIsInitialized] = useState(false);
 
+    // 0. Global Paste Listener
+    useEffect(() => {
+        const handlePaste = (e) => handleGlobalPaste(e);
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, []);
+
     // Auth State
     const [user, setUser] = useState(null);
     useEffect(() => {
@@ -1617,7 +1624,7 @@ function AppContent() {
 
                                 <button
                                     onClick={handleCreateCard}
-                                    disabled={(generatingCardIds.size > 0) || (!promptInput.trim() && globalImages.length === 0)}
+                                    disabled={!promptInput.trim() && globalImages.length === 0}
                                     className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
                                 >
                                     {generatingCardIds.size > 0 ? (
