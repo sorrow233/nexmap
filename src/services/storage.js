@@ -442,97 +442,15 @@ export const loadUserSettings = async (userId) => {
 
 // --- Settings API ---
 
-const SETTINGS_KEY = 'mixboard_settings_v2';
 
-export const loadSettings = async () => {
-    const stored = localStorage.getItem(SETTINGS_KEY);
-    if (stored) return JSON.parse(stored);
-
-    // Migration / Default
-    const oldBaseUrl = localStorage.getItem('mixboard_llm_base_url') || 'https://api.gmi-serving.com/v1';
-    const oldModelStr = localStorage.getItem('mixboard_llm_model') || 'google/gemini-2.0-flash-exp';
-
-    // Determine if oldModelStr is a list or a single model
-    const isList = oldModelStr.includes(',');
-    const modelsList = isList ? oldModelStr : null;
-    const selectedModel = isList ? oldModelStr.split(',')[0].trim() : oldModelStr;
-
-    // Determine active provider from URL
-    const providers = {
-        gmicloud: {
-            id: 'gmicloud',
-            name: 'GMI Cloud',
-            baseUrl: 'https://api.gmi-serving.com/v1',
-            models: 'google/gemini-2.0-flash-exp, google/gemini-1.5-pro, google/gemini-1.5-flash',
-            model: 'google/gemini-2.0-flash-exp',
-            apiKey: localStorage.getItem('mixboard_llm_key_gmicloud') || ''
-        },
-        siliconflow: {
-            id: 'siliconflow',
-            name: 'SiliconFlow',
-            baseUrl: 'https://api.siliconflow.cn/v1',
-            models: 'deepseek-ai/DeepSeek-V2.5, deepseek-ai/DeepSeek-V3, deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
-            model: 'deepseek-ai/DeepSeek-V3',
-            apiKey: localStorage.getItem('mixboard_llm_key_siliconflow') || ''
-        },
-        openai: {
-            id: 'openai',
-            name: 'OpenAI',
-            baseUrl: 'https://api.openai.com/v1',
-            models: 'gpt-4o, gpt-4o-mini',
-            model: 'gpt-4o-mini',
-            apiKey: localStorage.getItem('mixboard_llm_key_openai') || ''
-        },
-        custom: {
-            id: 'custom',
-            name: 'Custom',
-            baseUrl: oldBaseUrl,
-            models: oldModelStr,
-            model: selectedModel,
-            apiKey: localStorage.getItem('mixboard_llm_key_custom') || ''
-        }
-    };
-
-    let activeProvider = 'gmicloud';
-    if (oldBaseUrl.includes('siliconflow')) activeProvider = 'siliconflow';
-    else if (oldBaseUrl.includes('openai')) activeProvider = 'openai';
-    else if (oldBaseUrl !== providers.gmicloud.baseUrl) activeProvider = 'custom';
-
-    // Apply old custom models list to the detected active provider if it was likely a custom list
-    if (modelsList && providers[activeProvider]) {
-        providers[activeProvider].models = modelsList;
-        providers[activeProvider].model = selectedModel;
-    } else if (providers[activeProvider]) {
-        providers[activeProvider].model = selectedModel;
-    }
-
-    const settings = {
-        activeProvider,
-        providers
-    };
-
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    return settings;
-};
-
-export const saveSettings = async (settings) => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-
-    // Sync back to old keys for compatibility with existing llm.js functions
-    const active = settings.providers[settings.activeProvider];
-    if (active) {
-        localStorage.setItem('mixboard_llm_base_url', active.baseUrl);
-        localStorage.setItem('mixboard_llm_model', active.model);
-        localStorage.setItem(`mixboard_llm_key_${settings.activeProvider}`, active.apiKey);
-    }
-};
 
 // Compatibility for Local Preview
 const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, saveBoard, loadBoard, deleteBoard,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
-    saveUserSettings, loadUserSettings, loadSettings, saveSettings
+    saveUserSettings, loadUserSettings
+
 };
 
 if (typeof window !== 'undefined') {

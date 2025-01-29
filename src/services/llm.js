@@ -1,7 +1,5 @@
-// Optimized Multi-Provider LLM System
-// Version 3.0 - Robust, Extensible, and Context-Aware
+// Version 3.1 - Robust, Extensible, and Context-Aware
 
-import { loadSettings } from './storage';
 
 /**
  * 核心配置管理
@@ -160,22 +158,27 @@ const formatToOpenAI = (messages) => {
  * Main chat completion function
  */
 export async function chatCompletion(messages, model = null, config = {}) {
-    const apiConfig = config.overrideConfig || getApiConfig();
-    const modelToUse = model || apiConfig.model;
-    const { apiKey, baseUrl } = apiConfig;
-
-    if (!apiKey) {
-        throw new Error("API Key is missing. Please configure in Settings.");
+    let apiConfig;
+    if (config.providerId) {
+        const settings = getProviderSettings();
+        apiConfig = settings.providers[config.providerId] || getActiveConfig();
+    } else {
+        apiConfig = config.overrideConfig || getActiveConfig();
     }
 
-    console.log('[LLM] Chat Completion:', { model: modelToUse, baseUrl });
+    const modelToUse = model || apiConfig.model;
+    const { apiKey, baseUrl, protocol } = apiConfig;
 
-    const isNativeGemini = baseUrl.includes('googleapis.com');
+    if (!apiKey) {
+        throw new Error("API Key is missing for provider " + (apiConfig.name || "default"));
+    }
 
-    if (isNativeGemini) {
-        return await nativeGeminiCompletion(messages, modelToUse, apiKey, baseUrl, config);
+    console.log('[LLM] Chat Completion:', { model: modelToUse, baseUrl, protocol });
+
+    if (protocol === 'gemini') {
+        return nativeGeminiCompletion(messages, modelToUse, apiKey, baseUrl, config);
     } else {
-        return await openAICompatibleCompletion(messages, modelToUse, apiKey, baseUrl, config);
+        return openAICompatibleCompletion(messages, modelToUse, apiKey, baseUrl, config);
     }
 }
 
@@ -295,19 +298,24 @@ async function openAICompatibleCompletion(messages, model, apiKey, baseUrl, conf
  * Streaming chat completion
  */
 export async function streamChatCompletion(messages, onToken, model = null, config = {}) {
-    const apiConfig = config.overrideConfig || getApiConfig();
-    const modelToUse = model || apiConfig.model;
-    const { apiKey, baseUrl } = apiConfig;
-
-    if (!apiKey) {
-        throw new Error("API Key is missing. Please configure in Settings.");
+    let apiConfig;
+    if (config.providerId) {
+        const settings = getProviderSettings();
+        apiConfig = settings.providers[config.providerId] || getActiveConfig();
+    } else {
+        apiConfig = config.overrideConfig || getActiveConfig();
     }
 
-    console.log('[LLM] Stream Completion:', { model: modelToUse, baseUrl });
+    const modelToUse = model || apiConfig.model;
+    const { apiKey, baseUrl, protocol } = apiConfig;
 
-    const isNativeGemini = baseUrl.includes('googleapis.com');
+    if (!apiKey) {
+        throw new Error("API Key is missing for provider " + (apiConfig.name || "default"));
+    }
 
-    if (isNativeGemini) {
+    console.log('[LLM] Stream Completion:', { model: modelToUse, baseUrl, protocol });
+
+    if (protocol === 'gemini') {
         // Pseudo-streaming for Gemini
         const fullText = await nativeGeminiCompletion(messages, modelToUse, apiKey, baseUrl, config);
         const chunkSize = 15;
