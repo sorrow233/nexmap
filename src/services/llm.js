@@ -25,6 +25,14 @@ export const getApiConfig = () => {
             const config = JSON.parse(stored);
             // Validate required fields
             if (config.apiKey && config.baseUrl && config.model) {
+                // Runtime Correction for invalid legacy models
+                if (config.model.includes('gemini-3')) {
+                    console.warn('[API Config] Correcting invalid model:', config.model);
+                    config.model = 'gemini-2.0-flash-exp';
+                    // Optional: persist correction back to storage to fix it permanently
+                    localStorage.setItem(API_CONFIG_KEY, JSON.stringify(config));
+                }
+
                 console.log('[API Config] Loaded:', { baseUrl: config.baseUrl, model: config.model });
                 return config;
             }
