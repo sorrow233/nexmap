@@ -242,7 +242,7 @@ export default function Canvas({
     return (
         <div
             ref={canvasRef}
-            className="w-full h-full overflow-hidden bg-slate-900 relative cursor-grab active:cursor-grabbing canvas-bg"
+            className="w-full h-full overflow-hidden bg-slate-950 relative cursor-grab active:cursor-grabbing canvas-bg"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
