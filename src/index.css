@@ -31,72 +31,93 @@ body,
     }
 
     .glass-panel {
-        background: rgba(15, 23, 42, 0.6);
-        /* Slate-900 with opacity */
-        @apply backdrop-blur-xl border border-white/10 shadow-2xl;
+        /* Default (Light) */
+        background: rgba(255, 255, 255, 0.85);
+        @apply backdrop-blur-xl border border-white/40 shadow-xl;
     }
 
-    /* Custom Typography for Markdown (Dark Mode) */
+    .dark .glass-panel {
+        /* Dark Override */
+        background: rgba(15, 23, 42, 0.6);
+        @apply border-white/10 shadow-2xl;
+    }
+
+    /* Typography Defaults (Light Mode) */
     .prose {
-        @apply text-slate-300;
+        @apply text-slate-700;
     }
 
     .prose h1,
     .prose h2,
     .prose h3,
     .prose h4 {
-        @apply font-bold text-slate-100 mt-6 mb-3;
-    }
-
-    .prose h1 {
-        @apply text-2xl;
-    }
-
-    .prose h2 {
-        @apply text-xl;
-    }
-
-    .prose h3 {
-        @apply text-lg;
-    }
-
-    .prose p {
-        @apply mb-4 leading-relaxed;
+        @apply font-bold text-slate-800 mt-6 mb-3;
     }
 
     .prose strong {
-        @apply font-bold text-slate-50;
+        @apply font-bold text-slate-900;
     }
 
-    .prose ul {
-        @apply list-disc list-outside ml-5 mb-4 marker:text-slate-500;
-    }
-
+    .prose ul,
     .prose ol {
-        @apply list-decimal list-outside ml-5 mb-4 marker:text-slate-500;
-    }
-
-    .prose li {
-        @apply mb-1;
+        @apply marker:text-slate-400;
     }
 
     .prose blockquote {
-        @apply border-l-4 border-slate-600 pl-4 italic text-slate-400 my-4;
+        @apply border-slate-300 text-slate-500;
     }
 
     .prose code {
-        @apply font-mono text-sm bg-slate-800 px-1 py-0.5 rounded text-pink-400 border border-white/10;
+        @apply bg-slate-100 text-pink-600 border-slate-200;
     }
 
     .prose pre {
-        @apply bg-slate-900/50 text-slate-200 p-4 rounded-lg overflow-x-auto my-4 text-sm border border-white/10;
+        @apply bg-slate-50 text-slate-700 border-slate-200;
     }
 
     .prose pre code {
-        @apply bg-transparent p-0 text-slate-200 border-none;
+        @apply bg-transparent text-slate-700;
     }
 
-    /* User Bubbles remain similar but adapted */
+    /* Typography Overrides (Dark Mode) */
+    .dark .prose {
+        @apply text-slate-300;
+    }
+
+    .dark .prose h1,
+    .dark .prose h2,
+    .dark .prose h3,
+    .dark .prose h4 {
+        @apply text-slate-100;
+    }
+
+    .dark .prose strong {
+        @apply text-slate-50;
+    }
+
+    .dark .prose ul,
+    .dark .prose ol {
+        @apply marker:text-slate-500;
+    }
+
+    .dark .prose blockquote {
+        @apply border-slate-600 text-slate-400;
+    }
+
+    .dark .prose code {
+        @apply bg-slate-800 text-pink-400 border-white/10;
+    }
+
+    .dark .prose pre {
+        @apply bg-slate-900/50 text-slate-200 border-white/10;
+    }
+
+    .dark .prose pre code {
+        @apply text-slate-200;
+    }
+
+    /* User Bubbles (Always Light/Brand on dark, or Brand on white) */
+    /* We generally keep user bubbles colored (Brand), so text is white */
     .user-bubble.prose {
         @apply text-white;
     }

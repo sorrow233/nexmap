@@ -271,8 +271,9 @@ export default function App() {
 }
 
 function AppContent() {
-    // Inject global font style
+    // Inject global font style & Theme Detection
     useEffect(() => {
+        // Font
         const style = document.createElement('style');
         style.innerHTML = `
             body, #root, .font-lxgw, .prose, .prose * {
@@ -283,7 +284,25 @@ function AppContent() {
             }
         `;
         document.head.appendChild(style);
-        return () => style.remove();
+
+        // System Theme Handler
+        const mm = window.matchMedia('(prefers-color-scheme: dark)');
+        const updateTheme = e => {
+            if (e.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        };
+
+        // Init
+        updateTheme(mm);
+        mm.addEventListener('change', updateTheme);
+
+        return () => {
+            style.remove();
+            mm.removeEventListener('change', updateTheme);
+        };
     }, []);
 
 
@@ -962,7 +981,7 @@ function AppContent() {
     if (view === 'gallery') {
         return (
             <React.Fragment>
-                <div className="bg-slate-950 min-h-screen text-slate-200 p-8 font-lxgw relative overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-hidden transition-colors duration-500">
                     {/* Ambient Background */}
                     <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
                     <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>

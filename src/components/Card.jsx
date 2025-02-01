@@ -150,15 +150,17 @@ export default function Card({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[320px] bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-white/10 flex flex-col transition-all duration-300 select-none pointer-events-auto group
-                ${isSelected ? 'ring-2 ring-brand-500/50 shadow-[0_20px_50px_rgba(14,165,233,0.15)] scale-[1.02]' : 'hover:scale-[1.01] hover:shadow-[0_15px_40px_rgba(0,0,0,0.5)]'}
+            className={`absolute w-[320px] rounded-2xl flex flex-col select-none pointer-events-auto group
+                bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)]
+                ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 cursor-grab'}
+                ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:scale-[1.01]'}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
                 ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
             style={{
                 left: data.x,
                 top: data.y,
-                cursor: isDragging ? 'grabbing' : 'grab',
-                zIndex: zIndex
+                zIndex: zIndex,
+                willChange: isDragging ? 'left, top' : 'auto' // Hint to browser
             }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
@@ -199,12 +201,12 @@ export default function Card({
 
             <div className="p-4 h-48 overflow-hidden relative transition-colors">
                 <p
-                    className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-text cursor-text card-content-text"
+                    className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-text cursor-text card-content-text"
                     onMouseDown={(e) => e.stopPropagation()} // Stop propagation to prevent card drag/select but allow text select
                 >
                     {previewText}
                 </p>
-                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white/90 via-white/40 dark:from-slate-900/90 dark:via-slate-900/40 to-transparent pointer-events-none"></div>
             </div>
 
             <div className="px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center border-t border-white/5">
