@@ -959,7 +959,7 @@ function AppContent() {
     if (view === 'gallery') {
         return (
             <React.Fragment>
-                <div className="bg-slate-900 min-h-screen text-slate-200 p-8 font-lxgw relative overflow-hidden">
+                <div className="bg-slate-950 min-h-screen text-slate-200 p-8 font-lxgw relative overflow-hidden">
                     {/* Ambient Background */}
                     <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
                     <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
@@ -1040,13 +1040,13 @@ function AppContent() {
             <div className="fixed top-8 left-8 z-50 flex items-center gap-4">
                 <button
                     onClick={handleBackToGallery}
-                    className="glass-panel px-6 py-3 rounded-2xl flex items-center gap-2 text-slate-700 font-bold hover:text-brand-600 transition-all active:scale-95 shadow-xl border-white/50"
+                    className="glass-panel px-6 py-3 rounded-2xl flex items-center gap-2 text-slate-200 font-bold hover:text-brand-400 transition-all active:scale-95 shadow-xl border-white/10"
                 >
                     <LayoutGrid size={20} className="text-brand-500" />
                     Gallery
                 </button>
                 <div className="h-10 w-[2px] bg-slate-200/50" />
-                <h2 className="text-slate-800 font-black tracking-tight text-lg">
+                <h2 className="text-slate-200 font-black tracking-tight text-lg">
                     {boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
                 </h2>
             </div>
@@ -1065,7 +1065,7 @@ function AppContent() {
                         value={promptInput}
                         onChange={e => setPromptInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
-                        className="flex-grow bg-transparent outline-none text-slate-700 placeholder-slate-400 font-medium"
+                        className="flex-grow bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium"
                         placeholder="Type a prompt to create a new card..."
                     />
                     <button
@@ -1080,7 +1080,7 @@ function AppContent() {
 
             {selectedIds.length > 0 && (
                 <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
-                    <span className="text-sm font-semibold text-slate-600">{selectedIds.length} items</span>
+                    <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
                     <div className="h-4 w-px bg-slate-300"></div>
                     <button
                         onClick={handleRegenerate}
