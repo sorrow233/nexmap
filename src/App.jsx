@@ -484,17 +484,17 @@ function AppContent() {
 
     // 1. Initial Load
     useEffect(() => {
-        const list = loadBoardsMetadata();
-        setBoardsList(list);
+        const init = async () => {
+            const list = loadBoardsMetadata();
+            setBoardsList(list);
 
-        const lastId = getCurrentBoardId();
-        if (lastId && list.some(b => b.id === lastId)) {
-            handleSelectBoard(lastId);
-        }
-        if (lastId && list.some(b => b.id === lastId)) {
-            handleSelectBoard(lastId);
-        }
-        setIsInitialized(true);
+            const lastId = getCurrentBoardId();
+            if (lastId && list.some(b => b.id === lastId)) {
+                await handleSelectBoard(lastId);
+            }
+            setIsInitialized(true);
+        };
+        init();
     }, []);
 
     // Global Keyboard Shortcuts
@@ -588,7 +588,7 @@ function AppContent() {
             if (!name) return;
         }
 
-        const newBoard = createBoard(name);
+        const newBoard = await createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
 
         // Cloud Sync
@@ -600,10 +600,10 @@ function AppContent() {
         await handleSelectBoard(newBoard.id);
 
         // If there's an initial prompt (Quick Start), trigger card creation immediately
-        if (initialPrompt) {
+        if (initialPrompt || initialImages.length > 0) {
             // Slight delay to ensure canvas is ready
             setTimeout(() => {
-                setPromptInput(initialPrompt);
+                setPromptInput(initialPrompt || '');
                 // We need to trigger handleCreateCard but state might not be fully flushed ???
                 // Actually better to just directly call logic or set useEffect trigger.
                 // Let's call a helper to avoid duplication, but we need updated 'cards' reference...
@@ -694,36 +694,36 @@ function AppContent() {
         }
     };
 
-    const handleSelectBoard = (id) => {
-        const data = loadBoard(id);
+    const handleSelectBoard = async (id) => {
+        const data = await loadBoard(id);
         setCards(data.cards || []);
         setConnections(data.connections || []);
         setCurrentBoardId(id);
-        setCurrentBoardId(id);
+        // setCurrentBoardId(id); // Duplicate remove
         setView('canvas');
     };
 
-    const handleLoadBoard = (id) => { // Renamed from handleSelectBoard for clarity in gallery
-        const data = loadBoard(id);
+    const handleLoadBoard = async (id) => { // Renamed from handleSelectBoard for clarity in gallery
+        const data = await loadBoard(id);
         setCards(data.cards || []);
         setConnections(data.connections || []);
         setCurrentBoardId(id);
-        setCurrentBoardId(id);
+        // setCurrentBoardId(id); // Duplicate remove
         setView('canvas');
     };
 
-    const handleDeleteBoard = (id) => {
+    const handleDeleteBoard = async (id) => {
         if (!confirm('Are you sure? All chat history in this board will be gone.')) return;
-        deleteBoard(id);
+        await deleteBoard(id);
         if (user) {
             deleteBoardFromCloud(user.uid, id);
         }
         setBoardsList(prev => prev.filter(b => b.id !== id));
     };
 
-    const handleBackToGallery = () => {
+    const handleBackToGallery = async () => {
         if (currentBoardId) {
-            saveBoard(currentBoardId, { cards, connections });
+            await saveBoard(currentBoardId, { cards, connections });
             setCurrentBoardId(null);
         }
         setView('gallery');

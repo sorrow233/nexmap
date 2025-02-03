@@ -4,6 +4,58 @@ const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 
+// --- IndexedDB Helper (Minimal Wrapper) ---
+const IDB_NAME = 'MixBoardDB';
+const IDB_STORE = 'boards';
+const IDB_VERSION = 1;
+
+const initDB = () => new Promise((resolve, reject) => {
+    const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE);
+        }
+    };
+});
+
+const idbGet = async (key) => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(IDB_STORE, 'readonly');
+        const store = transaction.objectStore(IDB_STORE);
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+const idbSet = async (key, value) => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(IDB_STORE, 'readwrite');
+        const store = transaction.objectStore(IDB_STORE);
+        const request = store.put(value, key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+const idbDel = async (key) => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(IDB_STORE, 'readwrite');
+        const store = transaction.objectStore(IDB_STORE);
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+// --- Storage API ---
+
 export const getCurrentBoardId = () => localStorage.getItem(CURRENT_BOARD_ID_KEY);
 export const setCurrentBoardId = (id) => {
     if (id) localStorage.setItem(CURRENT_BOARD_ID_KEY, id);
@@ -19,7 +71,7 @@ export const loadBoardsMetadata = () => {
     return getBoardsList();
 };
 
-export const createBoard = (name) => {
+export const createBoard = async (name) => {
     const newBoard = {
         id: Date.now().toString(),
         name: name || 'Untitled Board',
@@ -30,10 +82,12 @@ export const createBoard = (name) => {
     const list = getBoardsList();
     const newList = [newBoard, ...list];
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
+    // Init empty board in IDB
+    await saveBoard(newBoard.id, { cards: [], connections: [] });
     return newBoard;
 };
 
-export const saveBoard = (id, data) => {
+export const saveBoard = async (id, data) => {
     // data: { cards, connections }
     const list = getBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
@@ -45,18 +99,37 @@ export const saveBoard = (id, data) => {
         };
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
     }
-    localStorage.setItem(BOARD_PREFIX + id, JSON.stringify(data));
+    await idbSet(BOARD_PREFIX + id, data);
 };
 
-export const loadBoard = (id) => {
-    const stored = localStorage.getItem(BOARD_PREFIX + id);
-    return stored ? JSON.parse(stored) : { cards: [], connections: [] };
+export const loadBoard = async (id) => {
+    try {
+        const stored = await idbGet(BOARD_PREFIX + id);
+        if (stored) return stored;
+
+        // Fallback: Check localStorage (Migration path)
+        const legacy = localStorage.getItem(BOARD_PREFIX + id);
+        if (legacy) {
+            const parsed = JSON.parse(legacy);
+            // Migrate to IDB
+            await idbSet(BOARD_PREFIX + id, parsed);
+            // Optional: Remove from localStorage to free space? 
+            // localStorage.removeItem(BOARD_PREFIX + id); 
+            return parsed;
+        }
+    } catch (e) {
+        console.error("Failed to load board", e);
+    }
+    return { cards: [], connections: [] };
 };
 
-export const deleteBoard = (id) => {
+export const deleteBoard = async (id) => {
     const list = getBoardsList();
     const newList = list.filter(b => b.id !== id);
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
+
+    await idbDel(BOARD_PREFIX + id);
+    // Also clear legacy if exists
     localStorage.removeItem(BOARD_PREFIX + id);
 };
 
@@ -66,31 +139,30 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     if (!db || !userId) return () => { };
 
     try {
-        // Subscribe to user's boards collection
-        // We only listen for metadata updates mostly? 
-        // Actually, let's sync the full boards list.
         return db.collection('users').doc(userId).collection('boards')
-            .onSnapshot((snapshot) => {
+            .onSnapshot(async (snapshot) => {
                 const cloudBoards = [];
-                snapshot.forEach(doc => {
-                    const boardData = doc.data(); // This is the FULL board data including cards?
-                    // Ideally we split metadata and content.
-                    // For simplicity, let's assume we store { id, name, ...metadata... cards: [], connections: [] }
+                const promises = [];
 
+                snapshot.forEach(doc => {
+                    const boardData = doc.data();
                     cloudBoards.push(boardData);
 
-                    // Sync content to local storage
+                    // Sync content to local storage (IDB)
                     if (boardData.id) {
-                        const localKey = BOARD_PREFIX + boardData.id;
-                        // Optimization: Check timestamp?
-                        localStorage.setItem(localKey, JSON.stringify({
+                        promises.push(saveBoard(boardData.id, {
                             cards: boardData.cards || [],
                             connections: boardData.connections || []
                         }));
                     }
                 });
 
-                // Update Local Metadata List
+                // Wait for all IDB writes? No, onSnapshot is sync-ish regarding callback. 
+                // We'll let them run.
+                // But metadata update should happen.
+                // Note: saveBoard above updates metadata list too, which might cause race conditions if we map loop it.
+                // Let's optimize: Update metadata LIST once, then fire content updates.
+
                 const metadataList = cloudBoards.map(b => ({
                     id: b.id,
                     name: b.name || 'Untitled',
@@ -101,6 +173,16 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 
                 localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
                 onUpdate(metadataList);
+
+                // Now background sync content to IDB
+                for (const b of cloudBoards) {
+                    // We directly use idbSet to avoid double metadata update
+                    idbSet(BOARD_PREFIX + b.id, {
+                        cards: b.cards || [],
+                        connections: b.connections || []
+                    });
+                }
+
             }, (error) => {
                 console.error("Firestore sync error:", error);
             });
@@ -113,8 +195,6 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 export const saveBoardToCloud = async (userId, boardId, boardContent) => {
     if (!db || !userId) return;
     try {
-        // We need the metadata too.
-        // Get metadata from list
         const list = getBoardsList();
         const meta = list.find(b => b.id === boardId);
 
@@ -141,8 +221,6 @@ export const deleteBoardFromCloud = async (userId, boardId) => {
     }
 };
 
-
-
 export const saveUserSettings = async (userId, settings) => {
     if (!db || !userId) return;
     try {
@@ -164,9 +242,7 @@ export const loadUserSettings = async (userId) => {
 };
 
 
-// Compatibility for Local Preview (which expects window.StorageService for legacy reasons or we update App)
-// App.jsx now imports named exports.
-// But we still expose it just in case.
+// Compatibility for Local Preview
 const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, saveBoard, loadBoard, deleteBoard,
