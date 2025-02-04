@@ -103,23 +103,30 @@ export const saveBoard = async (id, data) => {
 };
 
 export const loadBoard = async (id) => {
+    let stored = null;
     try {
-        const stored = await idbGet(BOARD_PREFIX + id);
-        if (stored) return stored;
+        stored = await idbGet(BOARD_PREFIX + id);
+    } catch (e) {
+        console.warn("IDB read failed for board", id, e);
+    }
 
-        // Fallback: Check localStorage (Migration path)
+    if (stored) return stored;
+
+    // Fallback: Check localStorage (Migration path)
+    // We check this OUTSIDE the first try/catch so that if IDB fails hard, we still try LS.
+    try {
         const legacy = localStorage.getItem(BOARD_PREFIX + id);
         if (legacy) {
+            console.log("Found legacy data in localStorage for board:", id);
             const parsed = JSON.parse(legacy);
-            // Migrate to IDB
-            await idbSet(BOARD_PREFIX + id, parsed);
-            // Optional: Remove from localStorage to free space? 
-            // localStorage.removeItem(BOARD_PREFIX + id); 
+            // Migrate to IDB in background
+            idbSet(BOARD_PREFIX + id, parsed).catch(e => console.error("Migration save failed", e));
             return parsed;
         }
     } catch (e) {
-        console.error("Failed to load board", e);
+        console.error("Legacy localStorage load failed", e);
     }
+
     return { cards: [], connections: [] };
 };
 
