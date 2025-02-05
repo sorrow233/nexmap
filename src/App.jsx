@@ -1133,18 +1133,23 @@ function AppContent() {
             )}
 
             {/* Premium Top Navigation */}
-            <div className="fixed top-8 left-8 z-50 flex items-center gap-4">
-                <button
-                    onClick={handleBackToGallery}
-                    className="glass-panel px-6 py-3 rounded-2xl flex items-center gap-2 text-slate-200 font-bold hover:text-brand-400 transition-all active:scale-95 shadow-xl border-white/10"
-                >
-                    <LayoutGrid size={20} className="text-brand-500" />
-                    Gallery
-                </button>
-                <div className="h-10 w-[2px] bg-slate-200/50" />
-                <h2 className="text-slate-200 font-black tracking-tight text-lg">
-                    {boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
-                </h2>
+            {/* Premium Top Navigation */}
+            <div className="fixed top-6 left-6 z-50 animate-slide-down">
+                <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-1.5 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 group hover:scale-[1.02] transition-transform duration-300">
+                    <button
+                        onClick={handleBackToGallery}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-white/10 hover:text-brand-500 dark:hover:text-brand-300 transition-all active:scale-95"
+                    >
+                        <LayoutGrid size={18} className="text-brand-500 dark:text-brand-400 group-hover:scale-110 transition-transform" />
+                        <span>Gallery</span>
+                    </button>
+
+                    <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+
+                    <div className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold tracking-tight text-sm select-none">
+                        {boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
+                    </div>
+                </div>
             </div>
 
             {/* Chat Input Bar */}
