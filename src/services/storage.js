@@ -27,8 +27,14 @@ const idbGet = async (key) => {
         const transaction = db.transaction(IDB_STORE, 'readonly');
         const store = transaction.objectStore(IDB_STORE);
         const request = store.get(key);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            console.log(`[IDB] Get success for ${key}:`, request.result ? 'Found' : 'Not Found');
+            resolve(request.result);
+        };
+        request.onerror = () => {
+            console.error(`[IDB] Get error for ${key}:`, request.error);
+            reject(request.error);
+        };
     });
 };
 
@@ -38,8 +44,16 @@ const idbSet = async (key, value) => {
         const transaction = db.transaction(IDB_STORE, 'readwrite');
         const store = transaction.objectStore(IDB_STORE);
         const request = store.put(value, key);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+
+        transaction.oncomplete = () => {
+            console.log(`[IDB] Transaction complete for ${key}. Data size approx: ${JSON.stringify(value).length} chars`);
+            resolve();
+        };
+
+        transaction.onerror = () => {
+            console.error(`[IDB] Transaction error for ${key}:`, transaction.error);
+            reject(transaction.error);
+        };
     });
 };
 
@@ -49,8 +63,12 @@ const idbDel = async (key) => {
         const transaction = db.transaction(IDB_STORE, 'readwrite');
         const store = transaction.objectStore(IDB_STORE);
         const request = store.delete(key);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+
+        transaction.oncomplete = () => {
+            console.log(`[IDB] Delete complete for ${key}`);
+            resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
     });
 };
 
