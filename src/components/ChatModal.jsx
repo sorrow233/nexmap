@@ -251,7 +251,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                         dangerouslySetInnerHTML={{
                                             __html: content
                                                 ? (marked ? marked.parse(content) : content)
-                                                : (!thoughts ? '<span class="opacity-50 italic">Synthesizing...</span>' : '<span class="opacity-50 italic">Finishing execution...</span>')
+                                                : (isUser ? '' : (!thoughts ? '<span class="opacity-50 italic">Synthesizing...</span>' : '<span class="opacity-50 italic">Finishing execution...</span>'))
                                         }}
                                     />
                                 </div>
