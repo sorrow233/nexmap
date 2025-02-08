@@ -8,6 +8,7 @@ import SettingsModal from './components/SettingsModal';
 import { auth, googleProvider } from './services/firebase';
 import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
 import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
+import { uploadImageToS3, getS3Config } from './services/s3';
 
 // Settings Modal Component
 
@@ -117,11 +118,21 @@ function AppContent() {
 
             if (u) {
                 // Sync from cloud
-                unsubDb = listenForBoardUpdates(u.uid, (cloudBoards) => {
-                    // Update state. 
-                    // Note: This replaces local list. If offline creation happened, it might be lost unless we merge.
-                    // For now, cloud is truth.
+                unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
+                    // Update metadata list
                     setBoardsList(cloudBoards);
+
+                    // If active board was updated by cloud (possibly from another device)
+                    // Reload it to hydrate new S3 images to local base64
+                    const currentActiveId = localStorage.getItem('mixboard_current_board_id');
+                    if (updatedIds && currentActiveId && updatedIds.includes(currentActiveId)) {
+                        console.log("[Sync] Active board updated in cloud, reloading cards...");
+                        loadBoard(currentActiveId).then(data => {
+                            if (data && data.cards) {
+                                setCards(data.cards);
+                            }
+                        });
+                    }
                 });
 
                 // Load User Settings
@@ -612,19 +623,70 @@ function AppContent() {
         const initialX = window.innerWidth / 2 - 160 + (Math.random() * 40 - 20) - 200;
         const initialY = window.innerHeight / 2 - 100 + (Math.random() * 40 - 20);
 
-        // Construct Content
+        // Construct Content with S3 support
         let content = promptInput;
         if (globalImages.length > 0) {
+            const s3Config = getS3Config();
+
+            // 1. Prepare images immediately with base64 (Non-blocking)
+            let processedImages = globalImages.map(img => ({
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: img.mimeType,
+                    data: img.base64,
+                    s3Url: null // Will be updated later if S3 is enabled
+                }
+            }));
+
+            // 2. Trigger Background Upload if enabled
+            if (s3Config?.enabled) {
+                console.log('[S3 Debug] Global card - Starting background upload...');
+
+                // Fire and forget - don't await
+                const imagesToUpload = [...globalImages]; // Capture current images
+                Promise.all(imagesToUpload.map(img => uploadImageToS3(img.file).catch(err => {
+                    console.error("Global card - Single image upload failed", err);
+                    return null;
+                }))).then(urls => {
+                    console.log('[S3 Debug] Global card - Background upload complete:', urls);
+
+                    // Update the card with S3 URLs
+                    setCards(prev => prev.map(c => {
+                        if (c.id === newId) {
+                            const userMsg = c.data.messages[0]; // First message is user message
+                            if (Array.isArray(userMsg.content)) {
+                                const updatedContent = userMsg.content.map((part, i) => {
+                                    if (part.type === 'image' && part.source) {
+                                        const urlIndex = i - 1; // Offset for text at index 0
+                                        if (urlIndex >= 0 && urlIndex < urls.length && urls[urlIndex]) {
+                                            return {
+                                                ...part,
+                                                source: {
+                                                    ...part.source,
+                                                    s3Url: urls[urlIndex]
+                                                }
+                                            };
+                                        }
+                                    }
+                                    return part;
+                                });
+
+                                const updatedMessages = [...c.data.messages];
+                                updatedMessages[0] = { ...userMsg, content: updatedContent };
+                                return { ...c, data: { ...c.data, messages: updatedMessages } };
+                            }
+                        }
+                        return c;
+                    }));
+                }).catch(err => {
+                    console.error("[S3 Global card - Background Upload Error]", err);
+                });
+            }
+
             content = [
                 { type: 'text', text: promptInput },
-                ...globalImages.map(img => ({
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: img.mimeType,
-                        data: img.base64
-                    }
-                }))
+                ...processedImages
             ];
         }
 
@@ -745,7 +807,15 @@ function AppContent() {
     };
 
     const handleUpdateCard = (id, newData) => {
-        setCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c));
+        console.log('[App] handleUpdateCard called for card:', id, 'newData type:', typeof newData);
+        setCards(prev => prev.map(c => {
+            if (c.id === id) {
+                const resolvedData = typeof newData === 'function' ? newData(c.data) : newData;
+                console.log('[App] Updating card. Messages count:', resolvedData.messages?.length || 0, 'Data stringify size:', JSON.stringify(resolvedData).length);
+                return { ...c, data: resolvedData };
+            }
+            return c;
+        }));
     };
 
     // Group Drag Logic
