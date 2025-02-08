@@ -3,6 +3,8 @@ import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip 
 import { chatCompletion, streamChatCompletion } from '../services/llm';
 import { marked } from 'marked';
 
+import { uploadImageToS3, getS3Config } from '../services/s3';
+
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
@@ -25,7 +27,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             reader.onload = (e) => {
                 setImages(prev => [...prev, {
                     file,
-                    previewUrl: URL.createObjectURL(file),
+                    previewUrl: URL.createObjectURL(file), // Local preview
                     base64: e.target.result.split(',')[1],
                     mimeType: file.type
                 }]);
@@ -73,17 +75,45 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         if ((!input.trim() && images.length === 0) || isStreaming) return;
 
         let content = input;
+
+        // Handle Images (S3 or Base64)
         if (images.length > 0) {
-            content = [
-                { type: 'text', text: input },
-                ...images.map(img => ({
+            const s3Config = getS3Config();
+            let processedImages = [];
+
+            if (s3Config?.enabled) {
+                // S3 Upload Mode
+                try {
+                    // TODO: Show upload progress UI
+                    const uploads = await Promise.all(images.map(img => uploadImageToS3(img.file)));
+                    processedImages = uploads.map((url, i) => ({
+                        type: 'image',
+                        source: {
+                            type: 'url',
+                            url: url,
+                            media_type: images[i].mimeType
+                        }
+                    }));
+                } catch (error) {
+                    console.error("S3 Upload Failed:", error);
+                    alert(`Failed to upload images to S3: ${error.message}\nPlease check your settings or disable S3 storage.`);
+                    return; // Abort send
+                }
+            } else {
+                // Legacy Base64 Mode
+                processedImages = images.map(img => ({
                     type: 'image',
                     source: {
                         type: 'base64',
                         media_type: img.mimeType,
                         data: img.base64
                     }
-                }))
+                }));
+            }
+
+            content = [
+                { type: 'text', text: input },
+                ...processedImages
             ];
         }
 

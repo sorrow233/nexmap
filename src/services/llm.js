@@ -156,6 +156,52 @@ const formatGeminiMessages = (messages) => {
     return contents;
 };
 
+// Helper to download image from URL and convert to Base64
+const fetchImageBase64 = async (url) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64data = reader.result.split(',')[1];
+            resolve({
+                data: base64data,
+                mimeType: blob.type
+            });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
+// Helper to resolve remote images to Base64 for providers that don't support URLs (like Native Gemini)
+const resolveRemoteImages = async (messages) => {
+    const resolvedMessages = JSON.parse(JSON.stringify(messages)); // Deep clone
+
+    for (const msg of resolvedMessages) {
+        if (Array.isArray(msg.content)) {
+            for (const part of msg.content) {
+                if (part.type === 'image' && part.source && part.source.type === 'url') {
+                    try {
+                        // Fetch and convert to base64
+                        const { data, mimeType } = await fetchImageBase64(part.source.url);
+                        part.source = {
+                            type: 'base64',
+                            media_type: mimeType, // Use fetched mimeType or fallback to part.source.media_type
+                            data: data
+                        };
+                    } catch (e) {
+                        console.error("Failed to resolve remote image", e);
+                        // Fallback or keep as URL (which might fail later)
+                    }
+                }
+            }
+        }
+    }
+    return resolvedMessages;
+};
+
 // Helper to format messages for OpenAI API
 const formatOpenAIMessages = (messages) => {
     return messages.map(msg => {
@@ -166,12 +212,24 @@ const formatOpenAIMessages = (messages) => {
                     if (part.type === 'text') {
                         return { type: 'text', text: part.text };
                     } else if (part.type === 'image') {
-                        return {
-                            type: 'image_url',
-                            image_url: {
-                                url: `data:${part.source.media_type};base64,${part.source.data}`
-                            }
-                        };
+                        // Handle Base64
+                        if (part.source.type === 'base64') {
+                            return {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:${part.source.media_type};base64,${part.source.data}`
+                                }
+                            };
+                        }
+                        // Handle URL
+                        if (part.source.type === 'url') {
+                            return {
+                                type: 'image_url',
+                                image_url: {
+                                    url: part.source.url
+                                }
+                            };
+                        }
                     }
                     return null;
                 }).filter(p => p)
@@ -198,7 +256,9 @@ export async function chatCompletion(messages, model = null, config = {}) {
         }
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
 
-        const contents = formatGeminiMessages(messages);
+        // Resolve generic image URLs to Base64 for Native Gemini
+        const resolvedMessages = await resolveRemoteImages(messages);
+        const contents = formatGeminiMessages(resolvedMessages);
 
         const requestBody = {
             contents: contents,
@@ -303,7 +363,10 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
         }
 
         const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
-        const contents = formatGeminiMessages(messages);
+
+        // Resolve generic image URLs to Base64 for Native Gemini
+        const resolvedMessages = await resolveRemoteImages(messages);
+        const contents = formatGeminiMessages(resolvedMessages);
 
         const requestBody = {
             contents: contents,
