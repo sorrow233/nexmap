@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npx vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name aimainmap"
   },
   "dependencies": {
     "lucide-react": "^0.294.0",
