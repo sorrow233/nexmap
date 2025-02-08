@@ -44,10 +44,13 @@ export const uploadImageToS3 = async (file) => {
     // Generate unique filename: timestamp-random-filename
     const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
+    // Convert File to ArrayBuffer for browser compatibility
+    const arrayBuffer = await file.arrayBuffer();
+
     const command = new PutObjectCommand({
         Bucket: bucket,
         Key: filename,
-        Body: file,
+        Body: arrayBuffer,
         ContentType: file.type,
         // ACL is often not supported by R2/S3 depending on bucket settings, so we default to bucket policy
     });
@@ -63,9 +66,13 @@ export const uploadImageToS3 = async (file) => {
 
     // Fallback URL construction (Best guess, might need adjustment for specific providers)
     if (endpoint) {
-        // e.g. https://<account>.r2.cloudflarestorage.com/<bucket>/<key> - NOT usually public
-        // R2 requires a custom domain for public access usually.
-        // For standard S3: https://<bucket>.s3.<region>.amazonaws.com/<key>
+        // For Huawei Cloud OBS: https://bucket.endpoint/filename
+        if (endpoint.includes('myhuaweicloud.com')) {
+            // Extract endpoint without protocol
+            const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
+            return `https://${bucket}.${cleanEndpoint}/${filename}`;
+        }
+        // For standard S3: https://bucket.s3.region.amazonaws.com/key
         if (endpoint.includes('amazonaws.com')) {
             return `https://${bucket}.s3.${region || 'us-east-1'}.amazonaws.com/${filename}`;
         }
