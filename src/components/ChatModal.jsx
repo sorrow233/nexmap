@@ -79,13 +79,16 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         // Handle Images (S3 or Base64)
         if (images.length > 0) {
             const s3Config = getS3Config();
+            console.log('[S3 Debug] Config loaded:', s3Config); // DEBUG
             let processedImages = [];
 
             if (s3Config?.enabled) {
+                console.log('[S3 Debug] S3 is enabled, uploading to bucket:', s3Config.bucket); // DEBUG
                 // S3 Upload Mode
                 try {
                     // TODO: Show upload progress UI
                     const uploads = await Promise.all(images.map(img => uploadImageToS3(img.file)));
+                    console.log('[S3 Debug] Upload successful, URLs:', uploads); // DEBUG
                     processedImages = uploads.map((url, i) => ({
                         type: 'image',
                         source: {
@@ -95,11 +98,12 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                         }
                     }));
                 } catch (error) {
-                    console.error("S3 Upload Failed:", error);
-                    alert(`Failed to upload images to S3: ${error.message}\nPlease check your settings or disable S3 storage.`);
+                    console.error("[S3 Upload Failed]", error);
+                    alert(`❌ 图片上传到 S3 失败！\n\n错误信息: ${error.message}\n\n请检查：\n1. 是否点击了设置中的 "Save Configuration" 按钮？\n2. Bucket 权限是否配置正确（允许 PutObject）？\n3. CORS 是否允许此域名访问？\n4. Access Key 和 Secret Key 是否正确？`);
                     return; // Abort send
                 }
             } else {
+                console.log('[S3 Debug] S3 disabled, using Base64 mode'); // DEBUG
                 // Legacy Base64 Mode
                 processedImages = images.map(img => ({
                     type: 'image',
