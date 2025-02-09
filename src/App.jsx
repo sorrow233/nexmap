@@ -1352,14 +1352,23 @@ function AppContent() {
                     </button>
 
                     <div className="relative flex-grow">
-                        <input
-                            type="text"
+                        <textarea
                             value={promptInput}
                             onChange={e => setPromptInput(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.nativeEvent.isComposing) {
+                                    e.preventDefault();
+                                    handleCreateCard();
+                                }
+                            }}
                             onPaste={handleGlobalPaste}
-                            className="w-full h-full bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium px-2"
+                            rows={1}
+                            className="w-full bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium px-2 py-3 resize-none custom-scrollbar min-h-[48px] max-h-[200px]"
                             placeholder="Type a prompt to create a new card..."
+                            onInput={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                            }}
                         />
                     </div>
 

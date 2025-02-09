@@ -1,40 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, ChevronDown, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box, Image as ImageIcon } from 'lucide-react';
+import { Settings, ChevronDown, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { getApiConfig, setApiConfig, clearApiConfig, chatCompletion } from '../services/llm';
 import { getS3Config, saveS3Config } from '../services/s3';
-import { loadSettings, saveSettings, saveUserSettings } from '../services/storage';
 
 export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
 
-    const [activeTab, setActiveTab] = useState('llm'); // 'llm' or 'storage'
-
-    const [settings, setSettings] = useState(null);
-    const [providerId, setProviderId] = useState('gmicloud');
-    const [url, setUrl] = useState('');
-    const [models, setModelsState] = useState('');
-    const [key, setKey] = useState('');
-    const [imageModel, setImageModel] = useState('');
-
+    const [activeTab, setActiveTab] = useState('llm');
+    const [apiKey, setApiKey] = useState('');
+    const [baseUrl, setBaseUrl] = useState('');
+    const [model, setModel] = useState('');
     const [testStatus, setTestStatus] = useState('idle');
     const [testMessage, setTestMessage] = useState('');
 
-    useEffect(() => {
-        const init = async () => {
-            const s = await loadSettings();
-            setSettings(s);
-            const pid = s.activeProvider;
-            setProviderId(pid);
-            const p = s.providers[pid];
-            setUrl(p.baseUrl);
-            setModelsState(p.models);
-            setKey(p.apiKey);
-            setImageModel(p.defaultImageModel || 'black-forest-labs/FLUX.1-schnell');
-        };
-        init();
-    }, []);
-
-    // --- Storage State ---
-    const [s3Config, setS3Config] = useState({
+    // S3 Storage State
+    const [s3Config, setS3ConfigState] = useState({
         enabled: false,
         endpoint: '',
         region: 'auto',
@@ -44,43 +24,25 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         publicDomain: ''
     });
 
+    // Load configuration on mount
     useEffect(() => {
-        const stored = getS3Config();
-        if (stored) setS3Config(stored);
-    }, []);
+        const config = getApiConfig();
+        setApiKey(config.apiKey);
+        setBaseUrl(config.baseUrl);
+        setModel(config.model);
 
-    // --- Handlers ---
-    const handleProviderChange = (e) => {
-        const pid = e.target.value;
-
-        // Save current provider's data before switching
-        if (settings && settings.providers[providerId]) {
-            settings.providers[providerId].apiKey = key;
-            settings.providers[providerId].baseUrl = url;
-            settings.providers[providerId].models = models;
-            settings.providers[providerId].defaultImageModel = imageModel;
-        }
-
-        setProviderId(pid);
-        const p = settings.providers[pid];
-        if (p) {
-            setUrl(p.baseUrl);
-            setModelsState(p.models);
-            setKey(p.apiKey || '');
-            setImageModel(p.defaultImageModel || 'black-forest-labs/FLUX.1-schnell');
-        }
-    };
+        const s3 = getS3Config();
+        if (s3) setS3ConfigState(s3);
+    }, [isOpen]);
 
     const handleTestConnection = async () => {
         setTestStatus('testing');
         setTestMessage('');
         try {
-            // Use the first model in the list for testing
-            const testModel = models.split(',')[0].trim();
             await chatCompletion(
-                [{ role: 'user', content: 'Hi' }],
-                testModel,
-                { apiKey: key, baseUrl: url }
+                [{ role: 'user', content: 'Hi, respond with OK only.' }],
+                model,
+                { overrideConfig: { apiKey, baseUrl, model } }
             );
             setTestStatus('success');
             setTestMessage('Connection Successful!');
@@ -90,47 +52,26 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         }
     };
 
-    const handleSave = async () => {
-        if (!settings) return;
-
-        const updatedSettings = {
-            ...settings,
-            activeProvider: providerId,
-            providers: {
-                ...settings.providers,
-                [providerId]: {
-                    ...settings.providers[providerId],
-                    apiKey: key,
-                    baseUrl: url,
-                    models: models,
-                    defaultImageModel: imageModel,
-                    model: settings.providers[providerId].model || models.split(',')[0].trim()
-                }
-            }
-        };
-
-        await saveSettings(updatedSettings);
-
-        // Update Global Model List for dropdown compatibility
-        const allMyModels = [];
-        Object.values(updatedSettings.providers).forEach(p => {
-            if (p.models) {
-                p.models.split(',').forEach(m => {
-                    const val = m.trim();
-                    if (val) allMyModels.push({ name: val, value: val, providerId: p.id });
-                });
-            }
+    const handleSave = () => {
+        // Save API config
+        setApiConfig({
+            apiKey,
+            baseUrl,
+            model
         });
-        localStorage.setItem('mixboard_my_models', JSON.stringify(allMyModels));
 
-        // Save S3 Settings
+        // Save S3 config
         saveS3Config(s3Config);
 
-        // Cloud Sync (User Settings)
-        if (user) {
-            await saveUserSettings(user.uid, updatedSettings);
+        alert('Settings saved! Reloading page to apply changes...');
+        window.location.reload();
+    };
+
+    const handleClearAndReset = () => {
+        if (confirm('This will clear all API configuration and reload the page. Continue?')) {
+            clearApiConfig();
+            window.location.reload();
         }
-        onClose();
     };
 
     return (
@@ -145,7 +86,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Settings</h2>
-                            <p className="text-slate-500 text-sm">Configure app preferences</p>
+                            <p className="text-slate-500 text-sm">Simple & reliable configuration</p>
                         </div>
                     </div>
                     {/* Tabs */}
@@ -177,23 +118,9 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     {/* LLM Tab */}
                     {activeTab === 'llm' && (
                         <div className="space-y-6 animate-slide-up">
-                            {/* Provider Selector */}
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Provider</label>
-                                <div className="relative">
-                                    <select
-                                        value={providerId}
-                                        onChange={handleProviderChange}
-                                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl appearance-none focus:ring-2 focus:ring-brand-500 outline-none font-medium text-slate-700 dark:text-slate-200 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
-                                    >
-                                        {settings && Object.values(settings.providers).map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        <ChevronDown size={16} />
-                                    </div>
-                                </div>
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">
+                                <p className="font-bold mb-1">Simplified Configuration</p>
+                                <p>Enter your API credentials below. Changes apply immediately after saving.</p>
                             </div>
 
                             {/* API Key */}
@@ -205,74 +132,48 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     </div>
                                     <input
                                         type="password"
-                                        value={key}
-                                        onChange={e => setKey(e.target.value)}
+                                        value={apiKey}
+                                        onChange={e => setApiKey(e.target.value)}
                                         className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
-                                        placeholder="sk-..."
+                                        placeholder="AIzaSy... or sk-..."
                                     />
                                 </div>
                             </div>
 
-                            {/* Advanced Settings */}
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-white/5 space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Base URL</label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                            <Globe size={14} />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={url}
-                                            onChange={e => setUrl(e.target.value)}
-                                            className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none"
-                                        />
+                            {/* Base URL */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Base URL</label>
+                                <div className="relative">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <Globe size={16} />
                                     </div>
+                                    <input
+                                        type="text"
+                                        value={baseUrl}
+                                        onChange={e => setBaseUrl(e.target.value)}
+                                        className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                        placeholder="https://generativelanguage.googleapis.com/v1beta"
+                                    />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Available Models (Comma separated)</label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-3 text-slate-400">
-                                            <Box size={14} />
-                                        </div>
-                                        <textarea
-                                            value={models}
-                                            onChange={e => setModelsState(e.target.value)}
-                                            rows={2}
-                                            className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none resize-none"
-                                            placeholder="model-1, model-2..."
-                                        />
+                                <p className="text-xs text-slate-400 mt-1 ml-1">
+                                    Google: generativelanguage.googleapis.com/v1beta | GMI Cloud: api.gmi-serving.com/v1
+                                </p>
+                            </div>
+
+                            {/* Model Name */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Model Name</label>
+                                <div className="relative">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <Box size={16} />
                                     </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider italic">Default Image Model</label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                            <ImageIcon size={14} />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={imageModel}
-                                            onChange={e => setImageModel(e.target.value)}
-                                            className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none"
-                                            placeholder="black-forest-labs/FLUX.1-schnell"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider italic">Global Default (New Cards)</label>
-                                    <div className="relative">
-                                        <select
-                                            value={settings?.activeProvider}
-                                            onChange={(e) => {
-                                                // Simplified: just show current active model for preview
-                                            }}
-                                            className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-bold text-slate-400 dark:text-slate-600 focus:border-brand-500 outline-none appearance-none cursor-not-allowed"
-                                            disabled
-                                        >
-                                            <option value="">Managed via Quick Switcher</option>
-                                        </select>
-                                    </div>
+                                    <input
+                                        type="text"
+                                        value={model}
+                                        onChange={e => setModel(e.target.value)}
+                                        className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                        placeholder="gemini-2.0-flash-exp"
+                                    />
                                 </div>
                             </div>
 
@@ -280,10 +181,10 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={handleTestConnection}
-                                    disabled={testStatus === 'testing' || !key}
+                                    disabled={testStatus === 'testing' || !apiKey}
                                     className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
                                 >
-                                    {testStatus === 'testing' ? 'Connecting...' : 'Test Connection'}
+                                    {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
                                 </button>
                                 {testStatus === 'success' && (
                                     <span className="text-green-600 flex items-center gap-1 text-sm font-medium animate-fade-in">
@@ -295,6 +196,18 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                         <AlertCircle size={16} /> {testMessage}
                                     </span>
                                 )}
+                            </div>
+
+                            {/* Clear Configuration */}
+                            <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+                                <button
+                                    onClick={handleClearAndReset}
+                                    className="flex items-center gap-2 text-red-500 hover:text-red-600 text-sm font-bold transition-all"
+                                >
+                                    <RefreshCw size={14} />
+                                    Clear & Reset All Configuration
+                                </button>
+                                <p className="text-xs text-slate-400 mt-1 ml-6">Use this if settings aren't applying properly</p>
                             </div>
                         </div>
                     )}
@@ -318,7 +231,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                         type="checkbox"
                                         className="sr-only peer"
                                         checked={s3Config.enabled}
-                                        onChange={e => setS3Config({ ...s3Config, enabled: e.target.checked })}
+                                        onChange={e => setS3ConfigState({ ...s3Config, enabled: e.target.checked })}
                                     />
                                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 dark:peer-focus:ring-brand-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-600"></div>
                                 </label>
@@ -333,12 +246,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <input
                                                 type="text"
                                                 value={s3Config.endpoint}
-                                                onChange={e => setS3Config({ ...s3Config, endpoint: e.target.value })}
+                                                onChange={e => setS3ConfigState({ ...s3Config, endpoint: e.target.value })}
                                                 placeholder="https://<account>.r2.cloudflarestorage.com"
                                                 className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
                                             />
                                         </div>
-                                        <p className="text-xs text-slate-400 mt-1">Required for R2/MinIO. Optional for standard AWS S3.</p>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -347,7 +259,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <input
                                                 type="text"
                                                 value={s3Config.region}
-                                                onChange={e => setS3Config({ ...s3Config, region: e.target.value })}
+                                                onChange={e => setS3ConfigState({ ...s3Config, region: e.target.value })}
                                                 placeholder="auto / us-east-1"
                                                 className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
                                             />
@@ -359,7 +271,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                                 <input
                                                     type="text"
                                                     value={s3Config.bucket}
-                                                    onChange={e => setS3Config({ ...s3Config, bucket: e.target.value })}
+                                                    onChange={e => setS3ConfigState({ ...s3Config, bucket: e.target.value })}
                                                     placeholder="my-images"
                                                     className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
                                                 />
@@ -373,7 +285,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <input
                                                 type="text"
                                                 value={s3Config.accessKeyId}
-                                                onChange={e => setS3Config({ ...s3Config, accessKeyId: e.target.value })}
+                                                onChange={e => setS3ConfigState({ ...s3Config, accessKeyId: e.target.value })}
                                                 className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
                                             />
                                         </div>
@@ -382,7 +294,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <input
                                                 type="password"
                                                 value={s3Config.secretAccessKey}
-                                                onChange={e => setS3Config({ ...s3Config, secretAccessKey: e.target.value })}
+                                                onChange={e => setS3ConfigState({ ...s3Config, secretAccessKey: e.target.value })}
                                                 className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
                                             />
                                         </div>
@@ -395,12 +307,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <input
                                                 type="text"
                                                 value={s3Config.publicDomain}
-                                                onChange={e => setS3Config({ ...s3Config, publicDomain: e.target.value })}
+                                                onChange={e => setS3ConfigState({ ...s3Config, publicDomain: e.target.value })}
                                                 placeholder="https://images.mydomain.com"
                                                 className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
                                             />
                                         </div>
-                                        <p className="text-xs text-slate-400 mt-1">If your bucket is behind a CDN or custom domain.</p>
                                     </div>
 
                                     <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-xs border border-yellow-100 dark:border-yellow-900/30 flex gap-2">
