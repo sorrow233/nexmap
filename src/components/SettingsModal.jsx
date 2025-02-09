@@ -12,7 +12,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     // --- LLM State ---
     const PROVIDERS = [
         { id: 'custom', name: 'Custom (自定义)', baseUrl: '', models: '' },
-        { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', models: 'google/gemini-3-flash-preview, google/gemini-1.5-pro, google/gemini-1.5-flash' },
+        { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', models: 'google/gemini-3-flash-preview, google/gemini-3-pro-preview, google/gemini-1.5-pro, google/gemini-1.5-flash' },
         { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', models: 'deepseek-ai/DeepSeek-V2.5, deepseek-ai/DeepSeek-V3, deepseek-ai/DeepSeek-R1-Distill-Qwen-32B' },
         { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', models: 'deepseek-chat, deepseek-reasoner' },
         { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: 'gpt-4o, gpt-4o-mini, o1-preview, o1-mini' },
