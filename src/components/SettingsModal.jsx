@@ -11,13 +11,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     // --- LLM State ---
     const PROVIDERS = [
-        { id: 'custom', name: 'Custom (自定义)', baseUrl: '', model: '' },
-        { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', model: 'google/gemini-3-flash-preview' },
-        { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', model: 'deepseek-ai/DeepSeek-V2.5' },
-        { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
-        { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
-        { id: 'gemini', name: 'Google Gemini (OpenAI Compatible)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash-exp' },
-        { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'auto' },
+        { id: 'custom', name: 'Custom (自定义)', baseUrl: '', models: '' },
+        { id: 'gmicloud', name: 'GMI Cloud (Inference)', baseUrl: 'https://api.gmi-serving.com/v1', models: 'google/gemini-3-flash-preview, google/gemini-1.5-pro, google/gemini-1.5-flash' },
+        { id: 'siliconflow', name: 'SiliconFlow (硅基流动)', baseUrl: 'https://api.siliconflow.cn/v1', models: 'deepseek-ai/DeepSeek-V2.5, deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, deepseek-ai/DeepSeek-V3' },
+        { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', models: 'deepseek-chat, deepseek-reasoner' },
+        { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: 'gpt-4o, gpt-4o-mini, gpt-4-turbo' },
+        { id: 'gemini', name: 'Google Gemini (Compatible)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', models: 'gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash' },
+        { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', models: 'auto, google/gemini-2.0-flash-001, deepseek/deepseek-chat' },
     ];
 
     const [providerId, setProviderId] = useState(() => {
@@ -61,7 +61,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         const p = PROVIDERS.find(x => x.id === pid);
         if (p && p.id !== 'custom') {
             setUrl(p.baseUrl);
-            if (p.model) setModelState(p.model);
+            if (p.models) setModelsState(p.models);
             const providerKey = localStorage.getItem(`mixboard_llm_key_${pid}`) || '';
             setKey(providerKey);
         }
@@ -71,9 +71,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setTestStatus('testing');
         setTestMessage('');
         try {
+            // Use the first model in the list for testing
+            const testModel = models.split(',')[0].trim();
             await chatCompletion(
                 [{ role: 'user', content: 'Hi' }],
-                model,
+                testModel,
                 { apiKey: key, baseUrl: url }
             );
             setTestStatus('success');
@@ -89,7 +91,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         localStorage.setItem(`mixboard_llm_key_${providerId}`, key);
         setApiKey(key);
         setBaseUrl(url);
-        setModel(model);
+        setModel(models);
 
         // Save S3 Settings
         saveS3Config(s3Config);
@@ -105,8 +107,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             await saveUserSettings(user.uid, {
                 apiKeys: allKeys,
                 baseUrl: url,
-                model: model,
-                s3Config: s3Config, // Sync S3 config (encrypted? No, plain for now per plan, user aware)
+                model: models,
+                s3Config: s3Config,
                 updatedAt: Date.now()
             });
         }
@@ -133,8 +135,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         <button
                             onClick={() => setActiveTab('llm')}
                             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'llm'
-                                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                                 }`}
                         >
                             LLM Model
@@ -142,8 +144,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         <button
                             onClick={() => setActiveTab('storage')}
                             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'storage'
-                                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                                 }`}
                         >
                             Image Storage
@@ -210,16 +212,17 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Model Name</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Available Models (Comma separated)</label>
                                     <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <div className="absolute left-3 top-3 text-slate-400">
                                             <Box size={14} />
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={model}
-                                            onChange={e => setModelState(e.target.value)}
-                                            className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none"
+                                        <textarea
+                                            value={models}
+                                            onChange={e => setModelsState(e.target.value)}
+                                            rows={2}
+                                            className="w-full p-2 pl-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono text-slate-600 dark:text-slate-300 focus:border-brand-500 outline-none resize-none"
+                                            placeholder="model-1, model-2..."
                                         />
                                     </div>
                                 </div>

@@ -234,9 +234,9 @@ export default function Card({
 
             <div className="px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center border-t border-white/5">
                 <span className="font-medium bg-white/5 px-2 py-0.5 rounded-full">{messages.length} messages</span>
-                <span className="flex items-center gap-1 font-semibold text-brand-500/70">
+                <span className="flex items-center gap-1 font-semibold text-brand-500/70 truncate max-w-[120px]" title={cardContent.model}>
                     <Sparkles size={8} />
-                    {cardContent.model?.includes('flash') ? 'FAST' : 'PRO'}
+                    {cardContent.model?.split('/').pop() || 'AI'}
                 </span>
             </div>
         </div>
