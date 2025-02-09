@@ -15,12 +15,14 @@ export default function Canvas({
     onConnect,
     onDeleteCard,
     isConnecting,
-    connectionStartId
+    connectionStartId,
+    offset,
+    setOffset,
+    scale,
+    setScale
 }) {
     const canvasRef = useRef(null);
     const [panning, setPanning] = useState(false);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const [scale, setScale] = useState(1);
 
     // Config for smooth feel
     const ZOOM_sensitivity = 0.005; // Finer control
@@ -244,7 +246,7 @@ export default function Canvas({
             canvas.removeEventListener('gesturechange', handleGestureChange);
             canvas.removeEventListener('gestureend', handleGestureEnd);
         };
-    }, []); // Empty deps
+    }, [setScale, setOffset]); // Listen to prop changes if they swap (unlikely but safe)
 
     /* Removed React onWheel prop since we handle it natively */
 
@@ -322,6 +324,7 @@ export default function Canvas({
                                 onUpdate={(id, newData) => onUpdateCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c))}
                                 onDragEnd={onDragEnd}
                                 onConnect={() => onConnect && onConnect(card.id)}
+                                onExpand={() => onExpandCard(card.id)}
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
                                 scale={scale}

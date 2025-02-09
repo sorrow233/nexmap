@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Maximize2, Link, ArrowRight, Copy, Sparkles } from 'lucide-react';
+import { Maximize2, Link, ArrowRight, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 
@@ -231,6 +231,46 @@ export default function Card({
                 </p>
                 <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white via-white/40 dark:from-slate-900/90 dark:via-slate-900/40 to-transparent pointer-events-none"></div>
             </div>
+
+            {data.type === 'image_gen' && (
+                <div className="px-4 pb-4">
+                    <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 flex items-center justify-center relative group/image">
+                        {cardContent.loading ? (
+                            <div className="flex flex-col items-center gap-3">
+                                <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Generating...</span>
+                            </div>
+                        ) : cardContent.error ? (
+                            <div className="flex flex-col items-center gap-2 p-4 text-center">
+                                <AlertCircle className="w-8 h-8 text-red-500/50" />
+                                <span className="text-xs text-red-500/70 font-medium">{cardContent.error}</span>
+                            </div>
+                        ) : cardContent.imageUrl ? (
+                            <>
+                                <img
+                                    src={cardContent.imageUrl}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110"
+                                    alt={cardContent.prompt}
+                                    onMouseDown={e => e.stopPropagation()}
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); window.open(cardContent.imageUrl, '_blank'); }}
+                                        className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all transform hover:scale-110"
+                                    >
+                                        <Maximize2 size={16} />
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                                <ImageIcon size={24} className="opacity-20" />
+                                <span className="text-[10px] uppercase font-bold tracking-tighter opacity-30">No Image</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center border-t border-white/5">
                 <span className="font-medium bg-white/5 px-2 py-0.5 rounded-full">{messages.length} messages</span>

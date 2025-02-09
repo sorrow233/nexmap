@@ -6,8 +6,13 @@ import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
 import SettingsModal from './components/SettingsModal';
 import { auth, googleProvider } from './services/firebase';
-import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
-import { getApiKey, setApiKey, getBaseUrl, setBaseUrl, getModel, setModel, generateTitle, chatCompletion, streamChatCompletion } from './services/llm';
+import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings, loadSettings, saveSettings } from './services/storage';
+import {
+    chatCompletion,
+    streamChatCompletion,
+    generateTitle,
+    imageGeneration
+} from './services/llm';
 import { uploadImageToS3, getS3Config } from './services/s3';
 
 // Settings Modal Component
@@ -191,6 +196,10 @@ function AppContent() {
     const globalFileInputRef = React.useRef(null);
 
     // Connection Mode State
+    const [showSelectionBar, setShowSelectionBar] = useState(false);
+    const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+    const [availableModels, setAvailableModels] = useState([]);
+    const [currentModelName, setCurrentModelName] = useState('');
     const [isConnecting, setIsConnecting] = useState(false);
     const [connectionStartId, setConnectionStartId] = useState(null);
 
@@ -199,6 +208,10 @@ function AppContent() {
     const [historyIndex, setHistoryIndex] = useState(-1);
     // Clipboard State
     const [clipboard, setClipboard] = useState(null);
+
+    // Canvas Pan & Zoom State (Lifted from Canvas.jsx)
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [scale, setScale] = useState(1);
 
     // Helper to add state to history
     const addToHistory = (newCards, newConnections) => {
@@ -262,13 +275,17 @@ function AppContent() {
         // Or better: Paste at mouse cursor? Hard without mouse tracking in this scope.
         // Let's offset by 20px.
 
-        const newCards = clipboard.map(card => {
+        const newCards = clipboard.map((card, index) => {
             const newId = Date.now() + Math.random();
+            // Paste near center of viewport
+            const centerX = (window.innerWidth / 2 - offset.x) / scale;
+            const centerY = (window.innerHeight / 2 - offset.y) / scale;
+
             return {
                 ...card,
                 id: newId,
-                x: card.x + 20,
-                y: card.y + 20,
+                x: centerX + (index * 20),
+                y: centerY + (index * 20),
                 data: { ...card.data } // Deep clone data to avoid ref issues
             };
         });
@@ -280,6 +297,24 @@ function AppContent() {
         // Select newly pasted cards
         setSelectedIds(newCards.map(c => c.id));
     };
+
+    // Load available models for switcher
+    useEffect(() => {
+        const fetchModels = async () => {
+            const settings = await loadSettings();
+            const provider = settings.activeProvider || 'gmicloud';
+            const config = settings.providers[provider];
+            if (config && config.models) {
+                // Ensure it's an array
+                const modelsArr = typeof config.models === 'string'
+                    ? config.models.split(',').map(m => m.trim()).filter(Boolean)
+                    : config.models;
+                setAvailableModels(modelsArr);
+                setCurrentModelName(config.model || modelsArr[0] || '');
+            }
+        };
+        fetchModels();
+    }, [isSettingsOpen, isSwitcherOpen]); // Reload when settings close or switcher opens
 
     // 1. Initial Load
     useEffect(() => {
@@ -403,6 +438,20 @@ function AppContent() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedIds, cards, connections, history, historyIndex, clipboard]); // Include dependencies
 
+    // Sync Tab Title
+    useEffect(() => {
+        if (view === 'canvas' && currentBoardId) {
+            const board = boardsList.find(b => b.id === currentBoardId);
+            if (board) {
+                document.title = `${board.name} | Neural Canvas`;
+            } else {
+                document.title = 'Neural Canvas';
+            }
+        } else {
+            document.title = 'Neural Canvas';
+        }
+    }, [view, currentBoardId, boardsList]);
+
     // 2. Auto-Save Cards & Connections
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length > 0) {
@@ -465,8 +514,8 @@ function AppContent() {
         if (!text.trim() && images.length === 0) return;
 
         const newId = Date.now();
-        const initialX = window.innerWidth / 2 - 200;
-        const initialY = window.innerHeight / 2 - 150;
+        const initialX = (window.innerWidth / 2 - offset.x) / scale - 160;
+        const initialY = (window.innerHeight / 2 - offset.y) / scale - 100;
 
         // Construct Content
         let content = text;
@@ -535,7 +584,12 @@ function AppContent() {
                 return c;
             }));
         } finally {
-            setIsGenerating(false);
+            // setIsGenerating(false); // This state is not defined globally, it's likely generatingCardIds
+            setGeneratingCardIds(prev => {
+                const next = new Set(prev);
+                next.delete(newId);
+                return next;
+            });
         }
     };
 
@@ -665,9 +719,58 @@ function AppContent() {
     const handleCreateCard = async () => {
         if (!promptInput.trim() && globalImages.length === 0) return;
 
+        console.log('[App] handleCreateCard with prompt:', promptInput);
+
+        // Check for Image Generation Command
+        if (promptInput.startsWith('/draw ') || promptInput.startsWith('/image ')) {
+            const prompt = promptInput.replace(/^\/(draw|image)\s+/, '');
+            setPromptInput('');
+
+            const newCardId = Date.now().toString();
+            const newCard = {
+                id: newCardId,
+                type: 'image_gen',
+                x: 100 + Math.random() * 200,
+                y: 100 + Math.random() * 200,
+                data: {
+                    prompt: prompt,
+                    loading: true,
+                    title: `Generating: ${prompt.substring(0, 20)}...`
+                }
+            };
+
+            setCards(prev => [...prev, newCard]);
+
+            try {
+                const imageUrl = await imageGeneration(prompt);
+                setCards(prev => prev.map(c => c.id === newCardId ? {
+                    ...c,
+                    data: {
+                        ...c.data,
+                        imageUrl: imageUrl,
+                        loading: false,
+                        title: prompt.substring(0, 30) + (prompt.length > 30 ? '...' : '')
+                    }
+                } : c));
+            } catch (err) {
+                console.error('Image generation failed:', err);
+                setCards(prev => prev.map(c => c.id === newCardId ? {
+                    ...c,
+                    data: {
+                        ...c.data,
+                        error: err.message,
+                        loading: false,
+                        title: 'Generation Failed'
+                    }
+                } : c));
+            }
+            return;
+        }
+
+        const userPrompt = promptInput;
         const newId = Date.now();
-        const initialX = window.innerWidth / 2 - 160 + (Math.random() * 40 - 20) - 200;
-        const initialY = window.innerHeight / 2 - 100 + (Math.random() * 40 - 20);
+        const initialX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
+        const initialY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
 
         // Construct Content with S3 support
         let content = promptInput;
@@ -736,17 +839,9 @@ function AppContent() {
             ];
         }
 
-        // Resolve default model and provider
-        const rawModel = getModel();
-        const defaultModel = rawModel ? rawModel.split(',')[0].trim() : "google/gemini-3-flash-preview";
-
-        // Find providerId for this model from global list
-        let defaultProviderId = null;
-        try {
-            const myModels = JSON.parse(localStorage.getItem('mixboard_my_models') || '[]');
-            const found = myModels.find(m => m.value === defaultModel);
-            if (found) defaultProviderId = found.providerId;
-        } catch (e) { }
+        // Resolve default model and provider from explicit settings
+        const defaultModel = localStorage.getItem('mixboard_default_model_value') || "google/gemini-3-flash-preview";
+        const defaultProviderId = localStorage.getItem('mixboard_default_provider_id') || "gmicloud";
 
         // Initial empty assistant message
         const newCard = {
@@ -762,479 +857,665 @@ function AppContent() {
                 model: defaultModel,
                 providerId: defaultProviderId
             }
+        };
+
+        const newCardState = [...cards, newCard];
+        setCards(newCardState);
+        addToHistory(newCardState, connections);
+        setPromptInput('');
+        setGlobalImages([]); // Clear images
+        setGeneratingCardIds(prev => new Set(prev).add(newId));
+
+        // Update function for streaming content
+        const updateCardContent = (contentChunk) => {
+            setCards(prev => prev.map(c => {
+                if (c.id === newId) {
+                    const msgs = [...c.data.messages];
+                    const lastMsg = msgs[msgs.length - 1];
+                    const newContent = lastMsg.content + contentChunk;
+
+                    // Keep original content - ChatModal will handle thinking tag display
+                    msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
+                    return { ...c, data: { ...c.data, messages: msgs } };
+                }
+                return c;
+            }));
+        };
+
+        try {
+            // Use user input directly as title (truncated if too long)
+            const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : (promptInput || 'Image Input');
+
+            setCards(prev => prev.map(c =>
+                c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
+            ));
+
+            // Contextual Logic: If cards are selected, use them as context
+            // PLUS: Check connected cards
+            let contextMessages = [];
+
+            // 1. Explicitly selected cards
+            let contextSourceIds = [...selectedIds];
+
+            // Logic for manual selections:
+            if (contextSourceIds.length > 0) {
+                const selectedCards = cards.filter(c => contextSourceIds.includes(c.id));
+                const contextText = selectedCards.map(c =>
+                    `Context from card "${c.data.title}": \n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')} `
+                ).join('\n\n---\n\n');
+                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context.]\n\n${contextText} ` }];
+            }
+
+            // Stream response with context + "No Internal Monologue" instruction
+            // Revert suppression. Allow model to think.
+            // Pure Gemini - No System Prompt pollution
+            // Ensure content is passed correctly (if string or array)
+            const requestMessages = [...contextMessages, { role: 'user', content: content }];
+
+            await streamChatCompletion(
+                requestMessages,
+                updateCardContent,
+                defaultModel,
+                { providerId: defaultProviderId }
+            );
+
+        } catch (error) {
+            console.error(error);
+            setCards(prev => prev.map(c => {
+                if (c.id === newId) {
+                    const msgs = [...c.data.messages];
+                    msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
+                    return { ...c, data: { ...c.data, messages: msgs } };
+                }
+                return c;
+            }));
+        } finally {
+            setGeneratingCardIds(prev => {
+                const next = new Set(prev);
+                next.delete(newId);
+                return next;
+            });
         }
     };
 
-    const newCardState = [...cards, newCard];
-    setCards(newCardState);
-    addToHistory(newCardState, connections);
-    setPromptInput('');
-    setGlobalImages([]); // Clear images
-    setIsGenerating(true);
+    const handleCreateNote = (initialContent = '', initialX = null, initialY = null) => {
+        const newId = Date.now();
 
-    // Update function for streaming content
-    const updateCardContent = (contentChunk) => {
-        setCards(prev => prev.map(c => {
-            if (c.id === newId) {
-                const msgs = [...c.data.messages];
-                const lastMsg = msgs[msgs.length - 1];
-                const newContent = lastMsg.content + contentChunk;
+        // Count existing notes for sequence
+        const existingNoteCount = cards.filter(c => c.type === 'note').length;
+        const sequence = String(existingNoteCount + 1).padStart(2, '0');
+        const prefixedContent = initialContent
+            ? `${sequence}. ${initialContent}`
+            : `${sequence}. `;
 
-                // Keep original content - ChatModal will handle thinking tag display
-                msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
-                return { ...c, data: { ...c.data, messages: msgs } };
+        // Calculate center position using current pan and zoom
+        const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
+        const centerY = (window.innerHeight / 2 - offset.y) / scale - 140;
+
+        const posX = initialX !== null ? initialX : (centerX + (Math.random() * 40 - 20));
+        const posY = initialY !== null ? initialY : (centerY + (Math.random() * 40 - 20));
+
+        const newNote = {
+            id: newId,
+            type: 'note',
+            x: Math.max(0, posX),
+            y: Math.max(0, posY),
+            data: {
+                content: prefixedContent,
+                image: null
             }
-            return c;
-        }));
+        };
+
+        const newCardState = [...cards, newNote];
+        setCards(newCardState);
+        addToHistory(newCardState, connections);
     };
 
-    try {
-        // Use user input directly as title (truncated if too long)
-        const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : (promptInput || 'Image Input');
+    const handleUpdateBoardTitle = async (newTitle) => {
+        if (!newTitle.trim() || !currentBoardId) return;
 
-        setCards(prev => prev.map(c =>
-            c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
-        ));
+        console.log('[App] handleUpdateBoardTitle:', newTitle);
 
-        // Contextual Logic: If cards are selected, use them as context
-        // PLUS: Check connected cards
-        let contextMessages = [];
+        // 1. Update metadata list immediately for UI sync
+        setBoardsList(prev => prev.map(b => b.id === currentBoardId ? { ...b, name: newTitle } : b));
 
-        // 1. Explicitly selected cards
-        let contextSourceIds = [...selectedIds];
-
-        // Logic for manual selections:
-        if (contextSourceIds.length > 0) {
-            const selectedCards = cards.filter(c => contextSourceIds.includes(c.id));
-            const contextText = selectedCards.map(c =>
-                `Context from card "${c.data.title}": \n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')} `
-            ).join('\n\n---\n\n');
-            contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context.]\n\n${contextText} ` }];
-        }
-
-        // Stream response with context + "No Internal Monologue" instruction
-        // Revert suppression. Allow model to think.
-        // Pure Gemini - No System Prompt pollution
-        // Ensure content is passed correctly (if string or array)
-        const requestMessages = [...contextMessages, { role: 'user', content: content }];
-
-        await streamChatCompletion(
-            requestMessages,
-            updateCardContent
-        );
-
-    } catch (error) {
-        console.error(error);
-        setCards(prev => prev.map(c => {
-            if (c.id === newId) {
-                const msgs = [...c.data.messages];
-                msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
-                return { ...c, data: { ...c.data, messages: msgs } };
-            }
-            return c;
-        }));
-    } finally {
-        setIsGenerating(false);
-    }
-};
-
-const handleCreateNote = () => {
-    const newId = Date.now();
-    // Randomize position slightly around center
-    const initialX = window.innerWidth / 2 - 140 + (Math.random() * 40 - 20) - 200;
-    const initialY = window.innerHeight / 2 - 140 + (Math.random() * 40 - 20);
-
-    const newNote = {
-        id: newId,
-        type: 'note',
-        x: Math.max(0, initialX),
-        y: Math.max(0, initialY),
-        data: {
-            content: '',
-            image: null
+        // 2. Save to storage
+        const boardData = await loadBoard(currentBoardId);
+        if (boardData) {
+            await saveBoard(currentBoardId, { ...boardData, name: newTitle });
+            if (user) await saveBoardToCloud(user.uid, currentBoardId, { ...boardData, name: newTitle });
         }
     };
 
-    const newCardState = [...cards, newNote];
-    setCards(newCardState);
-    addToHistory(newCardState, connections);
-};
+    const handleExpandTopics = async (sourceCardId) => {
+        const sourceCard = cards.find(c => c.id === sourceCardId);
+        if (!sourceCard || !sourceCard.data.marks || sourceCard.data.marks.length === 0) return;
 
-const handleDeleteCard = (id) => {
-    const newCards = cards.filter(c => c.id !== id);
-    const newConnections = connections.filter(c => c.from !== id && c.to !== id);
-    setCards(newCards);
-    setConnections(newConnections);
-    setSelectedIds(prev => prev.filter(sid => sid !== id));
-    addToHistory(newCards, newConnections);
-};
+        const marks = sourceCard.data.marks;
+        const newCardsState = [...cards];
+        const newConnectionsState = [...connections];
 
-// Chat completion wrapper for existing cards (ChatModal) to use connections
-const generateResponseForCard = async (cardId, newMessages) => {
-    // Find connected context
-    const connectedIds = Array.from(getConnectedGraph(cardId));
-    // Filter out self
-    const neighborIds = connectedIds.filter(id => id !== cardId);
+        for (let i = 0; i < marks.length; i++) {
+            const mark = marks[i];
+            const newId = Date.now() + i;
+            // Simple circular/offset layout
+            const angle = (i / marks.length) * Math.PI * 2;
+            const dist = 400;
+            const newX = sourceCard.x + Math.cos(angle) * dist;
+            const newY = sourceCard.y + Math.sin(angle) * dist;
 
-    let contextMessages = [];
-    if (neighborIds.length > 0) {
-        const neighbors = cards.filter(c => neighborIds.includes(c.id));
-        const contextText = neighbors.map(c =>
-            `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')} `
-        ).join('\n\n---\n\n');
+            const defaultModel = localStorage.getItem('mixboard_default_model_value') || sourceCard.data.model;
+            const defaultProviderId = localStorage.getItem('mixboard_default_provider_id') || sourceCard.data.providerId;
 
-        if (contextText.trim()) {
-            contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others.Here is their recent context:]\n\n${contextText} ` });
-        }
-    }
-
-    // Pure Gemini - No System Prompt
-    return [...contextMessages, ...newMessages];
-};
-
-const handleChatGenerate = async (cardId, messages, onToken) => {
-    setGeneratingCardIds(prev => new Set(prev).add(cardId));
-    try {
-        const fullMessages = await generateResponseForCard(cardId, messages);
-        const card = cards.find(c => c.id === cardId);
-        const model = card?.data?.model;
-        const providerId = card?.data?.providerId;
-        await streamChatCompletion(fullMessages, onToken, model, { providerId });
-    } finally {
-        setGeneratingCardIds(prev => {
-            const next = new Set(prev);
-            next.delete(cardId);
-            return next;
-        });
-    }
-};
-
-const handleUpdateCard = (id, newData) => {
-    console.log('[App] handleUpdateCard called for card:', id, 'newData type:', typeof newData);
-    setCards(prev => prev.map(c => {
-        if (c.id === id) {
-            const resolvedData = typeof newData === 'function' ? newData(c.data) : newData;
-            console.log('[App] Updating card. Messages count:', resolvedData.messages?.length || 0, 'Data stringify size:', JSON.stringify(resolvedData).length);
-            return { ...c, data: resolvedData };
-        }
-        return c;
-    }));
-};
-
-// Group Drag Logic
-const handleCardMove = (id, newX, newY) => {
-    setCards(prev => {
-        const sourceCard = prev.find(c => c.id === id);
-        if (!sourceCard) return prev;
-
-        const dx = newX - sourceCard.x;
-        const dy = newY - sourceCard.y;
-
-        if (dx === 0 && dy === 0) return prev;
-
-        // Determine which IDs to move:
-        // 1. If the card being dragged is selected, move all selected cards
-        // 2. Otherwise, move the connected graph
-        const isSelected = selectedIds.includes(id);
-        const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
-
-        return prev.map(c => {
-            if (moveIds.has(c.id)) {
-                return { ...c, x: c.x + dx, y: c.y + dy };
-            }
-            return c;
-        });
-    });
-};
-
-const handleCardMoveEnd = () => {
-    addToHistory(cards, connections);
-};
-
-const handleBatchDelete = () => {
-    const newCards = cards.filter(c => !selectedIds.includes(c.id));
-    // Also remove connections involving deleted cards
-    const newConnections = connections.filter(c =>
-        !selectedIds.includes(c.from) && !selectedIds.includes(c.to)
-    );
-
-    setCards(newCards);
-    setConnections(newConnections);
-    setSelectedIds([]);
-    addToHistory(newCards, newConnections);
-};
-
-const handleRegenerate = async () => {
-    const targets = cards.filter(c => selectedIds.includes(c.id));
-    if (targets.length === 0) return;
-
-    // Reset selected cards to "Thinking..." state by removing last assistant msg or adding one
-    setCards(prev => prev.map(c => {
-        if (selectedIds.includes(c.id)) {
-            const newMsgs = [...c.data.messages];
-            // If last was assistant, remove it to retry. If user, just append.
-            if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
-                newMsgs.pop();
-            }
-            // Add placeholder
-            newMsgs.push({ role: 'assistant', content: '' });
-            return { ...c, data: { ...c.data, messages: newMsgs } };
-        }
-        return c;
-    }));
-
-    setIsGenerating(true);
-
-    try {
-        await Promise.all(targets.map(async (card) => {
-            const currentMsgs = [...card.data.messages];
-            // Remove the assistant msg if it existed (we want the prompt stack)
-            if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
-                currentMsgs.pop();
-            }
-
-            // Define updater for this specific card
-            const updateThisCard = (chunk) => {
-                setCards(prev => prev.map(c => {
-                    if (c.id === card.id) {
-                        const msgs = [...c.data.messages];
-                        const last = msgs[msgs.length - 1];
-                        msgs[msgs.length - 1] = { ...last, content: last.content + chunk };
-                        return { ...c, data: { ...c.data, messages: msgs } };
-                    }
-                    return c;
-                }));
+            const newCard = {
+                id: newId,
+                x: newX,
+                y: newY,
+                data: {
+                    title: mark.length > 20 ? mark.substring(0, 20) + '...' : mark,
+                    messages: [
+                        { role: 'user', content: mark },
+                        { role: 'assistant', content: '' }
+                    ],
+                    model: defaultModel,
+                    providerId: defaultProviderId
+                }
             };
 
-            // Pure Gemini - No System Prompt
-            await streamChatCompletion(currentMsgs, updateThisCard);
-        }));
-    } catch (e) {
-        console.error("Regeneration failed", e);
-    } finally {
-        setIsGenerating(false);
-    }
-};
+            newCardsState.push(newCard);
+            newConnectionsState.push({ from: sourceCardId, to: newId });
 
-if (view === 'gallery') {
+            // Trigger generation (Async)
+            // We need to use handleChatGenerate but it wants messages.
+            // Let's call it manually for each
+            setTimeout(() => {
+                handleChatGenerate(newId, [{ role: 'user', content: mark }], (token) => {
+                    setCards(prev => prev.map(c => {
+                        if (c.id === newId) {
+                            const msgs = [...c.data.messages];
+                            msgs[1] = { ...msgs[1], content: msgs[1].content + token };
+                            return { ...c, data: { ...c.data, messages: msgs } };
+                        }
+                        return c;
+                    }));
+                });
+            }, 100 * i);
+        }
+
+        setCards(newCardsState);
+        setConnections(newConnectionsState);
+        addToHistory(newCardsState, newConnectionsState);
+    };
+
+    const handleDeleteCard = (id) => {
+        const newCards = cards.filter(c => c.id !== id);
+        const newConnections = connections.filter(c => c.from !== id && c.to !== id);
+        setCards(newCards);
+        setConnections(newConnections);
+        setSelectedIds(prev => prev.filter(sid => sid !== id));
+        addToHistory(newCards, newConnections);
+    };
+
+    // Chat completion wrapper for existing cards (ChatModal) to use connections
+    const generateResponseForCard = async (cardId, newMessages) => {
+        // Find connected context
+        const connectedIds = Array.from(getConnectedGraph(cardId));
+        // Filter out self
+        const neighborIds = connectedIds.filter(id => id !== cardId);
+
+        let contextMessages = [];
+        if (neighborIds.length > 0) {
+            const neighbors = cards.filter(c => neighborIds.includes(c.id));
+            const contextText = neighbors.map(c =>
+                `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')} `
+            ).join('\n\n---\n\n');
+
+            if (contextText.trim()) {
+                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText} ` });
+            }
+        }
+
+        // Pure Gemini - No System Prompt
+        return [...contextMessages, ...newMessages];
+    };
+
+    const handleChatGenerate = async (cardId, messages, onToken) => {
+        setGeneratingCardIds(prev => new Set(prev).add(cardId));
+        try {
+            const fullMessages = await generateResponseForCard(cardId, messages);
+            const card = cards.find(c => c.id === cardId);
+            const model = card?.data?.model;
+            const providerId = card?.data?.providerId;
+            await streamChatCompletion(fullMessages, onToken, model, { providerId });
+        } finally {
+            setGeneratingCardIds(prev => {
+                const next = new Set(prev);
+                next.delete(cardId);
+                return next;
+            });
+        }
+    };
+
+    const handleUpdateCard = (id, newData) => {
+        console.log('[App] handleUpdateCard called for card:', id, 'newData type:', typeof newData);
+        setCards(prev => prev.map(c => {
+            if (c.id === id) {
+                const resolvedData = typeof newData === 'function' ? newData(c.data) : newData;
+                console.log('[App] Updating card. Messages count:', resolvedData.messages?.length || 0, 'Data stringify size:', JSON.stringify(resolvedData).length);
+                return { ...c, data: resolvedData };
+            }
+            return c;
+        }));
+    };
+
+    // Group Drag Logic
+    const handleCardMove = (id, newX, newY) => {
+        setCards(prev => {
+            const sourceCard = prev.find(c => c.id === id);
+            if (!sourceCard) return prev;
+
+            const dx = newX - sourceCard.x;
+            const dy = newY - sourceCard.y;
+
+            if (dx === 0 && dy === 0) return prev;
+
+            // Determine which IDs to move:
+            // 1. If the card being dragged is selected, move all selected cards
+            // 2. Otherwise, move the connected graph
+            const isSelected = selectedIds.includes(id);
+            const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
+
+            return prev.map(c => {
+                if (moveIds.has(c.id)) {
+                    return { ...c, x: c.x + dx, y: c.y + dy };
+                }
+                return c;
+            });
+        });
+    };
+
+    const handleCardMoveEnd = () => {
+        addToHistory(cards, connections);
+    };
+
+    const handleBatchDelete = () => {
+        const newCards = cards.filter(c => !selectedIds.includes(c.id));
+        // Also remove connections involving deleted cards
+        const newConnections = connections.filter(c =>
+            !selectedIds.includes(c.from) && !selectedIds.includes(c.to)
+        );
+
+        setCards(newCards);
+        setConnections(newConnections);
+        setSelectedIds([]);
+        addToHistory(newCards, newConnections);
+    };
+
+    const handleRegenerate = async () => {
+        const targets = cards.filter(c => selectedIds.includes(c.id));
+        if (targets.length === 0) return;
+
+        // Reset selected cards to "Thinking..." state by removing last assistant msg or adding one
+        setCards(prev => prev.map(c => {
+            if (selectedIds.includes(c.id)) {
+                const newMsgs = [...c.data.messages];
+                // If last was assistant, remove it to retry. If user, just append.
+                if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
+                    newMsgs.pop();
+                }
+                // Add placeholder
+                newMsgs.push({ role: 'assistant', content: '' });
+                return { ...c, data: { ...c.data, messages: newMsgs } };
+            }
+            return c;
+        }));
+
+        // setIsGenerating(true); // This state is not defined globally, it's likely generatingCardIds
+
+        try {
+            await Promise.all(targets.map(async (card) => {
+                const currentMsgs = [...card.data.messages];
+                // Remove the assistant msg if it existed (we want the prompt stack)
+                if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
+                    currentMsgs.pop();
+                }
+
+                // Define updater for this specific card
+                const updateThisCard = (chunk) => {
+                    setCards(prev => prev.map(c => {
+                        if (c.id === card.id) {
+                            const msgs = [...c.data.messages];
+                            const last = msgs[msgs.length - 1];
+                            msgs[msgs.length - 1] = { ...last, content: last.content + chunk };
+                            return { ...c, data: { ...c.data, messages: msgs } };
+                        }
+                        return c;
+                    }));
+                };
+
+                // Pure Gemini - No System Prompt
+                await streamChatCompletion(currentMsgs, updateThisCard);
+            }));
+        } catch (e) {
+            console.error("Regeneration failed", e);
+        } finally {
+            // setIsGenerating(false); // This state is not defined globally, it's likely generatingCardIds
+            setGeneratingCardIds(prev => {
+                const next = new Set(prev);
+                targets.forEach(card => next.delete(card.id));
+                return next;
+            });
+        }
+    };
+
+    if (view === 'gallery') {
+        return (
+            <React.Fragment>
+                <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-hidden transition-colors duration-500">
+                    {/* Ambient Background */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
+
+                    <div className="max-w-7xl mx-auto relative z-10">
+                        <div className="flex justify-between items-center mb-12">
+                            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                                Neural Canvas
+                            </h1>
+                            <div className="flex items-center gap-4">
+                                {user ? (
+                                    <div className="flex items-center gap-3 bg-slate-800 rounded-full pl-2 pr-4 py-1.5 border border-slate-700">
+                                        {user.photoURL && <img src={user.photoURL} className="w-6 h-6 rounded-full" alt="User avatar" />}
+                                        <span className="text-sm font-medium">{user.displayName}</span>
+                                        <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white ml-2">Sign Out</button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={handleLogin}
+                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-medium transition-all shadow-lg hover:shadow-blue-500/25"
+                                    >
+                                        Sign In with Google
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <BoardGallery
+                            boards={boardsList}
+                            onCreateBoard={handleCreateBoard}
+                            onSelectBoard={handleLoadBoard}
+                            onDeleteBoard={handleDeleteBoard}
+                        />
+                    </div>
+                </div>
+                <div className="fixed bottom-10 right-10">
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-brand-600 hover:scale-110 transition-all border border-slate-100"
+                        title="Settings"
+                    >
+                        <Settings size={24} />
+                    </button>
+                </div>
+                {isSettingsOpen && (
+                    <SettingsModal
+                        isOpen={isSettingsOpen}
+                        onClose={() => setIsSettingsOpen(false)}
+                        user={user}
+                    />
+                )}</React.Fragment>
+        );
+    }
+
     return (
         <React.Fragment>
-            <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-hidden transition-colors duration-500">
-                {/* Ambient Background */}
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
+            <Canvas
+                cards={cards} // Pass all cards
+                connections={connections} // New prop
+                selectedIds={selectedIds} // Pass selection state
+                onUpdateCards={setCards} // This is for what? Canvas uses local state? Canvas needs refactoring for group drag.
+                onCardMove={handleCardMove} // Use our new group move handler
+                onDragEnd={handleCardMoveEnd} // Handle history on drag end
+                onSelectionChange={setSelectedIds}
+                onExpandCard={setExpandedCardId}
+                onConnect={handleConnect} // New handler
+                onDeleteCard={handleDeleteCard}
+                isConnecting={isConnecting}
+                connectionStartId={connectionStartId}
+                offset={offset}
+                setOffset={setOffset}
+                scale={scale}
+                setScale={setScale}
+            />
 
-                <div className="max-w-7xl mx-auto relative z-10">
-                    <div className="flex justify-between items-center mb-12">
-                        <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                            Neural Canvas
-                        </h1>
-                        <div className="flex items-center gap-4">
-                            {user ? (
-                                <div className="flex items-center gap-3 bg-slate-800 rounded-full pl-2 pr-4 py-1.5 border border-slate-700">
-                                    {user.photoURL && <img src={user.photoURL} className="w-6 h-6 rounded-full" alt="User avatar" />}
-                                    <span className="text-sm font-medium">{user.displayName}</span>
-                                    <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white ml-2">Sign Out</button>
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={handleLogin}
-                                    className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-medium transition-all shadow-lg hover:shadow-blue-500/25"
-                                >
-                                    Sign In with Google
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                    <BoardGallery
-                        boards={boardsList}
-                        onCreateBoard={handleCreateBoard}
-                        onSelectBoard={handleLoadBoard}
-                        onDeleteBoard={handleDeleteBoard}
-                    />
-                </div>
-            </div>
-            <div className="fixed bottom-10 right-10">
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-brand-600 hover:scale-110 transition-all border border-slate-100"
-                    title="Settings"
-                >
-                    <Settings size={24} />
-                </button>
-            </div>
-            {isSettingsOpen && (
-                <SettingsModal
-                    isOpen={isSettingsOpen}
-                    onClose={() => setIsSettingsOpen(false)}
-                    user={user}
-                />
-            )}</React.Fragment>
-    );
-}
-
-return (
-    <React.Fragment>
-        <Canvas
-            cards={cards} // Pass all cards
-            connections={connections} // New prop
-            selectedIds={selectedIds} // Pass selection state
-            onUpdateCards={setCards} // This is for what? Canvas uses local state? Canvas needs refactoring for group drag.
-            onCardMove={handleCardMove} // Use our new group move handler
-            onDragEnd={handleCardMoveEnd} // Handle history on drag end
-            onSelectionChange={setSelectedIds}
-            onExpandCard={setExpandedCardId}
-            onConnect={handleConnect} // New handler
-            onDeleteCard={handleDeleteCard}
-            isConnecting={isConnecting}
-            connectionStartId={connectionStartId}
-        />
-
-        {/* Teaching Bubble for Connections */}
-        {cards.length > 1 && connections.length === 0 && (
-            <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80">
-                💡 Tip: Click the "Link" icon on cards to connect them together!
-            </div>
-        )}
-
-        {/* Premium Top Navigation */}
-        {/* Premium Top Navigation */}
-        <div className="fixed top-6 left-6 z-50 animate-slide-down">
-            <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-1.5 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 group hover:scale-[1.02] transition-transform duration-300">
-                <button
-                    onClick={handleBackToGallery}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-white/10 hover:text-brand-500 dark:hover:text-brand-300 transition-all active:scale-95"
-                >
-                    <LayoutGrid size={18} className="text-brand-500 dark:text-brand-400 group-hover:scale-110 transition-transform" />
-                    <span>Gallery</span>
-                </button>
-
-                <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
-
-                <div className="px-4 py-2 text-slate-800 dark:text-slate-200 font-bold tracking-tight text-sm select-none">
-                    {boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
-                </div>
-            </div>
-        </div>
-
-        {/* Chat Input Bar */}
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
-            {/* Global Image Previews */}
-            {globalImages.length > 0 && (
-                <div className="flex gap-3 mb-2 overflow-x-auto pb-2 custom-scrollbar justify-center">
-                    {globalImages.map((img, idx) => (
-                        <div key={idx} className="relative shrink-0 group/img">
-                            <div className="absolute top-1 right-1 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
-                                <button
-                                    onClick={() => removeGlobalImage(idx)}
-                                    className="bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
-                                >
-                                    <X size={12} />
-                                </button>
-                            </div>
-                            <img
-                                src={img.previewUrl}
-                                alt="Preview"
-                                className="h-16 w-auto rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-white"
-                            />
-                        </div>
-                    ))}
+            {/* Teaching Bubble for Connections */}
+            {cards.length > 1 && connections.length === 0 && (
+                <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80">
+                    💡 Tip: Click the "Link" icon on cards to connect them together!
                 </div>
             )}
 
-            <div className="glass-panel rounded-2xl p-2 flex gap-2 shadow-xl transition-all duration-300 focus-within:ring-2 ring-brand-500/50">
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl"
-                >
-                    <Settings size={20} />
-                </button>
+            {/* Premium Top Navigation */}
+            {/* Premium Top Navigation */}
+            <div className="fixed top-6 left-6 z-50 animate-slide-down">
+                <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-1.5 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 group hover:scale-[1.02] transition-transform duration-300">
+                    <button
+                        onClick={handleBackToGallery}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-white/10 hover:text-brand-500 dark:hover:text-brand-300 transition-all active:scale-95"
+                    >
+                        <LayoutGrid size={18} className="text-brand-500 dark:text-brand-400 group-hover:scale-110 transition-transform" />
+                        <span>Gallery</span>
+                    </button>
 
-                <div className="relative flex-grow">
+                    <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+
                     <input
                         type="text"
-                        value={promptInput}
-                        onChange={e => setPromptInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
-                        onPaste={handleGlobalPaste}
-                        className="w-full h-full bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium px-2"
-                        placeholder="Type a prompt to create a new card..."
+                        key={currentBoardId} // Add key to force re-render on board change
+                        defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
+                        onBlur={(e) => handleUpdateBoardTitle(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { handleUpdateBoardTitle(e.target.value); e.target.blur(); } }}
+                        className="bg-transparent border-none outline-none text-slate-800 dark:text-slate-200 font-bold tracking-tight text-sm select-none hover:bg-slate-50 dark:hover:bg-white/5 px-2 py-0.5 rounded transition-colors"
                     />
                 </div>
+            </div>
 
-                <input
-                    type="file"
-                    ref={globalFileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    multiple
-                    onChange={handleGlobalImageUpload}
+            {/* Chat Input Bar */}
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
+                {/* Global Image Previews */}
+                {globalImages.length > 0 && (
+                    <div className="flex gap-3 mb-2 overflow-x-auto pb-2 custom-scrollbar justify-center">
+                        {globalImages.map((img, idx) => (
+                            <div key={idx} className="relative shrink-0 group/img">
+                                <div className="absolute top-1 right-1 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => removeGlobalImage(idx)}
+                                        className="bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                                <img
+                                    src={img.previewUrl}
+                                    alt="Preview"
+                                    className="h-16 w-auto rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-white"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="glass-panel rounded-2xl p-2 flex gap-2 shadow-xl transition-all duration-300 focus-within:ring-2 ring-brand-500/50">
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl"
+                    >
+                        <Settings size={20} />
+                    </button>
+
+                    <div className="relative flex-grow">
+                        <input
+                            type="text"
+                            value={promptInput}
+                            onChange={e => setPromptInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleCreateCard(); }}
+                            onPaste={handleGlobalPaste}
+                            className="w-full h-full bg-transparent outline-none text-slate-200 placeholder-slate-500 font-medium px-2"
+                            placeholder="Type a prompt to create a new card..."
+                        />
+                    </div>
+
+                    <input
+                        type="file"
+                        ref={globalFileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        multiple
+                        onChange={handleGlobalImageUpload}
+                    />
+                    <button
+                        onClick={() => globalFileInputRef.current?.click()}
+                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
+                        title="Upload Image"
+                    >
+                        <ImageIcon size={20} />
+                    </button>
+
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
+                            className="h-12 flex items-center gap-2 px-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all group"
+                            title="Switch Model"
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400 group-hover:scale-110 transition-transform">
+                                <Settings size={18} />
+                            </div>
+                            <div className="flex flex-col items-start pr-1 hidden sm:flex">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Model</span>
+                                <span className="text-xs font-semibold text-slate-300 truncate max-w-[80px]">
+                                    {currentModelName.split('/').pop()}
+                                </span>
+                            </div>
+                        </button>
+
+                        {isSwitcherOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setIsSwitcherOpen(false)}
+                                />
+                                <div className="absolute bottom-full left-0 mb-3 w-64 glass-panel rounded-2xl border border-slate-700/50 shadow-2xl z-50 overflow-hidden animate-slide-up">
+                                    <div className="p-3 border-b border-slate-700/50 bg-slate-800/30">
+                                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2">Quick Switch</h3>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 py-1 custom-scrollbar">
+                                        {availableModels.map(model => (
+                                            <button
+                                                key={model}
+                                                onClick={async () => {
+                                                    const settings = await loadSettings();
+                                                    settings.providers[settings.activeProvider].model = model;
+                                                    await saveSettings(settings);
+                                                    setCurrentModelName(model);
+                                                    setIsSwitcherOpen(false);
+                                                }}
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all ${currentModelName === model
+                                                    ? 'bg-brand-500/10 text-brand-400 font-bold'
+                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                                    }`}
+                                            >
+                                                <span className="truncate">{model.split('/').pop()}</span>
+                                                {currentModelName === model && <div className="w-1.5 h-1.5 rounded-full bg-brand-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="p-2 pt-1 border-t border-slate-700/50 bg-slate-800/20">
+                                        <button
+                                            onClick={() => {
+                                                setIsSettingsOpen(true);
+                                                setIsSwitcherOpen(false);
+                                            }}
+                                            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-400 hover:bg-brand-500/5 transition-all uppercase tracking-widest"
+                                        >
+                                            <Settings size={14} />
+                                            Advanced Settings
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={handleCreateNote}
+                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
+                        title="Add Sticky Note"
+                    >
+                        <StickyNote size={20} />
+                    </button>
+
+                    {/* Topic Expansion Button */}
+                    {selectedIds.length === 1 && (() => {
+                        const card = cards.find(c => c.id === selectedIds[0]);
+                        return card?.data?.marks?.length > 0;
+                    })() && (
+                            <button
+                                onClick={() => handleExpandTopics(selectedIds[0])}
+                                className="flex items-center gap-2 px-4 py-2 text-brand-500 hover:text-brand-400 hover:bg-brand-500/10 rounded-xl transition-all animate-pulse"
+                                title="Expand topics from highlights"
+                            >
+                                <Sparkles size={20} className="fill-brand-500/20" />
+                                <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap">Expand Topics</span>
+                            </button>
+                        )}
+
+                    <button
+                        onClick={handleCreateCard}
+                        disabled={(!promptInput.trim() && globalImages.length === 0)}
+                        className="p-3 bg-brand-600 text-white rounded-xl hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-brand-500/25 flex-shrink-0"
+                    >
+                        <Sparkles size={20} />
+                    </button>
+                </div>
+            </div>
+
+            {selectedIds.length > 0 && (
+                <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
+                    <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
+                    <div className="h-4 w-px bg-slate-300"></div>
+                    <button
+                        onClick={handleRegenerate}
+                        className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+                        title="Regenerate response for selected cards"
+                    >
+                        <RefreshCw size={16} />
+                        <span className="text-sm font-medium">Retry</span>
+                    </button>
+                    <div className="h-4 w-px bg-slate-300"></div>
+                    <button
+                        onClick={handleBatchDelete}
+                        className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                        <Trash2 size={16} />
+                        <span className="text-sm font-medium">Delete</span>
+                    </button>
+                </div>
+            )}
+
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+            {expandedCardId && (
+                <ChatModal
+                    card={cards.find(c => c.id === expandedCardId)}
+                    isOpen={!!expandedCardId}
+                    onClose={() => setExpandedCardId(null)}
+                    onUpdate={handleUpdateCard}
+                    onGenerateResponse={handleChatGenerate}
+                    isGenerating={generatingCardIds.has(expandedCardId)}
+                    onCreateNote={handleCreateNote}
                 />
-                <button
-                    onClick={() => globalFileInputRef.current?.click()}
-                    className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
-                    title="Upload Image"
-                >
-                    <ImageIcon size={20} />
-                </button>
-
-                <button
-                    onClick={handleCreateNote}
-                    className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
-                    title="Add Sticky Note"
-                >
-                    <StickyNote size={20} />
-                </button>
-
-                <button
-                    onClick={handleCreateCard}
-                    disabled={(!promptInput.trim() && globalImages.length === 0)}
-                    className="p-3 bg-brand-600 text-white rounded-xl hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-brand-500/25 flex-shrink-0"
-                >
-                    <Sparkles size={20} />
-                </button>
-            </div>
-        </div>
-
-        {selectedIds.length > 0 && (
-            <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
-                <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
-                <div className="h-4 w-px bg-slate-300"></div>
-                <button
-                    onClick={handleRegenerate}
-                    className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
-                    title="Regenerate response for selected cards"
-                >
-                    <RefreshCw size={16} />
-                    <span className="text-sm font-medium">Retry</span>
-                </button>
-                <div className="h-4 w-px bg-slate-300"></div>
-                <button
-                    onClick={handleBatchDelete}
-                    className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                    <Trash2 size={16} />
-                    <span className="text-sm font-medium">Delete</span>
-                </button>
-            </div>
-        )}
-
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-
-        {expandedCardId && (
-            <ChatModal
-                card={cards.find(c => c.id === expandedCardId)}
-                isOpen={!!expandedCardId}
-                onClose={() => setExpandedCardId(null)}
-                onUpdate={handleUpdateCard}
-                onGenerateResponse={handleChatGenerate}
-                isGenerating={generatingCardIds.has(expandedCardId)}
-            />
-        )}
-    </React.Fragment>
-);
+            )}
+        </React.Fragment>
+    );
 }
 
 
 if (typeof window !== 'undefined') window.App = App;
-```
