@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import Card from './Card';
+import StickyNote from './StickyNote';
 
 export default function Canvas({
     cards,
@@ -12,6 +13,7 @@ export default function Canvas({
     onSelectionChange,
     onExpandCard,
     onConnect,
+    onDeleteCard,
     isConnecting,
     connectionStartId
 }) {
@@ -307,21 +309,41 @@ export default function Canvas({
                 </svg>
 
                 {/* Cards Layer */}
-                {cards.map(card => (
-                    <Card
-                        key={card.id}
-                        data={card}
-                        isSelected={selectedIds.includes(card.id)}
-                        onSelect={handleCardSelect}
-                        onMove={(id, x, y) => onCardMove && onCardMove(id, x, y)}
-                        onExpand={() => onExpandCard(card.id)}
-                        scale={scale}
-                        onConnect={() => onConnect && onConnect(card.id)}
-                        isConnecting={isConnecting}
-                        isConnectionStart={connectionStartId === card.id}
-                        onDragEnd={onDragEnd} // Pass it down
-                    />
-                ))}
+                {cards.map(card => {
+                    if (card.type === 'note') {
+                        return (
+                            <StickyNote
+                                key={card.id}
+                                data={card}
+                                isSelected={selectedIds.includes(card.id)}
+                                onSelect={handleCardSelect}
+                                onMove={(id, x, y) => onCardMove && onCardMove(id, x, y)}
+                                onDelete={onDeleteCard}
+                                onUpdate={(id, newData) => onUpdateCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c))}
+                                onDragEnd={onDragEnd}
+                                onConnect={() => onConnect && onConnect(card.id)}
+                                isConnecting={isConnecting}
+                                isConnectionStart={connectionStartId === card.id}
+                                scale={scale}
+                            />
+                        );
+                    }
+                    return (
+                        <Card
+                            key={card.id}
+                            data={card}
+                            isSelected={selectedIds.includes(card.id)}
+                            onSelect={handleCardSelect}
+                            onMove={(id, x, y) => onCardMove && onCardMove(id, x, y)}
+                            onExpand={() => onExpandCard(card.id)}
+                            scale={scale}
+                            onConnect={() => onConnect && onConnect(card.id)}
+                            isConnecting={isConnecting}
+                            isConnectionStart={connectionStartId === card.id}
+                            onDragEnd={onDragEnd} // Pass it down
+                        />
+                    );
+                })}
             </div>
 
             {/* Status Indicator */}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X } from 'lucide-react';
+import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
@@ -824,6 +824,37 @@ function AppContent() {
         }
     };
 
+    const handleCreateNote = () => {
+        const newId = Date.now();
+        // Randomize position slightly around center
+        const initialX = window.innerWidth / 2 - 140 + (Math.random() * 40 - 20) - 200;
+        const initialY = window.innerHeight / 2 - 140 + (Math.random() * 40 - 20);
+
+        const newNote = {
+            id: newId,
+            type: 'note',
+            x: Math.max(0, initialX),
+            y: Math.max(0, initialY),
+            data: {
+                content: '',
+                image: null
+            }
+        };
+
+        const newCardState = [...cards, newNote];
+        setCards(newCardState);
+        addToHistory(newCardState, connections);
+    };
+
+    const handleDeleteCard = (id) => {
+        const newCards = cards.filter(c => c.id !== id);
+        const newConnections = connections.filter(c => c.from !== id && c.to !== id);
+        setCards(newCards);
+        setConnections(newConnections);
+        setSelectedIds(prev => prev.filter(sid => sid !== id));
+        addToHistory(newCards, newConnections);
+    };
+
     // Chat completion wrapper for existing cards (ChatModal) to use connections
     const generateResponseForCard = async (cardId, newMessages) => {
         // Find connected context
@@ -1028,6 +1059,7 @@ function AppContent() {
                 onSelectionChange={setSelectedIds}
                 onExpandCard={setExpandedCardId}
                 onConnect={handleConnect} // New handler
+                onDeleteCard={handleDeleteCard}
                 isConnecting={isConnecting}
                 connectionStartId={connectionStartId}
             />
@@ -1118,6 +1150,14 @@ function AppContent() {
                         title="Upload Image"
                     >
                         <ImageIcon size={20} />
+                    </button>
+
+                    <button
+                        onClick={handleCreateNote}
+                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
+                        title="Add Sticky Note"
+                    >
+                        <StickyNote size={20} />
                     </button>
 
                     <button
