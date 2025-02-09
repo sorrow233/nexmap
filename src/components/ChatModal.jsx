@@ -252,7 +252,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             const container = modalRef.current?.querySelector('.messages-container');
             if (container && container.contains(range.commonAncestorContainer)) {
                 setSelection({
-                    text: sel.toString(),
+                    text: sel.toString().trim(), // Added trim here
                     rect: {
                         top: rect.top,
                         left: rect.left + rect.width / 2
@@ -268,11 +268,12 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         e.stopPropagation();
         if (!selection) return;
 
+        const text = selection.text;
         const currentMarks = card.data.marks || [];
-        if (!currentMarks.includes(selection.text)) {
+        if (text && !currentMarks.includes(text)) {
             onUpdate(card.id, {
                 ...card.data,
-                marks: [...currentMarks, selection.text]
+                marks: [...currentMarks, text]
             });
         }
 
@@ -281,24 +282,59 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setSelection(null);
     };
 
-    // Helper to render content with highlights
+    // Helper to render content with highlights safely
     const renderContent = (content) => {
         if (!content) return '';
         let html = marked ? marked.parse(content) : content;
 
-        // Apply marks from card.data.marks
-        if (card.data.marks && card.data.marks.length > 0) {
-            card.data.marks.forEach(mark => {
-                // Escaping special characters for regex
-                const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(`(${escapedMark})`, 'gi');
-                // Use a marker to avoid overlapping/double highlighting if possible, 
-                // but for simple cases, a direct replace with <mark> is okay.
-                // We wrap in a custom class for styling.
-                html = html.replace(regex, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">$1</mark>');
-            });
-        }
-        return html;
+        if (!card.data.marks || card.data.marks.length === 0) return html;
+
+        // Sort marks by length descending to match longest phrases first (prevents substring issues)
+        const sortedMarks = [...card.data.marks].sort((a, b) => b.length - a.length);
+
+        // Create a temporary element to process text nodes without breaking HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+        const container = doc.body.firstChild;
+
+        const highlightNode = (node) => {
+            if (node.nodeType === 3) { // Text node
+                let text = node.nodeValue;
+                let hasChange = false;
+
+                // We use a simple string replace for now but we could be more careful.
+                // To avoid recursive marking, we'll process each text node once.
+                let newHtml = text;
+
+                sortedMarks.forEach(mark => {
+                    const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${escapedMark})`, 'gi');
+                    // Check if mark exists in text
+                    if (regex.test(newHtml)) {
+                        newHtml = newHtml.replace(regex, '___MARK_START___$1___MARK_END___');
+                        hasChange = true;
+                    }
+                });
+
+                if (hasChange) {
+                    const span = doc.createElement('span');
+                    // Escape HTML in the text before inserting placeholders
+                    const escapedText = newHtml
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/___MARK_START___/g, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">')
+                        .replace(/___MARK_END___/g, '</mark>');
+                    span.innerHTML = escapedText;
+                    node.parentNode.replaceChild(span, node);
+                }
+            } else if (node.nodeType === 1 && node.tagName !== 'MARK') {
+                Array.from(node.childNodes).forEach(highlightNode);
+            }
+        };
+
+        Array.from(container.childNodes).forEach(highlightNode);
+        return container.innerHTML;
     };
 
     return (
