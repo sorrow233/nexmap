@@ -381,14 +381,22 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                 {/* Model Selector */}
                                 <div className="relative group/model">
                                     <select
-                                        value={card.data.model || 'auto'}
-                                        onChange={(e) => onUpdate(card.id, { ...card.data, model: e.target.value })}
+                                        value={`${card.data.providerId || ''}:${card.data.model || 'auto'}`}
+                                        onChange={(e) => {
+                                            const [pid, mval] = e.target.value.split(':');
+                                            onUpdate(card.id, { ...card.data, model: mval, providerId: pid });
+                                        }}
                                         className="appearance-none bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-bold text-slate-500 dark:text-slate-400 pl-2 pr-6 py-1 rounded-md cursor-pointer hover:bg-slate-200 dark:hover:bg-white/10 transition-all outline-none"
                                     >
-                                        {(localStorage.getItem('mixboard_llm_model') || 'auto').split(',').map(m => {
-                                            const name = m.trim();
-                                            return <option key={name} value={name}>{name}</option>;
-                                        })}
+                                        <option value=":auto">Default (Auto)</option>
+                                        {(() => {
+                                            const myModels = JSON.parse(localStorage.getItem('mixboard_my_models') || '[]');
+                                            return myModels.map(m => (
+                                                <option key={`${m.providerId}:${m.value}`} value={`${m.providerId}:${m.value}`}>
+                                                    {m.name} ({m.providerId})
+                                                </option>
+                                            ));
+                                        })()}
                                     </select>
                                     <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover/model:text-slate-200" />
                                 </div>

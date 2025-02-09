@@ -882,7 +882,8 @@ function AppContent() {
         const fullMessages = await generateResponseForCard(cardId, messages);
         const card = cards.find(c => c.id === cardId);
         const model = card?.data?.model;
-        await streamChatCompletion(fullMessages, onToken, model);
+        const providerId = card?.data?.providerId;
+        await streamChatCompletion(fullMessages, onToken, model, { providerId });
     };
 
     const handleUpdateCard = (id, newData) => {

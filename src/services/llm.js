@@ -81,6 +81,29 @@ export const setBaseUrl = (url) => localStorage.setItem(STORAGE_BASE_URL, url);
 export const getModel = () => localStorage.getItem(STORAGE_MODEL) || DEFAULT_MODEL;
 export const setModel = (model) => localStorage.setItem(STORAGE_MODEL, model);
 
+// Get config for a specific provider
+export const getConfigForProvider = (providerId) => {
+    const apiKey = localStorage.getItem(STORAGE_KEY_PREFIX + providerId) || DEFAULT_KEY;
+    // For custom base URL, we might need a separate storage key per provider if we want to be truly multi-provider
+    // But for now, let's assume standard providers have hardcoded URLs if not 'custom'
+    const PROVIDER_URLS = {
+        'gmicloud': 'https://api.gmi-serving.com/v1',
+        'siliconflow': 'https://api.siliconflow.cn/v1',
+        'deepseek': 'https://api.deepseek.com',
+        'openai': 'https://api.openai.com/v1',
+        'gemini': 'https://generativelanguage.googleapis.com/v1beta/openai',
+        'openrouter': 'https://openrouter.ai/api/v1',
+    };
+
+    let baseUrl = PROVIDER_URLS[providerId] || getBaseUrl();
+    // If it's the current active provider, use the current base URL (it might have been customized)
+    if (providerId === getProviderIdFromUrl(getBaseUrl())) {
+        baseUrl = getBaseUrl();
+    }
+
+    return { apiKey, baseUrl };
+};
+
 
 
 // Helper to format messages for Native Gemini API
@@ -240,9 +263,20 @@ const formatOpenAIMessages = (messages) => {
 };
 
 export async function chatCompletion(messages, model = null, config = {}) {
-    const apiKey = config.apiKey || getApiKey();
-    const baseUrl = config.baseUrl || getBaseUrl();
+    let apiKey = config.apiKey;
+    let baseUrl = config.baseUrl;
     let modelToUse = model || getModel();
+
+    // If card has a providerId, use its config
+    if (config.providerId) {
+        const pConfig = getConfigForProvider(config.providerId);
+        apiKey = pConfig.apiKey;
+        baseUrl = pConfig.baseUrl;
+    } else {
+        if (!apiKey) apiKey = getApiKey();
+        if (!baseUrl) baseUrl = getBaseUrl();
+    }
+
     // If the model name is a comma-separated list, use the first one
     if (modelToUse && modelToUse.includes(',')) {
         modelToUse = modelToUse.split(',')[0].trim();
@@ -351,9 +385,19 @@ export async function chatCompletion(messages, model = null, config = {}) {
 }
 
 export async function streamChatCompletion(messages, onToken, model = null, config = {}) {
-    const apiKey = getApiKey();
-    const baseUrl = getBaseUrl();
+    let apiKey = config.apiKey;
+    let baseUrl = config.baseUrl;
     let modelToUse = model || getModel();
+
+    if (config.providerId) {
+        const pConfig = getConfigForProvider(config.providerId);
+        apiKey = pConfig.apiKey;
+        baseUrl = pConfig.baseUrl;
+    } else {
+        if (!apiKey) apiKey = getApiKey();
+        if (!baseUrl) baseUrl = getBaseUrl();
+    }
+
     if (modelToUse && modelToUse.includes(',')) {
         modelToUse = modelToUse.split(',')[0].trim();
     }
