@@ -1478,6 +1478,16 @@ function AppContent() {
                         <StickyNote size={20} />
                     </button>
 
+                    <div className="w-px h-8 bg-slate-700/50 mx-1" />
+
+                    <button
+                        onClick={handleAutoArrange}
+                        className="p-3 text-slate-400 hover:text-brand-400 hover:bg-slate-800/50 rounded-xl transition-all"
+                        title="Auto Arrange (01. 02. ...)"
+                    >
+                        <AlignStartHorizontal size={20} />
+                    </button>
+
                     {/* Topic Expansion Button */}
                     {selectedIds.length === 1 && (() => {
                         const card = cards.find(c => c.id === selectedIds[0]);
