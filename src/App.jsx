@@ -830,6 +830,37 @@ function AppContent() {
         const initialX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
         const initialY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
 
+        // Smart Connect & Context Logic
+        let contextPrefix = "";
+        const autoConnections = [];
+
+        if (selectedIds.length > 0) {
+            const contextCards = cards.filter(c => selectedIds.includes(c.id));
+
+            // 1. Gather Context
+            if (contextCards.length > 0) {
+                const contextTexts = contextCards.map(c => {
+                    let text = c.data.title || "Untitled Card";
+                    // Try to get more content
+                    if (c.data.messages && c.data.messages.length > 0) {
+                        // Simplify: just grab the last assistant response or first user message?
+                        // Let's grab the LAST message content as "current state"
+                        const lastMsg = c.data.messages[c.data.messages.length - 1];
+                        if (typeof lastMsg.content === 'string') {
+                            text += `: ${lastMsg.content.substring(0, 500)}...`; // Truncate for sanity
+                        }
+                    }
+                    return `Possible Context from Card [${c.id}]:\n${text}`;
+                });
+                contextPrefix = `[System: The user has selected the following cards as context. Use this information to inform your response.]\n\n${contextTexts.join('\n\n')}\n\n---\n\n`;
+            }
+
+            // 2. Prepare Connections
+            contextCards.forEach(c => {
+                autoConnections.push({ from: c.id, to: newId });
+            });
+        }
+
         // Construct Content with S3 support
         let content = promptInput;
         if (globalImages.length > 0) {
@@ -908,15 +939,42 @@ function AppContent() {
             x: Math.max(0, initialX),
             y: Math.max(0, initialY),
             data: {
-                title: "Thinking...",
+                title: userPrompt.length > 20 ? userPrompt.substring(0, 20) + '...' : (userPrompt || 'Image Input'),
                 messages: [
-                    { role: 'user', content: content },
+                    { role: 'user', content: contextPrefix + (typeof content === 'string' ? content : "") }, // Handle string vs array content later
                     { role: 'assistant', content: '' } // Placeholder for streaming
                 ],
                 model: defaultModel,
                 providerId: defaultProviderId
             }
         };
+
+        // If content was array (images), we need to inject context into the text part
+        if (Array.isArray(content)) {
+            // Find text part or add one
+            const textPart = content.find(p => p.type === 'text');
+            if (textPart) {
+                textPart.text = contextPrefix + textPart.text;
+            } else {
+                content.unshift({ type: 'text', text: contextPrefix });
+            }
+            newCard.data.messages[0].content = content;
+        }
+
+        setCards(prev => [...prev, newCard]);
+        if (autoConnections.length > 0) {
+            setConnections(prev => [...prev, ...autoConnections]);
+            addToHistory(cards, [...connections, ...autoConnections]); // Save history
+        } else {
+            // Just standard history save if needed? 
+            // setCards already triggers standard history if we don't batch it.
+            // But we might want to batch this operation.
+            // Current component logic seems to rely on separate history? 
+            // Actually, addToHistory takes current snapshot. 
+            // Let's wait for next render cycle? No, passing computed new state is better.
+        }
+
+        setIsGenerating(true);
 
         const newCardState = [...cards, newCard];
         setCards(newCardState);
