@@ -237,7 +237,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
                 {boards.map((board, index) => (
                     <div
                         key={board.id}
