@@ -707,19 +707,26 @@ function AppContent() {
     const handleConnect = (sourceId) => {
         if (isConnecting && connectionStartId) {
             if (connectionStartId !== sourceId) {
-                // Create connection
-                // Avoid duplicates
-                if (!connections.some(c =>
+                // Assuming 'targetId' in the user's snippet refers to 'sourceId' from the function parameter
+                // And 'fromCard', 'toCard' are conceptual checks, not actual variables here.
+                // The original code already has a duplicate check.
+                // We'll integrate the localStorage.setItem into the existing structure.
+
+                // Check for duplicate connection
+                const exists = connections.some(c =>
                     (c.from === connectionStartId && c.to === sourceId) ||
                     (c.from === sourceId && c.to === connectionStartId)
-                )) {
-                    const newConnections = [...connections, { from: connectionStartId, to: sourceId }];
-                    setConnections(newConnections);
-                    addToHistory(cards, newConnections);
+                );
+
+                if (!exists) {
+                    const newConns = [...connections, { from: connectionStartId, to: sourceId }];
+                    setConnections(newConns);
+                    addToHistory(cards, newConns);
+                    localStorage.setItem('hasUsedConnections', 'true'); // Added this line
                 }
             }
-            setIsConnecting(false);
-            setConnectionStartId(null);
+            setIsConnecting(false); // This was outside the if (connectionStartId !== sourceId) in original
+            setConnectionStartId(null); // This was outside the if (connectionStartId !== sourceId) in original
         } else {
             setIsConnecting(true);
             setConnectionStartId(sourceId);
@@ -1433,7 +1440,7 @@ function AppContent() {
 
             {/* Teaching Bubble for Connections */}
             {/* Teaching Bubble for Connections */}
-            {cards.length > 1 && connections.length === 0 && (
+            {cards.length > 1 && !localStorage.getItem('hasUsedConnections') && connections.length === 0 && (
                 <div className="fixed bottom-48 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80 z-40">
                     💡 Tip: Click the "Link" icon on cards to connect them together!
                 </div>
@@ -1465,10 +1472,10 @@ function AppContent() {
             </div>
 
             {/* Chat Input Bar */}
-            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[600px] max-w-[90vw] z-50">
+            <div className="fixed bottom-0 inset-x-0 z-50 pointer-events-none">
                 {/* Global Image Previews */}
                 {globalImages.length > 0 && (
-                    <div className="flex gap-3 mb-2 overflow-x-auto pb-2 custom-scrollbar justify-center">
+                    <div className="flex gap-3 mb-2 overflow-x-auto pb-2 custom-scrollbar justify-center pointer-events-auto">
                         {globalImages.map((img, idx) => (
                             <div key={idx} className="relative shrink-0 group/img">
                                 <div className="absolute top-1 right-1 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
@@ -1489,170 +1496,162 @@ function AppContent() {
                     </div>
                 )}
 
-                <div className="glass-panel rounded-2xl p-2 flex gap-2 shadow-xl transition-all duration-300 focus-within:ring-2 ring-brand-500/50">
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl"
-                    >
-                        <Settings size={20} />
-                    </button>
+                {/* Floating Gemini Input Bar */}
+                <div className="fixed bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4 pointer-events-auto">
+                    <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
 
-                    {/* Floating Gemini Input Bar */}
-                    <div className="fixed bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4">
-                        <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
+                        <div className="flex items-end gap-2 px-2">
+                            {/* Left Actions */}
+                            <div className="flex gap-1 pb-2">
+                                <button
+                                    onClick={() => globalFileInputRef.current?.click()}
+                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                    title="Upload Image"
+                                >
+                                    <ImageIcon size={20} />
+                                </button>
+                                {/* Input for file upload */}
+                                <input
+                                    type="file"
+                                    ref={globalFileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleGlobalImageUpload}
+                                />
+                                <button
+                                    onClick={handleCreateNote}
+                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                    title="Add Sticky Note"
+                                >
+                                    <StickyNote size={20} />
+                                </button>
+                            </div>
 
-                            <div className="flex items-end gap-2 px-2">
-                                {/* Left Actions */}
-                                <div className="flex gap-1 pb-2">
-                                    <button
-                                        onClick={() => globalFileInputRef.current?.click()}
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                        title="Upload Image"
-                                    >
-                                        <ImageIcon size={20} />
-                                    </button>
-                                    {/* Input for file upload */}
-                                    <input
-                                        type="file"
-                                        ref={globalFileInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        multiple
-                                        onChange={handleGlobalImageUpload}
-                                    />
-                                    <button
-                                        onClick={handleCreateNote}
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                        title="Add Sticky Note"
-                                    >
-                                        <StickyNote size={20} />
-                                    </button>
-                                </div>
-
-                                {/* Input Area */}
-                                <div className="flex-1 relative">
-                                    <textarea
-                                        ref={globalPromptInputRef}
-                                        value={promptInput}
-                                        onInput={(e) => {
-                                            setPromptInput(e.target.value);
-                                            e.target.style.height = 'auto';
-                                            e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                                                e.preventDefault();
-                                                handleCreateCard();
-                                            }
-                                        }}
-                                        placeholder={
-                                            cards.length === 0
-                                                ? "Start a new board..."
-                                                : selectedIds.length > 0
-                                                    ? `Ask about ${selectedIds.length} selected items...`
-                                                    : "Type to create or ask..."
+                            {/* Input Area */}
+                            <div className="flex-1 relative">
+                                <textarea
+                                    ref={globalPromptInputRef}
+                                    value={promptInput}
+                                    onInput={(e) => {
+                                        setPromptInput(e.target.value);
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                            e.preventDefault();
+                                            handleCreateCard();
                                         }
-                                        className="w-full bg-transparent text-slate-200 placeholder-slate-500 text-base p-3 focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px] scrollbar-hide"
-                                        rows={1}
-                                    />
-                                    {/* Image Previews in Input */}
-                                    {globalImages.length > 0 && (
-                                        <div className="flex gap-2 p-2 overflow-x-auto">
-                                            {globalImages.map((img, index) => (
-                                                <div key={index} className="relative group shrink-0">
-                                                    <img
-                                                        src={img.previewUrl}
-                                                        alt="Upload preview"
-                                                        className="w-16 h-16 object-cover rounded-lg border border-white/10"
-                                                    />
-                                                    <button
-                                                        onClick={() => removeGlobalImage(index)}
-                                                        className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X size={12} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
+                                    }}
+                                    placeholder={
+                                        cards.length === 0
+                                            ? "Start a new board..."
+                                            : selectedIds.length > 0
+                                                ? `Ask about ${selectedIds.length} selected items...`
+                                                : "Type to create or ask..."
+                                    }
+                                    className="w-full bg-transparent text-slate-200 placeholder-slate-500 text-base p-3 focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px] scrollbar-hide"
+                                    rows={1}
+                                />
+                                {/* Image Previews in Input */}
+                                {globalImages.length > 0 && (
+                                    <div className="flex gap-2 p-2 overflow-x-auto">
+                                        {globalImages.map((img, index) => (
+                                            <div key={index} className="relative group shrink-0">
+                                                <img
+                                                    src={img.previewUrl}
+                                                    alt="Upload preview"
+                                                    className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                                                />
+                                                <button
+                                                    onClick={() => removeGlobalImage(index)}
+                                                    className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right Actions & Submit */}
+                            <div className="flex gap-1 pb-2 items-center">
+                                {/* Auto Arrange (Mini) */}
+                                <button
+                                    onClick={handleAutoArrange}
+                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                    title="Auto Arrange"
+                                >
+                                    <AlignStartHorizontal size={20} />
+                                </button>
+
+                                {/* Settings (Mini) */}
+                                <button
+                                    onClick={() => setIsSettingsOpen(true)}
+                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                    title="Settings"
+                                >
+                                    <Settings size={20} />
+                                </button>
+
+                                <div className="w-px h-6 bg-white/10 mx-1" />
+
+                                <button
+                                    onClick={handleCreateCard}
+                                    disabled={(!promptInput.trim() && globalImages.length === 0)}
+                                    className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
+                                >
+                                    {isGenerating ? (
+                                        <Loader2 size={20} className="animate-spin" />
+                                    ) : (
+                                        <Sparkles size={20} className="fill-white" />
                                     )}
-                                </div>
-
-                                {/* Right Actions & Submit */}
-                                <div className="flex gap-1 pb-2 items-center">
-                                    {/* Auto Arrange (Mini) */}
-                                    <button
-                                        onClick={handleAutoArrange}
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                        title="Auto Arrange"
-                                    >
-                                        <AlignStartHorizontal size={20} />
-                                    </button>
-
-                                    {/* Settings (Mini) */}
-                                    <button
-                                        onClick={() => setIsSettingsOpen(true)}
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                        title="Settings"
-                                    >
-                                        <Settings size={20} />
-                                    </button>
-
-                                    <div className="w-px h-6 bg-white/10 mx-1" />
-
-                                    <button
-                                        onClick={handleCreateCard}
-                                        disabled={(!promptInput.trim() && globalImages.length === 0)}
-                                        className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
-                                    >
-                                        {isGenerating ? (
-                                            <Loader2 size={20} className="animate-spin" />
-                                        ) : (
-                                            <Sparkles size={20} className="fill-white" />
-                                        )}
-                                    </button>
-                                </div>
+                                </button>
                             </div>
                         </div>
-                    </div>            </div>
-
-                {selectedIds.length > 0 && (
-                    <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
-                        <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
-                        <div className="h-4 w-px bg-slate-300"></div>
-                        <button
-                            onClick={handleRegenerate}
-                            className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
-                            title="Regenerate response for selected cards"
-                        >
-                            <RefreshCw size={16} />
-                            <span className="text-sm font-medium">Retry</span>
-                        </button>
-                        <div className="h-4 w-px bg-slate-300"></div>
-                        <button
-                            onClick={handleBatchDelete}
-                            className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                            <Trash2 size={16} />
-                            <span className="text-sm font-medium">Delete</span>
-                        </button>
                     </div>
-                )}
-
-                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-
-                {expandedCardId && (
-                    <ChatModal
-                        card={cards.find(c => c.id === expandedCardId)}
-                        isOpen={!!expandedCardId}
-                        onClose={() => setExpandedCardId(null)}
-                        onUpdate={handleUpdateCard}
-                        onGenerateResponse={handleChatGenerate}
-                        isGenerating={generatingCardIds.has(expandedCardId)}
-                        onCreateNote={handleCreateNote}
-                    />
-                )}
+                </div>
             </div>
-        </React.Fragment>
+
+            {selectedIds.length > 0 && (
+                <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
+                    <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
+                    <div className="h-4 w-px bg-slate-300"></div>
+                    <button
+                        onClick={handleRegenerate}
+                        className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+                        title="Regenerate response for selected cards"
+                    >
+                        <RefreshCw size={16} />
+                        <span className="text-sm font-medium">Retry</span>
+                    </button>
+                    <div className="h-4 w-px bg-slate-300"></div>
+                    <button
+                        onClick={handleBatchDelete}
+                        className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                        <Trash2 size={16} />
+                        <span className="text-sm font-medium">Delete</span>
+                    </button>
+                </div>
+            )}
+
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+            {expandedCardId && (
+                <ChatModal
+                    card={cards.find(c => c.id === expandedCardId)}
+                    isOpen={!!expandedCardId}
+                    onClose={() => setExpandedCardId(null)}
+                    onUpdate={handleUpdateCard}
+                    onGenerateResponse={handleChatGenerate}
+                    isGenerating={generatingCardIds.has(expandedCardId)}
+                    onCreateNote={handleCreateNote}
+                />
+            )}
+        </React.Fragment >
     );
 }
 
