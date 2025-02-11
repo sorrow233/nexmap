@@ -1432,8 +1432,9 @@ function AppContent() {
             />
 
             {/* Teaching Bubble for Connections */}
+            {/* Teaching Bubble for Connections */}
             {cards.length > 1 && connections.length === 0 && (
-                <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80">
+                <div className="fixed bottom-48 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80 z-40">
                     💡 Tip: Click the "Link" icon on cards to connect them together!
                 </div>
             )}
