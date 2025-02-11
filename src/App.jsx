@@ -1046,36 +1046,72 @@ function AppContent() {
     };
 
     const handleCreateNote = (initialContent = '', initialX = null, initialY = null) => {
-        const newId = Date.now();
+        // Find if there is already a note card
+        const existingNote = cards.find(c => c.type === 'note');
 
-        // Count existing notes for sequence
-        const existingNoteCount = cards.filter(c => c.type === 'note').length;
-        const sequence = String(existingNoteCount + 1).padStart(2, '0');
-        const prefixedContent = initialContent
-            ? `${sequence}. ${initialContent}`
-            : `${sequence}. `;
+        if (existingNote) {
+            // Append to existing note
+            const currentContent = existingNote.data.content || '';
 
-        // Calculate center position using current pan and zoom
-        const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
-        const centerY = (window.innerHeight / 2 - offset.y) / scale - 140;
-
-        const posX = initialX !== null ? initialX : (centerX + (Math.random() * 40 - 20));
-        const posY = initialY !== null ? initialY : (centerY + (Math.random() * 40 - 20));
-
-        const newNote = {
-            id: newId,
-            type: 'note',
-            x: Math.max(0, posX),
-            y: Math.max(0, posY),
-            data: {
-                content: prefixedContent,
-                image: null
+            // Determine next sequence number
+            // Look for patterns like "01.", "02." to find the max
+            const matches = currentContent.match(/^(\d+)[.、]/gm);
+            let nextNum = 1;
+            if (matches && matches.length > 0) {
+                const numbers = matches.map(m => parseInt(m, 10));
+                nextNum = Math.max(...numbers) + 1;
+            } else if (currentContent.trim()) {
+                // If content exists but no numbers, start at 2 (assuming 1 is implicit or messy)
+                nextNum = 2;
             }
-        };
 
-        const newCardState = [...cards, newNote];
-        setCards(newCardState);
-        addToHistory(newCardState, connections);
+            const sequence = String(nextNum).padStart(2, '0');
+            const newEntry = initialContent
+                ? `\n\n${sequence}. ${initialContent}`
+                : `\n\n${sequence}. `;
+
+            const updatedNote = {
+                ...existingNote,
+                data: {
+                    ...existingNote.data,
+                    content: currentContent + newEntry
+                }
+            };
+
+            const newCardState = cards.map(c => c.id === existingNote.id ? updatedNote : c);
+            setCards(newCardState);
+            addToHistory(newCardState, connections);
+
+        } else {
+            // Create new note
+            const newId = Date.now();
+            const sequence = "01";
+            const prefixedContent = initialContent
+                ? `${sequence}. ${initialContent}`
+                : `${sequence}. `;
+
+            // Calculate center position using current pan and zoom
+            const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
+            const centerY = (window.innerHeight / 2 - offset.y) / scale - 140;
+
+            const posX = initialX !== null ? initialX : (centerX + (Math.random() * 40 - 20));
+            const posY = initialY !== null ? initialY : (centerY + (Math.random() * 40 - 20));
+
+            const newNote = {
+                id: newId,
+                type: 'note',
+                x: Math.max(0, posX),
+                y: Math.max(0, posY),
+                data: {
+                    content: prefixedContent,
+                    image: null
+                }
+            };
+
+            const newCardState = [...cards, newNote];
+            setCards(newCardState);
+            addToHistory(newCardState, connections);
+        }
     };
 
     const handleUpdateBoardTitle = async (newTitle) => {
