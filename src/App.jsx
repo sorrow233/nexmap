@@ -256,8 +256,37 @@ function AppContent() {
     const [clipboard, setClipboard] = useState(null);
 
     // Canvas Pan & Zoom State (Lifted from Canvas.jsx)
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const [scale, setScale] = useState(1);
+    // Canvas Pan & Zoom State (Lifted from Canvas.jsx)
+    const [offset, setOffset] = useState(() => {
+        if (typeof window === 'undefined') return { x: 0, y: 0 };
+        try {
+            const saved = localStorage.getItem('canvas_offset');
+            return saved ? JSON.parse(saved) : { x: 0, y: 0 };
+        } catch (e) {
+            return { x: 0, y: 0 };
+        }
+    });
+    const [scale, setScale] = useState(() => {
+        if (typeof window === 'undefined') return 1;
+        try {
+            const saved = localStorage.getItem('canvas_scale');
+            return saved ? parseFloat(saved) : 1;
+        } catch (e) {
+            return 1;
+        }
+    });
+
+    // Persist canvas state
+    useEffect(() => {
+        const saveState = () => {
+            localStorage.setItem('canvas_offset', JSON.stringify(offset));
+            localStorage.setItem('canvas_scale', scale.toString());
+        };
+        // Debounce slightly or just save on every update? 
+        // For performance, maybe use a timeout or assume direct save is fine for now.
+        // Given React batching, it should be okay.
+        saveState();
+    }, [offset, scale]);
 
     // Helper to add state to history
     const addToHistory = (newCards, newConnections) => {
