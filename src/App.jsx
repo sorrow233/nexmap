@@ -6,7 +6,7 @@ import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
 import SettingsModal from './components/SettingsModal';
 import { auth, googleProvider } from './services/firebase';
-import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings, loadSettings, saveSettings } from './services/storage';
+import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
 import {
     chatCompletion,
     streamChatCompletion,
@@ -143,23 +143,8 @@ function AppContent() {
                     }
                 });
 
-                // Load User Settings
-                loadUserSettings(u.uid).then(settings => {
-                    if (settings) {
-                        // Restore all provider keys
-                        if (settings.apiKeys) {
-                            Object.entries(settings.apiKeys).forEach(([providerId, key]) => {
-                                localStorage.setItem(`mixboard_llm_key_${providerId}`, key);
-                            });
-                        }
-                        // Backwards compatibility: single apiKey
-                        if (settings.apiKey) setApiKey(settings.apiKey);
+                // User settings sync is handled by SettingsModal and llm.js provider registry
 
-                        if (settings.baseUrl) setBaseUrl(settings.baseUrl);
-                        if (settings.model) setModel(settings.model);
-                        console.log("Settings synced from cloud");
-                    }
-                });
             }
         });
 
@@ -256,12 +241,8 @@ function AppContent() {
     const [generatingCardIds, setGeneratingCardIds] = useState(new Set());
     const globalFileInputRef = React.useRef(null);
 
-    // Connection Mode State
-    const [showSelectionBar, setShowSelectionBar] = useState(false);
-    const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-    const [availableModels, setAvailableModels] = useState([]);
-    const [currentModelName, setCurrentModelName] = useState('');
     const [isConnecting, setIsConnecting] = useState(false);
+
     const [connectionStartId, setConnectionStartId] = useState(null);
 
     // History State for Undo/Redo
@@ -388,23 +369,7 @@ function AppContent() {
         setSelectedIds(newCards.map(c => c.id));
     };
 
-    // Load available models for switcher
-    useEffect(() => {
-        const fetchModels = async () => {
-            const settings = await loadSettings();
-            const provider = settings.activeProvider || 'gmicloud';
-            const config = settings.providers[provider];
-            if (config && config.models) {
-                // Ensure it's an array
-                const modelsArr = typeof config.models === 'string'
-                    ? config.models.split(',').map(m => m.trim()).filter(Boolean)
-                    : config.models;
-                setAvailableModels(modelsArr);
-                setCurrentModelName(config.model || modelsArr[0] || '');
-            }
-        };
-        fetchModels();
-    }, [isSettingsOpen, isSwitcherOpen]); // Reload when settings close or switcher opens
+
 
     // 1. Initial Load
     useEffect(() => {
@@ -980,10 +945,10 @@ function AppContent() {
             ];
         }
 
-        // Resolve default model (v2 config)
-        const apiConfig = getApiConfig();
-        const defaultModel = apiConfig.model || "google/gemini-2.0-flash-exp";
-        const defaultProviderId = "gmicloud"; // Legacy field, keeping for schema compatibility
+        // Resolve default model (v3 config)
+        const activeConfig = getActiveConfig();
+        const defaultModel = activeConfig.model;
+        const defaultProviderId = activeConfig.id;
 
         // Initial empty assistant message
         const newCard = {
@@ -1072,7 +1037,7 @@ function AppContent() {
                 requestMessages,
                 updateCardContent,
                 null, // Use global config model
-                { providerId: defaultProviderId }
+                { providerId: activeConfig.id }
             );
 
         } catch (error) {
