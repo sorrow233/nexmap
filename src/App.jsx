@@ -169,47 +169,61 @@ function AppContent() {
     }, []);
 
     // Auto Arrange Logic
+    // Auto Arrange Logic
     const handleAutoArrange = () => {
         if (cards.length === 0) return;
 
-        const sortedCards = [...cards].sort((a, b) => {
-            // Function to extract number from start of text
-            const getNum = (card) => {
-                let text = card.data.title || "";
-                if (card.data.messages && card.data.messages.length > 0) {
-                    // Try to get text from first user message if title is generic
-                    const firstMsg = card.data.messages[0];
-                    if (typeof firstMsg.content === 'string') {
-                        text = firstMsg.content;
-                    } else if (Array.isArray(firstMsg.content) && firstMsg.content[0]?.text) {
-                        text = firstMsg.content[0].text;
-                    }
-                }
+        // 1. Determine scope: selected cards or all cards
+        const targetIds = selectedIds.length > 0 ? selectedIds : cards.map(c => c.id);
+        const targets = cards.filter(c => targetIds.includes(c.id));
 
-                const match = text.match(/^(\d+)[.、]/);
-                return match ? parseInt(match[1], 10) : Infinity; // Non-numbered go to end
-            };
+        if (targets.length === 0) return;
 
-            const numA = getNum(a);
-            const numB = getNum(b);
+        // 2. Calculate centroid of selection to avoid "teleporting"
+        const avgX = targets.reduce((sum, c) => sum + c.x, 0) / targets.length;
+        const avgY = targets.reduce((sum, c) => sum + c.y, 0) / targets.length;
 
-            if (numA === numB) return 0;
-            return numA - numB;
+        // 3. Adjacency list for connection clustering
+        const adj = {};
+        connections.forEach(conn => {
+            if (!adj[conn.from]) adj[conn.from] = [];
+            if (!adj[conn.to]) adj[conn.to] = [];
+            adj[conn.from].push(conn.to);
+            adj[conn.to].push(conn.from);
         });
 
-        // Layout Parameters
-        const startX = 100;
-        const startY = 200;
-        const gap = 50;
-        const cardWidth = 320; // Approx card width
+        // 4. Sort: Connected nodes first, then by ID (stability)
+        const sortedTargets = [...targets].sort((a, b) => {
+            const connA = adj[a.id]?.length || 0;
+            const connB = adj[b.id]?.length || 0;
+            if (connA !== connB) return connB - connA; // More connections first
+            return a.id - b.id;
+        });
 
-        const newCards = sortedCards.map((card, index) => ({
-            ...card,
-            x: startX + index * (cardWidth + gap),
-            y: startY
-        }));
+        // 5. Improved Layout: Grid based on centroid
+        const columns = Math.ceil(Math.sqrt(sortedTargets.length));
+        const cardWidth = 350; // With gap
+        const cardHeight = 300;
+
+        const startX = avgX - (Math.min(sortedTargets.length, columns) * cardWidth) / 2;
+        const startY = avgY - (Math.ceil(sortedTargets.length / columns) * cardHeight) / 2;
+
+        const newCards = cards.map(card => {
+            const index = sortedTargets.findIndex(t => t.id === card.id);
+            if (index !== -1) {
+                const row = Math.floor(index / columns);
+                const col = index % columns;
+                return {
+                    ...card,
+                    x: startX + col * cardWidth,
+                    y: startY + row * cardHeight
+                };
+            }
+            return card;
+        });
 
         setCards(newCards);
+        addToHistory(newCards, connections);
     };
 
     const handleLogin = async () => {
