@@ -394,27 +394,27 @@ export async function generateTitle(text) {
 }
 
 /**
- * Generate an image from a prompt
+ * Generate an image from a prompt (Generic OpenAI-compatible format)
  */
 export async function imageGeneration(prompt, model = null, config = {}) {
-    const settings = await loadSettings();
-    const provider = config.provider || settings.activeProvider || 'gmi';
-    const providerConfig = settings.providers[provider];
+    const { providers, activeId } = getProviderSettings();
+    const providerId = config.providerId || activeId;
+    const providerConfig = providers[providerId];
 
     if (!providerConfig || !providerConfig.apiKey) {
-        throw new Error(`Provider ${provider} is not configured.`);
+        throw new Error(`Provider ${providerId} is not configured or missing API Key.`);
     }
 
-    const targetModel = model || providerConfig.defaultImageModel || 'black-forest-labs/FLUX.1-schnell';
-    const baseUrl = providerConfig.baseUrl || 'https://api.gmi.cloud/v1';
+    const { apiKey, baseUrl } = providerConfig;
+    const targetModel = model || providerConfig.model || 'gpt-4o'; // Fallback
 
-    console.log(`[LLM] Generating image with ${targetModel} on ${provider}...`);
+    console.log(`[LLM] Generating image with ${targetModel} on ${providerId}...`);
 
     const response = await fetch(`${baseUrl}/images/generations`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${providerConfig.apiKey}`
+            'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
             model: targetModel,
@@ -437,9 +437,10 @@ export async function imageGeneration(prompt, model = null, config = {}) {
 // Expose to window for compatibility
 if (typeof window !== 'undefined') {
     window.LLM = {
+        getProviderSettings,
+        saveProviderSettings,
+        getActiveConfig,
         getApiConfig,
-        setApiConfig,
-        clearApiConfig,
         chatCompletion,
         streamChatCompletion,
         generateTitle,
