@@ -450,7 +450,7 @@ export const loadSettings = async () => {
 
     // Migration / Default
     const oldBaseUrl = localStorage.getItem('mixboard_llm_base_url') || 'https://api.gmi-serving.com/v1';
-    const oldModelStr = localStorage.getItem('mixboard_llm_model') || 'google/gemini-3-flash-preview';
+    const oldModelStr = localStorage.getItem('mixboard_llm_model') || 'google/gemini-2.0-flash-exp';
 
     // Determine if oldModelStr is a list or a single model
     const isList = oldModelStr.includes(',');
@@ -463,8 +463,8 @@ export const loadSettings = async () => {
             id: 'gmicloud',
             name: 'GMI Cloud',
             baseUrl: 'https://api.gmi-serving.com/v1',
-            models: 'google/gemini-3-flash-preview, google/gemini-3-pro-preview, google/gemini-3-pro-image-preview, google/gemini-1.5-pro, google/gemini-1.5-flash',
-            model: 'google/gemini-3-flash-preview',
+            models: 'google/gemini-2.0-flash-exp, google/gemini-1.5-pro, google/gemini-1.5-flash',
+            model: 'google/gemini-2.0-flash-exp',
             apiKey: localStorage.getItem('mixboard_llm_key_gmicloud') || ''
         },
         siliconflow: {
