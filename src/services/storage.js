@@ -86,7 +86,7 @@ export const getBoardsList = () => {
 };
 
 export const loadBoardsMetadata = () => {
-    return getBoardsList();
+    return getBoardsList().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 };
 
 export const createBoard = async (name) => {
@@ -332,7 +332,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                     createdAt: b.createdAt || Date.now(),
                     updatedAt: b.updatedAt || Date.now(),
                     cardCount: b.cards?.length || 0
-                })).sort((a, b) => b.updatedAt - a.updatedAt);
+                })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
                 localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
 
