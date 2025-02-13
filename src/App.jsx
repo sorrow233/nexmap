@@ -1494,29 +1494,6 @@ function AppContent() {
 
             {/* Chat Input Bar */}
             <div className="fixed bottom-0 inset-x-0 z-50 pointer-events-none">
-                {/* Global Image Previews */}
-                {globalImages.length > 0 && (
-                    <div className="flex gap-3 mb-2 overflow-x-auto pb-2 custom-scrollbar justify-center pointer-events-auto">
-                        {globalImages.map((img, idx) => (
-                            <div key={idx} className="relative shrink-0 group/img">
-                                <div className="absolute top-1 right-1 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => removeGlobalImage(idx)}
-                                        className="bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </div>
-                                <img
-                                    src={img.previewUrl}
-                                    alt="Preview"
-                                    className="h-16 w-auto rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-white"
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
-
                 {/* Floating Gemini Input Bar */}
                 <div className="fixed bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4 pointer-events-auto">
                     <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
