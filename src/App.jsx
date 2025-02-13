@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote, AlignStartHorizontal } from 'lucide-react';
+import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
 import BoardGallery from './components/BoardGallery';
@@ -163,61 +163,6 @@ function AppContent() {
 
     // Auto Arrange Logic
     // Auto Arrange Logic
-    const handleAutoArrange = () => {
-        if (cards.length === 0) return;
-
-        // 1. Determine scope: selected cards or all cards
-        const targetIds = selectedIds.length > 0 ? selectedIds : cards.map(c => c.id);
-        const targets = cards.filter(c => targetIds.includes(c.id));
-
-        if (targets.length === 0) return;
-
-        // 2. Calculate centroid of selection to avoid "teleporting"
-        const avgX = targets.reduce((sum, c) => sum + c.x, 0) / targets.length;
-        const avgY = targets.reduce((sum, c) => sum + c.y, 0) / targets.length;
-
-        // 3. Adjacency list for connection clustering
-        const adj = {};
-        connections.forEach(conn => {
-            if (!adj[conn.from]) adj[conn.from] = [];
-            if (!adj[conn.to]) adj[conn.to] = [];
-            adj[conn.from].push(conn.to);
-            adj[conn.to].push(conn.from);
-        });
-
-        // 4. Sort: Connected nodes first, then by ID (stability)
-        const sortedTargets = [...targets].sort((a, b) => {
-            const connA = adj[a.id]?.length || 0;
-            const connB = adj[b.id]?.length || 0;
-            if (connA !== connB) return connB - connA; // More connections first
-            return a.id - b.id;
-        });
-
-        // 5. Improved Layout: Grid based on centroid
-        const columns = Math.ceil(Math.sqrt(sortedTargets.length));
-        const cardWidth = 350; // With gap
-        const cardHeight = 300;
-
-        const startX = avgX - (Math.min(sortedTargets.length, columns) * cardWidth) / 2;
-        const startY = avgY - (Math.ceil(sortedTargets.length / columns) * cardHeight) / 2;
-
-        const newCards = cards.map(card => {
-            const index = sortedTargets.findIndex(t => t.id === card.id);
-            if (index !== -1) {
-                const row = Math.floor(index / columns);
-                const col = index % columns;
-                return {
-                    ...card,
-                    x: startX + col * cardWidth,
-                    y: startY + row * cardHeight
-                };
-            }
-            return card;
-        });
-
-        setCards(newCards);
-        addToHistory(newCards, connections);
-    };
 
     const handleLogin = async () => {
         try {
@@ -1588,14 +1533,6 @@ function AppContent() {
 
                             {/* Right Actions & Submit */}
                             <div className="flex gap-1 pb-2 items-center">
-                                {/* Auto Arrange (Mini) */}
-                                <button
-                                    onClick={handleAutoArrange}
-                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                    title="Auto Arrange"
-                                >
-                                    <AlignStartHorizontal size={20} />
-                                </button>
 
                                 <div className="w-px h-6 bg-white/10 mx-1" />
 
