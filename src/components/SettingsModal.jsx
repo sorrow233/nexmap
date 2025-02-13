@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box, RefreshCw, Layers, Cpu, Radio } from 'lucide-react';
 import { getProviderSettings, saveProviderSettings, chatCompletion } from '../services/llm';
 import { getS3Config, saveS3Config } from '../services/s3';
+import { saveUserSettings } from '../services/storage';
 
 export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
@@ -70,12 +71,26 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         // Save LLM Config
         saveProviderSettings(providers, activeId);
 
         // Save S3 config
         saveS3Config(s3Config);
+
+        // Sync to cloud if logged in
+        if (user && user.uid) {
+            try {
+                await saveUserSettings(user.uid, {
+                    providers,
+                    activeId,
+                    s3Config
+                });
+                console.log("[Sync] User settings pushed to cloud");
+            } catch (e) {
+                console.error("[Sync] Failed to push settings to cloud", e);
+            }
+        }
 
         alert('Settings saved! Reloading page to apply changes...');
         window.location.reload();

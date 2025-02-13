@@ -320,11 +320,11 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                     }
                 });
 
-                // Wait for all IDB writes? No, onSnapshot is sync-ish regarding callback. 
-                // We'll let them run.
-                // But metadata update should happen.
-                // Note: saveBoard above updates metadata list too, which might cause race conditions if we map loop it.
-                // Let's optimize: Update metadata LIST once, then fire content updates.
+                // Wait for all IDB writes to complete before notifying the UI
+                if (promises.length > 0) {
+                    await Promise.all(promises);
+                    console.log(`[Firebase Sync] Completed hydration for ${promises.length} boards`);
+                }
 
                 const metadataList = cloudBoards.map(b => ({
                     id: b.id,
