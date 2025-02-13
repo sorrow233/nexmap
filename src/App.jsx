@@ -103,7 +103,7 @@ function AppContent() {
 
 
     const [view, setView] = useState('gallery'); // 'gallery' | 'canvas'
-    const [isGenerating, setIsGenerating] = useState(false);
+    // const [isGenerating, setIsGenerating] = useState(false); // Legacy - using generatingCardIds
     const [boardsList, setBoardsList] = useState([]);
 
     // Track initialization to avoid first history push being empty
@@ -615,7 +615,7 @@ function AppContent() {
         };
 
         setCards(prev => [...prev, newCard]);
-        setIsGenerating(true);
+        // setIsGenerating(true);
 
         // ... logic for streaming ...
         try {
@@ -863,9 +863,12 @@ function AppContent() {
                         // Simplify: just grab the last assistant response or first user message?
                         // Let's grab the LAST message content as "current state"
                         const lastMsg = c.data.messages[c.data.messages.length - 1];
-                        if (typeof lastMsg.content === 'string') {
-                            text += `: ${lastMsg.content.substring(0, 500)}...`; // Truncate for sanity
-                        }
+                        const contentText = typeof lastMsg.content === 'string'
+                            ? lastMsg.content
+                            : (Array.isArray(lastMsg.content)
+                                ? lastMsg.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
+                                : '');
+                        text += `: ${contentText.substring(0, 500)}...`;
                     }
                     return `Possible Context from Card [${c.id}]:\n${text}`;
                 });
@@ -983,9 +986,6 @@ function AppContent() {
         const finalConnections = [...connections, ...autoConnections];
         setConnections(finalConnections);
         addToHistory(newCardState, finalConnections);
-        setPromptInput('');
-        setGlobalImages([]); // Clear images
-        setGeneratingCardIds(prev => new Set(prev).add(newId));
         setPromptInput('');
         setGlobalImages([]); // Clear images
         setGeneratingCardIds(prev => new Set(prev).add(newId));
@@ -1148,6 +1148,10 @@ function AppContent() {
         const sourceCard = cards.find(c => c.id === sourceCardId);
         if (!sourceCard || !sourceCard.data.marks || sourceCard.data.marks.length === 0) return;
 
+        const activeConfig = getActiveConfig();
+        const defaultModel = activeConfig.model;
+        const defaultProviderId = sourceCard.data.providerId || activeConfig.id;
+
         const marks = sourceCard.data.marks;
         const newCardsState = [...cards];
         const newConnectionsState = [...connections];
@@ -1181,9 +1185,8 @@ function AppContent() {
             newCardsState.push(newCard);
             newConnectionsState.push({ from: sourceCardId, to: newId });
 
-            // Trigger generation (Async)
-            // We need to use handleChatGenerate but it wants messages.
-            // Let's call it manually for each
+            // Trigger generation with a slight delay to ensure state has settled
+            // Pass explicit config and model to handleChatGenerate to avoid race conditions
             setTimeout(() => {
                 handleChatGenerate(newId, [{ role: 'user', content: mark }], (token) => {
                     setCards(prev => prev.map(c => {
@@ -1195,7 +1198,7 @@ function AppContent() {
                         return c;
                     }));
                 });
-            }, 100 * i);
+            }, 100);
         }
 
         setCards(newCardsState);
@@ -1223,7 +1226,14 @@ function AppContent() {
         if (neighborIds.length > 0) {
             const neighbors = cards.filter(c => neighborIds.includes(c.id));
             const contextText = neighbors.map(c =>
-                `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')} `
+                `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => {
+                    const contentStr = typeof m.content === 'string'
+                        ? m.content
+                        : (Array.isArray(m.content)
+                            ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
+                            : '');
+                    return `${m.role}: ${contentStr}`;
+                }).join('\n')} `
             ).join('\n\n---\n\n');
 
             if (contextText.trim()) {
@@ -1530,6 +1540,18 @@ function AppContent() {
                                 >
                                     <StickyNote size={20} />
                                 </button>
+
+                                {/* Expand Topic Action (Conditional) */}
+                                {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
+                                    <button
+                                        onClick={() => handleExpandTopics(selectedIds[0])}
+                                        className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-full transition-all flex items-center gap-1 animate-pulse"
+                                        title="Expand marked topics"
+                                    >
+                                        <Sparkles size={20} />
+                                        <span className="text-[10px] font-bold uppercase tracking-tighter">Topics</span>
+                                    </button>
+                                )}
                             </div>
 
                             {/* Input Area */}
@@ -1595,10 +1617,10 @@ function AppContent() {
 
                                 <button
                                     onClick={handleCreateCard}
-                                    disabled={(!promptInput.trim() && globalImages.length === 0)}
+                                    disabled={(generatingCardIds.size > 0) || (!promptInput.trim() && globalImages.length === 0)}
                                     className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
                                 >
-                                    {isGenerating ? (
+                                    {generatingCardIds.size > 0 ? (
                                         <Loader2 size={20} className="animate-spin" />
                                     ) : (
                                         <Sparkles size={20} className="fill-white" />
