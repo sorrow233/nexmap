@@ -96,7 +96,7 @@ export const getApiConfig = () => {
 /**
  * Gemini 原生协议转换
  */
-const formatToGemini = (messages) => {
+const formatGeminiMessages = (messages) => {
     const contents = [];
     let systemInstruction = "";
 
@@ -138,7 +138,7 @@ const formatToGemini = (messages) => {
 /**
  * OpenAI 协议转换
  */
-const formatToOpenAI = (messages) => {
+const formatOpenAIMessages = (messages) => {
     return messages.map(msg => {
         if (Array.isArray(msg.content)) {
             return {
@@ -157,6 +157,43 @@ const formatToOpenAI = (messages) => {
         }
         return msg;
     });
+};
+
+/**
+ * Utility: Resolve remote image URLs to Base64
+ */
+const resolveRemoteImages = async (messages) => {
+    const resolved = JSON.parse(JSON.stringify(messages));
+    for (const msg of resolved) {
+        if (Array.isArray(msg.content)) {
+            for (const part of msg.content) {
+                if (part.type === 'image' && part.source?.media_type === 'url') {
+                    try {
+                        const resp = await fetch(part.source.data);
+                        const blob = await resp.blob();
+                        const reader = new FileReader();
+                        const base64 = await new Promise((resolve) => {
+                            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                            reader.readAsDataURL(blob);
+                        });
+                        part.source.data = base64;
+                        part.source.media_type = blob.type;
+                    } catch (e) {
+                        console.error("[LLM] Image resolution failed", e);
+                    }
+                }
+            }
+        }
+    }
+    return resolved;
+};
+
+/**
+ * Utility: Determine auth method from URL
+ */
+const getAuthMethod = (url) => {
+    if (url.includes('googleapis.com')) return 'query';
+    return 'bearer';
 };
 
 /**
@@ -204,7 +241,7 @@ async function nativeGeminiCompletion(messages, model, apiKey, baseUrl, config =
     }
 
     const resolvedMessages = await resolveRemoteImages(messages);
-    const contents = formatGeminiMessages(resolvedMessages);
+    const { contents, systemInstruction } = formatGeminiMessages(resolvedMessages);
 
     const requestBody = {
         contents: contents,
@@ -214,6 +251,12 @@ async function nativeGeminiCompletion(messages, model, apiKey, baseUrl, config =
             maxOutputTokens: 8192
         }
     };
+
+    if (systemInstruction) {
+        requestBody.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+        };
+    }
 
     let retries = 3;
     while (retries >= 0) {
