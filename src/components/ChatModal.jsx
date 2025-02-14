@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip, StickyNote, RefreshCw } from 'lucide-react';
 import { chatCompletion, streamChatCompletion } from '../services/llm';
 import { marked } from 'marked';
+import { isSafari, isIOS } from '../utils/browser';
 
 import { uploadImageToS3, getS3Config } from '../services/s3';
 
@@ -70,6 +71,18 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     useEffect(() => {
         scrollToBottom();
     }, [card.data.messages, card.data.messages.length, isStreaming]);
+
+    const parseModelOutput = (text) => {
+        if (typeof text !== 'string') return { thoughts: null, content: text };
+        const thinkMatch = text.match(/<thinking>([\s\S]*?)<\/thinking>/);
+        if (thinkMatch) {
+            return {
+                thoughts: thinkMatch[1].trim(),
+                content: text.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim()
+            };
+        }
+        return { thoughts: null, content: text };
+    };
 
     const handleSend = async () => {
         if ((!input.trim() && images.length === 0) || isStreaming) return;
@@ -148,7 +161,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                 }
                                 return part;
                             });
-
                             const updatedMessages = [...currentData.messages];
                             updatedMessages[msgIndex] = {
                                 ...targetMsg,
@@ -182,7 +194,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setImages([]);
         setIsStreaming(true);
 
-        // Helper to update the last message in the card
         const appendToken = (token) => {
             onUpdate(card.id, (currentData) => {
                 if (!currentData) return currentData; // safety
@@ -190,21 +201,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 const lastMsg = msgs[msgs.length - 1];
                 msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
                 return { ...currentData, messages: msgs };
-
             });
-        };
-
-        const parseModelOutput = (text) => {
-            // Simple parsing to separate thoughts from content if needed
-            // For now just return as is or implement thinking tag parsing
-            const thinkMatch = text.match(/<thinking>([\s\S]*?)<\/thinking>/);
-            if (thinkMatch) {
-                return {
-                    thoughts: thinkMatch[1].trim(),
-                    content: text.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim()
-                };
-            }
-            return { thoughts: null, content: text };
         };
 
         try {
@@ -363,60 +360,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setSelection(null);
     };
 
-    // Helper to render content with highlights safely
-    const renderContent = (content) => {
-        if (!content) return '';
-        let html = marked ? marked.parse(content) : content;
-
-        if (!card.data.marks || card.data.marks.length === 0) return html;
-
-        // Sort marks by length descending to match longest phrases first (prevents substring issues)
-        const sortedMarks = [...card.data.marks].sort((a, b) => b.length - a.length);
-
-        // Create a temporary element to process text nodes without breaking HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-        const container = doc.body.firstChild;
-
-        const highlightNode = (node) => {
-            if (node.nodeType === 3) { // Text node
-                let text = node.nodeValue;
-                let hasChange = false;
-
-                // We use a simple string replace for now but we could be more careful.
-                // To avoid recursive marking, we'll process each text node once.
-                let newHtml = text;
-
-                sortedMarks.forEach(mark => {
-                    const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`(${escapedMark})`, 'gi');
-                    // Check if mark exists in text
-                    if (regex.test(newHtml)) {
-                        newHtml = newHtml.replace(regex, '___MARK_START___$1___MARK_END___');
-                        hasChange = true;
-                    }
-                });
-
-                if (hasChange) {
-                    const span = doc.createElement('span');
-                    // Escape HTML in the text before inserting placeholders
-                    const escapedText = newHtml
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/___MARK_START___/g, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">')
-                        .replace(/___MARK_END___/g, '</mark>');
-                    span.innerHTML = escapedText;
-                    node.parentNode.replaceChild(span, node);
-                }
-            } else if (node.nodeType === 1 && node.tagName !== 'MARK') {
-                Array.from(node.childNodes).forEach(highlightNode);
-            }
-        };
-
-        Array.from(container.childNodes).forEach(highlightNode);
-        return container.innerHTML;
-    };
 
     return (
         <div
@@ -426,13 +369,15 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             onTouchEnd={handleTextSelection}
         >
             <div
-                className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-md transition-opacity"
+                className={`absolute inset-0 transition-opacity-blur ${isSafari || isIOS ? 'bg-slate-950/90' : 'bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-md'}`}
                 onClick={onClose}
             />
 
             <div
                 ref={modalRef}
-                className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl w-full max-w-[1100px] h-full sm:h-[92vh] sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] flex flex-col border border-slate-200 dark:border-white/10 overflow-hidden animate-fade-in relative z-10 transition-all duration-500"
+                className={`w-full max-w-[1100px] h-full sm:h-[92vh] sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden animate-fade-in relative z-10 transition-all duration-500
+                    ${isSafari || isIOS ? 'bg-white dark:bg-slate-900 border-slate-300' : 'bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-200 dark:border-white/10'} border`}
+                style={{ willChange: 'transform, opacity' }}
             >
                 {/* Floating Action Menu */}
                 {selection && (
@@ -512,89 +457,17 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                             </div>
                         ) : (
                             <div className="space-y-16">
-                                {card.data.messages.map((m, i) => {
-                                    const isUser = m.role === 'user';
-                                    let textContent = "";
-                                    let msgImages = [];
-
-                                    if (Array.isArray(m.content)) {
-                                        m.content.forEach(part => {
-                                            if (part.type === 'text') textContent += part.text;
-                                            if (part.type === 'image') msgImages.push(part);
-                                        });
-                                    } else {
-                                        textContent = m.content || "";
-                                    }
-
-                                    const { thoughts, content } = (isUser || !textContent)
-                                        ? { thoughts: null, content: textContent }
-                                        : parseModelOutput(textContent);
-
-                                    if (isUser) {
-                                        return (
-                                            <div key={i} className="animate-fade-in group">
-                                                <div className="user-prompt">
-                                                    {/* Image Rendering for User */}
-                                                    {msgImages.length > 0 && (
-                                                        <div className="flex flex-wrap gap-4 mb-6">
-                                                            {msgImages.map((img, idx) => {
-                                                                let imgSrc = img.source.type === 'base64'
-                                                                    ? `data:${img.source.media_type};base64,${img.source.data}`
-                                                                    : (img.source.s3Url || img.source.url);
-                                                                return imgSrc ? (
-                                                                    <img key={idx} src={imgSrc} alt="Input" className="h-32 w-auto rounded-2xl border border-white/10 shadow-lg" />
-                                                                ) : null;
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                    <p className="text-lg leading-relaxed">{textContent}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <div key={i} className="animate-slide-up group relative">
-                                            {thoughts && (
-                                                <div className="mb-10">
-                                                    <details className="group/think">
-                                                        <summary className="text-[10px] font-black text-brand-500/60 dark:text-brand-400/40 cursor-pointer list-none flex items-center gap-3 hover:text-brand-500 transition-all uppercase tracking-[0.3em]">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-                                                            Monologue
-                                                            <ChevronDown size={12} className="group-open/think:rotate-180 transition-transform opacity-50" />
-                                                        </summary>
-                                                        <div className="mt-4 p-8 bg-slate-50 dark:bg-slate-900/40 rounded-[2rem] text-sm font-sans text-slate-500 dark:text-slate-400 whitespace-pre-wrap border border-slate-200 dark:border-white/5 leading-relaxed italic overflow-hidden">
-                                                            {thoughts}
-                                                        </div>
-                                                    </details>
-                                                </div>
-                                            )}
-                                            <div
-                                                className="prose dark:prose-invert"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: content
-                                                        ? renderContent(content)
-                                                        : (!thoughts ? '<span class="opacity-30 italic font-sans">Synthesizing...</span>' : '<span class="opacity-30 italic font-sans">Deep thoughts complete. Formulating...</span>')
-                                                }}
-                                            />
-                                            {/* Retry Button for Errors */}
-                                            {!isStreaming && content && (content.includes('⚠️ Error:') || content.includes('Error: Native API Error')) && (
-                                                <div className="mt-6 animate-fade-in">
-                                                    <button
-                                                        onClick={handleRetry}
-                                                        className="flex items-center gap-2 px-6 py-2.5 bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 dark:text-brand-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border border-brand-500/20"
-                                                    >
-                                                        <RefreshCw size={14} className={isStreaming ? 'animate-spin' : ''} />
-                                                        Retry Generation
-                                                    </button>
-                                                    <p className="text-[10px] text-slate-400 mt-2 ml-1 italic">
-                                                        If error persists, check your API key or try another model in settings.
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                {card.data.messages.map((m, i) => (
+                                    <MessageItem
+                                        key={i}
+                                        message={m}
+                                        index={i}
+                                        marks={card.data.marks}
+                                        parseModelOutput={parseModelOutput}
+                                        isStreaming={isStreaming}
+                                        handleRetry={handleRetry}
+                                    />
+                                ))}
 
                                 {isStreaming && (
                                     <div className="pt-8 flex justify-start">
@@ -670,5 +543,140 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         </div>
     );
 }
+
+// Sub-component for individual messages to optimize rendering
+const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming, handleRetry }) => {
+    const isUser = message.role === 'user';
+    let textContent = "";
+    let msgImages = [];
+
+    if (Array.isArray(message.content)) {
+        message.content.forEach(part => {
+            if (part.type === 'text') textContent += part.text;
+            if (part.type === 'image') msgImages.push(part);
+        });
+    } else {
+        textContent = message.content || "";
+    }
+
+    const { thoughts, content } = (isUser || !textContent)
+        ? { thoughts: null, content: textContent }
+        : parseModelOutput(textContent);
+
+    // Helper to render content with highlights safely
+    const renderMessageContent = (cnt, currentMarks) => {
+        if (!cnt) return '';
+        let html = marked ? marked.parse(cnt) : cnt;
+
+        if (!currentMarks || currentMarks.length === 0) return html;
+
+        // Sort marks by length descending to match longest phrases first
+        const sortedMarks = [...currentMarks].sort((a, b) => b.length - a.length);
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+        const container = doc.body.firstChild;
+
+        const highlightNode = (node) => {
+            if (node.nodeType === 3) { // Text node
+                let text = node.nodeValue;
+                let hasChange = false;
+                let newHtml = text;
+
+                sortedMarks.forEach(mark => {
+                    const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${escapedMark})`, 'gi');
+                    if (regex.test(newHtml)) {
+                        newHtml = newHtml.replace(regex, '___MARK_START___$1___MARK_END___');
+                        hasChange = true;
+                    }
+                });
+
+                if (hasChange) {
+                    const span = doc.createElement('span');
+                    const escapedText = newHtml
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/___MARK_START___/g, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">')
+                        .replace(/___MARK_END___/g, '</mark>');
+                    span.innerHTML = escapedText;
+                    node.parentNode.replaceChild(span, node);
+                }
+            } else if (node.nodeType === 1 && node.tagName !== 'MARK') {
+                Array.from(node.childNodes).forEach(highlightNode);
+            }
+        };
+
+        Array.from(container.childNodes).forEach(highlightNode);
+        return container.innerHTML;
+    };
+
+    const renderedHtml = React.useMemo(() => {
+        if (isUser) return null;
+        return content
+            ? renderMessageContent(content, marks)
+            : (!thoughts ? '<span class="opacity-30 italic font-sans">Synthesizing...</span>' : '<span class="opacity-30 italic font-sans">Deep thoughts complete. Formulating...</span>');
+    }, [content, thoughts, marks, isUser]);
+
+    if (isUser) {
+        return (
+            <div className="animate-fade-in group">
+                <div className="user-prompt">
+                    {msgImages.length > 0 && (
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            {msgImages.map((img, idx) => {
+                                let imgSrc = img.source.type === 'base64'
+                                    ? `data:${img.source.media_type};base64,${img.source.data}`
+                                    : (img.source.s3Url || img.source.url);
+                                return imgSrc ? (
+                                    <img key={idx} src={imgSrc} alt="Input" className="h-32 w-auto rounded-2xl border border-white/10 shadow-lg" />
+                                ) : null;
+                            })}
+                        </div>
+                    )}
+                    <p className="text-lg leading-relaxed">{textContent}</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="animate-slide-up group relative">
+            {thoughts && (
+                <div className="mb-10">
+                    <details className="group/think">
+                        <summary className="text-[10px] font-black text-brand-500/60 dark:text-brand-400/40 cursor-pointer list-none flex items-center gap-3 hover:text-brand-500 transition-all uppercase tracking-[0.3em]">
+                            <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+                            Monologue
+                            <ChevronDown size={12} className="group-open/think:rotate-180 transition-transform opacity-50" />
+                        </summary>
+                        <div className="mt-4 p-8 bg-slate-50 dark:bg-slate-900/40 rounded-[2rem] text-sm font-sans text-slate-500 dark:text-slate-400 whitespace-pre-wrap border border-slate-200 dark:border-white/5 leading-relaxed italic overflow-hidden">
+                            {thoughts}
+                        </div>
+                    </details>
+                </div>
+            )}
+            <div
+                className="prose dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            />
+            {!isStreaming && content && (content.includes('⚠️ Error:') || content.includes('Error: Native API Error')) && (
+                <div className="mt-6 animate-fade-in">
+                    <button
+                        onClick={handleRetry}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 dark:text-brand-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border border-brand-500/20"
+                    >
+                        <RefreshCw size={14} className={isStreaming ? 'animate-spin' : ''} />
+                        Retry Generation
+                    </button>
+                    <p className="text-[10px] text-slate-400 mt-2 ml-1 italic">
+                        If error persists, check your API key or try another model in settings.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+});
 
 if (typeof window !== 'undefined') window.ChatModal = ChatModal;
