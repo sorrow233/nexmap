@@ -1,4 +1,4 @@
-import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
+import { getBestAnchorPair, generateBezierPath, getCardRect, isRectIntersect } from '../utils/geometry';
 
 export default function Canvas({
     cards,
@@ -19,36 +19,95 @@ export default function Canvas({
     setScale
 }) {
     const canvasRef = useRef(null);
-    const [panning, setPanning] = useState(false);
+    const [interactionMode, setInteractionMode] = useState('none'); // 'none' | 'panning' | 'selecting'
+    const [selectionRect, setSelectionRect] = useState(null); // { x1, y1, x2, y2 } in view-space
 
     // Config for smooth feel
     const ZOOM_sensitivity = 0.005; // Finer control
     const PAN_sensitivity = 1.0;
 
     // Ref to access current state in native event listeners without closure staleness
-    const stateRef = useRef({ scale: 1, offset: { x: 0, y: 0 } });
+    const stateRef = useRef({ scale: 1, offset: { x: 0, y: 0 }, interactionMode: 'none', cards: [] });
 
     // Sync ref with state
     useEffect(() => {
         stateRef.current.scale = scale;
         stateRef.current.offset = offset;
-    }, [scale, offset]);
+        stateRef.current.interactionMode = interactionMode;
+        stateRef.current.cards = cards;
+    }, [scale, offset, interactionMode, cards]);
 
-    // Convert screen to canvas coordinates
-    const toCanvasCoords = (clientX, clientY) => {
+    // Convert view to canvas coordinates
+    const toCanvasCoords = (viewX, viewY) => {
         return {
-            x: (clientX - offset.x) / scale,
-            y: (clientY - offset.y) / scale
+            x: (viewX - offset.x) / scale,
+            y: (viewY - offset.y) / scale
         };
     };
 
-    // Only handle panning here. Card movement is delegated to Card component + App handler
     const handleMouseDown = (e) => {
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
-            setPanning(true);
-            // Clear selection on canvas click
-            if (onSelectionChange) onSelectionChange([]);
+            const isPan = e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
+
+            if (isPan) {
+                setInteractionMode('panning');
+            } else {
+                setInteractionMode('selecting');
+                setSelectionRect({ x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY });
+                // We don't clear selection immediately to allow additive selection if we want later,
+                // but for now, standard behavior is clear unless Shift is held.
+                if (!e.shiftKey) {
+                    onSelectionChange([]);
+                }
+            }
         }
+    };
+
+    const handleMouseMove = (e) => {
+        if (interactionMode === 'panning') {
+            setOffset(prev => ({
+                x: prev.x + e.movementX,
+                y: prev.y + e.movementY
+            }));
+        } else if (interactionMode === 'selecting' && selectionRect) {
+            const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
+            setSelectionRect(newSelectionRect);
+
+            // Calculate intersection
+            const xMin = Math.min(newSelectionRect.x1, newSelectionRect.x2);
+            const xMax = Math.max(newSelectionRect.x1, newSelectionRect.x2);
+            const yMin = Math.min(newSelectionRect.y1, newSelectionRect.y2);
+            const yMax = Math.max(newSelectionRect.y1, newSelectionRect.y2);
+
+            const canvasTopLeft = toCanvasCoords(xMin, yMin);
+            const canvasBottomRight = toCanvasCoords(xMax, yMax);
+
+            const selectionCanvasRect = {
+                left: canvasTopLeft.x,
+                top: canvasTopLeft.y,
+                right: canvasBottomRight.x,
+                bottom: canvasBottomRight.y
+            };
+
+            const intersectedIds = cards
+                .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
+                .map(card => card.id);
+
+            // If Shift is held, we want to toggle or add? Conventional is additive union.
+            if (e.shiftKey) {
+                // This is a bit tricky during drag because it flickers if we toggle.
+                // Standard behavior: Union of previous selection + current intersected.
+                // But for simplicity, let's just do standard box select for now.
+                // onSelectionChange([...new Set([...selectedIds, ...intersectedIds])]);
+            } else {
+                onSelectionChange(intersectedIds);
+            }
+        }
+    };
+
+    const handleMouseUp = () => {
+        setInteractionMode('none');
+        setSelectionRect(null);
     };
 
     const handleCardSelect = (id, e) => {
@@ -68,37 +127,27 @@ export default function Canvas({
         }
     };
 
-    const handleMouseMove = (e) => {
-        if (panning) {
-            setOffset(prev => ({
-                x: prev.x + e.movementX,
-                y: prev.y + e.movementY
-            }));
-        }
-    };
-
-    const handleMouseUp = () => {
-        setPanning(false);
-    };
-
-    // Touch Support for Panning
+    // Touch Support for Panning/Selection
     const lastTouchRef = useRef(null);
 
     const handleTouchStart = (e) => {
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
-            setPanning(true);
-            if (e.touches.length > 0) {
+            if (e.touches.length === 1) {
+                // Default to panning for touch on background?
+                // Or selection if it's a long press? 
+                // Let's keep touch as panning for now to avoid confusion.
+                setInteractionMode('panning');
                 lastTouchRef.current = {
                     x: e.touches[0].clientX,
                     y: e.touches[0].clientY
                 };
             }
-            if (onSelectionChange) onSelectionChange([]);
+            if (onSelectionChange && !e.shiftKey) onSelectionChange([]);
         }
     };
 
     const handleTouchMove = (e) => {
-        if (panning && e.touches.length > 0) {
+        if (interactionMode === 'panning' && e.touches.length > 0) {
             e.preventDefault(); // Prevent body scroll
             const touch = e.touches[0];
             const lastTouch = lastTouchRef.current;
@@ -347,6 +396,19 @@ export default function Canvas({
             <div className="absolute bottom-4 left-4 text-slate-400 text-xs font-mono pointer-events-none select-none">
                 Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {cards.length}
             </div>
+
+            {/* Rubber Band Selection Rect */}
+            {interactionMode === 'selecting' && selectionRect && (
+                <div
+                    className="fixed border border-brand-500 bg-brand-500/10 pointer-events-none z-[9999] rounded-sm"
+                    style={{
+                        left: Math.min(selectionRect.x1, selectionRect.x2),
+                        top: Math.min(selectionRect.y1, selectionRect.y2),
+                        width: Math.abs(selectionRect.x1 - selectionRect.x2),
+                        height: Math.abs(selectionRect.y1 - selectionRect.y2)
+                    }}
+                />
+            )}
         </div>
     );
 }

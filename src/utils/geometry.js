@@ -80,3 +80,12 @@ export function generateBezierPath(source, target) {
 
     return `M ${source.x} ${source.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${target.x} ${target.y}`;
 }
+
+export function isRectIntersect(rectA, rectB) {
+    return (
+        rectA.left < rectB.right &&
+        rectA.right > rectB.left &&
+        rectA.top < rectB.bottom &&
+        rectA.bottom > rectB.top
+    );
+}
