@@ -1,7 +1,4 @@
-
-import React, { useRef, useEffect, useState } from 'react';
-import Card from './Card';
-import StickyNote from './StickyNote';
+import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
 
 export default function Canvas({
     cards,
@@ -281,31 +278,28 @@ export default function Canvas({
                         const toCard = cards.find(c => c.id === conn.to);
                         if (!fromCard || !toCard) return null;
 
-                        // Calculate centers (approximate, assuming card width 320, height dynamic but starts ~200)
-                        const startX = fromCard.x + 160;
-                        const startY = fromCard.y + 100; // rough center
-                        const endX = toCard.x + 160;
-                        const endY = toCard.y + 100;
+                        const { source, target } = getBestAnchorPair(fromCard, toCard);
+                        const pathData = generateBezierPath(source, target);
 
                         return (
-                            <line
+                            <path
                                 key={`${conn.from}-${conn.to}-${idx}`}
-                                x1={startX}
-                                y1={startY}
-                                x2={endX}
-                                y2={endY}
-                                stroke="currentColor" // Use current text color for simplicity or fixed
-                                className="text-slate-300 dark:text-slate-600 opacity-60"
+                                d={pathData}
+                                fill="none"
+                                stroke="currentColor"
+                                className="text-brand-500/40 dark:text-brand-400/30 transition-all duration-300"
                                 strokeWidth="3"
-                                strokeDasharray="6 4" // Dashed line styling
+                                strokeLinecap="round"
+                                style={{
+                                    filter: 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.2))'
+                                }}
                             />
                         );
                     })}
 
                     {/* Active Connection Line Preview */}
                     {isConnecting && connectionStartId && (
-                        // We'd need mouse position here to draw line to cursor. 
-                        // Omitted for simplicity, we rely on "click source, click target" UI.
+                        // Future: Follow mouse
                         null
                     )}
                 </svg>
