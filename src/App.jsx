@@ -379,13 +379,13 @@ function AppContent() {
             // Command/Ctrl + Z -> Undo
             if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
-                handleUndo();
+                undo();
             }
 
             // Command/Ctrl + Shift + Z -> Redo
             if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
                 e.preventDefault();
-                handleRedo();
+                redo();
             }
 
             // Command/Ctrl + C -> Copy
