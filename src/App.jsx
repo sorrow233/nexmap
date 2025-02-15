@@ -197,48 +197,15 @@ function AppContent() {
         }
     };
 
-    const [currentBoardId, setCurrentBoardId] = useState(null);
-
-    const [cards, setCards] = useState([]);
-    const [connections, setConnections] = useState([]); // Array<{ from: id, to: id }>
-    const [selectedIds, setSelectedIds] = useState([]);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [expandedCardId, setExpandedCardId] = useState(null);
-    const [promptInput, setPromptInput] = useState('');
-    const [globalImages, setGlobalImages] = useState([]); // Global input images
-    const [generatingCardIds, setGeneratingCardIds] = useState(new Set());
-    const globalFileInputRef = React.useRef(null);
-
-    const [isConnecting, setIsConnecting] = useState(false);
-
-    const [connectionStartId, setConnectionStartId] = useState(null);
-
-    // History State for Undo/Redo
-    const [history, setHistory] = useState([]);
-    const [historyIndex, setHistoryIndex] = useState(-1);
-    // Clipboard State
-    const [clipboard, setClipboard] = useState(null);
-
-    // Canvas Pan & Zoom State (Lifted from Canvas.jsx)
-    // Canvas Pan & Zoom State (Lifted from Canvas.jsx)
-    const [offset, setOffset] = useState(() => {
-        if (typeof window === 'undefined') return { x: 0, y: 0 };
-        try {
-            const saved = localStorage.getItem('canvas_offset');
-            return saved ? JSON.parse(saved) : { x: 0, y: 0 };
-        } catch (e) {
-            return { x: 0, y: 0 };
-        }
-    });
-    const [scale, setScale] = useState(() => {
-        if (typeof window === 'undefined') return 1;
-        try {
-            const saved = localStorage.getItem('canvas_scale');
-            return saved ? parseFloat(saved) : 1;
-        } catch (e) {
-            return 1;
-        }
-    });
+    const {
+        cards, setCards,
+        connections, setConnections,
+        selectedIds, setSelectedIds,
+        offset, setOffset,
+        scale, setScale,
+        isSettingsOpen, setIsSettingsOpen,
+        addToHistory, undo, redo
+    } = useStore();
 
     // Persist canvas state
     useEffect(() => {
@@ -246,44 +213,10 @@ function AppContent() {
             localStorage.setItem('canvas_offset', JSON.stringify(offset));
             localStorage.setItem('canvas_scale', scale.toString());
         };
-        // Debounce slightly or just save on every update? 
-        // For performance, maybe use a timeout or assume direct save is fine for now.
-        // Given React batching, it should be okay.
         saveState();
     }, [offset, scale]);
 
-    // Helper to add state to history
-    const addToHistory = (newCards, newConnections) => {
-        // If we are in the middle of history, discard future
-        const currentHistory = history.slice(0, historyIndex + 1);
-        const newState = { cards: newCards, connections: newConnections, timestamp: Date.now() };
-
-        // Limit history size to 50
-        const updatedHistory = [...currentHistory, newState].slice(-50);
-
-        setHistory(updatedHistory);
-        setHistoryIndex(updatedHistory.length - 1);
-    };
-
-    const handleUndo = () => {
-        if (historyIndex > 0) {
-            const newIndex = historyIndex - 1;
-            const previousState = history[newIndex];
-            setCards(previousState.cards);
-            setConnections(previousState.connections);
-            setHistoryIndex(newIndex);
-        }
-    };
-
-    const handleRedo = () => {
-        if (historyIndex < history.length - 1) {
-            const newIndex = historyIndex + 1;
-            const nextState = history[newIndex];
-            setCards(nextState.cards);
-            setConnections(nextState.connections);
-            setHistoryIndex(newIndex);
-        }
-    };
+    // Keyboard shortcuts for undo/redo are handled in the global listener
 
     const handleCopy = async () => {
         if (selectedIds.length === 0) return;
@@ -1416,22 +1349,16 @@ function AppContent() {
     return (
         <React.Fragment>
             <Canvas
-                cards={cards} // Pass all cards
-                connections={connections} // New prop
-                selectedIds={selectedIds} // Pass selection state
-                onUpdateCards={setCards} // This is for what? Canvas uses local state? Canvas needs refactoring for group drag.
-                onCardMove={handleCardMove} // Use our new group move handler
-                onDragEnd={handleCardMoveEnd} // Handle history on drag end
-                onSelectionChange={setSelectedIds}
+                cards={cards}
+                connections={connections}
+                onUpdateCards={setCards}
+                onCardMove={handleCardMove}
+                onDragEnd={handleCardMoveEnd}
                 onExpandCard={setExpandedCardId}
-                onConnect={handleConnect} // New handler
+                onConnect={handleConnect}
                 onDeleteCard={handleDeleteCard}
                 isConnecting={isConnecting}
                 connectionStartId={connectionStartId}
-                offset={offset}
-                setOffset={setOffset}
-                scale={scale}
-                setScale={setScale}
             />
 
             {/* Teaching Bubble for Connections */}
@@ -1621,7 +1548,10 @@ function AppContent() {
                 </div>
             )}
 
-            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            <SettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+            />
 
             {expandedCardId && (
                 <ChatModal
