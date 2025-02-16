@@ -217,6 +217,17 @@ function AppContent() {
         saveState();
     }, [offset, scale]);
 
+    // Local UI state (not in global store)
+    const [currentBoardId, setCurrentBoardId] = useState(null);
+    const [expandedCardId, setExpandedCardId] = useState(null);
+    const [promptInput, setPromptInput] = useState('');
+    const [globalImages, setGlobalImages] = useState([]);
+    const [generatingCardIds, setGeneratingCardIds] = useState(new Set());
+    const globalFileInputRef = React.useRef(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [connectionStartId, setConnectionStartId] = useState(null);
+    const [clipboard, setClipboard] = useState(null);
+
     // Keyboard shortcuts for undo/redo are handled in the global listener
 
     const handleCopy = async () => {
