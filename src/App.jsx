@@ -151,6 +151,20 @@ function AppContent() {
                 });
 
                 // User settings sync is handled by SettingsModal and llm.js provider registry
+                loadUserSettings(u.uid).then(settings => {
+                    if (settings) {
+                        console.log("[Sync] User settings loaded from cloud:", settings);
+                        if (settings.providers) {
+                            localStorage.setItem('mixboard_providers_v3', JSON.stringify({
+                                providers: settings.providers,
+                                activeId: settings.activeId || 'google'
+                            }));
+                        }
+                        if (settings.s3Config) {
+                            localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
+                        }
+                    }
+                });
 
             }
         });
