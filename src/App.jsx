@@ -17,6 +17,8 @@ import {
 } from './services/llm';
 import { uploadImageToS3, getS3Config } from './services/s3';
 
+import { ONBOARDING_DATA } from './utils/onboarding';
+
 // Settings Modal Component
 
 class ErrorBoundary extends React.Component {
@@ -337,6 +339,16 @@ function AppContent() {
 
 
 
+    const handleCreateOnboardingBoard = async () => {
+        const newBoard = await createBoard(ONBOARDING_DATA.name);
+        await saveBoard(newBoard.id, {
+            cards: ONBOARDING_DATA.cards,
+            connections: ONBOARDING_DATA.connections
+        });
+        setBoardsList([newBoard]);
+        await handleSelectBoard(newBoard.id);
+    };
+
     // 1. Initial Load
     useEffect(() => {
         const init = async () => {
@@ -346,6 +358,10 @@ function AppContent() {
             const lastId = getCurrentBoardId();
             if (lastId && list.some(b => b.id === lastId)) {
                 await handleSelectBoard(lastId);
+            } else if (list.length === 0) {
+                // Auto create onboarding for new users
+                console.log("[Init] No boards found, creating onboarding guide...");
+                await handleCreateOnboardingBoard();
             }
             setIsInitialized(true);
         };
