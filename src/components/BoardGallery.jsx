@@ -236,9 +236,58 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 </div>
             </div>
 
-            {/* Grid */}
+            {/* Recently Accessed Section */}
+            {boards.length > 0 && (
+                <div className="mb-16 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
+                            <Clock size={20} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Recently Accessed</h2>
+                    </div>
+                    <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar scroll-smooth">
+                        {[...boards]
+                            .filter(b => b.lastAccessedAt)
+                            .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
+                            .slice(0, 4)
+                            .map((board, index) => (
+                                <div
+                                    key={`recent-${board.id}`}
+                                    onClick={() => onSelectBoard(board.id)}
+                                    className="group shrink-0 w-72 h-44 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-[2rem] p-6 border border-white/20 dark:border-white/5 hover:border-brand-400 hover:ring-2 hover:ring-brand-500/50 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-brand-500/10 flex flex-col justify-between"
+                                >
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-brand-600 transition-colors">
+                                            {board.name}
+                                        </h3>
+                                        <p className="text-slate-400 text-xs mt-1 font-medium">
+                                            Accessed {new Date(board.lastAccessedAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md">
+                                            {board.cardCount || 0} Cards
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity scale-75 group-hover:scale-100">
+                                            <ArrowRight size={14} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Main Grid: All Boards sorted by CreatedAt */}
+            <div className="flex items-center gap-3 mb-8 animate-fade-in">
+                <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
+                    <FileText size={20} />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">All Boards</h2>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
-                {[...boards].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).map((board, index) => (
+                {[...boards].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map((board, index) => (
                     <div
                         key={board.id}
                         onClick={() => onSelectBoard(board.id)}

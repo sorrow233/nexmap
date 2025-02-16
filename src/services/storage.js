@@ -95,6 +95,7 @@ export const createBoard = async (name) => {
         name: name || 'Untitled Board',
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        lastAccessedAt: Date.now(),
         cardCount: 0
     };
     const list = getBoardsList();
@@ -181,6 +182,7 @@ export const loadBoard = async (id) => {
     }
 
     // Process S3 URL images: download and convert to base64
+    let finalBoard = stored;
     try {
         const processedCards = await Promise.all((stored.cards || []).map(async (card) => {
             try {
@@ -221,12 +223,25 @@ export const loadBoard = async (id) => {
                 return card; // Return original card on error
             }
         }));
-
-        return { ...stored, cards: processedCards };
+        finalBoard = { ...stored, cards: processedCards };
     } catch (e) {
         console.error('[Load Board] S3 processing error:', e);
-        return stored; // Return original data on error
     }
+
+    // Always update last accessed time if we have a board
+    if (finalBoard) {
+        const list = getBoardsList();
+        const boardIndex = list.findIndex(b => b.id === id);
+        if (boardIndex >= 0) {
+            list[boardIndex] = {
+                ...list[boardIndex],
+                lastAccessedAt: Date.now()
+            };
+            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        }
+    }
+
+    return finalBoard;
 };
 
 export const deleteBoard = async (id) => {
@@ -331,6 +346,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                     name: b.name || 'Untitled',
                     createdAt: b.createdAt || Date.now(),
                     updatedAt: b.updatedAt || Date.now(),
+                    lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
                     cardCount: b.cards?.length || 0
                 })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
