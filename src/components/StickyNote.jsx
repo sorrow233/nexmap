@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Trash2, Link } from 'lucide-react';
+import { isSafari, isIOS } from '../utils/browser';
 
 export default function StickyNote({
     data,
@@ -137,7 +138,9 @@ export default function StickyNote({
         }
     };
 
-    const glassStyle = "bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]";
+    const glassStyle = (isSafari || isIOS)
+        ? "bg-white/90 dark:bg-slate-900 border border-slate-300 dark:border-white/20 shadow-xl"
+        : "bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]";
 
     return (
         <div
