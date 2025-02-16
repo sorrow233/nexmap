@@ -291,25 +291,48 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     const modalRef = useRef(null);
 
     const handleTextSelection = () => {
-        const sel = window.getSelection();
-        if (sel && sel.toString().trim().length > 0 && !isStreaming) {
-            const range = sel.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            // Ensure the selection is within our messages container
-            const container = modalRef.current?.querySelector('.messages-container');
-            if (container && container.contains(range.commonAncestorContainer)) {
-                setSelection({
-                    text: sel.toString().trim(), // Added trim here
-                    rect: {
-                        top: rect.top,
-                        left: rect.left + rect.width / 2
+        // Use a small timeout to let the selection stabilize (crucial for iOS)
+        setTimeout(() => {
+            const sel = window.getSelection();
+            if (sel && sel.toString().trim().length > 0 && !isStreaming) {
+                try {
+                    const range = sel.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    // Ensure the selection is within our messages container
+                    const container = modalRef.current?.querySelector('.messages-container');
+                    if (container && container.contains(range.commonAncestorContainer)) {
+                        setSelection({
+                            text: sel.toString().trim(),
+                            rect: {
+                                top: rect.top,
+                                left: rect.left + rect.width / 2
+                            }
+                        });
+                        return;
                     }
-                });
-                return;
+                } catch (e) {
+                    console.warn('[Selection] Failed to get range/rect', e);
+                }
             }
-        }
-        setSelection(null);
+            setSelection(null);
+        }, 10);
     };
+
+    // Global selection change listener for iPad/Safari stability
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleSelectionChange = () => {
+            if (selection) {
+                // If we already have a selection UI, re-validate it
+                // This helps if the user adjusts handle bars on iPad
+                handleTextSelection();
+            }
+        };
+
+        document.addEventListener('selectionchange', handleSelectionChange);
+        return () => document.removeEventListener('selectionchange', handleSelectionChange);
+    }, [isOpen, selection]);
 
     const addMarkTopic = (e) => {
         e.stopPropagation();
@@ -400,6 +423,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4"
             style={{ perspective: '1000px' }}
             onMouseUp={handleTextSelection}
+            onTouchEnd={handleTextSelection}
         >
             <div
                 className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-md transition-opacity"
