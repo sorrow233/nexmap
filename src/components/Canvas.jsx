@@ -1,3 +1,6 @@
+import React, { useRef, useEffect, useState } from 'react';
+import Card from './Card';
+import StickyNote from './StickyNote';
 import { getBestAnchorPair, generateBezierPath, getCardRect, isRectIntersect } from '../utils/geometry';
 
 export default function Canvas({
