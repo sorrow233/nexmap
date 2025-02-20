@@ -1304,29 +1304,40 @@ function AppContent() {
     if (view === 'gallery') {
         return (
             <React.Fragment>
-                <div className="bg-slate-50 dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto overflow-x-hidden transition-colors duration-500 custom-scrollbar">
-                    {/* Ambient Background */}
-                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
-                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
+                <div className="bg-[#FBFBFC] dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto overflow-x-hidden transition-colors duration-500 custom-scrollbar">
+                    {/* Ambient Background - Softened for light mode */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/30 dark:bg-blue-600/20 blur-[120px] pointer-events-none"></div>
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-100/30 dark:bg-purple-600/20 blur-[120px] pointer-events-none"></div>
 
                     <div className="max-w-7xl mx-auto relative z-10">
-                        <div className="flex justify-between items-center mb-12">
-                            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                                Neural Canvas
+                        {/* Premium Glass Header */}
+                        <div className="sticky top-0 z-50 flex justify-between items-center mb-16 py-6 border-b border-slate-200/50 dark:border-white/5 bg-[#FBFBFC]/70 dark:bg-slate-950/70 backdrop-blur-xl -mx-8 px-8">
+                            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-purple-400">Neural</span> Canvas
                             </h1>
                             <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => handleCreateBoard("New Board")}
+                                    className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-premium transition-all hover:scale-110"
+                                    title="New Empty Board"
+                                >
+                                    <Plus size={20} />
+                                </button>
+
                                 {user ? (
-                                    <div className="flex items-center gap-3 bg-slate-800 rounded-full pl-2 pr-4 py-1.5 border border-slate-700">
-                                        {user.photoURL && <img src={user.photoURL} className="w-6 h-6 rounded-full" alt="User avatar" />}
-                                        <span className="text-sm font-medium">{user.displayName}</span>
-                                        <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white ml-2">Sign Out</button>
+                                    <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-2xl pl-2 pr-5 py-2 border border-slate-200/60 dark:border-white/10 shadow-premium">
+                                        {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm" alt="User avatar" />}
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{user.displayName}</span>
+                                            <button onClick={handleLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider mt-1 text-left transition-colors">Sign Out</button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <button
                                         onClick={handleLogin}
-                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-medium transition-all shadow-lg hover:shadow-blue-500/25"
+                                        className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all"
                                     >
-                                        Sign In with Google
+                                        Sign In
                                     </button>
                                 )}
                             </div>
