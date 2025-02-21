@@ -407,7 +407,7 @@ function AppContent() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIds, cards, connections, history, historyIndex, clipboard]); // Include dependencies
+    }, [selectedIds, cards, connections, clipboard]); // Include dependencies
 
     // Sync Tab Title
     useEffect(() => {
