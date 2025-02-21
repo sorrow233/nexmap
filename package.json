@@ -11,9 +11,9 @@
     "deploy:main": "npm run build && npx wrangler pages deploy dist --project-name aimainmap --branch main",
     "deploy:beta": "npm run build && npx wrangler pages deploy dist --project-name aimainmap --branch beta",
     "deploy:alpha": "npm run build && npx wrangler pages deploy dist --project-name aimainmap --branch alpha",
-    "ship:main": "npm run deploy:main && git add . && git commit -m \"部署生产环境 (Main)：同步代码\" && git push origin main",
-    "ship:beta": "npm run deploy:beta && git add . && git commit -m \"部署测试环境 (Beta)：同步代码\" && git push origin beta",
-    "ship:alpha": "npm run deploy:alpha && git add . && git commit -m \"部署实验环境 (Alpha)：同步代码\" && git push origin alpha",
+    "ship:main": "npm run deploy:main && git push origin main",
+    "ship:beta": "npm run deploy:beta && git push origin beta",
+    "ship:alpha": "npm run deploy:alpha && git push origin alpha",
     "deploy": "npm run deploy:beta",
     "ship": "npm run ship:beta"
   },
