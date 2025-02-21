@@ -63,10 +63,14 @@ const createContentSlice = (set, get) => ({
     })),
 
     // History Logic
-    addToHistory: () => {
+    addToHistory: (customCards, customConnections) => {
         const { cards, connections, history, historyIndex } = get();
         const nextHistory = history.slice(0, historyIndex + 1);
-        const newState = { cards: [...cards], connections: [...connections], timestamp: Date.now() };
+        const newState = {
+            cards: customCards ? [...customCards] : [...cards],
+            connections: customConnections ? [...customConnections] : [...connections],
+            timestamp: Date.now()
+        };
         const updatedHistory = [...nextHistory, newState].slice(-50);
         set({ history: updatedHistory, historyIndex: updatedHistory.length - 1 });
     },
@@ -96,7 +100,7 @@ const createSettingsSlice = (set) => ({
     activeModel: 'gemini-2.0-flash-exp',
     apiConfig: {},
 
-    setSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+    setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
     setActiveModel: (model) => set({ activeModel: model }),
     setApiConfig: (config) => set({ apiConfig: config })
 });
