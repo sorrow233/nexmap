@@ -4,7 +4,7 @@ import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 import { isSafari, isIOS } from '../utils/browser';
 
-export default function Card({
+const Card = React.memo(function Card({
     data, // Now contains id, x, y, and actual data
     isSelected,
     onSelect,
@@ -280,9 +280,10 @@ export default function Card({
                     {cardContent.model?.split('/').pop() || 'AI'}
                 </span>
             </div>
-        </div>
-    );
-}
+            );
+});
 
-// Local Loader Compatibility
-if (typeof window !== 'undefined') window.Card = Card;
+            export default Card;
+
+            // Local Loader Compatibility
+            if (typeof window !== 'undefined') window.Card = Card;
