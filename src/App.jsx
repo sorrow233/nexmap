@@ -570,7 +570,7 @@ function AppContent() {
 
         } catch (error) {
             console.error(error);
-            setCards(prev => prev.map(c => {
+            setCards(cards.map(c => {
                 if (c.id === newId) {
                     const msgs = [...c.data.messages];
                     msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
@@ -745,7 +745,7 @@ function AppContent() {
 
             try {
                 const imageUrl = await imageGeneration(prompt);
-                setCards(prev => prev.map(c => c.id === newCardId ? {
+                setCards(cards.map(c => c.id === newCardId ? {
                     ...c,
                     data: {
                         ...c.data,
@@ -756,7 +756,7 @@ function AppContent() {
                 } : c));
             } catch (err) {
                 console.error('Image generation failed:', err);
-                setCards(prev => prev.map(c => c.id === newCardId ? {
+                setCards(cards.map(c => c.id === newCardId ? {
                     ...c,
                     data: {
                         ...c.data,
@@ -969,7 +969,7 @@ function AppContent() {
 
         } catch (error) {
             console.error(error);
-            setCards(prev => prev.map(c => {
+            setCards(cards.map(c => {
                 if (c.id === newId) {
                     const msgs = [...c.data.messages];
                     msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
@@ -1191,7 +1191,7 @@ function AppContent() {
 
     const handleUpdateCard = (id, newData) => {
         console.log('[App] handleUpdateCard called for card:', id, 'newData type:', typeof newData);
-        setCards(prev => prev.map(c => {
+        setCards(cards.map(c => {
             if (c.id === id) {
                 const resolvedData = typeof newData === 'function' ? newData(c.data) : newData;
                 console.log('[App] Updating card. Messages count:', resolvedData.messages?.length || 0, 'Data stringify size:', JSON.stringify(resolvedData).length);
