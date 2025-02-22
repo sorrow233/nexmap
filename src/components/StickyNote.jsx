@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Trash2, Link } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 
-export default function StickyNote({
+const StickyNote = React.memo(function StickyNote({
     data,
     isSelected,
     onSelect,
@@ -234,6 +234,8 @@ export default function StickyNote({
             <div className="h-2 w-12 bg-white/20 dark:bg-white/10 mx-auto mb-2 rounded-full opacity-50"></div>
         </div>
     );
-}
+});
+
+export default StickyNote;
 
 if (typeof window !== 'undefined') window.StickyNote = StickyNote;

@@ -1,11 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import StickyNote from './StickyNote';
+import ConnectionLayer from './ConnectionLayer';
 import { getBestAnchorPair, generateBezierPath, getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 
 export default function Canvas({
-    cards, // Still passed from App for now as it handles cloud sync
+    cards,
     connections = [],
     onUpdateCards,
     onCardMove,
@@ -24,17 +25,11 @@ export default function Canvas({
     } = useStore();
 
     const canvasRef = useRef(null);
-    // const [interactionMode, setInteractionMode] = useState('none'); // Replaced by useStore
-    // const [selectionRect, setSelectionRect] = useState(null); // Replaced by useStore
-
-    // Config for smooth feel
-    const ZOOM_sensitivity = 0.005; // Finer control
+    const ZOOM_sensitivity = 0.005;
     const PAN_sensitivity = 1.0;
 
-    // Ref to access current state in native event listeners without closure staleness
     const stateRef = useRef({ scale: 1, offset: { x: 0, y: 0 }, interactionMode: 'none', cards: [] });
 
-    // Sync ref with state
     useEffect(() => {
         stateRef.current.scale = scale;
         stateRef.current.offset = offset;
@@ -42,13 +37,12 @@ export default function Canvas({
         stateRef.current.cards = cards;
     }, [scale, offset, interactionMode, cards]);
 
-    // Convert view to canvas coordinates
-    const toCanvasCoords = (viewX, viewY) => {
+    const toCanvasCoords = useCallback((viewX, viewY) => {
         return {
             x: (viewX - offset.x) / scale,
             y: (viewY - offset.y) / scale
         };
-    };
+    }, [offset, scale]);
 
     const handleMouseDown = (e) => {
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
@@ -76,7 +70,6 @@ export default function Canvas({
             const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
             setSelectionRect(newSelectionRect);
 
-            // Calculate intersection
             const xMin = Math.min(newSelectionRect.x1, newSelectionRect.x2);
             const xMax = Math.max(newSelectionRect.x1, newSelectionRect.x2);
             const yMin = Math.min(newSelectionRect.y1, newSelectionRect.y2);
@@ -105,55 +98,15 @@ export default function Canvas({
         setSelectionRect(null);
     };
 
-    const handleCardSelect = (id, e) => {
+    const handleCardSelect = useCallback((id, e) => {
         const isAdditive = e && (e.shiftKey || e.metaKey || e.ctrlKey);
-        if (isAdditive) {
-            const newSelection = selectedIds.includes(id)
-                ? selectedIds.filter(sid => sid !== id)
-                : [...selectedIds, id];
-            setSelectedIds(newSelection);
-        } else {
-            setSelectedIds([id]);
-        }
-    };
-
-    // Touch Support for Panning/Selection
-    const lastTouchRef = useRef(null);
-
-    const handleTouchStart = (e) => {
-        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
-            if (e.touches.length === 1) {
-                setInteractionMode('panning');
-                lastTouchRef.current = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY
-                };
+        setSelectedIds(prev => {
+            if (isAdditive) {
+                return prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id];
             }
-            if (onSelectionChange && !e.shiftKey) onSelectionChange([]);
-        }
-    };
-
-    const handleTouchMove = (e) => {
-        if (interactionMode === 'panning' && e.touches.length > 0) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const lastTouch = lastTouchRef.current;
-            if (lastTouch) {
-                const deltaX = touch.clientX - lastTouch.x;
-                const deltaY = touch.clientY - lastTouch.y;
-                setOffset({
-                    x: offset.x + deltaX,
-                    y: offset.y + deltaY
-                });
-                lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
-            }
-        }
-    };
-
-    const handleTouchEnd = () => {
-        setInteractionMode('none');
-        lastTouchRef.current = null;
-    };
+            return [id];
+        });
+    }, [setSelectedIds]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -183,42 +136,28 @@ export default function Canvas({
             }
         };
 
-        const handleGestureStart = (e) => {
-            e.preventDefault();
-            startScale = stateRef.current.scale;
-        };
-        let startScale = 1;
-
-        const handleGestureChange = (e) => {
-            e.preventDefault();
-            const currentOffset = stateRef.current.offset;
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-            const newScale = Math.min(Math.max(0.1, startScale * e.scale), 5);
-            const oldScale = stateRef.current.scale;
-            if (Math.abs(newScale - oldScale) < 0.001) return;
-            const canvasX_live = (mouseX - currentOffset.x) / oldScale;
-            const canvasY_live = (mouseY - currentOffset.y) / oldScale;
-            const newOffsetX = mouseX - canvasX_live * newScale;
-            const newOffsetY = mouseY - canvasY_live * newScale;
-            setScale(newScale);
-            setOffset({ x: newOffsetX, y: newOffsetY });
-        };
-
-        const handleGestureEnd = (e) => { e.preventDefault(); };
-
         canvas.addEventListener('wheel', handleNativeWheel, { passive: false });
-        canvas.addEventListener('gesturestart', handleGestureStart, { passive: false });
-        canvas.addEventListener('gesturechange', handleGestureChange, { passive: false });
-        canvas.addEventListener('gestureend', handleGestureEnd, { passive: false });
-
-        return () => {
-            canvas.removeEventListener('wheel', handleNativeWheel);
-            canvas.removeEventListener('gesturestart', handleGestureStart);
-            canvas.removeEventListener('gesturechange', handleGestureChange);
-            canvas.removeEventListener('gestureend', handleGestureEnd);
-        };
+        return () => canvas.removeEventListener('wheel', handleNativeWheel);
     }, [setScale, setOffset]);
+
+    // Viewport Culling Logic
+    const visibleCards = useMemo(() => {
+        const viewportRect = {
+            left: (0 - offset.x) / scale - 400, // Buffer zone
+            top: (0 - offset.y) / scale - 400,
+            right: (window.innerWidth - offset.x) / scale + 400,
+            bottom: (window.innerHeight - offset.y) / scale + 400
+        };
+
+        return cards.filter(card => {
+            // Selected cards or generating cards always render to avoid UI glitches
+            if (selectedIds.includes(card.id)) return true;
+
+            // Basic culling
+            const rect = getCardRect(card);
+            return isRectIntersect(viewportRect, rect);
+        });
+    }, [cards, offset, scale, selectedIds]);
 
     return (
         <div
@@ -228,45 +167,26 @@ export default function Canvas({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
                 backgroundSize: '24px 24px',
                 backgroundPosition: `${offset.x}px ${offset.y}px`
             }}
         >
+            {/* Connection Layer (Canvas) */}
+            <ConnectionLayer
+                cards={cards}
+                connections={connections}
+                scale={scale}
+                offset={offset}
+            />
+
             <div
-                className="absolute top-0 left-0 w-full h-full origin-top-left transition-transform duration-75 ease-out will-change-transform pointer-events-none"
+                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
                 style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
             >
-                {/* Connection Lines Layer */}
-                <svg className="absolute top-0 left-0 w-full h-full overflow-visible pointer-events-none z-0">
-                    {connections.map((conn, idx) => {
-                        const fromCard = cards.find(c => c.id === conn.from);
-                        const toCard = cards.find(c => c.id === conn.to);
-                        if (!fromCard || !toCard) return null;
-                        const { source, target } = getBestAnchorPair(fromCard, toCard);
-                        const pathData = generateBezierPath(source, target);
-                        return (
-                            <path
-                                key={`${conn.from}-${conn.to}-${idx}`}
-                                d={pathData}
-                                fill="none"
-                                stroke="currentColor"
-                                className="text-brand-500/40 dark:text-brand-400/30 transition-all duration-300"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                style={{ filter: 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.2))' }}
-                            />
-                        );
-                    })}
-                </svg>
-
-                {/* Cards Layer */}
-                {cards.map(card => {
+                {/* Cards Layer - Cull and Memoize */}
+                {visibleCards.map(card => {
                     const Component = card.type === 'note' ? StickyNote : Card;
                     return (
                         <Component
@@ -274,7 +194,7 @@ export default function Canvas({
                             data={card}
                             isSelected={selectedIds.includes(card.id)}
                             onSelect={handleCardSelect}
-                            onMove={(id, x, y) => onCardMove && onCardMove(id, x, y)}
+                            onMove={onCardMove}
                             onDelete={onDeleteCard}
                             onUpdate={(id, newData) => onUpdateCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c))}
                             onDragEnd={onDragEnd}
@@ -290,7 +210,7 @@ export default function Canvas({
 
             {/* Status Indicator */}
             <div className="absolute bottom-4 left-4 text-slate-400 text-xs font-mono pointer-events-none select-none">
-                Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Scale: {scale.toFixed(2)} | Objects: {cards.length}
+                Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {visibleCards.length}/{cards.length} | Zoom: {scale.toFixed(2)}
             </div>
 
             {/* Rubber Band Selection Rect */}
