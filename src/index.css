@@ -10,10 +10,17 @@ body,
     padding: 0;
     overflow-x: hidden;
     overflow-y: hidden;
-    /* Canvas and main containers handle vertical if needed */
 }
 
 @layer utilities {
+    .shadow-premium {
+        box-shadow: 0 8px 30px rgb(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.03);
+    }
+
+    .shadow-premium-hover {
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    }
+
     .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
     }

@@ -2,21 +2,10 @@ import React, { useState, useRef } from 'react';
 import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon } from 'lucide-react';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard }) {
-    const [isCreating, setIsCreating] = useState(false);
-    const [newBoardTitle, setNewBoardTitle] = useState('');
     const [quickPrompt, setQuickPrompt] = useState('');
     const [images, setImages] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
-
-    const handleCreateSubmit = (e) => {
-        e.preventDefault();
-        if (newBoardTitle.trim()) {
-            onCreateBoard(newBoardTitle, null);
-            setIsCreating(false);
-            setNewBoardTitle('');
-        }
-    };
 
     const handleQuickStart = (e) => {
         if ((!quickPrompt.trim() && images.length === 0)) return;
@@ -101,75 +90,29 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     };
 
     return (
-        <div className="min-h-full animate-fade-in custom-scrollbar pb-20">
-            {/* Header Section */}
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-16">
-                <div>
-                    <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-blue-400 dark:from-blue-200 dark:via-white dark:to-purple-200 tracking-tight mb-2 filter drop-shadow-lg">
-                        My Workspace
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">Continue your creative journey</p>
-                </div>
-
-                {isCreating ? (
-                    <form onSubmit={handleCreateSubmit} className="flex items-center gap-2 animate-slide-up">
-                        <input
-                            autoFocus
-                            type="text"
-                            value={newBoardTitle}
-                            onChange={e => setNewBoardTitle(e.target.value)}
-                            placeholder="Board name..."
-                            className="bg-white/80 dark:bg-slate-800/50 text-slate-800 dark:text-white px-6 py-3 rounded-full border border-slate-200 dark:border-white/10 focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 outline-none w-64 backdrop-blur-md transition-colors"
-                        />
-                        <button
-                            type="submit"
-                            className="bg-brand-500 hover:bg-brand-400 text-white p-3 rounded-full transition-all shadow-lg shadow-brand-500/20"
-                        >
-                            <ArrowRight size={20} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setIsCreating(false)}
-                            className="bg-slate-200 dark:bg-slate-800/50 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 p-3 rounded-full transition-all backdrop-blur-md border border-transparent dark:border-white/5"
-                        >
-                            <X size={20} />
-                        </button>
-                    </form>
-                ) : (
-                    <button
-                        onClick={() => setIsCreating(true)}
-                        className="group flex items-center gap-3 bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-slate-700 dark:text-white px-6 py-3 rounded-full font-bold backdrop-blur-md border border-slate-200 dark:border-white/10 hover:border-brand-500/50 transition-all duration-300 shadow-sm dark:shadow-none"
-                    >
-                        <div className="bg-brand-500 group-hover:bg-brand-400 text-white p-1 rounded-full transition-colors">
-                            <Plus size={16} />
-                        </div>
-                        <span className="group-hover:text-brand-600 dark:group-hover:text-brand-200 transition-colors">New Board</span>
-                    </button>
-                )}
-            </header>
-
-            {/* Quick Start / Hero Input */}
-            <div className="mb-20 relative group">
-                <div className={`absolute inset-0 bg-gradient-to-r from-brand-500/20 via-purple-500/20 to-brand-500/20 rounded-[2rem] blur-2xl transition-opacity duration-700 ${isDragging ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`}></div>
+        <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
+            {/* Quick Start / Hero Input - Linear Style */}
+            <div className="mb-24 relative group max-w-4xl mx-auto">
+                <div className={`absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}></div>
 
                 <div
-                    className={`relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border transition-all p-2 rounded-[2rem] flex flex-col shadow-2xl
-                        ${isDragging ? 'border-brand-500 ring-4 ring-brand-500/20 scale-[1.02]' : 'border-white/20 dark:border-white/10 focus-within:ring-2 focus-within:ring-brand-500/50'}
+                    className={`relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border transition-all duration-500 p-2.5 rounded-[2.5rem] flex flex-col shadow-premium
+                        ${isDragging ? 'border-blue-500 ring-8 ring-blue-500/10 scale-[1.01]' : 'border-slate-200/60 dark:border-white/10 focus-within:border-blue-500/50 focus-within:shadow-premium-hover'}
                     `}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    onPaste={handlePaste} // Add paste handler here
+                    onPaste={handlePaste}
                 >
                     {/* Image Preview Section */}
                     {images.length > 0 && (
-                        <div className="flex px-6 pt-4 gap-3 overflow-x-auto custom-scrollbar">
+                        <div className="flex px-8 pt-6 gap-4 overflow-x-auto custom-scrollbar">
                             {images.map((img, idx) => (
                                 <div key={idx} className="relative shrink-0 group/img animate-fade-in-scale">
-                                    <div className="absolute -top-2 -right-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                    <div className="absolute -top-2 -right-2 z-10 opacity-0 group-hover/img:opacity-100 transition-all duration-300 scale-75 group-hover/img:scale-100">
                                         <button
                                             onClick={() => removeImage(idx)}
-                                            className="bg-white dark:bg-slate-700 text-red-500 rounded-full p-1 shadow-md hover:scale-110 transition-transform"
+                                            className="bg-white dark:bg-slate-800 text-red-500 rounded-full p-1.5 shadow-xl border border-slate-100 dark:border-white/10 hover:bg-red-50 transition-colors"
                                         >
                                             <X size={14} />
                                         </button>
@@ -177,7 +120,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     <img
                                         src={img.previewUrl}
                                         alt="Preview"
-                                        className="h-20 w-auto rounded-xl border border-white/40 shadow-sm object-cover"
+                                        className="h-24 w-auto rounded-2xl border border-white dark:border-white/5 shadow-premium object-cover transition-transform group-hover/img:scale-105"
                                     />
                                 </div>
                             ))}
@@ -185,8 +128,8 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     )}
 
                     <div className="flex items-center gap-4 w-full">
-                        <div className="pl-6 text-brand-500 dark:text-brand-400 animate-pulse-slow my-auto">
-                            <Sparkles size={24} />
+                        <div className="pl-8 text-blue-500/60 dark:text-blue-400 my-auto shrink-0">
+                            <Sparkles size={28} className="animate-pulse-slow" />
                         </div>
 
                         <input
@@ -195,7 +138,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                             onChange={e => setQuickPrompt(e.target.value)}
                             onKeyDown={handleQuickStart}
                             placeholder="What's on your mind? Type, Paste Image, or Drag & Drop..."
-                            className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium min-w-0"
+                            className="flex-grow bg-transparent border-none outline-none py-8 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium min-w-0"
                         />
 
                         {/* Image Upload Button */}
@@ -209,16 +152,16 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                         />
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="p-3 text-slate-400 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all mr-2"
+                            className="p-4 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-white/5 rounded-2xl transition-all mr-2 shrink-0"
                             title="Upload Image"
                         >
-                            <ImageIcon size={24} />
+                            <ImageIcon size={26} />
                         </button>
 
                         <button
                             onClick={handleStartClick}
                             disabled={!quickPrompt.trim() && images.length === 0}
-                            className="bg-gradient-to-r from-brand-600 to-brand-500 text-white px-8 py-3 rounded-[1.5rem] font-bold hover:shadow-lg hover:shadow-brand-500/25 transition-all mr-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-10 py-4 rounded-[1.75rem] font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-30 disabled:cursor-not-allowed shrink-0 mr-2"
                         >
                             Start
                         </button>
@@ -226,10 +169,12 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
                     {/* Drag Overlay Hint */}
                     {isDragging && (
-                        <div className="absolute inset-0 bg-brand-500/10 backdrop-blur-sm rounded-[2rem] flex items-center justify-center pointer-events-none z-20">
-                            <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-bounce">
-                                <ImageIcon className="text-brand-500" />
-                                <span className="font-bold text-slate-700 dark:text-slate-200">Drop images to start!</span>
+                        <div className="absolute inset-0 bg-blue-500/5 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center pointer-events-none z-20 border-2 border-dashed border-blue-500/30">
+                            <div className="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl shadow-premium-hover flex items-center gap-4 animate-bounce border border-blue-100 dark:border-white/10">
+                                <div className="bg-blue-500 p-2 rounded-xl text-white">
+                                    <ImageIcon size={20} />
+                                </div>
+                                <span className="font-black text-slate-900 dark:text-white tracking-tight">Release to upload</span>
                             </div>
                         </div>
                     )}
@@ -238,14 +183,15 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             {/* Recently Accessed Section */}
             {boards.length > 0 && (
-                <div className="mb-16 animate-fade-in">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
-                            <Clock size={20} />
+                <div className="mb-24 animate-fade-in px-2">
+                    <div className="flex items-center gap-4 mb-10">
+                        <div className="w-10 h-10 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 shadow-sm">
+                            <Clock size={22} />
                         </div>
-                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Recently Accessed</h2>
+                        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Recently Visited</h2>
                     </div>
-                    <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar scroll-smooth">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         {[...boards]
                             .filter(b => b.lastAccessedAt)
                             .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
@@ -254,22 +200,25 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 <div
                                     key={`recent-${board.id}`}
                                     onClick={() => onSelectBoard(board.id)}
-                                    className="group shrink-0 w-72 h-44 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-[2rem] p-6 border border-white/20 dark:border-white/5 hover:border-brand-400 hover:ring-2 hover:ring-brand-500/50 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-brand-500/10 flex flex-col justify-between"
+                                    className="group relative bg-white dark:bg-slate-900/40 rounded-[2rem] p-7 border border-slate-200/60 dark:border-white/5 cursor-pointer transition-all duration-500 hover:-translate-y-1.5 shadow-premium hover:shadow-premium-hover ring-1 ring-transparent hover:ring-blue-500/20"
                                 >
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-brand-600 transition-colors">
-                                            {board.name}
-                                        </h3>
-                                        <p className="text-slate-400 text-xs mt-1 font-medium">
-                                            Accessed {new Date(board.lastAccessedAt).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md">
-                                            {board.cardCount || 0} Cards
+                                    <div className="flex flex-col h-full justify-between gap-6">
+                                        <div className="relative">
+                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-2">
+                                                {board.name}
+                                            </h3>
+                                            <p className="text-slate-400 dark:text-slate-500 text-[13px] font-bold uppercase tracking-widest flex items-center gap-2">
+                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                                                {new Date(board.lastAccessedAt).toLocaleDateString()}
+                                            </p>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity scale-75 group-hover:scale-100">
-                                            <ArrowRight size={14} />
+                                        <div className="flex justify-between items-center">
+                                            <div className="px-3 py-1 bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-[11px] font-black rounded-lg border border-slate-100 dark:border-white/5">
+                                                {board.cardCount || 0} CARDS
+                                            </div>
+                                            <div className="w-9 h-9 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0 shadow-lg">
+                                                <ChevronRight size={18} />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -278,72 +227,77 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 </div>
             )}
 
-            {/* Main Grid: All Boards sorted by CreatedAt */}
-            <div className="flex items-center gap-3 mb-8 animate-fade-in">
-                <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500">
-                    <FileText size={20} />
+            {/* Main Grid: All Boards */}
+            <div className="animate-fade-in px-2">
+                <div className="flex items-center gap-4 mb-10">
+                    <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+                        <FileText size={22} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">All Boards</h2>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">All Boards</h2>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
-                {[...boards].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map((board, index) => (
-                    <div
-                        key={board.id}
-                        onClick={() => onSelectBoard(board.id)}
-                        style={{ animationDelay: `${index * 75}ms` }}
-                        className="group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-[2rem] p-8 border border-white/20 dark:border-white/5 hover:border-brand-400 hover:ring-2 hover:ring-brand-500/50 cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-500/10 dark:hover:shadow-brand-500/40 flex flex-col h-[260px] animate-slide-up"
-                    >
-                        {/* Inner Glow */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5 dark:to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-10">
+                    {[...boards].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map((board, index) => (
+                        <div
+                            key={board.id}
+                            onClick={() => onSelectBoard(board.id)}
+                            style={{ animationDelay: `${index * 60}ms` }}
+                            className="group relative bg-white dark:bg-slate-900/40 rounded-[2.5rem] p-10 border border-slate-200/60 dark:border-white/5 cursor-pointer transition-all duration-700 hover:-translate-y-2 shadow-premium hover:shadow-premium-hover flex flex-col min-h-[300px] animate-slide-up ring-1 ring-transparent hover:ring-indigo-500/20 overflow-hidden"
+                        >
+                            {/* Abstract Glow Background */}
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-colors"></div>
 
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="w-12 h-12 rounded-2xl bg-white/60 dark:bg-white/5 border border-white/20 dark:border-white/5 flex items-center justify-center text-slate-400 group-hover:text-brand-500 dark:group-hover:text-brand-400 group-hover:border-brand-500/30 transition-colors shadow-sm">
-                                    <FileText size={24} />
+                            <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex justify-between items-start mb-8">
+                                    <div className="w-14 h-14 rounded-[1.25rem] bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:scale-110 transition-all duration-500 shadow-sm">
+                                        <FileText size={28} />
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm('Delete this board?')) onDeleteBoard(board.id);
+                                        }}
+                                        className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-white/5 rounded-2xl transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100"
+                                        title="Delete Board"
+                                    >
+                                        <Trash2 size={24} />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDeleteBoard(board.id);
-                                    }}
-                                    className="p-3 text-slate-600 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-white/5 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
-                                    title="Delete Board"
-                                >
-                                    <Trash2 size={20} />
-                                </button>
-                            </div>
 
-                            <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2 truncate group-hover:text-brand-600 dark:group-hover:text-white transition-colors">
-                                {board.name}
-                            </h3>
-
-                            <p className="text-slate-500 text-sm line-clamp-2 mb-6 font-medium">
-                                Last edited {new Date(board.updatedAt || Date.now()).toLocaleDateString()}
-                            </p>
-
-                            <div className="mt-auto flex items-center justify-between">
-                                <div className="flex items-center gap-2 px-3 py-1 bg-white/50 dark:bg-white/5 rounded-lg text-slate-400 text-xs font-bold uppercase tracking-wider border border-white/10">
-                                    <Clock size={12} />
-                                    <span>{new Date(board.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <div className="mb-4 flex flex-col gap-1">
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight tracking-tight">
+                                        {board.name}
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[12px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                            {board.cardCount || 0} CARDS
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="w-8 h-8 rounded-full bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-500 group-hover:bg-brand-500 group-hover:text-white transition-all transform scale-90 group-hover:scale-100 opacity-0 group-hover:opacity-100">
-                                    <ChevronRight size={16} />
+
+                                <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50 dark:border-white/5">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Last Update</span>
+                                        <span className="text-[13px] font-bold text-slate-600 dark:text-slate-400">{new Date(board.updatedAt || Date.now()).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-slate-900 transition-all duration-500 rotate-0 group-hover:-rotate-45 shadow-sm">
+                                        <ChevronRight size={22} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
 
-                {boards.length === 0 && (
-                    <div className="col-span-full py-32 bg-white/20 dark:bg-white/5 rounded-[3rem] border-2 border-dashed border-slate-300 dark:border-white/10 flex flex-col items-center justify-center text-slate-500 animate-fade-in backdrop-blur-sm">
-                        <div className="w-20 h-20 bg-white/40 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
-                            <LayoutGrid size={40} className="text-slate-400 dark:text-slate-600" />
+                    {boards.length === 0 && (
+                        <div className="col-span-full py-40 bg-white/40 dark:bg-white/5 rounded-[3.5rem] border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center text-slate-500 animate-fade-in backdrop-blur-md shadow-inner">
+                            <div className="w-24 h-24 bg-white shadow-premium rounded-[2rem] flex items-center justify-center mb-8 text-blue-500">
+                                <Sparkles size={48} className="animate-pulse-slow" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-3">No boards found</h2>
+                            <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xs text-center leading-relaxed">Let's create something extraordinary. Start by typing a prompt above.</p>
                         </div>
-                        <h2 className="text-xl font-bold text-slate-600 dark:text-slate-300 mb-2">No boards yet</h2>
-                        <p className="opacity-60 mb-8">Start your first creative session above</p>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
