@@ -280,10 +280,11 @@ const Card = React.memo(function Card({
                     {cardContent.model?.split('/').pop() || 'AI'}
                 </span>
             </div>
-            );
+        </div>
+    );
 });
 
-            export default Card;
+export default Card;
 
-            // Local Loader Compatibility
-            if (typeof window !== 'undefined') window.Card = Card;
+// Local Loader Compatibility
+if (typeof window !== 'undefined') window.Card = Card;
