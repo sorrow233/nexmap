@@ -63,9 +63,22 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             ctx.restore();
         };
 
-        render();
+        // Use requestAnimationFrame to debounce renders and prevent main thread blocking
+        let rafId = null;
+        const scheduleRender = () => {
+            if (rafId !== null) return; // Already scheduled
+            rafId = requestAnimationFrame(() => {
+                render();
+                rafId = null;
+            });
+        };
+
+        scheduleRender(); // Initial render
 
         return () => {
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+            }
             window.removeEventListener('resize', resize);
         };
     }, [cards, connections, scale, offset]);
