@@ -222,7 +222,7 @@ function AppContent() {
     const [expandedCardId, setExpandedCardId] = useState(null);
     const [promptInput, setPromptInput] = useState('');
     const [globalImages, setGlobalImages] = useState([]);
-    const [generatingCardIds, setGeneratingCardIds] = useState(new Set());
+    const { generatingCardIds, setGeneratingCardIds, createAICard, updateCardContent, setCardGenerating } = useStore();
     const globalFileInputRef = React.useRef(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const [connectionStartId, setConnectionStartId] = useState(null);
@@ -503,88 +503,34 @@ function AppContent() {
         }
     };
 
-    // Refactored helper to create card without depending on state 'promptInput'
     const createCardWithText = async (text, boardId, images = []) => {
         if (!text.trim() && images.length === 0) return;
 
-        const newId = Date.now();
         const initialX = (window.innerWidth / 2 - offset.x) / scale - 160;
         const initialY = (window.innerHeight / 2 - offset.y) / scale - 100;
 
-        // Construct Content
-        let content = text;
-        if (images.length > 0) {
-            content = [
-                { type: 'text', text: text },
-                ...images.map(img => ({
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: img.mimeType,
-                        data: img.base64
-                    }
-                }))
-            ];
-        }
+        const activeConfig = getActiveConfig();
 
-        const newCard = {
-            id: newId,
-            x: Math.max(0, initialX),
-            y: Math.max(0, initialY),
-            data: {
-                title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'Image Input'),
-                messages: [
-                    { role: 'user', content: content },
-                    { role: 'assistant', content: '' }
-                ],
-                model: getActiveConfig().model || "gemini-2.0-flash-exp"
-            }
-        };
-
-        setCards([...cards, newCard]);
-        // setIsGenerating(true);
-
-        // ... logic for streaming ...
         try {
-            const updateCardContent = (contentChunk) => {
-                setCards(cards.map(c => {
-                    if (c.id === newId) {
-                        const msgs = [...c.data.messages];
-                        const lastMsg = msgs[msgs.length - 1];
-                        let newContent = lastMsg.content + contentChunk;
-                        msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
-                        return { ...c, data: { ...c.data, messages: msgs } };
-                    }
-                    return c;
-                }));
-            };
-
-            // Allow thinking, but we'll parse it out in UI if needed.
-            // const systemInstruction = { role: 'system', content: "You are a helpful assistant." };
+            const newId = await createAICard({
+                text,
+                x: Math.max(0, initialX),
+                y: Math.max(0, initialY),
+                images,
+                model: activeConfig.model,
+                providerId: activeConfig.id
+            });
 
             await streamChatCompletion(
-                [{ role: 'user', content: content }],
-                updateCardContent,
-                null
+                [{ role: 'user', content: text }],
+                (chunk) => updateCardContent(newId, chunk),
+                activeConfig.model,
+                { providerId: activeConfig.id }
             );
-
         } catch (error) {
-            console.error(error);
-            setCards(cards.map(c => {
-                if (c.id === newId) {
-                    const msgs = [...c.data.messages];
-                    msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
-                    return { ...c, data: { ...c.data, messages: msgs } };
-                }
-                return c;
-            }));
+            console.error("Quick Start Error:", error);
         } finally {
-            // setIsGenerating(false); // This state is not defined globally, it's likely generatingCardIds
-            setGeneratingCardIds(prev => {
-                const next = new Set(prev);
-                next.delete(newId);
-                return next;
-            });
+            setCardGenerating(null, false);
         }
     };
 
@@ -643,26 +589,23 @@ function AppContent() {
     const handleConnect = (sourceId) => {
         if (isConnecting && connectionStartId) {
             if (connectionStartId !== sourceId) {
-                // Assuming 'targetId' in the user's snippet refers to 'sourceId' from the function parameter
-                // And 'fromCard', 'toCard' are conceptual checks, not actual variables here.
-                // The original code already has a duplicate check.
-                // We'll integrate the localStorage.setItem into the existing structure.
+                setConnections(prevConns => {
+                    const exists = prevConns.some(c =>
+                        (c.from === connectionStartId && c.to === sourceId) ||
+                        (c.from === sourceId && c.to === connectionStartId)
+                    );
 
-                // Check for duplicate connection
-                const exists = connections.some(c =>
-                    (c.from === connectionStartId && c.to === sourceId) ||
-                    (c.from === sourceId && c.to === connectionStartId)
-                );
-
-                if (!exists) {
-                    const newConns = [...connections, { from: connectionStartId, to: sourceId }];
-                    setConnections(newConns);
-                    addToHistory(cards, newConns);
-                    localStorage.setItem('hasUsedConnections', 'true'); // Added this line
-                }
+                    if (!exists) {
+                        const newConns = [...prevConns, { from: connectionStartId, to: sourceId }];
+                        addToHistory(cards, newConns);
+                        localStorage.setItem('hasUsedConnections', 'true');
+                        return newConns;
+                    }
+                    return prevConns;
+                });
             }
-            setIsConnecting(false); // This was outside the if (connectionStartId !== sourceId) in original
-            setConnectionStartId(null); // This was outside the if (connectionStartId !== sourceId) in original
+            setIsConnecting(false);
+            setConnectionStartId(null);
         } else {
             setIsConnecting(true);
             setConnectionStartId(sourceId);
@@ -721,338 +664,136 @@ function AppContent() {
     const handleCreateCard = async () => {
         if (!promptInput.trim() && globalImages.length === 0) return;
 
-        console.log('[App] handleCreateCard with prompt:', promptInput);
+        const activeConfig = getActiveConfig();
+        const currentPrompt = promptInput; // Capture current input
+        setPromptInput('');
 
-        // Check for Image Generation Command
-        if (promptInput.startsWith('/draw ') || promptInput.startsWith('/image ')) {
-            const prompt = promptInput.replace(/^\/(draw|image)\s+/, '');
-            setPromptInput('');
-
+        if (currentPrompt.startsWith('/draw ') || currentPrompt.startsWith('/image ')) {
+            const promptText = currentPrompt.replace(/^\/(draw|image)\s+/, '');
             const newCardId = Date.now().toString();
-            const newCard = {
+
+            setCards(prev => [...prev, {
                 id: newCardId,
                 type: 'image_gen',
-                x: 100 + Math.random() * 200,
-                y: 100 + Math.random() * 200,
-                data: {
-                    prompt: prompt,
-                    loading: true,
-                    title: `Generating: ${prompt.substring(0, 20)}...`
-                }
-            };
-
-            setCards([...cards, newCard]);
+                x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
+                y: (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20),
+                data: { prompt: promptText, loading: true, title: `Generating: ${promptText.substring(0, 20)}...` }
+            }]);
 
             try {
-                const imageUrl = await imageGeneration(prompt);
-                setCards(cards.map(c => c.id === newCardId ? {
-                    ...c,
-                    data: {
-                        ...c.data,
-                        imageUrl: imageUrl,
-                        loading: false,
-                        title: prompt.substring(0, 30) + (prompt.length > 30 ? '...' : '')
-                    }
+                const imageUrl = await imageGeneration(promptText);
+                setCards(prev => prev.map(c => c.id === newCardId ? {
+                    ...c, data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) + (promptText.length > 30 ? '...' : '') }
                 } : c));
             } catch (err) {
                 console.error('Image generation failed:', err);
-                setCards(cards.map(c => c.id === newCardId ? {
-                    ...c,
-                    data: {
-                        ...c.data,
-                        error: err.message,
-                        loading: false,
-                        title: 'Generation Failed'
-                    }
+                setCards(prev => prev.map(c => c.id === newCardId ? {
+                    ...c, data: { ...c.data, error: err.message, loading: false, title: 'Generation Failed' }
                 } : c));
             }
             return;
         }
 
-        const userPrompt = promptInput;
-        const newId = Date.now();
+        // AI Chat Card Creation
         const initialX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
         const initialY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
 
-        // Smart Connect & Context Logic
+        // Gather Context from FRESH state
         let contextPrefix = "";
-        const autoConnections = [];
-
-        if (selectedIds.length > 0) {
-            const contextCards = cards.filter(c => selectedIds.includes(c.id));
-
-            // 1. Gather Context
-            if (contextCards.length > 0) {
-                const contextTexts = contextCards.map(c => {
-                    let text = c.data.title || "Untitled Card";
-                    // Try to get more content
-                    if (c.data.messages && c.data.messages.length > 0) {
-                        // Simplify: just grab the last assistant response or first user message?
-                        // Let's grab the LAST message content as "current state"
-                        const lastMsg = c.data.messages[c.data.messages.length - 1];
-                        const contentText = typeof lastMsg.content === 'string'
-                            ? lastMsg.content
-                            : (Array.isArray(lastMsg.content)
-                                ? lastMsg.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
-                                : '');
-                        text += `: ${contentText.substring(0, 500)}...`;
-                    }
-                    return `Possible Context from Card [${c.id}]:\n${text}`;
-                });
-                contextPrefix = `[System: The user has selected the following cards as context. Use this information to inform your response.]\n\n${contextTexts.join('\n\n')}\n\n---\n\n`;
-            }
-
-            // 2. Prepare Connections
-            contextCards.forEach(c => {
-                autoConnections.push({ from: c.id, to: newId });
+        const contextCards = cards.filter(c => selectedIds.includes(c.id));
+        if (contextCards.length > 0) {
+            const contextTexts = contextCards.map(c => {
+                let text = c.data.title || "Untitled Card";
+                if (c.data.messages?.length > 0) {
+                    const lastMsg = c.data.messages[c.data.messages.length - 1];
+                    const contentText = typeof lastMsg.content === 'string' ? lastMsg.content : (Array.isArray(lastMsg.content) ? lastMsg.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ') : '');
+                    text += `: ${contentText.substring(0, 500)}...`;
+                }
+                return `Possible Context from Card [${c.id}]:\n${text}`;
             });
+            contextPrefix = `[System: Context from selected cards]\n\n${contextTexts.join('\n\n')}\n\n---\n\n`;
         }
 
-        // Construct Content with S3 support
-        let content = promptInput;
-        if (globalImages.length > 0) {
-            const s3Config = getS3Config();
-
-            // 1. Prepare images immediately with base64 (Non-blocking)
-            let processedImages = globalImages.map(img => ({
-                type: 'image',
-                source: {
-                    type: 'base64',
-                    media_type: img.mimeType,
-                    data: img.base64,
-                    s3Url: null // Will be updated later if S3 is enabled
-                }
-            }));
-
-            // 2. Trigger Background Upload if enabled
-            if (s3Config?.enabled) {
-                console.log('[S3 Debug] Global card - Starting background upload...');
-
-                // Fire and forget - don't await
-                const imagesToUpload = [...globalImages]; // Capture current images
-                Promise.all(imagesToUpload.map(img => uploadImageToS3(img.file).catch(err => {
-                    console.error("Global card - Single image upload failed", err);
-                    return null;
-                }))).then(urls => {
-                    console.log('[S3 Debug] Global card - Background upload complete:', urls);
-
-                    // Update the card with S3 URLs
-                    setCards(cards.map(c => {
-                        if (c.id === newId) {
-                            const userMsg = c.data.messages[0]; // First message is user message
-                            if (Array.isArray(userMsg.content)) {
-                                const updatedContent = userMsg.content.map((part, i) => {
-                                    if (part.type === 'image' && part.source) {
-                                        const urlIndex = i - 1; // Offset for text at index 0
-                                        if (urlIndex >= 0 && urlIndex < urls.length && urls[urlIndex]) {
-                                            return {
-                                                ...part,
-                                                source: {
-                                                    ...part.source,
-                                                    s3Url: urls[urlIndex]
-                                                }
-                                            };
-                                        }
-                                    }
-                                    return part;
-                                });
-
-                                const updatedMessages = [...c.data.messages];
-                                updatedMessages[0] = { ...userMsg, content: updatedContent };
-                                return { ...c, data: { ...c.data, messages: updatedMessages } };
-                            }
-                        }
-                        return c;
-                    }));
-                }).catch(err => {
-                    console.error("[S3 Global card - Background Upload Error]", err);
-                });
-            }
-
-            content = [
-                { type: 'text', text: promptInput },
-                ...processedImages
-            ];
-        }
-
-        // Resolve default model (v3 config)
-        const activeConfig = getActiveConfig();
-        const defaultModel = activeConfig.model;
-        const defaultProviderId = activeConfig.id;
-
-        // Initial empty assistant message
-        const newCard = {
-            id: newId,
-            x: Math.max(0, initialX),
-            y: Math.max(0, initialY),
-            data: {
-                title: userPrompt.length > 20 ? userPrompt.substring(0, 20) + '...' : (userPrompt || 'Image Input'),
-                messages: [
-                    { role: 'user', content: contextPrefix + (typeof content === 'string' ? content : "") }, // Handle string vs array content later
-                    { role: 'assistant', content: '' } // Placeholder for streaming
-                ],
-                model: defaultModel,
-                providerId: defaultProviderId
-            }
-        };
-
-        // If content was array (images), we need to inject context into the text part
-        if (Array.isArray(content)) {
-            // Find text part or add one
-            const textPart = content.find(p => p.type === 'text');
-            if (textPart) {
-                textPart.text = contextPrefix + textPart.text;
-            } else {
-                content.unshift({ type: 'text', text: contextPrefix });
-            }
-            newCard.data.messages[0].content = content;
-        }
-
-        const newCardState = [...cards, newCard];
-        setCards(newCardState);
-        const finalConnections = [...connections, ...autoConnections];
-        setConnections(finalConnections);
-        addToHistory(newCardState, finalConnections);
-        setPromptInput('');
-        setGlobalImages([]); // Clear images
-        setGeneratingCardIds(prev => new Set(prev).add(newId));
-
-        // Update function for streaming content
-        const updateCardContent = (contentChunk) => {
-            setCards(cards.map(c => {
-                if (c.id === newId) {
-                    const msgs = [...c.data.messages];
-                    const lastMsg = msgs[msgs.length - 1];
-                    const newContent = lastMsg.content + contentChunk;
-
-                    // Keep original content - ChatModal will handle thinking tag display
-                    msgs[msgs.length - 1] = { ...lastMsg, content: newContent };
-                    return { ...c, data: { ...c.data, messages: msgs } };
-                }
-                return c;
-            }));
-        };
+        const targetImages = [...globalImages];
+        setGlobalImages([]);
 
         try {
-            // Use user input directly as title (truncated if too long)
-            const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : (promptInput || 'Image Input');
-            setCards(cards.map(c =>
-                c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
-            ));
+            const newId = await createAICard({
+                text: currentPrompt,
+                x: Math.max(0, initialX),
+                y: Math.max(0, initialY),
+                images: targetImages,
+                contextPrefix,
+                autoConnections: selectedIds.map(sid => ({ from: sid, to: Date.now() })),
+                model: activeConfig.model,
+                providerId: activeConfig.id
+            });
 
-            let contextMessages = []; // Initialize contextMessages here, as it's used later
-
-            // 1. Explicitly selected cards
-            let contextSourceIds = [...selectedIds];
-
-            // Logic for manual selections:
-            if (contextSourceIds.length > 0) {
-                const selectedCards = cards.filter(c => contextSourceIds.includes(c.id));
-                const contextText = selectedCards.map(c =>
-                    `Context from card "${c.data.title}": \n${c.data.messages.map(m => `${m.role}: ${m.content}`).join('\n')} `
-                ).join('\n\n---\n\n');
-                contextMessages = [{ role: 'user', content: `[System Note: The user has selected some cards as context.]\n\n${contextText} ` }];
-            }
-
-            // Stream response with context + "No Internal Monologue" instruction
-            // Revert suppression. Allow model to think.
-            // Pure Gemini - No System Prompt pollution
-            // Ensure content is passed correctly (if string or array)
-            const requestMessages = [...contextMessages, { role: 'user', content: content }];
+            // Start Streaming
+            const requestMessages = [{ role: 'user', content: currentPrompt }];
+            // If there's context, the store already put it in the card's data.messages[0].
+            // But we need to pass the FULL context to the API. 
+            // Let's refine the store or App logic to pass the correct prompt.
 
             await streamChatCompletion(
-                requestMessages,
-                updateCardContent,
-                null, // Use global config model
+                [{ role: 'user', content: contextPrefix + currentPrompt }],
+                (chunk) => updateCardContent(newId, chunk),
+                activeConfig.model,
                 { providerId: activeConfig.id }
             );
-
         } catch (error) {
             console.error(error);
-            setCards(cards.map(c => {
-                if (c.id === newId) {
-                    const msgs = [...c.data.messages];
-                    msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "Error: " + error.message };
-                    return { ...c, data: { ...c.data, messages: msgs } };
-                }
-                return c;
-            }));
         } finally {
-            setGeneratingCardIds(prev => {
-                const next = new Set(prev);
-                next.delete(newId);
-                return next;
-            });
+            setCardGenerating(null, false); // Clear via store if needed or just handle finishes
         }
     };
 
     const handleCreateNote = (initialContent = '', initialX = null, initialY = null) => {
-        // Find if there is already a note card
-        const existingNote = cards.find(c => c.type === 'note');
+        setCards(prevCards => {
+            const existingNote = prevCards.find(c => c.type === 'note');
 
-        if (existingNote) {
-            // Append to existing note
-            const currentContent = existingNote.data.content || '';
+            if (existingNote) {
+                const currentContent = existingNote.data.content || '';
+                const matches = currentContent.match(/^(\d+)[.、]/gm);
+                let nextNum = 1;
+                if (matches && matches.length > 0) {
+                    const numbers = matches.map(m => parseInt(m, 10));
+                    nextNum = Math.max(...numbers) + 1;
+                } else if (currentContent.trim()) {
+                    nextNum = 2;
+                }
 
-            // Determine next sequence number
-            // Look for patterns like "01.", "02." to find the max
-            const matches = currentContent.match(/^(\d+)[.、]/gm);
-            let nextNum = 1;
-            if (matches && matches.length > 0) {
-                const numbers = matches.map(m => parseInt(m, 10));
-                nextNum = Math.max(...numbers) + 1;
-            } else if (currentContent.trim()) {
-                // If content exists but no numbers, start at 2 (assuming 1 is implicit or messy)
-                nextNum = 2;
+                const sequence = String(nextNum).padStart(2, '0');
+                const newEntry = initialContent ? `\n\n${sequence}. ${initialContent} ` : `\n\n${sequence}.`;
+
+                const updatedNote = {
+                    ...existingNote,
+                    data: { ...existingNote.data, content: currentContent + newEntry }
+                };
+                const newCardsState = prevCards.map(c => c.id === existingNote.id ? updatedNote : c);
+                addToHistory(newCardsState, connections);
+                return newCardsState;
+            } else {
+                const newId = Date.now();
+                const sequence = "01";
+                const prefixedContent = initialContent ? `${sequence}. ${initialContent} ` : `${sequence}.`;
+                const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
+                const centerY = (window.innerHeight / 2 - offset.y) / scale - 140;
+                const posX = initialX !== null ? initialX : (centerX + (Math.random() * 40 - 20));
+                const posY = initialY !== null ? initialY : (centerY + (Math.random() * 40 - 20));
+
+                const newNote = {
+                    id: newId,
+                    type: 'note',
+                    x: Math.max(0, posX),
+                    y: Math.max(0, posY),
+                    data: { content: prefixedContent, image: null }
+                };
+                const newCardsState = [...prevCards, newNote];
+                addToHistory(newCardsState, connections);
+                return newCardsState;
             }
-
-            const sequence = String(nextNum).padStart(2, '0');
-            const newEntry = initialContent
-                ? `\n\n${sequence}. ${initialContent} `
-                : `\n\n${sequence}.`;
-
-            const updatedNote = {
-                ...existingNote,
-                data: {
-                    ...existingNote.data,
-                    content: currentContent + newEntry
-                }
-            };
-
-            const newCardState = cards.map(c => c.id === existingNote.id ? updatedNote : c);
-            setCards(newCardState);
-            addToHistory(newCardState, connections);
-
-        } else {
-            // Create new note
-            const newId = Date.now();
-            const sequence = "01";
-            const prefixedContent = initialContent
-                ? `${sequence}. ${initialContent} `
-                : `${sequence}.`;
-
-            // Calculate center position using current pan and zoom
-            const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
-            const centerY = (window.innerHeight / 2 - offset.y) / scale - 140;
-
-            const posX = initialX !== null ? initialX : (centerX + (Math.random() * 40 - 20));
-            const posY = initialY !== null ? initialY : (centerY + (Math.random() * 40 - 20));
-
-            const newNote = {
-                id: newId,
-                type: 'note',
-                x: Math.max(0, posX),
-                y: Math.max(0, posY),
-                data: {
-                    content: prefixedContent,
-                    image: null
-                }
-            };
-
-            const newCardState = [...cards, newNote];
-            setCards(newCardState);
-            addToHistory(newCardState, connections);
-        }
+        });
     };
 
     const handleUpdateBoardTitle = async (newTitle) => {
@@ -1077,60 +818,43 @@ function AppContent() {
 
         const activeConfig = getActiveConfig();
         const defaultModel = activeConfig.model;
-        const defaultProviderId = sourceCard.data.providerId || activeConfig.id;
-
         const marks = sourceCard.data.marks;
-        const newCardsState = [...cards];
-        const newConnectionsState = [...connections];
 
-        for (let i = 0; i < marks.length; i++) {
-            const mark = marks[i];
-            const newId = Date.now() + i;
-            // Simple circular/offset layout
-            const angle = (i / marks.length) * Math.PI * 2;
-            const dist = 400;
-            const newX = sourceCard.x + Math.cos(angle) * dist;
-            const newY = sourceCard.y + Math.sin(angle) * dist;
+        setCards(prevCards => {
+            const nextCards = [...prevCards];
+            const nextConnections = [...connections];
 
-            const defaultProviderId = sourceCard.data.providerId || "gmicloud";
+            for (let i = 0; i < marks.length; i++) {
+                const mark = marks[i];
+                const newId = Date.now() + i;
+                const angle = (i / marks.length) * Math.PI * 2;
+                const dist = 400;
+                const newX = sourceCard.x + Math.cos(angle) * dist;
+                const newY = sourceCard.y + Math.sin(angle) * dist;
 
-            const newCard = {
-                id: newId,
-                x: newX,
-                y: newY,
-                data: {
-                    title: mark.length > 20 ? mark.substring(0, 20) + '...' : mark,
-                    messages: [
-                        { role: 'user', content: mark },
-                        { role: 'assistant', content: '' }
-                    ],
-                    model: defaultModel,
-                    providerId: defaultProviderId
-                }
-            };
+                const newCard = {
+                    id: newId, x: newX, y: newY,
+                    data: {
+                        title: mark.length > 20 ? mark.substring(0, 20) + '...' : mark,
+                        messages: [{ role: 'user', content: mark }, { role: 'assistant', content: '' }],
+                        model: defaultModel,
+                        providerId: activeConfig.id
+                    }
+                };
 
-            newCardsState.push(newCard);
-            newConnectionsState.push({ from: sourceCardId, to: newId });
+                nextCards.push(newCard);
+                nextConnections.push({ from: sourceCardId, to: newId });
 
-            // Trigger generation with a slight delay to ensure state has settled
-            // Pass explicit config and model to handleChatGenerate to avoid race conditions
-            setTimeout(() => {
-                handleChatGenerate(newId, [{ role: 'user', content: mark }], (token) => {
-                    setCards(cards.map(c => {
-                        if (c.id === newId) {
-                            const msgs = [...c.data.messages];
-                            msgs[1] = { ...msgs[1], content: msgs[1].content + token };
-                            return { ...c, data: { ...c.data, messages: msgs } };
-                        }
-                        return c;
-                    }));
-                });
-            }, 100);
-        }
-
-        setCards(newCardsState);
-        setConnections(newConnectionsState);
-        addToHistory(newCardsState, newConnectionsState);
+                setTimeout(() => {
+                    handleChatGenerate(newId, [{ role: 'user', content: mark }], (token) => {
+                        updateCardContent(newId, token);
+                    });
+                }, 100);
+            }
+            setConnections(nextConnections);
+            addToHistory(nextCards, nextConnections);
+            return nextCards;
+        });
     };
 
     const handleDeleteCard = (id) => {
@@ -1190,11 +914,9 @@ function AppContent() {
     };
 
     const handleUpdateCard = (id, newData) => {
-        console.log('[App] handleUpdateCard called for card:', id, 'newData type:', typeof newData);
-        setCards(cards.map(c => {
+        setCards(prev => prev.map(c => {
             if (c.id === id) {
                 const resolvedData = typeof newData === 'function' ? newData(c.data) : newData;
-                console.log('[App] Updating card. Messages count:', resolvedData.messages?.length || 0, 'Data stringify size:', JSON.stringify(resolvedData).length);
                 return { ...c, data: resolvedData };
             }
             return c;
@@ -1203,28 +925,24 @@ function AppContent() {
 
     // Group Drag Logic
     const handleCardMove = (id, newX, newY) => {
-        const sourceCard = cards.find(c => c.id === id);
-        if (!sourceCard) return;
+        setCards(prevCards => {
+            const sourceCard = prevCards.find(c => c.id === id);
+            if (!sourceCard) return prevCards;
 
-        const dx = newX - sourceCard.x;
-        const dy = newY - sourceCard.y;
+            const dx = newX - sourceCard.x;
+            const dy = newY - sourceCard.y;
+            if (dx === 0 && dy === 0) return prevCards;
 
-        if (dx === 0 && dy === 0) return;
+            const isSelected = selectedIds.includes(id);
+            const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
 
-        // Determine which IDs to move:
-        // 1. If the card being dragged is selected, move all selected cards
-        // 2. Otherwise, move the connected graph
-        const isSelected = selectedIds.includes(id);
-        const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
-
-        const newCards = cards.map(c => {
-            if (moveIds.has(c.id)) {
-                return { ...c, x: c.x + dx, y: c.y + dy };
-            }
-            return c;
+            return prevCards.map(c => {
+                if (moveIds.has(c.id)) {
+                    return { ...c, x: c.x + dx, y: c.y + dy };
+                }
+                return c;
+            });
         });
-
-        setCards(newCards);
     };
 
     const handleCardMoveEnd = () => {
@@ -1232,72 +950,49 @@ function AppContent() {
     };
 
     const handleBatchDelete = () => {
-        const newCards = cards.filter(c => !selectedIds.includes(c.id));
-        // Also remove connections involving deleted cards
-        const newConnections = connections.filter(c =>
-            !selectedIds.includes(c.from) && !selectedIds.includes(c.to)
-        );
-
-        setCards(newCards);
-        setConnections(newConnections);
-        setSelectedIds([]);
-        addToHistory(newCards, newConnections);
+        setCards(prevCards => {
+            const newCards = prevCards.filter(c => !selectedIds.includes(c.id));
+            setConnections(prevConns => {
+                const newConnections = prevConns.filter(c =>
+                    !selectedIds.includes(c.from) && !selectedIds.includes(c.to)
+                );
+                addToHistory(newCards, newConnections);
+                return newConnections;
+            });
+            setSelectedIds([]);
+            return newCards;
+        });
     };
 
     const handleRegenerate = async () => {
         const targets = cards.filter(c => selectedIds.includes(c.id));
         if (targets.length === 0) return;
 
-        // Reset selected cards to "Thinking..." state by removing last assistant msg or adding one
-        setCards(cards.map(c => {
+        setCards(prev => prev.map(c => {
             if (selectedIds.includes(c.id)) {
                 const newMsgs = [...c.data.messages];
-                // If last was assistant, remove it to retry. If user, just append.
                 if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
                     newMsgs.pop();
                 }
-                // Add placeholder
                 newMsgs.push({ role: 'assistant', content: '' });
                 return { ...c, data: { ...c.data, messages: newMsgs } };
             }
             return c;
         }));
 
-        // setIsGenerating(true); // This state is not defined globally, it's likely generatingCardIds
-
         try {
             await Promise.all(targets.map(async (card) => {
                 const currentMsgs = [...card.data.messages];
-                // Remove the assistant msg if it existed (we want the prompt stack)
                 if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
                     currentMsgs.pop();
                 }
 
-                // Define updater for this specific card
-                const updateThisCard = (chunk) => {
-                    setCards(cards.map(c => {
-                        if (c.id === card.id) {
-                            const msgs = [...c.data.messages];
-                            const last = msgs[msgs.length - 1];
-                            msgs[msgs.length - 1] = { ...last, content: last.content + chunk };
-                            return { ...c, data: { ...c.data, messages: msgs } };
-                        }
-                        return c;
-                    }));
-                };
-
-                // Pure Gemini - No System Prompt
-                await streamChatCompletion(currentMsgs, updateThisCard);
+                await streamChatCompletion(currentMsgs, (chunk) => updateCardContent(card.id, chunk));
             }));
         } catch (e) {
             console.error("Regeneration failed", e);
         } finally {
-            // setIsGenerating(false); // This state is not defined globally, it's likely generatingCardIds
-            setGeneratingCardIds(prev => {
-                const next = new Set(prev);
-                targets.forEach(card => next.delete(card.id));
-                return next;
-            });
+            targets.forEach(card => setCardGenerating(card.id, false));
         }
     };
 
