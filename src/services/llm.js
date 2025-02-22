@@ -50,7 +50,7 @@ export const getProviderSettings = () => {
                     migrated['openai-compatible'].apiKey = apiKey;
 
                     // Migrate Model - prioritize gemini-3-flash-preview
-                    const targetModel = (v2Config.model && v2Config.model.includes('gemini'))
+                    const targetModel = (v2Config.model && v2Config.model.indexOf('gemini') !== -1)
                         ? 'google/gemini-3-flash-preview'
                         : (v2Config.model || 'google/gemini-3-flash-preview');
 
@@ -192,7 +192,7 @@ const resolveRemoteImages = async (messages) => {
  * Utility: Determine auth method from URL
  */
 const getAuthMethod = (url) => {
-    if (url.includes('googleapis.com')) return 'query';
+    if (url.indexOf('googleapis.com') !== -1) return 'query';
     return 'bearer';
 };
 
@@ -229,7 +229,7 @@ export async function chatCompletion(messages, model = null, config = {}) {
  */
 async function nativeGeminiCompletion(messages, model, apiKey, baseUrl, config = {}) {
     // GMI Native endpoint expects the model without 'google/' prefix if using GMI base URL
-    let cleanModel = (baseUrl.includes('gmi'))
+    let cleanModel = (baseUrl.indexOf('gmi') !== -1)
         ? model.replace('google/', '')
         : model;
 
@@ -281,7 +281,7 @@ async function nativeGeminiCompletion(messages, model, apiKey, baseUrl, config =
             }
 
             // Retry on upstream errors
-            if ([500, 502, 503, 504].includes(response.status) && retries > 0) {
+            if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
                 console.warn(`[Native API] Error ${response.status}, retrying...`, { retriesLeft: retries });
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 retries--;

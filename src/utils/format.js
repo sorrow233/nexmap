@@ -28,7 +28,7 @@ export function parseModelOutput(content) {
         const finalContent = parts[parts.length - 1].trim();
 
         // Only treat as thoughts if it actually looks like thoughts (starts with ** or contains thinking keywords)
-        if (thoughtsPart.startsWith('**') || thoughtsPart.toLowerCase().includes('thinking')) {
+        if (thoughtsPart.startsWith('**') || thoughtsPart.toLowerCase().indexOf('thinking') !== -1) {
             // Edge case: if we are streaming and just hit a \n\n\n but no content yet
             if (!finalContent && content.endsWith('\n\n\n')) {
                 return { thoughts: thoughtsPart, content: '' };

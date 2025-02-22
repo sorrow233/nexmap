@@ -132,7 +132,7 @@ const downloadImageAsBase64 = async (url) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
+        if (contentType && contentType.indexOf('text/html') !== -1) {
             throw new Error('Received HTML content instead of image (fetch likely redirected to SPA index)');
         }
 
