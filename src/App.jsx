@@ -1203,28 +1203,28 @@ function AppContent() {
 
     // Group Drag Logic
     const handleCardMove = (id, newX, newY) => {
-        setCards(prev => {
-            const sourceCard = prev.find(c => c.id === id);
-            if (!sourceCard) return prev;
+        const sourceCard = cards.find(c => c.id === id);
+        if (!sourceCard) return;
 
-            const dx = newX - sourceCard.x;
-            const dy = newY - sourceCard.y;
+        const dx = newX - sourceCard.x;
+        const dy = newY - sourceCard.y;
 
-            if (dx === 0 && dy === 0) return prev;
+        if (dx === 0 && dy === 0) return;
 
-            // Determine which IDs to move:
-            // 1. If the card being dragged is selected, move all selected cards
-            // 2. Otherwise, move the connected graph
-            const isSelected = selectedIds.includes(id);
-            const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
+        // Determine which IDs to move:
+        // 1. If the card being dragged is selected, move all selected cards
+        // 2. Otherwise, move the connected graph
+        const isSelected = selectedIds.includes(id);
+        const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
 
-            return prev.map(c => {
-                if (moveIds.has(c.id)) {
-                    return { ...c, x: c.x + dx, y: c.y + dy };
-                }
-                return c;
-            });
+        const newCards = cards.map(c => {
+            if (moveIds.has(c.id)) {
+                return { ...c, x: c.x + dx, y: c.y + dy };
+            }
+            return c;
         });
+
+        setCards(newCards);
     };
 
     const handleCardMoveEnd = () => {
