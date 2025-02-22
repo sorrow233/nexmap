@@ -541,13 +541,13 @@ function AppContent() {
             }
         };
 
-        setCards(prev => [...prev, newCard]);
+        setCards([...cards, newCard]);
         // setIsGenerating(true);
 
         // ... logic for streaming ...
         try {
             const updateCardContent = (contentChunk) => {
-                setCards(prev => prev.map(c => {
+                setCards(cards.map(c => {
                     if (c.id === newId) {
                         const msgs = [...c.data.messages];
                         const lastMsg = msgs[msgs.length - 1];
@@ -741,7 +741,7 @@ function AppContent() {
                 }
             };
 
-            setCards(prev => [...prev, newCard]);
+            setCards([...cards, newCard]);
 
             try {
                 const imageUrl = await imageGeneration(prompt);
@@ -837,7 +837,7 @@ function AppContent() {
                     console.log('[S3 Debug] Global card - Background upload complete:', urls);
 
                     // Update the card with S3 URLs
-                    setCards(prev => prev.map(c => {
+                    setCards(cards.map(c => {
                         if (c.id === newId) {
                             const userMsg = c.data.messages[0]; // First message is user message
                             if (Array.isArray(userMsg.content)) {
@@ -919,7 +919,7 @@ function AppContent() {
 
         // Update function for streaming content
         const updateCardContent = (contentChunk) => {
-            setCards(prev => prev.map(c => {
+            setCards(cards.map(c => {
                 if (c.id === newId) {
                     const msgs = [...c.data.messages];
                     const lastMsg = msgs[msgs.length - 1];
@@ -936,7 +936,7 @@ function AppContent() {
         try {
             // Use user input directly as title (truncated if too long)
             const displayTitle = promptInput.length > 20 ? promptInput.substring(0, 20) + '...' : (promptInput || 'Image Input');
-            setCards(prev => prev.map(c =>
+            setCards(cards.map(c =>
                 c.id === newId ? { ...c, data: { ...c.data, title: displayTitle } } : c
             ));
 
@@ -1116,7 +1116,7 @@ function AppContent() {
             // Pass explicit config and model to handleChatGenerate to avoid race conditions
             setTimeout(() => {
                 handleChatGenerate(newId, [{ role: 'user', content: mark }], (token) => {
-                    setCards(prev => prev.map(c => {
+                    setCards(cards.map(c => {
                         if (c.id === newId) {
                             const msgs = [...c.data.messages];
                             msgs[1] = { ...msgs[1], content: msgs[1].content + token };
@@ -1249,7 +1249,7 @@ function AppContent() {
         if (targets.length === 0) return;
 
         // Reset selected cards to "Thinking..." state by removing last assistant msg or adding one
-        setCards(prev => prev.map(c => {
+        setCards(cards.map(c => {
             if (selectedIds.includes(c.id)) {
                 const newMsgs = [...c.data.messages];
                 // If last was assistant, remove it to retry. If user, just append.
@@ -1275,7 +1275,7 @@ function AppContent() {
 
                 // Define updater for this specific card
                 const updateThisCard = (chunk) => {
-                    setCards(prev => prev.map(c => {
+                    setCards(cards.map(c => {
                         if (c.id === card.id) {
                             const msgs = [...c.data.messages];
                             const last = msgs[msgs.length - 1];
@@ -1304,7 +1304,7 @@ function AppContent() {
     if (view === 'gallery') {
         return (
             <React.Fragment>
-                <div className="bg-slate-50 dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto transition-colors duration-500 custom-scrollbar">
+                <div className="bg-slate-50 dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto overflow-x-hidden transition-colors duration-500 custom-scrollbar">
                     {/* Ambient Background */}
                     <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
                     <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>

@@ -8,8 +8,9 @@ body,
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    /* Prevent body scroll, canvas handles it */
+    overflow-x: hidden;
+    overflow-y: hidden;
+    /* Canvas and main containers handle vertical if needed */
 }
 
 @layer utilities {
