@@ -32,8 +32,12 @@ const createCanvasSlice = (set, get) => ({
 // --- Content Slice ---
 const createContentSlice = (set, get) => ({
     generatingCardIds: new Set(),
-    setCards: (cards) => set({ cards }),
-    setConnections: (connections) => set({ connections }),
+    setCards: (cardsOrUpdater) => set((state) => ({
+        cards: typeof cardsOrUpdater === 'function' ? cardsOrUpdater(state.cards) : cardsOrUpdater
+    })),
+    setConnections: (connectionsOrUpdater) => set((state) => ({
+        connections: typeof connectionsOrUpdater === 'function' ? connectionsOrUpdater(state.connections) : connectionsOrUpdater
+    })),
     setGeneratingCardIds: (ids) => set({ generatingCardIds: ids }),
 
     addCard: (card) => set((state) => ({
