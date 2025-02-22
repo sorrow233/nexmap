@@ -143,7 +143,7 @@ function AppContent() {
                     // If active board was updated by cloud (possibly from another device)
                     // Reload it to hydrate new S3 images to local base64
                     const currentActiveId = localStorage.getItem('mixboard_current_board_id');
-                    if (updatedIds && currentActiveId && updatedIds.includes(currentActiveId)) {
+                    if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
                         console.log("[Sync] Active board updated in cloud, reloading cards...");
                         loadBoard(currentActiveId).then(data => {
                             if (data && data.cards) {
@@ -232,7 +232,7 @@ function AppContent() {
 
     const handleCopy = async () => {
         if (selectedIds.length === 0) return;
-        const selectedCards = cards.filter(c => selectedIds.includes(c.id));
+        const selectedCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         setClipboard(selectedCards);
 
         // Also copy text content to system clipboard for external pasting with Cmd+C
@@ -317,7 +317,7 @@ function AppContent() {
     useEffect(() => {
         const handleKeyDown = (e) => {
             // Ignore if typing in an input or textarea
-            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+            if (['INPUT', 'TEXTAREA'].indexOf(e.target.tagName) !== -1 || e.target.isContentEditable) return;
 
             // Delete / Backspace -> Delete selected
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -369,7 +369,7 @@ function AppContent() {
                 if (selectedIds.length > 1) {
                     // Remove all connections between selected cards
                     const newConns = connections.filter(c =>
-                        !(selectedIds.includes(c.from) && selectedIds.includes(c.to))
+                        !(selectedIds.indexOf(c.from) !== -1 && selectedIds.indexOf(c.to) !== -1)
                     );
                     if (newConns.length !== connections.length) {
                         setConnections(newConns);
@@ -700,7 +700,7 @@ function AppContent() {
 
         // Gather Context from FRESH state
         let contextPrefix = "";
-        const contextCards = cards.filter(c => selectedIds.includes(c.id));
+        const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         if (contextCards.length > 0) {
             const contextTexts = contextCards.map(c => {
                 let text = c.data.title || "Untitled Card";
@@ -875,7 +875,7 @@ function AppContent() {
 
         let contextMessages = [];
         if (neighborIds.length > 0) {
-            const neighbors = cards.filter(c => neighborIds.includes(c.id));
+            const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
             const contextText = neighbors.map(c =>
                 `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => {
                     const contentStr = typeof m.content === 'string'
@@ -933,7 +933,7 @@ function AppContent() {
             const dy = newY - sourceCard.y;
             if (dx === 0 && dy === 0) return prevCards;
 
-            const isSelected = selectedIds.includes(id);
+            const isSelected = selectedIds.indexOf(id) !== -1;
             const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
 
             return prevCards.map(c => {
@@ -951,10 +951,10 @@ function AppContent() {
 
     const handleBatchDelete = () => {
         setCards(prevCards => {
-            const newCards = prevCards.filter(c => !selectedIds.includes(c.id));
+            const newCards = prevCards.filter(c => selectedIds.indexOf(c.id) === -1);
             setConnections(prevConns => {
                 const newConnections = prevConns.filter(c =>
-                    !selectedIds.includes(c.from) && !selectedIds.includes(c.to)
+                    selectedIds.indexOf(c.from) === -1 && selectedIds.indexOf(c.to) === -1
                 );
                 addToHistory(newCards, newConnections);
                 return newConnections;
@@ -965,11 +965,11 @@ function AppContent() {
     };
 
     const handleRegenerate = async () => {
-        const targets = cards.filter(c => selectedIds.includes(c.id));
+        const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         if (targets.length === 0) return;
 
         setCards(prev => prev.map(c => {
-            if (selectedIds.includes(c.id)) {
+            if (selectedIds.indexOf(c.id) !== -1) {
                 const newMsgs = [...c.data.messages];
                 if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
                     newMsgs.pop();

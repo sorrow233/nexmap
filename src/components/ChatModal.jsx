@@ -337,7 +337,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
 
         const text = selection.text;
         const currentMarks = card.data.marks || [];
-        if (text && !currentMarks.includes(text)) {
+        if (text && currentMarks.indexOf(text) === -1) {
             onUpdate(card.id, {
                 ...card.data,
                 marks: [...currentMarks, text]
@@ -661,7 +661,7 @@ const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming,
                 className="prose dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: renderedHtml }}
             />
-            {!isStreaming && content && (content.includes('⚠️ Error:') || content.includes('Error: Native API Error')) && (
+            {!isStreaming && content && (content.indexOf('⚠️ Error:') !== -1 || content.indexOf('Error: Native API Error') !== -1) && (
                 <div className="mt-6 animate-fade-in">
                     <button
                         onClick={handleRetry}

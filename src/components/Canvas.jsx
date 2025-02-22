@@ -101,8 +101,10 @@ export default function Canvas({
     const handleCardSelect = useCallback((id, e) => {
         const isAdditive = e && (e.shiftKey || e.metaKey || e.ctrlKey);
         setSelectedIds(prev => {
+            const isArray = Array.isArray(prev);
             if (isAdditive) {
-                return prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id];
+                if (!isArray) return [id];
+                return prev.indexOf(id) !== -1 ? prev.filter(sid => sid !== id) : [...prev, id];
             }
             return [id];
         });
@@ -151,7 +153,7 @@ export default function Canvas({
 
         return cards.filter(card => {
             // Selected cards or generating cards always render to avoid UI glitches
-            if (selectedIds.includes(card.id)) return true;
+            if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;
 
             // Basic culling
             const rect = getCardRect(card);
@@ -192,7 +194,7 @@ export default function Canvas({
                         <Component
                             key={card.id}
                             data={card}
-                            isSelected={selectedIds.includes(card.id)}
+                            isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
                             onSelect={handleCardSelect}
                             onMove={onCardMove}
                             onDelete={onDeleteCard}

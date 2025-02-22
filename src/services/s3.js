@@ -70,13 +70,13 @@ export const uploadImageToS3 = async (file) => {
     // Fallback URL construction (Best guess, might need adjustment for specific providers)
     if (endpoint) {
         // For Huawei Cloud OBS: https://bucket.endpoint/filename
-        if (endpoint.includes('myhuaweicloud.com')) {
+        if (endpoint.indexOf('myhuaweicloud.com') !== -1) {
             // Extract endpoint without protocol
             const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
             return `https://${bucket}.${cleanEndpoint}/${filename}`;
         }
         // For standard S3: https://bucket.s3.region.amazonaws.com/key
-        if (endpoint.includes('amazonaws.com')) {
+        if (endpoint.indexOf('amazonaws.com') !== -1) {
             return `https://${bucket}.s3.${region || 'us-east-1'}.amazonaws.com/${filename}`;
         }
         // Generic fallback - might not work without public domain
