@@ -433,18 +433,8 @@ function AppContent() {
         }
     }, [view, currentBoardId, boardsList]);
 
-    // 2. Auto-Save Cards & Connections
-    const globalPromptInputRef = useRef(null);
 
-    // Auto-resize reset for global input
-    useEffect(() => {
-        if (globalPromptInputRef.current) {
-            globalPromptInputRef.current.style.height = 'auto';
-            if (promptInput) {
-                globalPromptInputRef.current.style.height = Math.min(globalPromptInputRef.current.scrollHeight, 200) + 'px';
-            }
-        }
-    }, [promptInput]);
+    // 2. Auto-Save Cards & Connections
 
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length > 0) {
@@ -486,17 +476,9 @@ function AppContent() {
         // Optimize: Set state immediately to switch view
         await handleSelectBoard(newBoard.id);
 
-        // If there's an initial prompt (Quick Start), trigger card creation immediately
+        // If there's an initial prompt (Quick Start), wait for ChatBar to be ready
         if (initialPrompt || initialImages.length > 0) {
-            // Slight delay to ensure canvas is ready
             setTimeout(() => {
-                setPromptInput(initialPrompt || '');
-                // We need to trigger handleCreateCard but state might not be fully flushed ???
-                // Actually better to just directly call logic or set useEffect trigger.
-                // Let's call a helper to avoid duplication, but we need updated 'cards' reference...
-                // Simplify: Just set the input and let user hit enter? No, they want "Start".
-                // We will manually trigger a card creation with a hack or refactor.
-                // Refactor: handleCreateCardWithText(text)
                 createCardWithText(initialPrompt, newBoard.id, initialImages);
             }, 100);
         }
