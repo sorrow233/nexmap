@@ -1,5 +1,6 @@
 
 import { create } from 'zustand';
+import { temporal } from 'zundo';
 
 // --- Canvas Slice ---
 const createCanvasSlice = (set, get) => ({
@@ -67,37 +68,6 @@ const createContentSlice = (set, get) => ({
     removeConnection: (from, to) => set((state) => ({
         connections: state.connections.filter(c => !(c.from === from && c.to === to) && !(c.from === to && c.to === from))
     })),
-
-    // History Logic
-    addToHistory: (customCards, customConnections) => {
-        const { cards, connections, history, historyIndex } = get();
-        const nextHistory = history.slice(0, historyIndex + 1);
-        const newState = {
-            cards: customCards ? [...customCards] : [...cards],
-            connections: customConnections ? [...customConnections] : [...connections],
-            timestamp: Date.now()
-        };
-        const updatedHistory = [...nextHistory, newState].slice(-50);
-        set({ history: updatedHistory, historyIndex: updatedHistory.length - 1 });
-    },
-
-    undo: () => {
-        const { history, historyIndex } = get();
-        if (historyIndex > 0) {
-            const nextIndex = historyIndex - 1;
-            const state = history[nextIndex];
-            set({ cards: state.cards, connections: state.connections, historyIndex: nextIndex });
-        }
-    },
-
-    redo: () => {
-        const { history, historyIndex } = get();
-        if (historyIndex < history.length - 1) {
-            const nextIndex = historyIndex + 1;
-            const state = history[nextIndex];
-            set({ cards: state.cards, connections: state.connections, historyIndex: nextIndex });
-        }
-    },
 
     // --- Atomic AI Actions ---
     createAICard: async (params) => {
@@ -205,9 +175,36 @@ const createSettingsSlice = (set) => ({
     setApiConfig: (config) => set({ apiConfig: config })
 });
 
-// --- Global Store ---
-export const useStore = create((set, get) => ({
-    ...createCanvasSlice(set, get),
-    ...createContentSlice(set, get),
-    ...createSettingsSlice(set, get)
-}));
+// --- Global Store with Temporal Middleware ---
+const useStoreBase = create(
+    temporal(
+        (set, get) => ({
+            // State fields that will be tracked by zundo
+            cards: [],
+            connections: [],
+            history: [],
+            historyIndex: -1,
+
+            // Spread slices
+            ...createCanvasSlice(set, get),
+            ...createContentSlice(set, get),
+            ...createSettingsSlice(set, get)
+        }),
+        {
+            // Zundo configuration
+            limit: 50, // Maximum history depth
+            equality: (a, b) => a === b,
+            // Only track specific fields to avoid bloating history with UI state
+            partialize: (state) => ({
+                cards: state.cards,
+                connections: state.connections
+            })
+        }
+    )
+);
+
+// Export the store
+export const useStore = useStoreBase;
+
+// Export temporal actions for undo/redo
+export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();
