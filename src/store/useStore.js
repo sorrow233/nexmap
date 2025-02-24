@@ -72,6 +72,7 @@ const createContentSlice = (set, get) => ({
     // --- Atomic AI Actions ---
     createAICard: async (params) => {
         const {
+            id, // Optional, generate if not provided
             text,
             x,
             y,
@@ -79,11 +80,10 @@ const createContentSlice = (set, get) => ({
             contextPrefix = "",
             autoConnections = [],
             model,
-            providerId,
-            streamChatCompletion // Passed in to avoid circular dependency if llm.js ever imports store
+            providerId
         } = params;
 
-        const newId = Date.now();
+        const newId = id || Date.now().toString();
 
         // 1. Prepare Content
         let content = text;
