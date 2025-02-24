@@ -642,7 +642,7 @@ function AppContent() {
         }
     };
 
-    const handleCreateCard = async (promptText, images = globalImages) => {
+    const handleCreateCard = async (promptText, images = []) => {
         if (!promptText.trim() && images.length === 0) return;
 
         const activeConfig = getActiveConfig();
