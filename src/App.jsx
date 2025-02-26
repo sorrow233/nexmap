@@ -728,7 +728,7 @@ function AppContent() {
         } catch (error) {
             console.error(error);
         } finally {
-            setCardGenerating(null, false); // Clear via store if needed or just handle finishes
+            setCardGenerating(newId, false);
         }
     };
 
