@@ -10,11 +10,21 @@ const createCanvasSlice = (set, get) => ({
     interactionMode: 'none',
     selectionRect: null,
 
-    setOffset: (offset) => set({ offset }),
-    setScale: (scale) => set({ scale }),
-    setSelectedIds: (selectedIds) => set({ selectedIds }),
-    setInteractionMode: (interactionMode) => set({ interactionMode }),
-    setSelectionRect: (selectionRect) => set({ selectionRect }),
+    setOffset: (valOrUpdater) => set((state) => ({
+        offset: typeof valOrUpdater === 'function' ? valOrUpdater(state.offset) : valOrUpdater
+    })),
+    setScale: (valOrUpdater) => set((state) => ({
+        scale: typeof valOrUpdater === 'function' ? valOrUpdater(state.scale) : valOrUpdater
+    })),
+    setSelectedIds: (valOrUpdater) => set((state) => ({
+        selectedIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectedIds) : valOrUpdater
+    })),
+    setInteractionMode: (valOrUpdater) => set((state) => ({
+        interactionMode: typeof valOrUpdater === 'function' ? valOrUpdater(state.interactionMode) : valOrUpdater
+    })),
+    setSelectionRect: (valOrUpdater) => set((state) => ({
+        selectionRect: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectionRect) : valOrUpdater
+    })),
 
     moveOffset: (dx, dy) => set((state) => ({
         offset: { x: state.offset.x + dx, y: state.offset.y + dy }
@@ -39,7 +49,9 @@ const createContentSlice = (set, get) => ({
     setConnections: (connectionsOrUpdater) => set((state) => ({
         connections: typeof connectionsOrUpdater === 'function' ? connectionsOrUpdater(state.connections) : connectionsOrUpdater
     })),
-    setGeneratingCardIds: (ids) => set({ generatingCardIds: ids }),
+    setGeneratingCardIds: (valOrUpdater) => set((state) => ({
+        generatingCardIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.generatingCardIds) : valOrUpdater
+    })),
 
     addCard: (card) => set((state) => ({
         cards: [...state.cards, card]
@@ -170,9 +182,15 @@ const createSettingsSlice = (set) => ({
     activeModel: 'gemini-2.0-flash-exp',
     apiConfig: {},
 
-    setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
-    setActiveModel: (model) => set({ activeModel: model }),
-    setApiConfig: (config) => set({ apiConfig: config })
+    setIsSettingsOpen: (valOrUpdater) => set((state) => ({
+        isSettingsOpen: typeof valOrUpdater === 'function' ? valOrUpdater(state.isSettingsOpen) : valOrUpdater
+    })),
+    setActiveModel: (valOrUpdater) => set((state) => ({
+        activeModel: typeof valOrUpdater === 'function' ? valOrUpdater(state.activeModel) : valOrUpdater
+    })),
+    setApiConfig: (valOrUpdater) => set((state) => ({
+        apiConfig: typeof valOrUpdater === 'function' ? valOrUpdater(state.apiConfig) : valOrUpdater
+    }))
 });
 
 // --- Global Store with Temporal Middleware ---
