@@ -203,9 +203,8 @@ export default function Canvas() {
     }, [cards, offset, scale, selectedIds, generatingCardIds]);
 
     return (
-        <animated.div
+        <div
             ref={canvasRef}
-            {...bind()}
             className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 touch-none"
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
@@ -262,6 +261,6 @@ export default function Canvas() {
                     }}
                 />
             )}
-        </animated.div>
+        </div>
     );
 }
