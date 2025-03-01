@@ -1,4 +1,5 @@
 import { db } from './firebase';
+import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -260,103 +261,103 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     if (!db || !userId) return () => { };
 
     try {
-        return db.collection('users').doc(userId).collection('boards')
-            .onSnapshot(async (snapshot) => {
-                const cloudBoards = [];
-                const promises = [];
+        const boardsRef = collection(db, 'users', userId, 'boards');
+        return onSnapshot(boardsRef, async (snapshot) => {
+            const cloudBoards = [];
+            const promises = [];
 
-                snapshot.forEach(doc => {
-                    const boardData = doc.data();
-                    cloudBoards.push(boardData);
+            snapshot.forEach(doc => {
+                const boardData = doc.data();
+                cloudBoards.push(boardData);
 
-                    // Sync content to local storage (IDB)
-                    // CRITICAL: Smart Merge that favors local base64 but accepts cloud updates/S3 URLs
-                    if (boardData.id) {
-                        promises.push((async () => {
-                            try {
-                                const localData = await idbGet(BOARD_PREFIX + boardData.id);
-                                if (!localData || !localData.cards) {
-                                    // First time loading from cloud (e.g. on Device B)
-                                    await saveBoard(boardData.id, {
-                                        cards: boardData.cards || [],
-                                        connections: boardData.connections || []
-                                    });
-                                    return;
-                                }
-
-                                // Merge: We use cloud structure but preserve local base64
-                                const mergedCards = (boardData.cards || []).map(cloudCard => {
-                                    const localCard = localData.cards.find(c => c.id === cloudCard.id);
-                                    if (!localCard) return cloudCard; // New card from another device
-
-                                    const mergedMessages = (cloudCard.data?.messages || []).map((cloudMsg, msgIdx) => {
-                                        const localMsg = localCard.data?.messages?.[msgIdx];
-                                        if (!localMsg || !Array.isArray(cloudMsg.content) || !Array.isArray(localMsg.content)) return cloudMsg;
-
-                                        const mergedContent = cloudMsg.content.map((cloudPart, partIdx) => {
-                                            const localPart = localMsg.content[partIdx];
-                                            if (cloudPart.type === 'image' && localPart?.type === 'image') {
-                                                // If we have local base64, keep it but also take the cloud's S3 URL
-                                                return {
-                                                    ...cloudPart,
-                                                    source: {
-                                                        ...cloudPart.source,
-                                                        ...(localPart.source?.type === 'base64' ? {
-                                                            type: 'base64',
-                                                            data: localPart.source.data
-                                                        } : {}),
-                                                        ...(cloudPart.source?.url ? { s3Url: cloudPart.source.url } : {})
-                                                    }
-                                                };
-                                            }
-                                            return cloudPart;
-                                        });
-                                        return { ...cloudMsg, content: mergedContent };
-                                    });
-
-                                    return {
-                                        ...cloudCard,
-                                        data: { ...cloudCard.data, messages: mergedMessages }
-                                    };
-                                });
-
-                                // Merge: Keep local-only cards too (to prevent deletion if cloud is stale)
-                                const localOnlyCards = localData.cards.filter(lc => !boardData.cards?.find(cc => cc.id === lc.id));
-                                const finalCards = [...mergedCards, ...localOnlyCards];
-
+                // Sync content to local storage (IDB)
+                // CRITICAL: Smart Merge that favors local base64 but accepts cloud updates/S3 URLs
+                if (boardData.id) {
+                    promises.push((async () => {
+                        try {
+                            const localData = await idbGet(BOARD_PREFIX + boardData.id);
+                            if (!localData || !localData.cards) {
+                                // First time loading from cloud (e.g. on Device B)
                                 await saveBoard(boardData.id, {
-                                    cards: finalCards,
-                                    connections: boardData.connections || localData.connections || []
+                                    cards: boardData.cards || [],
+                                    connections: boardData.connections || []
                                 });
-                            } catch (e) {
-                                console.error("[Firebase Sync] Merge failed", e);
+                                return;
                             }
-                        })());
-                    }
-                });
 
-                // Wait for all IDB writes to complete before notifying the UI
-                if (promises.length > 0) {
-                    await Promise.all(promises);
-                    console.log(`[Firebase Sync] Completed hydration for ${promises.length} boards`);
+                            // Merge: We use cloud structure but preserve local base64
+                            const mergedCards = (boardData.cards || []).map(cloudCard => {
+                                const localCard = localData.cards.find(c => c.id === cloudCard.id);
+                                if (!localCard) return cloudCard; // New card from another device
+
+                                const mergedMessages = (cloudCard.data?.messages || []).map((cloudMsg, msgIdx) => {
+                                    const localMsg = localCard.data?.messages?.[msgIdx];
+                                    if (!localMsg || !Array.isArray(cloudMsg.content) || !Array.isArray(localMsg.content)) return cloudMsg;
+
+                                    const mergedContent = cloudMsg.content.map((cloudPart, partIdx) => {
+                                        const localPart = localMsg.content[partIdx];
+                                        if (cloudPart.type === 'image' && localPart?.type === 'image') {
+                                            // If we have local base64, keep it but also take the cloud's S3 URL
+                                            return {
+                                                ...cloudPart,
+                                                source: {
+                                                    ...cloudPart.source,
+                                                    ...(localPart.source?.type === 'base64' ? {
+                                                        type: 'base64',
+                                                        data: localPart.source.data
+                                                    } : {}),
+                                                    ...(cloudPart.source?.url ? { s3Url: cloudPart.source.url } : {})
+                                                }
+                                            };
+                                        }
+                                        return cloudPart;
+                                    });
+                                    return { ...cloudMsg, content: mergedContent };
+                                });
+
+                                return {
+                                    ...cloudCard,
+                                    data: { ...cloudCard.data, messages: mergedMessages }
+                                };
+                            });
+
+                            // Merge: Keep local-only cards too (to prevent deletion if cloud is stale)
+                            const localOnlyCards = localData.cards.filter(lc => !boardData.cards?.find(cc => cc.id === lc.id));
+                            const finalCards = [...mergedCards, ...localOnlyCards];
+
+                            await saveBoard(boardData.id, {
+                                cards: finalCards,
+                                connections: boardData.connections || localData.connections || []
+                            });
+                        } catch (e) {
+                            console.error("[Firebase Sync] Merge failed", e);
+                        }
+                    })());
                 }
-
-                const metadataList = cloudBoards.map(b => ({
-                    id: b.id,
-                    name: b.name || 'Untitled',
-                    createdAt: b.createdAt || Date.now(),
-                    updatedAt: b.updatedAt || Date.now(),
-                    lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
-                    cardCount: b.cards?.length || 0
-                })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-                localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
-
-                const updatedBoardIds = cloudBoards.map(b => b.id);
-                onUpdate(metadataList, updatedBoardIds);
-            }, (error) => {
-                console.error("Firestore sync error:", error);
             });
+
+            // Wait for all IDB writes to complete before notifying the UI
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                console.log(`[Firebase Sync] Completed hydration for ${promises.length} boards`);
+            }
+
+            const metadataList = cloudBoards.map(b => ({
+                id: b.id,
+                name: b.name || 'Untitled',
+                createdAt: b.createdAt || Date.now(),
+                updatedAt: b.updatedAt || Date.now(),
+                lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
+                cardCount: b.cards?.length || 0
+            })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
+
+            const updatedBoardIds = cloudBoards.map(b => b.id);
+            onUpdate(metadataList, updatedBoardIds);
+        }, (error) => {
+            console.error("Firestore sync error:", error);
+        });
     } catch (err) {
         console.error("listenForBoardUpdates fatal error:", err);
         return () => { };
@@ -420,7 +421,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             ...cleanedContent
         };
 
-        await db.collection('users').doc(userId).collection('boards').doc(boardId).set(fullBoard);
+        const boardRef = doc(db, 'users', userId, 'boards', boardId);
+        await setDoc(boardRef, fullBoard);
     } catch (e) {
         console.error("Cloud save failed", e);
     }
@@ -429,7 +431,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
 export const deleteBoardFromCloud = async (userId, boardId) => {
     if (!db || !userId) return;
     try {
-        await db.collection('users').doc(userId).collection('boards').doc(boardId).delete();
+        const boardRef = doc(db, 'users', userId, 'boards', boardId);
+        await deleteDoc(boardRef);
     } catch (e) {
         console.error("Cloud delete failed", e);
     }
@@ -438,7 +441,8 @@ export const deleteBoardFromCloud = async (userId, boardId) => {
 export const saveUserSettings = async (userId, settings) => {
     if (!db || !userId) return;
     try {
-        await db.collection('users').doc(userId).collection('settings').doc('config').set(settings, { merge: true });
+        const configRef = doc(db, 'users', userId, 'settings', 'config');
+        await setDoc(configRef, settings, { merge: true });
     } catch (e) {
         console.error("Save settings failed", e);
     }
@@ -447,8 +451,9 @@ export const saveUserSettings = async (userId, settings) => {
 export const loadUserSettings = async (userId) => {
     if (!db || !userId) return null;
     try {
-        const doc = await db.collection('users').doc(userId).collection('settings').doc('config').get();
-        return doc.exists ? doc.data() : null;
+        const configRef = doc(db, 'users', userId, 'settings', 'config');
+        const docSnap = await getDoc(configRef);
+        return docSnap.exists() ? docSnap.data() : null;
     } catch (e) {
         console.error("Load settings failed", e);
         return null;
