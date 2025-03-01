@@ -11,6 +11,7 @@ import ChatBar from './components/ChatBar';
 import { auth, googleProvider } from './services/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId as storageSetCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
+import ErrorBoundary from './components/ErrorBoundary';
 import {
     chatCompletion,
     streamChatCompletion,
@@ -25,44 +26,6 @@ import { ONBOARDING_DATA } from './utils/onboarding';
 
 // Settings Modal Component
 
-class ErrorBoundary extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false, error: null };
-    }
-
-    static getDerivedStateFromError(error) {
-        return { hasError: true, error };
-    }
-
-    componentDidCatch(error, errorInfo) {
-        console.error("ErrorBoundary caught an error", error, errorInfo);
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/80 backdrop-blur">
-                    <div className="bg-red-50 p-6 rounded-2xl border border-red-200 max-w-2xl shadow-xl">
-                        <h2 className="text-xl font-bold text-red-700 mb-4">Something went wrong</h2>
-                        <pre className="whitespace-pre-wrap text-sm text-red-600 font-mono bg-red-100 p-4 rounded-lg overflow-auto max-h-[60vh]">
-                            {this.state.error?.toString()}
-                            {this.state.error?.stack}
-                        </pre>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="mt-6 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                        >
-                            Reload Page
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-
-        return this.props.children;
-    }
-}
 
 export default function App() {
     return (
@@ -511,7 +474,9 @@ function AppContent() {
                 } />
                 <Route path="/board/:id" element={
                     <React.Fragment>
-                        <Canvas />
+                        <ErrorBoundary level="canvas">
+                            <Canvas />
+                        </ErrorBoundary>
                         <div className="fixed top-6 left-6 z-50 animate-slide-down">
                             <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1.5 rounded-2xl shadow-xl">
                                 <button onClick={handleBackToGallery} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all"><LayoutGrid size={18} /><span>Gallery</span></button>
