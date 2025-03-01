@@ -256,18 +256,30 @@ function AppContent() {
         }
     }, [view, currentBoardId, boardsList]);
 
+    // Autosave with debounce to prevent excessive saves
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length > 0) {
-            saveBoard(currentBoardId, { cards, connections });
+            // Debounce local save - only save after 500ms of no changes  
+            const saveTimeout = setTimeout(() => {
+                saveBoard(currentBoardId, { cards, connections });
+            }, 500);
+
+            // Debounce cloud save - only save after 2s of no changes
+            let cloudTimeout;
             if (user) {
-                const timeoutId = setTimeout(() => {
+                cloudTimeout = setTimeout(() => {
                     saveBoardToCloud(user.uid, currentBoardId, { cards, connections });
-                }, 1000);
-                return () => clearTimeout(timeoutId);
+                }, 2000);
             }
+
             setBoardsList(prev => prev.map(b =>
                 b.id === currentBoardId ? { ...b, updatedAt: Date.now(), cardCount: cards.length } : b
             ));
+
+            return () => {
+                clearTimeout(saveTimeout);
+                if (cloudTimeout) clearTimeout(cloudTimeout);
+            };
         }
     }, [cards, connections, currentBoardId, view, user]);
 
