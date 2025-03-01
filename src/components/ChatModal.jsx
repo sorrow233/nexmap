@@ -211,19 +211,25 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
 
             // If parent provided onGenerateResponse, use it. Otherwise fallback (though we should always have it now)
             if (onGenerateResponse) {
-                let accumulatedContent = "";
                 await onGenerateResponse(card.id, contextMessages, (token) => {
-                    accumulatedContent += token;
-                    const newMessages = [...contextMessages, { role: 'assistant', content: accumulatedContent }];
-                    onUpdate(card.id, { ...card.data, messages: newMessages });
+                    onUpdate(card.id, (currentData) => {
+                        if (!currentData) return currentData;
+                        const msgs = [...currentData.messages];
+                        const lastMsg = msgs[msgs.length - 1];
+                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
+                        return { ...currentData, messages: msgs };
+                    });
                 });
             } else {
                 // Fallback (legacy)
-                let accumulatedContent = "";
                 await streamChatCompletion(contextMessages, (token) => {
-                    accumulatedContent += token;
-                    const newMessages = [...contextMessages, { role: 'assistant', content: accumulatedContent }];
-                    onUpdate(card.id, { ...card.data, messages: newMessages });
+                    onUpdate(card.id, (currentData) => {
+                        if (!currentData) return currentData;
+                        const msgs = [...currentData.messages];
+                        const lastMsg = msgs[msgs.length - 1];
+                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
+                        return { ...currentData, messages: msgs };
+                    });
                 });
             }
 
@@ -260,18 +266,24 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         try {
             // Re-trigger the generation logic
             if (onGenerateResponse) {
-                let accumulatedContent = "";
                 await onGenerateResponse(card.id, truncatedMessages, (token) => {
-                    accumulatedContent += token;
-                    const updatedWithStream = [...truncatedMessages, { role: 'assistant', content: accumulatedContent }];
-                    onUpdate(card.id, { ...card.data, messages: updatedWithStream });
+                    onUpdate(card.id, (currentData) => {
+                        if (!currentData) return currentData;
+                        const msgs = [...currentData.messages];
+                        const lastMsg = msgs[msgs.length - 1];
+                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
+                        return { ...currentData, messages: msgs };
+                    });
                 });
             } else {
-                let accumulatedContent = "";
                 await streamChatCompletion(truncatedMessages, (token) => {
-                    accumulatedContent += token;
-                    const updatedWithStream = [...truncatedMessages, { role: 'assistant', content: accumulatedContent }];
-                    onUpdate(card.id, { ...card.data, messages: updatedWithStream });
+                    onUpdate(card.id, (currentData) => {
+                        if (!currentData) return currentData;
+                        const msgs = [...currentData.messages];
+                        const lastMsg = msgs[msgs.length - 1];
+                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
+                        return { ...currentData, messages: msgs };
+                    });
                 });
             }
         } catch (error) {
