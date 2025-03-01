@@ -23,6 +23,7 @@ export default function Canvas() {
     } = useStore();
 
     const canvasRef = useRef(null);
+    const syncDebounceRef = useRef(null);
 
     // Spring-driven transform for silky smooth motion
     const [{ x, y, s }, api] = useSpring(() => ({
@@ -48,6 +49,14 @@ export default function Canvas() {
         setOffset({ x: nx, y: ny });
         setScale(ns);
     }, [setOffset, setScale]);
+
+    // Debounced version for wheel events
+    const debouncedSyncStore = useCallback((nx, ny, ns) => {
+        if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
+        syncDebounceRef.current = setTimeout(() => {
+            syncStore(nx, ny, ns);
+        }, 300); // Sync after 300ms of no wheel events
+    }, [syncStore]);
 
     // Handle gesture events
     const bind = useGesture(
@@ -121,8 +130,9 @@ export default function Canvas() {
                 event.preventDefault();
 
                 if (ctrlKey || metaKey) {
+                    // Zooming
                     const currentScale = s.get();
-                    const delta = -wy * 0.01;
+                    const delta = -wy * 0.008; // Reduced sensitivity for smoother zoom
                     const nextScale = Math.min(Math.max(0.1, currentScale * (1 + delta)), 5);
 
                     const mouseX = event.clientX;
@@ -137,10 +147,13 @@ export default function Canvas() {
                     api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
                     syncStore(nextX, nextY, nextScale);
                 } else {
-                    const nextX = x.get() - wx;
-                    const nextY = y.get() - wy;
+                    // Panning - smoother with reduced delta
+                    const dampening = 0.8; // Reduce sensitivity for smoother feel
+                    const nextX = x.get() - wx * dampening;
+                    const nextY = y.get() - wy * dampening;
                     api.start({ x: nextX, y: nextY, immediate: true });
-                    syncStore(nextX, nextY, s.get());
+                    // Debounced sync to reduce excessive saveBoard calls
+                    debouncedSyncStore(nextX, nextY, s.get());
                 }
             },
             onPinch: ({ origin: [ox, oy], first, movement: [ms], offset: [scaleFactor], memo, event }) => {
