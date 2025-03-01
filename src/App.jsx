@@ -39,8 +39,9 @@ function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const { id: boardIdFromParams } = useParams();
-    const currentBoardId = boardIdFromParams || null;
+    // Extract board ID from URL path
+    const boardMatch = location.pathname.match(/^\/board\/([^/]+)/);
+    const currentBoardId = boardMatch ? boardMatch[1] : null;
     const view = currentBoardId ? 'canvas' : 'gallery';
 
     const [boardsList, setBoardsList] = useState([]);
