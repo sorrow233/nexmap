@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import { useNavigate, useParams, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useStore, undo, redo } from './store/useStore';
 import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote, Plus } from 'lucide-react';
@@ -72,52 +73,14 @@ export default function App() {
 }
 
 function AppContent() {
-    // Inject global font style & Theme Detection
-    useEffect(() => {
-        // Font
-        const style = document.createElement('style');
-        style.innerHTML = `
-            body, #root, .font-lxgw, .prose, .prose * {
-                font-family: "LXGW WenKai", "楷体", "KaiTi", serif !important;
-            }
-            .font-mono {
-                font-family: inherit !important; /* Force override even monos if user hates them */
-            }
-        `;
-        document.head.appendChild(style);
-
-        // System Theme Handler
-        const mm = window.matchMedia('(prefers-color-scheme: dark)');
-        const updateTheme = e => {
-            if (e.matches) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        };
-
-        // Init
-        updateTheme(mm);
-        mm.addEventListener('change', updateTheme);
-
-        return () => {
-            style.remove();
-            mm.removeEventListener('change', updateTheme);
-        };
-    }, []);
-
-
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Derived state from URL
-    const boardMatch = location.pathname.match(/^\/board\/([^/]+)/);
-    const currentBoardId = boardMatch ? boardMatch[1] : null;
+    const { id: boardIdFromParams } = useParams();
+    const currentBoardId = boardIdFromParams || null;
     const view = currentBoardId ? 'canvas' : 'gallery';
 
     const [boardsList, setBoardsList] = useState([]);
-
-    // Track initialization to avoid first history push being empty
     const [isInitialized, setIsInitialized] = useState(false);
 
     // 0. Global Paste Listener
@@ -135,36 +98,21 @@ function AppContent() {
 
         const unsubscribe = onAuthStateChanged(auth, (u) => {
             setUser(u);
-
-            // Clean up previous listener if switching users (rare but safe)
-            if (unsubDb) {
-                unsubDb();
-                unsubDb = null;
-            }
+            if (unsubDb) { unsubDb(); unsubDb = null; }
 
             if (u) {
-                // Sync from cloud
                 unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
-                    // Update metadata list
                     setBoardsList(cloudBoards);
-
-                    // If active board was updated by cloud (possibly from another device)
-                    // Reload it to hydrate new S3 images to local base64
                     const currentActiveId = localStorage.getItem('mixboard_current_board_id');
                     if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
-                        console.log("[Sync] Active board updated in cloud, reloading cards...");
                         loadBoard(currentActiveId).then(data => {
-                            if (data && data.cards) {
-                                setCards(data.cards);
-                            }
+                            if (data && data.cards) setCards(data.cards);
                         });
                     }
                 });
 
-                // User settings sync is handled by SettingsModal and llm.js provider registry
                 loadUserSettings(u.uid).then(settings => {
                     if (settings) {
-                        console.log("[Sync] User settings loaded from cloud:", settings);
                         if (settings.providers) {
                             localStorage.setItem('mixboard_providers_v3', JSON.stringify({
                                 providers: settings.providers,
@@ -176,34 +124,20 @@ function AppContent() {
                         }
                     }
                 });
-
             }
         });
 
-        return () => {
-            unsubscribe();
-            if (unsubDb) unsubDb();
-        };
+        return () => { unsubscribe(); if (unsubDb) unsubDb(); };
     }, []);
 
-    // Auto Arrange Logic
-    // Auto Arrange Logic
-
     const handleLogin = async () => {
-        try {
-            await signInWithPopup(auth, googleProvider);
-        } catch (e) {
-            console.error("Login failed", e);
-            alert("Login failed: " + e.message);
-        }
+        try { await signInWithPopup(auth, googleProvider); }
+        catch (e) { alert("Login failed: " + e.message); }
     };
 
     const handleLogout = async () => {
-        try {
-            await signOut(auth);
-        } catch (e) {
-            console.error("Logout failed", e);
-        }
+        try { await signOut(auth); }
+        catch (e) { console.error(e); }
     };
 
     const {
@@ -213,261 +147,160 @@ function AppContent() {
         offset, setOffset,
         scale, setScale,
         isSettingsOpen, setIsSettingsOpen,
+        generatingCardIds, setGeneratingCardIds,
+        expandedCardId, setExpandedCardId,
+        isConnecting, setIsConnecting,
+        connectionStartId, setConnectionStartId,
+        createAICard, updateCardContent, setCardGenerating,
+        handleCardMove, handleCardMoveEnd,
+        handleConnect, handleBatchDelete, handleRegenerate, handleChatGenerate,
+        updateCard, updateCardFull, deleteCard, addCard,
         undo, redo
     } = useStore();
 
     // Persist canvas state
     useEffect(() => {
-        const saveState = () => {
-            localStorage.setItem('canvas_offset', JSON.stringify(offset));
-            localStorage.setItem('canvas_scale', scale.toString());
-        };
-        saveState();
+        localStorage.setItem('canvas_offset', JSON.stringify(offset));
+        localStorage.setItem('canvas_scale', scale.toString());
     }, [offset, scale]);
 
-    // Local UI state (not in global store)
-    const [expandedCardId, setExpandedCardId] = useState(null);
     const [globalImages, setGlobalImages] = useState([]);
-    const { generatingCardIds, setGeneratingCardIds, createAICard, updateCardContent, setCardGenerating } = useStore();
-    const [isConnecting, setIsConnecting] = useState(false);
-    const [connectionStartId, setConnectionStartId] = useState(null);
     const [clipboard, setClipboard] = useState(null);
-
-    // Keyboard shortcuts for undo/redo are handled in the global listener
 
     const handleCopy = async () => {
         if (selectedIds.length === 0) return;
         const selectedCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         setClipboard(selectedCards);
-
-        // Also copy text content to system clipboard for external pasting with Cmd+C
         try {
             const textContent = selectedCards.map(c => {
                 const lastMsg = c.data.messages[c.data.messages.length - 1];
                 return lastMsg ? lastMsg.content : '';
             }).join('\n\n---\n\n');
-
-            if (textContent) {
-                await navigator.clipboard.writeText(textContent);
-                console.log("Copied to system clipboard");
-            }
-        } catch (e) {
-            console.error("Failed to copy to system clipboard", e);
-        }
+            if (textContent) await navigator.clipboard.writeText(textContent);
+        } catch (e) { console.error(e); }
     };
 
     const handlePaste = () => {
         if (!clipboard || clipboard.length === 0) return;
-
-        // Calculate center of clipboard group to offset nicely
-        // For simplicity, just offset by 20px from original position for now
-        // Or better: Paste at mouse cursor? Hard without mouse tracking in this scope.
-        // Let's offset by 20px.
-
         const newCards = clipboard.map((card, index) => {
             const newId = (Date.now() + Math.random()).toString();
-            // Paste near center of viewport
-            const centerX = (window.innerWidth / 2 - offset.x) / scale;
-            const centerY = (window.innerHeight / 2 - offset.y) / scale;
-
             return {
-                ...card,
-                id: newId,
-                x: centerX + (index * 20),
-                y: centerY + (index * 20),
-                data: { ...card.data } // Deep clone data to avoid ref issues
+                ...card, id: newId,
+                x: (window.innerWidth / 2 - offset.x) / scale + (index * 20),
+                y: (window.innerHeight / 2 - offset.y) / scale + (index * 20),
+                data: { ...card.data }
             };
         });
-
-        const newCardState = [...cards, ...newCards];
-        setCards(newCardState);
-        // History is now automatically tracked by zundo
-
-        // Select newly pasted cards
+        setCards([...cards, ...newCards]);
         setSelectedIds(newCards.map(c => c.id));
     };
 
-
-
     const handleCreateOnboardingBoard = async () => {
         const newBoard = await createBoard(ONBOARDING_DATA.name);
-        await saveBoard(newBoard.id, {
-            cards: ONBOARDING_DATA.cards,
-            connections: ONBOARDING_DATA.connections
-        });
+        await saveBoard(newBoard.id, { cards: ONBOARDING_DATA.cards, connections: ONBOARDING_DATA.connections });
         setBoardsList([newBoard]);
-        await handleSelectBoard(newBoard.id);
+        handleSelectBoard(newBoard.id);
     };
 
-    // 1. Initial Load & Redirection
     useEffect(() => {
         const init = async () => {
             const list = loadBoardsMetadata();
             setBoardsList(list);
-
-            if (location.pathname === '/' || location.pathname === '') {
-                const lastId = getCurrentBoardId();
-                if (lastId && list.some(b => b.id === lastId)) {
-                    navigate(`/board/${lastId}`, { replace: true });
-                } else if (list.length === 0) {
-                    // Auto create onboarding for new users
-                    console.log("[Init] No boards found, creating onboarding guide...");
-                    await handleCreateOnboardingBoard();
-                } else {
-                    navigate('/gallery', { replace: true });
-                }
+            if (location.pathname === '/' && list.length === 0) {
+                await handleCreateOnboardingBoard();
             }
             setIsInitialized(true);
         };
         init();
     }, []);
 
-    // 1.5 Load Board Data when URL ID changes
     useEffect(() => {
-        if (currentBoardId) {
-            handleLoadBoard(currentBoardId);
-        }
+        if (currentBoardId) handleLoadBoard(currentBoardId);
     }, [currentBoardId]);
 
-    // Global Keyboard Shortcuts
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            // Ignore if typing in an input or textarea
-            if (['INPUT', 'TEXTAREA'].indexOf(e.target.tagName) !== -1 || e.target.isContentEditable) return;
+    // Delete / Backspace -> Delete selected
+    useHotkeys('delete, backspace', () => {
+        if (selectedIds.length > 0) handleBatchDelete();
+    }, [selectedIds]);
 
-            // Delete / Backspace -> Delete selected
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (selectedIds.length > 0) {
-                    handleBatchDelete();
+    // R -> Regenerate selected
+    useHotkeys('r', () => {
+        if (selectedIds.length > 0) handleRegenerate();
+    }, [selectedIds]);
+
+    // L -> Link (Connect)
+    useHotkeys('l', () => {
+        if (selectedIds.length > 1) {
+            const newConns = [...connections];
+            let added = false;
+            for (let i = 0; i < selectedIds.length - 1; i++) {
+                const from = selectedIds[i];
+                const to = selectedIds[i + 1];
+                if (!newConns.some(c => (c.from === from && c.to === to) || (c.from === to && c.to === from))) {
+                    newConns.push({ from, to });
+                    added = true;
                 }
             }
+            if (added) setConnections(newConns);
+        } else if (selectedIds.length === 1) {
+            handleConnect(selectedIds[0]);
+        }
+    }, [selectedIds, connections]);
 
-            // R -> Regenerate selected
-            if (e.key === 'r' || e.key === 'R') {
-                if (selectedIds.length > 0) {
-                    handleRegenerate();
-                }
-            }
+    // C -> Disconnect
+    useHotkeys('c', (e) => {
+        // Handled below if mod is pressed
+        if (e.metaKey || e.ctrlKey) return;
+        if (selectedIds.length > 1) {
+            setConnections(connections.filter(c =>
+                !(selectedIds.indexOf(c.from) !== -1 && selectedIds.indexOf(c.to) !== -1)
+            ));
+        } else if (selectedIds.length === 1) {
+            setConnections(connections.filter(c => c.from !== selectedIds[0] && c.to !== selectedIds[0]));
+        }
+    }, [selectedIds, connections]);
 
+    // Undo / Redo
+    useHotkeys('mod+z', (e) => {
+        e.preventDefault();
+        undo();
+    }, []);
 
-            // L -> Link (Connect)
-            // If multiple cards are selected, link them in sequence
-            if (e.key === 'l' || e.key === 'L') {
-                if (selectedIds.length > 1) {
-                    // Chain link: 1->2, 2->3, etc.
-                    const newConns = [...connections];
-                    let added = false;
-                    for (let i = 0; i < selectedIds.length - 1; i++) {
-                        const from = selectedIds[i];
-                        const to = selectedIds[i + 1];
-                        // Avoid duplicates
-                        if (!newConns.some(c => (c.from === from && c.to === to) || (c.from === to && c.to === from))) {
-                            newConns.push({ from, to });
-                            added = true;
-                        }
-                    }
-                    if (added) {
-                        setConnections(newConns);
-                        // History automatically tracked by zundo
-                        console.log(`[Batch Link] Created links for ${selectedIds.length} cards`);
-                    }
-                } else if (selectedIds.length === 1) {
-                    // Original single-card connection mode
-                    handleConnect(selectedIds[0]);
-                }
-            }
+    useHotkeys('mod+shift+z', (e) => {
+        e.preventDefault();
+        redo();
+    }, []);
 
-            // C -> Cut (Disconnect)
-            if (e.key === 'c' || e.key === 'C') {
-                // Handle different from Command+C (copy)
-                if (e.metaKey || e.ctrlKey) return;
+    // Copy / Paste
+    useHotkeys('mod+c', (e) => {
+        if (window.getSelection()?.toString()) return;
+        e.preventDefault();
+        handleCopy();
+    }, [clipboard, selectedIds, cards]);
 
-                if (selectedIds.length > 1) {
-                    // Remove all connections between selected cards
-                    const newConns = connections.filter(c =>
-                        !(selectedIds.indexOf(c.from) !== -1 && selectedIds.indexOf(c.to) !== -1)
-                    );
-                    if (newConns.length !== connections.length) {
-                        setConnections(newConns);
-                        // History automatically tracked by zundo
-                        console.log(`[Batch Unlink] Removed internal links for ${selectedIds.length} cards`);
-                    }
-                } else if (selectedIds.length === 1) {
-                    // Remove all connections involving this card
-                    const targetId = selectedIds[0];
-                    const newConns = connections.filter(c => c.from !== targetId && c.to !== targetId);
-                    if (newConns.length !== connections.length) {
-                        setConnections(newConns);
-                        // History automatically tracked by zundo
-                        console.log(`[Single Unlink] Removed all links for card ${targetId}`);
-                    }
-                }
-            }
+    useHotkeys('mod+v', (e) => {
+        e.preventDefault();
+        handlePaste();
+    }, [clipboard]);
 
-            // Command/Ctrl + Z -> Undo
-            if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                undo();
-            }
-
-            // Command/Ctrl + Shift + Z -> Redo
-            if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-                e.preventDefault();
-                redo();
-            }
-
-            // Command/Ctrl + C -> Copy
-            if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
-                // If text is selected, allow default browser copy behavior
-                if (window.getSelection()?.toString()) return;
-
-                e.preventDefault();
-                handleCopy();
-            }
-
-            // Command/Ctrl + V -> Paste
-            if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
-                e.preventDefault();
-                handlePaste();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIds, cards, connections, clipboard]); // Include dependencies
-
-    // Sync Tab Title
     useEffect(() => {
         if (view === 'canvas' && currentBoardId) {
             const board = boardsList.find(b => b.id === currentBoardId);
-            if (board) {
-                document.title = `${board.name} | Neural Canvas`;
-            } else {
-                document.title = 'Neural Canvas';
-            }
+            document.title = board ? `${board.name} | Neural Canvas` : 'Neural Canvas';
         } else {
             document.title = 'Neural Canvas';
         }
     }, [view, currentBoardId, boardsList]);
 
-
-    // 2. Auto-Save Cards & Connections
-
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length > 0) {
-            // Save connections too!
             saveBoard(currentBoardId, { cards, connections });
-
-            // Cloud Save (Debounced ideally, but here direct)
             if (user) {
-                // We use a timeout to debounce slightly to avoid hammering Firestore on every keystroke/drag
                 const timeoutId = setTimeout(() => {
                     saveBoardToCloud(user.uid, currentBoardId, { cards, connections });
                 }, 1000);
                 return () => clearTimeout(timeoutId);
             }
-
-            // Sync metadata in list without full re-fetch
             setBoardsList(prev => prev.map(b =>
                 b.id === currentBoardId ? { ...b, updatedAt: Date.now(), cardCount: cards.length } : b
             ));
@@ -475,68 +308,42 @@ function AppContent() {
     }, [cards, connections, currentBoardId, view, user]);
 
     const handleCreateBoard = async (customName = null, initialPrompt = null, initialImages = []) => {
-        let name = customName;
-        // If not custom name provided (e.g. from gallery input), fallback to prompt
-        if (!name) {
-            name = prompt('Name your board:', `Board ${boardsList.length + 1} `);
-            if (!name) return;
-        }
+        let name = customName || prompt('Name your board:', `Board ${boardsList.length + 1}`);
+        if (!name) return;
 
         const newBoard = await createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
-
-        // Cloud Sync
-        if (user) {
-            saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [] });
-        }
-
-        // Optimize: Set state immediately to switch view
+        if (user) saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [] });
         await handleSelectBoard(newBoard.id);
 
-        // If there's an initial prompt (Quick Start), wait for ChatBar to be ready
         if (initialPrompt || initialImages.length > 0) {
-            setTimeout(() => {
-                createCardWithText(initialPrompt, newBoard.id, initialImages);
-            }, 100);
+            setTimeout(() => createCardWithText(initialPrompt, newBoard.id, initialImages), 100);
         }
     };
 
     const createCardWithText = async (text, boardId, images = []) => {
         if (!text.trim() && images.length === 0) return;
-
-        const initialX = (window.innerWidth / 2 - offset.x) / scale - 160;
-        const initialY = (window.innerHeight / 2 - offset.y) / scale - 100;
-
         const activeConfig = getActiveConfig();
-
         try {
             const newId = await createAICard({
                 text,
-                x: Math.max(0, initialX),
-                y: Math.max(0, initialY),
+                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
+                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 100),
                 images,
                 model: activeConfig.model,
                 providerId: activeConfig.id
             });
-
             await streamChatCompletion(
                 [{ role: 'user', content: text }],
                 (chunk) => updateCardContent(newId, chunk),
                 activeConfig.model,
                 { providerId: activeConfig.id }
             );
-        } catch (error) {
-            console.error("Quick Start Error:", error);
-        } finally {
-            setCardGenerating(null, false);
-        }
+        } catch (e) { console.error(e); } finally { setCardGenerating(null, false); }
     };
 
-    const handleSelectBoard = (id) => {
-        navigate(`/board/${id}`);
-    };
-
-    const handleLoadBoard = async (id) => { // Renamed from handleSelectBoard for clarity in gallery
+    const handleSelectBoard = (id) => navigate(`/board/${id}`);
+    const handleLoadBoard = async (id) => {
         const data = await loadBoard(id);
         setCards(data.cards || []);
         setConnections(data.connections || []);
@@ -544,78 +351,27 @@ function AppContent() {
     };
 
     const handleDeleteBoard = async (id) => {
-        if (!confirm('Are you sure? All chat history in this board will be gone.')) return;
+        if (!confirm('Are you sure?')) return;
         await deleteBoard(id);
-        if (user) {
-            deleteBoardFromCloud(user.uid, id);
-        }
+        if (user) deleteBoardFromCloud(user.uid, id);
         setBoardsList(prev => prev.filter(b => b.id !== id));
     };
 
     const handleBackToGallery = async () => {
-        if (currentBoardId) {
-            await saveBoard(currentBoardId, { cards, connections });
-        }
+        if (currentBoardId) await saveBoard(currentBoardId, { cards, connections });
         navigate('/gallery');
         setCards([]);
         setConnections([]);
     };
 
-    // --- Connection Logic ---
-    const getConnectedGraph = (startId, visited = new Set()) => {
-        if (visited.has(startId)) return visited;
-        visited.add(startId);
-
-        // Find all direct neighbors
-        const neighbors = connections
-            .filter(c => c.from === startId || c.to === startId)
-            .map(c => c.from === startId ? c.to : c.from);
-
-        neighbors.forEach(nid => getConnectedGraph(nid, visited));
-        return visited;
-    };
-
-    const handleConnect = (sourceId) => {
-        if (isConnecting && connectionStartId) {
-            if (connectionStartId !== sourceId) {
-                setConnections(prevConns => {
-                    const exists = prevConns.some(c =>
-                        (c.from === connectionStartId && c.to === sourceId) ||
-                        (c.from === sourceId && c.to === connectionStartId)
-                    );
-
-                    if (!exists) {
-                        const newConns = [...prevConns, { from: connectionStartId, to: sourceId }];
-                        // History automatically tracked by zundo
-                        localStorage.setItem('hasUsedConnections', 'true');
-                        return newConns;
-                    }
-                    return prevConns;
-                });
-            }
-            setIsConnecting(false);
-            setConnectionStartId(null);
-        } else {
-            setIsConnecting(true);
-            setConnectionStartId(sourceId);
-        }
-    };
-
     const handleGlobalImageUpload = (e) => {
         const files = Array.from(e.target.files);
-        if (!files.length) return;
-
         files.forEach(file => {
             if (!file.type.startsWith('image/')) return;
             const reader = new FileReader();
-            reader.onload = (e) => {
-                setGlobalImages(prev => [...prev, {
-                    file,
-                    previewUrl: URL.createObjectURL(file),
-                    base64: e.target.result.split(',')[1],
-                    mimeType: file.type
-                }]);
-            };
+            reader.onload = (e) => setGlobalImages(prev => [...prev, {
+                file, previewUrl: URL.createObjectURL(file), base64: e.target.result.split(',')[1], mimeType: file.type
+            }]);
             reader.readAsDataURL(file);
         });
         e.target.value = '';
@@ -623,368 +379,103 @@ function AppContent() {
 
     const removeGlobalImage = (index) => {
         setGlobalImages(prev => {
-            const newImages = [...prev];
-            URL.revokeObjectURL(newImages[index].previewUrl);
-            newImages.splice(index, 1);
-            return newImages;
+            const next = [...prev];
+            URL.revokeObjectURL(next[index].previewUrl);
+            next.splice(index, 1);
+            return next;
         });
     };
 
     const handleGlobalPaste = (e) => {
         const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                const file = items[i].getAsFile();
+        for (const item of items) {
+            if (item.type.indexOf("image") !== -1) {
+                const file = item.getAsFile();
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    setGlobalImages(prev => [...prev, {
-                        file,
-                        previewUrl: URL.createObjectURL(file),
-                        base64: event.target.result.split(',')[1],
-                        mimeType: file.type
-                    }]);
-                };
+                reader.onload = (event) => setGlobalImages(prev => [...prev, {
+                    file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
+                }]);
                 reader.readAsDataURL(file);
                 e.preventDefault();
             }
         }
     };
 
-    const handleCreateCard = async (promptText, images = []) => {
-        if (!promptText.trim() && images.length === 0) return;
-
+    const handleCreateCard = async (text, images = []) => {
+        if (!text.trim() && images.length === 0) return;
         const activeConfig = getActiveConfig();
-        const currentPrompt = promptText;
 
-        if (currentPrompt.startsWith('/draw ') || currentPrompt.startsWith('/image ')) {
-            const promptText = currentPrompt.replace(/^\/(draw|image)\s+/, '');
-            const newCardId = Date.now().toString();
-
+        if (text.startsWith('/draw ') || text.startsWith('/image ')) {
+            const promptText = text.replace(/^\/(draw|image)\s+/, '');
+            const newId = Date.now().toString();
             setCards(prev => [...prev, {
-                id: newCardId,
-                type: 'image_gen',
+                id: newId, type: 'image_gen',
                 x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
                 y: (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20),
                 data: { prompt: promptText, loading: true, title: `Generating: ${promptText.substring(0, 20)}...` }
             }]);
-
             try {
                 const imageUrl = await imageGeneration(promptText);
-                setCards(prev => prev.map(c => c.id === newCardId ? {
-                    ...c, data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) + (promptText.length > 30 ? '...' : '') }
-                } : c));
-            } catch (err) {
-                console.error('Image generation failed:', err);
-                setCards(prev => prev.map(c => c.id === newCardId ? {
-                    ...c, data: { ...c.data, error: err.message, loading: false, title: 'Generation Failed' }
-                } : c));
+                setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) } } : c));
+            } catch (e) {
+                console.error(e);
+                setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, error: e.message, loading: false, title: 'Failed' } } : c));
             }
             return;
         }
 
-        // AI Chat Card Creation
         const initialX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
         const initialY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
 
-        // Gather Context from FRESH state
         let contextPrefix = "";
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         if (contextCards.length > 0) {
-            const contextTexts = contextCards.map(c => {
-                let text = c.data.title || "Untitled Card";
-                if (c.data.messages?.length > 0) {
-                    const lastMsg = c.data.messages[c.data.messages.length - 1];
-                    const contentText = typeof lastMsg.content === 'string' ? lastMsg.content : (Array.isArray(lastMsg.content) ? lastMsg.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ') : '');
-                    text += `: ${contentText.substring(0, 500)}...`;
-                }
-                return `Possible Context from Card [${c.id}]:\n${text}`;
-            });
-            contextPrefix = `[System: Context from selected cards]\n\n${contextTexts.join('\n\n')}\n\n---\n\n`;
+            contextPrefix = `[System: Context]\n\n${contextCards.map(c => `Card [${c.id}]: ${c.data.title}`).join('\n')}\n\n---\n\n`;
         }
 
-        // Use the images passed from ChatBar and clear global state
         const targetImages = [...images];
         setGlobalImages([]);
-
         const newId = Date.now().toString();
 
         try {
             await createAICard({
-                id: newId,
-                text: currentPrompt,
-                x: Math.max(0, initialX),
-                y: Math.max(0, initialY),
-                images: targetImages,
-                contextPrefix,
+                id: newId, text, x: Math.max(0, initialX), y: Math.max(0, initialY),
+                images: targetImages, contextPrefix,
                 autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
-                model: activeConfig.model,
-                providerId: activeConfig.id
+                model: activeConfig.model, providerId: activeConfig.id
             });
-
-            // Start Streaming
-            const requestMessages = [{ role: 'user', content: currentPrompt }];
-            // If there's context, the store already put it in the card's data.messages[0].
-            // But we need to pass the FULL context to the API. 
-            // Let's refine the store logic or App logic to pass the correct prompt.
-
-            await streamChatCompletion(
-                [{ role: 'user', content: contextPrefix + currentPrompt }],
-                (chunk) => updateCardContent(newId, chunk),
-                activeConfig.model,
-                { providerId: activeConfig.id }
-            );
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setCardGenerating(newId, false);
-        }
+            await streamChatCompletion([{ role: 'user', content: contextPrefix + text }], (chunk) => updateCardContent(newId, chunk), activeConfig.model, { providerId: activeConfig.id });
+        } catch (e) { console.error(e); } finally { setCardGenerating(newId, false); }
     };
 
-    const handleCreateNote = (initialContent = '', initialX = null, initialY = null) => {
-        setCards(prevCards => {
-            const existingNote = prevCards.find(c => c.type === 'note');
-
-            if (existingNote) {
-                const currentContent = existingNote.data.content || '';
-                const matches = currentContent.match(/^(\d+)[.、]/gm);
-                let nextNum = 1;
-                if (matches && matches.length > 0) {
-                    const numbers = matches.map(m => parseInt(m, 10));
-                    nextNum = Math.max(...numbers) + 1;
-                } else if (currentContent.trim()) {
-                    nextNum = 2;
-                }
-
-                const sequence = String(nextNum).padStart(2, '0');
-                const newEntry = initialContent ? `\n\n${sequence}. ${initialContent} ` : `\n\n${sequence}.`;
-
-                const updatedNote = {
-                    ...existingNote,
-                    data: { ...existingNote.data, content: currentContent + newEntry }
-                };
-                const newCardsState = prevCards.map(c => c.id === existingNote.id ? updatedNote : c);
-                // History automatically tracked by zundo
-                return newCardsState;
-            } else {
-                const newId = Date.now().toString();
-                const sequence = "01";
-                const prefixedContent = initialContent ? `${sequence}. ${initialContent} ` : `${sequence}.`;
-                const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
-                const centerY = (window.innerHeight / 2 - offset.y) / scale - 140;
-                const posX = initialX !== null ? initialX : (centerX + (Math.random() * 40 - 20));
-                const posY = initialY !== null ? initialY : (centerY + (Math.random() * 40 - 20));
-
-                const newNote = {
-                    id: newId,
-                    type: 'note',
-                    x: Math.max(0, posX),
-                    y: Math.max(0, posY),
-                    data: { content: prefixedContent, image: null }
-                };
-                const newCardsState = [...prevCards, newNote];
-                // History automatically tracked by zundo
-                return newCardsState;
-            }
+    const handleCreateNote = (text = '') => {
+        addCard({
+            id: Date.now().toString(), type: 'sticky',
+            x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
+            y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
+            data: { content: text || '', color: 'yellow' }
         });
     };
 
     const handleUpdateBoardTitle = async (newTitle) => {
-        if (!newTitle.trim() || !currentBoardId) return;
-
-        console.log('[App] handleUpdateBoardTitle:', newTitle);
-
-        // 1. Update metadata list immediately for UI sync
+        if (!currentBoardId || !newTitle.trim()) return;
         setBoardsList(prev => prev.map(b => b.id === currentBoardId ? { ...b, name: newTitle } : b));
-
-        // 2. Save to storage
-        const boardData = await loadBoard(currentBoardId);
-        if (boardData) {
-            await saveBoard(currentBoardId, { ...boardData, name: newTitle });
-            if (user) await saveBoardToCloud(user.uid, currentBoardId, { ...boardData, name: newTitle });
-        }
+        if (user) saveBoardToCloud(user.uid, currentBoardId, { name: newTitle }, true);
     };
 
-    const handleExpandTopics = async (sourceCardId) => {
-        const sourceCard = cards.find(c => c.id === sourceCardId);
-        if (!sourceCard || !sourceCard.data.marks || sourceCard.data.marks.length === 0) return;
-
+    const handleExpandTopics = async (sourceId) => {
+        const source = cards.find(c => c.id === sourceId);
+        if (!source || !source.data.marks) return;
         const activeConfig = getActiveConfig();
-        const defaultModel = activeConfig.model;
-        const marks = sourceCard.data.marks;
-
-        setCards(prevCards => {
-            const nextCards = [...prevCards];
-            const nextConnections = [...connections];
-
-            for (let i = 0; i < marks.length; i++) {
-                const mark = marks[i];
-                const newId = (Date.now() + i).toString();
-                const angle = (i / marks.length) * Math.PI * 2;
-                const dist = 400;
-                const newX = sourceCard.x + Math.cos(angle) * dist;
-                const newY = sourceCard.y + Math.sin(angle) * dist;
-
-                const newCard = {
-                    id: newId, x: newX, y: newY,
-                    data: {
-                        title: mark.length > 20 ? mark.substring(0, 20) + '...' : mark,
-                        messages: [{ role: 'user', content: mark }, { role: 'assistant', content: '' }],
-                        model: defaultModel,
-                        providerId: activeConfig.id
-                    }
-                };
-
-                nextCards.push(newCard);
-                nextConnections.push({ from: sourceCardId, to: newId });
-
-                setTimeout(() => {
-                    handleChatGenerate(newId, [{ role: 'user', content: mark }], (token) => {
-                        updateCardContent(newId, token);
-                    });
-                }, 100);
-            }
-            setConnections(nextConnections);
-            // History automatically tracked
-            return nextCards;
-        });
-    };
-
-    const handleDeleteCard = (id) => {
-        const newCards = cards.filter(c => c.id !== id);
-        const newConnections = connections.filter(c => c.from !== id && c.to !== id);
-        setCards(newCards);
-        setConnections(newConnections);
-        setSelectedIds(prev => prev.filter(sid => sid !== id));
-        // History automatically tracked by zundo
-    };
-
-    // Chat completion wrapper for existing cards (ChatModal) to use connections
-    const generateResponseForCard = async (cardId, newMessages) => {
-        // Find connected context
-        const connectedIds = Array.from(getConnectedGraph(cardId));
-        // Filter out self
-        const neighborIds = connectedIds.filter(id => id !== cardId);
-
-        let contextMessages = [];
-        if (neighborIds.length > 0) {
-            const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
-            const contextText = neighbors.map(c =>
-                `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => {
-                    const contentStr = typeof m.content === 'string'
-                        ? m.content
-                        : (Array.isArray(m.content)
-                            ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
-                            : '');
-                    return `${m.role}: ${contentStr}`;
-                }).join('\n')} `
-            ).join('\n\n---\n\n');
-
-            if (contextText.trim()) {
-                contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others.Here is their recent context:]\n\n${contextText} ` });
-            }
-        }
-
-        // Pure Gemini - No System Prompt
-        return [...contextMessages, ...newMessages];
-    };
-
-    const handleChatGenerate = async (cardId, messages, onToken) => {
-        setGeneratingCardIds(prev => new Set(prev).add(cardId));
-        try {
-            const fullMessages = await generateResponseForCard(cardId, messages);
-            const card = cards.find(c => c.id === cardId);
-            const model = card?.data?.model;
-            const providerId = card?.data?.providerId;
-            await streamChatCompletion(fullMessages, onToken, model, { providerId });
-        } finally {
-            setGeneratingCardIds(prev => {
-                const next = new Set(prev);
-                next.delete(cardId);
-                return next;
-            });
-        }
-    };
-
-    const handleUpdateCard = (id, newData) => {
-        setCards(prev => prev.map(c => {
-            if (c.id === id) {
-                const resolvedData = typeof newData === 'function' ? newData(c.data) : newData;
-                return { ...c, data: resolvedData };
-            }
-            return c;
-        }));
-    };
-
-    // Group Drag Logic
-    const handleCardMove = (id, newX, newY) => {
-        setCards(prevCards => {
-            const sourceCard = prevCards.find(c => c.id === id);
-            if (!sourceCard) return prevCards;
-
-            const dx = newX - sourceCard.x;
-            const dy = newY - sourceCard.y;
-            if (dx === 0 && dy === 0) return prevCards;
-
-            const isSelected = selectedIds.indexOf(id) !== -1;
-            const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id);
-
-            return prevCards.map(c => {
-                if (moveIds.has(c.id)) {
-                    return { ...c, x: c.x + dx, y: c.y + dy };
-                }
-                return c;
-            });
-        });
-    };
-
-    const handleCardMoveEnd = () => {
-        // History automatically tracked by zundo
-    };
-
-    const handleBatchDelete = () => {
-        setCards(prevCards => {
-            const newCards = prevCards.filter(c => selectedIds.indexOf(c.id) === -1);
-            setConnections(prevConns => {
-                const newConnections = prevConns.filter(c =>
-                    selectedIds.indexOf(c.from) === -1 && selectedIds.indexOf(c.to) === -1
-                );
-                // History automatically tracked
-                return newConnections;
-            });
-            setSelectedIds([]);
-            return newCards;
-        });
-    };
-
-    const handleRegenerate = async () => {
-        const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
-        if (targets.length === 0) return;
-
-        setCards(prev => prev.map(c => {
-            if (selectedIds.indexOf(c.id) !== -1) {
-                const newMsgs = [...c.data.messages];
-                if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
-                    newMsgs.pop();
-                }
-                newMsgs.push({ role: 'assistant', content: '' });
-                return { ...c, data: { ...c.data, messages: newMsgs } };
-            }
-            return c;
-        }));
-
-        try {
-            await Promise.all(targets.map(async (card) => {
-                const currentMsgs = [...card.data.messages];
-                if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
-                    currentMsgs.pop();
-                }
-
-                await streamChatCompletion(currentMsgs, (chunk) => updateCardContent(card.id, chunk));
-            }));
-        } catch (e) {
-            console.error("Regeneration failed", e);
-        } finally {
-            targets.forEach(card => setCardGenerating(card.id, false));
+        for (const mark of source.data.marks) {
+            try {
+                const newId = await createAICard({
+                    text: mark, x: source.x + 350, y: source.y,
+                    autoConnections: [{ from: sourceId, to: Date.now().toString() }],
+                    model: activeConfig.model, providerId: activeConfig.id
+                });
+                await streamChatCompletion([{ role: 'user', content: mark }], (chunk) => updateCardContent(newId, chunk), activeConfig.model, { providerId: activeConfig.id });
+            } catch (e) { console.error(e); }
         }
     };
 
@@ -992,178 +483,68 @@ function AppContent() {
         <React.Fragment>
             <Routes>
                 <Route path="/gallery" element={
-                    <div className="bg-[#FBFBFC] dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto overflow-x-hidden transition-colors duration-500 custom-scrollbar">
-                        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/30 dark:bg-blue-600/20 blur-[120px] pointer-events-none"></div>
-                        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-100/30 dark:bg-purple-600/20 blur-[120px] pointer-events-none"></div>
-
+                    <div className="bg-[#FBFBFC] dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto">
                         <div className="max-w-7xl mx-auto relative z-10">
-                            <div className="sticky top-0 z-50 flex justify-between items-center mb-16 py-6 border-b border-slate-200/50 dark:border-white/5 bg-[#FBFBFC]/70 dark:bg-slate-950/70 backdrop-blur-xl -mx-8 px-8">
-                                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-purple-400">Neural</span> Canvas
-                                </h1>
+                            <div className="sticky top-0 z-50 flex justify-between items-center mb-16 py-6 bg-[#FBFBFC]/70 dark:bg-slate-950/70 backdrop-blur-xl">
+                                <h1 className="text-3xl font-black tracking-tight"><span className="text-blue-600">Neural</span> Canvas</h1>
                                 <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={() => handleCreateBoard("New Board")}
-                                        className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-premium transition-all hover:scale-110"
-                                        title="New Empty Board"
-                                    >
-                                        <Plus size={20} />
-                                    </button>
-
+                                    <button onClick={() => handleCreateBoard("New Board")} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 shadow-premium hover:scale-110 transition-all"><Plus size={20} /></button>
                                     {user ? (
-                                        <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-2xl pl-2 pr-5 py-2 border border-slate-200/60 dark:border-white/10 shadow-premium">
-                                            {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm" alt="User avatar" />}
+                                        <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-2xl pl-2 pr-5 py-2 border border-slate-200 shadow-premium">
+                                            {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm" />}
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{user.displayName}</span>
-                                                <button onClick={handleLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider mt-1 text-left transition-colors">Sign Out</button>
+                                                <span className="text-sm font-bold leading-none">{user.displayName}</span>
+                                                <button onClick={handleLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase mt-1 text-left">Sign Out</button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <button
-                                            onClick={handleLogin}
-                                            className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all"
-                                        >
-                                            Sign In
-                                        </button>
+                                        <button onClick={handleLogin} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:scale-105 transition-all">Sign In</button>
                                     )}
                                 </div>
                             </div>
-                            <BoardGallery
-                                boards={boardsList}
-                                onCreateBoard={handleCreateBoard}
-                                onSelectBoard={handleSelectBoard}
-                                onDeleteBoard={handleDeleteBoard}
-                            />
+                            <BoardGallery boards={boardsList} onCreateBoard={handleCreateBoard} onSelectBoard={handleSelectBoard} onDeleteBoard={handleDeleteBoard} />
                         </div>
                         <div className="fixed bottom-10 right-10">
-                            <button
-                                onClick={() => setIsSettingsOpen(true)}
-                                className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-brand-600 hover:scale-110 transition-all border border-slate-100"
-                                title="Settings"
-                            >
-                                <Settings size={24} />
-                            </button>
+                            <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-blue-600 hover:scale-110 transition-all border border-slate-100"><Settings size={24} /></button>
                         </div>
                     </div>
                 } />
                 <Route path="/board/:id" element={
                     <React.Fragment>
-                        <Canvas
-                            cards={cards}
-                            connections={connections}
-                            onUpdateCards={setCards}
-                            onCardMove={handleCardMove}
-                            onDragEnd={handleCardMoveEnd}
-                            onExpandCard={setExpandedCardId}
-                            onConnect={handleConnect}
-                            onDeleteCard={handleDeleteCard}
-                            isConnecting={isConnecting}
-                            connectionStartId={connectionStartId}
-                        />
-
-                        {cards.length > 1 && !localStorage.getItem('hasUsedConnections') && connections.length === 0 && (
-                            <div className="fixed bottom-48 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80 z-40">
-                                💡 Tip: Click the "Link" icon on cards to connect them together!
-                            </div>
-                        )}
-
+                        <Canvas />
                         <div className="fixed top-6 left-6 z-50 animate-slide-down">
-                            <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-1.5 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 group hover:scale-[1.02] transition-transform duration-300">
-                                <button
-                                    onClick={handleBackToGallery}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-white/10 hover:text-brand-500 dark:hover:text-brand-300 transition-all active:scale-95"
-                                >
-                                    <LayoutGrid size={18} className="text-brand-500 dark:text-brand-400 group-hover:scale-110 transition-transform" />
-                                    <span>Gallery</span>
-                                </button>
-
-                                <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
-
-                                <input
-                                    type="text"
-                                    key={currentBoardId}
-                                    defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
-                                    onBlur={(e) => handleUpdateBoardTitle(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { handleUpdateBoardTitle(e.target.value); e.target.blur(); } }}
-                                    className="bg-transparent border-none outline-none text-slate-800 dark:text-slate-200 font-bold tracking-tight text-sm select-none hover:bg-slate-50 dark:hover:bg-white/5 px-2 py-0.5 rounded transition-colors"
-                                />
+                            <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1.5 rounded-2xl shadow-xl">
+                                <button onClick={handleBackToGallery} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all"><LayoutGrid size={18} /><span>Gallery</span></button>
+                                <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+                                <input type="text" key={currentBoardId} defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'} onBlur={(e) => handleUpdateBoardTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (handleUpdateBoardTitle(e.target.value), e.target.blur())} className="bg-transparent border-none outline-none font-bold text-sm px-2 py-0.5 rounded" />
                             </div>
                         </div>
-
-                        <ChatBar
-                            cards={cards}
-                            selectedIds={selectedIds}
-                            generatingCardIds={generatingCardIds}
-                            onSubmit={handleCreateCard}
-                            onCreateNote={handleCreateNote}
-                            onExpandTopics={handleExpandTopics}
-                            onImageUpload={handleGlobalImageUpload}
-                            globalImages={globalImages}
-                            onRemoveImage={removeGlobalImage}
-                        />
-
+                        <ChatBar onSubmit={handleCreateCard} onCreateNote={handleCreateNote} onImageUpload={handleGlobalImageUpload} globalImages={globalImages} onRemoveImage={removeGlobalImage} />
                         {selectedIds.length > 0 && (
                             <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
                                 <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
-
                                 {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
                                     <>
                                         <div className="h-4 w-px bg-slate-300"></div>
-                                        <button
-                                            onClick={() => handleExpandTopics(selectedIds[0])}
-                                            className="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
-                                            title="Expand marked topics into new cards"
-                                        >
-                                            <Sparkles size={16} />
-                                            <span className="text-sm font-medium">Expand Topic</span>
-                                        </button>
+                                        <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-colors"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
                                     </>
                                 )}
-
                                 <div className="h-4 w-px bg-slate-300"></div>
-                                <button
-                                    onClick={handleRegenerate}
-                                    className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
-                                    title="Regenerate response for selected cards"
-                                >
-                                    <RefreshCw size={16} />
-                                    <span className="text-sm font-medium">Retry</span>
-                                </button>
+                                <button onClick={handleRegenerate} className="flex items-center gap-2 text-blue-600 px-3 py-1.5 rounded-lg transition-colors"><RefreshCw size={16} /><span className="text-sm font-medium">Retry</span></button>
                                 <div className="h-4 w-px bg-slate-300"></div>
-                                <button
-                                    onClick={handleBatchDelete}
-                                    className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                                >
-                                    <Trash2 size={16} />
-                                    <span className="text-sm font-medium">Delete</span>
-                                </button>
+                                <button onClick={handleBatchDelete} className="flex items-center gap-2 text-red-500 px-3 py-1.5 rounded-lg transition-colors"><Trash2 size={16} /><span className="text-sm font-medium">Delete</span></button>
                             </div>
                         )}
                     </React.Fragment>
                 } />
                 <Route path="*" element={<Navigate to="/gallery" replace />} />
             </Routes>
-
-            <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                user={user}
-            />
-
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} />
             {expandedCardId && (
-                <ChatModal
-                    card={cards.find(c => c.id === expandedCardId)}
-                    isOpen={!!expandedCardId}
-                    onClose={() => setExpandedCardId(null)}
-                    onUpdate={handleUpdateCard}
-                    onGenerateResponse={handleChatGenerate}
-                    isGenerating={generatingCardIds.has(expandedCardId)}
-                    onCreateNote={handleCreateNote}
-                />
+                <ChatModal card={cards.find(c => c.id === expandedCardId)} isOpen={!!expandedCardId} onClose={() => setExpandedCardId(null)} onUpdate={updateCardFull} onGenerateResponse={handleChatGenerate} isGenerating={generatingCardIds.has(expandedCardId)} onCreateNote={handleCreateNote} />
             )}
         </React.Fragment>
     );
 }
-
 
 if (typeof window !== 'undefined') window.App = App;

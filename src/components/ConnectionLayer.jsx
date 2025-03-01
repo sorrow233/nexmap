@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
+import React, { useEffect, useRef, useMemo } from 'react';
+import { getBestAnchorPair, getCardRect } from '../utils/geometry';
+import { findSmartPath, generateRoundedPath } from '../utils/routing';
 
 /**
  * ConnectionLayer renders all connections between cards using Path2D on an HTML5 Canvas.
@@ -7,6 +8,9 @@ import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
  */
 const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, scale, offset }) {
     const canvasRef = useRef(null);
+
+    // Obstacles for routing: all current card rects
+    const obstacles = useMemo(() => cards.map(c => getCardRect(c)), [cards]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -17,6 +21,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
 
         // Resize canvas to fill viewport
         const resize = () => {
+            if (!canvas) return;
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
@@ -27,7 +32,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
 
         // Render loop/function
         const render = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
             if (connections.length === 0) return;
 
@@ -40,11 +45,12 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             ctx.translate(offset.x, offset.y);
             ctx.scale(scale, scale);
 
-            ctx.lineWidth = 3 / scale; // Keep stroke thickness constant regardless of zoom
+            ctx.lineWidth = 4 / scale; // Slightly thicker for visibility
             ctx.strokeStyle = document.documentElement.classList.contains('dark')
-                ? 'rgba(129, 140, 248, 0.3)'
-                : 'rgba(99, 102, 241, 0.4)';
+                ? 'rgba(129, 140, 248, 0.5)'
+                : 'rgba(99, 102, 241, 0.6)';
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
 
             connections.forEach(conn => {
                 const fromCard = cardMap.get(conn.from);
@@ -53,7 +59,15 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                 if (!fromCard || !toCard) return;
 
                 const { source, target } = getBestAnchorPair(fromCard, toCard);
-                const pathData = generateBezierPath(source, target);
+
+                // Exclude source and target from obstacles to avoid routing around yourself
+                const routingObstacles = obstacles.filter(o =>
+                    !(o.left === fromCard.x && o.top === fromCard.y) &&
+                    !(o.left === toCard.x && o.top === toCard.y)
+                );
+
+                const points = findSmartPath(source, target, routingObstacles);
+                const pathData = generateRoundedPath(points);
 
                 // Use Path2D for efficient rendering of SVG-like paths
                 const path = new Path2D(pathData);
@@ -81,7 +95,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             }
             window.removeEventListener('resize', resize);
         };
-    }, [cards, connections, scale, offset]);
+    }, [cards, connections, scale, offset, obstacles]);
 
     return (
         <canvas

@@ -1,6 +1,18 @@
 
 import { create } from 'zustand';
 import { temporal } from 'zundo';
+import { streamChatCompletion } from '../services/llm';
+
+// --- Helper: Graph Traversal ---
+const getConnectedGraph = (startId, connections, visited = new Set()) => {
+    if (visited.has(startId)) return visited;
+    visited.add(startId);
+    const neighbors = connections
+        .filter(c => c.from === startId || c.to === startId)
+        .map(c => c.from === startId ? c.to : c.from);
+    neighbors.forEach(nid => getConnectedGraph(nid, connections, visited));
+    return visited;
+};
 
 // --- Canvas Slice ---
 const createCanvasSlice = (set, get) => ({
@@ -9,6 +21,8 @@ const createCanvasSlice = (set, get) => ({
     selectedIds: [],
     interactionMode: 'none',
     selectionRect: null,
+    isConnecting: false,
+    connectionStartId: null,
 
     setOffset: (valOrUpdater) => set((state) => ({
         offset: typeof valOrUpdater === 'function' ? valOrUpdater(state.offset) : valOrUpdater
@@ -25,12 +39,13 @@ const createCanvasSlice = (set, get) => ({
     setSelectionRect: (valOrUpdater) => set((state) => ({
         selectionRect: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectionRect) : valOrUpdater
     })),
+    setIsConnecting: (val) => set({ isConnecting: val }),
+    setConnectionStartId: (val) => set({ connectionStartId: val }),
 
     moveOffset: (dx, dy) => set((state) => ({
         offset: { x: state.offset.x + dx, y: state.offset.y + dy }
     })),
 
-    // Coordinate conversion helper
     toCanvasCoords: (viewX, viewY) => {
         const { offset, scale } = get();
         return {
@@ -42,7 +57,11 @@ const createCanvasSlice = (set, get) => ({
 
 // --- Content Slice ---
 const createContentSlice = (set, get) => ({
+    cards: [],
+    connections: [],
     generatingCardIds: new Set(),
+    expandedCardId: null,
+
     setCards: (cardsOrUpdater) => set((state) => ({
         cards: typeof cardsOrUpdater === 'function' ? cardsOrUpdater(state.cards) : cardsOrUpdater
     })),
@@ -52,52 +71,150 @@ const createContentSlice = (set, get) => ({
     setGeneratingCardIds: (valOrUpdater) => set((state) => ({
         generatingCardIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.generatingCardIds) : valOrUpdater
     })),
+    setExpandedCardId: (id) => set({ expandedCardId: id }),
 
     addCard: (card) => set((state) => ({
         cards: [...state.cards, card]
     })),
 
     updateCard: (id, updater) => set((state) => ({
+        cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c.data) : { ...c, data: { ...c.data, ...updater } }) : c)
+    })),
+
+    // Special handler for the component refactor
+    updateCardFull: (id, updater) => set((state) => ({
         cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c) : { ...c, ...updater }) : c)
     })),
 
     deleteCard: (id) => set((state) => {
         const nextGenerating = new Set(state.generatingCardIds);
         nextGenerating.delete(id);
+        const nextSelected = state.selectedIds.filter(sid => sid !== id);
         return {
             cards: state.cards.filter(c => c.id !== id),
             connections: state.connections.filter(conn => conn.from !== id && conn.to !== id),
-            generatingCardIds: nextGenerating
+            generatingCardIds: nextGenerating,
+            selectedIds: nextSelected,
+            expandedCardId: state.expandedCardId === id ? null : state.expandedCardId
         };
     }),
 
-    addConnection: (from, to) => set((state) => {
-        const exists = state.connections.some(c => (c.from === from && c.to === to) || (c.from === to && c.to === from));
-        if (exists) return state;
-        return { connections: [...state.connections, { from, to }] };
-    }),
+    handleCardMove: (id, newX, newY) => {
+        const { cards, connections, selectedIds } = get();
+        const sourceCard = cards.find(c => c.id === id);
+        if (!sourceCard) return;
 
-    removeConnection: (from, to) => set((state) => ({
-        connections: state.connections.filter(c => !(c.from === from && c.to === to) && !(c.from === to && c.to === from))
-    })),
+        const dx = newX - sourceCard.x;
+        const dy = newY - sourceCard.y;
+        if (dx === 0 && dy === 0) return;
+
+        const isSelected = selectedIds.indexOf(id) !== -1;
+        const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id, connections);
+
+        set(state => ({
+            cards: state.cards.map(c => {
+                if (moveIds.has(c.id)) {
+                    return { ...c, x: c.x + dx, y: c.y + dy };
+                }
+                return c;
+            })
+        }));
+    },
+
+    handleConnect: (targetId) => {
+        const { isConnecting, connectionStartId, connections } = get();
+        if (isConnecting && connectionStartId) {
+            if (connectionStartId !== targetId) {
+                const exists = connections.some(c =>
+                    (c.from === connectionStartId && c.to === targetId) ||
+                    (c.from === targetId && c.to === connectionStartId)
+                );
+
+                if (!exists) {
+                    set(state => ({
+                        connections: [...state.connections, { from: connectionStartId, to: targetId }],
+                        isConnecting: false,
+                        connectionStartId: null
+                    }));
+                    localStorage.setItem('hasUsedConnections', 'true');
+                    return;
+                }
+            }
+            set({ isConnecting: false, connectionStartId: null });
+        } else {
+            set({ isConnecting: true, connectionStartId: targetId });
+        }
+    },
+
+    handleBatchDelete: () => {
+        const { selectedIds } = get();
+        if (selectedIds.length === 0) return;
+
+        set(state => ({
+            cards: state.cards.filter(c => selectedIds.indexOf(c.id) === -1),
+            connections: state.connections.filter(conn =>
+                selectedIds.indexOf(conn.from) === -1 && selectedIds.indexOf(conn.to) === -1
+            ),
+            selectedIds: [],
+            expandedCardId: selectedIds.indexOf(state.expandedCardId) !== -1 ? null : state.expandedCardId
+        }));
+    },
+
+    handleRegenerate: async () => {
+        const { cards, selectedIds, updateCardContent, setCardGenerating } = get();
+        const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
+        if (targets.length === 0) return;
+
+        // Reset assistant messages first
+        set(state => ({
+            cards: state.cards.map(c => {
+                if (selectedIds.indexOf(c.id) !== -1) {
+                    const newMsgs = [...c.data.messages];
+                    if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
+                        newMsgs.pop();
+                    }
+                    newMsgs.push({ role: 'assistant', content: '' });
+                    return { ...c, data: { ...c.data, messages: newMsgs } };
+                }
+                return c;
+            }),
+            generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
+        }));
+
+        try {
+            await Promise.all(targets.map(async (card) => {
+                const currentMsgs = [...card.data.messages];
+                if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
+                    currentMsgs.pop();
+                }
+
+                // Since we are in the store, we can use the card's protocol/model if available
+                const model = card.data.model;
+                const providerId = card.data.providerId;
+
+                await streamChatCompletion(
+                    currentMsgs,
+                    (chunk) => updateCardContent(card.id, chunk),
+                    model,
+                    { providerId }
+                );
+            }));
+        } catch (e) {
+            console.error("Regeneration failed", e);
+        } finally {
+            targets.forEach(card => setCardGenerating(card.id, false));
+        }
+    },
 
     // --- Atomic AI Actions ---
     createAICard: async (params) => {
         const {
-            id, // Optional, generate if not provided
-            text,
-            x,
-            y,
-            images = [],
-            contextPrefix = "",
-            autoConnections = [],
-            model,
-            providerId
+            id, text, x, y, images = [], contextPrefix = "",
+            autoConnections = [], model, providerId
         } = params;
 
         const newId = id || Date.now().toString();
 
-        // 1. Prepare Content
         let content = text;
         if (images.length > 0) {
             content = [
@@ -113,11 +230,8 @@ const createContentSlice = (set, get) => ({
             ];
         }
 
-        // 2. Initial Card State
         const newCard = {
-            id: newId,
-            x,
-            y,
+            id: newId, x, y,
             data: {
                 title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
                 messages: [
@@ -141,15 +255,52 @@ const createContentSlice = (set, get) => ({
             newCard.data.messages[0].content = updatedContent;
         }
 
-        // 3. Update State Atomically
         set(state => ({
             cards: [...state.cards, newCard],
             connections: [...state.connections, ...autoConnections],
             generatingCardIds: new Set(state.generatingCardIds).add(newId)
         }));
 
-        // 4. Return ID for streaming follow-up
         return newId;
+    },
+
+    handleChatGenerate: async (cardId, messages, onToken) => {
+        const { cards, connections, setCardGenerating } = get();
+        setCardGenerating(cardId, true);
+
+        try {
+            // Context Walking
+            const visited = getConnectedGraph(cardId, connections);
+            const neighborIds = Array.from(visited).filter(id => id !== cardId);
+
+            let contextMessages = [];
+            if (neighborIds.length > 0) {
+                const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
+                const contextText = neighbors.map(c =>
+                    `Context from linked card "${c.data.title}": \n${c.data.messages.slice(-3).map(m => {
+                        const contentStr = typeof m.content === 'string'
+                            ? m.content
+                            : (Array.isArray(m.content)
+                                ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
+                                : '');
+                        return `${m.role}: ${contentStr}`;
+                    }).join('\n')} `
+                ).join('\n\n---\n\n');
+
+                if (contextText.trim()) {
+                    contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText}` });
+                }
+            }
+
+            const fullMessages = [...contextMessages, ...messages];
+            const card = cards.find(c => c.id === cardId);
+            const model = card?.data?.model;
+            const providerId = card?.data?.providerId;
+
+            await streamChatCompletion(fullMessages, onToken, model, { providerId });
+        } finally {
+            setCardGenerating(cardId, false);
+        }
     },
 
     updateCardContent: (id, chunk) => {
@@ -182,37 +333,22 @@ const createSettingsSlice = (set) => ({
     activeModel: 'gemini-2.0-flash-exp',
     apiConfig: {},
 
-    setIsSettingsOpen: (valOrUpdater) => set((state) => ({
-        isSettingsOpen: typeof valOrUpdater === 'function' ? valOrUpdater(state.isSettingsOpen) : valOrUpdater
-    })),
-    setActiveModel: (valOrUpdater) => set((state) => ({
-        activeModel: typeof valOrUpdater === 'function' ? valOrUpdater(state.activeModel) : valOrUpdater
-    })),
-    setApiConfig: (valOrUpdater) => set((state) => ({
-        apiConfig: typeof valOrUpdater === 'function' ? valOrUpdater(state.apiConfig) : valOrUpdater
-    }))
+    setIsSettingsOpen: (val) => set({ isSettingsOpen: typeof val === 'function' ? val() : val }),
+    setActiveModel: (val) => set({ activeModel: val }),
+    setApiConfig: (val) => set({ apiConfig: val })
 });
 
 // --- Global Store with Temporal Middleware ---
 const useStoreBase = create(
     temporal(
         (set, get) => ({
-            // State fields that will be tracked by zundo
-            cards: [],
-            connections: [],
-            history: [],
-            historyIndex: -1,
-
-            // Spread slices
             ...createCanvasSlice(set, get),
             ...createContentSlice(set, get),
             ...createSettingsSlice(set, get)
         }),
         {
-            // Zundo configuration
-            limit: 50, // Maximum history depth
+            limit: 50,
             equality: (a, b) => a === b,
-            // Only track specific fields to avoid bloating history with UI state
             partialize: (state) => ({
                 cards: state.cards,
                 connections: state.connections
@@ -221,8 +357,5 @@ const useStoreBase = create(
     )
 );
 
-// Export the store
 export const useStore = useStoreBase;
-
-// Export temporal actions for undo/redo
 export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();

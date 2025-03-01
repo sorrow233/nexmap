@@ -1,103 +1,178 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { useGesture } from '@use-gesture/react';
+import { useSpring, animated, config, to } from '@react-spring/web';
 import Card from './Card';
 import StickyNote from './StickyNote';
 import ConnectionLayer from './ConnectionLayer';
-import { getBestAnchorPair, generateBezierPath, getCardRect, isRectIntersect } from '../utils/geometry';
+import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 
-export default function Canvas({
-    cards,
-    connections = [],
-    onUpdateCards,
-    onCardMove,
-    onDragEnd,
-    onExpandCard,
-    onConnect,
-    onDeleteCard,
-    isConnecting,
-    connectionStartId,
-}) {
+export default function Canvas() {
     const {
+        cards, connections,
         offset, scale, setOffset, setScale,
         selectedIds, setSelectedIds,
         interactionMode, setInteractionMode,
         selectionRect, setSelectionRect,
-        generatingCardIds
+        generatingCardIds, setExpandedCardId,
+        isConnecting,
+        connectionStartId,
+        handleCardMove, handleCardMoveEnd,
+        handleConnect, deleteCard, updateCardFull
     } = useStore();
 
     const canvasRef = useRef(null);
-    const ZOOM_sensitivity = 0.005;
-    const PAN_sensitivity = 1.0;
 
-    const stateRef = useRef({ scale: 1, offset: { x: 0, y: 0 }, interactionMode: 'none', cards: [] });
+    // Spring-driven transform for silky smooth motion
+    const [{ x, y, s }, api] = useSpring(() => ({
+        x: offset.x,
+        y: offset.y,
+        s: scale,
+        config: { ...config.stiff, precision: 0.0001, velocity: 0 }
+    }));
 
-    useEffect(() => {
-        stateRef.current.scale = scale;
-        stateRef.current.offset = offset;
-        stateRef.current.interactionMode = interactionMode;
-        stateRef.current.cards = cards;
-    }, [scale, offset, interactionMode, cards]);
-
-    const toCanvasCoords = useCallback((viewX, viewY) => {
+    // Help with coordinate calculation - always fresh
+    const getVisualCoords = (viewX, viewY) => {
+        const currentScale = s.get();
+        const currentX = x.get();
+        const currentY = y.get();
         return {
-            x: (viewX - offset.x) / scale,
-            y: (viewY - offset.y) / scale
+            x: (viewX - currentX) / currentScale,
+            y: (viewY - currentY) / currentScale
         };
-    }, [offset, scale]);
+    };
 
-    const handleMouseDown = (e) => {
-        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
-            const isPan = e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
+    // Update store for culling and persistence
+    const syncStore = useCallback((nx, ny, ns) => {
+        setOffset({ x: nx, y: ny });
+        setScale(ns);
+    }, [setOffset, setScale]);
 
-            if (isPan) {
-                setInteractionMode('panning');
-            } else {
-                setInteractionMode('selecting');
-                setSelectionRect({ x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY });
-                if (!e.shiftKey) {
-                    setSelectedIds([]);
+    // Handle gesture events
+    const bind = useGesture(
+        {
+            onDrag: ({ active, movement: [mx, my], event, memo, first, last, button, xy: [cx, cy], velocity: [vx, vy], direction: [dx, dy] }) => {
+                if (first) {
+                    const isPanAction = button === 1 || button === 2 || event.spaceKey || event.altKey;
+                    const isBackground = event.target === canvasRef.current || event.target.classList.contains('canvas-bg');
+
+                    if (isPanAction) {
+                        setInteractionMode('panning');
+                        return { type: 'pan', startX: x.get(), startY: y.get() };
+                    } else if (isBackground) {
+                        setInteractionMode('selecting');
+                        setSelectionRect({ x1: cx, y1: cy, x2: cx, y2: cy });
+                        if (!event.shiftKey) setSelectedIds([]);
+                        return { type: 'select', startX: cx, startY: cy };
+                    }
+                    return null;
                 }
+
+                if (!memo) return;
+
+                if (memo.type === 'pan') {
+                    if (active) {
+                        api.start({ x: memo.startX + mx, y: memo.startY + my, immediate: true });
+                    } else {
+                        // Kinetic inertia
+                        api.start({
+                            x: memo.startX + mx,
+                            y: memo.startY + my,
+                            config: { ...config.stiff, velocity: [vx * dx, vy * dy] },
+                            immediate: false,
+                            onRest: () => syncStore(x.get(), y.get(), s.get())
+                        });
+                    }
+                    if (last) syncStore(x.get(), y.get(), s.get());
+                } else if (memo.type === 'select') {
+                    const newRect = { ...selectionRect, x1: memo.startX, y1: memo.startY, x2: cx, y2: cy };
+                    setSelectionRect(newRect);
+
+                    const xMin = Math.min(newRect.x1, newRect.x2);
+                    const xMax = Math.max(newRect.x1, newRect.x2);
+                    const yMin = Math.min(newRect.y1, newRect.y2);
+                    const yMax = Math.max(newRect.y1, newRect.y2);
+
+                    const canvasTopLeft = getVisualCoords(xMin, yMin);
+                    const canvasBottomRight = getVisualCoords(xMax, yMax);
+
+                    const selectionCanvasRect = {
+                        left: canvasTopLeft.x,
+                        top: canvasTopLeft.y,
+                        right: canvasBottomRight.x,
+                        bottom: canvasBottomRight.y
+                    };
+
+                    const intersectedIds = cards
+                        .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
+                        .map(card => card.id);
+
+                    setSelectedIds(intersectedIds);
+
+                    if (last) {
+                        setInteractionMode('none');
+                        setSelectionRect(null);
+                    }
+                }
+                return memo;
+            },
+            onWheel: ({ event, delta: [wx, wy], ctrlKey, metaKey }) => {
+                event.preventDefault();
+
+                if (ctrlKey || metaKey) {
+                    const currentScale = s.get();
+                    const delta = -wy * 0.01;
+                    const nextScale = Math.min(Math.max(0.1, currentScale * (1 + delta)), 5);
+
+                    const mouseX = event.clientX;
+                    const mouseY = event.clientY;
+
+                    const canvasX = (mouseX - x.get()) / currentScale;
+                    const canvasY = (mouseY - y.get()) / currentScale;
+
+                    const nextX = mouseX - canvasX * nextScale;
+                    const nextY = mouseY - canvasY * nextScale;
+
+                    api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
+                    syncStore(nextX, nextY, nextScale);
+                } else {
+                    const nextX = x.get() - wx;
+                    const nextY = y.get() - wy;
+                    api.start({ x: nextX, y: nextY, immediate: true });
+                    syncStore(nextX, nextY, s.get());
+                }
+            },
+            onPinch: ({ origin: [ox, oy], first, movement: [ms], offset: [scaleFactor], memo, event }) => {
+                event.preventDefault();
+                if (first) return { startScale: s.get(), startX: x.get(), startY: y.get() };
+
+                const nextScale = Math.min(Math.max(0.1, memo.startScale * scaleFactor), 5);
+                const currentScale = s.get();
+
+                const canvasX = (ox - x.get()) / currentScale;
+                const canvasY = (oy - y.get()) / currentScale;
+
+                const nextX = ox - canvasX * nextScale;
+                const nextY = oy - canvasY * nextScale;
+
+                api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
+                syncStore(nextX, nextY, nextScale);
+
+                return memo;
             }
+        },
+        {
+            target: canvasRef,
+            drag: { filterTaps: true, threshold: 5 },
+            wheel: { eventOptions: { passive: false } },
+            pinch: { eventOptions: { passive: false }, distanceBounds: { min: 0 } }
         }
-    };
+    );
 
-    const handleMouseMove = (e) => {
-        if (interactionMode === 'panning') {
-            setOffset({
-                x: offset.x + e.movementX,
-                y: offset.y + e.movementY
-            });
-        } else if (interactionMode === 'selecting' && selectionRect) {
-            const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
-            setSelectionRect(newSelectionRect);
-
-            const xMin = Math.min(newSelectionRect.x1, newSelectionRect.x2);
-            const xMax = Math.max(newSelectionRect.x1, newSelectionRect.x2);
-            const yMin = Math.min(newSelectionRect.y1, newSelectionRect.y2);
-            const yMax = Math.max(newSelectionRect.y1, newSelectionRect.y2);
-
-            const canvasTopLeft = toCanvasCoords(xMin, yMin);
-            const canvasBottomRight = toCanvasCoords(xMax, yMax);
-
-            const selectionCanvasRect = {
-                left: canvasTopLeft.x,
-                top: canvasTopLeft.y,
-                right: canvasBottomRight.x,
-                bottom: canvasBottomRight.y
-            };
-
-            const intersectedIds = cards
-                .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
-                .map(card => card.id);
-
-            setSelectedIds(intersectedIds);
-        }
-    };
-
-    const handleMouseUp = () => {
-        setInteractionMode('none');
-        setSelectionRect(null);
-    };
+    // Sync spring when store changes from outside (e.g. initial board load)
+    useEffect(() => {
+        api.start({ x: offset.x, y: offset.y, s: scale });
+    }, [offset.x, offset.y, scale, api]);
 
     const handleCardSelect = useCallback((id, e) => {
         const isAdditive = e && (e.shiftKey || e.metaKey || e.ctrlKey);
@@ -111,85 +186,43 @@ export default function Canvas({
         });
     }, [setSelectedIds]);
 
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const handleNativeWheel = (e) => {
-            e.preventDefault();
-            if (e.ctrlKey || e.metaKey) {
-                const currentScale = stateRef.current.scale;
-                const currentOffset = stateRef.current.offset;
-                const mouseX = e.clientX;
-                const mouseY = e.clientY;
-                const canvasX = (mouseX - currentOffset.x) / currentScale;
-                const canvasY = (mouseY - currentOffset.y) / currentScale;
-                const delta = -e.deltaY * ZOOM_sensitivity;
-                const newZoom = Math.min(Math.max(0.1, currentScale + delta), 5);
-                const newOffsetX = mouseX - canvasX * newZoom;
-                const newOffsetY = mouseY - canvasY * newZoom;
-                setScale(newZoom);
-                setOffset({ x: newOffsetX, y: newOffsetY });
-            } else {
-                const currentOffset = stateRef.current.offset;
-                setOffset({
-                    x: currentOffset.x - e.deltaX * PAN_sensitivity,
-                    y: currentOffset.y - e.deltaY * PAN_sensitivity
-                });
-            }
-        };
-
-        canvas.addEventListener('wheel', handleNativeWheel, { passive: false });
-        return () => canvas.removeEventListener('wheel', handleNativeWheel);
-    }, [setScale, setOffset]);
-
-    // Viewport Culling Logic
     const visibleCards = useMemo(() => {
         const viewportRect = {
-            left: (0 - offset.x) / scale - 400, // Buffer zone
+            left: (0 - offset.x) / scale - 400,
             top: (0 - offset.y) / scale - 400,
             right: (window.innerWidth - offset.x) / scale + 400,
             bottom: (window.innerHeight - offset.y) / scale + 400
         };
 
         return cards.filter(card => {
-            // Selected cards or generating cards always render to avoid UI glitches
             if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;
             if (generatingCardIds && generatingCardIds.has(card.id)) return true;
-
-            // Basic culling
-            const rect = getCardRect(card);
-            return isRectIntersect(viewportRect, rect);
+            return isRectIntersect(viewportRect, getCardRect(card));
         });
     }, [cards, offset, scale, selectedIds, generatingCardIds]);
 
     return (
-        <div
+        <animated.div
             ref={canvasRef}
-            className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative cursor-grab active:cursor-grabbing canvas-bg transition-colors duration-500"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            {...bind()}
+            className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 touch-none"
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
                 backgroundSize: '24px 24px',
-                backgroundPosition: `${offset.x}px ${offset.y}px`
+                backgroundPosition: to([x, y], (xv, yv) => `${xv}px ${yv}px`)
             }}
         >
-            {/* Connection Layer (Canvas) */}
-            <ConnectionLayer
-                cards={cards}
-                connections={connections}
-                scale={scale}
-                offset={offset}
-            />
+            <ConnectionLayer cards={cards} connections={connections} scale={scale} offset={offset} />
 
-            <div
-                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
-                style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+            <animated.div
+                className="absolute top-0 left-0 w-full h-full origin-top-left pointer-events-none"
+                style={{
+                    x,
+                    y,
+                    scale: s,
+                    transformOrigin: '0 0'
+                }}
             >
-                {/* Cards Layer - Cull and Memoize */}
                 {visibleCards.map(card => {
                     const Component = card.type === 'note' ? StickyNote : Card;
                     return (
@@ -198,26 +231,24 @@ export default function Canvas({
                             data={card}
                             isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
                             onSelect={handleCardSelect}
-                            onMove={onCardMove}
-                            onDelete={onDeleteCard}
-                            onUpdate={(id, newData) => onUpdateCards(prev => prev.map(c => c.id === id ? { ...c, data: newData } : c))}
-                            onDragEnd={onDragEnd}
-                            onConnect={() => onConnect && onConnect(card.id)}
-                            onExpand={() => onExpandCard(card.id)}
+                            onMove={handleCardMove}
+                            onDelete={() => deleteCard(card.id)}
+                            onUpdate={updateCardFull}
+                            onDragEnd={handleCardMoveEnd}
+                            onConnect={() => handleConnect(card.id)}
+                            onExpand={() => setExpandedCardId(card.id)}
                             isConnecting={isConnecting}
                             isConnectionStart={connectionStartId === card.id}
                             scale={scale}
                         />
                     );
                 })}
-            </div>
+            </animated.div>
 
-            {/* Status Indicator */}
             <div className="absolute bottom-4 left-4 text-slate-400 text-xs font-mono pointer-events-none select-none">
                 Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {visibleCards.length}/{cards.length} | Zoom: {scale.toFixed(2)}
             </div>
 
-            {/* Rubber Band Selection Rect */}
             {interactionMode === 'selecting' && selectionRect && (
                 <div
                     className="fixed border border-brand-500 bg-brand-500/10 pointer-events-none z-[9999] rounded-sm"
@@ -229,7 +260,6 @@ export default function Canvas({
                     }}
                 />
             )}
-        </div>
+        </animated.div>
     );
 }
-

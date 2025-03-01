@@ -4,7 +4,7 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
-    darkMode: 'class',
+    darkMode: 'media',
     theme: {
         extend: {
             colors: {
@@ -22,7 +22,7 @@ export default {
                 }
             },
             fontFamily: {
-                lxgw: ['"LXGW WenKai"', "cursive", "sans-serif"],
+                lxgw: ['"LXGW WenKai"', "楷体", "KaiTi", "serif"],
             },
             animation: {
                 'fade-in': 'fadeIn 0.5s ease-out',
