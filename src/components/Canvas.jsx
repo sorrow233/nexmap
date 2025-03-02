@@ -225,7 +225,7 @@ export default function Canvas() {
                 backgroundPosition: to([x, y], (xv, yv) => `${xv}px ${yv}px`)
             }}
         >
-            <ConnectionLayer cards={cards} connections={connections} scale={scale} offset={offset} />
+            <ConnectionLayer cards={cards} connections={connections} springValues={{ x, y, s }} />
 
             <animated.div
                 className="absolute top-0 left-0 w-full h-full origin-top-left pointer-events-none"

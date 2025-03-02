@@ -1,12 +1,35 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getBestAnchorPair, getCardRect, generateBezierPath } from '../utils/geometry';
 
 /**
  * ConnectionLayer renders all connections between cards using Path2D on an HTML5 Canvas.
  * This is significantly more performant than SVG for many connections.
+ * Now uses animated spring values for real-time sync with card layer during gesture interactions.
  */
-const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, scale, offset }) {
+const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, springValues }) {
     const canvasRef = useRef(null);
+    const [transform, setTransform] = useState({ x: 0, y: 0, s: 1 });
+
+    // Subscribe to spring animation values for real-time updates
+    useEffect(() => {
+        if (!springValues) return;
+
+        const { x, y, s } = springValues;
+
+        // Subscribe to spring changes
+        const unsubX = x.onChange(v => setTransform(prev => ({ ...prev, x: v })));
+        const unsubY = y.onChange(v => setTransform(prev => ({ ...prev, y: v })));
+        const unsubS = s.onChange(v => setTransform(prev => ({ ...prev, s: v })));
+
+        // Initialize with current values
+        setTransform({ x: x.get(), y: y.get(), s: s.get() });
+
+        return () => {
+            unsubX();
+            unsubY();
+            unsubS();
+        };
+    }, [springValues]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -37,11 +60,11 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             cards.forEach(c => cardMap.set(c.id, c));
 
             ctx.save();
-            // We apply the same transform as the cards layer
-            ctx.translate(offset.x, offset.y);
-            ctx.scale(scale, scale);
+            // Apply the same transform as the cards layer using spring values
+            ctx.translate(transform.x, transform.y);
+            ctx.scale(transform.s, transform.s);
 
-            ctx.lineWidth = 3 / scale; // Keep stroke thickness constant regardless of zoom
+            ctx.lineWidth = 3 / transform.s; // Keep stroke thickness constant regardless of zoom
             ctx.strokeStyle = document.documentElement.classList.contains('dark')
                 ? 'rgba(129, 140, 248, 0.4)'
                 : 'rgba(99, 102, 241, 0.5)';
@@ -83,7 +106,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             }
             window.removeEventListener('resize', resize);
         };
-    }, [cards, connections, scale, offset]);
+    }, [cards, connections, transform]);
 
     return (
         <canvas
