@@ -256,11 +256,21 @@ function AppContent() {
     }, [view, currentBoardId, boardsList]);
 
     // Autosave with debounce to prevent excessive saves
+    const lastSavedState = useRef('');
+
     useEffect(() => {
         if (view === 'canvas' && currentBoardId && cards.length > 0) {
+            // Deep compare to prevent hydration loop
+            // If the content hasn't changed (e.g. just re-hydrated from sync), skip the save
+            const currentState = JSON.stringify({ cards, connections });
+            if (currentState === lastSavedState.current) {
+                return;
+            }
+
             // Debounce local save - only save after 500ms of no changes  
             const saveTimeout = setTimeout(() => {
                 saveBoard(currentBoardId, { cards, connections });
+                lastSavedState.current = currentState; // Mark as saved
             }, 500);
 
             // Debounce cloud save - only save after 2s of no changes
@@ -268,7 +278,7 @@ function AppContent() {
             if (user) {
                 cloudTimeout = setTimeout(() => {
                     saveBoardToCloud(user.uid, currentBoardId, { cards, connections });
-                }, 2000);
+                }, 2000); // 2s debounce for cloud
             }
 
             setBoardsList(prev => prev.map(b =>
