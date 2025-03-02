@@ -83,7 +83,26 @@ const createContentSlice = (set, get) => ({
 
     // Special handler for the component refactor
     updateCardFull: (id, updater) => set((state) => ({
-        cards: state.cards.map(c => c.id === id ? { ...c, ...(typeof updater === 'function' ? updater(c) : updater), id: c.id } : c)
+        cards: state.cards.map(c => {
+            if (c.id !== id) return c;
+
+            // Apply the updater (can be function or object)
+            // CRITICAL: When updater is a function, pass c.data (not c) because
+            // ChatModal expects to update card.data, not the entire card object
+            const updatedData = typeof updater === 'function'
+                ? updater(c.data)  // Pass c.data to function updaters
+                : updater;         // Object updaters are used as-is
+
+            // Preserve all card properties (x, y, id, type, etc.)
+            // and only update the data portion
+            return {
+                ...c,              // Keep x, y, id, type, etc.
+                data: {            // Only merge data
+                    ...(c.data || {}),
+                    ...updatedData
+                }
+            };
+        })
     })),
 
     deleteCard: (id) => set((state) => {

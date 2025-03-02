@@ -390,6 +390,7 @@ function AppContent() {
         if (!text.trim() && images.length === 0) return;
         const activeConfig = getActiveConfig();
 
+        // 1. 绘图命令处理 (保持不变)
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
             const promptText = text.replace(/^\/(draw|image)\s+/, '');
             const newId = Date.now().toString();
@@ -409,11 +410,39 @@ function AppContent() {
             return;
         }
 
-        const initialX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
-        const initialY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
-
-        let contextPrefix = "";
+        // 2. 智能坐标计算 (Fix: 避免重叠)
+        let targetX, targetY;
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
+
+        if (contextCards.length > 0) {
+            // A. 如果有引用卡片，放在最右侧卡片的右边
+            const rightMostCard = contextCards.reduce((prev, current) => (prev.x > current.x) ? prev : current);
+            const topMostY = Math.min(...contextCards.map(c => c.y));
+
+            // 基础位置：右侧 + 50px 间距
+            targetX = rightMostCard.x + 340; // 320(卡片宽) + 20(间距)
+            targetY = topMostY;
+
+            // 简单的碰撞检测：如果目标位置已经有卡片了，就往下挪
+            let safetyCounter = 0;
+            while (
+                cards.some(c =>
+                    Math.abs(c.x - targetX) < 100 &&
+                    Math.abs(c.y - targetY) < 100
+                ) && safetyCounter < 10
+            ) {
+                targetY += 150; // 往下挪一点
+                targetX += 20;  // 稍微错开一点
+                safetyCounter++;
+            }
+        } else {
+            // B. 如果没有引用，才放在屏幕中间 (保持原有逻辑)
+            targetX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
+            targetY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
+        }
+
+        // 3. 构建上下文
+        let contextPrefix = "";
         if (contextCards.length > 0) {
             contextPrefix = `[System: Context]\n\n${contextCards.map(c => `Card [${c.id}]: ${c.data.title}`).join('\n')}\n\n---\n\n`;
         }
@@ -424,10 +453,15 @@ function AppContent() {
 
         try {
             await createAICard({
-                id: newId, text, x: Math.max(0, initialX), y: Math.max(0, initialY),
-                images: targetImages, contextPrefix,
+                id: newId,
+                text,
+                x: Math.max(0, targetX),
+                y: Math.max(0, targetY),
+                images: targetImages,
+                contextPrefix,
                 autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
-                model: activeConfig.model, providerId: activeConfig.id
+                model: activeConfig.model,
+                providerId: activeConfig.id
             });
             await streamChatCompletion([{ role: 'user', content: contextPrefix + text }], (chunk) => updateCardContent(newId, chunk), activeConfig.model, { providerId: activeConfig.id });
         } catch (e) { console.error(e); } finally { setCardGenerating(newId, false); }
@@ -452,16 +486,27 @@ function AppContent() {
         const source = cards.find(c => c.id === sourceId);
         if (!source || !source.data.marks) return;
         const activeConfig = getActiveConfig();
-        for (const mark of source.data.marks) {
+
+        // 使用 Promise.all 并发生成，但坐标错开
+        const promises = source.data.marks.map(async (mark, index) => {
             try {
+                // Fix: 这里的 y 坐标加上了 index * 320，让卡片竖向排列
+                // 320 是卡片的大致高度 + 间距
+                const newY = source.y + (index * 320) - ((source.data.marks.length * 320) / 2) + 150;
+
                 const newId = await createAICard({
-                    text: mark, x: source.x + 350, y: source.y,
-                    autoConnections: [{ from: sourceId, to: Date.now().toString() }],
-                    model: activeConfig.model, providerId: activeConfig.id
+                    text: mark,
+                    x: source.x + 400, // 放在右侧 400px 处
+                    y: newY,
+                    autoConnections: [{ from: sourceId, to: Date.now().toString() + index }], // 确保 ID 唯一
+                    model: activeConfig.model,
+                    providerId: activeConfig.id
                 });
                 await streamChatCompletion([{ role: 'user', content: mark }], (chunk) => updateCardContent(newId, chunk), activeConfig.model, { providerId: activeConfig.id });
             } catch (e) { console.error(e); }
-        }
+        });
+
+        await Promise.all(promises);
     };
 
     return (
