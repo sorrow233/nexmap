@@ -67,6 +67,48 @@ export async function imageGeneration(prompt, model = null, options = {}) {
     return provider.generateImage(prompt, model, options);
 }
 
+/**
+ * Generate follow-up topics based on conversation history
+ */
+export async function generateFollowUpTopics(messages, model = null, options = {}) {
+    try {
+        // Filter out system messages if they might confuse the specific topic generation
+        // But context is important, so we keep them but append our instruction
+
+        // We need to provide a very strict system prompt
+        const systemPrompt = `You are a creative conversation partner.
+Based on the conversation history provided, suggest 5 distinct, intriguing follow-up topics or sub-questions that the user might want to explore next.
+The topics should be short (3-8 words), relevant, and diverse.
+Return STRICTLY a JSON array of strings, e.g., ["Topic A", "Topic B", ...].
+Do not include any explanation, markdown formatting, or code blocks. Just the raw JSON array.`;
+
+        // Create a new message list for this specific task
+        const taskMessages = [
+            ...messages,
+            { role: 'system', content: systemPrompt }
+        ];
+
+        // If the model supports JSON mode natively, we could use it, but for now we prompt engineering
+        // Use a high-intelligence model if possible, or the current model
+        const response = await chatCompletion(taskMessages, model, options);
+
+        // Clean up response just in case
+        let cleanResponse = response.trim();
+        // Remove markdown code blocks if present
+        if (cleanResponse.startsWith('```json')) {
+            cleanResponse = cleanResponse.replace(/^```json/, '').replace(/```$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+            cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
+        }
+
+        return JSON.parse(cleanResponse);
+    } catch (e) {
+        console.error("Failed to generate follow-up topics:", e);
+        // Fallback topics if parsing fails
+        return ["Tell me more", "Explain the details", "What are the examples?", "Related concepts", "Why is this important?"];
+    }
+}
+
 // Expose to window for compatibility
 if (typeof window !== 'undefined') {
     window.LLM = {
@@ -77,6 +119,7 @@ if (typeof window !== 'undefined') {
         chatCompletion,
         streamChatCompletion,
         generateTitle,
-        imageGeneration
+        imageGeneration,
+        generateFollowUpTopics
     };
 }

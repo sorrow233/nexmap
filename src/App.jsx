@@ -318,8 +318,28 @@ function AppContent() {
                 model: activeConfig.model,
                 providerId: activeConfig.id
             });
+
+            // 构建消息内容（包含图片）
+            let messageContent;
+            if (images.length > 0) {
+                const imageParts = images.map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }));
+                messageContent = [
+                    { type: 'text', text },
+                    ...imageParts
+                ];
+            } else {
+                messageContent = text;
+            }
+
             await streamChatCompletion(
-                [{ role: 'user', content: text }],
+                [{ role: 'user', content: messageContent }],
                 (chunk) => updateCardContent(newId, chunk),
                 activeConfig.model,
                 { providerId: activeConfig.id }
@@ -463,7 +483,34 @@ function AppContent() {
                 model: activeConfig.model,
                 providerId: activeConfig.id
             });
-            await streamChatCompletion([{ role: 'user', content: contextPrefix + text }], (chunk) => updateCardContent(newId, chunk), activeConfig.model, { providerId: activeConfig.id });
+
+            // 构建包含图片的消息内容
+            let messageContent;
+            if (targetImages.length > 0) {
+                // 有图片：使用多部分内容格式
+                const imageParts = targetImages.map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }));
+                messageContent = [
+                    { type: 'text', text: contextPrefix + text },
+                    ...imageParts
+                ];
+            } else {
+                // 无图片：使用简单文本格式
+                messageContent = contextPrefix + text;
+            }
+
+            await streamChatCompletion(
+                [{ role: 'user', content: messageContent }],
+                (chunk) => updateCardContent(newId, chunk),
+                activeConfig.model,
+                { providerId: activeConfig.id }
+            );
         } catch (e) { console.error(e); } finally { setCardGenerating(newId, false); }
     };
 
