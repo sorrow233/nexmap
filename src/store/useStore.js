@@ -83,7 +83,7 @@ const createContentSlice = (set, get) => ({
 
     // Special handler for the component refactor
     updateCardFull: (id, updater) => set((state) => ({
-        cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c) : { ...c, ...updater }) : c)
+        cards: state.cards.map(c => c.id === id ? { ...c, ...(typeof updater === 'function' ? updater(c) : updater), id: c.id } : c)
     })),
 
     deleteCard: (id) => set((state) => {
@@ -162,7 +162,8 @@ const createContentSlice = (set, get) => ({
 
     handleRegenerate: async () => {
         const { cards, selectedIds, updateCardContent, setCardGenerating } = get();
-        const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
+        // Filter out cards that don't have messages (like sticky notes)
+        const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
         if (targets.length === 0) return;
 
         // Reset assistant messages first

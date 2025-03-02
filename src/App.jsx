@@ -118,8 +118,7 @@ function AppContent() {
         createAICard, updateCardContent, setCardGenerating,
         handleCardMove, handleCardMoveEnd,
         handleConnect, handleBatchDelete, handleRegenerate, handleChatGenerate,
-        updateCard, updateCardFull, deleteCard, addCard,
-        undo, redo
+        updateCard, updateCardFull, deleteCard, addCard
     } = useStore();
 
     // Persist canvas state
