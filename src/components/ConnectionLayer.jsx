@@ -6,11 +6,11 @@ import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
  * This is significantly more performant than SVG for many connections.
  * 
  * Performance Note:
- * This component uses a direct requestAnimationFrame loop to read spring values.
+ * This component uses a direct requestAnimationFrame loop for smooth rendering.
  * This avoids React state updates (useState) during animation, which would cause
- * excessive re-renders and potential crashes.
+ * excessive re-renders.
  */
-const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, springValues }) {
+const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, offset, scale }) {
     const canvasRef = useRef(null);
 
     useEffect(() => {
@@ -44,11 +44,10 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
 
         // Main render loop
         const loop = () => {
-            // Safely get current spring values or default
-            // Using .get() directly avoids React state updates and the onChange crash
-            const cx = springValues?.x?.get() ?? 0;
-            const cy = springValues?.y?.get() ?? 0;
-            const cs = springValues?.s?.get() ?? 1;
+            // Use plain offset and scale values
+            const cx = offset?.x ?? 0;
+            const cy = offset?.y ?? 0;
+            const cs = scale ?? 1;
 
             // Only redraw if transform changed significantly, or if we haven't drawn yet
             if (
@@ -97,7 +96,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             cancelAnimationFrame(animationFrameId);
             window.removeEventListener('resize', resize);
         };
-    }, [cards, connections, springValues]);
+    }, [cards, connections, offset, scale]);
 
     return (
         <canvas
