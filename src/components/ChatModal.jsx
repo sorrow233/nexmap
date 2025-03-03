@@ -582,13 +582,13 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                             </div>
 
                             <div className="p-6 overflow-y-auto custom-scrollbar">
-                                <p className="text-sm text-slate-500 mb-4 font-medium">Select topics to explore further:</p>
-                                <div className="space-y-3">
+                                <p className="text-sm text-slate-500 mb-4 font-medium">Select questions you want answered:</p>
+                                <div className="space-y-2">
                                     {sproutTopics.map((topic, idx) => (
                                         <div
                                             key={idx}
                                             onClick={() => toggleTopicSelection(topic)}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 group
+                                            className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 group
                                                 ${selectedTopics.includes(topic)
                                                     ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10'
                                                     : 'border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-500/30'}`}
@@ -600,7 +600,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                             >
                                                 {selectedTopics.includes(topic) && <Check size={12} strokeWidth={4} />}
                                             </div>
-                                            <span className="text-slate-700 dark:text-slate-200 font-medium leading-tight">{topic}</span>
+                                            <span className="text-slate-700 dark:text-slate-200 font-medium leading-snug text-[15px]">{topic}</span>
                                         </div>
                                     ))}
                                 </div>

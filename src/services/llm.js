@@ -68,44 +68,38 @@ export async function imageGeneration(prompt, model = null, options = {}) {
 }
 
 /**
- * Generate follow-up topics based on conversation history
+ * Generate follow-up questions based on conversation history
  */
 export async function generateFollowUpTopics(messages, model = null, options = {}) {
     try {
-        // Filter out system messages if they might confuse the specific topic generation
-        // But context is important, so we keep them but append our instruction
+        const systemPrompt = `Based on the conversation history, predict the top 5 questions the user is most likely to ask next.
 
-        // We need to provide a very strict system prompt
-        const systemPrompt = `You are a creative conversation partner.
-Based on the conversation history provided, suggest 5 distinct, intriguing follow-up topics or sub-questions that the user might want to explore next.
-The topics should be short (3-8 words), relevant, and diverse.
-Return STRICTLY a JSON array of strings, e.g., ["Topic A", "Topic B", ...].
-Do not include any explanation, markdown formatting, or code blocks. Just the raw JSON array.`;
+Requirements:
+- Questions should be short (5-10 words)
+- Must be highly contextual and specific to this conversation
+- Cover different angles: implementation, troubleshooting, principles, alternatives, extensions
+- Return ONLY a JSON array of strings: ["Question 1?", "Question 2?", ...]
+- No explanations, no markdown, just the array`;
 
-        // Create a new message list for this specific task
         const taskMessages = [
-            ...messages,
+            ...messages.slice(-10), // Last 10 messages for context
             { role: 'system', content: systemPrompt }
         ];
 
-        // If the model supports JSON mode natively, we could use it, but for now we prompt engineering
-        // Use a high-intelligence model if possible, or the current model
         const response = await chatCompletion(taskMessages, model, options);
-
-        // Clean up response just in case
         let cleanResponse = response.trim();
-        // Remove markdown code blocks if present
+
         if (cleanResponse.startsWith('```json')) {
             cleanResponse = cleanResponse.replace(/^```json/, '').replace(/```$/, '');
         } else if (cleanResponse.startsWith('```')) {
             cleanResponse = cleanResponse.replace(/^```/, '').replace(/```$/, '');
         }
 
-        return JSON.parse(cleanResponse);
+        const parsed = JSON.parse(cleanResponse);
+        return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
         console.error("Failed to generate follow-up topics:", e);
-        // Fallback topics if parsing fails
-        return ["Tell me more", "Explain the details", "What are the examples?", "Related concepts", "Why is this important?"];
+        return ["Tell me more", "Show me examples", "What are the risks?", "Are there alternatives?", "How does it work?"];
     }
 }
 

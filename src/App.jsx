@@ -561,40 +561,30 @@ function AppContent() {
         if (!source || !topics.length) return;
         const activeConfig = getActiveConfig();
 
-        // Position logic: similar to Expand Topics, vertical stack to the right
-        // We use a slight offset or randomness to look organic? No, clean alignment is better.
-        // We reuse the centering logic:
-        // Y start = Center Y - (Total Height / 2)
-        const CARD_HEIGHT = 400; // Estimate height + gap
+        const CARD_HEIGHT = 400;
         const totalHeight = topics.length * CARD_HEIGHT;
         const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
 
-        const promises = topics.map(async (topic, index) => {
+        // Create cards and generate answers for all selected questions
+        const promises = topics.map(async (question, index) => {
             try {
                 const newY = startY + (index * CARD_HEIGHT);
+                const newId = (Date.now() + index).toString();
 
-                // Add a slight random x offset for organic feel?
-                // const randomX = Math.random() * 40 - 20;
-
-                // Context aware prompt?
-                // We want the AI to start talking about this topic.
-                // If we just send the topic name, the AI will likely explain it.
-                // We also pass contextPrefix from the parent card to maintain continuity?
-                // The createAICard already supports contextPrefix, but we might want to fetch it fresh.
-                // For now, let's keep it simple: new card linked to parent.
-
-                const newId = await createAICard({
-                    text: topic,
-                    x: source.x + 450, // Slightly more to the right
+                // Create the card with the question
+                await createAICard({
+                    id: newId,
+                    text: question,
+                    x: source.x + 450,
                     y: newY,
-                    autoConnections: [{ from: sourceId, to: Date.now().toString() + index }],
+                    autoConnections: [{ from: sourceId, to: newId }],
                     model: activeConfig.model,
                     providerId: activeConfig.id
                 });
 
-                // We trigger the chat immediately
+                // Auto-generate the answer (this is the key part!)
                 await streamChatCompletion(
-                    [{ role: 'user', content: topic }],
+                    [{ role: 'user', content: question }],
                     (chunk) => updateCardContent(newId, chunk),
                     activeConfig.model,
                     { providerId: activeConfig.id }
