@@ -55,7 +55,26 @@ export const uploadImageToS3 = async (file) => {
         // ACL is often not supported by R2/S3 depending on bucket settings, so we default to bucket policy
     });
 
-    await client.send(command);
+    try {
+        await client.send(command);
+    } catch (error) {
+        // Enhanced CORS error detection and guidance
+        if (error.message && (error.message.includes('CORS') || error.name === 'TypeError' && error.message.includes('Failed to fetch'))) {
+            console.error('❌ [S3 Upload] CORS Error Detected');
+            console.error('📋 [S3 Upload] Your image storage requires CORS configuration.');
+            console.error('🔧 [S3 Upload] For Huawei Cloud OBS:');
+            console.error('   1. Go to https://console.huaweicloud.com/obs/');
+            console.error(`   2. Select bucket: ${bucket}`);
+            console.error('   3. Navigate to: 权限管理 → 跨域资源共享(CORS)');
+            console.error('   4. Add CORS rule with AllowedOrigin: ' + window.location.origin);
+            console.error('💡 [S3 Upload] Images will still work via base64 fallback.');
+
+            const corsError = new Error('CORS_ERROR: S3 upload blocked. Configure CORS in your bucket settings.');
+            corsError.isCorsError = true;
+            throw corsError;
+        }
+        throw error;
+    }
 
     // Construct Public URL
     if (publicDomain) {
