@@ -556,6 +556,57 @@ function AppContent() {
         await Promise.all(promises);
     };
 
+    const handleSprout = async (sourceId, topics) => {
+        const source = cards.find(c => c.id === sourceId);
+        if (!source || !topics.length) return;
+        const activeConfig = getActiveConfig();
+
+        // Position logic: similar to Expand Topics, vertical stack to the right
+        // We use a slight offset or randomness to look organic? No, clean alignment is better.
+        // We reuse the centering logic:
+        // Y start = Center Y - (Total Height / 2)
+        const CARD_HEIGHT = 400; // Estimate height + gap
+        const totalHeight = topics.length * CARD_HEIGHT;
+        const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
+
+        const promises = topics.map(async (topic, index) => {
+            try {
+                const newY = startY + (index * CARD_HEIGHT);
+
+                // Add a slight random x offset for organic feel?
+                // const randomX = Math.random() * 40 - 20;
+
+                // Context aware prompt?
+                // We want the AI to start talking about this topic.
+                // If we just send the topic name, the AI will likely explain it.
+                // We also pass contextPrefix from the parent card to maintain continuity?
+                // The createAICard already supports contextPrefix, but we might want to fetch it fresh.
+                // For now, let's keep it simple: new card linked to parent.
+
+                const newId = await createAICard({
+                    text: topic,
+                    x: source.x + 450, // Slightly more to the right
+                    y: newY,
+                    autoConnections: [{ from: sourceId, to: Date.now().toString() + index }],
+                    model: activeConfig.model,
+                    providerId: activeConfig.id
+                });
+
+                // We trigger the chat immediately
+                await streamChatCompletion(
+                    [{ role: 'user', content: topic }],
+                    (chunk) => updateCardContent(newId, chunk),
+                    activeConfig.model,
+                    { providerId: activeConfig.id }
+                );
+            } catch (e) {
+                console.error("Sprout creation failed", e);
+            }
+        });
+
+        await Promise.all(promises);
+    };
+
     return (
         <React.Fragment>
             <Routes>
@@ -620,7 +671,7 @@ function AppContent() {
             </Routes>
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} />
             {expandedCardId && (
-                <ChatModal card={cards.find(c => c.id === expandedCardId)} isOpen={!!expandedCardId} onClose={() => setExpandedCardId(null)} onUpdate={updateCardFull} onGenerateResponse={handleChatGenerate} isGenerating={generatingCardIds.has(expandedCardId)} onCreateNote={handleCreateNote} />
+                <ChatModal card={cards.find(c => c.id === expandedCardId)} isOpen={!!expandedCardId} onClose={() => setExpandedCardId(null)} onUpdate={updateCardFull} onGenerateResponse={handleChatGenerate} isGenerating={generatingCardIds.has(expandedCardId)} onCreateNote={handleCreateNote} onSprout={handleSprout} />
             )}
         </React.Fragment>
     );
