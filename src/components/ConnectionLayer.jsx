@@ -38,11 +38,28 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
         window.addEventListener('resize', resize);
 
         // Create a lookup for card positions for O(1) access
-        // We rebuild this only when cards change (dependency array)
         const cardMap = new Map();
         cards.forEach(c => cardMap.set(c.id, c));
 
-        // Main render loop
+        // ========== PATH CACHING OPTIMIZATION ==========
+        // Compute all connection paths ONCE when cards or connections change
+        // This is the key optimization: paths are NOT recomputed on canvas pan/zoom
+        const pathCache = new Map();
+
+        connections.forEach(conn => {
+            const fromCard = cardMap.get(conn.from);
+            const toCard = cardMap.get(conn.to);
+            if (!fromCard || !toCard) return;
+
+            const { source, target } = getBestAnchorPair(fromCard, toCard);
+            const pathData = generateBezierPath(source, target);
+            const path = new Path2D(pathData);
+
+            pathCache.set(`${conn.from}-${conn.to}`, path);
+        });
+        // ================================================
+
+        // Main render loop - now only handles drawing, not path computation
         const loop = () => {
             // Use plain offset and scale values
             const cx = offset?.x ?? 0;
@@ -57,7 +74,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             ) {
                 ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-                if (connections.length > 0) {
+                if (pathCache.size > 0) {
                     ctx.save();
                     ctx.translate(cx, cy);
                     ctx.scale(cs, cs);
@@ -69,16 +86,12 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
+                    // Draw cached paths - NO path computation here!
                     connections.forEach(conn => {
-                        const fromCard = cardMap.get(conn.from);
-                        const toCard = cardMap.get(conn.to);
-                        if (!fromCard || !toCard) return;
-
-                        const { source, target } = getBestAnchorPair(fromCard, toCard);
-                        const pathData = generateBezierPath(source, target);
-
-                        const path = new Path2D(pathData);
-                        ctx.stroke(path);
+                        const cachedPath = pathCache.get(`${conn.from}-${conn.to}`);
+                        if (cachedPath) {
+                            ctx.stroke(cachedPath);
+                        }
                     });
 
                     ctx.restore();

@@ -72,9 +72,16 @@ export async function imageGeneration(prompt, model = null, options = {}) {
  */
 export async function generateFollowUpTopics(messages, model = null, options = {}) {
     try {
-        const systemPrompt = `You are analyzing a conversation. Based on the user's questions and our previous responses, predict the top 5 questions the user is MOST LIKELY to ask next.
+        // Construct a single user message for maximum compatibility
+        // Some models/proxies ignore system messages or handle them poorly
+        const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-CRITICAL RULES:
+        const finalPrompt = `Analyze the following conversation history and predict the top 5 questions the user is MOST LIKELY to ask next.
+
+CONVERSATION HISTORY:
+${contextText}
+
+INSTRUCTIONS:
 1. Questions MUST be directly related to what was just discussed
 2. Questions should be natural follow-ups a human would ask
 3. Be specific - use exact terms/concepts from the conversation
@@ -84,12 +91,9 @@ CRITICAL RULES:
 Return ONLY a JSON array: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
 NO explanations, NO markdown formatting, JUST the JSON array.`;
 
-        const taskMessages = [
-            { role: 'system', content: systemPrompt },
-            ...messages.slice(-10) // Last 10 messages for context
-        ];
+        console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
-        const response = await chatCompletion(taskMessages, model, options);
+        const response = await chatCompletion([{ role: 'user', content: finalPrompt }], model, options);
         console.log('[Sprout Debug] Raw AI response:', response);
 
         if (!response || response.trim().length === 0) {
