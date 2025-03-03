@@ -368,16 +368,108 @@ export async function streamChatCompletion(messages, onToken, model = null, conf
     console.log('[LLM] Stream Completion:', { model: modelToUse, baseUrl, protocol });
 
     if (protocol === 'gemini') {
-        // Pseudo-streaming for Gemini
-        const fullText = await nativeGeminiCompletion(messages, modelToUse, apiKey, baseUrl, config);
-        const chunkSize = 15;
-        for (let i = 0; i < fullText.length; i += chunkSize) {
-            const chunk = fullText.slice(i, i + chunkSize);
-            onToken(chunk);
-            await new Promise(resolve => setTimeout(resolve, 8));
-        }
+        await nativeGeminiStreamingCompletion(messages, onToken, modelToUse, apiKey, baseUrl, config);
     } else {
         await openAIStreamingCompletion(messages, onToken, modelToUse, apiKey, baseUrl, config);
+    }
+}
+
+/**
+ * Native Gemini streaming with real ReadableStream
+ */
+async function nativeGeminiStreamingCompletion(messages, onToken, model, apiKey, baseUrl, config = {}) {
+    let cleanModel = (baseUrl.indexOf('gmi') !== -1)
+        ? model.replace('google/', '')
+        : model;
+
+    const authMethod = getAuthMethod(baseUrl);
+
+    // Use streamGenerateContent endpoint for true streaming
+    let endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:streamGenerateContent`;
+    if (authMethod === 'query') {
+        endpoint += `?key=${apiKey}`;
+    }
+
+    const resolvedMessages = await resolveRemoteImages(messages);
+    const { contents, systemInstruction } = formatGeminiMessages(resolvedMessages);
+
+    const requestBody = {
+        contents: contents,
+        tools: [{ google_search: {} }],
+        generationConfig: {
+            temperature: config.temperature !== undefined ? config.temperature : 0.7,
+            maxOutputTokens: 8192
+        }
+    };
+
+    if (systemInstruction) {
+        requestBody.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+        };
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (authMethod === 'bearer') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        let errorMsg = 'Streaming API request failed';
+        try {
+            const err = await response.json();
+            errorMsg = err.error?.message || JSON.stringify(err);
+        } catch (e) {
+            errorMsg = await response.text();
+        }
+        throw new Error(errorMsg);
+    }
+
+    // Parse the ReadableStream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n').filter(line => line.trim());
+
+            for (const line of lines) {
+                try {
+                    // Gemini streaming returns JSON objects, sometimes wrapped in arrays
+                    const data = JSON.parse(line);
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        onToken(text);
+                    }
+                } catch (parseError) {
+                    // Sometimes responses are wrapped in arrays or have extra formatting
+                    // Try to extract JSON from the line
+                    const jsonMatch = line.match(/\{.*\}/);
+                    if (jsonMatch) {
+                        try {
+                            const data = JSON.parse(jsonMatch[0]);
+                            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (text) {
+                                onToken(text);
+                            }
+                        } catch (e) {
+                            console.warn('[Gemini Stream] Failed to parse chunk:', line.substring(0, 100));
+                        }
+                    }
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
     }
 }
 
