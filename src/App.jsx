@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore } from './store/useStore';
+import { useStore, undo, redo } from './store/useStore';
 import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote, Plus } from 'lucide-react';
 import Canvas from './components/Canvas';
 import ChatModal from './components/ChatModal';
@@ -205,7 +205,7 @@ function AppContent() {
         offset, setOffset,
         scale, setScale,
         isSettingsOpen, setIsSettingsOpen,
-        addToHistory, undo, redo
+        undo, redo
     } = useStore();
 
     // Persist canvas state
@@ -276,7 +276,7 @@ function AppContent() {
 
         const newCardState = [...cards, ...newCards];
         setCards(newCardState);
-        addToHistory(newCardState, connections);
+        // History is now automatically tracked by zundo
 
         // Select newly pasted cards
         setSelectedIds(newCards.map(c => c.id));
@@ -352,7 +352,7 @@ function AppContent() {
                     }
                     if (added) {
                         setConnections(newConns);
-                        addToHistory(cards, newConns);
+                        // History automatically tracked by zundo
                         console.log(`[Batch Link] Created links for ${selectedIds.length} cards`);
                     }
                 } else if (selectedIds.length === 1) {
@@ -373,7 +373,7 @@ function AppContent() {
                     );
                     if (newConns.length !== connections.length) {
                         setConnections(newConns);
-                        addToHistory(cards, newConns);
+                        // History automatically tracked by zundo
                         console.log(`[Batch Unlink] Removed internal links for ${selectedIds.length} cards`);
                     }
                 } else if (selectedIds.length === 1) {
@@ -382,7 +382,7 @@ function AppContent() {
                     const newConns = connections.filter(c => c.from !== targetId && c.to !== targetId);
                     if (newConns.length !== connections.length) {
                         setConnections(newConns);
-                        addToHistory(cards, newConns);
+                        // History automatically tracked by zundo
                         console.log(`[Single Unlink] Removed all links for card ${targetId}`);
                     }
                 }
@@ -597,7 +597,7 @@ function AppContent() {
 
                     if (!exists) {
                         const newConns = [...prevConns, { from: connectionStartId, to: sourceId }];
-                        addToHistory(cards, newConns);
+                        // History automatically tracked by zundo
                         localStorage.setItem('hasUsedConnections', 'true');
                         return newConns;
                     }
@@ -771,7 +771,7 @@ function AppContent() {
                     data: { ...existingNote.data, content: currentContent + newEntry }
                 };
                 const newCardsState = prevCards.map(c => c.id === existingNote.id ? updatedNote : c);
-                addToHistory(newCardsState, connections);
+                // History automatically tracked by zundo
                 return newCardsState;
             } else {
                 const newId = Date.now();
@@ -790,7 +790,7 @@ function AppContent() {
                     data: { content: prefixedContent, image: null }
                 };
                 const newCardsState = [...prevCards, newNote];
-                addToHistory(newCardsState, connections);
+                // History automatically tracked by zundo
                 return newCardsState;
             }
         });
@@ -852,7 +852,7 @@ function AppContent() {
                 }, 100);
             }
             setConnections(nextConnections);
-            addToHistory(nextCards, nextConnections);
+            // History automatically tracked
             return nextCards;
         });
     };
@@ -863,7 +863,7 @@ function AppContent() {
         setCards(newCards);
         setConnections(newConnections);
         setSelectedIds(prev => prev.filter(sid => sid !== id));
-        addToHistory(newCards, newConnections);
+        // History automatically tracked by zundo
     };
 
     // Chat completion wrapper for existing cards (ChatModal) to use connections
@@ -946,7 +946,7 @@ function AppContent() {
     };
 
     const handleCardMoveEnd = () => {
-        addToHistory(cards, connections);
+        // History automatically tracked by zundo
     };
 
     const handleBatchDelete = () => {
@@ -956,7 +956,7 @@ function AppContent() {
                 const newConnections = prevConns.filter(c =>
                     selectedIds.indexOf(c.from) === -1 && selectedIds.indexOf(c.to) === -1
                 );
-                addToHistory(newCards, newConnections);
+                // History automatically tracked
                 return newConnections;
             });
             setSelectedIds([]);
