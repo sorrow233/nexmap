@@ -85,8 +85,8 @@ Return ONLY a JSON array: ["Question 1?", "Question 2?", "Question 3?", "Questio
 NO explanations, NO markdown formatting, JUST the JSON array.`;
 
         const taskMessages = [
-            ...messages.slice(-10), // Last 10 messages for context
-            { role: 'system', content: systemPrompt }
+            { role: 'system', content: systemPrompt },
+            ...messages.slice(-10) // Last 10 messages for context
         ];
 
         const response = await chatCompletion(taskMessages, model, options);
