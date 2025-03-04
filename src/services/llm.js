@@ -11,8 +11,17 @@ export const getApiConfig = getActiveConfig;
  */
 function getConfigByRole(role = 'chat') {
     const settings = getProviderSettings();
-    const roleId = (settings.roles && settings.roles[role]) ? settings.roles[role] : settings.activeId;
-    return settings.providers[roleId] || DEFAULT_PROVIDERS['google'];
+    const roleConfig = settings.roles && settings.roles[role]
+        ? settings.roles[role]
+        : { providerId: settings.activeId, model: null };
+
+    const provider = settings.providers[roleConfig.providerId] || DEFAULT_PROVIDERS['google'];
+
+    // Override model if role specifies one
+    return {
+        ...provider,
+        model: roleConfig.model || provider.model
+    };
 }
 
 /**
