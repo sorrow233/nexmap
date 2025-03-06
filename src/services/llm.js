@@ -1,7 +1,7 @@
-import { getProviderSettings, saveProviderSettings, getActiveConfig, DEFAULT_PROVIDERS } from './llm/registry';
+import { getProviderSettings, saveProviderSettings, getActiveConfig, getRoleModel, DEFAULT_PROVIDERS } from './llm/registry';
 import { ModelFactory } from './llm/factory';
 
-export { getProviderSettings, saveProviderSettings, getActiveConfig };
+export { getProviderSettings, saveProviderSettings, getActiveConfig, getRoleModel };
 
 // Backwards compatibility alias
 export const getApiConfig = getActiveConfig;
@@ -10,25 +10,14 @@ export const getApiConfig = getActiveConfig;
  * Main chat completion function
  */
 export async function chatCompletion(messages, model = null, options = {}) {
-    let apiConfig;
-
-    if (options.providerId) {
-        const settings = getProviderSettings();
-        apiConfig = settings.providers[options.providerId];
-    } else if (options.overrideConfig) {
-        apiConfig = options.overrideConfig;
-    } else {
-        apiConfig = getActiveConfig();
-    }
-
-    if (!apiConfig) apiConfig = getActiveConfig();
-
+    const apiConfig = options.overrideConfig || getActiveConfig();
     const provider = ModelFactory.getProvider(apiConfig);
     return provider.chat(messages, model, options);
 }
 
 /**
- * Streaming chat completion
+ * Streaming chat completion - used for main conversations
+ * Defaults to 'chat' role model
  */
 export async function streamChatCompletion(messages, onToken, model = null, options = {}) {
     let apiConfig;
@@ -42,14 +31,16 @@ export async function streamChatCompletion(messages, onToken, model = null, opti
         apiConfig = getActiveConfig();
     }
 
-    if (!apiConfig) apiConfig = getActiveConfig();
+    // Use role-based model selection if no explicit model provided
+    const finalModel = model || getRoleModel('chat');
 
     const provider = ModelFactory.getProvider(apiConfig);
-    return provider.stream(messages, onToken, model, options);
+    return provider.stream(messages, onToken, finalModel, options);
 }
 
 /**
  * Generate an image from a prompt
+ * Uses 'image' role model
  */
 export async function imageGeneration(prompt, model = null, options = {}) {
     const apiConfig = options.providerId
@@ -60,12 +51,16 @@ export async function imageGeneration(prompt, model = null, options = {}) {
         throw new Error(`Provider is not configured or missing API Key.`);
     }
 
+    // Use role-based model for image generation
+    const finalModel = model || getRoleModel('image');
+
     const provider = ModelFactory.getProvider(apiConfig);
-    return provider.generateImage(prompt, model, options);
+    return provider.generateImage(prompt, finalModel, options);
 }
 
 /**
  * Generate follow-up questions based on conversation history
+ * Uses 'analysis' role model for better reasoning
  */
 export async function generateFollowUpTopics(messages, model = null, options = {}) {
     try {
@@ -88,9 +83,12 @@ NO explanations, NO markdown formatting, JUST the JSON array.`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
+        // Use 'analysis' role for better reasoning on follow-up questions
+        const finalModel = model || getRoleModel('analysis');
+
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
-            model,
+            finalModel,
             options
         );
         console.log('[Sprout Debug] Raw AI response:', response);
@@ -139,6 +137,7 @@ if (typeof window !== 'undefined') {
         saveProviderSettings,
         getActiveConfig,
         getApiConfig,
+        getRoleModel,
         chatCompletion,
         streamChatCompletion,
         imageGeneration,

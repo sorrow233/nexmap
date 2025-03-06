@@ -11,6 +11,12 @@ export const DEFAULT_PROVIDERS = {
     }
 };
 
+export const DEFAULT_ROLES = {
+    chat: 'google/gemini-3-flash-preview',
+    analysis: 'google/gemini-3-flash-preview',
+    image: 'google/gemini-3-flash-preview'
+};
+
 export const getProviderSettings = () => {
     try {
         const stored = localStorage.getItem(CONFIG_KEY);
@@ -28,19 +34,26 @@ export const getProviderSettings = () => {
 
                     return {
                         providers: migrated,
-                        activeId: 'google'
+                        activeId: 'google',
+                        roles: { ...DEFAULT_ROLES }
                     };
                 } catch (e) { console.warn('Migration failed', e); }
             }
             return {
                 providers: DEFAULT_PROVIDERS,
-                activeId: 'google'
+                activeId: 'google',
+                roles: DEFAULT_ROLES
             };
         }
 
-        // Clean up old roles data if exists
-        if (settings.roles) {
-            delete settings.roles;
+        // Add roles if missing
+        if (!settings.roles) {
+            const defaultModel = settings.providers[settings.activeId]?.model || 'google/gemini-3-flash-preview';
+            settings.roles = {
+                chat: defaultModel,
+                analysis: defaultModel,
+                image: defaultModel
+            };
         }
 
         return settings;
@@ -48,16 +61,23 @@ export const getProviderSettings = () => {
         console.error('[LLM Config] Load failed:', e);
         return {
             providers: DEFAULT_PROVIDERS,
-            activeId: 'google'
+            activeId: 'google',
+            roles: DEFAULT_ROLES
         };
     }
 };
 
-export const saveProviderSettings = (providers, activeId) => {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify({ providers, activeId }));
+export const saveProviderSettings = (providers, activeId, roles) => {
+    const newRoles = roles || DEFAULT_ROLES;
+    localStorage.setItem(CONFIG_KEY, JSON.stringify({ providers, activeId, roles: newRoles }));
 };
 
 export const getActiveConfig = () => {
     const { providers, activeId } = getProviderSettings();
     return providers[activeId] || DEFAULT_PROVIDERS['google'];
+};
+
+export const getRoleModel = (role) => {
+    const settings = getProviderSettings();
+    return settings.roles?.[role] || DEFAULT_ROLES[role] || 'google/gemini-3-flash-preview';
 };
