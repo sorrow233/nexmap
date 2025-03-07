@@ -8,7 +8,9 @@ import { useStore } from './store/useStore';
 import { useCardCreator } from './hooks/useCardCreator';
 import GalleryPage from './pages/GalleryPage';
 import BoardPage from './pages/BoardPage';
+import ModernDialog from './components/ModernDialog';
 import { createBoard, saveBoardToCloud, saveBoard, loadBoard, deleteBoard, deleteBoardFromCloud, setCurrentBoardId as storageSetCurrentBoardId } from './services/storage';
+import { useState } from 'react';
 
 export default function App() {
     return (
@@ -25,10 +27,19 @@ function AppContent() {
     const { setCards, setConnections } = useStore();
     const { createCardWithText } = useCardCreator();
 
+    // Dialog State
+    const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => { } });
+
+    const showDialog = (title, message, type = 'info', onConfirm = () => { }) => {
+        setDialog({ isOpen: true, title, message, type, onConfirm });
+    };
+
     // Board Management Handlers
     const handleLogin = async () => {
         try { await signInWithPopup(auth, googleProvider); }
-        catch (e) { alert("Login failed: " + e.message); }
+        catch (e) {
+            showDialog("Login Failed", e.message, "error");
+        }
     };
 
     const handleLogout = async () => {
@@ -37,8 +48,10 @@ function AppContent() {
     };
 
     const handleCreateBoard = async (customName = null, initialPrompt = null, initialImages = []) => {
-        let name = customName || prompt('Name your board:', `Board ${boardsList.length + 1}`);
-        if (!name) return;
+        let name = customName;
+        if (!name) {
+            name = `Board ${boardsList.length + 1}`;
+        }
 
         const newBoard = await createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
@@ -75,10 +88,16 @@ function AppContent() {
     }, [currentBoardId]); // Rely on currentBoardId changing
 
     const handleDeleteBoard = async (id) => {
-        if (!confirm('Are you sure?')) return;
-        await deleteBoard(id);
-        if (user) deleteBoardFromCloud(user.uid, id);
-        setBoardsList(prev => prev.filter(b => b.id !== id));
+        showDialog(
+            "Delete Board?",
+            "This will permanently delete this board and all its cards. This action cannot be undone.",
+            "confirm",
+            async () => {
+                await deleteBoard(id);
+                if (user) deleteBoardFromCloud(user.uid, id);
+                setBoardsList(prev => prev.filter(b => b.id !== id));
+            }
+        );
     };
 
     const handleBackToGallery = async () => {
@@ -108,28 +127,39 @@ function AppContent() {
     if (!isInitialized) return null; // Or a loading spinner
 
     return (
-        <Routes>
-            <Route path="/gallery" element={
-                <GalleryPage
-                    boardsList={boardsList}
-                    onCreateBoard={handleCreateBoard}
-                    onSelectBoard={handleSelectBoard}
-                    onDeleteBoard={handleDeleteBoard}
-                    user={user}
-                    onLogin={handleLogin}
-                    onLogout={handleLogout}
-                />
-            } />
-            <Route path="/board/:id" element={
-                <BoardPage
-                    user={user}
-                    boardsList={boardsList}
-                    onUpdateBoardTitle={handleUpdateBoardTitle}
-                    onBack={handleBackToGallery}
-                />
-            } />
-            <Route path="*" element={<Navigate to="/gallery" replace />} />
-        </Routes>
+        <>
+            <Routes>
+                <Route path="/gallery" element={
+                    <GalleryPage
+                        boardsList={boardsList}
+                        onCreateBoard={handleCreateBoard}
+                        onSelectBoard={handleSelectBoard}
+                        onDeleteBoard={handleDeleteBoard}
+                        user={user}
+                        onLogin={handleLogin}
+                        onLogout={handleLogout}
+                    />
+                } />
+                <Route path="/board/:id" element={
+                    <BoardPage
+                        user={user}
+                        boardsList={boardsList}
+                        onUpdateBoardTitle={handleUpdateBoardTitle}
+                        onBack={handleBackToGallery}
+                    />
+                } />
+                <Route path="*" element={<Navigate to="/gallery" replace />} />
+            </Routes>
+
+            <ModernDialog
+                isOpen={dialog.isOpen}
+                onClose={() => setDialog({ ...dialog, isOpen: false })}
+                onConfirm={dialog.onConfirm}
+                title={dialog.title}
+                message={dialog.message}
+                type={dialog.type}
+            />
+        </>
     );
 }
 

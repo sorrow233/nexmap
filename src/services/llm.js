@@ -1,7 +1,7 @@
-import { getProviderSettings, saveProviderSettings, getActiveConfig, getRoleModel, DEFAULT_PROVIDERS } from './llm/registry';
+import { getProviderSettings, saveProviderSettings, getActiveConfig, getRoleModel, DEFAULT_PROVIDERS, DEFAULT_ROLES } from './llm/registry';
 import { ModelFactory } from './llm/factory';
 
-export { getProviderSettings, saveProviderSettings, getActiveConfig, getRoleModel };
+export { getProviderSettings, saveProviderSettings, getActiveConfig, getRoleModel, DEFAULT_ROLES };
 
 // Backwards compatibility alias
 export const getApiConfig = getActiveConfig;

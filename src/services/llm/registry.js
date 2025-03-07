@@ -79,5 +79,12 @@ export const getActiveConfig = () => {
 
 export const getRoleModel = (role) => {
     const settings = getProviderSettings();
-    return settings.roles?.[role] || DEFAULT_ROLES[role] || 'google/gemini-3-flash-preview';
+    // If user explicitly set a model (even if empty), use it. Otherwise use default.
+    const roleModel = settings.roles?.[role];
+    if (roleModel !== undefined && roleModel !== null && roleModel !== '') {
+        return roleModel;
+    }
+    // Fallback to provider's default model or system default
+    const activeProvider = settings.providers[settings.activeId];
+    return activeProvider?.model || DEFAULT_ROLES[role] || 'google/gemini-3-flash-preview';
 };
