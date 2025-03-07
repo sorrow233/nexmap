@@ -259,7 +259,7 @@ function AppContent() {
         // Let's offset by 20px.
 
         const newCards = clipboard.map((card, index) => {
-            const newId = Date.now() + Math.random();
+            const newId = (Date.now() + Math.random()).toString();
             // Paste near center of viewport
             const centerX = (window.innerWidth / 2 - offset.x) / scale;
             const centerY = (window.innerHeight / 2 - offset.y) / scale;
@@ -698,14 +698,17 @@ function AppContent() {
         const targetImages = [...images];
         setGlobalImages([]);
 
+        const newId = Date.now().toString();
+
         try {
-            const newId = await createAICard({
+            await createAICard({
+                id: newId,
                 text: currentPrompt,
                 x: Math.max(0, initialX),
                 y: Math.max(0, initialY),
                 images: targetImages,
                 contextPrefix,
-                autoConnections: selectedIds.map(sid => ({ from: sid, to: Date.now() })),
+                autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
                 model: activeConfig.model,
                 providerId: activeConfig.id
             });
@@ -755,7 +758,7 @@ function AppContent() {
                 // History automatically tracked by zundo
                 return newCardsState;
             } else {
-                const newId = Date.now();
+                const newId = Date.now().toString();
                 const sequence = "01";
                 const prefixedContent = initialContent ? `${sequence}. ${initialContent} ` : `${sequence}.`;
                 const centerX = (window.innerWidth / 2 - offset.x) / scale - 140;
@@ -807,7 +810,7 @@ function AppContent() {
 
             for (let i = 0; i < marks.length; i++) {
                 const mark = marks[i];
-                const newId = Date.now() + i;
+                const newId = (Date.now() + i).toString();
                 const angle = (i / marks.length) * Math.PI * 2;
                 const dist = 400;
                 const newX = sourceCard.x + Math.cos(angle) * dist;
