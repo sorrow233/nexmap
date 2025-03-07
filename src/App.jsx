@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useStore, undo, redo } from './store/useStore';
 import { Settings, Sparkles, Loader2, Trash2, RefreshCw, LayoutGrid, ArrowLeft, ChevronDown, CheckCircle2, AlertCircle, Play, Image as ImageIcon, X, StickyNote, Plus } from 'lucide-react';
 import Canvas from './components/Canvas';
@@ -8,7 +8,7 @@ import BoardGallery from './components/BoardGallery';
 import SettingsModal from './components/SettingsModal';
 import ChatBar from './components/ChatBar';
 import { auth, googleProvider } from './services/firebase';
-import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
+import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId as storageSetCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
 import {
     chatCompletion,
     streamChatCompletion,
@@ -106,8 +106,14 @@ function AppContent() {
     }, []);
 
 
-    const [view, setView] = useState('gallery'); // 'gallery' | 'canvas'
-    // const [isGenerating, setIsGenerating] = useState(false); // Legacy - using generatingCardIds
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Derived state from URL
+    const boardMatch = location.pathname.match(/^\/board\/([^/]+)/);
+    const currentBoardId = boardMatch ? boardMatch[1] : null;
+    const view = currentBoardId ? 'canvas' : 'gallery';
+
     const [boardsList, setBoardsList] = useState([]);
 
     // Track initialization to avoid first history push being empty
@@ -219,7 +225,6 @@ function AppContent() {
     }, [offset, scale]);
 
     // Local UI state (not in global store)
-    const [currentBoardId, setCurrentBoardId] = useState(null);
     const [expandedCardId, setExpandedCardId] = useState(null);
     const [globalImages, setGlobalImages] = useState([]);
     const { generatingCardIds, setGeneratingCardIds, createAICard, updateCardContent, setCardGenerating } = useStore();
@@ -293,24 +298,35 @@ function AppContent() {
         await handleSelectBoard(newBoard.id);
     };
 
-    // 1. Initial Load
+    // 1. Initial Load & Redirection
     useEffect(() => {
         const init = async () => {
             const list = loadBoardsMetadata();
             setBoardsList(list);
 
-            const lastId = getCurrentBoardId();
-            if (lastId && list.some(b => b.id === lastId)) {
-                await handleSelectBoard(lastId);
-            } else if (list.length === 0) {
-                // Auto create onboarding for new users
-                console.log("[Init] No boards found, creating onboarding guide...");
-                await handleCreateOnboardingBoard();
+            if (location.pathname === '/' || location.pathname === '') {
+                const lastId = getCurrentBoardId();
+                if (lastId && list.some(b => b.id === lastId)) {
+                    navigate(`/board/${lastId}`, { replace: true });
+                } else if (list.length === 0) {
+                    // Auto create onboarding for new users
+                    console.log("[Init] No boards found, creating onboarding guide...");
+                    await handleCreateOnboardingBoard();
+                } else {
+                    navigate('/gallery', { replace: true });
+                }
             }
             setIsInitialized(true);
         };
         init();
     }, []);
+
+    // 1.5 Load Board Data when URL ID changes
+    useEffect(() => {
+        if (currentBoardId) {
+            handleLoadBoard(currentBoardId);
+        }
+    }, [currentBoardId]);
 
     // Global Keyboard Shortcuts
     useEffect(() => {
@@ -515,22 +531,15 @@ function AppContent() {
         }
     };
 
-    const handleSelectBoard = async (id) => {
-        const data = await loadBoard(id);
-        setCards(data.cards || []);
-        setConnections(data.connections || []);
-        setCurrentBoardId(id);
-        // setCurrentBoardId(id); // Duplicate remove
-        setView('canvas');
+    const handleSelectBoard = (id) => {
+        navigate(`/board/${id}`);
     };
 
     const handleLoadBoard = async (id) => { // Renamed from handleSelectBoard for clarity in gallery
         const data = await loadBoard(id);
         setCards(data.cards || []);
         setConnections(data.connections || []);
-        setCurrentBoardId(id);
-        // setCurrentBoardId(id); // Duplicate remove
-        setView('canvas');
+        storageSetCurrentBoardId(id);
     };
 
     const handleDeleteBoard = async (id) => {
@@ -545,10 +554,8 @@ function AppContent() {
     const handleBackToGallery = async () => {
         if (currentBoardId) {
             await saveBoard(currentBoardId, { cards, connections });
-            setCurrentBoardId(null);
         }
-        setView('gallery');
-        setCurrentBoardId(null);
+        navigate('/gallery');
         setCards([]);
         setConnections([]);
     };
@@ -980,177 +987,166 @@ function AppContent() {
         }
     };
 
-    if (view === 'gallery') {
-        return (
-            <React.Fragment>
-                <div className="bg-[#FBFBFC] dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto overflow-x-hidden transition-colors duration-500 custom-scrollbar">
-                    {/* Ambient Background - Softened for light mode */}
-                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/30 dark:bg-blue-600/20 blur-[120px] pointer-events-none"></div>
-                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-100/30 dark:bg-purple-600/20 blur-[120px] pointer-events-none"></div>
-
-                    <div className="max-w-7xl mx-auto relative z-10">
-                        {/* Premium Glass Header */}
-                        <div className="sticky top-0 z-50 flex justify-between items-center mb-16 py-6 border-b border-slate-200/50 dark:border-white/5 bg-[#FBFBFC]/70 dark:bg-slate-950/70 backdrop-blur-xl -mx-8 px-8">
-                            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-purple-400">Neural</span> Canvas
-                            </h1>
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={() => handleCreateBoard("New Board")}
-                                    className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-premium transition-all hover:scale-110"
-                                    title="New Empty Board"
-                                >
-                                    <Plus size={20} />
-                                </button>
-
-                                {user ? (
-                                    <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-2xl pl-2 pr-5 py-2 border border-slate-200/60 dark:border-white/10 shadow-premium">
-                                        {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm" alt="User avatar" />}
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{user.displayName}</span>
-                                            <button onClick={handleLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider mt-1 text-left transition-colors">Sign Out</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={handleLogin}
-                                        className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all"
-                                    >
-                                        Sign In
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <BoardGallery
-                            boards={boardsList}
-                            onCreateBoard={handleCreateBoard}
-                            onSelectBoard={handleLoadBoard}
-                            onDeleteBoard={handleDeleteBoard}
-                        />
-                    </div>
-                </div>
-                <div className="fixed bottom-10 right-10">
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-brand-600 hover:scale-110 transition-all border border-slate-100"
-                        title="Settings"
-                    >
-                        <Settings size={24} />
-                    </button>
-                </div>
-                {isSettingsOpen && (
-                    <SettingsModal
-                        isOpen={isSettingsOpen}
-                        onClose={() => setIsSettingsOpen(false)}
-                        user={user}
-                    />
-                )}</React.Fragment>
-        );
-    }
-
     return (
         <React.Fragment>
-            <Canvas
-                cards={cards}
-                connections={connections}
-                onUpdateCards={setCards}
-                onCardMove={handleCardMove}
-                onDragEnd={handleCardMoveEnd}
-                onExpandCard={setExpandedCardId}
-                onConnect={handleConnect}
-                onDeleteCard={handleDeleteCard}
-                isConnecting={isConnecting}
-                connectionStartId={connectionStartId}
-            />
+            <Routes>
+                <Route path="/gallery" element={
+                    <div className="bg-[#FBFBFC] dark:bg-slate-950 h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto overflow-x-hidden transition-colors duration-500 custom-scrollbar">
+                        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/30 dark:bg-blue-600/20 blur-[120px] pointer-events-none"></div>
+                        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-100/30 dark:bg-purple-600/20 blur-[120px] pointer-events-none"></div>
 
-            {/* Teaching Bubble for Connections */}
-            {/* Teaching Bubble for Connections */}
-            {cards.length > 1 && !localStorage.getItem('hasUsedConnections') && connections.length === 0 && (
-                <div className="fixed bottom-48 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80 z-40">
-                    💡 Tip: Click the "Link" icon on cards to connect them together!
-                </div>
-            )}
+                        <div className="max-w-7xl mx-auto relative z-10">
+                            <div className="sticky top-0 z-50 flex justify-between items-center mb-16 py-6 border-b border-slate-200/50 dark:border-white/5 bg-[#FBFBFC]/70 dark:bg-slate-950/70 backdrop-blur-xl -mx-8 px-8">
+                                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-purple-400">Neural</span> Canvas
+                                </h1>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => handleCreateBoard("New Board")}
+                                        className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-premium transition-all hover:scale-110"
+                                        title="New Empty Board"
+                                    >
+                                        <Plus size={20} />
+                                    </button>
 
-            {/* Premium Top Navigation */}
-            {/* Premium Top Navigation */}
-            <div className="fixed top-6 left-6 z-50 animate-slide-down">
-                <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-1.5 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 group hover:scale-[1.02] transition-transform duration-300">
-                    <button
-                        onClick={handleBackToGallery}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-white/10 hover:text-brand-500 dark:hover:text-brand-300 transition-all active:scale-95"
-                    >
-                        <LayoutGrid size={18} className="text-brand-500 dark:text-brand-400 group-hover:scale-110 transition-transform" />
-                        <span>Gallery</span>
-                    </button>
-
-                    <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
-
-                    <input
-                        type="text"
-                        key={currentBoardId} // Add key to force re-render on board change
-                        defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
-                        onBlur={(e) => handleUpdateBoardTitle(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { handleUpdateBoardTitle(e.target.value); e.target.blur(); } }}
-                        className="bg-transparent border-none outline-none text-slate-800 dark:text-slate-200 font-bold tracking-tight text-sm select-none hover:bg-slate-50 dark:hover:bg-white/5 px-2 py-0.5 rounded transition-colors"
-                    />
-                </div>
-            </div>
-
-
-            {/* Chat Input Bar - Isolated Component to Prevent Typing Lag */}
-            <ChatBar
-                cards={cards}
-                selectedIds={selectedIds}
-                generatingCardIds={generatingCardIds}
-                onSubmit={handleCreateCard}
-                onCreateNote={handleCreateNote}
-                onExpandTopics={handleExpandTopics}
-                onImageUpload={handleGlobalImageUpload}
-                globalImages={globalImages}
-                onRemoveImage={removeGlobalImage}
-            />
-
-            {selectedIds.length > 0 && (
-                <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
-                    <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
-
-                    {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
-                        <>
-                            <div className="h-4 w-px bg-slate-300"></div>
+                                    {user ? (
+                                        <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-2xl pl-2 pr-5 py-2 border border-slate-200/60 dark:border-white/10 shadow-premium">
+                                            {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm" alt="User avatar" />}
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{user.displayName}</span>
+                                                <button onClick={handleLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider mt-1 text-left transition-colors">Sign Out</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={handleLogin}
+                                            className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all"
+                                        >
+                                            Sign In
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <BoardGallery
+                                boards={boardsList}
+                                onCreateBoard={handleCreateBoard}
+                                onSelectBoard={handleSelectBoard}
+                                onDeleteBoard={handleDeleteBoard}
+                            />
+                        </div>
+                        <div className="fixed bottom-10 right-10">
                             <button
-                                onClick={() => handleExpandTopics(selectedIds[0])}
-                                className="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
-                                title="Expand marked topics into new cards"
+                                onClick={() => setIsSettingsOpen(true)}
+                                className="p-4 bg-white shadow-2xl rounded-2xl text-slate-400 hover:text-brand-600 hover:scale-110 transition-all border border-slate-100"
+                                title="Settings"
                             >
-                                <Sparkles size={16} />
-                                <span className="text-sm font-medium">Expand Topic</span>
+                                <Settings size={24} />
                             </button>
-                        </>
-                    )}
+                        </div>
+                    </div>
+                } />
+                <Route path="/board/:id" element={
+                    <React.Fragment>
+                        <Canvas
+                            cards={cards}
+                            connections={connections}
+                            onUpdateCards={setCards}
+                            onCardMove={handleCardMove}
+                            onDragEnd={handleCardMoveEnd}
+                            onExpandCard={setExpandedCardId}
+                            onConnect={handleConnect}
+                            onDeleteCard={handleDeleteCard}
+                            isConnecting={isConnecting}
+                            connectionStartId={connectionStartId}
+                        />
 
-                    <div className="h-4 w-px bg-slate-300"></div>
-                    <button
-                        onClick={handleRegenerate}
-                        className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
-                        title="Regenerate response for selected cards"
-                    >
-                        <RefreshCw size={16} />
-                        <span className="text-sm font-medium">Retry</span>
-                    </button>
-                    <div className="h-4 w-px bg-slate-300"></div>
-                    <button
-                        onClick={handleBatchDelete}
-                        className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                        <Trash2 size={16} />
-                        <span className="text-sm font-medium">Delete</span>
-                    </button>
-                </div>
-            )}
+                        {cards.length > 1 && !localStorage.getItem('hasUsedConnections') && connections.length === 0 && (
+                            <div className="fixed bottom-48 left-1/2 -translate-x-1/2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium animate-fade-in pointer-events-none opacity-80 z-40">
+                                💡 Tip: Click the "Link" icon on cards to connect them together!
+                            </div>
+                        )}
+
+                        <div className="fixed top-6 left-6 z-50 animate-slide-down">
+                            <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-1.5 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 group hover:scale-[1.02] transition-transform duration-300">
+                                <button
+                                    onClick={handleBackToGallery}
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-white/10 hover:text-brand-500 dark:hover:text-brand-300 transition-all active:scale-95"
+                                >
+                                    <LayoutGrid size={18} className="text-brand-500 dark:text-brand-400 group-hover:scale-110 transition-transform" />
+                                    <span>Gallery</span>
+                                </button>
+
+                                <div className="h-6 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+
+                                <input
+                                    type="text"
+                                    key={currentBoardId}
+                                    defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
+                                    onBlur={(e) => handleUpdateBoardTitle(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { handleUpdateBoardTitle(e.target.value); e.target.blur(); } }}
+                                    className="bg-transparent border-none outline-none text-slate-800 dark:text-slate-200 font-bold tracking-tight text-sm select-none hover:bg-slate-50 dark:hover:bg-white/5 px-2 py-0.5 rounded transition-colors"
+                                />
+                            </div>
+                        </div>
+
+                        <ChatBar
+                            cards={cards}
+                            selectedIds={selectedIds}
+                            generatingCardIds={generatingCardIds}
+                            onSubmit={handleCreateCard}
+                            onCreateNote={handleCreateNote}
+                            onExpandTopics={handleExpandTopics}
+                            onImageUpload={handleGlobalImageUpload}
+                            globalImages={globalImages}
+                            onRemoveImage={removeGlobalImage}
+                        />
+
+                        {selectedIds.length > 0 && (
+                            <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
+                                <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
+
+                                {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
+                                    <>
+                                        <div className="h-4 w-px bg-slate-300"></div>
+                                        <button
+                                            onClick={() => handleExpandTopics(selectedIds[0])}
+                                            className="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
+                                            title="Expand marked topics into new cards"
+                                        >
+                                            <Sparkles size={16} />
+                                            <span className="text-sm font-medium">Expand Topic</span>
+                                        </button>
+                                    </>
+                                )}
+
+                                <div className="h-4 w-px bg-slate-300"></div>
+                                <button
+                                    onClick={handleRegenerate}
+                                    className="flex items-center gap-2 text-brand-600 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+                                    title="Regenerate response for selected cards"
+                                >
+                                    <RefreshCw size={16} />
+                                    <span className="text-sm font-medium">Retry</span>
+                                </button>
+                                <div className="h-4 w-px bg-slate-300"></div>
+                                <button
+                                    onClick={handleBatchDelete}
+                                    className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                    <span className="text-sm font-medium">Delete</span>
+                                </button>
+                            </div>
+                        )}
+                    </React.Fragment>
+                } />
+                <Route path="*" element={<Navigate to="/gallery" replace />} />
+            </Routes>
 
             <SettingsModal
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
+                user={user}
             />
 
             {expandedCardId && (
