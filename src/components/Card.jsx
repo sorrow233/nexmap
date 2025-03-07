@@ -251,6 +251,8 @@ const Card = React.memo(function Card({
                                     src={cardContent.imageUrl}
                                     className="w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110"
                                     alt={cardContent.prompt}
+                                    draggable="false"
+                                    onMouseDown={(e) => e.preventDefault()}
                                 />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
                                     <button
