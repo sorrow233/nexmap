@@ -21,7 +21,8 @@ export default function Canvas({
         offset, scale, setOffset, setScale,
         selectedIds, setSelectedIds,
         interactionMode, setInteractionMode,
-        selectionRect, setSelectionRect
+        selectionRect, setSelectionRect,
+        generatingCardIds
     } = useStore();
 
     const canvasRef = useRef(null);
@@ -154,12 +155,13 @@ export default function Canvas({
         return cards.filter(card => {
             // Selected cards or generating cards always render to avoid UI glitches
             if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;
+            if (generatingCardIds && generatingCardIds.has(card.id)) return true;
 
             // Basic culling
             const rect = getCardRect(card);
             return isRectIntersect(viewportRect, rect);
         });
-    }, [cards, offset, scale, selectedIds]);
+    }, [cards, offset, scale, selectedIds, generatingCardIds]);
 
     return (
         <div
