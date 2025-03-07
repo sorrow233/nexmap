@@ -13,8 +13,7 @@ export const DEFAULT_PROVIDERS = {
 
 export const DEFAULT_ROLES = {
     chat: 'google/gemini-3-flash-preview',
-    analysis: 'google/gemini-3-flash-preview',
-    image: 'google/gemini-3-flash-preview'
+    analysis: 'google/gemini-3-flash-preview'
 };
 
 export const getProviderSettings = () => {
@@ -51,8 +50,7 @@ export const getProviderSettings = () => {
             const defaultModel = settings.providers[settings.activeId]?.model || 'google/gemini-3-flash-preview';
             settings.roles = {
                 chat: defaultModel,
-                analysis: defaultModel,
-                image: defaultModel
+                analysis: defaultModel
             };
         }
 
