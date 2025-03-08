@@ -33,15 +33,15 @@ body,
 
 @layer utilities {
     .shadow-premium {
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 4px 20px rgba(74, 74, 74, 0.03), 0 1px 6px rgba(74, 74, 74, 0.02);
     }
 
     .shadow-premium-hover {
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 10px 20px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 12px 32px rgba(74, 74, 74, 0.06), 0 4px 16px rgba(255, 180, 162, 0.08);
     }
 
     .shadow-glow-blue {
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.15), 0 0 40px rgba(59, 130, 246, 0.05);
+        box-shadow: 0 0 24px rgba(255, 180, 162, 0.15), 0 0 48px rgba(255, 180, 162, 0.08);
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -61,82 +61,82 @@ body,
         background-color: rgba(148, 163, 184, 0.5);
     }
 
-    /* --- Premium Glassmorphism --- */
+    /* --- Premium Glassmorphism --- Japanese Style */
     .glass-panel {
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 254, 249, 0.75);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        border: 1.5px solid rgba(255, 180, 162, 0.12);
+        box-shadow: 0 8px 32px 0 rgba(74, 74, 74, 0.05), 0 2px 12px rgba(255, 180, 162, 0.08);
     }
 
     .dark .glass-panel {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        background: rgba(42, 37, 32, 0.7);
+        border: 1.5px solid rgba(255, 180, 162, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
     }
 
     .glass-card {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
+        background: linear-gradient(135deg, rgba(255, 254, 249, 0.85) 0%, rgba(250, 248, 243, 0.75) 100%);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+        border: 1.5px solid rgba(255, 180, 162, 0.15);
+        box-shadow: 0 4px 20px rgba(74, 74, 74, 0.04), 0 2px 8px rgba(74, 74, 74, 0.02);
     }
 
     .dark .glass-card {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.2) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(135deg, rgba(58, 52, 47, 0.6) 0%, rgba(42, 37, 32, 0.4) 100%);
+        border: 1.5px solid rgba(255, 180, 162, 0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     }
 
     .glass-card-hover {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 100%);
-        border-color: rgba(255, 255, 255, 0.6);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-        transform: translateY(-4px);
+        background: linear-gradient(135deg, rgba(255, 254, 249, 0.95) 0%, rgba(255, 244, 235, 0.85) 100%);
+        border-color: rgba(255, 180, 162, 0.25);
+        box-shadow: 0 8px 32px rgba(255, 180, 162, 0.12), 0 4px 16px rgba(74, 74, 74, 0.06);
+        transform: translateY(-6px);
     }
 
     .dark .glass-card-hover {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%);
-        border-color: rgba(255, 255, 255, 0.1);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        background: linear-gradient(135deg, rgba(58, 52, 47, 0.8) 0%, rgba(42, 37, 32, 0.6) 100%);
+        border-color: rgba(255, 180, 162, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
-    /* --- Text Gradients --- */
+    /* --- Text Gradients --- Japanese Warm Tones */
     .text-gradient {
-        background: linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%);
+        background: linear-gradient(135deg, #FF9D80 0%, #FFB4A2 50%, #FF8A73 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
 
     .dark .text-gradient {
-        background: linear-gradient(135deg, #60a5fa 0%, #818cf8 50%, #a78bfa 100%);
+        background: linear-gradient(135deg, #FFB4A2 0%, #FFC9BA 50%, #FFD4C8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
 
-    /* --- Animated Background --- */
+    /* --- Animated Background --- Japanese Style */
     .bg-mesh-gradient {
-        background-color: #f8fafc;
+        background-color: #FAF8F3;
         background-image:
-            radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(124, 58, 237, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
-            radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%);
+            radial-gradient(at 0% 0%, rgba(255, 180, 162, 0.12) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(180, 199, 217, 0.12) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(255, 228, 225, 0.15) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, rgba(200, 230, 201, 0.12) 0px, transparent 50%);
         background-size: 150% 150%;
         animation: mesh-breathe 20s ease-in-out infinite alternate;
     }
 
     .dark .bg-mesh-gradient {
-        background-color: #020617;
+        background-color: #2A2520;
         background-image:
-            radial-gradient(at 0% 0%, rgba(29, 78, 216, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(109, 40, 217, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(190, 24, 93, 0.15) 0px, transparent 50%),
-            radial-gradient(at 0% 100%, rgba(4, 120, 87, 0.15) 0px, transparent 50%);
+            radial-gradient(at 0% 0%, rgba(255, 180, 162, 0.08) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(180, 199, 217, 0.08) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(255, 228, 225, 0.1) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, rgba(200, 230, 201, 0.08) 0px, transparent 50%);
     }
 
     @keyframes mesh-breathe {

@@ -21,7 +21,7 @@ export default function GalleryPage({
                     <h1 className="text-3xl font-black tracking-tight"><span className="text-gradient">Neural</span> Canvas</h1>
                     <div className="flex items-center gap-4">
                         <button onClick={() => onCreateBoard("New Board")} className="p-2.5 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/60 dark:border-white/10 shadow-sm hover:scale-110 hover:shadow-glow-blue transition-all group">
-                            <Plus size={20} className="text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+                            <Plus size={20} className="text-slate-700 dark:text-slate-200 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
                         </button>
                         {user ? (
                             <div className="flex items-center gap-3 bg-white/50 dark:bg-slate-800/50 rounded-2xl pl-2 pr-5 py-2 border border-white/60 dark:border-white/10 shadow-sm transition-all hover:shadow-md">
@@ -39,7 +39,7 @@ export default function GalleryPage({
                 <BoardGallery boards={boardsList} onCreateBoard={onCreateBoard} onSelectBoard={onSelectBoard} onDeleteBoard={onDeleteBoard} />
             </div>
             <div className="fixed bottom-10 right-10 z-50">
-                <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-premium rounded-full text-slate-400 hover:text-blue-600 hover:rotate-90 hover:scale-110 transition-all border border-white/60 dark:border-white/10"><Settings size={24} /></button>
+                <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-premium rounded-full text-slate-400 hover:text-orange-400 hover:rotate-90 hover:scale-110 transition-all border border-white/60 dark:border-white/10"><Settings size={24} /></button>
             </div>
 
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} />
