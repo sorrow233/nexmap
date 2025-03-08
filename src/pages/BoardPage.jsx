@@ -133,7 +133,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     return (
         <React.Fragment>
             <ErrorBoundary level="canvas">
-                <Canvas />
+                <Canvas onCreateNote={handleCreateNote} />
             </ErrorBoundary>
 
             {/* Top Bar */}
