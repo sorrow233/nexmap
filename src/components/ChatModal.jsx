@@ -462,7 +462,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         e.stopPropagation();
         if (!selection || !onCreateNote) return;
 
-        onCreateNote(selection.text);
+        onCreateNote(selection.text, true);
 
         // Clear selection
         window.getSelection()?.removeAllRanges();
