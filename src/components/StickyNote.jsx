@@ -163,6 +163,13 @@ const StickyNote = React.memo(function StickyNote({
             onPaste={handlePaste}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand && onExpand(); }}
         >
+            {/* Note Number Badge */}
+            {data.data?.number && (
+                <div className="absolute top-3 left-3 w-8 h-8 bg-slate-900/10 dark:bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 dark:border-slate-700/30">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-tight">{data.data.number}</span>
+                </div>
+            )}
+
             {/* Header / Controls */}
             <div className="flex justify-between items-center p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div className="flex gap-2">

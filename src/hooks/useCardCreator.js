@@ -159,11 +159,19 @@ export function useCardCreator() {
     };
 
     const handleCreateNote = (text = '') => {
+        // Get current note cards to determine next number
+        const noteCards = cards.filter(c => c.type === 'note');
+        const nextNumber = String(noteCards.length + 1).padStart(2, '0');
+
         addCard({
             id: Date.now().toString(), type: 'note',
             x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
             y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
-            data: { content: text || '', color: 'yellow' }
+            data: {
+                content: text || '',
+                color: 'yellow',
+                number: nextNumber  // Add automatic numbering
+            }
         });
     };
 
