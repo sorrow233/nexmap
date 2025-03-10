@@ -1,8 +1,8 @@
 
 export const CARD_GEOMETRY = {
-    standard: { width: 320, height: 240 },
+    standard: { width: 320, height: 300 },
     note: { width: 280, height: 320 },
-    image_gen: { width: 320, height: 400 }
+    image_gen: { width: 320, height: 580 }
 };
 
 export function getCardRect(card) {

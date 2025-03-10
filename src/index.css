@@ -12,6 +12,25 @@ body,
     overflow-y: hidden;
 }
 
+@layer base {
+
+    body,
+    #root,
+    .font-lxgw {
+        font-family: "LXGW WenKai", "楷体", "KaiTi", serif;
+    }
+
+    /* Force inherit for monos if they interfere with the aesthetic */
+    .font-mono {
+        font-family: inherit;
+    }
+
+    /* System theme transitions */
+    body {
+        @apply transition-colors duration-300;
+    }
+}
+
 @layer utilities {
     .shadow-premium {
         box-shadow: 0 8px 30px rgb(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.03);
@@ -42,28 +61,29 @@ body,
         /* Default (Light) */
         background: rgba(255, 255, 255, 0.85);
         @apply backdrop-blur-xl border border-white/40 shadow-xl;
-    }
-
-    .dark .glass-panel {
         /* Dark Override */
-        background: rgba(15, 23, 42, 0.6);
-        @apply border-white/10 shadow-2xl;
+        @apply dark:bg-slate-900/60 dark:border-white/10 dark:shadow-2xl;
     }
 
     /* Typography Defaults (Light Mode) */
     .prose {
         @apply text-slate-700;
-        font-family: "LXGW WenKai Screen", "LXGW WenKai Mono TC", sans-serif;
+        font-family: inherit;
         font-size: 15px;
         line-height: 1.85;
         letter-spacing: 0.015em;
+    }
+
+    /* Apply dark mode via dark: prefix which works with media strategy */
+    .prose {
+        @apply dark:text-slate-300;
     }
 
     .prose h1,
     .prose h2,
     .prose h3,
     .prose h4 {
-        @apply font-bold text-slate-800 mt-12 mb-6;
+        @apply font-bold text-slate-800 mt-12 mb-6 dark:text-slate-100;
         line-height: 1.4;
     }
 
@@ -72,12 +92,12 @@ body,
     }
 
     .prose strong {
-        @apply font-bold text-slate-900 mx-0.5;
+        @apply font-bold text-slate-900 mx-0.5 dark:text-slate-50;
     }
 
     .prose ul,
     .prose ol {
-        @apply marker:text-slate-400 my-6 pl-5;
+        @apply marker:text-slate-400 my-6 pl-5 dark:marker:text-slate-500;
     }
 
     .prose li {
@@ -85,19 +105,19 @@ body,
     }
 
     .prose blockquote {
-        @apply border-l-4 border-slate-200 pl-6 italic text-slate-500 my-10;
+        @apply border-l-4 border-slate-200 pl-6 italic text-slate-500 my-10 dark:border-slate-800 dark:text-slate-400;
     }
 
     .prose code {
-        @apply bg-slate-100/50 text-indigo-600 px-1.5 py-0.5 rounded border border-slate-200 text-[0.85em] font-mono;
+        @apply bg-slate-100/50 text-indigo-600 px-1.5 py-0.5 rounded border border-slate-200 text-[0.85em] font-mono dark:bg-white/5 dark:text-indigo-300 dark:border-white/10;
     }
 
     .prose pre {
-        @apply bg-slate-50/50 text-slate-700 border border-slate-200 rounded-2xl p-6 my-10 overflow-x-auto;
+        @apply bg-slate-50/50 text-slate-700 border border-slate-200 rounded-2xl p-6 my-10 overflow-x-auto dark:bg-slate-950/40 dark:text-slate-200 dark:border-white/5;
     }
 
     .prose pre code {
-        @apply bg-transparent text-slate-700 p-0 border-none;
+        @apply bg-transparent text-slate-700 p-0 border-none dark:text-slate-200;
     }
 
     /* Table Support */
@@ -106,72 +126,19 @@ body,
     }
 
     .prose thead {
-        @apply bg-slate-50 border-b border-slate-200;
+        @apply bg-slate-50 border-b border-slate-200 dark:bg-white/5 dark:border-white/10;
     }
 
     .prose th {
-        @apply px-4 py-3 text-left font-bold text-slate-800 border border-slate-200;
+        @apply px-4 py-3 text-left font-bold text-slate-800 border border-slate-200 dark:text-slate-100 dark:border-white/10;
     }
 
     .prose td {
-        @apply px-4 py-3 border border-slate-200 text-slate-600;
+        @apply px-4 py-3 border border-slate-200 text-slate-600 dark:text-slate-400 dark:border-white/10;
     }
 
     .prose tr:nth-child(even) {
-        @apply bg-slate-50/30;
-    }
-
-    /* Typography Overrides (Dark Mode) */
-    .dark .prose {
-        @apply text-slate-300;
-    }
-
-    .dark .prose h1,
-    .dark .prose h2,
-    .dark .prose h3,
-    .dark .prose h4 {
-        @apply text-slate-100;
-    }
-
-    .dark .prose strong {
-        @apply text-slate-50;
-    }
-
-    .dark .prose ul,
-    .dark .prose ol {
-        @apply marker:text-slate-500;
-    }
-
-    .dark .prose blockquote {
-        @apply border-slate-800 text-slate-400;
-    }
-
-    .dark .prose code {
-        @apply bg-white/5 text-indigo-300 border-white/10;
-    }
-
-    .dark .prose pre {
-        @apply bg-slate-950/40 text-slate-200 border-white/5;
-    }
-
-    .dark .prose pre code {
-        @apply text-slate-200;
-    }
-
-    .dark .prose thead {
-        @apply bg-white/5 border-white/10;
-    }
-
-    .dark .prose th {
-        @apply text-slate-100 border-white/10;
-    }
-
-    .dark .prose td {
-        @apply text-slate-400 border-white/10;
-    }
-
-    .dark .prose tr:nth-child(even) {
-        @apply bg-white/[0.02];
+        @apply bg-slate-50/30 dark:bg-white/[0.02];
     }
 
     /* Reader Container */
