@@ -10,6 +10,7 @@ export function useCardCreator() {
         selectedIds,
         createAICard,
         updateCardContent,
+        updateCard,
         setCardGenerating,
         addCard
     } = useStore();
@@ -158,13 +159,62 @@ export function useCardCreator() {
         }
     };
 
-    const handleCreateNote = (text = '') => {
-        addCard({
-            id: Date.now().toString(), type: 'sticky',
-            x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
-            y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
-            data: { content: text || '', color: 'yellow' }
-        });
+    const handleCreateNote = (text = '', isMaster = false) => {
+        // Sanitize input: If text is an event object (from onClick), treat as empty string
+        const safeText = (typeof text === 'string' ? text : '');
+
+        if (isMaster) {
+            // Master Note Logic: Append to existing
+            const existingNote = cards.find(c => c.type === 'note');
+
+            if (existingNote) {
+                const currentContent = existingNote.data.content || '';
+
+                // Parse existing numbering
+                const matches = currentContent.match(/^(\d+)\./gm);
+                let nextNum = 1;
+                if (matches && matches.length > 0) {
+                    const lastMatch = matches[matches.length - 1];
+                    const lastNum = parseInt(lastMatch, 10);
+                    nextNum = lastNum + 1;
+                } else if (currentContent.trim()) {
+                    nextNum = 2; // Fallback if content exists but unnumbered
+                }
+
+                const nextNumberStr = String(nextNum).padStart(2, '0');
+
+                // Format: "03. Content"
+                const newEntry = `${nextNumberStr}. ${safeText}`;
+
+                // Add double newline separator
+                const separator = currentContent.trim() ? '\n\n' : '';
+                const updatedContent = currentContent + separator + newEntry;
+
+                updateCard(existingNote.id, { content: updatedContent });
+            } else {
+                // No existing master note, create one
+                addCard({
+                    id: Date.now().toString(), type: 'note',
+                    x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
+                    y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 200),
+                    data: {
+                        content: `01. ${safeText}`,
+                        color: 'yellow'
+                    }
+                });
+            }
+        } else {
+            // Standard/Independent Note Logic: Create NEW card
+            addCard({
+                id: Date.now().toString(), type: 'note',
+                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
+                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
+                data: {
+                    content: safeText,
+                    color: 'yellow'
+                }
+            });
+        }
     };
 
     const handleExpandTopics = async (sourceId) => {

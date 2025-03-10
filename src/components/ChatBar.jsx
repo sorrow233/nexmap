@@ -82,7 +82,7 @@ const ChatBar = React.memo(function ChatBar({
                                 onChange={(e) => onImageUpload(e.target.files)}
                             />
                             <button
-                                onClick={onCreateNote}
+                                onClick={() => onCreateNote('', false)}
                                 className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
                                 title="Add Sticky Note"
                             >
