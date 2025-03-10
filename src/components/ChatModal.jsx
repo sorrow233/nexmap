@@ -11,11 +11,23 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     const [input, setInput] = useState('');
     const [images, setImages] = useState([]);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [isAtBottom, setIsAtBottom] = useState(true);
     const messagesEndRef = useRef(null);
+    const scrollContainerRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (force = false) => {
+        if (force || isAtBottom) {
+            messagesEndRef.current?.scrollIntoView({ behavior: force ? "smooth" : "auto" });
+        }
+    };
+
+    const handleScroll = () => {
+        if (!scrollContainerRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        // Use a threshold (e.g., 100px) to determine if we are at the bottom
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        setIsAtBottom(atBottom);
     };
 
     const handleImageUpload = (e) => {
@@ -69,8 +81,17 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [card.data.messages, card.data.messages.length, isStreaming]);
+        if (isStreaming) {
+            scrollToBottom();
+        }
+    }, [card.data.messages, isStreaming]);
+
+    // Force scroll to bottom on initial open
+    useEffect(() => {
+        if (isOpen) {
+            setTimeout(() => scrollToBottom(true), 100);
+        }
+    }, [isOpen]);
 
     const parseModelOutput = (text) => {
         if (typeof text !== 'string') return { thoughts: null, content: text };
@@ -193,6 +214,8 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setInput('');
         setImages([]);
         setIsStreaming(true);
+        setIsAtBottom(true);
+        setTimeout(() => scrollToBottom(true), 10);
 
         const appendToken = (token) => {
             onUpdate(card.id, (currentData) => {
@@ -456,7 +479,11 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 </div>
 
                 {/* Reader Layout Area */}
-                <div className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors">
+                <div
+                    ref={scrollContainerRef}
+                    onScroll={handleScroll}
+                    className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors"
+                >
                     <div className="reader-width">
                         {card.type === 'note' ? (
                             <div className="animate-fade-in">

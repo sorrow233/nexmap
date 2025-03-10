@@ -8,6 +8,7 @@ import BoardGallery from './components/BoardGallery';
 import SettingsModal from './components/SettingsModal';
 import ChatBar from './components/ChatBar';
 import { auth, googleProvider } from './services/firebase';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { saveBoard, loadBoard, loadBoardsMetadata, deleteBoard, createBoard, setCurrentBoardId as storageSetCurrentBoardId, getCurrentBoardId, listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud, saveUserSettings, loadUserSettings } from './services/storage';
 import {
     chatCompletion,
@@ -132,7 +133,7 @@ function AppContent() {
         if (!auth) return;
         let unsubDb = null;
 
-        const unsubscribe = auth.onAuthStateChanged((u) => {
+        const unsubscribe = onAuthStateChanged(auth, (u) => {
             setUser(u);
 
             // Clean up previous listener if switching users (rare but safe)
@@ -190,7 +191,7 @@ function AppContent() {
 
     const handleLogin = async () => {
         try {
-            await auth.signInWithPopup(googleProvider);
+            await signInWithPopup(auth, googleProvider);
         } catch (e) {
             console.error("Login failed", e);
             alert("Login failed: " + e.message);
@@ -199,7 +200,7 @@ function AppContent() {
 
     const handleLogout = async () => {
         try {
-            await auth.signOut();
+            await signOut(auth);
         } catch (e) {
             console.error("Logout failed", e);
         }
