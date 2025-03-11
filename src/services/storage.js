@@ -263,32 +263,41 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     try {
         const boardsRef = collection(db, 'users', userId, 'boards');
         return onSnapshot(boardsRef, async (snapshot) => {
-            const cloudBoards = [];
             const promises = [];
+            let hasChanges = false;
 
-            snapshot.forEach(doc => {
-                const boardData = doc.data();
-                cloudBoards.push(boardData);
+            // Only process actual changes to prevent infinite loops
+            for (const change of snapshot.docChanges()) {
+                const boardData = change.doc.data();
+                if (!boardData.id) continue;
 
-                // Sync content to local storage (IDB)
-                // CRITICAL: Smart Merge that favors local base64 but accepts cloud updates/S3 URLs
-                if (boardData.id) {
+                if (change.type === 'added' || change.type === 'modified') {
                     promises.push((async () => {
                         try {
                             const localData = await idbGet(BOARD_PREFIX + boardData.id);
+
+                            // Optimization: If local data exists and cloud data is not newer, skip hydration
+                            // This is the key to breaking the "autosave -> cloud -> sync -> local" loop
+                            if (localData && boardData.updatedAt && localData.updatedAt >= boardData.updatedAt) {
+                                // console.log(`[Firebase Sync] Skipping hydration for ${boardData.id}, local is up to date`);
+                                return;
+                            }
+
+                            hasChanges = true;
                             if (!localData || !localData.cards) {
-                                // First time loading from cloud (e.g. on Device B)
+                                // First time loading or missing local data
                                 await saveBoard(boardData.id, {
                                     cards: boardData.cards || [],
-                                    connections: boardData.connections || []
+                                    connections: boardData.connections || [],
+                                    updatedAt: boardData.updatedAt // Preserving cloud timestamp
                                 });
                                 return;
                             }
 
-                            // Merge: We use cloud structure but preserve local base64
+                            // Smart Merge: Preserve local base64 but take cloud structure/S3 URLs
                             const mergedCards = (boardData.cards || []).map(cloudCard => {
                                 const localCard = localData.cards.find(c => c.id === cloudCard.id);
-                                if (!localCard) return cloudCard; // New card from another device
+                                if (!localCard) return cloudCard;
 
                                 const mergedMessages = (cloudCard.data?.messages || []).map((cloudMsg, msgIdx) => {
                                     const localMsg = localCard.data?.messages?.[msgIdx];
@@ -297,7 +306,6 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     const mergedContent = cloudMsg.content.map((cloudPart, partIdx) => {
                                         const localPart = localMsg.content[partIdx];
                                         if (cloudPart.type === 'image' && localPart?.type === 'image') {
-                                            // If we have local base64, keep it but also take the cloud's S3 URL
                                             return {
                                                 ...cloudPart,
                                                 source: {
@@ -315,34 +323,32 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     return { ...cloudMsg, content: mergedContent };
                                 });
 
-                                return {
-                                    ...cloudCard,
-                                    data: { ...cloudCard.data, messages: mergedMessages }
-                                };
+                                return { ...cloudCard, data: { ...cloudCard.data, messages: mergedMessages } };
                             });
 
-                            // Merge: Keep local-only cards too (to prevent deletion if cloud is stale)
                             const localOnlyCards = localData.cards.filter(lc => !boardData.cards?.find(cc => cc.id === lc.id));
-                            const finalCards = [...mergedCards, ...localOnlyCards];
 
                             await saveBoard(boardData.id, {
-                                cards: finalCards,
-                                connections: boardData.connections || localData.connections || []
+                                cards: [...mergedCards, ...localOnlyCards],
+                                connections: boardData.connections || localData.connections || [],
+                                updatedAt: boardData.updatedAt // Prevent immediate re-trigger by keeping timestamp
                             });
                         } catch (e) {
                             console.error("[Firebase Sync] Merge failed", e);
                         }
                     })());
                 }
-            });
-
-            // Wait for all IDB writes to complete before notifying the UI
-            if (promises.length > 0) {
-                await Promise.all(promises);
-                console.log(`[Firebase Sync] Completed hydration for ${promises.length} boards`);
             }
 
-            const metadataList = cloudBoards.map(b => ({
+            // Wait for all IDB writes to complete
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                if (hasChanges) console.log(`[Firebase Sync] Hydrated ${promises.length} board(s)`);
+            }
+
+            // Update metadata list in localStorage for gallery view
+            const allBoards = snapshot.docs.map(doc => doc.data());
+            const metadataList = allBoards.map(b => ({
                 id: b.id,
                 name: b.name || 'Untitled',
                 createdAt: b.createdAt || Date.now(),
@@ -352,9 +358,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
             })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
-
-            const updatedBoardIds = cloudBoards.map(b => b.id);
-            onUpdate(metadataList, updatedBoardIds);
+            onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
         }, (error) => {
             console.error("Firestore sync error:", error);
         });

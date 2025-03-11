@@ -147,8 +147,8 @@ export default function Canvas() {
                     api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
                     syncStore(nextX, nextY, nextScale);
                 } else {
-                    // Panning - much more aggressive dampening for Mac touchpad
-                    const dampening = 0.3; // Reduce by 70% for smooth, controlled feel
+                    // Panning - extreme damping for Mac high-DPI touchpads
+                    const dampening = 0.05;
                     const nextX = x.get() - wx * dampening;
                     const nextY = y.get() - wy * dampening;
                     api.start({ x: nextX, y: nextY, immediate: true });
@@ -184,8 +184,15 @@ export default function Canvas() {
     );
 
     // Sync spring when store changes from outside (e.g. initial board load)
+    // ONLY sync if the difference is significant to avoid "snap back" on tiny background updates
     useEffect(() => {
-        api.start({ x: offset.x, y: offset.y, s: scale });
+        const dx = Math.abs(x.get() - offset.x);
+        const dy = Math.abs(y.get() - offset.y);
+        const ds = Math.abs(s.get() - scale);
+
+        if (dx > 0.1 || dy > 0.1 || ds > 0.001) {
+            api.start({ x: offset.x, y: offset.y, s: scale });
+        }
     }, [offset.x, offset.y, scale, api]);
 
     const handleCardSelect = useCallback((id, e) => {
