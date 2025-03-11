@@ -147,8 +147,8 @@ export default function Canvas() {
                     api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
                     syncStore(nextX, nextY, nextScale);
                 } else {
-                    // Panning - smoother with reduced delta
-                    const dampening = 0.8; // Reduce sensitivity for smoother feel
+                    // Panning - much more aggressive dampening for Mac touchpad
+                    const dampening = 0.3; // Reduce by 70% for smooth, controlled feel
                     const nextX = x.get() - wx * dampening;
                     const nextY = y.get() - wy * dampening;
                     api.start({ x: nextX, y: nextY, immediate: true });
