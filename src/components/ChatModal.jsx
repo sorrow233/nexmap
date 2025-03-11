@@ -3,6 +3,7 @@ import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip,
 import { chatCompletion, streamChatCompletion } from '../services/llm';
 import { marked } from 'marked';
 import { isSafari, isIOS } from '../utils/browser';
+import ErrorBoundary from './ErrorBoundary';
 
 import { uploadImageToS3, getS3Config } from '../services/s3';
 
@@ -497,15 +498,16 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                         ) : (
                             <div className="space-y-16">
                                 {card.data.messages.map((m, i) => (
-                                    <MessageItem
-                                        key={i}
-                                        message={m}
-                                        index={i}
-                                        marks={card.data.marks}
-                                        parseModelOutput={parseModelOutput}
-                                        isStreaming={isStreaming}
-                                        handleRetry={handleRetry}
-                                    />
+                                    <ErrorBoundary key={i} level="card">
+                                        <MessageItem
+                                            message={m}
+                                            index={i}
+                                            marks={card.data.marks}
+                                            parseModelOutput={parseModelOutput}
+                                            isStreaming={isStreaming}
+                                            handleRetry={handleRetry}
+                                        />
+                                    </ErrorBoundary>
                                 ))}
 
                                 {isStreaming && (

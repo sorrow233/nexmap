@@ -6,6 +6,7 @@ import StickyNote from './StickyNote';
 import ConnectionLayer from './ConnectionLayer';
 import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
+import ErrorBoundary from './ErrorBoundary';
 
 export default function Canvas() {
     const {
@@ -226,21 +227,22 @@ export default function Canvas() {
                 {visibleCards.map(card => {
                     const Component = card.type === 'note' ? StickyNote : Card;
                     return (
-                        <Component
-                            key={card.id}
-                            data={card}
-                            isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
-                            onSelect={handleCardSelect}
-                            onMove={handleCardMove}
-                            onDelete={() => deleteCard(card.id)}
-                            onUpdate={updateCardFull}
-                            onDragEnd={handleCardMoveEnd}
-                            onConnect={() => handleConnect(card.id)}
-                            onExpand={() => setExpandedCardId(card.id)}
-                            isConnecting={isConnecting}
-                            isConnectionStart={connectionStartId === card.id}
-                            scale={scale}
-                        />
+                        <ErrorBoundary key={card.id} level="card">
+                            <Component
+                                data={card}
+                                isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
+                                onSelect={handleCardSelect}
+                                onMove={handleCardMove}
+                                onDelete={() => deleteCard(card.id)}
+                                onUpdate={updateCardFull}
+                                onDragEnd={handleCardMoveEnd}
+                                onConnect={() => handleConnect(card.id)}
+                                onExpand={() => setExpandedCardId(card.id)}
+                                isConnecting={isConnecting}
+                                isConnectionStart={connectionStartId === card.id}
+                                scale={scale}
+                            />
+                        </ErrorBoundary>
                     );
                 })}
             </animated.div>

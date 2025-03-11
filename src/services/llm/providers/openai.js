@@ -1,0 +1,130 @@
+import { LLMProvider } from './base';
+
+export class OpenAIProvider extends LLMProvider {
+    /**
+     * OpenAI 协议转换
+     */
+    formatMessages(messages) {
+        return messages.map(msg => {
+            if (Array.isArray(msg.content)) {
+                return {
+                    role: msg.role,
+                    content: msg.content.map(part => {
+                        if (part.type === 'text') return { type: 'text', text: part.text };
+                        if (part.type === 'image') {
+                            return {
+                                type: 'image_url',
+                                image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` }
+                            };
+                        }
+                        return null;
+                    }).filter(Boolean)
+                };
+            }
+            return msg;
+        });
+    }
+
+    async chat(messages, model, options = {}) {
+        const { apiKey, baseUrl } = this.config;
+        const modelToUse = model || this.config.model;
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: modelToUse,
+                messages: this.formatMessages(messages),
+                ...(options.temperature !== undefined && { temperature: options.temperature }),
+                ...(options.tools && { tools: options.tools }),
+                ...(options.tool_choice && { tool_choice: options.tool_choice })
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || response.statusText);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    }
+
+    async stream(messages, onToken, model, options = {}) {
+        const { apiKey, baseUrl } = this.config;
+        const modelToUse = model || this.config.model;
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: modelToUse,
+                messages: this.formatMessages(messages),
+                ...(options.temperature !== undefined && { temperature: options.temperature }),
+                stream: true,
+                ...(options.tools && { tools: options.tools }),
+                ...(options.tool_choice && { tool_choice: options.tool_choice })
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(await response.text());
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                    try {
+                        const json = JSON.parse(line.substring(6));
+                        const content = json.choices[0]?.delta?.content;
+                        if (content) onToken(content);
+                    } catch (e) { }
+                }
+            }
+        }
+    }
+
+    async generateImage(prompt, model, options = {}) {
+        const { apiKey, baseUrl } = this.config;
+        const modelToUse = model || this.config.model || 'gpt-4o';
+        const endpoint = `${baseUrl.replace(/\/$/, '')}/images/generations`;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: modelToUse,
+                prompt: prompt,
+                n: 1,
+                size: options.size || "1024x1024",
+                response_format: "url"
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || response.statusText);
+        }
+
+        const result = await response.json();
+        return result.data[0].url;
+    }
+}
