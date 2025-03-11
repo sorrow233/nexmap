@@ -484,7 +484,7 @@ function AppContent() {
                                 <input type="text" key={currentBoardId} defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'} onBlur={(e) => handleUpdateBoardTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (handleUpdateBoardTitle(e.target.value), e.target.blur())} className="bg-transparent border-none outline-none font-bold text-sm px-2 py-0.5 rounded" />
                             </div>
                         </div>
-                        <ChatBar onSubmit={handleCreateCard} onCreateNote={handleCreateNote} onImageUpload={handleGlobalImageUpload} globalImages={globalImages} onRemoveImage={removeGlobalImage} />
+                        <ChatBar cards={cards} selectedIds={selectedIds} generatingCardIds={generatingCardIds} onSubmit={handleCreateCard} onCreateNote={handleCreateNote} onImageUpload={handleGlobalImageUpload} globalImages={globalImages} onRemoveImage={removeGlobalImage} />
                         {selectedIds.length > 0 && (
                             <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
                                 <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
