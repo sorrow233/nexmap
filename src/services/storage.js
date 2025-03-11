@@ -108,20 +108,22 @@ export const createBoard = async (name) => {
 };
 
 export const saveBoard = async (id, data) => {
-    // data: { cards, connections }
+    // data: { cards, connections, updatedAt? }
+    const timestamp = data.updatedAt || Date.now();
     console.log('[Storage] saveBoard called. Board:', id, 'Cards:', data.cards?.length || 0, 'Total data size:', JSON.stringify(data).length);
+
     const list = getBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
         list[boardIndex] = {
             ...list[boardIndex],
-            updatedAt: Date.now(),
+            updatedAt: timestamp,
             cardCount: data.cards?.length || 0,
             ...(data.name && { name: data.name })
         };
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
     }
-    await idbSet(BOARD_PREFIX + id, data);
+    await idbSet(BOARD_PREFIX + id, { ...data, updatedAt: timestamp });
     console.log('[Storage] saveBoard complete for', id);
 };
 
