@@ -1,35 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { getBestAnchorPair, getCardRect, generateBezierPath } from '../utils/geometry';
+import React, { useEffect, useRef } from 'react';
+import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
 
 /**
  * ConnectionLayer renders all connections between cards using Path2D on an HTML5 Canvas.
  * This is significantly more performant than SVG for many connections.
- * Now uses animated spring values for real-time sync with card layer during gesture interactions.
+ * 
+ * Performance Note:
+ * This component uses a direct requestAnimationFrame loop to read spring values.
+ * This avoids React state updates (useState) during animation, which would cause
+ * excessive re-renders and potential crashes.
  */
 const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, springValues }) {
     const canvasRef = useRef(null);
-    const [transform, setTransform] = useState({ x: 0, y: 0, s: 1 });
-
-    // Subscribe to spring animation values for real-time updates
-    useEffect(() => {
-        if (!springValues) return;
-
-        const { x, y, s } = springValues;
-
-        // Subscribe to spring changes
-        const unsubX = x.onChange(v => setTransform(prev => ({ ...prev, x: v })));
-        const unsubY = y.onChange(v => setTransform(prev => ({ ...prev, y: v })));
-        const unsubS = s.onChange(v => setTransform(prev => ({ ...prev, s: v })));
-
-        // Initialize with current values
-        setTransform({ x: x.get(), y: y.get(), s: s.get() });
-
-        return () => {
-            unsubX();
-            unsubY();
-            unsubS();
-        };
-    }, [springValues]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -37,6 +19,10 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
 
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
+        let animationFrameId;
+
+        // Track last drawn state to avoid unnecessary redraws
+        let lastTransform = { x: null, y: null, s: null };
 
         // Resize canvas to fill viewport
         const resize = () => {
@@ -44,69 +30,74 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
+            // Force redraw on resize
+            lastTransform = { x: null, y: null, s: null };
         };
 
         resize();
         window.addEventListener('resize', resize);
 
-        // Render loop/function
-        const render = () => {
-            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        // Create a lookup for card positions for O(1) access
+        // We rebuild this only when cards change (dependency array)
+        const cardMap = new Map();
+        cards.forEach(c => cardMap.set(c.id, c));
 
-            if (connections.length === 0) return;
+        // Main render loop
+        const loop = () => {
+            // Safely get current spring values or default
+            // Using .get() directly avoids React state updates and the onChange crash
+            const cx = springValues?.x?.get() ?? 0;
+            const cy = springValues?.y?.get() ?? 0;
+            const cs = springValues?.s?.get() ?? 1;
 
-            // Create a lookup for card positions for O(1) access
-            const cardMap = new Map();
-            cards.forEach(c => cardMap.set(c.id, c));
+            // Only redraw if transform changed significantly, or if we haven't drawn yet
+            if (
+                cx !== lastTransform.x ||
+                cy !== lastTransform.y ||
+                cs !== lastTransform.s
+            ) {
+                ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-            ctx.save();
-            // Apply the same transform as the cards layer using spring values
-            ctx.translate(transform.x, transform.y);
-            ctx.scale(transform.s, transform.s);
+                if (connections.length > 0) {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.scale(cs, cs);
 
-            ctx.lineWidth = 3 / transform.s; // Keep stroke thickness constant regardless of zoom
-            ctx.strokeStyle = document.documentElement.classList.contains('dark')
-                ? 'rgba(129, 140, 248, 0.4)'
-                : 'rgba(99, 102, 241, 0.5)';
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
+                    ctx.lineWidth = 3 / cs; // Keep stroke thickness constant regardless of zoom
+                    ctx.strokeStyle = document.documentElement.classList.contains('dark')
+                        ? 'rgba(129, 140, 248, 0.4)'
+                        : 'rgba(99, 102, 241, 0.5)';
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
 
-            connections.forEach(conn => {
-                const fromCard = cardMap.get(conn.from);
-                const toCard = cardMap.get(conn.to);
+                    connections.forEach(conn => {
+                        const fromCard = cardMap.get(conn.from);
+                        const toCard = cardMap.get(conn.to);
+                        if (!fromCard || !toCard) return;
 
-                if (!fromCard || !toCard) return;
+                        const { source, target } = getBestAnchorPair(fromCard, toCard);
+                        const pathData = generateBezierPath(source, target);
 
-                const { source, target } = getBestAnchorPair(fromCard, toCard);
-                const pathData = generateBezierPath(source, target);
+                        const path = new Path2D(pathData);
+                        ctx.stroke(path);
+                    });
 
-                // Use Path2D for efficient rendering of SVG-like paths
-                const path = new Path2D(pathData);
-                ctx.stroke(path);
-            });
+                    ctx.restore();
+                }
 
-            ctx.restore();
+                lastTransform = { x: cx, y: cy, s: cs };
+            }
+
+            animationFrameId = requestAnimationFrame(loop);
         };
 
-        // Use requestAnimationFrame to debounce renders and prevent main thread blocking
-        let rafId = null;
-        const scheduleRender = () => {
-            if (rafId !== null) return; // Already scheduled
-            rafId = requestAnimationFrame(() => {
-                render();
-                rafId = null;
-            });
-        };
-
-        scheduleRender(); // Initial render
+        loop();
 
         return () => {
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
-            }
+            cancelAnimationFrame(animationFrameId);
             window.removeEventListener('resize', resize);
         };
-    }, [cards, connections, transform]);
+    }, [cards, connections, springValues]);
 
     return (
         <canvas
