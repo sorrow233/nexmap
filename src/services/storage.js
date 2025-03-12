@@ -301,6 +301,26 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 const localCard = localData.cards.find(c => c.id === cloudCard.id);
                                 if (!localCard) return cloudCard;
 
+                                // Robust content merging for 'note' type cards
+                                if (cloudCard.type === 'note' && localCard.type === 'note') {
+                                    const cloudContent = cloudCard.data?.content || '';
+                                    const localContent = localCard.data?.content || '';
+
+                                    // If local content has more entries or is simply different and longer, 
+                                    // we should be careful about overwriting it if local timestamp is essentially same as cloud.
+                                    // For simplicity, if they differ, we take the one with the most "XX. " lines as a heuristic for "more data"
+                                    // or just preserve local if cloud is older.
+                                    if (cloudContent !== localContent) {
+                                        const cloudCount = (cloudContent.match(/^\d+\./gm) || []).length;
+                                        const localCount = (localContent.match(/^\d+\./gm) || []).length;
+
+                                        if (localCount > cloudCount) {
+                                            console.log('[Firebase Sync] Preserving local note content (more entries):', localCount, 'vs', cloudCount);
+                                            cloudCard.data.content = localContent;
+                                        }
+                                    }
+                                }
+
                                 const mergedMessages = (cloudCard.data?.messages || []).map((cloudMsg, msgIdx) => {
                                     const localMsg = localCard.data?.messages?.[msgIdx];
                                     if (!localMsg || !Array.isArray(cloudMsg.content) || !Array.isArray(localMsg.content)) return cloudMsg;
@@ -325,7 +345,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     return { ...cloudMsg, content: mergedContent };
                                 });
 
-                                return { ...cloudCard, data: { ...cloudCard.data, messages: mergedMessages } };
+                                return { ...cloudCard, data: { ...cloudCard.data, ...localCard.data, messages: mergedMessages, content: cloudCard.data.content } };
                             });
 
                             const localOnlyCards = localData.cards.filter(lc => !boardData.cards?.find(cc => cc.id === lc.id));
