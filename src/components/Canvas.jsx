@@ -1,12 +1,13 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { useGesture } from '@use-gesture/react';
-import { useSpring, animated, config, to } from '@react-spring/web';
 import Card from './Card';
 import StickyNote from './StickyNote';
 import ConnectionLayer from './ConnectionLayer';
 import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 import ErrorBoundary from './ErrorBoundary';
+
+const ZOOM_sensitivity = 0.01;
+const PAN_sensitivity = 1;
 
 export default function Canvas() {
     const {
@@ -23,181 +24,74 @@ export default function Canvas() {
     } = useStore();
 
     const canvasRef = useRef(null);
-    const syncDebounceRef = useRef(null);
+    const stateRef = useRef({ offset, scale });
 
-    // Spring-driven transform for silky smooth motion
-    const [{ x, y, s }, api] = useSpring(() => ({
-        x: offset.x,
-        y: offset.y,
-        s: scale,
-        config: { ...config.stiff, precision: 0.0001, velocity: 0 }
-    }));
+    // Keep stateRef fresh for event handlers
+    useEffect(() => {
+        stateRef.current = { offset, scale };
+    }, [offset, scale]);
 
-    // Help with coordinate calculation - always fresh
-    const getVisualCoords = (viewX, viewY) => {
-        const currentScale = s.get();
-        const currentX = x.get();
-        const currentY = y.get();
+    const toCanvasCoords = (viewX, viewY) => {
         return {
-            x: (viewX - currentX) / currentScale,
-            y: (viewY - currentY) / currentScale
+            x: (viewX - offset.x) / scale,
+            y: (viewY - offset.y) / scale
         };
     };
 
-    // Update store for culling and persistence
-    const syncStore = useCallback((nx, ny, ns) => {
-        setOffset({ x: nx, y: ny });
-        setScale(ns);
-    }, [setOffset, setScale]);
+    const handleMouseDown = (e) => {
+        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+            const isPan = e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
 
-    // Debounced version for wheel events
-    const debouncedSyncStore = useCallback((nx, ny, ns) => {
-        if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
-        syncDebounceRef.current = setTimeout(() => {
-            syncStore(nx, ny, ns);
-        }, 300); // Sync after 300ms of no wheel events
-    }, [syncStore]);
-
-    // Handle gesture events
-    const bind = useGesture(
-        {
-            onDrag: ({ active, movement: [mx, my], event, memo, first, last, button, xy: [cx, cy], velocity: [vx, vy], direction: [dx, dy] }) => {
-                if (first) {
-                    const isPanAction = button === 1 || button === 2 || event.spaceKey || event.altKey;
-                    const isBackground = event.target === canvasRef.current || event.target.classList.contains('canvas-bg');
-
-                    if (isPanAction) {
-                        setInteractionMode('panning');
-                        return { type: 'pan', startX: x.get(), startY: y.get() };
-                    } else if (isBackground) {
-                        setInteractionMode('selecting');
-                        setSelectionRect({ x1: cx, y1: cy, x2: cx, y2: cy });
-                        if (!event.shiftKey) setSelectedIds([]);
-                        return { type: 'select', startX: cx, startY: cy };
-                    }
-                    return null;
+            if (isPan) {
+                setInteractionMode('panning');
+            } else {
+                setInteractionMode('selecting');
+                setSelectionRect({ x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY });
+                if (!e.shiftKey) {
+                    setSelectedIds([]);
                 }
-
-                if (!memo) return;
-
-                if (memo.type === 'pan') {
-                    if (active) {
-                        api.start({ x: memo.startX + mx, y: memo.startY + my, immediate: true });
-                    } else {
-                        // Kinetic inertia
-                        api.start({
-                            x: memo.startX + mx,
-                            y: memo.startY + my,
-                            config: { ...config.stiff, velocity: [vx * dx, vy * dy] },
-                            immediate: false,
-                            onRest: () => syncStore(x.get(), y.get(), s.get())
-                        });
-                    }
-                    if (last) syncStore(x.get(), y.get(), s.get());
-                } else if (memo.type === 'select') {
-                    const newRect = { ...selectionRect, x1: memo.startX, y1: memo.startY, x2: cx, y2: cy };
-                    setSelectionRect(newRect);
-
-                    const xMin = Math.min(newRect.x1, newRect.x2);
-                    const xMax = Math.max(newRect.x1, newRect.x2);
-                    const yMin = Math.min(newRect.y1, newRect.y2);
-                    const yMax = Math.max(newRect.y1, newRect.y2);
-
-                    const canvasTopLeft = getVisualCoords(xMin, yMin);
-                    const canvasBottomRight = getVisualCoords(xMax, yMax);
-
-                    const selectionCanvasRect = {
-                        left: canvasTopLeft.x,
-                        top: canvasTopLeft.y,
-                        right: canvasBottomRight.x,
-                        bottom: canvasBottomRight.y
-                    };
-
-                    const intersectedIds = cards
-                        .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
-                        .map(card => card.id);
-
-                    setSelectedIds(intersectedIds);
-
-                    if (last) {
-                        setInteractionMode('none');
-                        setSelectionRect(null);
-                    }
-                }
-                return memo;
-            },
-            onWheel: ({ event, delta: [wx, wy], ctrlKey, metaKey }) => {
-                event.preventDefault();
-
-                if (ctrlKey || metaKey) {
-                    // Zooming
-                    const currentScale = s.get();
-                    const delta = -wy * 0.008; // Reduced sensitivity for smoother zoom
-                    const nextScale = Math.min(Math.max(0.1, currentScale * (1 + delta)), 5);
-
-                    const mouseX = event.clientX;
-                    const mouseY = event.clientY;
-
-                    const canvasX = (mouseX - x.get()) / currentScale;
-                    const canvasY = (mouseY - y.get()) / currentScale;
-
-                    const nextX = mouseX - canvasX * nextScale;
-                    const nextY = mouseY - canvasY * nextScale;
-
-                    api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
-                    syncStore(nextX, nextY, nextScale);
-                } else {
-                    // Panning - smoother with reduced delta
-                    const dampening = 0.8; // Reduce sensitivity for smoother feel
-                    const nextX = x.get() - wx * dampening;
-                    const nextY = y.get() - wy * dampening;
-                    api.start({ x: nextX, y: nextY, immediate: true });
-                    // Debounced sync to reduce excessive saveBoard calls
-                    debouncedSyncStore(nextX, nextY, s.get());
-                }
-            },
-            onPinch: ({ origin: [ox, oy], first, movement: [ms], offset: [nextScale], memo, event }) => {
-                event.preventDefault();
-                // 'nextScale' is now the absolute target scale (initialized via 'from')
-                // We don't need memo.startScale anymore.
-
-                const currentScale = s.get();
-                // Calculate the scaling factor for this specific frame update relative to *current* state
-                // This is needed for precise origin updates
-                // Actually, since we have absolute 'nextScale' and 'currentScale', factor is next/current
-                const factor = nextScale / currentScale;
-
-                // Pivot around the pinch origin
-                const canvasX = (ox - x.get()) / currentScale;
-                const canvasY = (oy - y.get()) / currentScale;
-
-                const nextX = ox - canvasX * nextScale;
-                const nextY = oy - canvasY * nextScale;
-
-                api.start({ x: nextX, y: nextY, s: nextScale, immediate: true });
-                syncStore(nextX, nextY, nextScale);
-
-                return memo;
-            }
-        },
-        {
-            target: canvasRef,
-            drag: { filterTaps: true, threshold: 5 },
-            wheel: { eventOptions: { passive: false } },
-            pinch: {
-                eventOptions: { passive: false },
-                // Initialize the gesture offset with the current scale
-                from: () => [s.get()],
-                scaleBounds: { min: 0.1, max: 5 },
-                rubberband: true
             }
         }
-    );
+    };
 
-    // Sync spring when store changes from outside (e.g. initial board load)
-    useEffect(() => {
-        api.start({ x: offset.x, y: offset.y, s: scale });
-    }, [offset.x, offset.y, scale, api]);
+    const handleMouseMove = (e) => {
+        if (interactionMode === 'panning') {
+            setOffset({
+                x: offset.x + e.movementX,
+                y: offset.y + e.movementY
+            });
+        } else if (interactionMode === 'selecting' && selectionRect) {
+            const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
+            setSelectionRect(newSelectionRect);
+
+            // Calculate intersection
+            const xMin = Math.min(newSelectionRect.x1, newSelectionRect.x2);
+            const xMax = Math.max(newSelectionRect.x1, newSelectionRect.x2);
+            const yMin = Math.min(newSelectionRect.y1, newSelectionRect.y2);
+            const yMax = Math.max(newSelectionRect.y1, newSelectionRect.y2);
+
+            const canvasTopLeft = toCanvasCoords(xMin, yMin);
+            const canvasBottomRight = toCanvasCoords(xMax, yMax);
+
+            const selectionCanvasRect = {
+                left: canvasTopLeft.x,
+                top: canvasTopLeft.y,
+                right: canvasBottomRight.x,
+                bottom: canvasBottomRight.y
+            };
+
+            const intersectedIds = cards
+                .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
+                .map(card => card.id);
+
+            setSelectedIds(intersectedIds);
+        }
+    };
+
+    const handleMouseUp = () => {
+        setInteractionMode('none');
+        setSelectionRect(null);
+    };
 
     const handleCardSelect = useCallback((id, e) => {
         const isAdditive = e && (e.shiftKey || e.metaKey || e.ctrlKey);
@@ -211,6 +105,113 @@ export default function Canvas() {
         });
     }, [setSelectedIds]);
 
+    // Touch Support for Panning/Selection
+    const lastTouchRef = useRef(null);
+
+    const handleTouchStart = (e) => {
+        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+            if (e.touches.length === 1) {
+                setInteractionMode('panning');
+                lastTouchRef.current = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            }
+            if (!e.shiftKey) setSelectedIds([]);
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (interactionMode === 'panning' && e.touches.length > 0) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const lastTouch = lastTouchRef.current;
+            if (lastTouch) {
+                const deltaX = touch.clientX - lastTouch.x;
+                const deltaY = touch.clientY - lastTouch.y;
+                setOffset({
+                    x: offset.x + deltaX,
+                    y: offset.y + deltaY
+                });
+                lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setInteractionMode('none');
+        lastTouchRef.current = null;
+    };
+
+    // Native wheel and gesture event handlers for stable zoom
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const handleNativeWheel = (e) => {
+            e.preventDefault();
+            if (e.ctrlKey || e.metaKey) {
+                // Zooming
+                const currentScale = stateRef.current.scale;
+                const currentOffset = stateRef.current.offset;
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                const canvasX = (mouseX - currentOffset.x) / currentScale;
+                const canvasY = (mouseY - currentOffset.y) / currentScale;
+                const delta = -e.deltaY * ZOOM_sensitivity;
+                const newZoom = Math.min(Math.max(0.1, currentScale + delta), 5);
+                const newOffsetX = mouseX - canvasX * newZoom;
+                const newOffsetY = mouseY - canvasY * newZoom;
+                setScale(newZoom);
+                setOffset({ x: newOffsetX, y: newOffsetY });
+            } else {
+                // Panning
+                const currentOffset = stateRef.current.offset;
+                setOffset({
+                    x: currentOffset.x - e.deltaX * PAN_sensitivity,
+                    y: currentOffset.y - e.deltaY * PAN_sensitivity
+                });
+            }
+        };
+
+        let startScale = 1;
+        const handleGestureStart = (e) => {
+            e.preventDefault();
+            startScale = stateRef.current.scale;
+        };
+
+        const handleGestureChange = (e) => {
+            e.preventDefault();
+            const currentOffset = stateRef.current.offset;
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const newScale = Math.min(Math.max(0.1, startScale * e.scale), 5);
+            const oldScale = stateRef.current.scale;
+            if (Math.abs(newScale - oldScale) < 0.001) return;
+            const canvasX_live = (mouseX - currentOffset.x) / oldScale;
+            const canvasY_live = (mouseY - currentOffset.y) / oldScale;
+            const newOffsetX = mouseX - canvasX_live * newScale;
+            const newOffsetY = mouseY - canvasY_live * newScale;
+            setScale(newScale);
+            setOffset({ x: newOffsetX, y: newOffsetY });
+        };
+
+        const handleGestureEnd = (e) => { e.preventDefault(); };
+
+        canvas.addEventListener('wheel', handleNativeWheel, { passive: false });
+        canvas.addEventListener('gesturestart', handleGestureStart, { passive: false });
+        canvas.addEventListener('gesturechange', handleGestureChange, { passive: false });
+        canvas.addEventListener('gestureend', handleGestureEnd, { passive: false });
+
+        return () => {
+            canvas.removeEventListener('wheel', handleNativeWheel);
+            canvas.removeEventListener('gesturestart', handleGestureStart);
+            canvas.removeEventListener('gesturechange', handleGestureChange);
+            canvas.removeEventListener('gestureend', handleGestureEnd);
+        };
+    }, [setScale, setOffset]);
+
+    // Viewport culling optimization from beta
     const visibleCards = useMemo(() => {
         const viewportRect = {
             left: (0 - offset.x) / scale - 400,
@@ -229,24 +230,29 @@ export default function Canvas() {
     return (
         <div
             ref={canvasRef}
-            className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 touch-none"
+            className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative cursor-grab active:cursor-grabbing canvas-bg transition-colors duration-500"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
                 backgroundSize: '24px 24px',
-                backgroundPosition: to([x, y], (xv, yv) => `${xv}px ${yv}px`)
+                backgroundPosition: `${offset.x}px ${offset.y}px`
             }}
         >
-            <ConnectionLayer cards={cards} connections={connections} springValues={{ x, y, s }} />
+            {/* ConnectionLayer from beta - optimized Canvas rendering */}
+            <ConnectionLayer cards={cards} connections={connections} offset={offset} scale={scale} />
 
-            <animated.div
-                className="absolute top-0 left-0 w-full h-full origin-top-left pointer-events-none"
-                style={{
-                    x,
-                    y,
-                    scale: s,
-                    transformOrigin: '0 0'
-                }}
+            <div
+                className="absolute top-0 left-0 w-full h-full origin-top-left transition-transform duration-75 ease-out will-change-transform pointer-events-none"
+                style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
             >
+                {/* Cards Layer with viewport culling from beta */}
                 {visibleCards.map(card => {
                     const Component = card.type === 'note' ? StickyNote : Card;
                     return (
@@ -268,12 +274,14 @@ export default function Canvas() {
                         </ErrorBoundary>
                     );
                 })}
-            </animated.div>
+            </div>
 
+            {/* Status Indicator */}
             <div className="absolute bottom-4 left-4 text-slate-400 text-xs font-mono pointer-events-none select-none">
                 Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {visibleCards.length}/{cards.length} | Zoom: {scale.toFixed(2)}
             </div>
 
+            {/* Rubber Band Selection Rect */}
             {interactionMode === 'selecting' && selectionRect && (
                 <div
                     className="fixed border border-brand-500 bg-brand-500/10 pointer-events-none z-[9999] rounded-sm"
