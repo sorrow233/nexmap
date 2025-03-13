@@ -156,13 +156,18 @@ export default function Canvas() {
                     debouncedSyncStore(nextX, nextY, s.get());
                 }
             },
-            onPinch: ({ origin: [ox, oy], first, movement: [ms], offset: [scaleFactor], memo, event }) => {
+            onPinch: ({ origin: [ox, oy], first, movement: [ms], offset: [nextScale], memo, event }) => {
                 event.preventDefault();
-                if (first) return { startScale: s.get(), startX: x.get(), startY: y.get() };
+                // 'nextScale' is now the absolute target scale (initialized via 'from')
+                // We don't need memo.startScale anymore.
 
-                const nextScale = Math.min(Math.max(0.1, memo.startScale * scaleFactor), 5);
                 const currentScale = s.get();
+                // Calculate the scaling factor for this specific frame update relative to *current* state
+                // This is needed for precise origin updates
+                // Actually, since we have absolute 'nextScale' and 'currentScale', factor is next/current
+                const factor = nextScale / currentScale;
 
+                // Pivot around the pinch origin
                 const canvasX = (ox - x.get()) / currentScale;
                 const canvasY = (oy - y.get()) / currentScale;
 
@@ -179,7 +184,13 @@ export default function Canvas() {
             target: canvasRef,
             drag: { filterTaps: true, threshold: 5 },
             wheel: { eventOptions: { passive: false } },
-            pinch: { eventOptions: { passive: false }, distanceBounds: { min: 0 } }
+            pinch: {
+                eventOptions: { passive: false },
+                // Initialize the gesture offset with the current scale
+                from: () => [s.get()],
+                scaleBounds: { min: 0.1, max: 5 },
+                rubberband: true
+            }
         }
     );
 
