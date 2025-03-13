@@ -398,6 +398,22 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
 
         if (!meta) return;
 
+        // Helper to recursively remove undefined values (Firebase doesn't accept them)
+        const removeUndefined = (obj) => {
+            if (Array.isArray(obj)) {
+                return obj.map(removeUndefined).filter(item => item !== undefined);
+            }
+            if (obj !== null && typeof obj === 'object') {
+                return Object.entries(obj).reduce((acc, [key, value]) => {
+                    if (value !== undefined) {
+                        acc[key] = removeUndefined(value);
+                    }
+                    return acc;
+                }, {});
+            }
+            return obj;
+        };
+
         // Clean base64 data before syncing to Firebase
         const cleanedContent = {
             cards: (boardContent.cards || []).map(card => ({
@@ -442,10 +458,10 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             connections: boardContent.connections || []
         };
 
-        const fullBoard = {
+        const fullBoard = removeUndefined({
             ...meta,
             ...cleanedContent
-        };
+        });
 
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await setDoc(boardRef, fullBoard);
