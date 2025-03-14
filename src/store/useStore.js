@@ -1,6 +1,8 @@
 
+
 import { create } from 'zustand';
 import { temporal } from 'zundo';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
 import { streamChatCompletion } from '../services/llm';
 
 // --- Helper: Graph Traversal ---
@@ -377,6 +379,12 @@ const useStoreBase = create(
     )
 );
 
+
 export const useStore = useStoreBase;
-export const useTemporalStore = (selector) => useStoreBase.temporal(selector);
+
+// Correctly implement useTemporalStore using useStoreWithEqualityFn
+export function useTemporalStore(selector, equality) {
+    return useStoreWithEqualityFn(useStoreBase.temporal, selector, equality);
+}
+
 export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();
