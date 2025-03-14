@@ -208,15 +208,23 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         const userMsg = { role: 'user', content };
         const initialAssistantMsg = { role: 'assistant', content: '' };
 
-        const updatedMessages = [...card.data.messages, userMsg, initialAssistantMsg];
+        // Use functional update to prevent race conditions when sending multiple messages
+        onUpdate(card.id, (currentData) => {
+            if (!currentData) return currentData;
+            return {
+                ...currentData,
+                messages: [...(currentData.messages || []), userMsg, initialAssistantMsg]
+            };
+        });
 
-        // Optimistic update
-        onUpdate(card.id, { ...card.data, messages: updatedMessages });
         setInput('');
         setImages([]);
         setIsStreaming(true);
         setIsAtBottom(true);
         setTimeout(() => scrollToBottom(true), 10);
+
+        // Prepare context messages for generation (exclude the empty assistant message we just added)
+        const contextMessages = [...(card.data.messages || []), userMsg];
 
         const appendToken = (token) => {
             onUpdate(card.id, (currentData) => {
@@ -231,7 +239,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         try {
             // Use the parent's generator which handles context/connections
             // onGenerateResponse(card.id, newMessages, onTokenCallback)
-            const contextMessages = updatedMessages.slice(0, -1);
 
             // If parent provided onGenerateResponse, use it. Otherwise fallback (though we should always have it now)
             if (onGenerateResponse) {
@@ -259,9 +266,13 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
 
         } catch (error) {
             console.error(error);
-            const errorMessages = [...updatedMessages];
-            errorMessages[errorMessages.length - 1].content = "⚠️ Error: " + error.message;
-            onUpdate(card.id, { ...card.data, messages: errorMessages });
+            onUpdate(card.id, (currentData) => {
+                if (!currentData) return currentData;
+                const msgs = [...currentData.messages];
+                const lastMsg = msgs[msgs.length - 1];
+                msgs[msgs.length - 1] = { ...lastMsg, content: "⚠️ Error: " + error.message };
+                return { ...currentData, messages: msgs };
+            });
         } finally {
             setIsStreaming(false);
         }
@@ -281,10 +292,15 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         // Or just pop the error content
         const truncatedMessages = messages.slice(0, lastAssistantIndex);
         const freshAssistantMsg = { role: 'assistant', content: '' };
-        const newMessages = [...truncatedMessages, freshAssistantMsg];
 
-        // Update state
-        onUpdate(card.id, { ...card.data, messages: newMessages });
+        // Update state with functional update
+        onUpdate(card.id, (currentData) => {
+            if (!currentData) return currentData;
+            return {
+                ...currentData,
+                messages: [...truncatedMessages, freshAssistantMsg]
+            };
+        });
         setIsStreaming(true);
 
         try {
@@ -312,9 +328,13 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
             }
         } catch (error) {
             console.error('[Retry Error]', error);
-            const errorMessages = [...newMessages];
-            errorMessages[errorMessages.length - 1].content = "⚠️ Error: " + error.message;
-            onUpdate(card.id, { ...card.data, messages: errorMessages });
+            onUpdate(card.id, (currentData) => {
+                if (!currentData) return currentData;
+                const msgs = [...currentData.messages];
+                const lastMsg = msgs[msgs.length - 1];
+                msgs[msgs.length - 1] = { ...lastMsg, content: "⚠️ Error: " + error.message };
+                return { ...currentData, messages: msgs };
+            });
         } finally {
             setIsStreaming(false);
         }
@@ -372,11 +392,17 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         if (!selection) return;
 
         const text = selection.text;
-        const currentMarks = card.data.marks || [];
-        if (text && currentMarks.indexOf(text) === -1) {
-            onUpdate(card.id, {
-                ...card.data,
-                marks: [...currentMarks, text]
+        if (text) {
+            onUpdate(card.id, (currentData) => {
+                if (!currentData) return currentData;
+                const currentMarks = currentData.marks || [];
+                if (currentMarks.indexOf(text) === -1) {
+                    return {
+                        ...currentData,
+                        marks: [...currentMarks, text]
+                    };
+                }
+                return currentData;
             });
         }
 
@@ -464,7 +490,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     <div className="flex items-center gap-4">
                         {card.data.marks?.length > 0 && (
                             <button
-                                onClick={() => onUpdate(card.id, { ...card.data, marks: [] })}
+                                onClick={() => onUpdate(card.id, (currentData) => ({ ...currentData, marks: [] }))}
                                 className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-full"
                             >
                                 Clear Marks ({card.data.marks.length})
@@ -490,7 +516,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                             <div className="animate-fade-in">
                                 <textarea
                                     value={card.data.content || ''}
-                                    onChange={(e) => onUpdate(card.id, { ...card.data, content: e.target.value })}
+                                    onChange={(e) => onUpdate(card.id, (currentData) => ({ ...currentData, content: e.target.value }))}
                                     className="w-full bg-transparent border-none outline-none font-lxgw leading-[2.5] text-[1.1rem] text-slate-800 dark:text-slate-100 resize-none h-[calc(100vh-320px)] custom-scrollbar"
                                     placeholder="Start writing..."
                                 />
