@@ -39,6 +39,7 @@ export class OpenAIProvider extends LLMProvider {
             body: JSON.stringify({
                 model: modelToUse,
                 messages: this.formatMessages(messages),
+                max_tokens: 16384,
                 ...(options.temperature !== undefined && { temperature: options.temperature }),
                 ...(options.tools && { tools: options.tools }),
                 ...(options.tool_choice && { tool_choice: options.tool_choice })
@@ -68,6 +69,7 @@ export class OpenAIProvider extends LLMProvider {
             body: JSON.stringify({
                 model: modelToUse,
                 messages: this.formatMessages(messages),
+                max_tokens: 16384,
                 ...(options.temperature !== undefined && { temperature: options.temperature }),
                 stream: true,
                 ...(options.tools && { tools: options.tools }),
