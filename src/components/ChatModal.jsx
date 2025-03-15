@@ -176,16 +176,24 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 const msgIndex = card.data.messages.length;
 
                 // Fire and forget - don't await
+                // DON'T REMOVE base64 data - it's our fallback!
                 Promise.all(images.map(img => uploadImageToS3(img.file).catch(err => {
-                    console.error("Single image upload failed", err);
-                    return null;
+                    // Enhanced error logging
+                    if (err.isCorsError) {
+                        console.warn("⚠️ [S3 Upload] CORS issue detected - images will display via base64 fallback");
+                    } else {
+                        console.error("❌ [S3 Upload] Upload failed:", err.message);
+                    }
+                    return null; // Return null for failed uploads
                 }))).then(urls => {
                     console.log('[S3 Debug] Background upload complete:', urls);
 
-                    // Update the message with S3 URLs
-                    // Note: onUpdate expects an object, not a function
-                    // We need to construct the updated data structure directly
-                    const msgIndex = card.data.messages.length;
+                    // Check if any uploads succeeded
+                    const hasSuccessfulUpload = urls.some(url => url !== null);
+                    if (!hasSuccessfulUpload) {
+                        console.log('💾 [S3 Debug] All S3 uploads failed, using base64 fallback');
+                        return; // Don't update if all failed - base64 will be used
+                    }
 
                     // Update the message with S3 URLs using functional update
                     // This ensures we work with the LATEST card data, avoiding stale closures
@@ -209,16 +217,18 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                                 if (part.type === 'image' && part.source) {
                                     const urlIndex = i - 1; // Offset for text at index 0
                                     if (urlIndex >= 0 && urlIndex < urls.length && urls[urlIndex]) {
+                                        // Only inject S3 URL if upload succeeded
+                                        // Keep base64 data for fallback display
                                         return {
                                             ...part,
                                             source: {
                                                 ...part.source,
-                                                s3Url: urls[urlIndex] // Inject S3 URL
+                                                s3Url: urls[urlIndex] // Inject S3 URL (base64 remains)
                                             }
                                         };
                                     }
                                 }
-                                return part;
+                                return part; // No change if upload failed - base64 remains
                             });
                             const updatedMessages = [...currentData.messages];
                             updatedMessages[msgIndex] = {
@@ -798,9 +808,12 @@ const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming,
                     {msgImages.length > 0 && (
                         <div className="flex flex-wrap gap-4 mb-6">
                             {msgImages.map((img, idx) => {
-                                let imgSrc = img.source.type === 'base64'
-                                    ? `data:${img.source.media_type};base64,${img.source.data}`
-                                    : (img.source.s3Url || img.source.url);
+                                // Priority: S3 URL > base64 data
+                                // Always show image even if S3 upload failed
+                                let imgSrc = img.source.s3Url || img.source.url;
+                                if (!imgSrc && img.source.type === 'base64' && img.source.data) {
+                                    imgSrc = `data:${img.source.media_type};base64,${img.source.data}`;
+                                }
                                 return imgSrc ? (
                                     <img key={idx} src={imgSrc} alt="Input" className="h-32 w-auto rounded-2xl border border-white/10 shadow-lg" />
                                 ) : null;
