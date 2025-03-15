@@ -72,14 +72,17 @@ export async function imageGeneration(prompt, model = null, options = {}) {
  */
 export async function generateFollowUpTopics(messages, model = null, options = {}) {
     try {
-        const systemPrompt = `Based on the conversation history, predict the top 5 questions the user is most likely to ask next.
+        const systemPrompt = `You are analyzing a conversation. Based on the user's questions and our previous responses, predict the top 5 questions the user is MOST LIKELY to ask next.
 
-Requirements:
-- Questions should be short (5-10 words)
-- Must be highly contextual and specific to this conversation
-- Cover different angles: implementation, troubleshooting, principles, alternatives, extensions
-- Return ONLY a JSON array of strings: ["Question 1?", "Question 2?", ...]
-- No explanations, no markdown, just the array`;
+CRITICAL RULES:
+1. Questions MUST be directly related to what was just discussed
+2. Questions should be natural follow-ups a human would ask
+3. Be specific - use exact terms/concepts from the conversation
+4. Each question should explore a different angle
+5. Keep questions concise (5-12 words)
+
+Return ONLY a JSON array: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
+NO explanations, NO markdown formatting, JUST the JSON array.`;
 
         const taskMessages = [
             ...messages.slice(-10), // Last 10 messages for context
