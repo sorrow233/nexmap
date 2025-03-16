@@ -39,9 +39,55 @@ export function getBestAnchorPair(cardA, cardB) {
     let minTarget = anchorsB[0];
     let minDistance = Infinity;
 
+    // Determine primary axis
+    const cxA = rectA.centerX;
+    const cxB = rectB.centerX;
+    const cyA = rectA.centerY;
+    const cyB = rectB.centerY;
+
+    const dx = cxB - cxA;
+    const dy = cyB - cyA;
+
+    // Bias towards horizontal layout if horizontal distance is significantly larger
+    // or if the cards are roughly on the same level.
+    // KEY FIX: If there is substantial horizontal separation (> 200px), 
+    // we almost ALWAYS want a horizontal connection (MindMap style),
+    // even if the vertical distance is larger (e.g., tall tree branches).
+    const isHorizontal = Math.abs(dx) > Math.abs(dy) || Math.abs(dx) > 200;
+
     for (const a of anchorsA) {
         for (const b of anchorsB) {
-            const dist = Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+            let dist = Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+
+            // Penalty system to enforce semantic flow
+            // Add a massive penalty for "wrong" anchors to force the desired connection type
+            const penalty = 5000;
+
+            if (isHorizontal) {
+                // If A is Left of B, strictly prefer Right -> Left
+                if (dx > 0) {
+                    if (a.type !== 'right') dist += penalty;
+                    if (b.type !== 'left') dist += penalty;
+                }
+                // If A is Right of B, strictly prefer Left -> Right
+                else {
+                    if (a.type !== 'left') dist += penalty;
+                    if (b.type !== 'right') dist += penalty;
+                }
+            } else {
+                // Vertical layout
+                // If A is Above B, strictly prefer Bottom -> Top
+                if (dy > 0) {
+                    if (a.type !== 'bottom') dist += penalty;
+                    if (b.type !== 'top') dist += penalty;
+                }
+                // If A is Below B, strictly prefer Top -> Bottom
+                else {
+                    if (a.type !== 'top') dist += penalty;
+                    if (b.type !== 'bottom') dist += penalty;
+                }
+            }
+
             if (dist < minDistance) {
                 minDistance = dist;
                 minSource = a;
@@ -57,23 +103,25 @@ export function generateBezierPath(source, target) {
     const dx = Math.abs(source.x - target.x);
     const dy = Math.abs(source.y - target.y);
 
-    // Curvature heuristic: 
-    // If predominantly horizontal, horizontal pull.
-    // If predominantly vertical, vertical pull.
-    // But better: use the anchor type!
-
     const calculateCP = (point, distance) => {
+        // Increase horizontal handle length for nicer tree curves
+        const hFactor = 0.6; // 60% of distance
+        const vFactor = 0.5;
+
         switch (point.type) {
-            case 'top': return { x: point.x, y: point.y - distance };
-            case 'bottom': return { x: point.x, y: point.y + distance };
-            case 'left': return { x: point.x - distance, y: point.y };
-            case 'right': return { x: point.x + distance, y: point.y };
+            case 'top': return { x: point.x, y: point.y - distance * vFactor };
+            case 'bottom': return { x: point.x, y: point.y + distance * vFactor };
+            case 'left': return { x: point.x - distance * hFactor, y: point.y };
+            case 'right': return { x: point.x + distance * hFactor, y: point.y };
             default: return point;
         }
     };
 
-    // Distance for CPs: adaptive but capped to avoid extreme loops
-    const distance = Math.min(Math.max(dx / 2, dy / 2, 80), 120);
+    // Adaptive control point distance
+    // FIXED: Use dx primarily. Do NOT use dy, otherwise tall vertical gaps cause excessive horizontal bulging.
+    // We want a nice S-curve that depends on the horizontal space available.
+    // Clamp between 80px (for very close cards) and a reasonable max.
+    const distance = Math.max(dx * 0.5, 80);
 
     const cp1 = calculateCP(source, distance);
     const cp2 = calculateCP(target, distance);
