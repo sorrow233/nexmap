@@ -1,22 +1,43 @@
-import { getProviderSettings, saveProviderSettings, getActiveConfig } from './llm/registry';
+import { getProviderSettings, saveProviderSettings, getActiveConfig, DEFAULT_ROLES, DEFAULT_PROVIDERS } from './llm/registry';
 import { ModelFactory } from './llm/factory';
 
-export { getProviderSettings, saveProviderSettings, getActiveConfig };
+export { getProviderSettings, saveProviderSettings, getActiveConfig, DEFAULT_ROLES };
 
 // Backwards compatibility alias
 export const getApiConfig = getActiveConfig;
+
+/**
+ * Helper to get config by role
+ */
+function getConfigByRole(role = 'chat') {
+    const settings = getProviderSettings();
+    const roleId = (settings.roles && settings.roles[role]) ? settings.roles[role] : settings.activeId;
+    return settings.providers[roleId] || DEFAULT_PROVIDERS['google'];
+}
 
 /**
  * Main chat completion function
  */
 export async function chatCompletion(messages, model = null, options = {}) {
     let apiConfig;
+
+    // 1. Explicit provider ID overrides everything
     if (options.providerId) {
         const settings = getProviderSettings();
-        apiConfig = settings.providers[options.providerId] || getActiveConfig();
-    } else {
-        apiConfig = options.overrideConfig || getActiveConfig();
+        apiConfig = settings.providers[options.providerId];
     }
+    // 2. Explicit config object overrides everything else
+    else if (options.overrideConfig) {
+        apiConfig = options.overrideConfig;
+    }
+    // 3. Fallback to Role-based config
+    else {
+        const role = options.role || 'chat';
+        apiConfig = getConfigByRole(role);
+    }
+
+    // Safety check
+    if (!apiConfig) apiConfig = getActiveConfig();
 
     const provider = ModelFactory.getProvider(apiConfig);
     return provider.chat(messages, model, options);
@@ -27,12 +48,19 @@ export async function chatCompletion(messages, model = null, options = {}) {
  */
 export async function streamChatCompletion(messages, onToken, model = null, options = {}) {
     let apiConfig;
+
     if (options.providerId) {
         const settings = getProviderSettings();
-        apiConfig = settings.providers[options.providerId] || getActiveConfig();
+        apiConfig = settings.providers[options.providerId];
+    } else if (options.overrideConfig) {
+        apiConfig = options.overrideConfig;
     } else {
-        apiConfig = options.overrideConfig || getActiveConfig();
+        const role = options.role || 'chat';
+        apiConfig = getConfigByRole(role);
     }
+
+    // Safety check
+    if (!apiConfig) apiConfig = getActiveConfig();
 
     const provider = ModelFactory.getProvider(apiConfig);
     return provider.stream(messages, onToken, model, options);
@@ -44,7 +72,13 @@ export async function streamChatCompletion(messages, onToken, model = null, opti
 export async function generateTitle(text) {
     try {
         const userMessage = `Summarize the following text into a very short, catchy title (max 5 words). Do not use quotes.\n\nText: ${text.substring(0, 500)}`;
-        const title = await chatCompletion([{ role: 'user', content: userMessage }]);
+
+        // Use 'extraction' role for titles
+        const title = await chatCompletion(
+            [{ role: 'user', content: userMessage }],
+            null,
+            { role: 'extraction' }
+        );
         return title.trim();
     } catch (e) {
         return "New Conversation";
@@ -55,15 +89,21 @@ export async function generateTitle(text) {
  * Generate an image from a prompt
  */
 export async function imageGeneration(prompt, model = null, options = {}) {
-    const settings = getProviderSettings();
-    const providerId = options.providerId || settings.activeId;
-    const providerConfig = settings.providers[providerId];
+    let apiConfig;
 
-    if (!providerConfig || !providerConfig.apiKey) {
-        throw new Error(`Provider ${providerId} is not configured or missing API Key.`);
+    if (options.providerId) {
+        const settings = getProviderSettings();
+        apiConfig = settings.providers[options.providerId];
+    } else {
+        // Use 'image' role by default
+        apiConfig = getConfigByRole('image');
     }
 
-    const provider = ModelFactory.getProvider(providerConfig);
+    if (!apiConfig || !apiConfig.apiKey) {
+        throw new Error(`Image Provider is not configured or missing API Key.`);
+    }
+
+    const provider = ModelFactory.getProvider(apiConfig);
     return provider.generateImage(prompt, model, options);
 }
 
@@ -93,7 +133,12 @@ NO explanations, NO markdown formatting, JUST the JSON array.`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
-        const response = await chatCompletion([{ role: 'user', content: finalPrompt }], model, options);
+        // Use 'analysis' role for follow-up generation
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            model,
+            { ...options, role: 'analysis' }
+        );
         console.log('[Sprout Debug] Raw AI response:', response);
 
         if (!response || response.trim().length === 0) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box, RefreshCw, Layers, Cpu, Radio } from 'lucide-react';
-import { getProviderSettings, saveProviderSettings, chatCompletion } from '../services/llm';
+import { Settings, CheckCircle2, AlertCircle, Database, Server, Globe, Key, Box, RefreshCw, Layers, Cpu, Radio, Workflow } from 'lucide-react';
+import { getProviderSettings, saveProviderSettings, chatCompletion, DEFAULT_ROLES } from '../services/llm';
+import { getProviderSettings as getRegSettings } from '../services/llm/registry'; // Import directly to get complete object
 import { getS3Config, saveS3Config } from '../services/s3';
 import { saveUserSettings } from '../services/storage';
 
@@ -12,6 +13,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     // LLM State
     const [providers, setProviders] = useState({});
     const [activeId, setActiveId] = useState('google');
+    const [roles, setRoles] = useState({});
 
     // Testing State
     const [testStatus, setTestStatus] = useState('idle');
@@ -30,10 +32,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     // Load configuration on mount
     useEffect(() => {
-        const settings = getProviderSettings();
+        const settings = getRegSettings();
         if (settings) {
             setProviders(settings.providers);
             setActiveId(settings.activeId);
+            setRoles(settings.roles || DEFAULT_ROLES);
         }
 
         const s3 = getS3Config();
@@ -47,6 +50,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 ...prev[activeId],
                 [field]: value
             }
+        }));
+    };
+
+    const handleUpdateRole = (role, providerId) => {
+        setRoles(prev => ({
+            ...prev,
+            [role]: providerId
         }));
     };
 
@@ -73,7 +83,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     const handleSave = async () => {
         // Save LLM Config
-        saveProviderSettings(providers, activeId);
+        saveProviderSettings(providers, activeId, roles);
 
         // Save S3 config
         saveS3Config(s3Config);
@@ -84,6 +94,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 await saveUserSettings(user.uid, {
                     providers,
                     activeId,
+                    roles,
                     s3Config
                 });
                 console.log("[Sync] User settings pushed to cloud");
@@ -105,9 +116,16 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     const currentProvider = providers[activeId] || {};
 
+    const ROLE_DESCRIPTIONS = {
+        chat: { label: 'Main Chat', desc: 'The primary model used for conversation.' },
+        extraction: { label: 'Title & Summary', desc: 'Used for generating titles and summarizing content.' },
+        analysis: { label: 'Deep Analysis', desc: 'Used for generating follow-up questions and complex reasoning.' },
+        image: { label: 'Image Generation', desc: 'Used for generating images from prompts.' }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center font-sans">
-            <div className="bg-white dark:bg-slate-900 w-[650px] h-[700px] rounded-3xl shadow-2xl animate-fade-in border border-slate-100 dark:border-white/10 flex flex-col overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 w-[700px] h-[750px] rounded-3xl shadow-2xl animate-fade-in border border-slate-100 dark:border-white/10 flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
@@ -120,27 +138,37 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             <p className="text-slate-500 text-sm">Configure AI Providers & Storage</p>
                         </div>
                     </div>
-                    {/* Tabs */}
-                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                        <button
-                            onClick={() => setActiveTab('llm')}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'llm'
-                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            <Cpu size={16} /> AI Model
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('storage')}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'storage'
-                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            <Database size={16} /> Storage
-                        </button>
-                    </div>
+                </div>
+
+                {/* Navigation Tabs */}
+                <div className="px-6 pt-4 pb-0 flex gap-2 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 overflow-x-auto">
+                    <button
+                        onClick={() => setActiveTab('llm')}
+                        className={`px-4 py-3 border-b-2 font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'llm'
+                            ? 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-50/50 dark:bg-brand-900/10'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <Cpu size={18} /> Model Setup
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('roles')}
+                        className={`px-4 py-3 border-b-2 font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'roles'
+                            ? 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-50/50 dark:bg-brand-900/10'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <Workflow size={18} /> Functional Roles
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('storage')}
+                        className={`px-4 py-3 border-b-2 font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'storage'
+                            ? 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-50/50 dark:bg-brand-900/10'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <Database size={18} /> Storage
+                    </button>
                 </div>
 
                 {/* Content */}
@@ -152,7 +180,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
                             {/* Provider Selection */}
                             <div>
-                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Select Provider</h3>
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Select Provider to Configure</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     {Object.values(providers).map(p => (
                                         <button
@@ -167,7 +195,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <div className="text-xs text-slate-500 mt-1">{p.protocol === 'gemini' ? 'Native Protocol' : 'OpenAI Protocol'}</div>
                                             {activeId === p.id && (
                                                 <div className="absolute top-3 right-3 text-brand-600 dark:text-brand-400">
-                                                    <CheckCircle2 size={20} />
+                                                    <Settings size={20} />
                                                 </div>
                                             )}
                                         </button>
@@ -177,7 +205,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
                             {/* Config Form */}
                             <div className="space-y-5 pt-6 border-t border-slate-100 dark:border-white/5">
-                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Configuration: {currentProvider.name}</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Configuration: {currentProvider.name}</h3>
+                                    <div className="text-xs text-slate-500 italic">ID: {currentProvider.id}</div>
+                                </div>
+
 
                                 {/* API Key */}
                                 <div>
@@ -277,6 +309,44 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 >
                                     <RefreshCw size={14} /> Reset Defaults
                                 </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Roles Tab */}
+                    {activeTab === 'roles' && (
+                        <div className="space-y-6 animate-slide-up">
+                            <div className="p-4 bg-brand-50 dark:bg-brand-900/20 text-brand-800 dark:text-brand-200 rounded-xl text-sm border border-brand-100 dark:border-brand-900/30">
+                                <p className="font-bold mb-1">Advanced Model Routing</p>
+                                <p>Assign different providers to specialized tasks for optimal performance and cost.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {Object.entries(ROLE_DESCRIPTIONS).map(([roleKey, info]) => (
+                                    <div key={roleKey} className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                    {info.label}
+                                                </h4>
+                                                <p className="text-xs text-slate-500 mt-1">{info.desc}</p>
+                                            </div>
+                                            <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
+                                                {roleKey}
+                                            </div>
+                                        </div>
+
+                                        <select
+                                            value={roles[roleKey] || activeId}
+                                            onChange={(e) => handleUpdateRole(roleKey, e.target.value)}
+                                            className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-sm text-slate-800 dark:text-white cursor-pointer hover:border-brand-400 transition-colors"
+                                        >
+                                            {Object.values(providers).map(p => (
+                                                <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
