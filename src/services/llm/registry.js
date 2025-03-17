@@ -20,10 +20,22 @@ export const DEFAULT_PROVIDERS = {
 };
 
 export const DEFAULT_ROLES = {
-    chat: 'google',       // Main chat
-    extraction: 'google', // Title gen, summary
-    analysis: 'google',   // Follow-up, reasoning
-    image: 'google'       // Image gen
+    chat: {
+        providerId: 'google',
+        model: 'google/gemini-3-flash-preview'
+    },
+    extraction: {
+        providerId: 'google',
+        model: 'google/gemini-3-flash-preview'
+    },
+    analysis: {
+        providerId: 'google',
+        model: 'google/gemini-3-flash-preview'
+    },
+    image: {
+        providerId: 'google',
+        model: 'google/gemini-3-flash-preview'
+    }
 };
 
 export const getProviderSettings = () => {
@@ -53,7 +65,7 @@ export const getProviderSettings = () => {
                     return {
                         providers: migrated,
                         activeId: 'google',
-                        roles: { ...DEFAULT_ROLES }
+                        roles: JSON.parse(JSON.stringify(DEFAULT_ROLES))
                     };
                 } catch (e) { console.warn('Migration failed', e); }
             }
@@ -64,14 +76,28 @@ export const getProviderSettings = () => {
             };
         }
 
-        // BACKFILL ROLES IF MISSING (Migration from early V3)
+        // MIGRATION: Convert old string-based roles to object-based roles
+        if (settings.roles && typeof settings.roles.chat === 'string') {
+            const newRoles = {};
+            for (const [roleKey, providerId] of Object.entries(settings.roles)) {
+                const provider = settings.providers[providerId];
+                newRoles[roleKey] = {
+                    providerId: providerId,
+                    model: provider ? provider.model : 'google/gemini-3-flash-preview'
+                };
+            }
+            settings.roles = newRoles;
+        }
+
+        // BACKFILL ROLES IF MISSING
         if (!settings.roles) {
             const active = settings.activeId || 'google';
+            const model = settings.providers[active]?.model || 'google/gemini-3-flash-preview';
             settings.roles = {
-                chat: active,
-                extraction: active,
-                analysis: active,
-                image: active
+                chat: { providerId: active, model },
+                extraction: { providerId: active, model },
+                analysis: { providerId: active, model },
+                image: { providerId: active, model }
             };
         }
 
@@ -87,9 +113,6 @@ export const getProviderSettings = () => {
 };
 
 export const saveProviderSettings = (providers, activeId, roles) => {
-    // If roles param is missing, we might be calling from legacy code, 
-    // but ideally we update all callsites. 
-    // Fallback: if roles not provided, try to preserve existing or default.
     let newRoles = roles;
     if (!newRoles) {
         const current = getProviderSettings();
@@ -102,6 +125,12 @@ export const saveProviderSettings = (providers, activeId, roles) => {
 export const getActiveConfig = () => {
     // Legacy support: "Active Config" usually implies "Chat Config"
     const { providers, roles } = getProviderSettings();
-    const roleId = roles && roles.chat ? roles.chat : 'google';
-    return providers[roleId] || DEFAULT_PROVIDERS['google'];
+    const roleConfig = roles && roles.chat ? roles.chat : DEFAULT_ROLES.chat;
+    const provider = providers[roleConfig.providerId] || DEFAULT_PROVIDERS['google'];
+
+    // Return provider with overridden model
+    return {
+        ...provider,
+        model: roleConfig.model || provider.model
+    };
 };

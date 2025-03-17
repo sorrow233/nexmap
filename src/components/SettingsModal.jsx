@@ -53,10 +53,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         }));
     };
 
-    const handleUpdateRole = (role, providerId) => {
+    const handleUpdateRole = (role, field, value) => {
         setRoles(prev => ({
             ...prev,
-            [role]: providerId
+            [role]: {
+                ...(prev[role] || {}),
+                [field]: value
+            }
         }));
     };
 
@@ -322,31 +325,51 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             </div>
 
                             <div className="space-y-4">
-                                {Object.entries(ROLE_DESCRIPTIONS).map(([roleKey, info]) => (
-                                    <div key={roleKey} className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                                    {info.label}
-                                                </h4>
-                                                <p className="text-xs text-slate-500 mt-1">{info.desc}</p>
+                                {Object.entries(ROLE_DESCRIPTIONS).map(([roleKey, info]) => {
+                                    const roleConfig = roles[roleKey] || { providerId: activeId, model: '' };
+                                    return (
+                                        <div key={roleKey} className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                        {info.label}
+                                                    </h4>
+                                                    <p className="text-xs text-slate-500 mt-1">{info.desc}</p>
+                                                </div>
+                                                <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
+                                                    {roleKey}
+                                                </div>
                                             </div>
-                                            <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
-                                                {roleKey}
+
+                                            {/* Provider Selection */}
+                                            <div className="mb-3">
+                                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Provider</label>
+                                                <select
+                                                    value={roleConfig.providerId || activeId}
+                                                    onChange={(e) => handleUpdateRole(roleKey, 'providerId', e.target.value)}
+                                                    className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-sm text-slate-800 dark:text-white cursor-pointer hover:border-brand-400 transition-colors"
+                                                >
+                                                    {Object.values(providers).map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Model Input */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Model Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={roleConfig.model || ''}
+                                                    onChange={(e) => handleUpdateRole(roleKey, 'model', e.target.value)}
+                                                    placeholder={providers[roleConfig.providerId]?.model || "google/gemini-3-flash-preview"}
+                                                    className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-sm text-slate-800 dark:text-white font-mono placeholder:text-slate-400 focus:border-brand-400 transition-colors"
+                                                />
+                                                <p className="text-xs text-slate-400 mt-1">可以使用不同的模型,如 google/gemini-3-pro-preview</p>
                                             </div>
                                         </div>
-
-                                        <select
-                                            value={roles[roleKey] || activeId}
-                                            onChange={(e) => handleUpdateRole(roleKey, e.target.value)}
-                                            className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-sm text-slate-800 dark:text-white cursor-pointer hover:border-brand-400 transition-colors"
-                                        >
-                                            {Object.values(providers).map(p => (
-                                                <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
