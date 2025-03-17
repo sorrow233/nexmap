@@ -383,37 +383,38 @@ const createContentSlice = (set, get) => {
                 return { generatingCardIds: next };
             });
         }
-    });
+    };
+};
 
-    // --- Settings Slice ---
-    const createSettingsSlice = (set) => ({
-        isSettingsOpen: false,
-        activeModel: 'gemini-2.0-flash-exp',
-        apiConfig: {},
+// --- Settings Slice ---
+const createSettingsSlice = (set) => ({
+    isSettingsOpen: false,
+    activeModel: 'gemini-2.0-flash-exp',
+    apiConfig: {},
 
-        setIsSettingsOpen: (val) => set({ isSettingsOpen: typeof val === 'function' ? val() : val }),
-        setActiveModel: (val) => set({ activeModel: val }),
-        setApiConfig: (val) => set({ apiConfig: val })
-    });
+    setIsSettingsOpen: (val) => set({ isSettingsOpen: typeof val === 'function' ? val() : val }),
+    setActiveModel: (val) => set({ activeModel: val }),
+    setApiConfig: (val) => set({ apiConfig: val })
+});
 
-    // --- Global Store with Temporal Middleware ---
-    const useStoreBase = create(
-        temporal(
-            (set, get) => ({
-                ...createCanvasSlice(set, get),
-                ...createContentSlice(set, get),
-                ...createSettingsSlice(set, get)
-            }),
-            {
-                limit: 50,
-                equality: (a, b) => a === b,
-                partialize: (state) => ({
-                    cards: state.cards,
-                    connections: state.connections
-                })
-            }
-        )
-    );
+// --- Global Store with Temporal Middleware ---
+const useStoreBase = create(
+    temporal(
+        (set, get) => ({
+            ...createCanvasSlice(set, get),
+            ...createContentSlice(set, get),
+            ...createSettingsSlice(set, get)
+        }),
+        {
+            limit: 50,
+            equality: (a, b) => a === b,
+            partialize: (state) => ({
+                cards: state.cards,
+                connections: state.connections
+            })
+        }
+    )
+);
 
-    export const useStore = useStoreBase;
-    export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();
+export const useStore = useStoreBase;
+export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();
