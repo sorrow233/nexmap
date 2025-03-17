@@ -1,28 +1,10 @@
-import { getProviderSettings, saveProviderSettings, getActiveConfig, DEFAULT_ROLES, DEFAULT_PROVIDERS } from './llm/registry';
+import { getProviderSettings, saveProviderSettings, getActiveConfig, DEFAULT_PROVIDERS } from './llm/registry';
 import { ModelFactory } from './llm/factory';
 
-export { getProviderSettings, saveProviderSettings, getActiveConfig, DEFAULT_ROLES };
+export { getProviderSettings, saveProviderSettings, getActiveConfig };
 
 // Backwards compatibility alias
 export const getApiConfig = getActiveConfig;
-
-/**
- * Helper to get config by role
- */
-function getConfigByRole(role = 'chat') {
-    const settings = getProviderSettings();
-    const roleConfig = settings.roles && settings.roles[role]
-        ? settings.roles[role]
-        : { providerId: settings.activeId, model: null };
-
-    const provider = settings.providers[roleConfig.providerId] || DEFAULT_PROVIDERS['google'];
-
-    // Override model if role specifies one
-    return {
-        ...provider,
-        model: roleConfig.model || provider.model
-    };
-}
 
 /**
  * Main chat completion function
@@ -30,22 +12,15 @@ function getConfigByRole(role = 'chat') {
 export async function chatCompletion(messages, model = null, options = {}) {
     let apiConfig;
 
-    // 1. Explicit provider ID overrides everything
     if (options.providerId) {
         const settings = getProviderSettings();
         apiConfig = settings.providers[options.providerId];
-    }
-    // 2. Explicit config object overrides everything else
-    else if (options.overrideConfig) {
+    } else if (options.overrideConfig) {
         apiConfig = options.overrideConfig;
-    }
-    // 3. Fallback to Role-based config
-    else {
-        const role = options.role || 'chat';
-        apiConfig = getConfigByRole(role);
+    } else {
+        apiConfig = getActiveConfig();
     }
 
-    // Safety check
     if (!apiConfig) apiConfig = getActiveConfig();
 
     const provider = ModelFactory.getProvider(apiConfig);
@@ -64,11 +39,9 @@ export async function streamChatCompletion(messages, onToken, model = null, opti
     } else if (options.overrideConfig) {
         apiConfig = options.overrideConfig;
     } else {
-        const role = options.role || 'chat';
-        apiConfig = getConfigByRole(role);
+        apiConfig = getActiveConfig();
     }
 
-    // Safety check
     if (!apiConfig) apiConfig = getActiveConfig();
 
     const provider = ModelFactory.getProvider(apiConfig);
@@ -76,40 +49,15 @@ export async function streamChatCompletion(messages, onToken, model = null, opti
 }
 
 /**
- * Generate title from text
- */
-export async function generateTitle(text) {
-    try {
-        const userMessage = `Summarize the following text into a very short, catchy title (max 5 words). Do not use quotes.\n\nText: ${text.substring(0, 500)}`;
-
-        // Use 'extraction' role for titles
-        const title = await chatCompletion(
-            [{ role: 'user', content: userMessage }],
-            null,
-            { role: 'extraction' }
-        );
-        return title.trim();
-    } catch (e) {
-        return "New Conversation";
-    }
-}
-
-/**
  * Generate an image from a prompt
  */
 export async function imageGeneration(prompt, model = null, options = {}) {
-    let apiConfig;
-
-    if (options.providerId) {
-        const settings = getProviderSettings();
-        apiConfig = settings.providers[options.providerId];
-    } else {
-        // Use 'image' role by default
-        apiConfig = getConfigByRole('image');
-    }
+    const apiConfig = options.providerId
+        ? getProviderSettings().providers[options.providerId]
+        : getActiveConfig();
 
     if (!apiConfig || !apiConfig.apiKey) {
-        throw new Error(`Image Provider is not configured or missing API Key.`);
+        throw new Error(`Provider is not configured or missing API Key.`);
     }
 
     const provider = ModelFactory.getProvider(apiConfig);
@@ -121,8 +69,6 @@ export async function imageGeneration(prompt, model = null, options = {}) {
  */
 export async function generateFollowUpTopics(messages, model = null, options = {}) {
     try {
-        // Construct a single user message for maximum compatibility
-        // Some models/proxies ignore system messages or handle them poorly
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
         const finalPrompt = `Analyze the following conversation history and predict the top 5 questions the user is MOST LIKELY to ask next.
@@ -142,11 +88,10 @@ NO explanations, NO markdown formatting, JUST the JSON array.`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
-        // Use 'analysis' role for follow-up generation
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
             model,
-            { ...options, role: 'analysis' }
+            options
         );
         console.log('[Sprout Debug] Raw AI response:', response);
 
@@ -196,7 +141,6 @@ if (typeof window !== 'undefined') {
         getApiConfig,
         chatCompletion,
         streamChatCompletion,
-        generateTitle,
         imageGeneration,
         generateFollowUpTopics
     };
