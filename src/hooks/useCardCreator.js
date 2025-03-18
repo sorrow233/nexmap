@@ -160,7 +160,7 @@ export function useCardCreator() {
 
     const handleCreateNote = (text = '') => {
         addCard({
-            id: Date.now().toString(), type: 'sticky',
+            id: Date.now().toString(), type: 'note',
             x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
             y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
             data: { content: text || '', color: 'yellow' }
