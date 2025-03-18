@@ -12,7 +12,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     // LLM State
     const [providers, setProviders] = useState({});
     const [activeId, setActiveId] = useState('google');
-    const [roles, setRoles] = useState({ chat: '', analysis: '', image: '' });
+    const [roles, setRoles] = useState({ chat: '', analysis: '' });
 
     // Testing State
     const [testStatus, setTestStatus] = useState('idle');
@@ -39,7 +39,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         if (settings) {
             setProviders(settings.providers);
             setActiveId(settings.activeId);
-            setRoles(settings.roles || { chat: '', analysis: '', image: '' });
+            setRoles(settings.roles || { chat: '', analysis: '' });
         }
 
         const s3 = getS3Config();
@@ -323,25 +323,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     />
                                 </div>
 
-                                {/* Image Model */}
-                                <div className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🎨 Image Generation</h4>
-                                            <p className="text-xs text-slate-500 mt-1">Model for /draw command</p>
-                                        </div>
-                                        <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
-                                            image
-                                        </div>
-                                    </div>
-                                    <input
-                                        type="text"
-                                        value={roles.image || ''}
-                                        onChange={(e) => setRoles(prev => ({ ...prev, image: e.target.value }))}
-                                        placeholder={currentProvider.model || "google/gemini-3-flash-preview"}
-                                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
-                                    />
-                                </div>
+
                             </div>
 
                             <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-slate-500">
