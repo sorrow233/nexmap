@@ -95,11 +95,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
             {/* Quick Start / Hero Input - Linear Style */}
             <div className="mb-24 relative group max-w-4xl mx-auto mt-8">
-                <div className={`absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}></div>
+                <div className={`absolute inset-0 bg-gradient-to-r from-orange-300/15 via-pink-300/15 to-orange-300/15 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}></div>
 
                 <div
                     className={`relative glass-panel transition-all duration-500 p-3 rounded-[2.5rem] flex flex-col
-                        ${isDragging ? 'border-blue-500 ring-4 ring-blue-500/20 scale-[1.01]' : 'hover:border-white/60 dark:hover:border-white/20 hover:shadow-glow-blue'}
+                        ${isDragging ? 'border-orange-300 ring-4 ring-orange-300/20 scale-[1.01]' : 'hover:border-orange-200/40 dark:hover:border-orange-200/20 hover:shadow-glow-blue'}
                     `}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -130,7 +130,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     )}
 
                     <div className="flex items-center gap-4 w-full">
-                        <div className="pl-6 text-blue-500/80 dark:text-blue-400 my-auto shrink-0">
+                        <div className="pl-6 text-orange-400/80 dark:text-orange-300 my-auto shrink-0">
                             <Sparkles size={28} className="animate-pulse-slow drop-shadow-sm" />
                         </div>
 
@@ -154,7 +154,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                         />
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="p-4 text-slate-400 hover:text-blue-500 hover:bg-blue-50/50 dark:hover:bg-white/5 rounded-2xl transition-all mr-2 shrink-0 group-hover:scale-110"
+                            className="p-4 text-slate-400 hover:text-orange-400 hover:bg-orange-50/50 dark:hover:bg-white/5 rounded-2xl transition-all mr-2 shrink-0 group-hover:scale-110"
                             title="Upload Image"
                         >
                             <ImageIcon size={26} />
@@ -171,9 +171,9 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
                     {/* Drag Overlay Hint */}
                     {isDragging && (
-                        <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center pointer-events-none z-20 border-2 border-dashed border-blue-500/30">
-                            <div className="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl shadow-premium-hover flex items-center gap-4 animate-bounce border border-blue-100 dark:border-white/10">
-                                <div className="bg-blue-500 p-2 rounded-xl text-white">
+                        <div className="absolute inset-0 bg-orange-300/10 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center pointer-events-none z-20 border-2 border-dashed border-orange-300/30">
+                            <div className="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl shadow-premium-hover flex items-center gap-4 animate-bounce border border-orange-100 dark:border-white/10">
+                                <div className="bg-orange-400 p-2 rounded-xl text-white">
                                     <ImageIcon size={20} />
                                 </div>
                                 <span className="font-black text-slate-900 dark:text-white tracking-tight">Release to upload</span>
@@ -187,7 +187,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             {boards.length > 0 && (
                 <div className="mb-20 animate-fade-in px-2">
                     <div className="flex items-center gap-4 mb-8 pl-2">
-                        <div className="w-10 h-10 bg-white/50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-sm">
+                        <div className="w-10 h-10 bg-white/50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-orange-400 dark:text-orange-300 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-sm">
                             <Clock size={20} />
                         </div>
                         <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Recently Visited</h2>
@@ -206,11 +206,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 >
                                     <div className="flex flex-col h-full justify-between gap-6">
                                         <div className="relative">
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-2">
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors mb-2">
                                                 {board.name}
                                             </h3>
                                             <p className="text-slate-400 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/60"></span>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-orange-300/60"></span>
                                                 {new Date(board.lastAccessedAt).toLocaleDateString()}
                                             </p>
                                         </div>
@@ -232,7 +232,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             {/* Main Grid: All Boards */}
             <div className="animate-fade-in px-2">
                 <div className="flex items-center gap-4 mb-8 pl-2">
-                    <div className="w-10 h-10 bg-white/50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-sm">
+                    <div className="w-10 h-10 bg-white/50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-orange-400 dark:text-orange-300 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-sm">
                         <FileText size={20} />
                     </div>
                     <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">All Boards</h2>
@@ -247,11 +247,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                             className="group relative glass-card rounded-[2.5rem] p-8 cursor-pointer transition-all duration-500 hover:glass-card-hover flex flex-col min-h-[280px] animate-slide-up overflow-hidden"
                         >
                             {/* Abstract Glow Background */}
-                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-[60px] rounded-full group-hover:from-indigo-500/20 group-hover:to-purple-500/20 transition-all duration-700"></div>
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-orange-300/08 to-pink-300/08 blur-[60px] rounded-full group-hover:from-orange-300/15 group-hover:to-pink-300/15 transition-all duration-700"></div>
 
                             <div className="relative z-10 flex flex-col h-full">
                                 <div className="flex justify-between items-start mb-8">
-                                    <div className="w-14 h-14 rounded-[1.25rem] bg-white/50 dark:bg-white/5 border border-white/40 dark:border-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:scale-110 transition-all duration-500 shadow-sm backdrop-blur-sm">
+                                    <div className="w-14 h-14 rounded-[1.25rem] bg-white/50 dark:bg-white/5 border border-white/40 dark:border-white/5 flex items-center justify-center text-slate-400 group-hover:text-orange-400 dark:group-hover:text-orange-300 group-hover:scale-110 transition-all duration-500 shadow-sm backdrop-blur-sm">
                                         <FileText size={24} />
                                     </div>
                                     <button
@@ -267,7 +267,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 </div>
 
                                 <div className="mb-4 flex flex-col gap-1">
-                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-600 group-hover:to-purple-600 dark:group-hover:from-indigo-400 dark:group-hover:to-purple-400 transition-all duration-300 leading-tight tracking-tight">
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-pink-400 dark:group-hover:from-orange-400 dark:group-hover:to-pink-300 transition-all duration-300 leading-tight tracking-tight">
                                         {board.name}
                                     </h3>
                                     <div className="flex items-center gap-2">
@@ -292,7 +292,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
                     {boards.length === 0 && (
                         <div className="col-span-full py-40 glass-panel rounded-[3.5rem] flex flex-col items-center justify-center text-slate-500 animate-fade-in shadow-inner border border-dashed border-slate-300/50 dark:border-white/10">
-                            <div className="w-24 h-24 bg-white/80 dark:bg-white/5 shadow-glow-blue rounded-[2rem] flex items-center justify-center mb-8 text-blue-500 backdrop-blur-md">
+                            <div className="w-24 h-24 bg-white/80 dark:bg-white/5 shadow-glow-blue rounded-[2rem] flex items-center justify-center mb-8 text-orange-400 backdrop-blur-md">
                                 <Sparkles size={40} className="animate-pulse-slow" />
                             </div>
                             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-3">No boards found</h2>
