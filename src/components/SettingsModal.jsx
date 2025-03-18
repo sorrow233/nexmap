@@ -18,6 +18,10 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     const [testStatus, setTestStatus] = useState('idle');
     const [testMessage, setTestMessage] = useState('');
 
+    // UI State  
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
     // S3 Storage State
     const [s3Config, setS3ConfigState] = useState({
         enabled: false,
@@ -95,15 +99,17 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             }
         }
 
-        alert('Settings saved! Reloading page to apply changes...');
-        window.location.reload();
+        setSaveSuccess(true);
+        setTimeout(() => window.location.reload(), 1500);
     };
 
     const handleReset = () => {
-        if (confirm('Reset LLM settings to defaults? This cannot be undone.')) {
-            localStorage.removeItem('mixboard_providers_v3');
-            window.location.reload();
-        }
+        setShowResetConfirm(true);
+    };
+
+    const confirmReset = () => {
+        localStorage.removeItem('mixboard_providers_v3');
+        window.location.reload();
     };
 
     const currentProvider = providers[activeId] || {};
@@ -444,6 +450,50 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         Save Configuration
                     </button>
                 </div>
+
+                {/* Success Toast */}
+                {saveSuccess && (
+                    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[200] animate-slide-down">
+                        <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+                            <CheckCircle2 size={24} />
+                            <div>
+                                <p className="font-bold">Settings Saved!</p>
+                                <p className="text-sm text-emerald-100">Reloading in a moment...</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Reset Confirmation Dialog */}
+                {showResetConfirm && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center animate-fade-in">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-md animate-scale-in border border-slate-200 dark:border-white/10">
+                            <div className="flex items-start gap-4 mb-4">
+                                <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl text-red-600 dark:text-red-400">
+                                    <AlertCircle size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-1">Reset to Defaults?</h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">This will clear all your LLM settings. This action cannot be undone.</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setShowResetConfirm(false)}
+                                    className="px-4 py-2 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmReset}
+                                    className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500 transition-all shadow-lg"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

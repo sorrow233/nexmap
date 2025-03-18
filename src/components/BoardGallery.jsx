@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon } from 'lucide-react';
+import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import ModernDialog from './ModernDialog';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard }) {
     const [quickPrompt, setQuickPrompt] = useState('');
     const [images, setImages] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null });
     const fileInputRef = useRef(null);
 
     const handleQuickStart = (e) => {
@@ -255,7 +257,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (confirm('Delete this board?')) onDeleteBoard(board.id);
+                                            setDeleteDialog({ isOpen: true, boardId: board.id });
                                         }}
                                         className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-white/5 rounded-2xl transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100"
                                         title="Delete Board"
@@ -299,6 +301,15 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     )}
                 </div>
             </div>
+            {/* Delete Confirmation */}
+            <ModernDialog
+                isOpen={deleteDialog.isOpen}
+                onClose={() => setDeleteDialog({ isOpen: false, boardId: null })}
+                onConfirm={() => onDeleteBoard(deleteDialog.boardId)}
+                title="Delete Board?"
+                message="Are you sure you want to delete this board? This action cannot be undone."
+                type="confirm"
+            />
         </div>
     );
 }
