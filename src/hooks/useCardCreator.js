@@ -159,53 +159,59 @@ export function useCardCreator() {
         }
     };
 
-    const handleCreateNote = (text = '') => {
-        // Find existing note card (Single Master Node)
-        const existingNote = cards.find(c => c.type === 'note');
+    const handleCreateNote = (text = '', isMaster = false) => {
+        // Sanitize input: If text is an event object (from onClick), treat as empty string
+        const safeText = (typeof text === 'string' ? text : '');
 
-        if (existingNote) {
-            const currentContent = existingNote.data.content || '';
+        if (isMaster) {
+            // Master Note Logic: Append to existing
+            const existingNote = cards.find(c => c.type === 'note');
 
-            // Determine next number by parsing existing numbers in the content
-            // matches look like "01.", "02." at start of lines
-            const matches = currentContent.match(/^(\d+)\./gm);
-            let nextNum = 1;
-            if (matches && matches.length > 0) {
-                // Get the last number found
-                const lastMatch = matches[matches.length - 1];
-                const lastNum = parseInt(lastMatch, 10);
-                nextNum = lastNum + 1;
-            } else if (currentContent.trim()) {
-                // Content exists but no number pattern found? Start at 2 if we assume top is 1, or just 1?
-                // Let's safe bet on 2 if content exists, or 1. 
-                // To match user expectation of perfect format, maybe we should assume if no match, it's unnumbered, so we append 01?
-                // But let's assume valid flow: 
-                nextNum = 2;
+            if (existingNote) {
+                const currentContent = existingNote.data.content || '';
+
+                // Parse existing numbering
+                const matches = currentContent.match(/^(\d+)\./gm);
+                let nextNum = 1;
+                if (matches && matches.length > 0) {
+                    const lastMatch = matches[matches.length - 1];
+                    const lastNum = parseInt(lastMatch, 10);
+                    nextNum = lastNum + 1;
+                } else if (currentContent.trim()) {
+                    nextNum = 2; // Fallback if content exists but unnumbered
+                }
+
+                const nextNumberStr = String(nextNum).padStart(2, '0');
+
+                // Format: "03. Content"
+                const newEntry = `${nextNumberStr}. ${safeText}`;
+
+                // Add double newline separator
+                const separator = currentContent.trim() ? '\n\n' : '';
+                const updatedContent = currentContent + separator + newEntry;
+
+                updateCard(existingNote.id, { content: updatedContent });
+            } else {
+                // No existing master note, create one
+                addCard({
+                    id: Date.now().toString(), type: 'note',
+                    x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
+                    y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 200),
+                    data: {
+                        content: `01. ${safeText}`,
+                        color: 'yellow'
+                    }
+                });
             }
-
-            const nextNumberStr = String(nextNum).padStart(2, '0');
-
-            // Format: "03. Content"
-            const newEntry = `${nextNumberStr}. ${text}`;
-
-            // Add double newline spacing if there is existing content
-            const separator = currentContent.trim() ? '\n\n' : '';
-            const updatedContent = currentContent + separator + newEntry;
-
-            updateCard(existingNote.id, { content: updatedContent });
-
-            // Optional: Move view to card? Or bring to front?
-            // For now just update stats/data
         } else {
-            // First note - Create new Master Note
+            // Standard/Independent Note Logic: Create NEW card
             addCard({
                 id: Date.now().toString(), type: 'note',
-                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
-                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 200),
+                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
+                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
                 data: {
-                    content: `01. ${text}`,
+                    content: safeText,
                     color: 'yellow'
-                    // removed 'number' field as it's now inline
                 }
             });
         }
