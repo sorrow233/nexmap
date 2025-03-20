@@ -10,6 +10,7 @@ export function useCardCreator() {
         selectedIds,
         createAICard,
         updateCardContent,
+        updateCard,
         setCardGenerating,
         addCard
     } = useStore();
@@ -159,20 +160,55 @@ export function useCardCreator() {
     };
 
     const handleCreateNote = (text = '') => {
-        // Get current note cards to determine next number
-        const noteCards = cards.filter(c => c.type === 'note');
-        const nextNumber = String(noteCards.length + 1).padStart(2, '0');
+        // Find existing note card (Single Master Node)
+        const existingNote = cards.find(c => c.type === 'note');
 
-        addCard({
-            id: Date.now().toString(), type: 'note',
-            x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
-            y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
-            data: {
-                content: text || '',
-                color: 'yellow',
-                number: nextNumber  // Add automatic numbering
+        if (existingNote) {
+            const currentContent = existingNote.data.content || '';
+
+            // Determine next number by parsing existing numbers in the content
+            // matches look like "01.", "02." at start of lines
+            const matches = currentContent.match(/^(\d+)\./gm);
+            let nextNum = 1;
+            if (matches && matches.length > 0) {
+                // Get the last number found
+                const lastMatch = matches[matches.length - 1];
+                const lastNum = parseInt(lastMatch, 10);
+                nextNum = lastNum + 1;
+            } else if (currentContent.trim()) {
+                // Content exists but no number pattern found? Start at 2 if we assume top is 1, or just 1?
+                // Let's safe bet on 2 if content exists, or 1. 
+                // To match user expectation of perfect format, maybe we should assume if no match, it's unnumbered, so we append 01?
+                // But let's assume valid flow: 
+                nextNum = 2;
             }
-        });
+
+            const nextNumberStr = String(nextNum).padStart(2, '0');
+
+            // Format: "03. Content"
+            const newEntry = `${nextNumberStr}. ${text}`;
+
+            // Add double newline spacing if there is existing content
+            const separator = currentContent.trim() ? '\n\n' : '';
+            const updatedContent = currentContent + separator + newEntry;
+
+            updateCard(existingNote.id, { content: updatedContent });
+
+            // Optional: Move view to card? Or bring to front?
+            // For now just update stats/data
+        } else {
+            // First note - Create new Master Note
+            addCard({
+                id: Date.now().toString(), type: 'note',
+                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
+                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 200),
+                data: {
+                    content: `01. ${text}`,
+                    color: 'yellow'
+                    // removed 'number' field as it's now inline
+                }
+            });
+        }
     };
 
     const handleExpandTopics = async (sourceId) => {
