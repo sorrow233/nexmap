@@ -66,17 +66,26 @@ export async function generateFollowUpTopics(messages, model = null, options = {
     try {
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `You are a curious, intelligent thinking partner. Analyze the conversation history and generate exactly 5 thoughtful, diverse follow-up questions/directions.
+        const finalPrompt = `You are a critical, insightful thinking partner (Muse). Analyze the conversation history and generate exactly 5 diverse, high-impact follow-up questions/directions.
 
 CONVERSATION HISTORY:
 ${contextText}
 
 INSTRUCTIONS:
-1. Questions should sound like a human curious to explore the topic deeper, NOT a generic AI assistant.
-2. Be direct and conversational. Avoid "Can you tell me more about..." or "What are the..." patterns.
-3. Instead of simple information requests, propose angles that challenge assumptions or connect ideas.
-4. Keep questions concise (under 15 words).
-5. Ensure diversity: ask for examples, potential risks, counter-arguments, or creative extensions.
+1. **Be Provocative & Insightful**: Do NOT ask generic questions like "What are the benefits?". Instead, challenge assumptions, propose counter-intuitive angles, or highlight potential contradictions.
+2. **Diversify Angles**:
+   - *The Skeptic*: Question the premise or feasibility.
+   - *The Visionary*: Project into the extreme future or scale.
+   - *The Connector*: Relate this to a seemingly unrelated field (e.g., biology, history, physics).
+   - *The Strategist*: Focus on 2nd/3rd order consequences.
+   - *The Devil's Advocate*: Argue the opposite view.
+3. **Natural & Direct**: Write as a sharp intellectual peer, not a robot. Use punchy, direct phrasing.
+4. **Valid JSON**: You must return ONLY a JSON array of strings.
+
+Examples of GOOD questions:
+- "Does this efficiency gain actually fragilize the system in the long run?"
+- "What if we inverted the incentive structure entirely?"
+- "How would this mechanism function in a zero-trust environment?"
 
 Return ONLY a JSON array with EXACTLY 5 strings: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
 NO other text.`;
