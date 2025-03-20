@@ -14,7 +14,8 @@ const StickyNote = React.memo(function StickyNote({
     onExpand,
     isConnecting,
     isConnectionStart,
-    scale
+    scale,
+    onCreateNote
 }) {
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -104,6 +105,17 @@ const StickyNote = React.memo(function StickyNote({
 
     const handleContentChange = (e) => {
         onUpdate(data.id, { ...data.data, content: e.target.value });
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            e.stopPropagation();
+            const content = window.getSelection().toString() || data.data?.content || '';
+            // If shift key is pressed, create independent note (isMaster=false)
+            // If just Cmd+Enter, add to master note (isMaster=true)
+            onCreateNote && onCreateNote(content, !e.shiftKey);
+        }
     };
 
     const handleImageUpload = (e) => {
@@ -228,6 +240,7 @@ const StickyNote = React.memo(function StickyNote({
                         ${isDragging ? 'cursor-grabbing' : 'cursor-text'}`}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
+                    onKeyDown={handleKeyDown}
                 />
             </div>
 

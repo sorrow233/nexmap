@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, Loader2, ChevronDown, Image as ImageIcon, Paperclip, StickyNote, RefreshCw, Sprout, Check } from 'lucide-react';
-import { chatCompletion, streamChatCompletion, generateFollowUpTopics } from '../services/llm';
-import { marked } from 'marked';
+import { X, Sparkles, Loader2, StickyNote, Sprout } from 'lucide-react';
+import { streamChatCompletion, generateFollowUpTopics } from '../services/llm';
 import { isSafari, isIOS } from '../utils/browser';
-import ErrorBoundary from './ErrorBoundary';
-
 import { uploadImageToS3, getS3Config } from '../services/s3';
+
+import SproutModal from './chat/SproutModal';
+import ChatInput from './chat/ChatInput';
+import MessageList from './chat/MessageList';
 
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse, onCreateNote, onSprout }) {
     if (!isOpen || !card) return null;
@@ -16,12 +17,15 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const fileInputRef = useRef(null);
+    const modalRef = useRef(null);
 
     // Sprout Feature State
     const [isSprouting, setIsSprouting] = useState(false);
     const [sproutTopics, setSproutTopics] = useState([]);
     const [showSproutModal, setShowSproutModal] = useState(false);
     const [selectedTopics, setSelectedTopics] = useState([]);
+    // Text Selection State
+    const [selection, setSelection] = useState(null);
 
     const handleSproutClick = async () => {
         if (isSprouting) return;
@@ -273,16 +277,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         // Prepare context messages for generation (exclude the empty assistant message we just added)
         const contextMessages = [...(card.data.messages || []), userMsg];
 
-        const appendToken = (token) => {
-            onUpdate(card.id, (currentData) => {
-                if (!currentData) return currentData; // safety
-                const msgs = [...currentData.messages];
-                const lastMsg = msgs[msgs.length - 1];
-                msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
-                return { ...currentData, messages: msgs };
-            });
-        };
-
         try {
             // Use the parent's generator which handles context/connections
             // onGenerateResponse(card.id, newMessages, onTokenCallback)
@@ -387,9 +381,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         }
     };
 
-    const [selection, setSelection] = useState(null);
-    const modalRef = useRef(null);
-
     const handleTextSelection = () => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
         setTimeout(() => {
@@ -468,7 +459,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         window.getSelection()?.removeAllRanges();
         setSelection(null);
     };
-
 
     return (
         <div
@@ -566,302 +556,41 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 </div>
 
                 {/* Sprout Modal Overlay */}
-                {showSproutModal && (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm animate-fade-in p-4">
-                        <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2rem] shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col max-h-[80vh] animate-scale-in">
-                            <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-emerald-50/50 dark:bg-emerald-900/10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                        <Sprout size={18} />
-                                    </div>
-                                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Sprout New Ideas</h3>
-                                </div>
-                                <button onClick={() => setShowSproutModal(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                                    <X size={20} className="text-slate-400" />
-                                </button>
-                            </div>
-
-                            <div className="p-6 overflow-y-auto custom-scrollbar">
-                                <p className="text-sm text-slate-500 mb-4 font-medium">Select questions you want answered:</p>
-                                <div className="space-y-2">
-                                    {sproutTopics.map((topic, idx) => (
-                                        <div
-                                            key={idx}
-                                            onClick={() => toggleTopicSelection(topic)}
-                                            className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 group
-                                                ${selectedTopics.includes(topic)
-                                                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10'
-                                                    : 'border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-500/30'}`}
-                                        >
-                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors mt-0.5
-                                                ${selectedTopics.includes(topic)
-                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
-                                                    : 'border-slate-300 dark:border-slate-600 group-hover:border-emerald-400'}`}
-                                            >
-                                                {selectedTopics.includes(topic) && <Check size={12} strokeWidth={4} />}
-                                            </div>
-                                            <span className="text-slate-700 dark:text-slate-200 font-medium leading-snug text-[15px]">{topic}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="p-6 pt-2 bg-white dark:bg-slate-900 footer-gradient">
-                                <button
-                                    onClick={handleConfirmSprout}
-                                    disabled={selectedTopics.length === 0}
-                                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-500/20 disabled:grayscale disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    <Sprout size={20} />
-                                    <span>Grow {selectedTopics.length} Cards</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <SproutModal
+                    isOpen={showSproutModal}
+                    onClose={() => setShowSproutModal(false)}
+                    topics={sproutTopics}
+                    selectedTopics={selectedTopics}
+                    onToggleTopic={toggleTopicSelection}
+                    onConfirm={handleConfirmSprout}
+                />
 
                 {/* Reader Layout Area */}
-                <div
-                    ref={scrollContainerRef}
-                    onScroll={handleScroll}
-                    className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors"
-                >
-                    <div className="reader-width">
-                        {card.type === 'note' ? (
-                            <div className="animate-fade-in">
-                                <textarea
-                                    value={card.data.content || ''}
-                                    onChange={(e) => onUpdate(card.id, (currentData) => ({ ...currentData, content: e.target.value }))}
-                                    className="w-full bg-transparent border-none outline-none font-lxgw leading-[2.5] text-[1.1rem] text-slate-800 dark:text-slate-100 resize-none h-[calc(100vh-320px)] custom-scrollbar"
-                                    placeholder="Start writing..."
-                                />
-                            </div>
-                        ) : (
-                            <div className="space-y-16">
-                                {card.data.messages.map((m, i) => (
-                                    <ErrorBoundary key={i} level="card">
-                                        <MessageItem
-                                            message={m}
-                                            index={i}
-                                            marks={card.data.marks}
-                                            parseModelOutput={parseModelOutput}
-                                            isStreaming={isStreaming}
-                                            handleRetry={handleRetry}
-                                        />
-                                    </ErrorBoundary>
-                                ))}
-
-                                {isStreaming && (
-                                    <div className="pt-8 flex justify-start">
-                                        <div className="flex gap-2 items-center text-brand-500/40 dark:text-brand-400/30">
-                                            <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0s]" />
-                                            <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.2s]" />
-                                            <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.4s]" />
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] ml-2">Streaming Intelligence</span>
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={messagesEndRef} className="h-32" />
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <MessageList
+                    card={card}
+                    messagesEndRef={messagesEndRef}
+                    scrollContainerRef={scrollContainerRef}
+                    handleScroll={handleScroll}
+                    isStreaming={isStreaming}
+                    handleRetry={handleRetry}
+                    parseModelOutput={parseModelOutput}
+                    onUpdate={onUpdate}
+                />
 
                 {/* Premium Input Bar */}
-                <div className="p-8 pb-10 sm:px-10 shrink-0">
-                    <div className="reader-width relative group">
-                        {images.length > 0 && (
-                            <div className="flex gap-4 mb-4 overflow-x-auto pb-2 custom-scrollbar">
-                                {images.map((img, idx) => (
-                                    <div key={idx} className="relative shrink-0 group/img">
-                                        <button
-                                            onClick={() => removeImage(idx)}
-                                            className="absolute -top-2 -right-2 z-10 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                        <img src={img.previewUrl} alt="Preview" className="h-24 w-auto rounded-2xl border-2 border-brand-500 shadow-xl" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="relative bg-slate-100/50 dark:bg-white/5 backdrop-blur-md rounded-[2rem] p-4 flex gap-4 items-center focus-within:bg-white dark:focus-within:bg-slate-800 focus-within:ring-4 ring-brand-500/10 border border-transparent focus-within:border-brand-500/20 transition-all duration-300">
-                            <textarea
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                                        e.preventDefault();
-                                        handleSend();
-                                    }
-                                }}
-                                onPaste={handlePaste}
-                                className="flex-grow bg-transparent outline-none resize-none h-12 py-3 px-2 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-sans text-lg"
-                                placeholder={card.type === 'note' ? "Ask AI to refine this note..." : "Refine this thought..."}
-                            />
-
-                            <div className="flex items-center gap-2 pr-2">
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isStreaming}
-                                    className="p-3 text-slate-400 hover:text-brand-500 hover:bg-brand-500/5 rounded-2xl transition-all"
-                                >
-                                    <ImageIcon size={22} />
-                                </button>
-                                <button
-                                    onClick={handleSend}
-                                    disabled={isStreaming || (!input.trim() && images.length === 0)}
-                                    className="w-14 h-14 bg-brand-600 text-white rounded-2xl shadow-xl shadow-brand-500/20 hover:bg-brand-500 hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-30 disabled:scale-100 transition-all flex items-center justify-center shrink-0"
-                                >
-                                    <Send size={24} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ChatInput
+                    input={input}
+                    setInput={setInput}
+                    handleSend={handleSend}
+                    handlePaste={handlePaste}
+                    handleImageUpload={handleImageUpload}
+                    images={images}
+                    removeImage={removeImage}
+                    fileInputRef={fileInputRef}
+                    isStreaming={isStreaming}
+                    placeholder={card.type === 'note' ? "Ask AI to refine this note..." : "Refine this thought..."}
+                />
             </div>
         </div>
     );
 }
-
-// Sub-component for individual messages to optimize rendering
-const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming, handleRetry }) => {
-    const isUser = message.role === 'user';
-    let textContent = "";
-    let msgImages = [];
-
-    if (Array.isArray(message.content)) {
-        message.content.forEach(part => {
-            if (part.type === 'text') textContent += part.text;
-            if (part.type === 'image') msgImages.push(part);
-        });
-    } else {
-        textContent = message.content || "";
-    }
-
-    const { thoughts, content } = (isUser || !textContent)
-        ? { thoughts: null, content: textContent }
-        : parseModelOutput(textContent);
-
-    // Helper to render content with highlights safely
-    const renderMessageContent = (cnt, currentMarks) => {
-        if (!cnt) return '';
-        let html = marked ? marked.parse(cnt) : cnt;
-
-        if (!currentMarks || currentMarks.length === 0) return html;
-
-        // Sort marks by length descending to match longest phrases first
-        const sortedMarks = [...currentMarks].sort((a, b) => b.length - a.length);
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-        const container = doc.body.firstChild;
-
-        const highlightNode = (node) => {
-            if (node.nodeType === 3) { // Text node
-                let text = node.nodeValue;
-                let hasChange = false;
-                let newHtml = text;
-
-                sortedMarks.forEach(mark => {
-                    const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`(${escapedMark})`, 'gi');
-                    if (regex.test(newHtml)) {
-                        newHtml = newHtml.replace(regex, '___MARK_START___$1___MARK_END___');
-                        hasChange = true;
-                    }
-                });
-
-                if (hasChange) {
-                    const span = doc.createElement('span');
-                    const escapedText = newHtml
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/___MARK_START___/g, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">')
-                        .replace(/___MARK_END___/g, '</mark>');
-                    span.innerHTML = escapedText;
-                    node.parentNode.replaceChild(span, node);
-                }
-            } else if (node.nodeType === 1 && node.tagName !== 'MARK') {
-                Array.from(node.childNodes).forEach(highlightNode);
-            }
-        };
-
-        Array.from(container.childNodes).forEach(highlightNode);
-        return container.innerHTML;
-    };
-
-    const renderedHtml = React.useMemo(() => {
-        if (isUser) return null;
-        return content
-            ? renderMessageContent(content, marks)
-            : (!thoughts ? '<span class="opacity-30 italic font-sans">Synthesizing...</span>' : '<span class="opacity-30 italic font-sans">Deep thoughts complete. Formulating...</span>');
-    }, [content, thoughts, marks, isUser]);
-
-    if (isUser) {
-        return (
-            <div className="animate-fade-in group">
-                <div className="user-prompt">
-                    {msgImages.length > 0 && (
-                        <div className="flex flex-wrap gap-4 mb-6">
-                            {msgImages.map((img, idx) => {
-                                // Priority: S3 URL > base64 data
-                                // Always show image even if S3 upload failed
-                                let imgSrc = img.source.s3Url || img.source.url;
-                                if (!imgSrc && img.source.type === 'base64' && img.source.data) {
-                                    imgSrc = `data:${img.source.media_type};base64,${img.source.data}`;
-                                }
-                                return imgSrc ? (
-                                    <img key={idx} src={imgSrc} alt="Input" className="h-32 w-auto rounded-2xl border border-white/10 shadow-lg" />
-                                ) : null;
-                            })}
-                        </div>
-                    )}
-                    <p className="text-lg leading-relaxed">{textContent}</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="animate-slide-up group relative">
-            {thoughts && (
-                <div className="mb-10">
-                    <details className="group/think">
-                        <summary className="text-[10px] font-black text-brand-500/60 dark:text-brand-400/40 cursor-pointer list-none flex items-center gap-3 hover:text-brand-500 transition-all uppercase tracking-[0.3em]">
-                            <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-                            Monologue
-                            <ChevronDown size={12} className="group-open/think:rotate-180 transition-transform opacity-50" />
-                        </summary>
-                        <div className="mt-4 p-8 bg-slate-50 dark:bg-slate-900/40 rounded-[2rem] text-sm font-sans text-slate-500 dark:text-slate-400 whitespace-pre-wrap border border-slate-200 dark:border-white/5 leading-relaxed italic overflow-hidden">
-                            {thoughts}
-                        </div>
-                    </details>
-                </div>
-            )}
-            <div
-                className="prose dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: renderedHtml }}
-            />
-            {!isStreaming && content && (content.indexOf('⚠️ Error:') !== -1 || content.indexOf('Error: Native API Error') !== -1) && (
-                <div className="mt-6 animate-fade-in">
-                    <button
-                        onClick={handleRetry}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 dark:text-brand-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border border-brand-500/20"
-                    >
-                        <RefreshCw size={14} className={isStreaming ? 'animate-spin' : ''} />
-                        Retry Generation
-                    </button>
-                    <p className="text-[10px] text-slate-400 mt-2 ml-1 italic">
-                        If error persists, check your API key or try another model in settings.
-                    </p>
-                </div>
-            )}
-        </div>
-    );
-});
-
-if (typeof window !== 'undefined') window.ChatModal = ChatModal;

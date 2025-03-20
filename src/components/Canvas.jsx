@@ -9,7 +9,7 @@ import ErrorBoundary from './ErrorBoundary';
 const ZOOM_sensitivity = 0.01;
 const PAN_sensitivity = 1;
 
-export default function Canvas() {
+export default function Canvas({ onCreateNote }) {
     const {
         cards, connections,
         offset, scale, setOffset, setScale,
@@ -270,6 +270,7 @@ export default function Canvas() {
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
                                 scale={scale}
+                                onCreateNote={onCreateNote}
                             />
                         </ErrorBoundary>
                     );
