@@ -190,7 +190,7 @@ export function useCardCreator() {
                 const separator = currentContent.trim() ? '\n\n' : '';
                 const updatedContent = currentContent + separator + newEntry;
 
-                updateCard(existingNote.id, { content: updatedContent });
+                updateCard(existingNote.id, { ...existingNote.data, content: updatedContent });
             } else {
                 // No existing master note, create one
                 addCard({
