@@ -66,20 +66,20 @@ export async function generateFollowUpTopics(messages, model = null, options = {
     try {
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `Analyze the following conversation history and predict the top 5 questions the user is MOST LIKELY to ask next.
+        const finalPrompt = `You are a curious, intelligent thinking partner. Analyze the conversation history and generate exactly 5 thoughtful, diverse follow-up questions/directions.
 
 CONVERSATION HISTORY:
 ${contextText}
 
 INSTRUCTIONS:
-1. Questions MUST be directly related to what was just discussed
-2. Questions should be natural follow-ups a human would ask
-3. Be specific - use exact terms/concepts from the conversation
-4. Each question should explore a different angle
-5. Keep questions concise (5-12 words)
+1. Questions should sound like a human curious to explore the topic deeper, NOT a generic AI assistant.
+2. Be direct and conversational. Avoid "Can you tell me more about..." or "What are the..." patterns.
+3. Instead of simple information requests, propose angles that challenge assumptions or connect ideas.
+4. Keep questions concise (under 15 words).
+5. Ensure diversity: ask for examples, potential risks, counter-arguments, or creative extensions.
 
-Return ONLY a JSON array: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
-NO explanations, NO markdown formatting, JUST the JSON array.`;
+Return ONLY a JSON array with EXACTLY 5 strings: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
+NO other text.`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
