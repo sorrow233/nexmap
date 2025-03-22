@@ -49,8 +49,11 @@ export function getBestAnchorPair(cardA, cardB) {
     const dy = cyB - cyA;
 
     // Bias towards horizontal layout if horizontal distance is significantly larger
-    // or if the cards are roughly on the same level
-    const isHorizontal = Math.abs(dx) > Math.abs(dy);
+    // or if the cards are roughly on the same level.
+    // KEY FIX: If there is substantial horizontal separation (> 200px), 
+    // we almost ALWAYS want a horizontal connection (MindMap style),
+    // even if the vertical distance is larger (e.g., tall tree branches).
+    const isHorizontal = Math.abs(dx) > Math.abs(dy) || Math.abs(dx) > 200;
 
     for (const a of anchorsA) {
         for (const b of anchorsB) {
