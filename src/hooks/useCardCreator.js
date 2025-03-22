@@ -1,7 +1,10 @@
 import { getActiveConfig, imageGeneration, streamChatCompletion } from '../services/llm';
 import { useStore } from '../store/useStore';
+import { saveBoard } from '../services/storage';
+import { useParams } from 'react-router-dom';
 
 export function useCardCreator() {
+    const { id: currentBoardId } = useParams();
     const {
         cards,
         setCards,
@@ -160,60 +163,68 @@ export function useCardCreator() {
     };
 
     const handleCreateNote = (text = '', isMaster = false) => {
-        // Sanitize input: If text is an event object (from onClick), treat as empty string
-        const safeText = (typeof text === 'string' ? text : '');
+        const safeText = (typeof text === 'string' ? text : '').trim();
+        if (!safeText && isMaster) return; // Don't append empty text to master
 
-        if (isMaster) {
-            // Master Note Logic: Append to existing
-            const existingNote = cards.find(c => c.type === 'note');
+        // Find existing note - prioritize one marked as 'notepad' or just the first note
+        const existingNote = cards.find(c => c.type === 'note');
 
-            if (existingNote) {
-                const currentContent = existingNote.data.content || '';
+        if (existingNote) {
+            const currentContent = existingNote.data.content || '';
 
-                // Parse existing numbering
-                const matches = currentContent.match(/^(\d+)\./gm);
-                let nextNum = 1;
-                if (matches && matches.length > 0) {
-                    const lastMatch = matches[matches.length - 1];
-                    const lastNum = parseInt(lastMatch, 10);
-                    nextNum = lastNum + 1;
-                } else if (currentContent.trim()) {
-                    nextNum = 2; // Fallback if content exists but unnumbered
+            // Strict parsing of "XX. " format
+            const lines = currentContent.split('\n').filter(l => l.trim());
+            let nextNum = 1;
+
+            if (lines.length > 0) {
+                // Look for the last line that matches our pattern
+                const lastLine = lines[lines.length - 1];
+                const match = lastLine.match(/^(\d+)\./);
+                if (match) {
+                    nextNum = parseInt(match[1], 10) + 1;
+                } else {
+                    nextNum = lines.length + 1;
                 }
-
-                const nextNumberStr = String(nextNum).padStart(2, '0');
-
-                // Format: "03. Content"
-                const newEntry = `${nextNumberStr}. ${safeText}`;
-
-                // Add double newline separator
-                const separator = currentContent.trim() ? '\n\n' : '';
-                const updatedContent = currentContent + separator + newEntry;
-
-                updateCard(existingNote.id, { ...existingNote.data, content: updatedContent });
-            } else {
-                // No existing master note, create one
-                addCard({
-                    id: Date.now().toString(), type: 'note',
-                    x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
-                    y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 200),
-                    data: {
-                        content: `01. ${safeText}`,
-                        color: 'yellow'
-                    }
-                });
             }
+
+            const nextNumberStr = String(nextNum).padStart(2, '0');
+            const newEntry = `${nextNumberStr}. ${safeText}`;
+
+            // Build updated content with proper spacing
+            const separator = currentContent.trim() ? '\n\n' : '';
+            const updatedContent = currentContent + separator + newEntry;
+
+            updateCard(existingNote.id, {
+                ...existingNote.data,
+                content: updatedContent,
+                isNotepad: true // Mark as notepad
+            });
         } else {
-            // Standard/Independent Note Logic: Create NEW card
+            // Create the one and only note card
             addCard({
-                id: Date.now().toString(), type: 'note',
-                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 80),
-                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 80),
+                id: Date.now().toString(),
+                type: 'note',
+                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
+                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 250),
                 data: {
-                    content: safeText,
-                    color: 'yellow'
+                    content: `01. ${safeText}`,
+                    color: 'yellow',
+                    isNotepad: true,
+                    title: 'Neural Notepad'
                 }
             });
+        }
+
+        // Trigger immediate persistence to avoid sync conflicts
+        if (currentBoardId) {
+            // We use a small timeout to let the store update settle
+            setTimeout(() => {
+                const latestState = useStore.getState();
+                saveBoard(currentBoardId, {
+                    cards: latestState.cards,
+                    connections: latestState.connections
+                });
+            }, 50);
         }
     };
 
