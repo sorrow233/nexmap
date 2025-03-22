@@ -189,13 +189,13 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
                         <>
                             <div className="h-4 w-px bg-slate-300"></div>
-                            <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-colors"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
+                            <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
                         </>
                     )}
                     <div className="h-4 w-px bg-slate-300"></div>
-                    <button onClick={handleRegenerate} className="flex items-center gap-2 text-blue-600 px-3 py-1.5 rounded-lg transition-colors"><RefreshCw size={16} /><span className="text-sm font-medium">Retry</span></button>
+                    <button onClick={handleRegenerate} className="flex items-center gap-2 text-blue-600 px-3 py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95"><RefreshCw size={16} /><span className="text-sm font-medium">Retry</span></button>
                     <div className="h-4 w-px bg-slate-300"></div>
-                    <button onClick={handleBatchDelete} className="flex items-center gap-2 text-red-500 px-3 py-1.5 rounded-lg transition-colors"><Trash2 size={16} /><span className="text-sm font-medium">Delete</span></button>
+                    <button onClick={handleBatchDelete} className="flex items-center gap-2 text-red-500 px-3 py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"><Trash2 size={16} /><span className="text-sm font-medium">Delete</span></button>
                 </div>
             )}
 
