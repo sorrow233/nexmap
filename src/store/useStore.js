@@ -368,7 +368,7 @@ const useStoreBase = create(
         }),
         {
             limit: 50,
-            equality: (a, b) => a === b,
+            equality: (a, b) => a.cards === b.cards && a.connections === b.connections,
             partialize: (state) => ({
                 cards: state.cards,
                 connections: state.connections
@@ -378,4 +378,5 @@ const useStoreBase = create(
 );
 
 export const useStore = useStoreBase;
+export const useTemporalStore = (selector) => useStoreBase.temporal(selector);
 export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();

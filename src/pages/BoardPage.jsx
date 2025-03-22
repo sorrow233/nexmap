@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { LayoutGrid, Sparkles, RefreshCw, Trash2 } from 'lucide-react';
+import { LayoutGrid, Sparkles, RefreshCw, Trash2, Undo2, Redo2 } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
 import ChatModal from '../components/ChatModal';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { useStore } from '../store/useStore';
+import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
 import { saveBoard, saveBoardToCloud } from '../services/storage';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId } = useParams();
+    const { undo, redo, pastStates, futureStates } = useTemporalStore((state) => state);
     const {
         cards,
         connections,
@@ -140,6 +141,25 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             <div className="fixed top-6 left-6 z-50 animate-slide-down">
                 <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1.5 rounded-2xl shadow-xl">
                     <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all"><LayoutGrid size={18} /><span>Gallery</span></button>
+                    <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => undo()}
+                            disabled={pastStates.length === 0}
+                            className={`p-2 rounded-xl transition-all ${pastStates.length === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`}
+                            title="Undo (Ctrl+Z)"
+                        >
+                            <Undo2 size={18} />
+                        </button>
+                        <button
+                            onClick={() => redo()}
+                            disabled={futureStates.length === 0}
+                            className={`p-2 rounded-xl transition-all ${futureStates.length === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`}
+                            title="Redo (Ctrl+Shift+Z)"
+                        >
+                            <Redo2 size={18} />
+                        </button>
+                    </div>
                     <div className="h-6 w-[1px] bg-slate-200 mx-2" />
                     <input
                         type="text"

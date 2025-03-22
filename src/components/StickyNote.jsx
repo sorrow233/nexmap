@@ -200,13 +200,7 @@ const StickyNote = React.memo(function StickyNote({
                         <Link size={16} />
                     </button>
                 </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDelete && onDelete(data.id); }}
-                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 backdrop-blur-md transition-all active:scale-95"
-                    title="Delete Note"
-                >
-                    <Trash2 size={16} />
-                </button>
+                {/* Delete button removed to prevent accidental deletion. Use global toolbar or keyboard. */}
             </div>
 
             {/* Content Area */}
