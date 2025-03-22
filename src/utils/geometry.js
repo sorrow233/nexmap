@@ -118,9 +118,10 @@ export function generateBezierPath(source, target) {
     };
 
     // Adaptive control point distance
-    // For horizontal connections (tree view), we want a wider curve
-    // so we use dx as the primary factor
-    const distance = Math.max(dx, dy, 150);
+    // FIXED: Use dx primarily. Do NOT use dy, otherwise tall vertical gaps cause excessive horizontal bulging.
+    // We want a nice S-curve that depends on the horizontal space available.
+    // Clamp between 80px (for very close cards) and a reasonable max.
+    const distance = Math.max(dx * 0.5, 80);
 
     const cp1 = calculateCP(source, distance);
     const cp2 = calculateCP(target, distance);
