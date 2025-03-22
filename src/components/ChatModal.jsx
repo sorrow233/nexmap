@@ -4,6 +4,8 @@ import { streamChatCompletion, generateFollowUpTopics } from '../services/llm';
 import { isSafari, isIOS } from '../utils/browser';
 import { uploadImageToS3, getS3Config } from '../services/s3';
 
+import { saveImageToIDB } from '../services/storage';
+
 import SproutModal from './chat/SproutModal';
 import ChatInput from './chat/ChatInput';
 import MessageList from './chat/MessageList';
@@ -153,24 +155,27 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         console.log('[ChatModal] handleSend called. Input:', input.substring(0, 50), 'Images count:', images.length);
         let content = input;
 
-        // Handle Images (S3 or Base64)
+        // Handle Images (S3 or Base64/IDB)
         if (images.length > 0) {
             console.log('[ChatModal] Processing images. First image data length:', images[0]?.base64?.length || 0);
             const s3Config = getS3Config();
             console.log('[S3 Debug] Config loaded:', s3Config); // DEBUG
-            // 1. Prepare images immediately with base64 (Non-blocking)
-            let processedImages = images.map(img => {
-                console.log('[ChatModal] Processing image:', img.mimeType, 'base64 length:', img.base64?.length || 0);
+            // 1. Prepare images: Save to IDB and use reference (Non-blocking to UI but blocking to message creation)
+            const processedImages = await Promise.all(images.map(async (img, idx) => {
+                const imageId = `chat_${card.id}_img_${Date.now()}_${idx}`;
+                console.log('[ChatModal] Saving image to IDB:', imageId);
+                await saveImageToIDB(imageId, img.base64);
+
                 return {
                     type: 'image',
                     source: {
-                        type: 'base64',
+                        type: 'idb',
+                        id: imageId,
                         media_type: img.mimeType,
-                        data: img.base64,
                         s3Url: null // Will be updated later if S3 is enabled
                     }
                 };
-            });
+            }));
             console.log('[ChatModal] Processed images count:', processedImages.length);
 
             // 2. Trigger Background Upload if enabled
@@ -275,7 +280,15 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setTimeout(() => scrollToBottom(true), 10);
 
         // Prepare context messages for generation (exclude the empty assistant message we just added)
-        const contextMessages = [...(card.data.messages || []), userMsg];
+        let contextMessages = [...(card.data.messages || []), userMsg];
+
+        // [Fix] Inject card content as system context if available (crucial for Notes)
+        if (card.data.content && typeof card.data.content === 'string') {
+            contextMessages = [
+                { role: 'system', content: `Context (Current Card Content):\n${card.data.content}` },
+                ...contextMessages
+            ];
+        }
 
         try {
             // Use the parent's generator which handles context/connections
@@ -344,10 +357,14 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         });
         setIsStreaming(true);
 
+        const contextForAI = (card.data.content && typeof card.data.content === 'string')
+            ? [{ role: 'system', content: `Context (Current Card Content):\n${card.data.content}` }, ...truncatedMessages]
+            : truncatedMessages;
+
         try {
             // Re-trigger the generation logic
             if (onGenerateResponse) {
-                await onGenerateResponse(card.id, truncatedMessages, (token) => {
+                await onGenerateResponse(card.id, contextForAI, (token) => {
                     onUpdate(card.id, (currentData) => {
                         if (!currentData) return currentData;
                         const msgs = [...currentData.messages];
@@ -357,7 +374,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     });
                 });
             } else {
-                await streamChatCompletion(truncatedMessages, (token) => {
+                await streamChatCompletion(contextForAI, (token) => {
                     onUpdate(card.id, (currentData) => {
                         if (!currentData) return currentData;
                         const msgs = [...currentData.messages];
