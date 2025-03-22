@@ -61,7 +61,7 @@ export class GeminiProvider extends LLMProvider {
             tools: [{ google_search: {} }],
             generationConfig: {
                 temperature: options.temperature !== undefined ? options.temperature : 0.7,
-                maxOutputTokens: 8192
+                maxOutputTokens: 65536
             }
         };
 
@@ -118,7 +118,7 @@ export class GeminiProvider extends LLMProvider {
             tools: [{ google_search: {} }],
             generationConfig: {
                 temperature: options.temperature !== undefined ? options.temperature : 0.7,
-                maxOutputTokens: 8192
+                maxOutputTokens: 65536
             }
         };
 

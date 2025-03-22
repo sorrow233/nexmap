@@ -276,7 +276,10 @@ export function useCardCreator() {
                 });
 
                 await streamChatCompletion(
-                    [{ role: 'user', content: question }],
+                    [{
+                        role: 'user',
+                        content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
+                    }],
                     (chunk) => updateCardContent(newId, chunk),
                     activeConfig.model,
                     { providerId: activeConfig.id }
