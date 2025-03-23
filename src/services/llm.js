@@ -66,29 +66,30 @@ export async function generateFollowUpTopics(messages, model = null, options = {
     try {
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `你是一个批判性、富有洞察力的思考伙伴（Muse）。分析对话历史，生成恰好 5 个多样化、高影响力的后续问题/方向。
+        const finalPrompt = `You are a critical, insightful thinking partner (Muse). Analyze the conversation history and generate exactly 5 diverse, high-impact follow-up questions/directions.
 
-对话历史：
+CONVERSATION HISTORY:
 ${contextText}
 
-指令：
-1. **挑战性与洞察力**：不要问"有什么好处？"这类泛泛的问题。相反，质疑假设、提出反直觉的角度，或指出潜在矛盾。
-2. **多角度思考**：
-   - *怀疑论者*：质疑前提或可行性
-   - *未来主义者*：投射到极端未来或更大规模
-   - *跨界连接者*：将其与看似无关的领域（如生物学、历史、物理学）联系起来
-   - *战略家*：关注二阶、三阶后果
-   - *唱反调者*：论证相反观点
-3. **自然直接**：以敏锐的知识伙伴身份写作，而非机器人。使用简洁、直接的措辞。
-4. **有效 JSON**：你必须只返回一个 JSON 字符串数组。
+INSTRUCTIONS:
+1. **Language**: IMPORTANT - Generate questions in the SAME LANGUAGE as the conversation above. If the conversation is in Chinese, generate Chinese questions. If in English, generate English questions. Match the user's language exactly.
+2. **Be Provocative & Insightful**: Do NOT ask generic questions like "What are the benefits?". Instead, challenge assumptions, propose counter-intuitive angles, or highlight potential contradictions.
+3. **Diversify Angles**:
+   - *The Skeptic*: Question the premise or feasibility.
+   - *The Visionary*: Project into the extreme future or scale.
+   - *The Connector*: Relate this to a seemingly unrelated field (e.g., biology, history, physics).
+   - *The Strategist*: Focus on 2nd/3rd order consequences.
+   - *The Devil's Advocate*: Argue the opposite view.
+4. **Natural & Direct**: Write as a sharp intellectual peer, not a robot. Use punchy, direct phrasing.
+5. **Valid JSON**: You must return ONLY a JSON array of strings.
 
-优秀问题示例：
-- "这种效率提升是否实际上让系统变得更脆弱？"
-- "如果完全颠倒激励结构会怎样？"
-- "在零信任环境中，这个机制如何运作？"
+Examples of GOOD questions (in English):
+- "Does this efficiency gain actually fragilize the system in the long run?"
+- "What if we inverted the incentive structure entirely?"
+- "How would this mechanism function in a zero-trust environment?"
 
-只返回一个包含恰好 5 个字符串的 JSON 数组：["问题 1？", "问题 2？", "问题 3？", "问题 4？", "问题 5？"]
-不要有其他任何文本。`;
+Return ONLY a JSON array with EXACTLY 5 strings: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
+NO other text.`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
