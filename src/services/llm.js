@@ -66,7 +66,7 @@ export async function generateFollowUpTopics(messages, model = null, options = {
     try {
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `You are a curious, intelligent thinking partner. Analyze the conversation history and generate 3-4 thoughtful, diverse follow-up questions/directions.
+        const finalPrompt = `You are a curious, intelligent thinking partner. Analyze the conversation history and generate exactly 5 thoughtful, diverse follow-up questions/directions.
 
 CONVERSATION HISTORY:
 ${contextText}
@@ -78,7 +78,7 @@ INSTRUCTIONS:
 4. Keep questions concise (under 15 words).
 5. Ensure diversity: ask for examples, potential risks, counter-arguments, or creative extensions.
 
-Return ONLY a JSON array of strings: ["Question 1?", "Question 2?", "Question 3?"]
+Return ONLY a JSON array with EXACTLY 5 strings: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
 NO other text.`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
