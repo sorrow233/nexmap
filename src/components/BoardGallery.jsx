@@ -1,10 +1,19 @@
 import React, { useState, useRef } from 'react';
 import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon, AlertCircle, RotateCcw, Ban } from 'lucide-react';
 import ModernDialog from './ModernDialog';
+import useImageUpload from '../hooks/useImageUpload';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, isTrashView = false }) {
     const [quickPrompt, setQuickPrompt] = useState('');
-    const [images, setImages] = useState([]);
+    const {
+        images,
+        setImages,
+        handleImageUpload,
+        handlePaste,
+        handleDrop: hookHandleDrop,
+        removeImage,
+        clearImages
+    } = useImageUpload();
     const [isDragging, setIsDragging] = useState(false);
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null });
     const fileInputRef = useRef(null);
@@ -18,7 +27,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             const title = quickPrompt.length > 30 ? quickPrompt.substring(0, 30) + '...' : (quickPrompt || 'New Image Board');
             onCreateBoard(title, quickPrompt, images);
             setQuickPrompt('');
-            setImages([]);
+            clearImages();
         }
     };
 
@@ -27,43 +36,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         const title = quickPrompt.length > 30 ? quickPrompt.substring(0, 30) + '...' : (quickPrompt || 'New Image Board');
         onCreateBoard(title, quickPrompt, images);
         setQuickPrompt('');
-        setImages([]);
-    };
-
-    // --- Image Handling ---
-    const processFiles = (files) => {
-        Array.from(files).forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setImages(prev => [...prev, {
-                    file,
-                    previewUrl: URL.createObjectURL(file), // Create object URL for preview
-                    base64: e.target.result.split(',')[1],
-                    mimeType: file.type
-                }]);
-            };
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const handleImageUpload = (e) => {
-        processFiles(e.target.files);
-        e.target.value = ''; // Reset input
-    };
-
-    const handlePaste = (e) => {
-        const items = e.clipboardData.items;
-        const files = [];
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                files.push(items[i].getAsFile());
-            }
-        }
-        if (files.length > 0) {
-            e.preventDefault();
-            processFiles(files);
-        }
+        clearImages();
     };
 
     const handleDragOver = (e) => {
@@ -79,16 +52,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
-        processFiles(e.dataTransfer.files);
-    };
-
-    const removeImage = (index) => {
-        setImages(prev => {
-            const newImages = [...prev];
-            URL.revokeObjectURL(newImages[index].previewUrl); // Cleanup memory
-            newImages.splice(index, 1);
-            return newImages;
-        });
+        hookHandleDrop(e);
     };
 
     // Expiry calculation for trash items

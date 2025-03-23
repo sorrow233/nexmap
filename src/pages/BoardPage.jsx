@@ -37,6 +37,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
     const [globalImages, setGlobalImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleJustSaved, setTitleJustSaved] = useState(false);
 
     // Initial setup for document title
     useEffect(() => {
@@ -106,6 +108,13 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         });
     };
 
+    const saveTitleWithFeedback = (value) => {
+        if (!value || !value.trim()) return;
+        onUpdateBoardTitle(value);
+        setTitleJustSaved(true);
+        setTimeout(() => setTitleJustSaved(false), 1000);
+    };
+
     // Note: Global paste for images is handled in App.jsx (window listener), 
     // but maybe we should move it here? 
     // The original code had it in AppContent. 
@@ -161,14 +170,41 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                         </button>
                     </div>
                     <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-                    <input
-                        type="text"
-                        key={currentBoardId}
-                        defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
-                        onBlur={(e) => onUpdateBoardTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (onUpdateBoardTitle(e.target.value), e.target.blur())}
-                        className="bg-transparent border-none outline-none font-bold text-sm px-2 py-0.5 rounded"
-                    />
+                    <div className="relative flex items-center group">
+                        <input
+                            type="text"
+                            key={currentBoardId}
+                            defaultValue={boardsList.find(b => b.id === currentBoardId)?.name || 'Untitled Board'}
+                            onFocus={() => setIsEditingTitle(true)}
+                            onBlur={(e) => {
+                                setIsEditingTitle(false);
+                                saveTitleWithFeedback(e.target.value);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    e.target.blur(); // This will trigger onBlur which handles save
+                                }
+                            }}
+                            className={`
+                                bg-transparent border-none outline-none font-bold text-sm px-2 py-1.5 rounded-lg
+                                transition-all duration-200
+                                ${isEditingTitle ? 'bg-slate-100 dark:bg-slate-800 ring-2 ring-blue-400' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}
+                                ${titleJustSaved ? 'ring-2 ring-green-400' : ''}
+                            `}
+                            style={{ minWidth: '120px' }}
+                        />
+                        {!isEditingTitle && (
+                            <svg
+                                className="absolute right-1 w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        )}
+                    </div>
                 </div>
             </div>
 
