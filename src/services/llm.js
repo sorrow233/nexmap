@@ -66,30 +66,25 @@ export async function generateFollowUpTopics(messages, model = null, options = {
     try {
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `You are a critical, insightful thinking partner (Muse). Analyze the conversation history and generate exactly 5 diverse, high-impact follow-up questions/directions.
+        const finalPrompt = `Based on the conversation history below, predict exactly 5 questions that a real user would naturally ask next as they explore this topic further.
 
 CONVERSATION HISTORY:
 ${contextText}
 
 INSTRUCTIONS:
-1. **Language**: IMPORTANT - Generate questions in the SAME LANGUAGE as the conversation above. If the conversation is in Chinese, generate Chinese questions. If in English, generate English questions. Match the user's language exactly.
-2. **Be Provocative & Insightful**: Do NOT ask generic questions like "What are the benefits?". Instead, challenge assumptions, propose counter-intuitive angles, or highlight potential contradictions.
-3. **Diversify Angles**:
-   - *The Skeptic*: Question the premise or feasibility.
-   - *The Visionary*: Project into the extreme future or scale.
-   - *The Connector*: Relate this to a seemingly unrelated field (e.g., biology, history, physics).
-   - *The Strategist*: Focus on 2nd/3rd order consequences.
-   - *The Devil's Advocate*: Argue the opposite view.
-4. **Natural & Direct**: Write as a sharp intellectual peer, not a robot. Use punchy, direct phrasing.
-5. **Valid JSON**: You must return ONLY a JSON array of strings.
+1. **Language**: Generate questions in the SAME LANGUAGE as the conversation above (Chinese/English/etc).
+2. **Think like a curious user**: What would YOU personally want to know next if you were having this conversation?
+3. **Natural progression**: Questions should feel like the natural next step in the conversation, not random tangents.
+4. **Variety**: Mix different types of natural questions:
+   - Asking for clarification on something just mentioned
+   - Requesting practical examples or how-to advice
+   - Digging deeper into an interesting point
+   - Asking "what if" or hypothetical scenarios
+   - Seeking personal experience or opinions
+5. **Conversational tone**: Sound like a real person chatting, not an academic interviewer.
 
-Examples of GOOD questions (in English):
-- "Does this efficiency gain actually fragilize the system in the long run?"
-- "What if we inverted the incentive structure entirely?"
-- "How would this mechanism function in a zero-trust environment?"
-
-Return ONLY a JSON array with EXACTLY 5 strings: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
-NO other text.`;
+Return ONLY a valid JSON array with exactly 5 question strings.
+Example format: ["具体怎么做？", "有没有例子？", "如果...会怎样？", "你觉得呢？", "还有其他方法吗？"]`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
