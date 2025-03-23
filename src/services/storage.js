@@ -73,6 +73,30 @@ const idbDel = async (key) => {
     });
 };
 
+// --- Image Storage Wrappers ---
+const IMAGE_PREFIX = 'img_';
+
+export const saveImageToIDB = async (imageId, base64Data) => {
+    if (!imageId || !base64Data) return;
+    try {
+        await idbSet(IMAGE_PREFIX + imageId, base64Data);
+        return true;
+    } catch (e) {
+        console.error('[Storage] Failed to save image to IDB', e);
+        return false;
+    }
+};
+
+export const getImageFromIDB = async (imageId) => {
+    if (!imageId) return null;
+    try {
+        return await idbGet(IMAGE_PREFIX + imageId);
+    } catch (e) {
+        console.error('[Storage] Failed to get image from IDB', e);
+        return null;
+    }
+};
+
 // --- Storage API ---
 
 export const getCurrentBoardId = () => localStorage.getItem(CURRENT_BOARD_ID_KEY);

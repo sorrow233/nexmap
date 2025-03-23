@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Trash2, Link } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 
+import { useStore } from '../store/useStore';
+
 const StickyNote = React.memo(function StickyNote({
+
     data,
     isSelected,
     onSelect,
@@ -14,7 +17,6 @@ const StickyNote = React.memo(function StickyNote({
     onExpand,
     isConnecting,
     isConnectionStart,
-    scale,
     onCreateNote
 }) {
     const [isDragging, setIsDragging] = useState(false);
@@ -24,10 +26,10 @@ const StickyNote = React.memo(function StickyNote({
     const cardRef = useRef(null);
 
     // Refs to hold latest values for event handlers to avoid re-binding
-    const stateRef = useRef({ data, onMove, scale, dragOffset, onDragEnd });
+    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd });
     useEffect(() => {
-        stateRef.current = { data, onMove, scale, dragOffset, onDragEnd };
-    }, [data, onMove, scale, dragOffset, onDragEnd]);
+        stateRef.current = { data, onMove, dragOffset, onDragEnd };
+    }, [data, onMove, dragOffset, onDragEnd]);
 
     const handleMouseDown = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
@@ -63,8 +65,8 @@ const StickyNote = React.memo(function StickyNote({
         if (!isDragging) return;
 
         const handleMouseMove = (e) => {
-            const { onMove, data, scale, dragOffset } = stateRef.current;
-            const currentScale = scale || 1;
+            const { onMove, data, dragOffset } = stateRef.current;
+            const currentScale = useStore.getState().scale || 1;
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
             onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);

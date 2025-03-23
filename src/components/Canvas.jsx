@@ -269,7 +269,6 @@ export default function Canvas({ onCreateNote }) {
                                 onExpand={() => setExpandedCardId(card.id)}
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
-                                scale={scale}
                                 onCreateNote={onCreateNote}
                             />
                         </ErrorBoundary>

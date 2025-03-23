@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { temporal } from 'zundo';
 import { streamChatCompletion } from '../services/llm';
+import { saveImageToIDB } from '../services/storage';
 
 // --- Helper: Graph Traversal ---
 const getConnectedGraph = (startId, connections, visited = new Set()) => {
@@ -140,6 +141,11 @@ const createContentSlice = (set, get) => ({
         }));
     },
 
+    // Alias for explicit drag end handling
+    handleCardMoveEnd: (id, newX, newY) => {
+        get().handleCardMove(id, newX, newY);
+    },
+
     handleConnect: (targetId) => {
         const { isConnecting, connectionStartId, connections } = get();
         if (isConnecting && connectionStartId) {
@@ -237,16 +243,24 @@ const createContentSlice = (set, get) => ({
 
         let content = text;
         if (images.length > 0) {
-            content = [
-                { type: 'text', text: text },
-                ...images.map(img => ({
+            // Process images to IDB
+            const processedImages = await Promise.all(images.map(async (img, idx) => {
+                const imageId = `${newId}_img_${Date.now()}_${idx}`;
+                // Offload to IDB
+                await saveImageToIDB(imageId, img.base64);
+                return {
                     type: 'image',
                     source: {
-                        type: 'base64',
-                        media_type: img.mimeType,
-                        data: img.base64
+                        type: 'idb', // New type
+                        id: imageId,
+                        media_type: img.mimeType
                     }
-                }))
+                };
+            }));
+
+            content = [
+                { type: 'text', text: text },
+                ...processedImages
             ];
         }
 
