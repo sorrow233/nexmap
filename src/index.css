@@ -118,6 +118,65 @@ body,
         background-clip: text;
     }
 
+    /* --- Luminous Guide Interactions --- */
+    :root {
+        --luminous-white: #ffffff;
+        --champagne-gold: #fffbe6;
+        --active-flow-color: #ffffff;
+    }
+
+    .dark {
+        --luminous-white: #ffffff;
+        --champagne-gold: #fff5cc;
+        --active-flow-color: #fffbef;
+    }
+
+    @keyframes liquidFlow {
+        0% {
+            stroke-dashoffset: 1000;
+            opacity: 0;
+        }
+
+        10% {
+            opacity: 1;
+        }
+
+        90% {
+            opacity: 1;
+        }
+
+        100% {
+            stroke-dashoffset: 0;
+            opacity: 0;
+        }
+    }
+
+    @keyframes breatheGlow {
+
+        0%,
+        100% {
+            box-shadow: 0 0 15px 2px rgba(255, 251, 230, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        50% {
+            box-shadow: 0 0 30px 5px rgba(255, 251, 230, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+    }
+
+    .card-sharp-selected {
+        box-shadow: 0 0 0 1.5px var(--luminous-white), 0 0 40px rgba(255, 255, 255, 0.1) !important;
+        border-color: var(--luminous-white) !important;
+        transform: scale(1.005);
+        z-index: 60 !important;
+    }
+
+    .card-target-breathing {
+        animation: breatheGlow 4s ease-in-out infinite;
+        z-index: 55 !important;
+    }
+
     /* --- Animated Background --- Japanese Style */
     .bg-mesh-gradient {
         background-color: #FAF8F3;
