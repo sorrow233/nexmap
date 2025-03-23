@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -9,8 +9,18 @@ import { useCardCreator } from './hooks/useCardCreator';
 import GalleryPage from './pages/GalleryPage';
 import BoardPage from './pages/BoardPage';
 import ModernDialog from './components/ModernDialog';
-import { createBoard, saveBoardToCloud, saveBoard, loadBoard, deleteBoard, deleteBoardFromCloud, setCurrentBoardId as storageSetCurrentBoardId } from './services/storage';
-import { useState } from 'react';
+import {
+    createBoard,
+    saveBoardToCloud,
+    saveBoard,
+    loadBoard,
+    deleteBoard, // This is now soft delete
+    permanentlyDeleteBoard,
+    restoreBoard,
+    deleteBoardFromCloud,
+    updateBoardMetadataInCloud,
+    setCurrentBoardId as storageSetCurrentBoardId
+} from './services/storage';
 
 export default function App() {
     return (
@@ -66,9 +76,6 @@ function AppContent() {
 
     const handleSelectBoard = async (id) => {
         navigate(`/board/${id}`);
-        // Data loading is handled by the route change effect below or inside BoardPage?
-        // Actually, BoardPage doesn't load data itself in my implementation.
-        // The original App logic loaded data when `currentBoardId` changed.
     };
 
     // We need to listen to board ID changes to load data. 
@@ -87,13 +94,37 @@ function AppContent() {
         load();
     }, [currentBoardId]); // Rely on currentBoardId changing
 
-    const handleDeleteBoard = async (id) => {
+    // Soft Delete (Move to Trash)
+    const handleSoftDeleteBoard = async (id) => {
+        await deleteBoard(id); // Local soft delete
+        if (user) updateBoardMetadataInCloud(user.uid, id, { deletedAt: Date.now() });
+
+        // Update state to reflect change (filter out moved item? No, just update its status)
+        // or just re-fetch? easiest is to update local list state
+        setBoardsList(prev => prev.map(b => b.id === id ? { ...b, deletedAt: Date.now() } : b));
+
+        // Optional: Show a subtle toast or message via some UI mechanism (skipped for now as per minimal App requirement, GalleryPage can handle toast)
+    };
+
+    // Restore from Trash
+    const handleRestoreBoard = async (id) => {
+        await restoreBoard(id);
+        if (user) updateBoardMetadataInCloud(user.uid, id, { deletedAt: null }); // Remove field? Firestore update can use deleteField() but null is fine for now check
+        // Ideally we use deleteField import but for now simply checking truthiness of deletedAt works if we store null.
+        // Actually storage.js checks `deletedAt` existence or truthiness. `updateDoc` with `deleteField` is cleaner.
+        // But for simplicity sending `null` depends on how we check. `!b.deletedAt` works for null.
+
+        setBoardsList(prev => prev.map(b => b.id === id ? { ...b, deletedAt: null } : b));
+    };
+
+    // Permanent Delete
+    const handlePermanentDeleteBoard = async (id) => {
         showDialog(
-            "Delete Board?",
-            "This will permanently delete this board and all its cards. This action cannot be undone.",
+            "Permanently Delete?",
+            "This will permanently delete this board and cannot be undone.",
             "confirm",
             async () => {
-                await deleteBoard(id);
+                await permanentlyDeleteBoard(id);
                 if (user) deleteBoardFromCloud(user.uid, id);
                 setBoardsList(prev => prev.filter(b => b.id !== id));
             }
@@ -101,15 +132,7 @@ function AppContent() {
     };
 
     const handleBackToGallery = async () => {
-        // Save handled by Autosave in BoardPage mostly, but we can force save if we want.
-        // Original code did force save. 
-        // We can access store state here via useStore if we really need to force save, 
-        // or rely on the Autosave effect in BoardPage which triggers on change.
-        // However, if we navigate away immediately, the Autosave timeout might be cleared or not fire.
-        // It's safer to have BoardPage handle "unmount save" or just trust the debounce.
-        // Let's implement a "Save on Unmount" in BoardPage or here.
-        // Since we are decoupling, let's trust the Autosave mechanism or add a specific save call.
-        // Accessing cards/connections here to save:
+        // Save handled by Autosave in BoardPage mostly
         const { cards, connections } = useStore.getState();
         if (currentBoardId) await saveBoard(currentBoardId, { cards, connections });
 
@@ -124,7 +147,7 @@ function AppContent() {
         if (user) saveBoardToCloud(user.uid, currentBoardId, { name: newTitle }, true);
     };
 
-    if (!isInitialized) return null; // Or a loading spinner
+    if (!isInitialized) return null;
 
     return (
         <>
@@ -134,7 +157,9 @@ function AppContent() {
                         boardsList={boardsList}
                         onCreateBoard={handleCreateBoard}
                         onSelectBoard={handleSelectBoard}
-                        onDeleteBoard={handleDeleteBoard}
+                        onDeleteBoard={handleSoftDeleteBoard} // Default "delete" action is soft
+                        onRestoreBoard={handleRestoreBoard}
+                        onPermanentlyDeleteBoard={handlePermanentDeleteBoard}
                         user={user}
                         onLogin={handleLogin}
                         onLogout={handleLogout}

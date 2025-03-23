@@ -10,7 +10,8 @@ export default function MessageList({
     isStreaming,
     handleRetry,
     parseModelOutput,
-    onUpdate
+    onUpdate,
+    onShare
 }) {
 
     // Helper to identify if it's a note or chat
@@ -49,6 +50,7 @@ export default function MessageList({
                                     parseModelOutput={parseModelOutput}
                                     isStreaming={isStreaming}
                                     handleRetry={handleRetry}
+                                    onShare={onShare}
                                 />
                             </ErrorBoundary>
                         ))}

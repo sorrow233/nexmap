@@ -9,11 +9,13 @@ import { saveImageToIDB } from '../services/storage';
 import SproutModal from './chat/SproutModal';
 import ChatInput from './chat/ChatInput';
 import MessageList from './chat/MessageList';
+import ShareModal from './share/ShareModal';
 
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse, onCreateNote, onSprout }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
     const [images, setImages] = useState([]);
+    const [shareContent, setShareContent] = useState(null);
     const [isStreaming, setIsStreaming] = useState(false);
     const [isAtBottom, setIsAtBottom] = useState(true);
     const messagesEndRef = useRef(null);
@@ -592,6 +594,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     handleRetry={handleRetry}
                     parseModelOutput={parseModelOutput}
                     onUpdate={onUpdate}
+                    onShare={(content) => setShareContent(content)}
                 />
 
                 {/* Premium Input Bar */}
@@ -606,6 +609,13 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     fileInputRef={fileInputRef}
                     isStreaming={isStreaming}
                     placeholder={card.type === 'note' ? "Ask AI to refine this note..." : "Refine this thought..."}
+                />
+
+                {/* Share Modal */}
+                <ShareModal
+                    isOpen={!!shareContent}
+                    onClose={() => setShareContent(null)}
+                    content={shareContent}
                 />
             </div>
         </div>

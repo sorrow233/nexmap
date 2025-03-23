@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -29,7 +29,7 @@ const idbGet = async (key) => {
         const store = transaction.objectStore(IDB_STORE);
         const request = store.get(key);
         request.onsuccess = () => {
-            console.log(`[IDB] Get success for ${key}:`, request.result ? 'Found' : 'Not Found');
+            // console.log(`[IDB] Get success for ${key}:`, request.result ? 'Found' : 'Not Found');
             resolve(request.result);
         };
         request.onerror = () => {
@@ -47,7 +47,7 @@ const idbSet = async (key, value) => {
         const request = store.put(value, key);
 
         transaction.oncomplete = () => {
-            console.log(`[IDB] Transaction complete for ${key}. Data size approx: ${JSON.stringify(value).length} chars`);
+            // console.log(`[IDB] Transaction complete for ${key}. Data size approx: ${JSON.stringify(value).length} chars`);
             resolve();
         };
 
@@ -105,13 +105,23 @@ export const setCurrentBoardId = (id) => {
     else localStorage.removeItem(CURRENT_BOARD_ID_KEY);
 };
 
-export const getBoardsList = () => {
+// Internal helper to get ALL boards (Active + Trash)
+const getRawBoardsList = () => {
     const list = localStorage.getItem(BOARDS_LIST_KEY);
     return list ? JSON.parse(list) : [];
 };
 
+export const getBoardsList = () => {
+    return getRawBoardsList().filter(b => !b.deletedAt);
+};
+
+export const getTrashBoards = () => {
+    return getRawBoardsList().filter(b => b.deletedAt);
+};
+
 export const loadBoardsMetadata = () => {
-    return getBoardsList().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    // Return ALL boards (Active + Trash) sorted by createdAt so UI can filter
+    return getRawBoardsList().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 };
 
 export const createBoard = async (name) => {
@@ -123,7 +133,7 @@ export const createBoard = async (name) => {
         lastAccessedAt: Date.now(),
         cardCount: 0
     };
-    const list = getBoardsList();
+    const list = getRawBoardsList();
     const newList = [newBoard, ...list];
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
     // Init empty board in IDB
@@ -134,9 +144,9 @@ export const createBoard = async (name) => {
 export const saveBoard = async (id, data) => {
     // data: { cards, connections, updatedAt? }
     const timestamp = data.updatedAt || Date.now();
-    console.log('[Storage] saveBoard called. Board:', id, 'Cards:', data.cards?.length || 0, 'Total data size:', JSON.stringify(data).length);
+    // console.log('[Storage] saveBoard called. Board:', id, 'Cards:', data.cards?.length || 0);
 
-    const list = getBoardsList();
+    const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
         list[boardIndex] = {
@@ -148,7 +158,6 @@ export const saveBoard = async (id, data) => {
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
     }
     await idbSet(BOARD_PREFIX + id, { ...data, updatedAt: timestamp });
-    console.log('[Storage] saveBoard complete for', id);
 };
 
 // Helper: Download image from S3 URL and convert to base64
@@ -221,7 +230,7 @@ export const loadBoard = async (id) => {
                                 console.log('[S3 Download] Detected URL image, downloading:', part.source.url.substring(0, 50));
                                 const base64 = await downloadImageAsBase64(part.source.url);
                                 if (base64) {
-                                    console.log('[S3 Download] Successfully converted to base64');
+                                    // console.log('[S3 Download] Successfully converted to base64');
                                     return {
                                         ...part,
                                         source: {
@@ -236,7 +245,7 @@ export const loadBoard = async (id) => {
                                 console.warn('[S3 Download] Failed, keeping URL fallback:', part.source.url);
                             } else if (part.type === 'image' && part.source?.type === 'base64') {
                                 // Base64 image - pass through unchanged
-                                console.log('[Load Board] Base64 image detected, data length:', part.source.data?.length || 0);
+                                // console.log('[Load Board] Base64 image detected, data length:', part.source.data?.length || 0);
                             }
                             return part;
                         }));
@@ -257,7 +266,7 @@ export const loadBoard = async (id) => {
 
     // Always update last accessed time if we have a board
     if (finalBoard) {
-        const list = getBoardsList();
+        const list = getRawBoardsList();
         const boardIndex = list.findIndex(b => b.id === id);
         if (boardIndex >= 0) {
             list[boardIndex] = {
@@ -271,14 +280,60 @@ export const loadBoard = async (id) => {
     return finalBoard;
 };
 
+// --- Deletion Logic ---
+
+// --- Cleanup Logic ---
+export const cleanupExpiredTrash = async () => {
+    const list = getTrashBoards();
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    let deletedCount = 0;
+
+    for (const board of list) {
+        if (board.deletedAt && board.deletedAt < thirtyDaysAgo) {
+            console.log(`[Cleanup] Board ${board.id} expired (deleted > 30 days ago). Permanently removing.`);
+            await permanentlyDeleteBoard(board.id);
+            deletedCount++;
+        }
+    }
+    if (deletedCount > 0) {
+        console.log(`[Cleanup] Removed ${deletedCount} expired boards from trash.`);
+    }
+};
+
+// Soft Delete (Rename original function to prevent breaking API but change behavior)
 export const deleteBoard = async (id) => {
-    const list = getBoardsList();
+    const list = getRawBoardsList();
+    const boardIndex = list.findIndex(b => b.id === id);
+    if (boardIndex >= 0) {
+        list[boardIndex] = { ...list[boardIndex], deletedAt: Date.now() };
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        console.log(`[Storage] Board ${id} soft deleted (moved to trash).`);
+    } else {
+        console.warn(`[Storage] Board ${id} not found for soft deletion.`);
+    }
+};
+
+export const restoreBoard = async (id) => {
+    const list = getRawBoardsList();
+    const boardIndex = list.findIndex(b => b.id === id);
+    if (boardIndex >= 0) {
+        const { deletedAt, ...rest } = list[boardIndex];
+        list[boardIndex] = rest; // Remove deletedAt
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        console.log(`[Storage] Board ${id} restored.`);
+        return true;
+    }
+    return false;
+};
+
+export const permanentlyDeleteBoard = async (id) => {
+    const list = getRawBoardsList();
     const newList = list.filter(b => b.id !== id);
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
 
     await idbDel(BOARD_PREFIX + id);
-    // Also clear legacy if exists
-    localStorage.removeItem(BOARD_PREFIX + id);
+    localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy
+    console.log(`[Storage] Board ${id} permanently deleted.`);
 };
 
 // --- Cloud Sync ---
@@ -292,7 +347,6 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
             const promises = [];
             let hasChanges = false;
 
-            // Only process actual changes to prevent infinite loops
             for (const change of snapshot.docChanges()) {
                 const boardData = change.doc.data();
                 if (!boardData.id) continue;
@@ -302,20 +356,16 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                         try {
                             const localData = await idbGet(BOARD_PREFIX + boardData.id);
 
-                            // Optimization: If local data exists and cloud data is not newer, skip hydration
-                            // This is the key to breaking the "autosave -> cloud -> sync -> local" loop
                             if (localData && boardData.updatedAt && localData.updatedAt >= boardData.updatedAt) {
-                                // console.log(`[Firebase Sync] Skipping hydration for ${boardData.id}, local is up to date`);
                                 return;
                             }
 
                             hasChanges = true;
                             if (!localData || !localData.cards) {
-                                // First time loading or missing local data
                                 await saveBoard(boardData.id, {
                                     cards: boardData.cards || [],
                                     connections: boardData.connections || [],
-                                    updatedAt: boardData.updatedAt // Preserving cloud timestamp
+                                    updatedAt: boardData.updatedAt
                                 });
                                 return;
                             }
@@ -329,17 +379,10 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 if (cloudCard.type === 'note' && localCard.type === 'note') {
                                     const cloudContent = cloudCard.data?.content || '';
                                     const localContent = localCard.data?.content || '';
-
-                                    // If local content has more entries or is simply different and longer, 
-                                    // we should be careful about overwriting it if local timestamp is essentially same as cloud.
-                                    // For simplicity, if they differ, we take the one with the most "XX. " lines as a heuristic for "more data"
-                                    // or just preserve local if cloud is older.
                                     if (cloudContent !== localContent) {
                                         const cloudCount = (cloudContent.match(/^\d+\./gm) || []).length;
                                         const localCount = (localContent.match(/^\d+\./gm) || []).length;
-
                                         if (localCount > cloudCount) {
-                                            console.log('[Firebase Sync] Preserving local note content (more entries):', localCount, 'vs', cloudCount);
                                             cloudCard.data.content = localContent;
                                         }
                                     }
@@ -377,7 +420,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             await saveBoard(boardData.id, {
                                 cards: [...mergedCards, ...localOnlyCards],
                                 connections: boardData.connections || localData.connections || [],
-                                updatedAt: boardData.updatedAt // Prevent immediate re-trigger by keeping timestamp
+                                updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
                             console.error("[Firebase Sync] Merge failed", e);
@@ -386,13 +429,12 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 }
             }
 
-            // Wait for all IDB writes to complete
             if (promises.length > 0) {
                 await Promise.all(promises);
                 if (hasChanges) console.log(`[Firebase Sync] Hydrated ${promises.length} board(s)`);
             }
 
-            // Update metadata list in localStorage for gallery view
+            // Sync Metadata List
             const allBoards = snapshot.docs.map(doc => doc.data());
             const metadataList = allBoards.map(b => ({
                 id: b.id,
@@ -400,10 +442,32 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 createdAt: b.createdAt || Date.now(),
                 updatedAt: b.updatedAt || Date.now(),
                 lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
-                cardCount: b.cards?.length || 0
+                cardCount: b.cards?.length || 0,
+                deletedAt: b.deletedAt // Sync deleted status!
             })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
+
+            // onUpdate assumes active boards list? 
+            // In App.jsx hook useAppInit, `onUpdate` sets boardsList.
+            // If we pass everything, `App` receives trash items too.
+            // So we should verify what `boardsList` is expected to be.
+            // Typically `useAppInit` wants to display the Active Gallery.
+            // So we should Filter here before passing to callback? 
+            // OR let App handle it. 
+            // `GalleryPage` accepts `boardsList`.
+            // If I change `storage.js` to return active only in `getBoardsList`, 
+            // `onUpdate` should ideally follow the same pattern or return all and let consumer filter.
+            // The safest is to return everything and let App decide, OR return active only if that's what `getBoardsList` does.
+            // `getBoardsList` returns active only.
+            // So `onUpdate` should probably return Active only to be consistent!
+
+            // Wait, if I filter out trash here, `GalleryPage` won't see trash items unless `useAppInit` has a separate `trashList` state.
+            // Since `useAppInit` has only one `boardsList` state, if I filter here, Trash UI is impossible.
+            // If I DON'T filter here, `GalleryPage` main view will show trash items unless I modify `GalleryPage` to filter.
+            // Modifications needed in `GalleryPage`: Filter `boardsList` for Main view, and Filter for Trash view.
+            // So `onUpdate` SHOULD return ALL items (with deletedAt).
+
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
         }, (error) => {
             console.error("Firestore sync error:", error);
@@ -417,12 +481,11 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 export const saveBoardToCloud = async (userId, boardId, boardContent) => {
     if (!db || !userId) return;
     try {
-        const list = getBoardsList();
+        const list = getRawBoardsList(); // Get FULL list to find metadata even if deleted
         const meta = list.find(b => b.id === boardId);
 
         if (!meta) return;
 
-        // Helper to recursively remove undefined values (Firebase doesn't accept them)
         const removeUndefined = (obj) => {
             if (Array.isArray(obj)) {
                 return obj.map(removeUndefined).filter(item => item !== undefined);
@@ -438,7 +501,6 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             return obj;
         };
 
-        // Clean base64 data before syncing to Firebase
         const cleanedContent = {
             cards: (boardContent.cards || []).map(card => ({
                 ...card,
@@ -449,10 +511,7 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
                             return {
                                 ...msg,
                                 content: msg.content.map(part => {
-                                    // Strip base64 from all images before Firebase sync
-                                    // This prevents "nested entity" errors
                                     if (part.type === 'image' && part.source) {
-                                        // Has S3 URL: use URL type
                                         if (part.source.s3Url) {
                                             return {
                                                 type: 'image',
@@ -463,16 +522,12 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
                                                 }
                                             };
                                         }
-                                        // No S3 URL yet (upload pending): DON'T sync to Firebase
-                                        // Return a placeholder to avoid errors
                                         if (part.source.type === 'base64' && !part.source.s3Url) {
-                                            console.warn('[Cloud Save] Skipping image without S3 URL (upload pending)');
-                                            return null; // Will be filtered out
+                                            return null;
                                         }
                                     }
-                                    // Keep base64 for non-image or users without S3
                                     return part;
-                                }).filter(Boolean) // Remove nulls
+                                }).filter(Boolean)
                             };
                         }
                         return msg;
@@ -482,6 +537,7 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             connections: boardContent.connections || []
         };
 
+        // Combine meta (which includes deletedAt) with content
         const fullBoard = removeUndefined({
             ...meta,
             ...cleanedContent
@@ -491,6 +547,17 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         await setDoc(boardRef, fullBoard);
     } catch (e) {
         console.error("Cloud save failed", e);
+    }
+};
+
+// Update metadata only (for soft deletion sync)
+export const updateBoardMetadataInCloud = async (userId, boardId, metadata) => {
+    if (!db || !userId) return;
+    try {
+        const boardRef = doc(db, 'users', userId, 'boards', boardId);
+        await setDoc(boardRef, metadata, { merge: true });
+    } catch (e) {
+        console.error("Cloud metadata update failed", e);
     }
 };
 
@@ -536,8 +603,9 @@ const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, saveBoard, loadBoard, deleteBoard,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
-    saveUserSettings, loadUserSettings
-
+    saveUserSettings, loadUserSettings,
+    // New exports
+    getTrashBoards, restoreBoard, permanentlyDeleteBoard, updateBoardMetadataInCloud
 };
 
 if (typeof window !== 'undefined') {

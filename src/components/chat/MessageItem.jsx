@@ -53,7 +53,9 @@ const MessageImage = ({ img }) => {
     );
 };
 
-const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming, handleRetry }) => {
+import { Share2 } from 'lucide-react';
+
+const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming, handleRetry, onShare }) => {
     const isUser = message.role === 'user';
     let textContent = "";
     let msgImages = [];
@@ -129,7 +131,7 @@ const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming,
 
     return (
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
-            <div className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-6 shadow-sm ${isUser
+            <div className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-6 shadow-sm group relative ${isUser
                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tr-none'
                 : 'bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-tl-none'
                 }`}>
@@ -170,6 +172,20 @@ const MessageItem = React.memo(({ message, marks, parseModelOutput, isStreaming,
                         />
                     )}
                 </div>
+
+                {/* Action Bar (Share, etc.) */}
+                {!isUser && !isStreaming && content && !content.includes("⚠️ Error") && (
+                    <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                            onClick={() => onShare && onShare(textContent)}
+                            className="text-xs font-bold text-slate-400 hover:text-brand-500 flex items-center gap-1 bg-slate-50 dark:bg-white/5 hover:bg-brand-50 dark:hover:bg-brand-500/10 px-3 py-1.5 rounded-full transition-all"
+                            title="Share as Image"
+                        >
+                            <Share2 size={14} />
+                            <span>Share</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Retry Button (only for assistant and if it's an error or last message) */}
                 {!isUser && !isStreaming && content && content.includes("⚠️ Error") && (
