@@ -141,6 +141,22 @@ export const createBoard = async (name) => {
     return newBoard;
 };
 
+// Update board metadata (name, etc.) in localStorage
+export const updateBoardMetadata = (id, metadata) => {
+    const list = getRawBoardsList();
+    const boardIndex = list.findIndex(b => b.id === id);
+    if (boardIndex >= 0) {
+        list[boardIndex] = {
+            ...list[boardIndex],
+            ...metadata,
+            updatedAt: Date.now()
+        };
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        return true;
+    }
+    return false;
+};
+
 export const saveBoard = async (id, data) => {
     // data: { cards, connections, updatedAt? }
     const timestamp = data.updatedAt || Date.now();
@@ -601,7 +617,7 @@ export const loadUserSettings = async (userId) => {
 // Compatibility for Local Preview
 const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
-    createBoard, saveBoard, loadBoard, deleteBoard,
+    createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings,
     // New exports
