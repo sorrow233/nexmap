@@ -2,83 +2,95 @@ import React, { useEffect, useRef } from 'react';
 import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
 
 /**
- * ConnectionLayer renders all connections between cards using Path2D on an HTML5 Canvas.
- * This is significantly more performant than SVG for many connections.
+ * ConnectionLayer
  * 
- * Performance Note:
- * This component uses a direct requestAnimationFrame loop for smooth rendering.
- * This avoids React state updates (useState) during animation, which would cause
- * excessive re-renders.
+ * Optimized to strictly separate Path Calculation from Render Logic.
+ * 
+ * 1. Path Calculation:
+ *    - Depends ONLY on `cards` and `connections`.
+ *    - Updates `pathCacheRef` (Map <key, Path2D>).
+ *    - Does NOT run when `offset` or `scale` changes.
+ * 
+ * 2. Render Loop:
+ *    - Uses `requestAnimationFrame`.
+ *    - Reads `offset`/`scale` from `transformRef` (updated via effect).
+ *    - Uses `pathCacheRef` to draw.
+ *    - Clears and transforms canvas context.
  */
 const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, offset, scale }) {
     const canvasRef = useRef(null);
 
-    // REFS FOR PROPS
-    // We use refs for these to access them inside the animation loop/effects 
-    // without triggering re-runs of the effects themselves.
+    // =========================================================================
+    // 1. DATA Staging (Refs) - To avoid re-triggering effects unnecessarily
+    // =========================================================================
+
+    // Stores pre-calculated Path2D objects -> O(1) lookup during render
+    // Key: "fromId-toId"
     const pathCacheRef = useRef(new Map());
+
+    // Stores the previous state of cards to detect movements efficiently
     const prevCardsMapRef = useRef(new Map());
 
-    // Store latest transform to avoid re-binding loop
+    // Stores the latest transform (View) so the loop can access it without binding to React state
     const transformRef = useRef({ x: 0, y: 0, s: 1 });
 
-    // Version counter to signal the render loop that paths have updated
+    // Signals the render loop that paths have been updated (Content changed)
     const pathVersionRef = useRef(0);
 
-    // Update transform ref whenever props change
+    // Update transformRef whenever view props change.
+    // This allows the render loop to "see" the new transform without breaking the loop.
     useEffect(() => {
         transformRef.current = {
             x: offset?.x ?? 0,
             y: offset?.y ?? 0,
             s: scale ?? 1
         };
-        // We do NOT increment pathVersion here because transform changes 
-        // don't require path recalculation, just a clearRect + redraw which the loop handles.
+        // Note: We don't increment pathVersion here. Transform changes are handled
+        // by the loop checking against its own lastRenderState.
     }, [offset, scale]);
 
+
     // =========================================================================
-    // 1. PATH MANAGEMENT EFFECT
-    // This effect runs ONLY when cards or connections change.
-    // It updates the pathCacheRef with granular updates.
+    // 2. PATH CALCULATION (Content Logic)
+    // CRITICAL: This effect MUST depend ONLY on [cards, connections].
+    // It must NEVER depend on offset/scale.
     // =========================================================================
     useEffect(() => {
         const pathCache = pathCacheRef.current;
         const prevCardsMap = prevCardsMapRef.current;
         const nextCardsMap = new Map();
 
-        // Build map for O(1) access
-        cards.forEach(c => nextCardsMap.set(c.id, c));
+        // Index current cards for O(1) lookup
+        for (const c of cards) {
+            nextCardsMap.set(c.id, c);
+        }
 
-        // Detect which cards moved
+        // 1. Detect which cards actually moved/resized
         const movedCardIds = new Set();
-        nextCardsMap.forEach((card, id) => {
+        for (const [id, card] of nextCardsMap) {
             const prev = prevCardsMap.get(id);
-            // If new card, or position/size moved, mark as moved
-            if (!prev || prev.x !== card.x || prev.y !== card.y) {
+            if (!prev || prev.x !== card.x || prev.y !== card.y || prev.w !== card.w || prev.h !== card.h) {
                 movedCardIds.add(id);
             }
-        });
-
-        // Also handle deleted cards (though connections usually get deleted too)
-        // If a card is deleted, we don't strictly *need* to mark it as moved 
-        // because the connection loop below will just fail to find it and clean up.
+        }
 
         let hasUpdates = false;
-
-        // Clean up connections using a Keep list
         const activeKeys = new Set();
 
-        connections.forEach(conn => {
+        // 2. Update connections
+        for (const conn of connections) {
             const key = `${conn.from}-${conn.to}`;
             activeKeys.add(key);
 
-            // Check if we need to recalc
+            // We recalc if:
+            // A) It's not in cache
+            // B) Source card moved/changed
+            // C) Target card moved/changed
             const isCached = pathCache.has(key);
             const sourceMoved = movedCardIds.has(conn.from);
             const targetMoved = movedCardIds.has(conn.to);
 
             if (!isCached || sourceMoved || targetMoved) {
-                // Recalculate THIS path
                 const fromCard = nextCardsMap.get(conn.from);
                 const toCard = nextCardsMap.get(conn.to);
 
@@ -89,9 +101,9 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     hasUpdates = true;
                 }
             }
-        });
+        }
 
-        // Prune stale paths
+        // 3. Prune stale connections (deleted)
         for (const key of pathCache.keys()) {
             if (!activeKeys.has(key)) {
                 pathCache.delete(key);
@@ -99,82 +111,93 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             }
         }
 
-        // Update previous state
+        // 4. Update previous state map for next run
         prevCardsMapRef.current = nextCardsMap;
 
-        // Signal redraw if we changed anything
+        // 5. Signal render loop if needed
         if (hasUpdates) {
             pathVersionRef.current += 1;
         }
 
-    }, [cards, connections]);
+    }, [cards, connections]); // <--- STRICT DEPENDENCIES
+
 
     // =========================================================================
-    // 2. RENDER LOOP EFFECT
-    // This handles the actual canvas drawing.
-    // It runs once and loops via requestAnimationFrame.
+    // 3. RENDER LOOP (View Logic)
+    // Manages Canvas drawing synchronized with browser paint.
     // =========================================================================
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const ctx = canvas.getContext('2d');
-        const dpr = window.devicePixelRatio || 1;
+        const ctx = canvas.getContext('2d', { alpha: true }); // Optimized ctx
         let animationFrameId;
 
-        // Track last drawn state to avoid unnecessary redraws
+        // State tracking to prevent redundant clears/draws
         let lastRenderState = { x: null, y: null, s: null, v: -1 };
 
+        // Handle canvas resizing
         const resize = () => {
-            if (!canvas) return;
+            const dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
-            // Force redraw
-            lastRenderState = { x: null, y: null, s: null, v: -1 };
+            // Force redraw after resize
+            lastRenderState = { ...lastRenderState, x: null };
         };
 
-        resize();
         window.addEventListener('resize', resize);
+        resize(); // Initial size
 
         const loop = () => {
             const { x: cx, y: cy, s: cs } = transformRef.current;
             const cv = pathVersionRef.current;
 
-            // Only redraw if transform changed OR paths changed (version bumped)
+            // Redraw ONLY if View changed (pan/zoom) OR Content changed (pathVersion)
             if (
                 cx !== lastRenderState.x ||
                 cy !== lastRenderState.y ||
                 cs !== lastRenderState.s ||
                 cv !== lastRenderState.v
             ) {
-                // Determine clear area? For now just clear all
-                // NOTE: dividing by dpr because we scaled the context by dpr
-                ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                // 1. Clear Screen
+                // We user stored dpr logic implicity via canvas width/height, 
+                // but for clearRect we need logical coords if we didn't scale context?
+                // We DID scale context by dpr. Canvas Size is W*dpr, H*dpr.
+                // clearRect(0,0, W, H) clears logical W*H.
+                const width = canvas.width / (window.devicePixelRatio || 1);
+                const height = canvas.height / (window.devicePixelRatio || 1);
+                ctx.clearRect(0, 0, width, height);
 
-                const pathCache = pathCacheRef.current;
-
-                if (pathCache.size > 0) {
+                const map = pathCacheRef.current;
+                if (map.size > 0) {
                     ctx.save();
+
+                    // 2. Apply Transform (Pan/Zoom)
                     ctx.translate(cx, cy);
                     ctx.scale(cs, cs);
 
-                    // Style
+                    // 3. Set Styles
+                    // Thin lines relative to zoom? Or constant screen width?
+                    // "ctx.lineWidth = 3 / cs" makes line constant physical width on screen (gets thinner in world space as you zoom in)
+                    // Usually we want constant SCREEN width for UI lines.
                     ctx.lineWidth = 3 / cs;
-                    ctx.strokeStyle = document.documentElement.classList.contains('dark')
-                        ? 'rgba(129, 140, 248, 0.4)'
-                        : 'rgba(99, 102, 241, 0.5)';
+
+                    // Theme detection (cheap check or passed prop would be better, but classList is okay)
+                    const isDark = document.documentElement.classList.contains('dark');
+                    ctx.strokeStyle = isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)';
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    // Draw all cached paths
-                    for (const path of pathCache.values()) {
+                    // 4. Draw Paths from Cache
+                    for (const path of map.values()) {
                         ctx.stroke(path);
                     }
 
                     ctx.restore();
                 }
 
+                // Update state
                 lastRenderState = { x: cx, y: cy, s: cs, v: cv };
             }
 
@@ -184,10 +207,10 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
         loop();
 
         return () => {
-            cancelAnimationFrame(animationFrameId);
             window.removeEventListener('resize', resize);
+            cancelAnimationFrame(animationFrameId);
         };
-    }, []); // Empty dependency array = runs once
+    }, []); // <--- Runs once, loops forever
 
     return (
         <canvas

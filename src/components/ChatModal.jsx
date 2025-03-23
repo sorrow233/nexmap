@@ -280,7 +280,15 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setTimeout(() => scrollToBottom(true), 10);
 
         // Prepare context messages for generation (exclude the empty assistant message we just added)
-        const contextMessages = [...(card.data.messages || []), userMsg];
+        let contextMessages = [...(card.data.messages || []), userMsg];
+
+        // [Fix] Inject card content as system context if available (crucial for Notes)
+        if (card.data.content && typeof card.data.content === 'string') {
+            contextMessages = [
+                { role: 'system', content: `Context (Current Card Content):\n${card.data.content}` },
+                ...contextMessages
+            ];
+        }
 
         try {
             // Use the parent's generator which handles context/connections
@@ -349,10 +357,14 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         });
         setIsStreaming(true);
 
+        const contextForAI = (card.data.content && typeof card.data.content === 'string')
+            ? [{ role: 'system', content: `Context (Current Card Content):\n${card.data.content}` }, ...truncatedMessages]
+            : truncatedMessages;
+
         try {
             // Re-trigger the generation logic
             if (onGenerateResponse) {
-                await onGenerateResponse(card.id, truncatedMessages, (token) => {
+                await onGenerateResponse(card.id, contextForAI, (token) => {
                     onUpdate(card.id, (currentData) => {
                         if (!currentData) return currentData;
                         const msgs = [...currentData.messages];
@@ -362,7 +374,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     });
                 });
             } else {
-                await streamChatCompletion(truncatedMessages, (token) => {
+                await streamChatCompletion(contextForAI, (token) => {
                     onUpdate(card.id, (currentData) => {
                         if (!currentData) return currentData;
                         const msgs = [...currentData.messages];
