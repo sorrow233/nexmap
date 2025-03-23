@@ -19,7 +19,7 @@ export default function SproutModal({
                         <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                             <Sprout size={18} />
                         </div>
-                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Sprout New Ideas</h3>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">发散新想法</h3>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
                         <X size={20} className="text-slate-400" />
@@ -27,7 +27,7 @@ export default function SproutModal({
                 </div>
 
                 <div className="p-6 overflow-y-auto custom-scrollbar">
-                    <p className="text-sm text-slate-500 mb-4 font-medium">Select questions you want answered:</p>
+                    <p className="text-sm text-slate-500 mb-4 font-medium">选择你想回答的问题:</p>
                     <div className="space-y-2">
                         {topics.map((topic, idx) => (
                             <div
@@ -58,7 +58,7 @@ export default function SproutModal({
                         className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-500/20 disabled:grayscale disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
                         <Sprout size={20} />
-                        <span>Grow {selectedTopics.length} Cards</span>
+                        <span>生成 {selectedTopics.length} 张卡片</span>
                     </button>
                 </div>
             </div>
