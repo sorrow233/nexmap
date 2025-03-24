@@ -33,19 +33,32 @@ export default function GalleryPage({
                         </h1>
 
                         {/* View Switcher */}
-                        <div className="flex bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-white/10">
+                        <div className="flex p-1.5 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-full border border-slate-200/50 dark:border-white/5 shadow-inner">
                             <button
                                 onClick={() => setViewMode('active')}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${viewMode === 'active' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                className={`relative px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 ${viewMode === 'active'
+                                        ? 'bg-white dark:bg-slate-700 shadow-premium text-slate-900 dark:text-white'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    }`}
                             >
                                 Gallery
                             </button>
                             <button
                                 onClick={() => setViewMode('trash')}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'trash' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                className={`relative px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 flex items-center gap-2 ${viewMode === 'trash'
+                                        ? 'bg-white dark:bg-slate-700 shadow-premium text-red-500'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    }`}
                             >
                                 Trash
-                                {trashCount > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{trashCount}</span>}
+                                {trashCount > 0 && (
+                                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md transition-colors ${viewMode === 'trash'
+                                            ? 'bg-red-50 text-red-500 dark:bg-red-500/10'
+                                            : 'bg-slate-200/50 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                                        }`}>
+                                        {trashCount}
+                                    </span>
+                                )}
                             </button>
                         </div>
                     </div>
