@@ -54,6 +54,32 @@ export default function Canvas({ onCreateNote }) {
         }
     };
 
+    const lastSelectionCheckRef = useRef(0);
+
+    const performSelectionCheck = (rect) => {
+        // Calculate intersection
+        const xMin = Math.min(rect.x1, rect.x2);
+        const xMax = Math.max(rect.x1, rect.x2);
+        const yMin = Math.min(rect.y1, rect.y2);
+        const yMax = Math.max(rect.y1, rect.y2);
+
+        const canvasTopLeft = toCanvasCoords(xMin, yMin);
+        const canvasBottomRight = toCanvasCoords(xMax, yMax);
+
+        const selectionCanvasRect = {
+            left: canvasTopLeft.x,
+            top: canvasTopLeft.y,
+            right: canvasBottomRight.x,
+            bottom: canvasBottomRight.y
+        };
+
+        const intersectedIds = cards
+            .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
+            .map(card => card.id);
+
+        setSelectedIds(intersectedIds);
+    };
+
     const handleMouseMove = (e) => {
         if (interactionMode === 'panning') {
             setOffset({
@@ -64,31 +90,20 @@ export default function Canvas({ onCreateNote }) {
             const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
             setSelectionRect(newSelectionRect);
 
-            // Calculate intersection
-            const xMin = Math.min(newSelectionRect.x1, newSelectionRect.x2);
-            const xMax = Math.max(newSelectionRect.x1, newSelectionRect.x2);
-            const yMin = Math.min(newSelectionRect.y1, newSelectionRect.y2);
-            const yMax = Math.max(newSelectionRect.y1, newSelectionRect.y2);
-
-            const canvasTopLeft = toCanvasCoords(xMin, yMin);
-            const canvasBottomRight = toCanvasCoords(xMax, yMax);
-
-            const selectionCanvasRect = {
-                left: canvasTopLeft.x,
-                top: canvasTopLeft.y,
-                right: canvasBottomRight.x,
-                bottom: canvasBottomRight.y
-            };
-
-            const intersectedIds = cards
-                .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
-                .map(card => card.id);
-
-            setSelectedIds(intersectedIds);
+            // Throttle selection calculation to every 50ms
+            const now = Date.now();
+            if (now - lastSelectionCheckRef.current > 50) {
+                performSelectionCheck(newSelectionRect);
+                lastSelectionCheckRef.current = now;
+            }
         }
     };
 
     const handleMouseUp = () => {
+        // Perform final check to ensure accuracy
+        if (interactionMode === 'selecting' && selectionRect) {
+            performSelectionCheck(selectionRect);
+        }
         setInteractionMode('none');
         setSelectionRect(null);
     };
@@ -269,7 +284,6 @@ export default function Canvas({ onCreateNote }) {
                                 onExpand={() => setExpandedCardId(card.id)}
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
-                                scale={scale}
                                 onCreateNote={onCreateNote}
                             />
                         </ErrorBoundary>

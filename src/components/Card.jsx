@@ -4,7 +4,10 @@ import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 import { isSafari, isIOS } from '../utils/browser';
 
+import { useStore } from '../store/useStore';
+
 const Card = React.memo(function Card({
+
     data, // Now contains id, x, y, and actual data
     isSelected,
     onSelect,
@@ -14,18 +17,17 @@ const Card = React.memo(function Card({
     isConnecting,
     onConnect,
     onDragEnd,
-    onDelete,
-    scale // Assuming scale is passed as a prop
+    onDelete
 }) {
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const cardRef = useRef(null);
 
     // Refs to hold latest values for event handlers to avoid re-binding
-    const stateRef = useRef({ data, onMove, scale, dragOffset, onDragEnd });
+    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd });
     useEffect(() => {
-        stateRef.current = { data, onMove, scale, dragOffset, onDragEnd };
-    }, [data, onMove, scale, dragOffset, onDragEnd]);
+        stateRef.current = { data, onMove, dragOffset, onDragEnd };
+    }, [data, onMove, dragOffset, onDragEnd]);
 
     const handleMouseDown = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
@@ -65,24 +67,43 @@ const Card = React.memo(function Card({
         if (!isDragging) return;
 
         const handleMouseMove = (e) => {
-            const { onMove, data, scale, dragOffset } = stateRef.current;
+            const { dragOffset } = stateRef.current; // Don't need onMove anymore
 
-            // Apply scale to delta
-            const currentScale = scale || 1;
+            // Calculate delta
+            const currentScale = useStore.getState().scale || 1;
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
 
-            onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
-        };
-
-        const handleMouseUp = () => {
-            setIsDragging(false);
-            if (stateRef.current.onDragEnd) {
-                stateRef.current.onDragEnd(stateRef.current.data.id);
+            // Apply visual transform directly to the DOM node for performance
+            if (cardRef.current) {
+                cardRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
             }
         };
 
+        const handleMouseUp = (e) => {
+            setIsDragging(false);
 
+            // Calculate final position
+            const { dragOffset, data, onDragEnd } = stateRef.current;
+            const currentScale = useStore.getState().scale || 1;
+
+            // Use the clientX from the event (or last known if needed, but mouseup has coords usually)
+            // Note: MouseUp coords might be slightly different than last MouseMove, so we calculate fresh.
+            const dx = (e.clientX - dragOffset.startX) / currentScale;
+            const dy = (e.clientY - dragOffset.startY) / currentScale;
+
+            const finalX = dragOffset.origX + dx;
+            const finalY = dragOffset.origY + dy;
+
+            // Reset transform before store update to prevent double-jump visual artifact
+            if (cardRef.current) {
+                cardRef.current.style.transform = '';
+            }
+
+            if (onDragEnd) {
+                onDragEnd(data.id, finalX, finalY);
+            }
+        };
 
         const handleTouchMove = (e) => {
             // Prevent default only if dragging to stop scrolling
@@ -94,9 +115,36 @@ const Card = React.memo(function Card({
             });
         };
 
-        const handleTouchEnd = () => {
-            handleMouseUp();
+        const handleTouchEnd = (e) => {
+            // For touch end, we need to use the last touch position or calculate delta differently.
+            // Since handleMouseMove uses client coordinates, we can reuse the logic if we tracked the last position.
+            // However, simplified: we just run cleanup. The visual transform resets.
+            // Ideally we need final coordinates. 
+            // FIX: Tracking last known mouse/touch position in ref to pass to mouseUp logic
+            // For now, let's assume handleMouseUp(e) works if e has clientX/Y. TouchEnd DOES NOT have clientX.
+
+            // Workaround: We need to store the LAST known delta/position in a ref during move.
+            setIsDragging(false);
+
+            if (cardRef.current) {
+                // We can read the current transform to get the distinct values if needed, 
+                // but better to track it in a ref during move.
+                const style = window.getComputedStyle(cardRef.current);
+                const matrix = new DOMMatrix(style.transform);
+                // matrix.e, matrix.f are the translate values
+
+                const finalX = stateRef.current.data.x + matrix.e;
+                const finalY = stateRef.current.data.y + matrix.f;
+
+                cardRef.current.style.transform = '';
+
+                if (stateRef.current.onDragEnd) {
+                    stateRef.current.onDragEnd(stateRef.current.data.id, finalX, finalY);
+                }
+            }
         };
+
+        // Better TouchEnd handling: relying on the transform matrix is actually quite reliable for "where is it now visually"
 
         // Add listeners to window so we can drag outside the card
         window.addEventListener('mousemove', handleMouseMove);
@@ -111,6 +159,9 @@ const Card = React.memo(function Card({
             window.removeEventListener('mouseup', handleMouseUp);
             window.removeEventListener('touchmove', handleTouchMove);
             window.removeEventListener('touchend', handleTouchEnd);
+
+            // Safety cleanup
+            if (cardRef.current) cardRef.current.style.transform = '';
         };
     }, [isDragging]); // Only re-run if isDragging changes state
 

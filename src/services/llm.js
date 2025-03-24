@@ -66,20 +66,25 @@ export async function generateFollowUpTopics(messages, model = null, options = {
     try {
         const contextText = messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `You are a curious, intelligent thinking partner. Analyze the conversation history and generate exactly 5 thoughtful, diverse follow-up questions/directions.
+        const finalPrompt = `Based on the conversation history below, predict exactly 5 questions that a real user would naturally ask next as they explore this topic further.
 
 CONVERSATION HISTORY:
 ${contextText}
 
 INSTRUCTIONS:
-1. Questions should sound like a human curious to explore the topic deeper, NOT a generic AI assistant.
-2. Be direct and conversational. Avoid "Can you tell me more about..." or "What are the..." patterns.
-3. Instead of simple information requests, propose angles that challenge assumptions or connect ideas.
-4. Keep questions concise (under 15 words).
-5. Ensure diversity: ask for examples, potential risks, counter-arguments, or creative extensions.
+1. **Language**: Generate questions in the SAME LANGUAGE as the conversation above (Chinese/English/etc).
+2. **Think like a curious user**: What would YOU personally want to know next if you were having this conversation?
+3. **Natural progression**: Questions should feel like the natural next step in the conversation, not random tangents.
+4. **Variety**: Mix different types of natural questions:
+   - Asking for clarification on something just mentioned
+   - Requesting practical examples or how-to advice
+   - Digging deeper into an interesting point
+   - Asking "what if" or hypothetical scenarios
+   - Seeking personal experience or opinions
+5. **Conversational tone**: Sound like a real person chatting, not an academic interviewer.
 
-Return ONLY a JSON array with EXACTLY 5 strings: ["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]
-NO other text.`;
+Return ONLY a valid JSON array with exactly 5 question strings.
+Example format: ["具体怎么做？", "有没有例子？", "如果...会怎样？", "你觉得呢？", "还有其他方法吗？"]`;
 
         console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
