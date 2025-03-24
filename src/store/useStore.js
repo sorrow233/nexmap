@@ -399,13 +399,36 @@ const createSettingsSlice = (set) => ({
     setApiConfig: (val) => set({ apiConfig: val })
 });
 
+// --- Share Slice ---
+const createShareSlice = (set) => ({
+    shareModal: {
+        isOpen: false,
+        cardContent: null,
+        theme: 'business', // 'business' | 'tech'
+        showWatermark: true
+    },
+    openShareModal: (content) => set((state) => ({
+        shareModal: { ...state.shareModal, isOpen: true, cardContent: content }
+    })),
+    closeShareModal: () => set((state) => ({
+        shareModal: { ...state.shareModal, isOpen: false, cardContent: null }
+    })),
+    setShareTheme: (theme) => set((state) => ({
+        shareModal: { ...state.shareModal, theme }
+    })),
+    toggleShareWatermark: () => set((state) => ({
+        shareModal: { ...state.shareModal, showWatermark: !state.shareModal.showWatermark }
+    }))
+});
+
 // --- Global Store with Temporal Middleware ---
 const useStoreBase = create(
     temporal(
         (set, get) => ({
             ...createCanvasSlice(set, get),
             ...createContentSlice(set, get),
-            ...createSettingsSlice(set, get)
+            ...createSettingsSlice(set, get),
+            ...createShareSlice(set, get)
         }),
         {
             limit: 50,

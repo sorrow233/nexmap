@@ -7,7 +7,8 @@ import {
     loadBoard,
     loadUserSettings,
     createBoard,
-    saveBoard
+    saveBoard,
+    cleanupExpiredTrash // New import
 } from '../services/storage';
 import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
@@ -23,6 +24,9 @@ export function useAppInit() {
     // Load initial boards metadata
     useEffect(() => {
         const init = async () => {
+            // Run cleanup first
+            await cleanupExpiredTrash();
+
             const list = loadBoardsMetadata();
             setBoardsList(list);
 
