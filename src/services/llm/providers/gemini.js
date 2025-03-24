@@ -126,48 +126,75 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const headers = { 'Content-Type': 'application/json' };
-        if (authMethod === 'bearer') headers['Authorization'] = `Bearer ${apiKey}`;
+        let retries = 3;
+        let delay = 1000;
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(requestBody)
-        });
+        while (retries >= 0) {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (authMethod === 'bearer') headers['Authorization'] = `Bearer ${apiKey}`;
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error?.message || response.statusText);
-        }
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(requestBody)
+                });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+                if (!response.ok) {
+                    // Check for retryable conditions
+                    if ([429, 500, 502, 503, 504].includes(response.status) && retries > 0) {
+                        console.warn(`[Gemini] Request failed with ${response.status}, retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        retries--;
+                        delay *= 2; // Exponential backoff
+                        continue;
+                    }
 
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n').filter(l => l.trim());
-                for (const line of lines) {
-                    try {
-                        const data = JSON.parse(line);
-                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) onToken(text);
-                    } catch (e) {
-                        const jsonMatch = line.match(/\{.*\}/);
-                        if (jsonMatch) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error?.message || response.statusText);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n').filter(l => l.trim());
+                        for (const line of lines) {
                             try {
-                                const data = JSON.parse(jsonMatch[0]);
+                                const data = JSON.parse(line);
                                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (text) onToken(text);
-                            } catch (e2) { }
+                            } catch (e) {
+                                const jsonMatch = line.match(/\{.*\}/);
+                                if (jsonMatch) {
+                                    try {
+                                        const data = JSON.parse(jsonMatch[0]);
+                                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                                        if (text) onToken(text);
+                                    } catch (e2) { }
+                                }
+                            }
                         }
                     }
+                    return; // Success, break loop
+                } finally {
+                    reader.releaseLock();
                 }
+
+            } catch (e) {
+                if (retries > 0) {
+                    console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    retries--;
+                    delay *= 2;
+                    continue;
+                }
+                throw e;
             }
-        } finally {
-            reader.releaseLock();
         }
     }
 }

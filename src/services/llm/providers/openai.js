@@ -60,43 +60,72 @@ export class OpenAIProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: modelToUse,
-                messages: this.formatMessages(messages),
-                max_tokens: 16384,
-                ...(options.temperature !== undefined && { temperature: options.temperature }),
-                stream: true,
-                ...(options.tools && { tools: options.tools }),
-                ...(options.tool_choice && { tool_choice: options.tool_choice })
-            })
-        });
+        let retries = 3;
+        let delay = 1000;
 
-        if (!response.ok) {
-            throw new Error(await response.text());
-        }
+        while (retries >= 0) {
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: modelToUse,
+                        messages: this.formatMessages(messages),
+                        max_tokens: 16384,
+                        ...(options.temperature !== undefined && { temperature: options.temperature }),
+                        stream: true,
+                        ...(options.tools && { tools: options.tools }),
+                        ...(options.tool_choice && { tool_choice: options.tool_choice })
+                    })
+                });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-            for (const line of lines) {
-                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                    try {
-                        const json = JSON.parse(line.substring(6));
-                        const content = json.choices[0]?.delta?.content;
-                        if (content) onToken(content);
-                    } catch (e) { }
+                if (!response.ok) {
+                    if ([429, 500, 502, 503, 504].includes(response.status) && retries > 0) {
+                        console.warn(`[OpenAI] Request failed with ${response.status}, retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        retries--;
+                        delay *= 2;
+                        continue;
+                    }
+                    throw new Error(await response.text());
                 }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+                                    const content = json.choices[0]?.delta?.content;
+                                    if (content) onToken(content);
+                                } catch (e) { }
+                            }
+                        }
+                    }
+                    return; // Success
+                } finally {
+                    reader.releaseLock();
+                }
+
+            } catch (e) {
+                if (retries > 0) {
+                    console.warn(`[OpenAI] Stream error: ${e.message}, retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    retries--;
+                    delay *= 2;
+                    continue;
+                }
+                throw e;
             }
         }
     }

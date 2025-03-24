@@ -1,6 +1,6 @@
 import { getActiveConfig, imageGeneration, streamChatCompletion } from '../services/llm';
 import { useStore } from '../store/useStore';
-import { saveBoard } from '../services/storage';
+import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
 
 export function useCardCreator() {
@@ -62,10 +62,10 @@ export function useCardCreator() {
         if (!text.trim() && images.length === 0) return;
         const activeConfig = getActiveConfig();
 
-        // 1. Drawing command
+        // 1. Drawing command (Bypass batch logic)
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
             const promptText = text.replace(/^\/(draw|image)\s+/, '');
-            const newId = Date.now().toString();
+            const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             setCards(prev => [...prev, {
                 id: newId, type: 'image_gen',
                 x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
@@ -82,7 +82,102 @@ export function useCardCreator() {
             return;
         }
 
-        // 2. Intelligent positioning
+        // 2. Batch Chat Dispatch (New Logic)
+        // If we have selected cards that are chat-capable, send the message to them instead of creating a new card.
+        const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
+
+        if (targetCards.length > 0) {
+            // Needed to access handleChatGenerate from store
+            const { handleChatGenerate } = useStore.getState();
+
+            // Prepare the new user message
+            let userContentParts = [];
+            if (text.trim()) {
+                userContentParts.push({ type: 'text', text });
+            }
+
+            if (images.length > 0) {
+                // Save images to IDB once and reuse the reference for all cards
+                const processedImages = await Promise.all(images.map(async (img, idx) => {
+                    const imageId = `batch_img_${Date.now()}_${idx}`;
+                    await saveImageToIDB(imageId, img.base64);
+                    return {
+                        type: 'image',
+                        source: { type: 'idb', id: imageId, media_type: img.mimeType }
+                    };
+                }));
+                userContentParts = [...userContentParts, ...processedImages];
+            }
+
+            if (userContentParts.length === 0) return;
+
+            const userMsg = {
+                role: 'user',
+                content: userContentParts.length === 1 && userContentParts[0].type === 'text'
+                    ? userContentParts[0].text
+                    : userContentParts
+            };
+
+            const assistantMsg = { role: 'assistant', content: '' };
+
+            // Optimistic UI Update: Append messages to ALL targets immediately
+            setCards(prev => prev.map(c => {
+                if (selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages)) {
+                    return {
+                        ...c,
+                        data: {
+                            ...c.data,
+                            messages: [...c.data.messages, userMsg, assistantMsg]
+                        }
+                    };
+                }
+                return c;
+            }));
+
+            // Trigger AI for each card
+            targetCards.forEach(async (card) => {
+                try {
+                    // Construct history for this specific card
+                    // We need to fetch the LATEST card state because setCards is async/batched
+                    // But we can just use the card object from the filter + our new messages
+                    // Actually, handleChatGenerate in store uses `streamChatCompletion` and expects `messages`.
+                    // But wait, `handleChatGenerate` in store takes `(cardId, messages, onToken)`.
+                    // It does NOT automatically fetch history from the store state for the *prompt*, 
+                    // it relies on the `messages` argument we pass it.
+                    // So we must pass [ ...oldMessages, userMsg ].
+
+                    const history = [...card.data.messages, userMsg];
+
+                    // We also need to handle context from neighbors if we want to be fancy, 
+                    // but `handleChatGenerate` inside `useStore` acts as a wrapper that *can* doing context walking 
+                    // if we use it, OR we can use it directly?
+                    // Let's look at `useStore.js` `handleChatGenerate` implementation again.
+                    // It takes `(cardId, messages, onToken)`. 
+                    // Inside it: `const fullMessages = [...contextMessages, ...messages];`
+                    // So it DOES adds context. That is perfect.
+                    // So we just pass the NEW message(s) we want to complete on? 
+                    // No, `handleChatGenerate` implementation shows: `const fullMessages = [...contextMessages, ...messages];`
+                    // It appends `messages` (arg) to `contextMessages`. 
+                    // If `messages` arg contains the WHOLE history, then we are duplicating context?
+                    // Wait, `handleChatGenerate` says: `const visited = getConnectedGraph...`
+                    // Then `await streamChatCompletion(fullMessages, ...)`
+                    // If we pass the ENTIRE history as `messages`, it will be `[...context, ...entire_history]`.
+                    // This is correct.
+
+                    await handleChatGenerate(card.id, history, (chunk) => {
+                        updateCardContent(card.id, chunk);
+                    });
+
+                } catch (e) {
+                    console.error(`Batch chat failed for card ${card.id}`, e);
+                    updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
+                }
+            });
+
+            return; // STOP here, do not create a new card
+        }
+
+        // 3. Intelligent positioning (Existing fallback logic)
         let targetX, targetY;
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
 
@@ -109,14 +204,15 @@ export function useCardCreator() {
             targetY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
         }
 
-        // 3. Context Construction
+        // 4. Context Construction
         let contextPrefix = "";
         if (contextCards.length > 0) {
             contextPrefix = `[System: Context]\n\n${contextCards.map(c => `Card [${c.id}]: ${c.data.title}`).join('\n')}\n\n---\n\n`;
         }
 
         const targetImages = [...images];
-        const newId = Date.now().toString();
+        // Ensure unique ID even for rapid sequential calls
+        const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
         try {
             await createAICard({
@@ -149,15 +245,23 @@ export function useCardCreator() {
                 messageContent = contextPrefix + text;
             }
 
-            await streamChatCompletion(
-                [{ role: 'user', content: messageContent }],
-                (chunk) => updateCardContent(newId, chunk),
-                activeConfig.model,
-                { providerId: activeConfig.id }
-            );
+            // Queue the streaming task
+            try {
+                await streamChatCompletion(
+                    [{ role: 'user', content: messageContent }],
+                    (chunk) => updateCardContent(newId, chunk),
+                    activeConfig.model,
+                    { providerId: activeConfig.id }
+                );
+            } catch (innerError) {
+                console.error("Streaming failed for card", newId, innerError);
+                updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+            } finally {
+                setCardGenerating(newId, false);
+            }
+
         } catch (e) {
             console.error(e);
-        } finally {
             setCardGenerating(newId, false);
         }
     };
@@ -202,7 +306,7 @@ export function useCardCreator() {
         } else {
             // Create the one and only note card
             addCard({
-                id: Date.now().toString(),
+                id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 type: 'note',
                 x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
                 y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 250),
@@ -233,22 +337,35 @@ export function useCardCreator() {
         if (!source || !source.data.marks) return;
         const activeConfig = getActiveConfig();
 
-        const promises = source.data.marks.map(async (mark, index) => {
+        source.data.marks.map(async (mark, index) => {
             try {
                 const newY = source.y + (index * 320) - ((source.data.marks.length * 320) / 2) + 150;
                 const newId = await createAICard({
                     text: mark,
                     x: source.x + 400,
                     y: newY,
-                    autoConnections: [{ from: sourceId, to: Date.now().toString() + index }],
+                    autoConnections: [{ from: sourceId, to: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}` }],
                     model: activeConfig.model,
                     providerId: activeConfig.id
                 });
-                await streamChatCompletion([{ role: 'user', content: mark }], (chunk) => updateCardContent(newId, chunk), activeConfig.model, { providerId: activeConfig.id });
-            } catch (e) { console.error(e); }
-        });
 
-        await Promise.all(promises);
+                try {
+                    await streamChatCompletion(
+                        [{ role: 'user', content: mark }],
+                        (chunk) => updateCardContent(newId, chunk),
+                        activeConfig.model,
+                        { providerId: activeConfig.id }
+                    );
+                } catch (innerError) {
+                    console.error("Expand topic failed", innerError);
+                    updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+                } finally {
+                    setCardGenerating(newId, false);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        });
     };
 
     const handleSprout = async (sourceId, topics) => {
@@ -260,7 +377,8 @@ export function useCardCreator() {
         const totalHeight = topics.length * CARD_HEIGHT;
         const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
 
-        const promises = topics.map(async (question, index) => {
+        // We don't use Promise.all here because we want to fire and forget into the queue
+        topics.forEach(async (question, index) => {
             try {
                 const newY = startY + (index * CARD_HEIGHT);
                 const newId = (Date.now() + index).toString();
@@ -275,21 +393,26 @@ export function useCardCreator() {
                     providerId: activeConfig.id
                 });
 
-                await streamChatCompletion(
-                    [{
-                        role: 'user',
-                        content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
-                    }],
-                    (chunk) => updateCardContent(newId, chunk),
-                    activeConfig.model,
-                    { providerId: activeConfig.id }
-                );
+                try {
+                    await streamChatCompletion(
+                        [{
+                            role: 'user',
+                            content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
+                        }],
+                        (chunk) => updateCardContent(newId, chunk),
+                        activeConfig.model,
+                        { providerId: activeConfig.id }
+                    );
+                } catch (innerError) {
+                    console.error("Sprout generation failed", innerError);
+                    updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+                } finally {
+                    setCardGenerating(newId, false);
+                }
             } catch (e) {
                 console.error("Sprout creation failed", e);
             }
         });
-
-        await Promise.all(promises);
     };
 
     return {
