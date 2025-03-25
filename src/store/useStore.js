@@ -113,6 +113,23 @@ const createContentSlice = (set, get) => {
             })
         })),
 
+        arrangeCards: () => {
+            const { cards, connections } = get();
+            const newPositions = calculateLayout(cards, connections);
+
+            if (newPositions.size === 0) return;
+
+            set(state => ({
+                cards: state.cards.map(card => {
+                    const newPos = newPositions.get(card.id);
+                    if (newPos) {
+                        return { ...card, x: newPos.x, y: newPos.y };
+                    }
+                    return card;
+                })
+            }));
+        },
+
         deleteCard: (id) => set((state) => {
             const nextGenerating = new Set(state.generatingCardIds);
             nextGenerating.delete(id);
@@ -422,6 +439,8 @@ const createShareSlice = (set) => ({
 });
 
 // --- Global Store with Temporal Middleware ---
+import { calculateLayout } from '../utils/autoLayout';
+
 const useStoreBase = create(
     temporal(
         (set, get) => ({
