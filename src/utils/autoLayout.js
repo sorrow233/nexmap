@@ -11,8 +11,8 @@ export function calculateLayout(cards, connections) {
     // Constants
     const CARD_WIDTH = 320;
     const CARD_HEIGHT = 200; // Approximate, or dynamic if we tracked it
-    const HORIZONTAL_GAP = 100; // Gap between columns (parents and children)
-    const VERTICAL_GAP = 40;    // Gap between siblings
+    const HORIZONTAL_GAP = 300; // Gap between columns (parents and children)
+    const VERTICAL_GAP = 60;    // Gap between siblings
 
     const cardMap = new Map(cards.map(c => [c.id, c]));
     const positions = new Map();
