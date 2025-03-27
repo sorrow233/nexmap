@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Sparkles, Loader2, StickyNote, Sprout } from 'lucide-react';
-import { streamChatCompletion, generateFollowUpTopics } from '../services/llm';
+import { generateFollowUpTopics } from '../services/llm';
+import { parseModelOutput } from '../services/llm/parser';
 import { isSafari, isIOS } from '../utils/browser';
-import { uploadImageToS3, getS3Config } from '../services/s3';
 
-import { saveImageToIDB } from '../services/storage';
+import useImageUpload from '../hooks/useImageUpload';
 
 import SproutModal from './chat/SproutModal';
 import ChatInput from './chat/ChatInput';
@@ -14,7 +14,14 @@ import ShareModal from './share/ShareModal';
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse, onCreateNote, onSprout }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
-    const [images, setImages] = useState([]);
+    const {
+        images,
+        setImages,
+        handleImageUpload,
+        handlePaste,
+        removeImage,
+        clearImages
+    } = useImageUpload();
     const [shareContent, setShareContent] = useState(null);
     const [isStreaming, setIsStreaming] = useState(false);
     const [isAtBottom, setIsAtBottom] = useState(true);
@@ -76,56 +83,6 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         setIsAtBottom(atBottom);
     };
 
-    const handleImageUpload = (e) => {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setImages(prev => [...prev, {
-                    file,
-                    previewUrl: URL.createObjectURL(file), // Local preview
-                    base64: e.target.result.split(',')[1],
-                    mimeType: file.type
-                }]);
-            };
-            reader.readAsDataURL(file);
-        });
-        // Reset input
-        e.target.value = '';
-    };
-
-    const removeImage = (index) => {
-        setImages(prev => {
-            const newImages = [...prev];
-            URL.revokeObjectURL(newImages[index].previewUrl);
-            newImages.splice(index, 1);
-            return newImages;
-        });
-    };
-
-    const handlePaste = (e) => {
-        const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                const file = items[i].getAsFile();
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    setImages(prev => [...prev, {
-                        file,
-                        previewUrl: URL.createObjectURL(file),
-                        base64: event.target.result.split(',')[1],
-                        mimeType: file.type
-                    }]);
-                };
-                reader.readAsDataURL(file);
-                e.preventDefault();
-            }
-        }
-    };
-
     useEffect(() => {
         if (isStreaming) {
             scrollToBottom();
@@ -139,262 +96,36 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         }
     }, [isOpen]);
 
-    const parseModelOutput = (text) => {
-        if (typeof text !== 'string') return { thoughts: null, content: text };
-        const thinkMatch = text.match(/<thinking>([\s\S]*?)<\/thinking>/);
-        if (thinkMatch) {
-            return {
-                thoughts: thinkMatch[1].trim(),
-                content: text.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim()
-            };
-        }
-        return { thoughts: null, content: text };
-    };
 
-    const handleSend = async () => {
-        if ((!input.trim() && images.length === 0) || isStreaming) return;
-
-        console.log('[ChatModal] handleSend called. Input:', input.substring(0, 50), 'Images count:', images.length);
-        let content = input;
-
-        // Handle Images (S3 or Base64/IDB)
-        if (images.length > 0) {
-            console.log('[ChatModal] Processing images. First image data length:', images[0]?.base64?.length || 0);
-            const s3Config = getS3Config();
-            console.log('[S3 Debug] Config loaded:', s3Config); // DEBUG
-            // 1. Prepare images: Save to IDB and use reference (Non-blocking to UI but blocking to message creation)
-            const processedImages = await Promise.all(images.map(async (img, idx) => {
-                const imageId = `chat_${card.id}_img_${Date.now()}_${idx}`;
-                console.log('[ChatModal] Saving image to IDB:', imageId);
-                await saveImageToIDB(imageId, img.base64);
-
-                return {
-                    type: 'image',
-                    source: {
-                        type: 'idb',
-                        id: imageId,
-                        media_type: img.mimeType,
-                        s3Url: null // Will be updated later if S3 is enabled
-                    }
-                };
-            }));
-            console.log('[ChatModal] Processed images count:', processedImages.length);
-
-            // 2. Trigger Background Upload if enabled
-            if (s3Config?.enabled) {
-                console.log('[S3 Debug] Starting background upload...');
-                // Store index to update the correct message later
-                const msgIndex = card.data.messages.length;
-
-                // Fire and forget - don't await
-                // DON'T REMOVE base64 data - it's our fallback!
-                Promise.all(images.map(img => uploadImageToS3(img.file).catch(err => {
-                    // Enhanced error logging
-                    if (err.isCorsError) {
-                        console.warn("⚠️ [S3 Upload] CORS issue detected - images will display via base64 fallback");
-                    } else {
-                        console.error("❌ [S3 Upload] Upload failed:", err.message);
-                    }
-                    return null; // Return null for failed uploads
-                }))).then(urls => {
-                    console.log('[S3 Debug] Background upload complete:', urls);
-
-                    // Check if any uploads succeeded
-                    const hasSuccessfulUpload = urls.some(url => url !== null);
-                    if (!hasSuccessfulUpload) {
-                        console.log('💾 [S3 Debug] All S3 uploads failed, using base64 fallback');
-                        return; // Don't update if all failed - base64 will be used
-                    }
-
-                    // Update the message with S3 URLs using functional update
-                    // This ensures we work with the LATEST card data, avoiding stale closures
-                    onUpdate(card.id, (currentData) => {
-                        // Safety check: ensure we have data
-                        if (!currentData || !currentData.messages) return currentData;
-
-                        // Find the target message
-                        const targetMsg = currentData.messages[msgIndex];
-
-                        // With functional updates, this should find it IF the index is stable
-                        if (!targetMsg) {
-                            console.warn('[S3 Debug] Message not found at index (functional update):', msgIndex, 'Length:', currentData.messages.length);
-                            return currentData;
-                        }
-
-                        // Only update if content is an array with images
-                        if (Array.isArray(targetMsg.content)) {
-                            const updatedContent = targetMsg.content.map((part, i) => {
-                                // Map image parts. Note: content[0] is text, so images start at index 1
-                                if (part.type === 'image' && part.source) {
-                                    const urlIndex = i - 1; // Offset for text at index 0
-                                    if (urlIndex >= 0 && urlIndex < urls.length && urls[urlIndex]) {
-                                        // Only inject S3 URL if upload succeeded
-                                        // Keep base64 data for fallback display
-                                        return {
-                                            ...part,
-                                            source: {
-                                                ...part.source,
-                                                s3Url: urls[urlIndex] // Inject S3 URL (base64 remains)
-                                            }
-                                        };
-                                    }
-                                }
-                                return part; // No change if upload failed - base64 remains
-                            });
-                            const updatedMessages = [...currentData.messages];
-                            updatedMessages[msgIndex] = {
-                                ...targetMsg,
-                                content: updatedContent
-                            };
-
-                            console.log('[S3 Debug] Successfully injected S3 URLs via functional update');
-                            return { ...currentData, messages: updatedMessages };
-                        }
-                        return currentData;
-                    });
-                }).catch(err => {
-                    console.error("[S3 Background Upload Global Error]", err);
-                });
-            }
-
-            content = [
-                { type: 'text', text: input },
-                ...processedImages
-            ];
-        }
-
-        const userMsg = { role: 'user', content };
-        const initialAssistantMsg = { role: 'assistant', content: '' };
-
-        // Use functional update to prevent race conditions when sending multiple messages
-        onUpdate(card.id, (currentData) => {
-            if (!currentData) return currentData;
-            return {
-                ...currentData,
-                messages: [...(currentData.messages || []), userMsg, initialAssistantMsg]
-            };
-        });
-
-        setInput('');
-        setImages([]);
-        setIsStreaming(true);
+    // --- Handlers Wrapper ---
+    const onSendClick = async () => {
+        if ((!input.trim() && images.length === 0)) return;
+        const currentInput = input;
+        const currentImages = [...images];
+        setInput(''); // Immediate UI clear
+        clearImages();
         setIsAtBottom(true);
+        setIsStreaming(true);
         setTimeout(() => scrollToBottom(true), 10);
 
-        // Prepare context messages for generation (exclude the empty assistant message we just added)
-        let contextMessages = [...(card.data.messages || []), userMsg];
-
-        // [Fix] Inject card content as system context if available (crucial for Notes)
-        if (card.data.content && typeof card.data.content === 'string') {
-            contextMessages = [
-                { role: 'system', content: `Context (Current Card Content):\n${card.data.content}` },
-                ...contextMessages
-            ];
-        }
-
         try {
-            // Use the parent's generator which handles context/connections
-            // onGenerateResponse(card.id, newMessages, onTokenCallback)
-
-            // If parent provided onGenerateResponse, use it. Otherwise fallback (though we should always have it now)
-            if (onGenerateResponse) {
-                await onGenerateResponse(card.id, contextMessages, (token) => {
-                    onUpdate(card.id, (currentData) => {
-                        if (!currentData) return currentData;
-                        const msgs = [...currentData.messages];
-                        const lastMsg = msgs[msgs.length - 1];
-                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
-                        return { ...currentData, messages: msgs };
-                    });
-                });
-            } else {
-                // Fallback (legacy)
-                await streamChatCompletion(contextMessages, (token) => {
-                    onUpdate(card.id, (currentData) => {
-                        if (!currentData) return currentData;
-                        const msgs = [...currentData.messages];
-                        const lastMsg = msgs[msgs.length - 1];
-                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
-                        return { ...currentData, messages: msgs };
-                    });
-                });
-            }
-
-        } catch (error) {
-            console.error(error);
-            onUpdate(card.id, (currentData) => {
-                if (!currentData) return currentData;
-                const msgs = [...currentData.messages];
-                const lastMsg = msgs[msgs.length - 1];
-                msgs[msgs.length - 1] = { ...lastMsg, content: "⚠️ Error: " + error.message };
-                return { ...currentData, messages: msgs };
-            });
+            await onGenerateResponse(card.id, currentInput, currentImages);
+        } catch (e) {
+            console.error('Failed to send message:', e);
         } finally {
             setIsStreaming(false);
         }
     };
 
     const handleRetry = async () => {
-        if (isStreaming) return;
+        const lastUserMessage = card.data.messages?.filter(m => m.sender === 'user').pop();
+        if (!lastUserMessage) return;
 
-        // Find the last assistant message (which should be the error)
-        const messages = [...card.data.messages];
-        if (messages.length < 2) return;
-
-        const lastAssistantIndex = messages.findLastIndex(m => m.role === 'assistant');
-        if (lastAssistantIndex === -1) return;
-
-        // Pop all messages after the last user message that caused the error
-        // Or just pop the error content
-        const truncatedMessages = messages.slice(0, lastAssistantIndex);
-        const freshAssistantMsg = { role: 'assistant', content: '' };
-
-        // Update state with functional update
-        onUpdate(card.id, (currentData) => {
-            if (!currentData) return currentData;
-            return {
-                ...currentData,
-                messages: [...truncatedMessages, freshAssistantMsg]
-            };
-        });
         setIsStreaming(true);
-
-        const contextForAI = (card.data.content && typeof card.data.content === 'string')
-            ? [{ role: 'system', content: `Context (Current Card Content):\n${card.data.content}` }, ...truncatedMessages]
-            : truncatedMessages;
-
         try {
-            // Re-trigger the generation logic
-            if (onGenerateResponse) {
-                await onGenerateResponse(card.id, contextForAI, (token) => {
-                    onUpdate(card.id, (currentData) => {
-                        if (!currentData) return currentData;
-                        const msgs = [...currentData.messages];
-                        const lastMsg = msgs[msgs.length - 1];
-                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
-                        return { ...currentData, messages: msgs };
-                    });
-                });
-            } else {
-                await streamChatCompletion(contextForAI, (token) => {
-                    onUpdate(card.id, (currentData) => {
-                        if (!currentData) return currentData;
-                        const msgs = [...currentData.messages];
-                        const lastMsg = msgs[msgs.length - 1];
-                        msgs[msgs.length - 1] = { ...lastMsg, content: lastMsg.content + token };
-                        return { ...currentData, messages: msgs };
-                    });
-                });
-            }
-        } catch (error) {
-            console.error('[Retry Error]', error);
-            onUpdate(card.id, (currentData) => {
-                if (!currentData) return currentData;
-                const msgs = [...currentData.messages];
-                const lastMsg = msgs[msgs.length - 1];
-                msgs[msgs.length - 1] = { ...lastMsg, content: "⚠️ Error: " + error.message };
-                return { ...currentData, messages: msgs };
-            });
+            await onGenerateResponse(card.id, lastUserMessage.text, lastUserMessage.images || []);
+        } catch (e) {
+            console.error('Failed to retry:', e);
         } finally {
             setIsStreaming(false);
         }
@@ -601,7 +332,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                 <ChatInput
                     input={input}
                     setInput={setInput}
-                    handleSend={handleSend}
+                    handleSend={onSendClick}
                     handlePaste={handlePaste}
                     handleImageUpload={handleImageUpload}
                     images={images}
