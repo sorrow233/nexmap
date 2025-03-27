@@ -206,9 +206,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             {/* Main Grid: All Boards (Active or Trash) */}
             <div className="animate-fade-in px-2">
                 <div className="flex items-center gap-4 mb-8 pl-2">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm backdrop-blur-sm ${isTrashView ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-500/20' : 'bg-white/50 dark:bg-white/10 text-orange-400 dark:text-orange-300 border-white/60 dark:border-white/10'}`}>
-                        {isTrashView ? <Trash2 size={20} /> : <FileText size={20} />}
-                    </div>
+                    {!isTrashView && (
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm backdrop-blur-sm bg-white/50 dark:bg-white/10 text-orange-400 dark:text-orange-300 border-white/60 dark:border-white/10`}>
+                            <FileText size={20} />
+                        </div>
+                    )}
                     <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
                         {isTrashView ? 'Recycle Bin' : 'All Boards'}
                     </h2>

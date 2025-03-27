@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import Card from './Card';
 import StickyNote from './StickyNote';
 import ConnectionLayer from './ConnectionLayer';
+import ActiveConnectionLayer from './ActiveConnectionLayer';
 import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 import ErrorBoundary from './ErrorBoundary';
@@ -242,6 +243,22 @@ export default function Canvas({ onCreateNote }) {
         });
     }, [cards, offset, scale, selectedIds, generatingCardIds]);
 
+    // Identify "Target" cards (connected to selected cards) for Luminous Guide
+    const targetCardIds = useMemo(() => {
+        if (!selectedIds || selectedIds.length === 0) return new Set();
+
+        const targets = new Set();
+        connections.forEach(conn => {
+            if (selectedIds.includes(conn.from)) targets.add(conn.to);
+            if (selectedIds.includes(conn.to)) targets.add(conn.from);
+        });
+
+        // Exclude selected cards themselves from being "targets"
+        selectedIds.forEach(id => targets.delete(id));
+
+        return targets;
+    }, [selectedIds, connections]);
+
     return (
         <div
             ref={canvasRef}
@@ -263,6 +280,15 @@ export default function Canvas({ onCreateNote }) {
             {/* ConnectionLayer from beta - optimized Canvas rendering */}
             <ConnectionLayer cards={cards} connections={connections} offset={offset} scale={scale} />
 
+            {/* NEW: Active "Liquid Light" Connection Layer */}
+            <ActiveConnectionLayer
+                cards={cards}
+                connections={connections}
+                selectedIds={selectedIds}
+                offset={offset}
+                scale={scale}
+            />
+
             <div
                 className="absolute top-0 left-0 w-full h-full origin-top-left transition-transform duration-75 ease-out will-change-transform pointer-events-none"
                 style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
@@ -275,6 +301,7 @@ export default function Canvas({ onCreateNote }) {
                             <Component
                                 data={card}
                                 isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
+                                isTarget={targetCardIds.has(card.id)}
                                 onSelect={handleCardSelect}
                                 onMove={handleCardMove}
                                 onDelete={() => deleteCard(card.id)}
