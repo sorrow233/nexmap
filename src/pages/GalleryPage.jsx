@@ -33,7 +33,7 @@ export default function GalleryPage({
                         </h1>
 
                         {/* View Switcher */}
-                        <div className="flex bg-slate-100/50 dark:bg-slate-800/80 p-1 rounded-xl border border-white/10 dark:border-white/5">
+                        <div className="flex bg-slate-100/50 dark:bg-slate-900 p-1 rounded-xl border border-white/10 dark:border-white/20">
                             <button
                                 onClick={() => setViewMode('active')}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${viewMode === 'active' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
