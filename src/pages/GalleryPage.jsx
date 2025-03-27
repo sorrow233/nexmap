@@ -45,7 +45,6 @@ export default function GalleryPage({
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'trash' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 Trash
-                                {trashCount > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{trashCount}</span>}
                             </button>
                         </div>
                     </div>
