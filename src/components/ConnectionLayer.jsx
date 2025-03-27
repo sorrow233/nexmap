@@ -134,7 +134,8 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
         let animationFrameId;
 
         // State tracking to prevent redundant clears/draws
-        let lastRenderState = { x: null, y: null, s: null, v: -1 };
+        // Added 'd' to track dark mode state
+        let lastRenderState = { x: null, y: null, s: null, v: -1, d: null };
 
         // Handle canvas resizing
         const resize = () => {
@@ -149,16 +150,23 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
         window.addEventListener('resize', resize);
         resize(); // Initial size
 
+        // PRE-INIT dark mode matcher to avoid recreating it every frame
+        const darkMatcher = window.matchMedia('(prefers-color-scheme: dark)');
+
         const loop = () => {
             const { x: cx, y: cy, s: cs } = transformRef.current;
             const cv = pathVersionRef.current;
 
-            // Redraw ONLY if View changed (pan/zoom) OR Content changed (pathVersion)
+            // Check theme state (efficient property access)
+            const isDark = document.documentElement.classList.contains('dark') || darkMatcher.matches;
+
+            // Redraw ONLY if View changed (pan/zoom) OR Content changed (pathVersion) OR Theme changed
             if (
                 cx !== lastRenderState.x ||
                 cy !== lastRenderState.y ||
                 cs !== lastRenderState.s ||
-                cv !== lastRenderState.v
+                cv !== lastRenderState.v ||
+                isDark !== lastRenderState.d
             ) {
                 // 1. Clear Screen
                 // We user stored dpr logic implicity via canvas width/height, 
@@ -183,8 +191,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     // Usually we want constant SCREEN width for UI lines.
                     ctx.lineWidth = 3 / cs;
 
-                    // Theme detection (cheap check or passed prop would be better, but classList is okay)
-                    const isDark = document.documentElement.classList.contains('dark');
+                    // Theme detection
                     ctx.strokeStyle = isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)';
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -198,7 +205,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                 }
 
                 // Update state
-                lastRenderState = { x: cx, y: cy, s: cs, v: cv };
+                lastRenderState = { x: cx, y: cy, s: cs, v: cv, d: isDark };
             }
 
             animationFrameId = requestAnimationFrame(loop);
