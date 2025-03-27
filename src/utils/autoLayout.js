@@ -10,7 +10,7 @@ export function calculateLayout(cards, connections) {
 
     // Constants
     const CARD_WIDTH = 320;
-    const CARD_HEIGHT = 200; // Approximate, or dynamic if we tracked it
+    const CARD_HEIGHT = 300; // Increased to match actual rendered height (approx 280px) + safety
     const HORIZONTAL_GAP = 300; // Gap between columns (parents and children)
     const VERTICAL_GAP = 60;    // Gap between siblings
 
