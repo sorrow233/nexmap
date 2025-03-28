@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { Sparkles } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
 import ConnectionLayer from './ConnectionLayer';
@@ -319,8 +320,20 @@ export default function Canvas({ onCreateNote }) {
             </div>
 
             {/* Status Indicator */}
-            <div className="absolute bottom-4 left-4 text-slate-400 text-xs font-mono pointer-events-none select-none">
-                Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {visibleCards.length}/{cards.length} | Zoom: {scale.toFixed(2)}
+            <div className="absolute bottom-4 left-4 flex items-center gap-4 pointer-events-none select-none">
+                <div className="text-slate-400 text-xs font-mono">
+                    Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {visibleCards.length}/{cards.length} | Zoom: {scale.toFixed(2)}
+                </div>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent canvas click
+                        useStore.getState().arrangeCards();
+                    }}
+                    className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
+                    title="Auto Layout"
+                >
+                    <Sparkles size={16} className="group-hover:animate-pulse" />
+                </button>
             </div>
 
             {/* Rubber Band Selection Rect */}
