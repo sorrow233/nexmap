@@ -45,7 +45,8 @@ body,
     }
 
     .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
+        width: 4px;
+        /* Thinner */
     }
 
     .custom-scrollbar::-webkit-scrollbar-track {
@@ -53,12 +54,21 @@ body,
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: rgba(148, 163, 184, 0.3);
+        background-color: rgba(148, 163, 184, 0.2);
         border-radius: 10px;
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(148, 163, 184, 0.5);
+        background-color: rgba(148, 163, 184, 0.4);
+    }
+
+    /* Dark mode specific scrollbar override for better visibility */
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.25);
     }
 
     /* --- Premium Glassmorphism --- Japanese Style */
