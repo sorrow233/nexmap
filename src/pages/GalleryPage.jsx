@@ -30,16 +30,32 @@ export default function GalleryPage({
         }
     }, []);
 
-    const handleDismissWelcome = () => {
+    const handleDismissWelcome = async () => {
         setShowWelcome(false);
         localStorage.setItem('hasVisitedBefore', 'true');
+
+        // Auto-create guide board for new users
+        const guideTitle = "Neural Canvas 使用指南 🚀";
+        const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
+
+        if (!existingBoard) {
+            try {
+                const newBoard = await createBoard(guideTitle);
+                const guideContent = getGuideBoardData();
+                await saveBoard(newBoard.id, guideContent);
+                // Don't navigate automatically, just create it in background
+                console.log('✅ Guide board created automatically');
+            } catch (error) {
+                console.error('Failed to auto-create guide board:', error);
+            }
+        }
     };
 
     const navigate = useNavigate();
 
     const handleCreateGuide = async () => {
-        // Check if guide board already exists
-        const guideTitle = "Neural Canvas Guide 🚀";
+        // Check if guide board already exists (Chinese title)
+        const guideTitle = "Neural Canvas 使用指南 🚀";
         const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
 
         if (existingBoard) {
