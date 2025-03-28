@@ -151,6 +151,10 @@ const createContentSlice = (set, get) => {
             const dx = newX - sourceCard.x;
             const dy = newY - sourceCard.y;
             if (dx === 0 && dy === 0) return;
+            if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+                console.warn("Invalid move delta detected", dx, dy);
+                return;
+            }
 
             const isSelected = selectedIds.indexOf(id) !== -1;
             const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id, connections);
