@@ -4,55 +4,163 @@ export const getGuideBoardData = () => {
 
     return {
         cards: [
-            // 1. Welcome Card
+            // 1. 中心欢迎卡片
             {
                 id: 'guide-welcome',
                 x: centerX,
-                y: centerY - 300,
-                w: 400,
-                h: 200,
-                content: "# Welcome to Neural Canvas! 🚀\n\nYour infinite space for AI-powered thinking.\n\n**Double-click anywhere** to create a card, or drag from the bottom toolbar.",
+                y: centerY - 400,
+                w: 500,
+                h: 300,
+                data: {
+                    content: `# 欢迎来到 Neural Canvas！🚀
+
+**这是一个无限的 AI 思维空间**
+
+在这里，你可以：
+- 🎯 在二维画布上自由组织想法
+- 🤖 召唤 Gemini 3.0 为每个节点注入智慧
+- 🔗 用连线建立思维之间的关联
+- ✨ 让 AI 帮你扩展、总结、头脑风暴
+
+👇 下面的卡片将带你快速上手`
+                },
                 color: '#ffffff',
                 type: 'note'
             },
-            // 2. AI Chat
+
+            // 2. 创建卡片教程
+            {
+                id: 'guide-create',
+                x: centerX - 600,
+                y: centerY - 50,
+                w: 400,
+                h: 280,
+                data: {
+                    content: `## 📝 创建卡片
+
+**方式一：底部输入框**
+在画布底部的输入框中输入文字，按回车即可创建新卡片。
+
+**方式二：双击画布**
+双击画布任意位置，也可以快速创建卡片。
+
+**方式三：拖拽工具栏**
+从底部工具栏拖拽 📝 图标到画布上。`
+                },
+                color: '#f0f9ff', // 浅蓝
+                type: 'note'
+            },
+
+            // 3. AI 对话教程
             {
                 id: 'guide-ai',
-                x: centerX - 500,
-                y: centerY,
-                w: 350,
-                h: 250,
-                content: "## 🤖 AI Smart Chat\n\nEvery card is intelligent.\n\n1. Type in a card\n2. Click the **Sparkles** icon (✨)\n3. Ask Gemini to expand, summarize, or brainstorm.\n\n*Try dragging me to connect with other ideas!*",
-                color: '#eef2ff', // Light Blue
-                type: 'note'
-            },
-            // 3. Connections
-            {
-                id: 'guide-connect',
-                x: centerX + 500,
-                y: centerY,
-                w: 350,
-                h: 200,
-                content: "## 🔗 Smart Connections\n\nConnect thoughts instantly.\n\n- **Drag** from one card's handle to another.\n- AI understands the context between connected nodes.",
-                color: '#fff7ed', // Orange tint
-                type: 'note'
-            },
-            // 4. Tools
-            {
-                id: 'guide-tools',
-                x: centerX,
+                x: centerX - 600,
                 y: centerY + 300,
                 w: 400,
-                h: 200,
-                content: "## 🛠 Toolbar & Shortcuts\n\n- **Space**: Pan canvas\n- **Scroll**: Zoom in/out\n- **Cmd+Z**: Undo\n- **Auto Layout**: Magic wand in tool bar cleaning up your mess.",
-                color: '#f0fdf4', // Green tint
+                h: 350,
+                data: {
+                    content: `## 🤖 AI 智能对话
+
+**每张卡片都有 AI 助手！**
+
+1️⃣ 在卡片中输入你的问题或想法
+2️⃣ 点击卡片右上角的 ✨ **AI 图标**
+3️⃣ Gemini 3.0 会立即为你生成回答
+
+**💡 试试这些场景：**
+- "帮我总结这段文字"
+- "这个想法有哪些延伸方向？"
+- "用更专业的语言重写"
+- "列举 5 个相关案例"
+
+AI 会记住卡片的上下文，越聊越懂你！`
+                },
+                color: '#ede9fe', // 浅紫
+                type: 'note'
+            },
+
+            // 4. 连线教程
+            {
+                id: 'guide-connect',
+                x: centerX + 200,
+                y: centerY - 50,
+                w: 400,
+                h: 280,
+                data: {
+                    content: `## 🔗 智能连线
+
+**建立想法之间的联系**
+
+**如何连线：**
+1. 鼠标悬停在卡片上，会出现连接点
+2. 从一个卡片的连接点拖拽到另一个卡片
+3. 松开鼠标，连线完成
+
+**智能识别：**
+AI 会自动理解连线两端卡片的上下文关系，在生成内容时参考相关卡片的信息。`
+                },
+                color: '#fef3c7', // 浅黄
+                type: 'note'
+            },
+
+            // 5. 画布操作
+            {
+                id: 'guide-canvas',
+                x: centerX + 200,
+                y: centerY + 300,
+                w: 400,
+                h: 320,
+                data: {
+                    content: `## 🎨 画布操作
+
+**移动与缩放：**
+- **拖拽空白处** - 平移画布
+- **滚轮** / 双指捏合 - 缩放画布
+- **Space + 拖拽** - 快速平移模式
+
+**选择与编辑：**
+- **单击卡片** - 选中卡片
+- **拖拽卡片边缘** - 调整大小
+- **框选** - 按住拖拽可框选多个卡片
+- **双击卡片** - 进入编辑模式`
+                },
+                color: '#d1fae5', // 浅绿
+                type: 'note'
+            },
+
+            // 6. 快捷键
+            {
+                id: 'guide-shortcuts',
+                x: centerX,
+                y: centerY + 700,
+                w: 500,
+                h: 300,
+                data: {
+                    content: `## ⌨️ 快捷键
+
+**基础操作：**
+- **Cmd/Ctrl + Z** - 撤销
+- **Cmd/Ctrl + Shift + Z** - 重做
+- **Backspace/Delete** - 删除选中的卡片
+- **Cmd/Ctrl + A** - 全选
+
+**高级功能：**
+- **工具栏魔法棒 🪄** - 自动整理布局
+- **批量选中 + AI** - 对多个卡片批量提问`
+                },
+                color: '#fce7f3', // 浅粉
                 type: 'note'
             }
         ],
         connections: [
-            { from: 'guide-welcome', to: 'guide-ai', id: 'c1' },
-            { from: 'guide-welcome', to: 'guide-connect', id: 'c2' },
-            { from: 'guide-welcome', to: 'guide-tools', id: 'c3' }
+            { from: 'guide-welcome', to: 'guide-create', id: 'c1' },
+            { from: 'guide-welcome', to: 'guide-ai', id: 'c2' },
+            { from: 'guide-welcome', to: 'guide-connect', id: 'c3' },
+            { from: 'guide-welcome', to: 'guide-canvas', id: 'c4' },
+            { from: 'guide-create', to: 'guide-ai', id: 'c5' },
+            { from: 'guide-connect', to: 'guide-canvas', id: 'c6' },
+            { from: 'guide-ai', to: 'guide-shortcuts', id: 'c7' },
+            { from: 'guide-canvas', to: 'guide-shortcuts', id: 'c8' }
         ]
     };
 };
