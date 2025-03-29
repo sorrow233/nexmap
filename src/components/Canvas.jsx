@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
@@ -7,9 +7,8 @@ import ActiveConnectionLayer from './ActiveConnectionLayer';
 import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 import ErrorBoundary from './ErrorBoundary';
-
-const ZOOM_sensitivity = 0.01;
-const PAN_sensitivity = 1;
+import { useCanvasGestures } from '../hooks/useCanvasGestures';
+import { useSelection } from '../hooks/useSelection';
 
 export default function Canvas({ onCreateNote }) {
     const {
@@ -22,23 +21,21 @@ export default function Canvas({ onCreateNote }) {
         isConnecting,
         connectionStartId,
         handleCardMove, handleCardMoveEnd,
-        handleConnect, deleteCard, updateCardFull
+        handleConnect, deleteCard, updateCardFull,
+        toCanvasCoords // Now from store
     } = useStore();
 
     const canvasRef = useRef(null);
     const stateRef = useRef({ offset, scale });
 
-    // Keep stateRef fresh for event handlers
+    // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
     useEffect(() => {
         stateRef.current = { offset, scale };
     }, [offset, scale]);
 
-    const toCanvasCoords = (viewX, viewY) => {
-        return {
-            x: (viewX - offset.x) / scale,
-            y: (viewY - offset.y) / scale
-        };
-    };
+    // Extracted Logic
+    useCanvasGestures(canvasRef, stateRef, setScale, setOffset);
+    const { performSelectionCheck } = useSelection();
 
     const handleMouseDown = (e) => {
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
@@ -57,30 +54,6 @@ export default function Canvas({ onCreateNote }) {
     };
 
     const lastSelectionCheckRef = useRef(0);
-
-    const performSelectionCheck = (rect) => {
-        // Calculate intersection
-        const xMin = Math.min(rect.x1, rect.x2);
-        const xMax = Math.max(rect.x1, rect.x2);
-        const yMin = Math.min(rect.y1, rect.y2);
-        const yMax = Math.max(rect.y1, rect.y2);
-
-        const canvasTopLeft = toCanvasCoords(xMin, yMin);
-        const canvasBottomRight = toCanvasCoords(xMax, yMax);
-
-        const selectionCanvasRect = {
-            left: canvasTopLeft.x,
-            top: canvasTopLeft.y,
-            right: canvasBottomRight.x,
-            bottom: canvasBottomRight.y
-        };
-
-        const intersectedIds = cards
-            .filter(card => isRectIntersect(selectionCanvasRect, getCardRect(card)))
-            .map(card => card.id);
-
-        setSelectedIds(intersectedIds);
-    };
 
     const handleMouseMove = (e) => {
         if (interactionMode === 'panning') {
@@ -159,74 +132,6 @@ export default function Canvas({ onCreateNote }) {
         setInteractionMode('none');
         lastTouchRef.current = null;
     };
-
-    // Native wheel and gesture event handlers for stable zoom
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const handleNativeWheel = (e) => {
-            e.preventDefault();
-            if (e.ctrlKey || e.metaKey) {
-                // Zooming
-                const currentScale = stateRef.current.scale;
-                const currentOffset = stateRef.current.offset;
-                const mouseX = e.clientX;
-                const mouseY = e.clientY;
-                const canvasX = (mouseX - currentOffset.x) / currentScale;
-                const canvasY = (mouseY - currentOffset.y) / currentScale;
-                const delta = -e.deltaY * ZOOM_sensitivity;
-                const newZoom = Math.min(Math.max(0.1, currentScale + delta), 5);
-                const newOffsetX = mouseX - canvasX * newZoom;
-                const newOffsetY = mouseY - canvasY * newZoom;
-                setScale(newZoom);
-                setOffset({ x: newOffsetX, y: newOffsetY });
-            } else {
-                // Panning
-                const currentOffset = stateRef.current.offset;
-                setOffset({
-                    x: currentOffset.x - e.deltaX * PAN_sensitivity,
-                    y: currentOffset.y - e.deltaY * PAN_sensitivity
-                });
-            }
-        };
-
-        let startScale = 1;
-        const handleGestureStart = (e) => {
-            e.preventDefault();
-            startScale = stateRef.current.scale;
-        };
-
-        const handleGestureChange = (e) => {
-            e.preventDefault();
-            const currentOffset = stateRef.current.offset;
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-            const newScale = Math.min(Math.max(0.1, startScale * e.scale), 5);
-            const oldScale = stateRef.current.scale;
-            if (Math.abs(newScale - oldScale) < 0.001) return;
-            const canvasX_live = (mouseX - currentOffset.x) / oldScale;
-            const canvasY_live = (mouseY - currentOffset.y) / oldScale;
-            const newOffsetX = mouseX - canvasX_live * newScale;
-            const newOffsetY = mouseY - canvasY_live * newScale;
-            setScale(newScale);
-            setOffset({ x: newOffsetX, y: newOffsetY });
-        };
-
-        const handleGestureEnd = (e) => { e.preventDefault(); };
-
-        canvas.addEventListener('wheel', handleNativeWheel, { passive: false });
-        canvas.addEventListener('gesturestart', handleGestureStart, { passive: false });
-        canvas.addEventListener('gesturechange', handleGestureChange, { passive: false });
-        canvas.addEventListener('gestureend', handleGestureEnd, { passive: false });
-
-        return () => {
-            canvas.removeEventListener('wheel', handleNativeWheel);
-            canvas.removeEventListener('gesturestart', handleGestureStart);
-            canvas.removeEventListener('gesturechange', handleGestureChange);
-            canvas.removeEventListener('gestureend', handleGestureEnd);
-        };
-    }, [setScale, setOffset]);
 
     // Viewport culling optimization from beta
     const visibleCards = useMemo(() => {
