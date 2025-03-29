@@ -321,9 +321,6 @@ export default function Canvas({ onCreateNote }) {
 
             {/* Status Indicator */}
             <div className="absolute bottom-4 left-4 flex items-center gap-4 pointer-events-none select-none">
-                <div className="text-slate-400 text-xs font-mono">
-                    Canvas: {Math.round(offset.x)}, {Math.round(offset.y)} | Objects: {visibleCards.length}/{cards.length} | Zoom: {scale.toFixed(2)}
-                </div>
                 <button
                     onClick={(e) => {
                         e.stopPropagation(); // Prevent canvas click
