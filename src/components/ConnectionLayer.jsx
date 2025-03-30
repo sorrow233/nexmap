@@ -95,6 +95,12 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                 const toCard = nextCardsMap.get(conn.to);
 
                 if (fromCard && toCard) {
+                    // Safety check for NaN coordinates which causes rendering errors
+                    if (!Number.isFinite(fromCard.x) || !Number.isFinite(fromCard.y) ||
+                        !Number.isFinite(toCard.x) || !Number.isFinite(toCard.y)) {
+                        continue;
+                    }
+
                     const { source, target } = getBestAnchorPair(fromCard, toCard);
                     const pathData = generateBezierPath(source, target);
                     pathCache.set(key, new Path2D(pathData));
