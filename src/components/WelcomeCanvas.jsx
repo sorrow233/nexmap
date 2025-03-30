@@ -1,247 +1,256 @@
 import React from 'react';
-import { X, Sparkles, Zap, Network, Wand2, Users, Cloud } from 'lucide-react';
+import { X, Sparkles, Zap, Network, Wand2, Users, Cloud, ArrowRight } from 'lucide-react';
 
 export default function WelcomeCanvas({ onDismiss }) {
     return (
-        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-purple-950/20 overflow-hidden">
-            {/* Animated Background Grid */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{
-                backgroundImage: `
-                    linear-gradient(to right, currentColor 1px, transparent 1px),
-                    linear-gradient(to bottom, currentColor 1px, transparent 1px)
-                `,
-                backgroundSize: '40px 40px'
-            }} />
-
-            {/* Floating Particles */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                {[...Array(20)].map((_, i) => (
-                    <div
-                        key={i}
-                        className="absolute w-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-float"
-                        style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            animationDelay: `${Math.random() * 5}s`,
-                            animationDuration: `${5 + Math.random() * 5}s`
-                        }}
-                    />
-                ))}
+        <div className="fixed inset-0 z-[100] bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md overflow-y-auto custom-scrollbar">
+            {/* Background Gradients - Softer & More Ambient */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-100/40 via-purple-100/20 to-transparent dark:from-blue-900/20 dark:via-purple-900/10 dark:to-transparent" />
+                <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-200/30 dark:bg-purple-900/20 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-200/30 dark:bg-blue-900/20 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
             </div>
 
-            {/* Close Button */}
+            {/* Pattern Grid */}
+            <div className="fixed inset-0 opacity-[0.02] pointer-events-none" style={{
+                backgroundImage: `radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)`,
+                backgroundSize: '32px 32px'
+            }} />
+
+            {/* Close Button - Fixed Position */}
             <button
                 onClick={onDismiss}
-                className="fixed top-6 right-6 z-[110] p-3 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-700 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 group"
-                aria-label="开始创作"
+                className="fixed top-6 right-6 z-[110] p-3 rounded-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 group"
+                aria-label="Close"
             >
-                <X className="w-5 h-5 text-slate-600 dark:text-slate-300 group-hover:rotate-90 transition-transform duration-300" />
+                <X className="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:rotate-90 transition-transform duration-300" />
             </button>
 
-            {/* Main Content Container */}
-            <div className="relative h-full flex flex-col items-center justify-center p-8 overflow-y-auto">
+            {/* Main Content - Scrollable Flow */}
+            <div className="relative min-h-full flex flex-col items-center pt-24 pb-20 px-6 md:px-12">
 
                 {/* Hero Section */}
-                <div className="text-center mb-12 animate-slide-down">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-200/50 dark:border-blue-700/50 mb-6">
-                        <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />
-                        <span className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            欢迎来到 Neural Canvas
-                        </span>
+                <div className="text-center mb-16 max-w-3xl animate-slide-down">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50/80 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 mb-6">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-bold tracking-wide text-blue-600 dark:text-blue-400 uppercase">New Way to Think</span>
                     </div>
 
-                    <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-slate-800 via-blue-700 to-purple-700 dark:from-slate-100 dark:via-blue-300 dark:to-purple-300 bg-clip-text text-transparent">
-                        无限画布 × AI 思维协作
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight leading-[1.1]">
+                        无限画布 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">×</span> AI 思维协作
                     </h1>
 
-                    <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                        打破线性对话限制，在二维空间中自由组织想法，随时召唤 Gemini 2.0 为每个节点注入智慧
+                    <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
+                        打破传统线性对话，在广阔的二维空间中自由挥洒灵感。
+                        <br className="hidden md:block" />
+                        随时召唤 Gemini 3.0 Pro & Flash，让每个节点都充满智慧。
                     </p>
                 </div>
 
                 {/* Feature Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl w-full mb-16">
 
-                    {/* Feature 1: AI Chat */}
                     <FeatureCard
-                        icon={<Sparkles className="w-6 h-6" />}
+                        icon={<Sparkles className="w-5 h-5" />}
+                        color="blue"
                         title="AI 智能对话"
-                        description="集成 Gemini 2.0 Flash，支持联网搜索、图片上传、实时流式输出"
-                        gradient="from-blue-500 to-cyan-500"
+                        description="集成 Gemini 3.0 Pro & Flash，联网搜索、视觉识别、极速响应，一切尽在掌握。"
                         delay="0s"
                     >
-                        <div className="mt-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-xs font-mono">
-                            <div className="flex items-start gap-2 mb-2">
-                                <span className="text-blue-600 dark:text-blue-400">❯</span>
-                                <span className="text-slate-700 dark:text-slate-300">无限暖暖2.0什么时候上线？</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-purple-600 dark:text-purple-400">✨</span>
-                                <span className="text-slate-600 dark:text-slate-400">根据最新资讯，《无限暖暖》2.0版本...</span>
-                            </div>
-                        </div>
+                        <MockChat />
                     </FeatureCard>
 
-                    {/* Feature 2: Infinite Canvas */}
                     <FeatureCard
-                        icon={<Network className="w-6 h-6" />}
+                        icon={<Network className="w-5 h-5" />}
+                        color="purple"
                         title="无限画布"
-                        description="双指缩放、无限拖拽，构建你的思维宫殿"
-                        gradient="from-purple-500 to-pink-500"
+                        description="双指随意缩放、无限拖拽平移。你的思维有多大，这片画布就有多大。"
                         delay="0.1s"
                     >
-                        <div className="mt-3 grid grid-cols-3 gap-1.5">
-                            {[...Array(9)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="aspect-square rounded bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border border-purple-200 dark:border-purple-700/50"
-                                    style={{
-                                        animation: `float ${2 + i * 0.2}s ease-in-out infinite`,
-                                        animationDelay: `${i * 0.1}s`
-                                    }}
-                                />
-                            ))}
-                        </div>
+                        <MockCanvas />
                     </FeatureCard>
 
-                    {/* Feature 3: Smart Connections */}
                     <FeatureCard
-                        icon={<Zap className="w-6 h-6" />}
+                        icon={<Zap className="w-5 h-5" />}
+                        color="amber"
                         title="智能连线"
-                        description="点击卡片图标建立连接，AI 会自动理解上下文关系"
-                        gradient="from-amber-500 to-orange-500"
+                        description="点击连接，AI 瞬间理解上下文。免去繁琐说明，让逻辑自然流淌。"
                         delay="0.2s"
                     >
-                        <div className="mt-3 relative h-20">
-                            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 80">
-                                <defs>
-                                    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3" />
-                                        <stop offset="100%" stopColor="#f97316" stopOpacity="0.6" />
-                                    </linearGradient>
-                                </defs>
-                                <path
-                                    d="M 30 40 Q 100 10, 170 40"
-                                    stroke="url(#lineGrad)"
-                                    strokeWidth="2"
-                                    fill="none"
-                                    className="animate-draw"
-                                />
-                                <circle cx="30" cy="40" r="4" fill="#f59e0b" className="animate-pulse" />
-                                <circle cx="170" cy="40" r="4" fill="#f97316" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
-                            </svg>
-                        </div>
+                        <MockConnection />
                     </FeatureCard>
 
-                    {/* Feature 4: Auto Layout */}
                     <FeatureCard
-                        icon={<Wand2 className="w-6 h-6" />}
+                        icon={<Wand2 className="w-5 h-5" />}
+                        color="emerald"
                         title="一键自动布局"
-                        description="MindNode 风格的树状布局，告别凌乱"
-                        gradient="from-emerald-500 to-teal-500"
+                        description="乱了？一键整理。思维导图算法，瞬间还原清晰树状结构。"
                         delay="0.3s"
                     >
-                        <div className="mt-3 flex items-center justify-center gap-2">
-                            <div className="w-12 h-8 rounded bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700" />
-                            <div className="flex flex-col gap-1.5">
-                                <div className="w-10 h-6 rounded bg-teal-100 dark:bg-teal-900/30 border border-teal-300 dark:border-teal-700" />
-                                <div className="w-10 h-6 rounded bg-teal-100 dark:bg-teal-900/30 border border-teal-300 dark:border-teal-700" />
-                            </div>
-                        </div>
+                        <MockLayout />
                     </FeatureCard>
 
-                    {/* Feature 5: Batch Operations */}
                     <FeatureCard
-                        icon={<Users className="w-6 h-6" />}
+                        icon={<Users className="w-5 h-5" />}
+                        color="rose"
                         title="批量操作"
-                        description="框选多张卡片，一次性重新生成、删除或连线"
-                        gradient="from-rose-500 to-red-500"
+                        description="框选多张卡片，批量重写、删除或建立连接。效率提升不止十倍。"
                         delay="0.4s"
                     >
-                        <div className="mt-3 flex gap-2 flex-wrap">
-                            {['重新生成', '批量删除', '智能连线'].map((label, i) => (
-                                <div
-                                    key={i}
-                                    className="px-2 py-1 rounded-md bg-rose-100 dark:bg-rose-900/30 border border-rose-300 dark:border-rose-700 text-xs text-rose-700 dark:text-rose-300 font-medium"
-                                    style={{ animationDelay: `${i * 0.2}s` }}
-                                >
-                                    {label}
-                                </div>
-                            ))}
-                        </div>
+                        <MockBatch />
                     </FeatureCard>
 
-                    {/* Feature 6: Cloud Sync */}
                     <FeatureCard
-                        icon={<Cloud className="w-6 h-6" />}
+                        icon={<Cloud className="w-5 h-5" />}
+                        color="indigo"
                         title="云端同步"
-                        description="Firebase 实时同步，多设备无缝切换"
-                        gradient="from-indigo-500 to-blue-500"
+                        description="基于 Firebase 实时同步。手机上的灵感，电脑上瞬间可见。"
                         delay="0.5s"
                     >
-                        <div className="mt-3 flex items-center justify-center gap-3">
-                            {['💻', '📱', '☁️'].map((emoji, i) => (
-                                <div
-                                    key={i}
-                                    className="text-2xl animate-bounce"
-                                    style={{ animationDelay: `${i * 0.3}s`, animationDuration: '1.5s' }}
-                                >
-                                    {emoji}
-                                </div>
-                            ))}
-                        </div>
+                        <MockCloud />
                     </FeatureCard>
 
                 </div>
 
                 {/* CTA Button */}
-                <button
-                    onClick={onDismiss}
-                    className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 animate-slide-up overflow-hidden"
-                >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <span className="relative flex items-center gap-2">
-                        开始创作
-                        <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                    </span>
-                </button>
+                <div className="relative group animate-slide-up ">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
+                    <button
+                        onClick={onDismiss}
+                        className="relative px-8 py-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-3"
+                    >
+                        <span>开始创作</span>
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
 
-                {/* Footer Hint */}
-                <p className="mt-6 text-sm text-slate-500 dark:text-slate-500 animate-fade-in">
-                    💡 提示：在画布底部输入文字，即可创建第一张 AI 卡片
+                <p className="mt-8 text-sm font-medium text-slate-400 dark:text-slate-500 animate-fade-in text-center">
+                    💡 仅首次访问显示 · 点击按钮进入画布
                 </p>
             </div>
         </div>
     );
 }
 
-// Reusable Feature Card Component
-function FeatureCard({ icon, title, description, gradient, delay, children }) {
+// --- Sub Components for cleaner code ---
+
+function FeatureCard({ icon, color, title, description, children, delay }) {
+    const colorStyles = {
+        blue: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
+        purple: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20",
+        amber: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
+        emerald: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20",
+        rose: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20",
+        indigo: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20",
+    };
+
     return (
         <div
-            className="group relative p-6 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-700 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 animate-slide-up"
+            className="group relative p-6 rounded-2xl bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-white/60 dark:border-white/5 hover:border-white dark:hover:border-white/10 shadow-sm hover:shadow-xl hover:bg-white/80 dark:hover:bg-slate-900/60 transition-all duration-300 animate-slide-up flex flex-col h-full"
             style={{ animationDelay: delay }}
         >
-            {/* Gradient Icon Background */}
-            <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${gradient} mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                <div className="text-white">
-                    {icon}
-                </div>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-5 ${colorStyles[color]} transition-colors`}>
+                {icon}
             </div>
 
-            {/* Content */}
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
                 {title}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 flex-grow">
                 {description}
             </p>
 
-            {/* Visual Example */}
-            {children}
-
-            {/* Hover Glow Effect */}
-            <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none`} />
+            <div className="relative rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/30 border border-slate-100 dark:border-white/5 group-hover:border-slate-200 dark:group-hover:border-white/10 transition-colors h-32 flex items-center justify-center">
+                {children}
+            </div>
         </div>
     );
 }
+
+// --- Visual Mocks (Simplified & Aesthetic) ---
+
+function MockChat() {
+    return (
+        <div className="w-full px-4 flex flex-col gap-2 scale-90 opacity-80 group-hover:scale-100 group-hover:opacity-100 transition-all duration-500">
+            <div className="self-end bg-blue-500 text-white text-[10px] px-2 py-1.5 rounded-2xl rounded-tr-sm shadow-sm max-w-[80%]">
+                无限暖暖2.0什么时候上线？
+            </div>
+            <div className="self-start bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-3 py-2 rounded-2xl rounded-tl-sm shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2 max-w-[90%]">
+                <Sparkles className="w-3 h-3 text-purple-500 flex-shrink-0" />
+                <span className="truncate">根据最新资讯，2.0版本将于...</span>
+            </div>
+        </div>
+    );
+}
+
+function MockCanvas() {
+    return (
+        <div className="grid grid-cols-3 gap-2 p-4 scale-90 group-hover:rotate-3 transition-transform duration-500">
+            {[...Array(9)].map((_, i) => (
+                <div
+                    key={i}
+                    className="w-6 h-6 rounded bg-purple-100/50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800"
+                    style={{ opacity: 1 - i * 0.05 }}
+                />
+            ))}
+        </div>
+    );
+}
+
+function MockConnection() {
+    return (
+        <div className="relative w-full h-full flex items-center justify-center">
+            <div className="absolute left-8 w-2 h-2 rounded-full bg-amber-400 ring-4 ring-amber-100 dark:ring-amber-900/20" />
+            <div className="absolute right-8 w-2 h-2 rounded-full bg-orange-400 ring-4 ring-orange-100 dark:ring-orange-900/20" />
+            <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                <path
+                    d="M 60 64 Q 100 32, 140 64"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-amber-300 dark:text-amber-700 stroke-dasharray-100 animate-draw"
+                />
+            </svg>
+        </div>
+    );
+}
+
+function MockLayout() {
+    return (
+        <div className="flex items-center gap-2 scale-90 group-hover:scale-100 transition-transform duration-500">
+            <div className="w-8 h-12 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20" />
+            <div className="w-4 h-0.5 bg-emerald-200 dark:bg-emerald-800" />
+            <div className="flex flex-col gap-1">
+                <div className="w-8 h-5 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20" />
+                <div className="w-8 h-5 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20" />
+            </div>
+        </div>
+    );
+}
+
+function MockBatch() {
+    return (
+        <div className="flex flex-wrap justify-center gap-2 px-6">
+            {['Regen', 'Delete', 'Link'].map((t, i) => (
+                <span key={i} className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/50 dark:bg-rose-900/20 dark:text-rose-400 transform hover:-translate-y-1 transition-transform duration-300 delay-75">
+                    {t}
+                </span>
+            ))}
+        </div>
+    );
+}
+
+function MockCloud() {
+    return (
+        <div className="flex items-center gap-4 text-2xl">
+            <span className="animate-bounce" style={{ animationDelay: '0s' }}>💻</span>
+            <span className="text-slate-300 dark:text-slate-600">→</span>
+            <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>📱</span>
+        </div>
+    );
+}
+
+// Add these custom animations to index.css if not already present
+// .animate-draw { stroke-dasharray: 100; animation: draw 2s infinite; }
+// @keyframes draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
