@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Settings } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import SettingsModal from '../components/SettingsModal';
+import WelcomeCanvas from '../components/WelcomeCanvas';
 
 export default function GalleryPage({
     boardsList,
@@ -16,12 +17,31 @@ export default function GalleryPage({
 }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash'
+    const [showWelcome, setShowWelcome] = useState(false);
+
+    // Check if this is the user's first visit
+    useEffect(() => {
+        const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
+        if (!hasVisitedBefore) {
+            setShowWelcome(true);
+        }
+    }, []);
+
+    const handleDismissWelcome = () => {
+        setShowWelcome(false);
+        localStorage.setItem('hasVisitedBefore', 'true');
+    };
 
     const activeBoards = boardsList.filter(b => !b.deletedAt);
     const trashBoards = boardsList.filter(b => b.deletedAt);
     const trashCount = trashBoards.length;
 
     const displayBoards = viewMode === 'active' ? activeBoards : trashBoards;
+
+    // Show welcome screen for first-time visitors
+    if (showWelcome) {
+        return <WelcomeCanvas onDismiss={handleDismissWelcome} />;
+    }
 
     return (
         <div className="bg-mesh-gradient h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto custom-scrollbar">
