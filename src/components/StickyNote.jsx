@@ -4,8 +4,10 @@ import { isSafari, isIOS } from '../utils/browser';
 
 import { useStore } from '../store/useStore';
 
-const StickyNote = React.memo(function StickyNote({
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
+const StickyNote = React.memo(function StickyNote({
     data,
     isSelected,
     onSelect,
@@ -21,9 +23,11 @@ const StickyNote = React.memo(function StickyNote({
 }) {
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [isEditing, setIsEditing] = useState(false); // NEW: Edit mode state
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const cardRef = useRef(null);
+    const contentRef = useRef(null); // Ref for scrollable content
 
     // Refs to hold latest values for event handlers to avoid re-binding
     const stateRef = useRef({ data, onMove, dragOffset, onDragEnd });
@@ -32,7 +36,8 @@ const StickyNote = React.memo(function StickyNote({
     }, [data, onMove, dragOffset, onDragEnd]);
 
     const handleMouseDown = (e) => {
-        if (e.target.closest('button') || e.target.closest('.no-drag')) return;
+        if (isEditing) return; // Allow text selection in edit mode
+        if (e.target.closest('button') || e.target.closest('.no-drag') || e.target.closest('.custom-scrollbar')) return;
 
         e.stopPropagation();
         onSelect(data.id, e);
@@ -49,7 +54,9 @@ const StickyNote = React.memo(function StickyNote({
         stateRef.current.dragOffset = initialDragOffset;
     };
 
+    // ... (keep touch handlers same) ...
     const handleTouchStart = (e) => {
+        if (isEditing) return;
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
 
         const touch = e.touches[0];
@@ -88,9 +95,7 @@ const StickyNote = React.memo(function StickyNote({
             });
         };
 
-        const handleTouchEnd = () => {
-            handleMouseUp();
-        };
+        const handleTouchEnd = () => handleMouseUp();
 
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
@@ -110,12 +115,11 @@ const StickyNote = React.memo(function StickyNote({
     };
 
     const handleKeyDown = (e) => {
+        // Allow creating new card with Cmd+Enter
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             e.stopPropagation();
             const content = window.getSelection().toString() || data.data?.content || '';
-            // If shift key is pressed, create independent note (isMaster=false)
-            // If just Cmd+Enter, add to master note (isMaster=true)
             onCreateNote && onCreateNote(content, !e.shiftKey);
         }
     };
@@ -171,6 +175,14 @@ const StickyNote = React.memo(function StickyNote({
         setCanScroll(false);
     };
 
+    // Helper: Stop propagation of wheel event to allow scrolling inside the note
+    // This prevents the Canvas specific wheel listener (which preventsDefault) from intercepting it.
+    const handleWheel = (e) => {
+        if (canScroll) {
+            e.stopPropagation();
+        }
+    };
+
     return (
         <div
             ref={cardRef}
@@ -192,7 +204,14 @@ const StickyNote = React.memo(function StickyNote({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onPaste={handlePaste}
-            onDoubleClick={(e) => { e.stopPropagation(); onExpand && onExpand(); }}
+            onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (!isEditing) {
+                    setIsEditing(true);
+                }
+                // onExpand && onExpand(); // Remove expand on double click if we want to edit? Or keep it? 
+                // Usually sticky notes are for quick editing. Let's prioritize edit.
+            }}
         >
             {/* Header / Controls */}
             <div className="flex justify-between items-center p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -219,11 +238,10 @@ const StickyNote = React.memo(function StickyNote({
                         <Link size={16} />
                     </button>
                 </div>
-                {/* Delete button removed to prevent accidental deletion. Use global toolbar or keyboard. */}
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 px-6 pb-6 pt-2 flex flex-col gap-4">
+            <div className="flex-1 px-6 pb-6 pt-2 flex flex-col gap-4 relative">
                 {/* Image Display */}
                 {data.data?.image && (
                     <div className="relative group/image overflow-hidden rounded-2xl shadow-md border border-white/20">
@@ -242,20 +260,33 @@ const StickyNote = React.memo(function StickyNote({
                     </div>
                 )}
 
-                {/* Text Area */}
-                <textarea
-                    ref={textareaRef}
-                    value={data.data?.content || ''}
-                    onChange={handleContentChange}
-                    onPaste={handlePaste}
-                    placeholder="Write a note..."
-                    className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg custom-scrollbar
-                        ${isDragging ? 'cursor-grabbing' : 'cursor-text'}
-                        ${canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onKeyDown={handleKeyDown}
-                />
+                {/* View/Edit Toggle */}
+                {isEditing ? (
+                    <textarea
+                        ref={textareaRef}
+                        autoFocus
+                        value={data.data?.content || ''}
+                        onChange={handleContentChange}
+                        onPaste={handlePaste}
+                        onBlur={() => setIsEditing(false)}
+                        placeholder="Write a note..."
+                        className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg custom-scrollbar cursor-text overflow-y-auto`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onKeyDown={handleKeyDown}
+                        onWheel={handleWheel} // Capture scroll in edit mode too
+                    />
+                ) : (
+                    <div
+                        ref={contentRef}
+                        className={`w-full flex-grow text-slate-800 dark:text-slate-100 font-lxgw leading-[1.8] text-lg custom-scrollbar markdown-content select-text
+                            ${canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
+                        onWheel={handleWheel}
+                        onMouseDown={(e) => e.stopPropagation()} // Allow selecting text
+                        dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(marked(data.data?.content || '', { breaks: true }))
+                        }}
+                    />
+                )}
             </div>
 
             <div className="h-2 w-12 bg-white/20 dark:bg-white/10 mx-auto mb-2 rounded-full opacity-50"></div>
