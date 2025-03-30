@@ -3,6 +3,9 @@ import { Plus, Settings } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import SettingsModal from '../components/SettingsModal';
 import WelcomeCanvas from '../components/WelcomeCanvas';
+import { getGuideBoardData } from '../utils/guideBoardData';
+import { createBoard, saveBoard, getBoardsList } from '../services/storage';
+import { useNavigate } from 'react-router-dom';
 
 export default function GalleryPage({
     boardsList,
@@ -30,6 +33,31 @@ export default function GalleryPage({
     const handleDismissWelcome = () => {
         setShowWelcome(false);
         localStorage.setItem('hasVisitedBefore', 'true');
+    };
+
+    const navigate = useNavigate();
+
+    const handleCreateGuide = async () => {
+        // Check if guide board already exists
+        const guideTitle = "Neural Canvas Guide 🚀";
+        const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
+
+        if (existingBoard) {
+            onSelectBoard(existingBoard.id);
+            return;
+        }
+
+        // Create new guide board
+        const newBoard = await createBoard(guideTitle);
+        const guideContent = getGuideBoardData();
+        await saveBoard(newBoard.id, guideContent);
+
+        // Refresh list (handled by parent usually, but we can navigate directly)
+        // onCreateBoard usually expects name, but we manually created.
+        // Let's force navigation or let the live sync pick it up.
+        // Better: Reuse onCreateBoard if possible, but it only takes name.
+        // We manually created, so we should manually trigger selection.
+        onSelectBoard(newBoard.id);
     };
 
     const activeBoards = boardsList.filter(b => !b.deletedAt);
@@ -72,9 +100,17 @@ export default function GalleryPage({
                     <div className="flex items-center gap-4">
                         {/* Only show Create button in Active mode */}
                         {viewMode === 'active' && (
-                            <button onClick={() => onCreateBoard("New Board")} className="p-2.5 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/60 dark:border-white/10 shadow-sm hover:scale-110 hover:shadow-glow-blue transition-all group">
-                                <Plus size={20} className="text-slate-700 dark:text-slate-200 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleCreateGuide}
+                                    className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-200 dark:border-indigo-800/50 font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all shadow-sm"
+                                >
+                                    💡 Usage Guide
+                                </button>
+                                <button onClick={() => onCreateBoard("New Board")} className="p-2.5 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/60 dark:border-white/10 shadow-sm hover:scale-110 hover:shadow-glow-blue transition-all group">
+                                    <Plus size={20} className="text-slate-700 dark:text-slate-200 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
+                                </button>
+                            </div>
                         )}
 
                         {user ? (
