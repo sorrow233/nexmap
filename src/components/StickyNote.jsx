@@ -156,6 +156,21 @@ const StickyNote = React.memo(function StickyNote({
         ? "bg-white/90 dark:bg-slate-900 border border-slate-300 dark:border-white/20 shadow-xl"
         : "bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]";
 
+    // Smart Scroll Logic
+    const [canScroll, setCanScroll] = useState(false);
+    const scrollTimerRef = useRef(null);
+
+    const handleMouseEnter = () => {
+        scrollTimerRef.current = setTimeout(() => {
+            setCanScroll(true);
+        }, 500); // 0.5s delay before enabling scroll
+    };
+
+    const handleMouseLeave = () => {
+        if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+        setCanScroll(false);
+    };
+
     return (
         <div
             ref={cardRef}
@@ -174,6 +189,8 @@ const StickyNote = React.memo(function StickyNote({
             }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             onPaste={handlePaste}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand && onExpand(); }}
         >
@@ -232,8 +249,9 @@ const StickyNote = React.memo(function StickyNote({
                     onChange={handleContentChange}
                     onPaste={handlePaste}
                     placeholder="Write a note..."
-                    className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg
-                        ${isDragging ? 'cursor-grabbing' : 'cursor-text'}`}
+                    className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg custom-scrollbar
+                        ${isDragging ? 'cursor-grabbing' : 'cursor-text'}
+                        ${canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                     onKeyDown={handleKeyDown}
