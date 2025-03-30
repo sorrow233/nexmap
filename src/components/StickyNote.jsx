@@ -24,6 +24,7 @@ const StickyNote = React.memo(function StickyNote({
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isEditing, setIsEditing] = useState(false); // NEW: Edit mode state
+    const [isExpanded, setIsExpanded] = useState(false); // NEW: Expand/collapse state
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const cardRef = useRef(null);
@@ -186,7 +187,7 @@ const StickyNote = React.memo(function StickyNote({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[280px] min-h-[320px] rounded-[2rem] flex flex-col select-none pointer-events-auto group
+            className={`absolute w-[280px] ${isExpanded ? 'min-h-[280px] max-h-[600px]' : 'h-[280px]'} rounded-[2rem] flex flex-col select-none pointer-events-auto group
                 ${glassStyle}
                 ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 hover:scale-[1.01] cursor-grab'}
                 ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:border-white/50'}
@@ -206,11 +207,8 @@ const StickyNote = React.memo(function StickyNote({
             onPaste={handlePaste}
             onDoubleClick={(e) => {
                 e.stopPropagation();
-                if (!isEditing) {
-                    setIsEditing(true);
-                }
-                // onExpand && onExpand(); // Remove expand on double click if we want to edit? Or keep it? 
-                // Usually sticky notes are for quick editing. Let's prioritize edit.
+                // Toggle expand/collapse on double click
+                setIsExpanded(prev => !prev);
             }}
         >
             {/* Header / Controls */}
@@ -279,7 +277,7 @@ const StickyNote = React.memo(function StickyNote({
                     <div
                         ref={contentRef}
                         className={`w-full flex-grow text-slate-800 dark:text-slate-100 font-lxgw leading-[1.8] text-lg custom-scrollbar markdown-content select-text
-                            ${canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
+                            ${isExpanded && canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
                         onWheel={handleWheel}
                         onMouseDown={(e) => e.stopPropagation()} // Allow selecting text
                         dangerouslySetInnerHTML={{
