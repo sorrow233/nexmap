@@ -268,7 +268,7 @@ const StickyNote = React.memo(function StickyNote({
                         onPaste={handlePaste}
                         onBlur={() => setIsEditing(false)}
                         placeholder="Write a note..."
-                        className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg custom-scrollbar cursor-text overflow-y-auto`}
+                        className={`w-full flex-grow bg-transparent resize-none border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-500/50 font-lxgw leading-[2] text-lg custom-scrollbar cursor-text overflow-y-auto break-words`}
                         onMouseDown={(e) => e.stopPropagation()}
                         onKeyDown={handleKeyDown}
                         onWheel={handleWheel} // Capture scroll in edit mode too
@@ -276,7 +276,7 @@ const StickyNote = React.memo(function StickyNote({
                 ) : (
                     <div
                         ref={contentRef}
-                        className={`w-full flex-grow text-slate-800 dark:text-slate-100 font-lxgw leading-[1.8] text-lg custom-scrollbar markdown-content select-text
+                        className={`w-full flex-grow text-slate-800 dark:text-slate-100 font-lxgw leading-[1.8] text-lg custom-scrollbar markdown-content select-text break-words overflow-x-hidden
                             ${isExpanded && canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
                         onWheel={handleWheel}
                         onMouseDown={(e) => e.stopPropagation()} // Allow selecting text
