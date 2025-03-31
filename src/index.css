@@ -12,6 +12,8 @@ body,
     overflow-y: hidden;
     overscroll-behavior: none;
     /* Prevent browser navigation gestures */
+    touch-action: manipulation;
+    /* Prevent multi-touch swipe gestures */
 }
 
 @layer base {
