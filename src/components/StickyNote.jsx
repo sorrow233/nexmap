@@ -187,7 +187,7 @@ const StickyNote = React.memo(function StickyNote({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[280px] ${isExpanded ? 'min-h-[280px] max-h-[600px]' : 'h-[280px]'} rounded-[2rem] flex flex-col select-none pointer-events-auto group
+            className={`absolute w-[336px] ${isExpanded ? 'min-h-[364px] max-h-[780px]' : 'h-[364px]'} rounded-[2rem] flex flex-col select-none pointer-events-auto group
                 ${glassStyle}
                 ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 hover:scale-[1.01] cursor-grab'}
                 ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:border-white/50'}
