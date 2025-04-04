@@ -6,14 +6,14 @@ export const DEFAULT_PROVIDERS = {
         name: 'GMI Gemini',
         baseUrl: 'https://api.gmi-serving.com/v1',
         apiKey: '',
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-3-pro-preview',
         protocol: 'gemini'
     }
 };
 
 export const DEFAULT_ROLES = {
-    chat: 'google/gemini-3-flash-preview',
-    analysis: 'google/gemini-3-flash-preview'
+    chat: 'google/gemini-3-pro-preview',
+    analysis: 'google/gemini-3-pro-preview'
 };
 
 export const getProviderSettings = () => {
@@ -29,7 +29,7 @@ export const getProviderSettings = () => {
                     const v2Config = JSON.parse(v2ConfigStr);
                     const migrated = JSON.parse(JSON.stringify(DEFAULT_PROVIDERS));
                     migrated.google.apiKey = v2Config.apiKey || '';
-                    migrated.google.model = v2Config.model || 'google/gemini-3-flash-preview';
+                    migrated.google.model = v2Config.model || 'google/gemini-3-pro-preview';
 
                     return {
                         providers: migrated,
@@ -47,7 +47,7 @@ export const getProviderSettings = () => {
 
         // Add roles if missing
         if (!settings.roles) {
-            const defaultModel = settings.providers[settings.activeId]?.model || 'google/gemini-3-flash-preview';
+            const defaultModel = settings.providers[settings.activeId]?.model || 'google/gemini-3-pro-preview';
             settings.roles = {
                 chat: defaultModel,
                 analysis: defaultModel
@@ -84,5 +84,5 @@ export const getRoleModel = (role) => {
     }
     // Fallback to provider's default model or system default
     const activeProvider = settings.providers[settings.activeId];
-    return activeProvider?.model || DEFAULT_ROLES[role] || 'google/gemini-3-flash-preview';
+    return activeProvider?.model || DEFAULT_ROLES[role] || 'google/gemini-3-pro-preview';
 };
