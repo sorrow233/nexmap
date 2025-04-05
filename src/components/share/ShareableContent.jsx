@@ -44,7 +44,7 @@ const ShareableContent = React.forwardRef(({ content, theme, showWatermark }, re
                 flex-grow relative z-10 flex flex-col
                 ${isBusiness
                     ? 'bg-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] rounded-xl border border-slate-100'
-                    : 'bg-white/5 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] rounded-xl border border-white/10'
+                    : 'bg-[#0B1120] border border-white/10 shadow-2xl'
                 }
             `}>
                 {/* Header Decoration */}
