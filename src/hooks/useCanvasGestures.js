@@ -9,6 +9,7 @@ export function useCanvasGestures(canvasRef, stateRef, setScale, setOffset) {
         if (!canvas) return;
 
         const handleNativeWheel = (e) => {
+            // CRITICAL: Prevent browser navigation (back/forward) on trackpad swipes
             e.preventDefault();
             if (e.ctrlKey || e.metaKey) {
                 // Zooming
