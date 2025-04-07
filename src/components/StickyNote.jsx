@@ -239,7 +239,7 @@ const StickyNote = React.memo(function StickyNote({
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 px-6 pb-6 pt-2 flex flex-col gap-4 relative">
+            <div className="flex-1 px-6 pb-6 pt-2 flex flex-col gap-4 relative overflow-hidden">
                 {/* Image Display */}
                 {data.data?.image && (
                     <div className="relative group/image overflow-hidden rounded-2xl shadow-md border border-white/20">
