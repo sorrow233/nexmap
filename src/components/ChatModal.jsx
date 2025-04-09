@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, StickyNote, Sprout } from 'lucide-react';
+import { X, Sparkles, Loader2, StickyNote, Sprout, Star } from 'lucide-react';
 import { generateFollowUpTopics } from '../services/llm';
 import { parseModelOutput } from '../services/llm/parser';
 import { isSafari, isIOS } from '../utils/browser';
@@ -11,7 +11,7 @@ import ChatInput from './chat/ChatInput';
 import MessageList from './chat/MessageList';
 import ShareModal from './share/ShareModal';
 
-export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse, onCreateNote, onSprout }) {
+export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse, onCreateNote, onSprout, isFavorite, onToggleFavorite }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
     const {
@@ -275,6 +275,18 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={onToggleFavorite}
+                            className={`p-2 rounded-full transition-all border
+                                ${isFavorite
+                                    ? 'bg-orange-50 text-orange-400 border-orange-200 dark:bg-orange-500/10 dark:border-orange-500/20'
+                                    : 'bg-slate-50 text-slate-400 border-transparent hover:text-orange-400 hover:bg-orange-50 dark:bg-slate-800 dark:hover:bg-white/5'
+                                }`}
+                            title={isFavorite ? "Unfavorite" : "Favorite"}
+                        >
+                            <Star size={20} fill={isFavorite ? "currentColor" : "none"} />
+                        </button>
+
                         {card.data.marks?.length > 0 && (
                             <button
                                 onClick={() => onUpdate(card.id, (currentData) => ({ ...currentData, marks: [] }))}

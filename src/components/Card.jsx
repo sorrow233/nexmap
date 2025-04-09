@@ -1,5 +1,5 @@
 import React from 'react';
-import { Maximize2, Link, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Maximize2, Link, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle, Star } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 import { useCardDrag } from '../hooks/useCardDrag';
 
@@ -14,7 +14,9 @@ const Card = React.memo(function Card({
     isConnecting,
     onConnect,
     onDragEnd,
-    onDelete
+    onDelete,
+    isFavorite,
+    onToggleFavorite
 }) {
     const { isDragging, cardRef, handleMouseDown, handleTouchStart } = useCardDrag({
         data,
@@ -106,6 +108,13 @@ const Card = React.memo(function Card({
                     </div>
                 </div>
                 <div className="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+                        className={`p-1.5 rounded-lg transition-all ${isFavorite ? 'text-orange-400 bg-orange-50 dark:bg-orange-500/10' : 'text-slate-500 hover:text-orange-400 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                        title={isFavorite ? "Unfavorite" : "Favorite"}
+                    >
+                        <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
+                    </button>
                     <button
                         onClick={handleCopy}
                         className="p-1.5 text-slate-500 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"

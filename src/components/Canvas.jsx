@@ -9,6 +9,7 @@ import { useStore } from '../store/useStore';
 import ErrorBoundary from './ErrorBoundary';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useSelection } from '../hooks/useSelection';
+import favoritesService from '../services/favoritesService';
 
 export default function Canvas({ onCreateNote }) {
     const {
@@ -22,7 +23,8 @@ export default function Canvas({ onCreateNote }) {
         connectionStartId,
         handleCardMove, handleCardMoveEnd,
         handleConnect, deleteCard, updateCardFull,
-        toCanvasCoords // Now from store
+        toCanvasCoords, // Now from store
+        toggleFavorite, favoritesLastUpdate // For favorites
     } = useStore();
 
     const canvasRef = useRef(null);
@@ -218,6 +220,9 @@ export default function Canvas({ onCreateNote }) {
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
                                 onCreateNote={onCreateNote}
+                                // Favorites prop (only for Card, StickyNote handles gracefully if it ignores extra props or we check type)
+                                isFavorite={card.type !== 'note' ? favoritesService.isFavorite(card.id) : false}
+                                onToggleFavorite={() => toggleFavorite(card.id)}
                             />
                         </ErrorBoundary>
                     );

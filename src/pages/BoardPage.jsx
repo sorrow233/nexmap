@@ -9,6 +9,7 @@ import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
 import { saveBoard, saveBoardToCloud } from '../services/storage';
+import favoritesService from '../services/favoritesService';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId } = useParams();
@@ -25,7 +26,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleBatchDelete,
         handleChatGenerate,
         offset,
-        scale
+        scale,
+        toggleFavorite, favoritesLastUpdate // For ChatModal favorites
     } = useStore();
 
     const {
@@ -245,6 +247,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     isGenerating={generatingCardIds.has(expandedCardId)}
                     onCreateNote={handleCreateNote}
                     onSprout={handleSprout}
+                    isFavorite={favoritesService.isFavorite(expandedCardId)}
+                    onToggleFavorite={() => toggleFavorite(expandedCardId)}
                 />
             )}
         </React.Fragment>
