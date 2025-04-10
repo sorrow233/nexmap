@@ -205,14 +205,14 @@ export const createContentSlice = (set, get) => {
             }
         },
 
-        toggleFavorite: (cardId) => {
+        toggleFavorite: (cardId, messageIndex, messageContent) => {
             const { cards } = get();
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
 
             const boardId = getCurrentBoardId();
             const boardTitle = document.title.split('|')[0].trim() || 'Untitled Board';
-            favoritesService.toggleFavorite(card, boardId, boardTitle);
+            favoritesService.toggleFavorite(card, boardId, boardTitle, messageIndex, messageContent);
 
             // Force re-render if using a selector that depends on favorites-updated event
             set({ favoritesLastUpdate: Date.now() });

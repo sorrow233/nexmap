@@ -20,17 +20,13 @@ export default function FavoritesGallery() {
         return () => window.removeEventListener('favorites-updated', handleUpdate);
     }, []);
 
-    const handleCardClick = (boardId, cardId) => {
-        // Navigate to board
-        // In the future we might want to deeply link to the card (e.g., expand it)
-        // For now, just open the board. The user can find it.
-        // We could append ?cardId=... to logic later.
-        navigate(`/board/${boardId}`);
+    const handleCardClick = (boardId) => {
+        if (boardId) navigate(`/board/${boardId}`);
     };
 
-    const handleRemove = (e, cardId) => {
+    const handleRemove = (e, favId) => {
         e.stopPropagation();
-        favoritesService.removeFavorite(cardId);
+        favoritesService.removeFavoriteById(favId);
     };
 
     if (favorites.length === 0) {
@@ -62,43 +58,42 @@ export default function FavoritesGallery() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
                 {favorites.map((item, index) => (
                     <div
-                        key={item.cardId}
-                        onClick={() => handleCardClick(item.boardId, item.cardId)}
+                        key={item.id}
                         style={{ animationDelay: `${index * 50}ms` }}
-                        className="group relative glass-card p-6 rounded-[2rem] cursor-pointer hover:glass-card-hover min-h-[200px] flex flex-col justify-between animate-slide-up"
+                        className="group relative glass-card p-6 rounded-[2rem] hover:glass-card-hover min-h-[200px] flex flex-col justify-between animate-slide-up"
                     >
                         <div className="mb-4">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/5 px-2 py-1 rounded-lg">
-                                    {item.type === 'note' ? 'Note' : 'Conversation'}
+                                    Favorite Note
                                 </span>
                                 <button
-                                    onClick={(e) => handleRemove(e, item.cardId)}
+                                    onClick={(e) => handleRemove(e, item.id)} // Remove by favId
                                     className="text-orange-400 hover:text-slate-400 transition-colors p-1"
                                     title="Remove from favorites"
                                 >
                                     <Star size={16} fill="currentColor" />
                                 </button>
                             </div>
-                            <p className="font-lxgw text-slate-700 dark:text-slate-300 text-sm line-clamp-4 font-medium leading-relaxed">
-                                {typeof item.preview === 'string'
-                                    ? item.preview
-                                    : (Array.isArray(item.preview)
-                                        ? "Media Content" // Fallback for complex content
-                                        : "No preview")}
-                            </p>
+                            <div className="font-lxgw text-slate-700 dark:text-slate-300 text-sm font-medium leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {item.content}
+                            </div>
                         </div>
 
-                        <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+                        <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between mt-auto">
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">From Board</span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Source Board</span>
                                 <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[120px]" title={item.boardName}>
-                                    {item.boardName}
+                                    {item.boardName || "Unknown"}
                                 </span>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 group-hover:text-brand-500 group-hover:bg-brand-50 dark:group-hover:bg-brand-500/20 transition-all">
+                            <button
+                                onClick={() => handleCardClick(item.source?.boardId)}
+                                className="w-8 h-8 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 group-hover:text-brand-500 group-hover:bg-brand-50 dark:group-hover:bg-brand-500/20 transition-all"
+                                title="Go to source board"
+                            >
                                 <ExternalLink size={14} />
-                            </div>
+                            </button>
                         </div>
                     </div>
                 ))}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Maximize2, Link, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle, Star } from 'lucide-react';
+import { Maximize2, Link, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 import { useCardDrag } from '../hooks/useCardDrag';
 
@@ -14,9 +14,8 @@ const Card = React.memo(function Card({
     isConnecting,
     onConnect,
     onDragEnd,
-    onDelete,
-    isFavorite,
-    onToggleFavorite
+    onDragEnd,
+    onDelete
 }) {
     const { isDragging, cardRef, handleMouseDown, handleTouchStart } = useCardDrag({
         data,
