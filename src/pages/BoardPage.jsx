@@ -10,6 +10,7 @@ import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
 import { saveBoard, saveBoardToCloud } from '../services/storage';
 import favoritesService from '../services/favoritesService';
+import QuickPromptModal from '../components/QuickPromptModal';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId } = useParams();
@@ -31,6 +32,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     } = useStore();
 
     const {
+        createCardWithText,
         handleCreateCard,
         handleCreateNote,
         handleExpandTopics,
@@ -142,11 +144,40 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     }, []);
 
 
+    // Double-click Quick Prompt Logic
+    const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
+
+    const handleCanvasDoubleClick = (e) => {
+        setQuickPrompt({
+            isOpen: true,
+            x: e.screenX,
+            y: e.screenY,
+            canvasX: e.canvasX,
+            canvasY: e.canvasY
+        });
+    };
+
+    const handleQuickPromptSubmit = (text) => {
+        if (!quickPrompt.isOpen) return;
+        createCardWithText(text, currentBoardId, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
+    };
+
     return (
         <React.Fragment>
             <ErrorBoundary level="canvas">
-                <Canvas onCreateNote={handleCreateNote} />
+                <Canvas
+                    onCreateNote={handleCreateNote}
+                    onCanvasDoubleClick={handleCanvasDoubleClick}
+                />
             </ErrorBoundary>
+
+            {/* Quick Prompt Modal */}
+            <QuickPromptModal
+                isOpen={quickPrompt.isOpen}
+                onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
+                onSubmit={handleQuickPromptSubmit}
+                initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
+            />
 
             {/* Top Bar */}
             <div className="fixed top-6 left-6 z-50 animate-slide-down">

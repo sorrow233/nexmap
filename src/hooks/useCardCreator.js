@@ -18,14 +18,14 @@ export function useCardCreator() {
         addCard
     } = useStore();
 
-    const createCardWithText = async (text, boardId, images = []) => {
+    const createCardWithText = async (text, boardId, images = [], position = null) => {
         if (!text.trim() && images.length === 0) return;
         const activeConfig = getActiveConfig();
         try {
             const newId = await createAICard({
                 text,
-                x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
-                y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 100),
+                x: position ? position.x : Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
+                y: position ? position.y : Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 100),
                 images,
                 model: activeConfig.model,
                 providerId: activeConfig.id
