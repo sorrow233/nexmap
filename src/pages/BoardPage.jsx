@@ -32,7 +32,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     } = useStore();
 
     const {
-        createCardWithText,
         handleCreateCard,
         handleCreateNote,
         handleExpandTopics,
@@ -159,7 +158,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
     const handleQuickPromptSubmit = (text) => {
         if (!quickPrompt.isOpen) return;
-        createCardWithText(text, currentBoardId, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
+        handleCreateCard(text, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
     };
 
     return (
