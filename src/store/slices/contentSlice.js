@@ -1,5 +1,6 @@
 import { streamChatCompletion } from '../../services/llm';
-import { saveImageToIDB } from '../../services/storage';
+import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
+import favoritesService from '../../services/favoritesService';
 import { calculateLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
 
@@ -202,6 +203,19 @@ export const createContentSlice = (set, get) => {
             } finally {
                 targets.forEach(card => setCardGenerating(card.id, false));
             }
+        },
+
+        toggleFavorite: (cardId) => {
+            const { cards } = get();
+            const card = cards.find(c => c.id === cardId);
+            if (!card) return;
+
+            const boardId = getCurrentBoardId();
+            const boardTitle = document.title.split('|')[0].trim() || 'Untitled Board';
+            favoritesService.toggleFavorite(card, boardId, boardTitle);
+
+            // Force re-render if using a selector that depends on favorites-updated event
+            set({ favoritesLastUpdate: Date.now() });
         },
 
         // --- Atomic AI Actions ---

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings } from 'lucide-react';
+import { Plus, Settings, Star } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
+import FavoritesGallery from '../components/FavoritesGallery';
 import SettingsModal from '../components/SettingsModal';
 import WelcomeCanvas from '../components/WelcomeCanvas';
 import { getGuideBoardData } from '../utils/guideBoardData';
@@ -105,6 +106,13 @@ export default function GalleryPage({
                                 Gallery
                             </button>
                             <button
+                                onClick={() => setViewMode('favorites')}
+                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'favorites' ? 'bg-white dark:bg-slate-700 shadow-sm text-orange-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                <Star size={14} fill={viewMode === 'favorites' ? "currentColor" : "none"} />
+                                Favorites
+                            </button>
+                            <button
                                 onClick={() => setViewMode('trash')}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'trash' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
@@ -143,15 +151,19 @@ export default function GalleryPage({
                     </div>
                 </div>
 
-                <BoardGallery
-                    boards={displayBoards}
-                    onCreateBoard={onCreateBoard}
-                    onSelectBoard={viewMode === 'active' ? onSelectBoard : () => { }} // Disable select in trash
-                    onDeleteBoard={onDeleteBoard}
-                    onRestoreBoard={onRestoreBoard}
-                    onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
-                    isTrashView={viewMode === 'trash'}
-                />
+                {viewMode === 'favorites' ? (
+                    <FavoritesGallery />
+                ) : (
+                    <BoardGallery
+                        boards={displayBoards}
+                        onCreateBoard={onCreateBoard}
+                        onSelectBoard={viewMode === 'active' ? onSelectBoard : () => { }} // Disable select in trash
+                        onDeleteBoard={onDeleteBoard}
+                        onRestoreBoard={onRestoreBoard}
+                        onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
+                        isTrashView={viewMode === 'trash'}
+                    />
+                )}
             </div>
             <div className="fixed bottom-10 right-10 z-50">
                 <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-premium rounded-full text-slate-400 hover:text-orange-400 hover:rotate-90 hover:scale-110 transition-all border border-white/60 dark:border-white/10"><Settings size={24} /></button>
