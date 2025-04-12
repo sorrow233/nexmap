@@ -18,19 +18,24 @@ export function useCardCreator() {
         addCard
     } = useStore();
 
-    const createCardWithText = async (text, boardId, images = [], position = null) => {
-        if (!text.trim() && images.length === 0) return;
+    // Internal helper for AI generation
+    const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
         const activeConfig = getActiveConfig();
+        const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
         try {
-            const newId = await createAICard({
+            await createAICard({
+                id: newId,
                 text,
-                x: position ? position.x : Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
-                y: position ? position.y : Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 100),
+                x, y,
                 images,
+                contextPrefix,
+                autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
                 model: activeConfig.model,
                 providerId: activeConfig.id
             });
 
+            // Construct content for AI
             let messageContent;
             if (images.length > 0) {
                 const imageParts = images.map(img => ({
@@ -42,20 +47,47 @@ export function useCardCreator() {
                     }
                 }));
                 messageContent = [
-                    { type: 'text', text },
+                    { type: 'text', text: contextPrefix + text },
                     ...imageParts
                 ];
             } else {
-                messageContent = text;
+                messageContent = contextPrefix + text;
             }
 
-            await streamChatCompletion(
-                [{ role: 'user', content: messageContent }],
-                (chunk) => updateCardContent(newId, chunk),
-                activeConfig.model,
-                { providerId: activeConfig.id }
-            );
-        } catch (e) { console.error(e); } finally { setCardGenerating(null, false); }
+            // Queue the streaming task
+            try {
+                await streamChatCompletion(
+                    [{ role: 'user', content: messageContent }],
+                    (chunk) => updateCardContent(newId, chunk),
+                    activeConfig.model,
+                    { providerId: activeConfig.id }
+                );
+            } catch (innerError) {
+                console.error("Streaming failed for card", newId, innerError);
+                updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+            } finally {
+                setCardGenerating(newId, false);
+            }
+        } catch (e) {
+            console.error(e);
+            setCardGenerating(newId, false);
+        }
+        return newId;
+    };
+
+    const createCardWithText = async (text, boardId, images = [], position = null) => {
+        if (!text.trim() && images.length === 0) return;
+
+        let targetX, targetY;
+        if (position) {
+            targetX = position.x;
+            targetY = position.y;
+        } else {
+            targetX = Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160);
+            targetY = Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 100);
+        }
+
+        await _generateAICard(text, targetX, targetY, images);
     };
 
     const handleBatchChat = async (text, images = []) => {
@@ -126,12 +158,13 @@ export function useCardCreator() {
                     updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
                 }
             });
+            return true; // Indicate handled
         }
+        return false; // Not handled
     };
 
     const handleCreateCard = async (text, images = [], position = null) => {
         if (!text.trim() && images.length === 0) return;
-        const activeConfig = getActiveConfig();
 
         // 1. Drawing command (Bypass batch logic)
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
@@ -151,6 +184,14 @@ export function useCardCreator() {
                 setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, error: e.message, loading: false, title: 'Failed' } } : c));
             }
             return;
+        }
+
+        // 2. Batch Chat Dispatch
+        // If position is explicitly provided (e.g. double click), skip batch chat logic
+        // because the user intends to create a new card AT that location.
+        if (!position) {
+            const handled = await handleBatchChat(text, images);
+            if (handled) return;
         }
 
         // 3. Intelligent positioning (Existing fallback logic)
@@ -192,60 +233,7 @@ export function useCardCreator() {
             contextPrefix = `[System: Context]\n\n${contextCards.map(c => `Card [${c.id}]: ${c.data.title}`).join('\n')}\n\n---\n\n`;
         }
 
-        const targetImages = [...images];
-        // Ensure unique ID even for rapid sequential calls
-        const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        try {
-            await createAICard({
-                id: newId,
-                text,
-                x: Math.max(0, targetX),
-                y: Math.max(0, targetY),
-                images: targetImages,
-                contextPrefix,
-                autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
-                model: activeConfig.model,
-                providerId: activeConfig.id
-            });
-
-            let messageContent;
-            if (targetImages.length > 0) {
-                const imageParts = targetImages.map(img => ({
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: img.mimeType,
-                        data: img.base64
-                    }
-                }));
-                messageContent = [
-                    { type: 'text', text: contextPrefix + text },
-                    ...imageParts
-                ];
-            } else {
-                messageContent = contextPrefix + text;
-            }
-
-            // Queue the streaming task
-            try {
-                await streamChatCompletion(
-                    [{ role: 'user', content: messageContent }],
-                    (chunk) => updateCardContent(newId, chunk),
-                    activeConfig.model,
-                    { providerId: activeConfig.id }
-                );
-            } catch (innerError) {
-                console.error("Streaming failed for card", newId, innerError);
-                updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
-            } finally {
-                setCardGenerating(newId, false);
-            }
-
-        } catch (e) {
-            console.error(e);
-            setCardGenerating(newId, false);
-        }
+        await _generateAICard(text, targetX, targetY, images, contextPrefix);
     };
 
     const handleCreateNote = (text = '', isMaster = false) => {
