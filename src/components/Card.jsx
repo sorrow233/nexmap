@@ -14,7 +14,7 @@ const Card = React.memo(function Card({
     isConnecting,
     onConnect,
     onDragEnd,
-    onDragEnd,
+
     onDelete
 }) {
     const { isDragging, cardRef, handleMouseDown, handleTouchStart } = useCardDrag({
