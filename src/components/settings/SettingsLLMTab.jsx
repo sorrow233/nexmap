@@ -62,7 +62,7 @@ export default function SettingsLLMTab({
                                 value={currentProvider.model || ''}
                                 onChange={e => handleUpdateProvider('model', e.target.value)}
                                 className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
-                                placeholder="google/gemini-3-flash-preview"
+                                placeholder="google/gemini-3-pro-preview"
                             />
                         </div>
                     </div>
