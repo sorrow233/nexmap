@@ -24,7 +24,7 @@ const ShareableContent = React.forwardRef(({ content, theme, showWatermark }, re
                 }
             `}
             style={{
-                fontFamily: isBusiness ? '"Inter", sans-serif' : '"JetBrains Mono", monospace'
+                fontFamily: '"Inter", sans-serif'
             }}
         >
             {/* Background Texture/Effects */}
@@ -54,10 +54,10 @@ const ShareableContent = React.forwardRef(({ content, theme, showWatermark }, re
                 <div className="p-12 flex-grow">
                     <div
                         className={`
-                            prose max-w-none leading-relaxed
+                            prose max-w-none leading-loose
                             ${isBusiness ? 'prose-slate' : 'prose-invert'}
                             prose-headings:font-bold prose-headings:tracking-tight
-                            prose-p:leading-8 prose-p:text-lg
+                            prose-p:leading-9 prose-p:text-lg prose-p:mb-6
                             prose-pre:bg-slate-900 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-pre:shadow-xl
                             prose-code:font-mono
                         `}
