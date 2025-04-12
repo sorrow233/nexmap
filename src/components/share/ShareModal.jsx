@@ -4,7 +4,12 @@ import { X, Check, Download, Layers, Layout, Palette, Image as ImageIcon, Loader
 import ShareableContent from './ShareableContent';
 
 export default function ShareModal({ isOpen, onClose, content }) {
-    const [theme, setTheme] = useState('business');
+    const [theme, setTheme] = useState(() => {
+        if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
+            return 'tech';
+        }
+        return 'business';
+    });
     const [showWatermark, setShowWatermark] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -86,8 +91,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                 <button
                                     onClick={() => setTheme('business')}
                                     className={`p-3 rounded-xl border flex flex-col gap-2 items-center transition-all ${theme === 'business'
-                                            ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-bold'
-                                            : 'border-slate-200 dark:border-white/10 text-slate-500 hover:border-brand-200 dark:hover:border-white/20'
+                                        ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-bold'
+                                        : 'border-slate-200 dark:border-white/10 text-slate-500 hover:border-brand-200 dark:hover:border-white/20'
                                         }`}
                                 >
                                     <div className="w-full h-8 bg-slate-100 rounded border border-slate-200" />
@@ -96,8 +101,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                 <button
                                     onClick={() => setTheme('tech')}
                                     className={`p-3 rounded-xl border flex flex-col gap-2 items-center transition-all ${theme === 'tech'
-                                            ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-bold'
-                                            : 'border-slate-200 dark:border-white/10 text-slate-500 hover:border-brand-200 dark:hover:border-white/20'
+                                        ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-bold'
+                                        : 'border-slate-200 dark:border-white/10 text-slate-500 hover:border-brand-200 dark:hover:border-white/20'
                                         }`}
                                 >
                                     <div className="w-full h-8 bg-slate-900 rounded border border-slate-700" />
@@ -114,8 +119,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                             <button
                                 onClick={() => setShowWatermark(!showWatermark)}
                                 className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${showWatermark
-                                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                                        : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5'
+                                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                                    : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5'
                                     }`}
                             >
                                 <span className={`text-sm font-medium ${showWatermark ? 'text-brand-700 dark:text-brand-400' : 'text-slate-600 dark:text-slate-400'}`}>
