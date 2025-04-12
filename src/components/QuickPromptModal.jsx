@@ -48,7 +48,6 @@ export default function QuickPromptModal({ isOpen, onClose, onSubmit, initialPos
     if (!isOpen) return null;
 
     // Adjust position to keep modal within viewport
-    // Default width is roughly 320px
     const adjustedX = Math.min(initialPosition.x, window.innerWidth - 340);
     const adjustedY = Math.min(initialPosition.y, window.innerHeight - 150);
 
