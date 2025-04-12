@@ -56,6 +56,7 @@ npm run dev
 详见我们的技术复盘文档：
 *   [📄 深度技术复盘 (problem_synthesis.md)](./problem_synthesis.md)
 *   [📝 集成更新日志 (walkthrough.md)](./walkthrough.md)
+*   [🚀 软件进化足迹 (update.md)](./update.md)
 
 ---
 *Built with ❤️ by Neural Canvas Team*
