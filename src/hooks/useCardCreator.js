@@ -58,7 +58,7 @@ export function useCardCreator() {
         } catch (e) { console.error(e); } finally { setCardGenerating(null, false); }
     };
 
-    const handleCreateCard = async (text, images = []) => {
+    const handleCreateCard = async (text, images = [], position = null) => {
         if (!text.trim() && images.length === 0) return;
         const activeConfig = getActiveConfig();
 
@@ -179,29 +179,36 @@ export function useCardCreator() {
 
         // 3. Intelligent positioning (Existing fallback logic)
         let targetX, targetY;
-        const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
 
-        if (contextCards.length > 0) {
-            const rightMostCard = contextCards.reduce((prev, current) => (prev.x > current.x) ? prev : current);
-            const topMostY = Math.min(...contextCards.map(c => c.y));
-
-            targetX = rightMostCard.x + 340;
-            targetY = topMostY;
-
-            let safetyCounter = 0;
-            while (
-                cards.some(c =>
-                    Math.abs(c.x - targetX) < 100 &&
-                    Math.abs(c.y - targetY) < 100
-                ) && safetyCounter < 10
-            ) {
-                targetY += 150;
-                targetX += 20;
-                safetyCounter++;
-            }
+        if (position) {
+            // Use provided position directly
+            targetX = position.x;
+            targetY = position.y;
         } else {
-            targetX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
-            targetY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
+            const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
+
+            if (contextCards.length > 0) {
+                const rightMostCard = contextCards.reduce((prev, current) => (prev.x > current.x) ? prev : current);
+                const topMostY = Math.min(...contextCards.map(c => c.y));
+
+                targetX = rightMostCard.x + 340;
+                targetY = topMostY;
+
+                let safetyCounter = 0;
+                while (
+                    cards.some(c =>
+                        Math.abs(c.x - targetX) < 100 &&
+                        Math.abs(c.y - targetY) < 100
+                    ) && safetyCounter < 10
+                ) {
+                    targetY += 150;
+                    targetX += 20;
+                    safetyCounter++;
+                }
+            } else {
+                targetX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
+                targetY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
+            }
         }
 
         // 4. Context Construction

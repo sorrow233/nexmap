@@ -326,6 +326,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
                     parseModelOutput={parseModelOutput}
                     onUpdate={onUpdate}
                     onShare={(content) => setShareContent(content)}
+                    onToggleFavorite={onToggleFavorite}
                 />
 
                 {/* Premium Input Bar */}
