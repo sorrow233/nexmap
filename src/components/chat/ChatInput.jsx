@@ -43,7 +43,7 @@ export default function ChatInput({
                             }
                         }}
                         onPaste={handlePaste}
-                        className="flex-grow bg-transparent outline-none resize-none h-12 py-3 px-2 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-sans text-lg"
+                        className="flex-grow bg-transparent outline-none resize-none h-12 py-3 px-2 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-sans text-lg [&::-webkit-scrollbar]:hidden"
                         placeholder={placeholder}
                     />
 
