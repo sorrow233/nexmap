@@ -26,6 +26,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleRegenerate,
         handleBatchDelete,
         handleChatGenerate,
+        updateCardContent,
         offset,
         scale,
         toggleFavorite, favoritesLastUpdate // For ChatModal favorites
@@ -162,6 +163,48 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleCreateCard(text, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
     };
 
+    // Wrapper to bridge ChatModal's signature with handleChatGenerate
+    const handleChatModalGenerate = async (cardId, text, images = []) => {
+        const card = cards.find(c => c.id === cardId);
+        if (!card) return;
+
+        // Construct the new user message
+        let userContent;
+        if (images.length > 0) {
+            const imageParts = images.map(img => ({
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: img.mimeType,
+                    data: img.base64
+                }
+            }));
+            userContent = [
+                { type: 'text', text },
+                ...imageParts
+            ];
+        } else {
+            userContent = text;
+        }
+
+        const userMsg = { role: 'user', content: userContent };
+        const assistantMsg = { role: 'assistant', content: '' };
+
+        // Optimistically update the card's messages
+        updateCardFull(cardId, (currentData) => ({
+            ...currentData,
+            messages: [...(currentData.messages || []), userMsg, assistantMsg]
+        }));
+
+        // Prepare the history for AI (exclude the empty assistant message we just added)
+        const history = [...(card.data.messages || []), userMsg];
+
+        // Call handleChatGenerate with the proper signature
+        await handleChatGenerate(cardId, history, (chunk) => {
+            updateCardContent(cardId, chunk);
+        });
+    };
+
     return (
         <React.Fragment>
             <ErrorBoundary level="canvas">
@@ -275,7 +318,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     isOpen={!!expandedCardId}
                     onClose={() => setExpandedCardId(null)}
                     onUpdate={updateCardFull}
-                    onGenerateResponse={handleChatGenerate}
+                    onGenerateResponse={handleChatModalGenerate}
                     isGenerating={generatingCardIds.has(expandedCardId)}
                     onCreateNote={handleCreateNote}
                     onSprout={handleSprout}
