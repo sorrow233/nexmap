@@ -12,7 +12,6 @@ export default function MessageList({
     handleRetry,
     parseModelOutput,
     onUpdate,
-    onUpdate,
     onShare,
     onToggleFavorite
 }) {
