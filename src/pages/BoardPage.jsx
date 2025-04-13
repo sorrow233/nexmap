@@ -165,8 +165,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
     // Wrapper to bridge ChatModal's signature with handleChatGenerate
     const handleChatModalGenerate = async (cardId, text, images = []) => {
+        console.log('[DEBUG handleChatModalGenerate] Called with:', { cardId, text, imagesCount: images.length });
         const card = cards.find(c => c.id === cardId);
-        if (!card) return;
+        if (!card) {
+            console.error('[DEBUG handleChatModalGenerate] Card not found:', cardId);
+            return;
+        }
 
         // Construct the new user message
         let userContent;
@@ -200,9 +204,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         const history = [...(card.data.messages || []), userMsg];
 
         // Call handleChatGenerate with the proper signature
+        console.log('[DEBUG handleChatModalGenerate] Calling handleChatGenerate with history length:', history.length);
         await handleChatGenerate(cardId, history, (chunk) => {
+            console.log('[DEBUG handleChatModalGenerate] Received chunk:', chunk.substring(0, 20));
             updateCardContent(cardId, chunk);
         });
+        console.log('[DEBUG handleChatModalGenerate] Generation completed');
     };
 
     return (

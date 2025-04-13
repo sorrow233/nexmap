@@ -91,10 +91,12 @@ export function useCardCreator() {
     };
 
     const handleBatchChat = async (text, images = []) => {
+        console.log('[DEBUG handleBatchChat] Called with:', { text, imagesCount: images.length, selectedIds });
         if (!text.trim() && images.length === 0) return;
 
         // If we have selected cards that are chat-capable, send the message to them instead of creating a new card.
         const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
+        console.log('[DEBUG handleBatchChat] Target cards:', targetCards.length);
 
         if (targetCards.length > 0) {
             // Needed to access handleChatGenerate from store
@@ -147,9 +149,11 @@ export function useCardCreator() {
             // Trigger AI for each card
             targetCards.forEach(async (card) => {
                 try {
+                    console.log('[DEBUG handleBatchChat] Starting AI for card:', card.id);
                     const history = [...card.data.messages, userMsg];
                     // handleChatGenerate adds context internally
                     await handleChatGenerate(card.id, history, (chunk) => {
+                        console.log('[DEBUG handleBatchChat] Received chunk for card:', card.id);
                         updateCardContent(card.id, chunk);
                     });
 
@@ -158,8 +162,10 @@ export function useCardCreator() {
                     updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
                 }
             });
+            console.log('[DEBUG handleBatchChat] Batch chat dispatched successfully');
             return true; // Indicate handled
         }
+        console.log('[DEBUG handleBatchChat] No target cards, returning false');
         return false; // Not handled
     };
 
@@ -189,8 +195,10 @@ export function useCardCreator() {
         // 2. Batch Chat Dispatch
         // If position is explicitly provided (e.g. double click), skip batch chat logic
         // because the user intends to create a new card AT that location.
+        console.log('[DEBUG handleCreateCard] Position:', position, 'Selected:', selectedIds.length);
         if (!position) {
             const handled = await handleBatchChat(text, images);
+            console.log('[DEBUG handleCreateCard] Batch chat handled:', handled);
             if (handled) return;
         }
 
