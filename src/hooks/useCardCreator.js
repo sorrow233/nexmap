@@ -146,21 +146,23 @@ export function useCardCreator() {
                 return c;
             }));
 
-            // Trigger AI for each card
-            targetCards.forEach(async (card) => {
-                try {
-                    console.log('[DEBUG handleBatchChat] Starting AI for card:', card.id);
-                    const history = [...card.data.messages, userMsg];
-                    // handleChatGenerate adds context internally
-                    await handleChatGenerate(card.id, history, (chunk) => {
-                        console.log('[DEBUG handleBatchChat] Received chunk for card:', card.id);
-                        updateCardContent(card.id, chunk);
-                    });
-
-                } catch (e) {
-                    console.error(`Batch chat failed for card ${card.id}`, e);
-                    updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
-                }
+            // Trigger AI for each card - fire and forget for maximum concurrency
+            // Each card gets its own independent async execution
+            targetCards.forEach((card) => {
+                (async () => {
+                    try {
+                        console.log('[DEBUG handleBatchChat] Starting AI for card:', card.id);
+                        const history = [...card.data.messages, userMsg];
+                        // handleChatGenerate adds context internally
+                        await handleChatGenerate(card.id, history, (chunk) => {
+                            console.log('[DEBUG handleBatchChat] Received chunk for card:', card.id);
+                            updateCardContent(card.id, chunk);
+                        });
+                    } catch (e) {
+                        console.error(`Batch chat failed for card ${card.id}`, e);
+                        updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
+                    }
+                })();
             });
             console.log('[DEBUG handleBatchChat] Batch chat dispatched successfully');
             return true; // Indicate handled
@@ -355,41 +357,43 @@ export function useCardCreator() {
         const totalHeight = topics.length * CARD_HEIGHT;
         const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
 
-        // We don't use Promise.all here because we want to fire and forget into the queue
-        topics.forEach(async (question, index) => {
-            try {
-                const newY = startY + (index * CARD_HEIGHT);
-                const newId = (Date.now() + index).toString();
-
-                await createAICard({
-                    id: newId,
-                    text: question,
-                    x: source.x + 450,
-                    y: newY,
-                    autoConnections: [{ from: sourceId, to: newId }],
-                    model: activeConfig.model,
-                    providerId: activeConfig.id
-                });
-
+        // Fire and forget - no concurrency limit, all topics generate simultaneously
+        topics.forEach((question, index) => {
+            (async () => {
                 try {
-                    await streamChatCompletion(
-                        [{
-                            role: 'user',
-                            content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
-                        }],
-                        (chunk) => updateCardContent(newId, chunk),
-                        activeConfig.model,
-                        { providerId: activeConfig.id }
-                    );
-                } catch (innerError) {
-                    console.error("Sprout generation failed", innerError);
-                    updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
-                } finally {
-                    setCardGenerating(newId, false);
+                    const newY = startY + (index * CARD_HEIGHT);
+                    const newId = (Date.now() + index).toString();
+
+                    await createAICard({
+                        id: newId,
+                        text: question,
+                        x: source.x + 450,
+                        y: newY,
+                        autoConnections: [{ from: sourceId, to: newId }],
+                        model: activeConfig.model,
+                        providerId: activeConfig.id
+                    });
+
+                    try {
+                        await streamChatCompletion(
+                            [{
+                                role: 'user',
+                                content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
+                            }],
+                            (chunk) => updateCardContent(newId, chunk),
+                            activeConfig.model,
+                            { providerId: activeConfig.id }
+                        );
+                    } catch (innerError) {
+                        console.error("Sprout generation failed", innerError);
+                        updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+                    } finally {
+                        setCardGenerating(newId, false);
+                    }
+                } catch (e) {
+                    console.error("Sprout creation failed", e);
                 }
-            } catch (e) {
-                console.error("Sprout creation failed", e);
-            }
+            })();
         });
     };
 
