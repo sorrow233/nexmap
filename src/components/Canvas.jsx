@@ -11,7 +11,7 @@ import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
 
-export default function Canvas({ onCreateNote }) {
+export default function Canvas({ onCreateNote, ...props }) {
     const {
         cards, connections,
         offset, scale, setOffset, setScale,
@@ -167,6 +167,23 @@ export default function Canvas({ onCreateNote }) {
         return targets;
     }, [selectedIds, connections]);
 
+    const handleDoubleClick = (e) => {
+        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+            // Calculate canvas coordinates
+            const canvasX = (e.clientX - offset.x) / scale;
+            const canvasY = (e.clientY - offset.y) / scale;
+
+            if (props.onCanvasDoubleClick) {
+                props.onCanvasDoubleClick({
+                    screenX: e.clientX,
+                    screenY: e.clientY,
+                    canvasX,
+                    canvasY
+                });
+            }
+        }
+    };
+
     return (
         <div
             ref={canvasRef}
@@ -175,10 +192,12 @@ export default function Canvas({ onCreateNote }) {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onDoubleClick={handleDoubleClick}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
+
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
                 backgroundSize: '24px 24px',
