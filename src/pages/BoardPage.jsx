@@ -247,8 +247,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     isGenerating={generatingCardIds.has(expandedCardId)}
                     onCreateNote={handleCreateNote}
                     onSprout={handleSprout}
-                    isFavorite={favoritesService.isFavorite(expandedCardId)}
-                    onToggleFavorite={() => toggleFavorite(expandedCardId)}
+                    onToggleFavorite={toggleFavorite}
                 />
             )}
         </React.Fragment>

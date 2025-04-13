@@ -220,9 +220,6 @@ export default function Canvas({ onCreateNote }) {
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
                                 onCreateNote={onCreateNote}
-                                // Favorites prop (only for Card, StickyNote handles gracefully if it ignores extra props or we check type)
-                                isFavorite={card.type !== 'note' ? favoritesService.isFavorite(card.id) : false}
-                                onToggleFavorite={() => toggleFavorite(card.id)}
                             />
                         </ErrorBoundary>
                     );

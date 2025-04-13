@@ -23,44 +23,57 @@ const favoritesService = {
         return getRawFavorites().sort((a, b) => b.favoritedAt - a.favoritedAt);
     },
 
-    isFavorite: (cardId) => {
+    // Check if a specific message in a card is favorited
+    isFavorite: (cardId, messageIndex) => {
         const list = getRawFavorites();
-        return list.some(item => item.cardId === cardId);
+        return list.some(item => item.source?.cardId === cardId && item.source?.messageIndex === messageIndex);
     },
 
-    addFavorite: (card, boardId, boardName) => {
+    addFavorite: (card, boardId, boardName, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        if (list.some(item => item.cardId === card.id)) return; // Already exists
+        // Prevent duplicates
+        if (list.some(item => item.source?.cardId === card.id && item.source?.messageIndex === messageIndex)) return;
 
         const newFavorite = {
-            cardId: card.id,
-            boardId: boardId,
+            id: `fav_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            source: {
+                cardId: card.id,
+                messageIndex: messageIndex,
+                boardId: boardId
+            },
             boardName: boardName,
-            preview: card.data?.text || card.data?.messages?.[0]?.content || "Untitled Card",
-            type: card.type,
+            content: messageContent, // Full independent content
+            type: 'note', // Treated as a note
             favoritedAt: Date.now()
         };
 
         saveFavorites([newFavorite, ...list]);
-        console.log(`[Favorites] Added card ${card.id} from board ${boardId}`);
+        console.log(`[Favorites] Snapshotted message ${messageIndex} from card ${card.id}`);
     },
 
-    removeFavorite: (cardId) => {
+    removeFavorite: (cardId, messageIndex) => {
         const list = getRawFavorites();
-        const newList = list.filter(item => item.cardId !== cardId);
+        // Remove by source identity
+        const newList = list.filter(item => !(item.source?.cardId === cardId && item.source?.messageIndex === messageIndex));
         saveFavorites(newList);
-        console.log(`[Favorites] Removed card ${cardId}`);
+        console.log(`[Favorites] Removed snapshot for message ${messageIndex} of card ${cardId}`);
+    },
+
+    removeFavoriteById: (favId) => {
+        const list = getRawFavorites();
+        const newList = list.filter(item => item.id !== favId);
+        saveFavorites(newList);
     },
 
     // Toggle function for convenience
-    toggleFavorite: (card, boardId, boardName) => {
+    toggleFavorite: (card, boardId, boardName, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        const exists = list.some(item => item.cardId === card.id);
+        const exists = list.some(item => item.source?.cardId === card.id && item.source?.messageIndex === messageIndex);
         if (exists) {
-            favoritesService.removeFavorite(card.id);
+            favoritesService.removeFavorite(card.id, messageIndex);
             return false;
         } else {
-            favoritesService.addFavorite(card, boardId, boardName);
+            favoritesService.addFavorite(card, boardId, boardName, messageIndex, messageContent);
             return true;
         }
     }

@@ -1,6 +1,7 @@
 import React from 'react';
 import ErrorBoundary from '../ErrorBoundary';
 import MessageItem from './MessageItem';
+import favoritesService from '../../services/favoritesService';
 
 export default function MessageList({
     card,
@@ -11,7 +12,9 @@ export default function MessageList({
     handleRetry,
     parseModelOutput,
     onUpdate,
-    onShare
+    onUpdate,
+    onShare,
+    onToggleFavorite
 }) {
 
     // Helper to identify if it's a note or chat
@@ -51,6 +54,8 @@ export default function MessageList({
                                     isStreaming={isStreaming}
                                     handleRetry={handleRetry}
                                     onShare={onShare}
+                                    onToggleFavorite={onToggleFavorite}
+                                    isFavorite={favoritesService.isFavorite(card.id, i)}
                                 />
                             </ErrorBoundary>
                         ))}
