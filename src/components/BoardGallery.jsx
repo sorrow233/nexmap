@@ -3,7 +3,7 @@ import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, A
 import ModernDialog from './ModernDialog';
 import useImageUpload from '../hooks/useImageUpload';
 import { loadBoard, updateBoardMetadata } from '../services/storage';
-import { chatCompletion, imageGeneration } from '../services/llm';
+import { chatCompletion, imageGeneration, getRoleModel } from '../services/llm';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, isTrashView = false }) {
     const [quickPrompt, setQuickPrompt] = useState('');
@@ -102,7 +102,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
-                'analysis' // Use analysis role
+                getRoleModel('analysis')
             );
 
             console.log('[Background Gen] Generated prompt:', imagePrompt);
@@ -110,7 +110,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             if (!imagePrompt) throw new Error("Failed to generate prompt");
 
             // 4. Generate Image
-            const imageUrl = await imageGeneration(imagePrompt, 'image'); // Use image role
+            const imageUrl = await imageGeneration(imagePrompt, getRoleModel('image'));
 
             if (!imageUrl) throw new Error("Failed to generate image");
 
