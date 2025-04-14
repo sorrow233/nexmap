@@ -205,11 +205,17 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
         // Call handleChatGenerate with the proper signature
         console.log('[DEBUG handleChatModalGenerate] Calling handleChatGenerate with history length:', history.length);
-        await handleChatGenerate(cardId, history, (chunk) => {
-            console.log('[DEBUG handleChatModalGenerate] Received chunk:', chunk.substring(0, 20));
-            updateCardContent(cardId, chunk);
-        });
-        console.log('[DEBUG handleChatModalGenerate] Generation completed');
+        try {
+            await handleChatGenerate(cardId, history, (chunk) => {
+                console.log('[DEBUG handleChatModalGenerate] Received chunk:', chunk.substring(0, 20));
+                updateCardContent(cardId, chunk);
+            });
+            console.log('[DEBUG handleChatModalGenerate] Generation completed');
+        } catch (error) {
+            console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
+            // Optionally update card with error if handleChatGenerate re-throws (which it doesn't currently, but good for safety)
+            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`);
+        }
     };
 
     return (
