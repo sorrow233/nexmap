@@ -14,7 +14,7 @@ export const DEFAULT_PROVIDERS = {
 export const DEFAULT_ROLES = {
     chat: 'google/gemini-3-pro-preview',
     analysis: 'google/gemini-3-flash-preview',
-    image: ''
+    image: 'gemini-3-pro-image-preview'
 };
 
 export const getProviderSettings = () => {

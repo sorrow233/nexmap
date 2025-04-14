@@ -2,6 +2,7 @@ import { getActiveConfig, imageGeneration, streamChatCompletion } from '../servi
 import { useStore } from '../store/useStore';
 import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
+import { uuid } from '../utils/uuid';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -23,7 +24,7 @@ export function useCardCreator() {
         console.log('[DEBUG _generateAICard] Starting generation for text:', text.substring(0, 20));
         const activeConfig = getActiveConfig();
         console.log('[DEBUG _generateAICard] Active config:', activeConfig);
-        const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newId = uuid();
 
         try {
             await createAICard({
@@ -119,7 +120,7 @@ export function useCardCreator() {
             if (images.length > 0) {
                 // Save images to IDB once and reuse the reference for all cards
                 const processedImages = await Promise.all(images.map(async (img, idx) => {
-                    const imageId = `batch_img_${Date.now()}_${idx}`;
+                    const imageId = `batch_img_${uuid()}_${idx}`;
                     await saveImageToIDB(imageId, img.base64);
                     return {
                         type: 'image',
@@ -185,7 +186,7 @@ export function useCardCreator() {
         // 1. Drawing command (Bypass batch logic)
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
             const promptText = text.replace(/^\/(draw|image)\s+/, '');
-            const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const newId = uuid();
             setCards(prev => [...prev, {
                 id: newId, type: 'image_gen',
                 x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
@@ -294,7 +295,7 @@ export function useCardCreator() {
         } else {
             // Create the one and only note card
             addCard({
-                id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                id: uuid(),
                 type: 'note',
                 x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
                 y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 250),
@@ -328,11 +329,14 @@ export function useCardCreator() {
         source.data.marks.map(async (mark, index) => {
             try {
                 const newY = source.y + (index * 320) - ((source.data.marks.length * 320) / 2) + 150;
+                const generatedId = uuid();
+
                 const newId = await createAICard({
+                    id: generatedId,
                     text: mark,
                     x: source.x + 400,
                     y: newY,
-                    autoConnections: [{ from: sourceId, to: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}` }],
+                    autoConnections: [{ from: sourceId, to: generatedId }],
                     model: activeConfig.model,
                     providerId: activeConfig.id
                 });
@@ -370,7 +374,7 @@ export function useCardCreator() {
             (async () => {
                 try {
                     const newY = startY + (index * CARD_HEIGHT);
-                    const newId = (Date.now() + index).toString();
+                    const newId = uuid();
 
                     await createAICard({
                         id: newId,
