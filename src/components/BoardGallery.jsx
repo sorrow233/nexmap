@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon, AlertCircle, RotateCcw, Ban, Loader2 } from 'lucide-react';
 import ModernDialog from './ModernDialog';
 import useImageUpload from '../hooks/useImageUpload';
