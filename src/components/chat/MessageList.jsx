@@ -53,7 +53,7 @@ export default function MessageList({
                                     isStreaming={isStreaming}
                                     handleRetry={handleRetry}
                                     onShare={onShare}
-                                    onToggleFavorite={onToggleFavorite}
+                                    onToggleFavorite={(idx, content) => onToggleFavorite(card.id, idx, content)}
                                     isFavorite={favoritesService.isFavorite(card.id, i)}
                                 />
                             </ErrorBoundary>
