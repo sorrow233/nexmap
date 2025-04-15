@@ -192,7 +192,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                             </button>
 
                             <button
-                                onClick={handleStartClick}
+                                onClick={handleSubmit}
                                 disabled={!quickPrompt.trim() && images.length === 0}
                                 className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 px-10 py-4 rounded-[1.75rem] font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-30 disabled:cursor-not-allowed shrink-0 mr-1"
                             >
