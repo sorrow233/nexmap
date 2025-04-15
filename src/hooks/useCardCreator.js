@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore';
 import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
 import { uuid } from '../utils/uuid';
+import { createPerformanceMonitor } from '../utils/performanceMonitor';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -58,18 +59,38 @@ export function useCardCreator() {
                 messageContent = contextPrefix + text;
             }
 
+
             // Queue the streaming task
             try {
                 console.log('[DEBUG _generateAICard] Starting streamChatCompletion for:', newId);
+
+                // Create performance monitor
+                const perfMonitor = createPerformanceMonitor({
+                    cardId: newId,
+                    model: activeConfig.model,
+                    providerId: activeConfig.id,
+                    messages: [{ role: 'user', content: messageContent }],
+                    temperature: undefined,
+                    stream: true
+                });
+
+                let firstToken = true;
                 await streamChatCompletion(
                     [{ role: 'user', content: messageContent }],
                     (chunk) => {
+                        if (firstToken) {
+                            perfMonitor.onFirstToken();
+                            firstToken = false;
+                        }
+                        perfMonitor.onChunk(chunk);
                         console.log('[DEBUG _generateAICard] Received chunk for:', newId);
                         updateCardContent(newId, chunk);
                     },
                     activeConfig.model,
                     { providerId: activeConfig.id }
                 );
+
+                perfMonitor.onComplete();
                 console.log('[DEBUG _generateAICard] Streaming completed for:', newId);
             } catch (innerError) {
                 console.error("Streaming failed for card", newId, innerError);
