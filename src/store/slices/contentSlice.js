@@ -4,6 +4,7 @@ import favoritesService from '../../services/favoritesService';
 import { calculateLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import { uuid } from '../../utils/uuid';
+import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 
 export const createContentSlice = (set, get) => {
     // Throttling buffer for AI streaming
@@ -286,7 +287,7 @@ export const createContentSlice = (set, get) => {
         },
 
         handleChatGenerate: async (cardId, messages, onToken) => {
-            const { cards, connections, setCardGenerating, updateCardContent } = get();
+            const { setCardGenerating, updateCardContent, cards, connections } = get();
             setCardGenerating(cardId, true);
 
             try {
@@ -318,10 +319,30 @@ export const createContentSlice = (set, get) => {
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
 
-                await streamChatCompletion(fullMessages, onToken, model, { providerId });
+                // Create performance monitor
+                const perfMonitor = createPerformanceMonitor({
+                    cardId,
+                    model,
+                    providerId,
+                    messages: fullMessages,
+                    temperature: undefined, // streamChatCompletion doesn't expose this yet
+                    stream: true
+                });
+
+                let firstToken = true;
+                await streamChatCompletion(fullMessages, (chunk) => {
+                    if (firstToken) {
+                        perfMonitor.onFirstToken();
+                        firstToken = false;
+                    }
+                    perfMonitor.onChunk(chunk);
+                    onToken(chunk);
+                }, model, { providerId });
+
+                perfMonitor.onComplete();
             } catch (e) {
                 console.error(`Generation failed for card ${cardId}`, e);
-                // Append error message to the card content so user checks it
+                // Append error message to the card content so user sees it
                 updateCardContent(cardId, `\n\n[System Error: ${e.message || 'Generation failed'}]`);
             } finally {
                 setCardGenerating(cardId, false);
