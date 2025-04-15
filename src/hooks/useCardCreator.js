@@ -179,14 +179,13 @@ export function useCardCreator() {
 
         // 3. Intelligent positioning (Existing fallback logic)
         let targetX, targetY;
+        const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
 
         if (position) {
             // Use provided position directly
             targetX = position.x;
             targetY = position.y;
         } else {
-            const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
-
             if (contextCards.length > 0) {
                 const rightMostCard = contextCards.reduce((prev, current) => (prev.x > current.x) ? prev : current);
                 const topMostY = Math.min(...contextCards.map(c => c.y));
