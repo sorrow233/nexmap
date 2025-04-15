@@ -197,20 +197,9 @@ export function useCardCreator() {
                 console.error(e);
                 setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, error: e.message, loading: false, title: 'Failed' } } : c));
             }
-            return;
         }
 
-        // 2. Batch Chat Dispatch
-        // If position is explicitly provided (e.g. double click), skip batch chat logic
-        // because the user intends to create a new card AT that location.
-        console.log('[DEBUG handleCreateCard] Position:', position, 'Selected:', selectedIds.length);
-        if (!position) {
-            const handled = await handleBatchChat(text, images);
-            console.log('[DEBUG handleCreateCard] Batch chat handled:', handled);
-            if (handled) return;
-        }
-
-        // 3. Intelligent positioning (Existing fallback logic)
+        // 2. Intelligent positioning (Existing fallback logic)
         let targetX, targetY;
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
 
