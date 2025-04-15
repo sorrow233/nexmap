@@ -15,6 +15,7 @@ export default function GalleryPage({
     onDeleteBoard,
     onRestoreBoard,           // New prop
     onPermanentlyDeleteBoard, // New prop
+    onUpdateBoardMetadata,    // New prop
     user,
     onLogin,
     onLogout
@@ -161,6 +162,7 @@ export default function GalleryPage({
                         onDeleteBoard={onDeleteBoard}
                         onRestoreBoard={onRestoreBoard}
                         onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
+                        onUpdateBoardMetadata={onUpdateBoardMetadata}
                         isTrashView={viewMode === 'trash'}
                     />
                 )}
