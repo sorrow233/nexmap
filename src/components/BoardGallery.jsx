@@ -169,7 +169,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 type="text"
                                 value={quickPrompt}
                                 onChange={e => setQuickPrompt(e.target.value)}
-                                onKeyDown={handleQuickStart}
+                                onKeyDown={handleKeyPress}
                                 placeholder="What's on your mind? Type to start..."
                                 className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium min-w-0"
                             />
