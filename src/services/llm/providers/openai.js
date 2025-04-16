@@ -71,6 +71,7 @@ export class OpenAIProvider extends LLMProvider {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${apiKey}`,
                     },
+                    signal: options.signal, // Pass AbortSignal
                     body: JSON.stringify({
                         model: modelToUse,
                         messages: this.formatMessages(messages),
