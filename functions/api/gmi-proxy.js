@@ -62,13 +62,17 @@ export async function onRequest(context) {
 
         // Handle streaming responses
         if (stream) {
-            return new Response(response.body, {
+            const { readable, writable } = new TransformStream();
+            response.body.pipeTo(writable);
+
+            return new Response(readable, {
                 status: response.status,
                 headers: {
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',
                     'Connection': 'keep-alive',
-                    'Access-Control-Allow-Origin': '*'
+                    'Access-Control-Allow-Origin': '*',
+                    'X-Accel-Buffering': 'no' // Nginx hint to disable buffering
                 }
             });
         }
