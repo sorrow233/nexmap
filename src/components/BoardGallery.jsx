@@ -4,6 +4,7 @@ import ModernDialog from './ModernDialog';
 import useImageUpload from '../hooks/useImageUpload';
 import { loadBoard, updateBoardMetadata } from '../services/storage';
 import { chatCompletion, imageGeneration, getRoleModel } from '../services/llm';
+import { uploadImageToS3, getS3Config } from '../services/s3'; // Added s3 imports
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const [quickPrompt, setQuickPrompt] = useState('');
@@ -82,15 +83,23 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 return;
             }
 
-            // 3. Generate Image Prompt
-            const analysisPrompt = `Analyze the following board content and describe a perfect, artistic, and abstract background image that represents the themes in this board. 
-            The description should be visual, specifying colors, mood, lighting, and style.
-            It should be suitable for a background wallpaper (not too busy).
+            // 3. Generate Image Prompt - STRICTER & MORE RELEVANT
+            // User feedback: "Completely inconsistent with content"
+            // Change: Remove "abstract" bias, force thematic relevance
+            const analysisPrompt = `You are a professional Concept Artist.
+            Create a detailed image generation prompt for a background wallpaper based on the following board content.
             
             Board Content:
-            ${boardContext.slice(0, 1000)}
+            ${boardContext.slice(0, 1500)}
 
-            Return ONLY the visual description for the image generation model.`;
+            Rules:
+            1. The image MUST directly reflect the themes, mood, and topics of the content.
+            2. Style: High-quality, cinematic, elegant, and artistic.
+            3. Composition: Spacious, suitable for a background (not too busy).
+            4. Color Palette: Derive colors from the emotion of the text.
+            5. NO TEXT in the image.
+            
+            Return ONLY the English prompt string.`;
 
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
@@ -108,9 +117,37 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             console.log('[Background Gen] Image URL:', imageUrl);
 
-            // 5. Save to board metadata via callback
+            // 5. Check S3 Config & Upload
+            let finalImageUrl = imageUrl;
+            const s3Config = getS3Config();
+
+            if (s3Config && s3Config.enabled) {
+                try {
+                    console.log('[Background Gen] S3 is enabled, transferring image...');
+
+                    // Fetch the image specifically to upload it
+                    // Note: GMI URLs usually allow CORS for GET, but if not we might need proxy in future
+                    const response = await fetch(imageUrl);
+                    if (!response.ok) throw new Error("Failed to download generated image");
+
+                    const blob = await response.blob();
+                    const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
+
+                    finalImageUrl = await uploadImageToS3(file);
+                    console.log('[Background Gen] Successfully uploaded to S3:', finalImageUrl);
+
+                } catch (uploadError) {
+                    console.error('[Background Gen] S3 Upload Failed:', uploadError);
+                    alert(`Background generated but S3 Upload failed: ${uploadError.message}. Using temporary URL.`);
+                    // We keep finalImageUrl as valid GMI url so user still gets a result
+                }
+            } else {
+                console.log('[Background Gen] S3 not configured/enabled. Using GMI URL.');
+            }
+
+            // 6. Save to board metadata via callback
             if (onUpdateBoardMetadata) {
-                await onUpdateBoardMetadata(boardId, { backgroundImage: imageUrl });
+                await onUpdateBoardMetadata(boardId, { backgroundImage: finalImageUrl });
             }
 
         } catch (error) {
