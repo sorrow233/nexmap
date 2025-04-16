@@ -68,16 +68,16 @@ const Card = React.memo(function Card({
         if (!isDragging) return;
 
         const handleMouseMove = (e) => {
-            const { dragOffset } = stateRef.current; // Don't need onMove anymore
+            const { dragOffset, data, onMove } = stateRef.current;
 
             // Calculate delta
             const currentScale = useStore.getState().scale || 1;
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
 
-            // Apply visual transform directly to the DOM node for performance
-            if (cardRef.current) {
-                cardRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
+            // Directly update position in store for real-time rendering
+            if (onMove) {
+                onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
             }
         };
 
@@ -88,19 +88,13 @@ const Card = React.memo(function Card({
             const { dragOffset, data, onDragEnd } = stateRef.current;
             const currentScale = useStore.getState().scale || 1;
 
-            // Use the clientX from the event (or last known if needed, but mouseup has coords usually)
-            // Note: MouseUp coords might be slightly different than last MouseMove, so we calculate fresh.
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
 
             const finalX = dragOffset.origX + dx;
             const finalY = dragOffset.origY + dy;
 
-            // Reset transform before store update to prevent double-jump visual artifact
-            if (cardRef.current) {
-                cardRef.current.style.transform = '';
-            }
-
+            // Call onDragEnd for final position (triggers save)
             if (onDragEnd) {
                 onDragEnd(data.id, finalX, finalY);
             }
