@@ -1,4 +1,4 @@
-import { getActiveConfig, imageGeneration, streamChatCompletion } from '../services/llm';
+import { getActiveConfig, imageGeneration } from '../services/llm';
 import { useStore } from '../store/useStore';
 import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
