@@ -1,5 +1,5 @@
 
-import { v4 as uuidv4 } from 'uuid';
+import { uuid } from '../../utils/uuid.js';
 
 /**
  * Task Priorities
@@ -52,7 +52,7 @@ class AIManager {
 
         // 2. Create Task
         const task = {
-            id: uuidv4(),
+            id: uuid(),
             type,
             priority,
             payload,
