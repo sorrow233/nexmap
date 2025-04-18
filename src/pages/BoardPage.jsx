@@ -35,6 +35,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleCreateCard,
         handleCreateNote,
         handleExpandTopics,
+        handleBatchChat,
         handleSprout
     } = useCardCreator();
 
@@ -245,6 +246,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 selectedIds={selectedIds}
                 generatingCardIds={generatingCardIds}
                 onSubmit={handleCreateCard}
+                onBatchChat={handleBatchChat}
                 onCreateNote={handleCreateNote}
                 onImageUpload={handleGlobalImageUpload}
                 globalImages={globalImages}
