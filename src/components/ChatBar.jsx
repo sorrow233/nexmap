@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon } from 'lucide-react';
+import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus } from 'lucide-react';
 
 /**
  * ChatBar Component - Isolated input bar to prevent parent re-renders during typing
@@ -18,7 +18,8 @@ const ChatBar = React.memo(function ChatBar({
     onExpandTopics,
     onImageUpload,
     globalImages,
-    onRemoveImage
+    onRemoveImage,
+    onBatchChat
 }) {
     const [promptInput, setPromptInput] = useState('');
     const globalPromptInputRef = useRef(null);
@@ -31,6 +32,17 @@ const ChatBar = React.memo(function ChatBar({
         onSubmit(promptInput, globalImages);
 
         // Clear local state
+        setPromptInput('');
+        if (globalPromptInputRef.current) {
+            globalPromptInputRef.current.style.height = 'auto';
+        }
+    };
+
+    const handleBatchSubmit = () => {
+        if (!promptInput.trim() && globalImages.length === 0) return;
+
+        onBatchChat(promptInput, globalImages);
+
         setPromptInput('');
         if (globalPromptInputRef.current) {
             globalPromptInputRef.current.style.height = 'auto';
@@ -138,6 +150,22 @@ const ChatBar = React.memo(function ChatBar({
                         {/* Right Actions & Submit */}
                         <div className="flex gap-1 pb-2 items-center">
                             <div className="w-px h-6 bg-white/10 mx-1" />
+
+                            {/* Append to Chat Button (only when items selected) */}
+                            {selectedIds.length > 0 && (
+                                <button
+                                    onClick={handleBatchSubmit}
+                                    disabled={!promptInput.trim() && globalImages.length === 0}
+                                    className="p-3 text-emerald-400 hover:bg-emerald-500/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
+                                    title="Append to selected cards' chat"
+                                >
+                                    <MessageSquarePlus size={20} />
+                                </button>
+                            )}
+
+
+
+
                             <button
                                 onClick={handleSubmit}
                                 disabled={!promptInput.trim() && globalImages.length === 0}
