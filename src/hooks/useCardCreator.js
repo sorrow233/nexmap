@@ -24,8 +24,13 @@ export function useCardCreator() {
     // Internal helper for AI generation
     const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
         console.log('[DEBUG _generateAICard] Starting generation for text:', text.substring(0, 20));
-        const activeConfig = getActiveConfig();
-        console.log('[DEBUG _generateAICard] Active config:', activeConfig);
+
+        // REFACTOR: Get config and roles from store
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const chatModel = state.getRoleModel('chat'); // Respects user role setting
+
+        console.log('[DEBUG _generateAICard] Active config:', activeConfig, 'Model:', chatModel);
         const newId = uuid();
 
         try {
@@ -36,7 +41,7 @@ export function useCardCreator() {
                 images,
                 contextPrefix,
                 autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
-                model: activeConfig.model,
+                model: chatModel, // Use role model
                 providerId: activeConfig.id
             });
             console.log('[DEBUG _generateAICard] Card created in store:', newId);
@@ -68,7 +73,7 @@ export function useCardCreator() {
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
                     cardId: newId,
-                    model: activeConfig.model,
+                    model: chatModel,
                     providerId: activeConfig.id,
                     messages: [{ role: 'user', content: messageContent }],
                     temperature: undefined,
@@ -82,8 +87,9 @@ export function useCardCreator() {
                     priority: PRIORITY.HIGH, // Card creation is high priority
                     payload: {
                         messages: [{ role: 'user', content: messageContent }],
-                        model: activeConfig.model,
-                        temperature: undefined
+                        model: chatModel,
+                        temperature: undefined,
+                        config: activeConfig // Pass config
                     },
                     tags: [`card:${newId}`],
                     onProgress: (chunk) => {
@@ -219,7 +225,12 @@ export function useCardCreator() {
                 data: { prompt: promptText, loading: true, title: `Generating: ${promptText.substring(0, 20)}...` }
             }]);
             try {
-                const imageUrl = await imageGeneration(promptText);
+                // REFACTOR: Use store config for image generation
+                const state = useStore.getState();
+                const activeConfig = state.getActiveConfig();
+                const imageModel = state.getRoleModel('image'); // Respects user role setting
+
+                const imageUrl = await imageGeneration(promptText, activeConfig, imageModel);
                 setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) } } : c));
             } catch (e) {
                 console.error(e);
@@ -338,7 +349,11 @@ export function useCardCreator() {
     const handleExpandTopics = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source || !source.data.marks) return;
-        const activeConfig = getActiveConfig();
+
+        // REFACTOR: Use store config
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const chatModel = state.getRoleModel('chat'); // Respects user role setting
 
         source.data.marks.map(async (mark, index) => {
             try {
@@ -351,15 +366,16 @@ export function useCardCreator() {
                     x: source.x + 400,
                     y: newY,
                     autoConnections: [{ from: sourceId, to: generatedId }],
-                    model: activeConfig.model,
+                    model: chatModel,
                     providerId: activeConfig.id
                 });
 
                 try {
                     await streamChatCompletion(
                         [{ role: 'user', content: mark }],
+                        activeConfig, // Pass config
                         (chunk) => updateCardContent(newId, chunk),
-                        activeConfig.model,
+                        chatModel,
                         { providerId: activeConfig.id }
                     );
                 } catch (innerError) {
@@ -377,7 +393,11 @@ export function useCardCreator() {
     const handleSprout = async (sourceId, topics) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source || !topics.length) return;
-        const activeConfig = getActiveConfig();
+
+        // REFACTOR: Use store config
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const chatModel = state.getRoleModel('chat'); // Respects user role setting
 
         const CARD_HEIGHT = 400;
         const totalHeight = topics.length * CARD_HEIGHT;
@@ -396,7 +416,7 @@ export function useCardCreator() {
                         x: source.x + 450,
                         y: newY,
                         autoConnections: [{ from: sourceId, to: newId }],
-                        model: activeConfig.model,
+                        model: chatModel,
                         providerId: activeConfig.id
                     });
 
@@ -406,8 +426,9 @@ export function useCardCreator() {
                                 role: 'user',
                                 content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
                             }],
+                            activeConfig, // Pass config
                             (chunk) => updateCardContent(newId, chunk),
-                            activeConfig.model,
+                            chatModel,
                             { providerId: activeConfig.id }
                         );
                     } catch (innerError) {

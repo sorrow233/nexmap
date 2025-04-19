@@ -3,6 +3,7 @@ import { X, Sparkles, Loader2, StickyNote, Sprout, Star } from 'lucide-react';
 import { generateFollowUpTopics } from '../services/llm';
 import { parseModelOutput } from '../services/llm/parser';
 import { isSafari, isIOS } from '../utils/browser';
+import { useStore } from '../store/useStore';
 
 import useImageUpload from '../hooks/useImageUpload';
 
@@ -14,6 +15,13 @@ import ShareModal from './share/ShareModal';
 export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateResponse, onCreateNote, onSprout, onToggleFavorite }) {
     if (!isOpen || !card) return null;
     const [input, setInput] = useState('');
+
+    // Get config from Store
+    const activeId = useStore(state => state.activeId);
+    const providers = useStore(state => state.providers);
+    const config = providers[activeId];
+    const analysisModel = useStore(state => state.getRoleModel('analysis'));
+
     const {
         images,
         setImages,
@@ -42,7 +50,7 @@ export default function ChatModal({ card, isOpen, onClose, onUpdate, onGenerateR
         if (isSprouting) return;
         setIsSprouting(true);
         try {
-            const topics = await generateFollowUpTopics(card.data.messages);
+            const topics = await generateFollowUpTopics(card.data.messages, config, analysisModel);
             setSproutTopics(topics);
             setSelectedTopics(topics.slice(0, 3)); // Default select first 3
             setShowSproutModal(true);

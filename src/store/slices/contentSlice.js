@@ -194,8 +194,15 @@ export const createContentSlice = (set, get) => {
                     const model = card.data.model;
                     const providerId = card.data.providerId;
 
+                    // Resolve config
+                    const state = get();
+                    const config = providerId && state.providers[providerId]
+                        ? state.providers[providerId]
+                        : state.getActiveConfig();
+
                     await streamChatCompletion(
                         currentMsgs,
+                        config, // Pass config explicitly
                         (chunk) => updateCardContent(card.id, chunk),
                         model,
                         { providerId }
@@ -332,6 +339,11 @@ export const createContentSlice = (set, get) => {
 
                 let firstToken = true;
 
+                // Resolve config
+                const state = get();
+                // If card has a providerId, use it, otherwise use active config
+                const config = providerId && state.providers[providerId] ? state.providers[providerId] : state.getActiveConfig();
+
                 // Use AIManager for centralized scheduling and cancellation
                 await aiManager.requestTask({
                     type: 'chat',
@@ -339,7 +351,8 @@ export const createContentSlice = (set, get) => {
                     payload: {
                         messages: fullMessages,
                         model,
-                        temperature: undefined
+                        temperature: undefined,
+                        config // Pass config explicitly
                     },
                     tags: [`card:${cardId}`], // Cancel any previous generation for this card
                     onProgress: (chunk) => {

@@ -158,9 +158,13 @@ class AIManager {
         // Dynamic import to avoid circular dependencies if any
         // In real impl, we'd import these at top level
         const { streamChatCompletion, imageGeneration } = await import('../llm.js');
-        const { getActiveConfig } = await import('../llm/registry.js');
+        // REMOVED: import { getActiveConfig } ... 
 
-        const config = getActiveConfig();
+        // Config should be passed in payload
+        const config = task.payload.config;
+        if (!config) {
+            throw new Error("Task execution failed: No LLM config provided in payload");
+        }
 
         if (task.type === 'chat') {
             const { messages, model, temperature } = task.payload;
@@ -169,6 +173,7 @@ class AIManager {
             // Wrapped streamChatCompletion that respects AbortSignal
             await streamChatCompletion(
                 messages,
+                config, // Pass config explicitly
                 (chunk) => {
                     if (signal.aborted) return;
                     fullText += chunk;

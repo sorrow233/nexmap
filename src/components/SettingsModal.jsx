@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu } from 'lucide-react';
-import { getProviderSettings, saveProviderSettings, chatCompletion } from '../services/llm';
+import { chatCompletion } from '../services/llm';
+import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
 import { saveUserSettings } from '../services/storage';
 
@@ -37,14 +38,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         publicDomain: ''
     });
 
-    // Load configuration on mount
+    // Load configuration on mount from Store
     useEffect(() => {
-        const settings = getProviderSettings();
-        if (settings) {
-            setProviders(settings.providers);
-            setActiveId(settings.activeId);
-            setRoles(settings.roles || { chat: '', analysis: '' });
-        }
+        const state = useStore.getState();
+        // Ensure we copy the state to local component state so editing doesn't affect store until saved
+        setProviders(JSON.parse(JSON.stringify(state.providers))); // Deep copy to be safe
+        setActiveId(state.activeId);
+        setRoles(state.roles ? { ...state.roles } : { chat: '', analysis: '' });
 
         const s3 = getS3Config();
         if (s3) setS3ConfigState(s3);
@@ -67,10 +67,12 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             const currentConfig = providers[activeId];
             if (!currentConfig.apiKey) throw new Error("API Key is missing");
 
+            // Updated signature: chatCompletion(messages, config, model, options)
             await chatCompletion(
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
+                currentConfig,
                 null,
-                { overrideConfig: currentConfig }
+                {}
             );
             setTestStatus('success');
             setTestMessage('Connection Successful!');
@@ -82,8 +84,12 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     const handleSave = async () => {
-        // Save LLM Config
-        saveProviderSettings(providers, activeId, roles);
+        // Save LLM Config to Store
+        useStore.getState().setFullConfig({
+            providers,
+            activeId,
+            roles
+        });
 
         // Save S3 config
         saveS3Config(s3Config);
