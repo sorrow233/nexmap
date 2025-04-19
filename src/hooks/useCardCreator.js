@@ -20,7 +20,9 @@ export function useCardCreator() {
 
     // Internal helper for AI generation
     const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
+        console.log('[DEBUG _generateAICard] Starting generation for text:', text.substring(0, 20));
         const activeConfig = getActiveConfig();
+        console.log('[DEBUG _generateAICard] Active config:', activeConfig);
         const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
         try {
@@ -34,6 +36,7 @@ export function useCardCreator() {
                 model: activeConfig.model,
                 providerId: activeConfig.id
             });
+            console.log('[DEBUG _generateAICard] Card created in store:', newId);
 
             // Construct content for AI
             let messageContent;
@@ -56,12 +59,17 @@ export function useCardCreator() {
 
             // Queue the streaming task
             try {
+                console.log('[DEBUG _generateAICard] Starting streamChatCompletion for:', newId);
                 await streamChatCompletion(
                     [{ role: 'user', content: messageContent }],
-                    (chunk) => updateCardContent(newId, chunk),
+                    (chunk) => {
+                        console.log('[DEBUG _generateAICard] Received chunk for:', newId);
+                        updateCardContent(newId, chunk);
+                    },
                     activeConfig.model,
                     { providerId: activeConfig.id }
                 );
+                console.log('[DEBUG _generateAICard] Streaming completed for:', newId);
             } catch (innerError) {
                 console.error("Streaming failed for card", newId, innerError);
                 updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
