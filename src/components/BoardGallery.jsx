@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon, AlertCircle, RotateCcw, Ban } from 'lucide-react';
+import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon, AlertCircle, RotateCcw, Ban, Loader2 } from 'lucide-react';
 import ModernDialog from './ModernDialog';
 import useImageUpload from '../hooks/useImageUpload';
+import { loadBoard, updateBoardMetadata } from '../services/storage';
+import { chatCompletion, imageGeneration } from '../services/llm';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, isTrashView = false }) {
     const [quickPrompt, setQuickPrompt] = useState('');
@@ -16,6 +17,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     } = useImageUpload();
     const [isDragging, setIsDragging] = useState(false);
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null });
+    const [generatingBoardId, setGeneratingBoardId] = useState(null);
     const fileInputRef = useRef(null);
 
     const handleQuickStart = (e) => {
@@ -61,6 +63,65 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         const expiryDate = deletedAt + (30 * 24 * 60 * 60 * 1000);
         const diff = expiryDate - Date.now();
         return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    };
+
+    const handleGenerateBackground = async (boardId) => {
+        try {
+            setGeneratingBoardId(boardId);
+
+            // 1. Load board content
+            const boardData = await loadBoard(boardId);
+            if (!boardData || !boardData.cards || boardData.cards.length === 0) {
+                alert("Board is empty. Add some content first to generate a background!");
+                setGeneratingBoardId(null);
+                return;
+            }
+
+            // 2. Extract text from cards
+            const boardContext = boardData.cards
+                .map(c => c.data?.title || c.data?.text || '')
+                .filter(Boolean)
+                .join('\n');
+
+            if (!boardContext.trim()) {
+                alert("No text found on board. Add some text first!");
+                setGeneratingBoardId(null);
+                return;
+            }
+
+            // 3. Generate Image Prompt
+            const analysisPrompt = `Analyze the following board content and describe a perfect, artistic, and abstract background image that represents the themes in this board. 
+            The description should be visual, specifying colors, mood, lighting, and style.
+            It should be suitable for a background wallpaper (not too busy).
+            
+            Board Content:
+            ${boardContext.slice(0, 1000)}
+
+            Return ONLY the visual description for the image generation model.`;
+
+            const imagePrompt = await chatCompletion(
+                [{ role: 'user', content: analysisPrompt }],
+                'analysis' // Use analysis role
+            );
+
+            console.log('[Background Gen] Generated prompt:', imagePrompt);
+
+            if (!imagePrompt) throw new Error("Failed to generate prompt");
+
+            // 4. Generate Image
+            const imageUrl = await imageGeneration(imagePrompt, 'image'); // Use image role
+
+            if (!imageUrl) throw new Error("Failed to generate image");
+
+            // 5. Save to board metadata
+            updateBoardMetadata(boardId, { backgroundImage: imageUrl });
+
+        } catch (error) {
+            console.error("Background generation failed:", error);
+            alert("Failed to generate background. Check your 'Image Generation' settings or try again.");
+        } finally {
+            setGeneratingBoardId(null);
+        }
     };
 
     return (
@@ -233,8 +294,18 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 ${isTrashView ? 'cursor-default border-dashed border-slate-300 dark:border-white/10 opacity-90' : 'cursor-pointer hover:glass-card-hover'}
                             `}
                         >
-                            {/* Abstract Glow Background */}
-                            <div className={`absolute -top-24 -right-24 w-48 h-48 blur-[60px] rounded-full transition-all duration-700 ${isTrashView ? 'bg-slate-200/20 dark:bg-white/5' : 'bg-gradient-to-br from-orange-300/08 to-pink-300/08 group-hover:from-orange-300/15 group-hover:to-pink-300/15'}`}></div>
+                            {/* Background Image or Abstract Glow */}
+                            {board.backgroundImage ? (
+                                <>
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center transition-all duration-700 opacity-60 group-hover:opacity-80 group-hover:scale-105"
+                                        style={{ backgroundImage: `url(${board.backgroundImage})` }}
+                                    />
+                                    <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/60 backdrop-blur-[2px] transition-all duration-500 group-hover:backdrop-blur-0" />
+                                </>
+                            ) : (
+                                <div className={`absolute -top-24 -right-24 w-48 h-48 blur-[60px] rounded-full transition-all duration-700 ${isTrashView ? 'bg-slate-200/20 dark:bg-white/5' : 'bg-gradient-to-br from-orange-300/08 to-pink-300/08 group-hover:from-orange-300/15 group-hover:to-pink-300/15'}`}></div>
+                            )}
 
                             <div className="relative z-10 flex flex-col h-full">
                                 <div className="flex justify-between items-start mb-8">
@@ -245,16 +316,35 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     {/* Action Buttons */}
                                     <div className="flex items-center gap-2">
                                         {!isTrashView ? (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDeleteBoard(board.id); // Soft Delete
-                                                }}
-                                                className="p-3 text-slate-300 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-2xl transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 shadow-sm"
-                                                title="Move to Trash"
-                                            >
-                                                <Trash2 size={20} />
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onDeleteBoard(board.id); // Soft Delete
+                                                    }}
+                                                    className="p-3 text-slate-300 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-2xl transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 shadow-sm"
+                                                    title="Move to Trash"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+
+                                                {/* Generate Background Button */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleGenerateBackground(board.id);
+                                                    }}
+                                                    disabled={generatingBoardId === board.id}
+                                                    className={`p-3 rounded-2xl transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 shadow-sm
+                                                        ${generatingBoardId === board.id
+                                                            ? 'bg-orange-100 text-orange-500 animate-pulse cursor-wait'
+                                                            : 'text-slate-300 hover:text-purple-500 hover:bg-white dark:hover:bg-slate-800'
+                                                        }`}
+                                                    title="Generate AI Background"
+                                                >
+                                                    {generatingBoardId === board.id ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
+                                                </button>
+                                            </>
                                         ) : (
                                             <>
                                                 <button
