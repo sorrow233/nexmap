@@ -82,6 +82,7 @@ export function useCardCreator() {
 
                 let firstToken = true;
                 // Use AIManager for centralized scheduling
+                // AWAIT the promise returned by requestTask!
                 await aiManager.requestTask({
                     type: 'chat',
                     priority: PRIORITY.HIGH, // Card creation is high priority
@@ -371,13 +372,18 @@ export function useCardCreator() {
                 });
 
                 try {
-                    await streamChatCompletion(
-                        [{ role: 'user', content: mark }],
-                        activeConfig, // Pass config
-                        (chunk) => updateCardContent(newId, chunk),
-                        chatModel,
-                        { providerId: activeConfig.id }
-                    );
+                    // Use AIManager for ExpandTopics too
+                    await aiManager.requestTask({
+                        type: 'chat',
+                        priority: PRIORITY.HIGH,
+                        payload: {
+                            messages: [{ role: 'user', content: mark }],
+                            model: chatModel,
+                            config: activeConfig
+                        },
+                        tags: [`card:${generatedId}`],
+                        onProgress: (chunk) => updateCardContent(newId, chunk)
+                    });
                 } catch (innerError) {
                     console.error("Expand topic failed", innerError);
                     updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
@@ -421,16 +427,21 @@ export function useCardCreator() {
                     });
 
                     try {
-                        await streamChatCompletion(
-                            [{
-                                role: 'user',
-                                content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
-                            }],
-                            activeConfig, // Pass config
-                            (chunk) => updateCardContent(newId, chunk),
-                            chatModel,
-                            { providerId: activeConfig.id }
-                        );
+                        // Use AIManager for Sprout
+                        await aiManager.requestTask({
+                            type: 'chat',
+                            priority: PRIORITY.HIGH,
+                            payload: {
+                                messages: [{
+                                    role: 'user',
+                                    content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
+                                }],
+                                model: chatModel,
+                                config: activeConfig
+                            },
+                            tags: [`card:${newId}`],
+                            onProgress: (chunk) => updateCardContent(newId, chunk)
+                        });
                     } catch (innerError) {
                         console.error("Sprout generation failed", innerError);
                         updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
