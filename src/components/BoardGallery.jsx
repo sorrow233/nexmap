@@ -3,11 +3,14 @@ import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, A
 import ModernDialog from './ModernDialog';
 import useImageUpload from '../hooks/useImageUpload';
 import { loadBoard, updateBoardMetadata } from '../services/storage';
-import { chatCompletion, imageGeneration, getRoleModel } from '../services/llm';
-import { uploadImageToS3, getS3Config } from '../services/s3'; // Added s3 imports
+import { chatCompletion, imageGeneration, DEFAULT_ROLES } from '../services/llm';
+import { uploadImageToS3, getS3Config } from '../services/s3';
+import { useStore } from '../store/useStore';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const [quickPrompt, setQuickPrompt] = useState('');
+    const { providers, activeId, roles } = useStore(); // Get config from store
+
     const {
         images,
         setImages,
@@ -51,6 +54,21 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         }
     };
 
+    // Helper to get active config for LLM calls
+    const getLlmConfig = () => {
+        // Fallback if store is not yet loaded or empty
+        const activeProvider = providers?.[activeId] || {
+            baseUrl: 'https://api.gmi-serving.com/v1',
+            apiKey: '',
+            protocol: 'gemini'
+        };
+        return activeProvider;
+    };
+
+    const getModelForRole = (role) => {
+        return roles?.[role] || DEFAULT_ROLES[role];
+    };
+
     // Expiry calculation for trash items
     const getDaysRemaining = (deletedAt) => {
         if (!deletedAt) return 30;
@@ -62,6 +80,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     const handleGenerateBackground = async (boardId) => {
         try {
             setGeneratingBoardId(boardId);
+            const config = getLlmConfig();
 
             // 1. Load board content
             const boardData = await loadBoard(boardId);
@@ -103,7 +122,8 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
-                getRoleModel('analysis')
+                config, // Pass config explicitly
+                getModelForRole('analysis') // Pass model explicitly
             );
 
             console.log('[Background Gen] Generated prompt:', imagePrompt);
@@ -111,7 +131,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             if (!imagePrompt) throw new Error("Failed to generate prompt");
 
             // 4. Generate Image
-            const imageUrl = await imageGeneration(imagePrompt, getRoleModel('image'));
+            const imageUrl = await imageGeneration(
+                imagePrompt,
+                config,
+                getModelForRole('image')
+            );
 
             if (!imageUrl) throw new Error("Failed to generate image");
 
