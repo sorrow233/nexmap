@@ -357,12 +357,13 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                             {board.backgroundImage ? (
                                 <>
                                     <div
-                                        className="absolute inset-0 bg-cover bg-center transition-all duration-700 opacity-80 group-hover:opacity-100 group-hover:scale-105"
+                                        key={board.backgroundImage}
+                                        className="absolute inset-0 bg-cover bg-center transition-all duration-700 opacity-90 group-hover:opacity-100 group-hover:scale-105 animate-fade-in"
                                         style={{ backgroundImage: `url(${board.backgroundImage})` }}
                                         onLoad={() => console.log(`[UI] Background loaded for board ${board.id}`)}
                                         onError={(e) => console.error(`[UI] Background load ERROR for board ${board.id}. URL: ${board.backgroundImage}`)}
                                     />
-                                    <div className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-[1px] transition-all duration-500 group-hover:backdrop-blur-0" />
+                                    <div className="absolute inset-0 bg-black/10 dark:bg-black/20 backdrop-blur-[0.5px] transition-all duration-500 group-hover:backdrop-blur-0 group-hover:bg-transparent" />
                                 </>
                             ) : (
                                 <div className={`absolute -top-24 -right-24 w-48 h-48 blur-[60px] rounded-full transition-all duration-700 ${isTrashView ? 'bg-slate-200/20 dark:bg-white/5' : 'bg-gradient-to-br from-orange-300/08 to-pink-300/08 group-hover:from-orange-300/15 group-hover:to-pink-300/15'}`}></div>
