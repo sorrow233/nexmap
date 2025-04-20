@@ -184,6 +184,11 @@ export class GeminiProvider extends LLMProvider {
                             try {
                                 const data = JSON.parse(cleanLine);
 
+                                // CRITICAL: Check for API errors that might be returned as JSON (even with 200 OK)
+                                if (data.error) {
+                                    throw new Error(data.error.message || JSON.stringify(data.error));
+                                }
+
                                 // Gemini stream format: candidate content parts
                                 const currentText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -207,6 +212,10 @@ export class GeminiProvider extends LLMProvider {
                                     }
                                 }
                             } catch (jsonErr) {
+                                // If parsing fails or we threw an error above, re-throw if it's our error
+                                if (jsonErr.message && !jsonErr.message.includes('JSON')) {
+                                    throw jsonErr;
+                                }
                                 // Try to handle partial JSON or weird provider formats
                                 console.warn('[Gemini] Line parse error:', cleanLine.substring(0, 50), jsonErr.message);
                             }
@@ -218,12 +227,19 @@ export class GeminiProvider extends LLMProvider {
                         try {
                             const cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
                             const data = JSON.parse(cleanLine);
+
+                            if (data.error) {
+                                throw new Error(data.error.message || JSON.stringify(data.error));
+                            }
+
                             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                             if (text) {
                                 const delta = text.startsWith(lastFullText) ? text.substring(lastFullText.length) : text;
                                 if (delta) onToken(delta);
                             }
-                        } catch (e) { }
+                        } catch (e) {
+                            if (e.message && !e.message.includes('JSON')) throw e;
+                        }
                     }
 
                     console.log('[Gemini] Stream finished normally.');
