@@ -361,6 +361,7 @@ export const createContentSlice = (set, get) => {
         },
 
         updateCardContent: (id, chunk) => {
+            // console.log(`[ContentSlice] Received chunk for ${id}:`, chunk.substring(0, 20));
             // 1. Buffer the content
             const currentBuffer = contentBuffer.get(id) || "";
             contentBuffer.set(id, currentBuffer + chunk);
