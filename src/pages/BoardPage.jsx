@@ -29,8 +29,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         updateCardContent,
         offset,
         scale,
-        toggleFavorite, favoritesLastUpdate, // For ChatModal favorites
-        setBackgroundImage // Import new action
+        toggleFavorite, favoritesLastUpdate // For ChatModal favorites
     } = useStore();
 
     const {
@@ -46,24 +45,14 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleJustSaved, setTitleJustSaved] = useState(false);
 
-    // Initial setup for document title and background
+    // Initial setup for document title
     useEffect(() => {
         if (currentBoardId) {
             const board = boardsList.find(b => b.id === currentBoardId);
             document.title = board ? `${board.name} | Neural Canvas` : 'Neural Canvas';
-
-            // Set background image in store
-            if (board && board.backgroundImage) {
-                setBackgroundImage(board.backgroundImage);
-            } else {
-                setBackgroundImage(null);
-            }
         }
-        return () => {
-            document.title = 'Neural Canvas';
-            setBackgroundImage(null); // Clear background when leaving
-        };
-    }, [currentBoardId, boardsList, setBackgroundImage]);
+        return () => { document.title = 'Neural Canvas'; };
+    }, [currentBoardId, boardsList]);
 
     // Autosave Logic
     const lastSavedState = useRef('');
