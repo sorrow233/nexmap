@@ -196,81 +196,81 @@ export class GeminiProvider extends LLMProvider {
                 throw e;
             }
         }
+    }
 
     /**
      * Generate Image using GMI Cloud Async API
      */
     async generateImage(prompt, model, options = {}) {
-            const { apiKey } = this.config;
-            const modelToUse = model || 'gemini-3-pro-image-preview';
+        const { apiKey } = this.config;
+        const modelToUse = model || 'gemini-3-pro-image-preview';
 
-            // GMI Cloud API Base URL for Request Queue
-            const baseUrl = 'https://console.gmicloud.ai';
-            const requestEndpoint = `${baseUrl}/api/v1/ie/requestqueue/apikey/requests`;
+        // GMI Cloud API Base URL for Request Queue
+        const baseUrl = 'https://console.gmicloud.ai';
+        const requestEndpoint = `${baseUrl}/api/v1/ie/requestqueue/apikey/requests`;
 
-            console.log('[Gemini] Starting image generation with model:', modelToUse);
+        console.log('[Gemini] Starting image generation with model:', modelToUse);
 
-            // 1. Submit Request
-            const payload = {
-                model: modelToUse,
-                payload: {
-                    prompt: prompt,
-                    image_size: "2K",
-                    aspect_ratio: "16:9" // Suitable for background
-                }
-            };
+        // 1. Submit Request
+        const payload = {
+            model: modelToUse,
+            payload: {
+                prompt: prompt,
+                image_size: "2K",
+                aspect_ratio: "16:9" // Suitable for background
+            }
+        };
 
-            const submitResponse = await fetch(requestEndpoint, {
-                method: 'POST',
+        const submitResponse = await fetch(requestEndpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!submitResponse.ok) {
+            const err = await submitResponse.json().catch(() => ({}));
+            throw new Error(`Image Request Failed: ${err.error?.message || submitResponse.statusText}`);
+        }
+
+        const submitData = await submitResponse.json();
+        const requestId = submitData.request_id;
+        console.log('[Gemini] Image request queued, ID:', requestId);
+
+        // 2. Poll for Status
+        let attempts = 0;
+        const maxAttempts = 30; // 60s timeout (2s interval)
+
+        while (attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, 2000));
+            attempts++;
+
+            const statusResponse = await fetch(`${requestEndpoint}/${requestId}`, {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
+                    'Authorization': `Bearer ${apiKey}`
+                }
             });
 
-            if (!submitResponse.ok) {
-                const err = await submitResponse.json().catch(() => ({}));
-                throw new Error(`Image Request Failed: ${err.error?.message || submitResponse.statusText}`);
+            if (!statusResponse.ok) continue;
+
+            const statusData = await statusResponse.json();
+            // console.log('[Gemini] Polling status:', statusData.status);
+
+            if (statusData.status === 'success') {
+                const imageUrl = statusData.outcome?.media_urls?.[0]?.url;
+                if (!imageUrl) throw new Error("Image generated but no URL found");
+                return imageUrl;
             }
 
-            const submitData = await submitResponse.json();
-            const requestId = submitData.request_id;
-            console.log('[Gemini] Image request queued, ID:', requestId);
-
-            // 2. Poll for Status
-            let attempts = 0;
-            const maxAttempts = 30; // 60s timeout (2s interval)
-
-            while (attempts < maxAttempts) {
-                await new Promise(r => setTimeout(r, 2000));
-                attempts++;
-
-                const statusResponse = await fetch(`${requestEndpoint}/${requestId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`
-                    }
-                });
-
-                if (!statusResponse.ok) continue;
-
-                const statusData = await statusResponse.json();
-                // console.log('[Gemini] Polling status:', statusData.status);
-
-                if (statusData.status === 'success') {
-                    const imageUrl = statusData.outcome?.media_urls?.[0]?.url;
-                    if (!imageUrl) throw new Error("Image generated but no URL found");
-                    return imageUrl;
-                }
-
-                if (statusData.status === 'failed' || statusData.status === 'cancelled') {
-                    throw new Error(`Image Generation Failed: ${statusData.status}`);
-                }
+            if (statusData.status === 'failed' || statusData.status === 'cancelled') {
+                throw new Error(`Image Generation Failed: ${statusData.status}`);
             }
-
-            throw new Error("Image generation timed out");
         }
+
+        throw new Error("Image generation timed out");
     }
 }
 
