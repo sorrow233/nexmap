@@ -155,25 +155,22 @@ export function useCardCreator() {
                 return c;
             }));
 
-            // Trigger AI for each card - fire and forget for maximum concurrency
-            // Each card gets its own independent async execution
-            targetCards.forEach((card) => {
-                (async () => {
-                    try {
-                        console.log('[DEBUG handleBatchChat] Starting AI for card:', card.id);
-                        const history = [...card.data.messages, userMsg];
-                        // handleChatGenerate adds context internally
-                        await handleChatGenerate(card.id, history, (chunk) => {
-                            console.log('[DEBUG handleBatchChat] Received chunk for card:', card.id);
-                            updateCardContent(card.id, chunk);
-                        });
-                    } catch (e) {
-                        console.error(`Batch chat failed for card ${card.id}`, e);
-                        updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
-                    }
-                })();
-            });
-            console.log('[DEBUG handleBatchChat] Batch chat dispatched successfully');
+            // Trigger AI for each card concurrently with proper error handling
+            await Promise.all(targetCards.map(async (card) => {
+                try {
+                    console.log('[DEBUG handleBatchChat] Starting AI for card:', card.id);
+                    const history = [...card.data.messages, userMsg];
+                    // handleChatGenerate adds context internally
+                    await handleChatGenerate(card.id, history, (chunk) => {
+                        console.log('[DEBUG handleBatchChat] Received chunk for card:', card.id);
+                        updateCardContent(card.id, chunk);
+                    });
+                } catch (e) {
+                    console.error(`Batch chat failed for card ${card.id}`, e);
+                    updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
+                }
+            }));
+            console.log('[DEBUG handleBatchChat] Batch chat completed successfully');
             return true; // Indicate handled
         }
         console.log('[DEBUG handleBatchChat] No target cards, returning false');
