@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import './index.css'
 
+console.log(`%c MixBoard Canvas v0.0.2 (Beta - Fixes ID Collisions) - Loaded at ${new Date().toISOString()}`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
+
+
 // Prevent browser navigation gestures globally
 // This is critical for canvas-based apps where swipe gestures should not trigger browser back/forward
 let touchStartX = 0;
