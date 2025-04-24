@@ -3,6 +3,7 @@ import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
 import favoritesService from '../../services/favoritesService';
 import { calculateLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
+import { uuid } from '../../utils/uuid';
 
 export const createContentSlice = (set, get) => {
     // Throttling buffer for AI streaming
@@ -225,13 +226,13 @@ export const createContentSlice = (set, get) => {
                 autoConnections = [], model, providerId
             } = params;
 
-            const newId = id || Date.now().toString();
+            const newId = id || uuid();
 
             let content = text;
             if (images.length > 0) {
                 // Process images to IDB
                 const processedImages = await Promise.all(images.map(async (img, idx) => {
-                    const imageId = `${newId}_img_${Date.now()}_${idx}`;
+                    const imageId = `${newId}_img_${uuid()}_${idx}`;
                     // Offload to IDB
                     await saveImageToIDB(imageId, img.base64);
                     return {
@@ -285,7 +286,7 @@ export const createContentSlice = (set, get) => {
         },
 
         handleChatGenerate: async (cardId, messages, onToken) => {
-            const { cards, connections, setCardGenerating } = get();
+            const { cards, connections, setCardGenerating, updateCardContent } = get();
             setCardGenerating(cardId, true);
 
             try {
@@ -318,6 +319,10 @@ export const createContentSlice = (set, get) => {
                 const providerId = card?.data?.providerId;
 
                 await streamChatCompletion(fullMessages, onToken, model, { providerId });
+            } catch (e) {
+                console.error(`Generation failed for card ${cardId}`, e);
+                // Append error message to the card content so user checks it
+                updateCardContent(cardId, `\n\n[System Error: ${e.message || 'Generation failed'}]`);
             } finally {
                 setCardGenerating(cardId, false);
             }
@@ -343,10 +348,17 @@ export const createContentSlice = (set, get) => {
                                 const newContent = updates.get(c.id);
                                 const msgs = [...c.data.messages];
                                 const lastMsg = msgs[msgs.length - 1];
-                                msgs[msgs.length - 1] = {
-                                    ...lastMsg,
-                                    content: lastMsg.content + newContent
-                                };
+
+                                // Ensure last message exists and is assistant
+                                if (!lastMsg || lastMsg.role !== 'assistant') {
+                                    // If for some reason the structure is broken, try to recover
+                                    msgs.push({ role: 'assistant', content: newContent });
+                                } else {
+                                    msgs[msgs.length - 1] = {
+                                        ...lastMsg,
+                                        content: lastMsg.content + newContent
+                                    };
+                                }
                                 return { ...c, data: { ...c.data, messages: msgs } };
                             }
                             return c;
