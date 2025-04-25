@@ -19,7 +19,7 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-mesh-gradient selection:bg-rose-200 selection:text-rose-900 font-lxgw overflow-x-hidden">
+        <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-mesh-gradient selection:bg-rose-200 selection:text-rose-900 font-lxgw custom-scrollbar">
             {/* Sticky Navigation */}
             <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'py-4 glass-panel border-b border-white/20' : 'py-6 bg-transparent'}`}>
                 <div className="container mx-auto px-6 flex items-center justify-between">
@@ -117,7 +117,30 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Visual Demo Section - A mock interface or just a nice visual */}
+            {/* Value Props / Use Cases */}
+            <section className="py-24 px-6 bg-white/40 backdrop-blur-sm relative">
+                <div className="container mx-auto">
+                    <h2 className="text-3xl lg:text-5xl font-bold text-center text-slate-800 mb-16">
+                        One tool. <span className="text-rose-500">Endless possibilities.</span>
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[
+                            { title: "Design Moodboards", icon: "🎨", desc: "Collect images, colors, and textures. Organize them freely to find your visual direction." },
+                            { title: "Research Mapping", icon: "📚", desc: "Connect citations, notes, and PDF excerpts. visualize the relationships between sources." },
+                            { title: "Project Planning", icon: "🚀", desc: "Kanban boards, timelines, and to-do lists living side-by-side with your reference materials." }
+                        ].map((item, i) => (
+                            <div key={i} className="bg-white/60 p-6 rounded-2xl shadow-sm border border-white/50">
+                                <div className="text-4xl mb-4">{item.icon}</div>
+                                <h4 className="text-xl font-bold text-slate-800 mb-2">{item.title}</h4>
+                                <p className="text-slate-600">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Visual Demo Section */}
             <section className="py-20 px-6 relative overflow-hidden">
                 <div className="container mx-auto relative z-10">
                     <div className="glass-panel p-2 rounded-3xl shadow-2xl overflow-hidden border border-white/40">
@@ -131,30 +154,37 @@ const LandingPage = () => {
                             <div className="flex-1 text-center text-xs text-slate-400 font-medium">Untitled Board</div>
                         </div>
                         {/* Mock Content */}
-                        <div className="bg-white/40 h-[400px] lg:h-[600px] w-full relative overflow-hidden flex items-center justify-center">
+                        <div className="bg-white/40 h-[500px] lg:h-[700px] w-full relative overflow-hidden flex items-center justify-center">
                             <div className="absolute inset-0 bg-mesh-gradient opacity-30"></div>
 
-                            {/* Floating Cards Animation */}
-                            <div className="absolute top-1/4 left-1/4 p-4 glass-card rounded-xl w-64 animate-float shadow-lg">
-                                <div className="h-4 w-3/4 bg-slate-200 rounded mb-3"></div>
-                                <div className="h-2 w-full bg-slate-100 rounded mb-1"></div>
-                                <div className="h-2 w-5/6 bg-slate-100 rounded mb-1"></div>
+                            {/* Floating Cards Animation - Enhanced */}
+                            <div className="absolute top-[20%] left-[15%] p-5 glass-card rounded-xl w-72 animate-float shadow-lg z-20">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-500"><Sparkles size={16} /></div>
+                                    <div className="font-bold text-slate-700">Project Ideas</div>
+                                </div>
+                                <div className="h-3 w-3/4 bg-slate-200/80 rounded mb-2"></div>
+                                <div className="h-3 w-full bg-slate-100 rounded mb-2"></div>
+                                <div className="h-3 w-5/6 bg-slate-100 rounded mb-2"></div>
                             </div>
 
-                            <div className="absolute bottom-1/3 right-1/4 p-4 bg-[#fff9c4] rounded-xl w-56 -rotate-3 animate-float shadow-lg" style={{ animationDelay: '1.5s', boxShadow: '2px 4px 12px rgba(0,0,0,0.05)' }}>
-                                <div className="font-handwriting text-slate-700">
-                                    Don't forget to review the new design specs! 🎨
+                            <div className="absolute bottom-[25%] right-[20%] p-6 bg-[#fff9c4] rounded-xl w-64 -rotate-3 animate-float shadow-xl z-30" style={{ animationDelay: '1.5s', boxShadow: '4px 8px 20px rgba(0,0,0,0.08)' }}>
+                                <div className="font-handwriting text-slate-800 text-lg leading-snug">
+                                    Don't forget to review the new design specs! We need to make it pop! 🎨
                                 </div>
                             </div>
 
-                            <div className="text-center relative z-10">
-                                <div className="inline-block p-4 rounded-full bg-white/50 backdrop-blur-sm shadow-sm mb-4">
+                            <div className="absolute top-[30%] right-[10%] w-48 h-32 rounded-lg bg-cover bg-center shadow-lg rotate-6 animate-float z-10 opacity-80" style={{ animationDelay: '1s', backgroundImage: 'url(https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3)' }}></div>
+
+                            <div className="text-center relative z-40 bg-white/30 backdrop-blur-sm p-8 rounded-3xl border border-white/50 shadow-2xl">
+                                <div className="inline-block p-4 rounded-full bg-white/80 shadow-md mb-4 ring-4 ring-white/30">
                                     <Zap size={32} className="text-amber-500 fill-amber-500" />
                                 </div>
-                                <h4 className="text-2xl font-bold text-slate-800">Ready to dive in?</h4>
+                                <h4 className="text-3xl font-bold text-slate-800 mb-2">Ready to dive in?</h4>
+                                <p className="text-slate-600 mb-6 max-w-sm">Experience the future of thought organization today.</p>
                                 <button
                                     onClick={handleStart}
-                                    className="mt-6 px-8 py-3 rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-lg"
+                                    className="px-10 py-4 rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transform duration-200 font-semibold text-lg"
                                 >
                                     Open Canvas
                                 </button>
@@ -165,7 +195,7 @@ const LandingPage = () => {
             </section>
 
             {/* Footer */}
-            <footer className="py-12 border-t border-slate-200/50 bg-white/30 backdrop-blur-sm">
+            <footer className="py-12 border-t border-slate-200/50 bg-white/60 backdrop-blur-md">
                 <div className="container mx-auto px-6 text-center text-slate-500">
                     <p className="mb-4 text-sm">© {new Date().getFullYear()} MixBoard Canvas. All rights reserved.</p>
                     <div className="flex justify-center gap-6 text-sm font-medium">
