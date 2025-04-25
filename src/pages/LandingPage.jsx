@@ -1,210 +1,365 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, Zap, Layout, Infinity as InfinityIcon, Brain } from 'lucide-react';
+import { useSpring, useSprings, useTrail, animated, config, useChain } from '@react-spring/web';
+import { ArrowRight, Sparkles, Network, Cpu, Zap, Search } from 'lucide-react';
 
-const LandingPage = () => {
+// --- Components ---
+
+// 1. Hero Section: Spark to Universe
+const HeroSection = ({ onScrollRequest }) => {
+    const [started, setStarted] = useState(false);
+    const [inputValue, setInputValue] = useState('');
+    const inputRef = useRef(null);
     const navigate = useNavigate();
-    const [scrolled, setScrolled] = useState(false);
+
+    // Keyframes for the "Explosion"
+    // 1. Input fades out
+    const inputSpring = useSpring({
+        opacity: started ? 0 : 1,
+        transform: started ? 'scale(0.8)' : 'scale(1)',
+        config: config.stiff
+    });
+
+    // 2. Nodes explode outward
+    const NODE_COUNT = 40;
+    const [nodes, setNodes] = useState([]);
 
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 50);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        // Generate random nodes for explosion
+        const newNodes = Array.from({ length: NODE_COUNT }).map((_, i) => ({
+            id: i,
+            angle: Math.random() * Math.PI * 2,
+            distance: 100 + Math.random() * 400, // Distance from center
+            size: 4 + Math.random() * 8,
+            delay: Math.random() * 500,
+        }));
+        setNodes(newNodes);
     }, []);
 
-    const handleStart = () => {
-        navigate('/gallery');
+    const nodeSprings = useSprings(
+        nodes.length,
+        nodes.map(node => ({
+            to: {
+                opacity: started ? 1 : 0,
+                transform: started
+                    ? `translate(${Math.cos(node.angle) * node.distance}px, ${Math.sin(node.angle) * node.distance}px) scale(1)`
+                    : `translate(0px, 0px) scale(0)`,
+            },
+            config: { mass: 1, tension: 120, friction: 14 },
+            delay: started ? node.delay : 0
+        }))
+    );
+
+    // 3. Main Headline appears after explosion
+    const titleSpring = useSpring({
+        opacity: started ? 1 : 0,
+        transform: started ? 'translateY(0px)' : 'translateY(20px)',
+        delay: 1500, // Wait for explosion
+        config: config.molasses
+    });
+
+    const handleInputSubmit = (e) => {
+        e.preventDefault();
+        if (!inputValue.trim()) return;
+        setStarted(true);
+        // Optional: Pass the keyword to the app via URL or state
+        // For now just visual
     };
 
     return (
-        <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-mesh-gradient selection:bg-rose-200 selection:text-rose-900 font-lxgw custom-scrollbar">
-            {/* Sticky Navigation */}
-            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'py-4 glass-panel border-b border-white/20' : 'py-6 bg-transparent'}`}>
-                <div className="container mx-auto px-6 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-400 to-orange-300 flex items-center justify-center shadow-lg transform rotate-3">
-                            <span className="text-white font-bold text-lg">M</span>
-                        </div>
-                        <span className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">MixBoard</span>
+        <section className="h-screen relative flex items-center justify-center overflow-hidden">
+            {/* Background Grid */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)] pointer-events-none"></div>
+
+            {/* Initial Input State */}
+            <animated.div style={inputSpring} className="relative z-20 w-full max-w-md px-6">
+                <form onSubmit={handleInputSubmit} className="relative group">
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="What's on your mind? (e.g. Mars)"
+                        className="w-full bg-slate-900/50 backdrop-blur-xl text-white text-xl md:text-2xl py-4 px-6 rounded-2xl border border-white/10 focus:border-white/30 focus:ring-4 focus:ring-white/5 outline-none transition-all text-center placeholder-slate-500 font-light"
+                        autoFocus
+                    />
+                    <button
+                        type="submit"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                    >
+                        <ArrowRight size={20} />
+                    </button>
+                    {/* Glow effect */}
+                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity -z-10 animate-pulse"></div>
+                </form>
+                <p className="text-slate-500 text-center mt-4 text-sm font-mono">Press Enter to ignite</p>
+            </animated.div>
+
+            {/* Explosion Visualization */}
+            {nodeSprings.map((style, i) => (
+                <animated.div
+                    key={i}
+                    style={{
+                        ...style,
+                        width: nodes[i].size,
+                        height: nodes[i].size,
+                        position: 'absolute',
+                        borderRadius: '50%',
+                        background: 'white',
+                        boxShadow: `0 0 ${nodes[i].size * 2}px rgba(255,255,255,0.8)`
+                    }}
+                />
+            ))}
+
+            {/* Connecting Lines (Svg) - Simplified for performance */}
+            {started && (
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                    <animated.g style={{ opacity: titleSpring.opacity }}>
+                        {nodes.slice(0, 15).map((node, i) => (
+                            <line
+                                key={i}
+                                x1="50%"
+                                y1="50%"
+                                x2={`calc(50% + ${Math.cos(node.angle) * node.distance}px)`}
+                                y2={`calc(50% + ${Math.sin(node.angle) * node.distance}px)`}
+                                stroke="rgba(255,255,255,0.1)"
+                                strokeWidth="1"
+                            />
+                        ))}
+                    </animated.g>
+                </svg>
+            )}
+
+            {/* Post-Explosion Title */}
+            <animated.div style={titleSpring} className="absolute z-30 text-center px-6">
+                <div className="inline-block px-3 py-1 rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-400 text-xs font-bold tracking-widest uppercase mb-6 backdrop-blur-md">
+                    System Online
+                </div>
+                <h1 className="text-4xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
+                    From Spark to <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">Supernova.</span>
+                </h1>
+                <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+                    Don't just chat. Build a universe of cognition. <br />
+                    Your infinite canvas for thoughts, research, and creation.
+                </p>
+                <div className="flex gap-4 justify-center">
+                    <button
+                        onClick={() => navigate('/gallery')}
+                        className="px-8 py-4 bg-white text-slate-950 font-bold rounded-full hover:scale-105 active:scale-95 transition-transform flex items-center gap-2"
+                    >
+                        Start Creating <ArrowRight size={18} />
+                    </button>
+                    <button
+                        onClick={onScrollRequest}
+                        className="px-8 py-4 bg-white/10 text-white font-medium rounded-full hover:bg-white/20 backdrop-blur-md transition-colors"
+                    >
+                        Explore Features
+                    </button>
+                </div>
+            </animated.div>
+        </section>
+    );
+};
+
+// 2. Scale Section: "God's Eye View"
+const ScaleSection = () => {
+    // Generate many small nodes
+    const nodes = Array.from({ length: 150 }).map((_, i) => ({
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        delay: Math.random() * 2000,
+        color: Math.random() > 0.8 ? '#f43f5e' : (Math.random() > 0.6 ? '#3b82f6' : '#ffffffbf')
+    }));
+
+    return (
+        <section className="h-screen min-h-[800px] relative flex md:flex-row flex-col items-center justify-between px-6 md:px-20 py-20 bg-slate-950 overflow-hidden border-t border-white/5">
+            <div className="w-full md:w-1/2 z-20 md:pr-10">
+                <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
+                    Scale Your <br />
+                    <span className="text-indigo-400">Intellect.</span>
+                </h2>
+                <h3 className="text-xl md:text-2xl text-slate-300 font-light mb-8 border-l-4 border-indigo-500 pl-4">
+                    Manage 1,000+ AI threads on a single surface.
+                </h3>
+                <p className="text-slate-400 text-lg leading-relaxed mb-8">
+                    Break free from the linear chat stream. Zoom out to see the big picture. Zoom in to refine the details. No more lost context, no more scrolling endless history.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-3xl font-bold text-white mb-1">∞</div>
+                        <div className="text-sm text-slate-500 uppercase tracking-wider">Canvas Size</div>
                     </div>
-                    <div>
-                        <button
-                            onClick={handleStart}
-                            className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-medium hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 text-sm flex items-center gap-2"
-                        >
-                            Open App <ArrowRight size={16} />
-                        </button>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-3xl font-bold text-white mb-1">100+</div>
+                        <div className="text-sm text-slate-500 uppercase tracking-wider">Concurrent Threads</div>
                     </div>
                 </div>
+            </div>
+
+            {/* Visualization of "The Hive" */}
+            <div className="w-full md:w-1/2 h-[400px] md:h-[600px] relative mt-10 md:mt-0">
+                <div className="absolute inset-0 rounded-3xl border border-white/10 bg-slate-900/50 backdrop-blur-sm overflow-hidden radial-fade-mask">
+                    {/* The "Brain" of nodes */}
+                    <div className="absolute inset-0 animate-slow-zoom origin-center">
+                        {nodes.map((node, i) => (
+                            <div
+                                key={i}
+                                className="absolute w-1 h-1 rounded-full animate-pulse-random"
+                                style={{
+                                    left: node.left,
+                                    top: node.top,
+                                    backgroundColor: node.color,
+                                    animationDelay: `${node.delay}ms`,
+                                    boxShadow: `0 0 4px ${node.color}`
+                                }}
+                            />
+                        ))}
+                        {/* Connecting lines for effect (SVG overlay) */}
+                        <svg className="absolute inset-0 w-full h-full opacity-20">
+                            <line x1="20%" y1="30%" x2="60%" y2="70%" stroke="white" strokeWidth="0.5" />
+                            <line x1="80%" y1="10%" x2="40%" y2="50%" stroke="white" strokeWidth="0.5" />
+                            <line x1="10%" y1="80%" x2="50%" y2="40%" stroke="white" strokeWidth="0.5" />
+                        </svg>
+                    </div>
+
+                    {/* Overlay Vignette */}
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.8)_100%)] pointer-events-none"></div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
+// 3. Parallel Section: "Parallel Minds"
+const ParallelSection = () => {
+    return (
+        <section className="min-h-screen relative flex flex-col md:flex-row-reverse items-center justify-between px-6 md:px-20 py-20 bg-black border-t border-white/5">
+            <div className="w-full md:w-1/2 z-20 md:pl-10 mb-12 md:mb-0">
+                <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
+                    Parallel Minds <br />
+                    <span className="text-teal-400">at Work.</span>
+                </h2>
+                <h3 className="text-xl md:text-2xl text-slate-300 font-light mb-8 border-l-4 border-teal-500 pl-4">
+                    Why wait for one thought when you can have ten?
+                </h3>
+                <p className="text-slate-400 text-lg leading-relaxed mb-8">
+                    Fire off multiple ideas at once. Watch them evolve simultaneously. MixBoard treats every card as an independent agent, orchestrating a symphony of intelligence.
+                </p>
+                <button className="text-teal-400 font-bold hover:text-teal-300 hover:underline underline-offset-4 flex items-center gap-2">
+                    See Concurrency in Action <ArrowRight size={16} />
+                </button>
+            </div>
+
+            {/* Visualization of Parallelism */}
+            <div className="w-full md:w-1/2 relative">
+                <div className="grid grid-cols-1 gap-4 relative z-10">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-slate-900 border border-white/10 p-4 rounded-xl flex items-center gap-4 transform transition-transform hover:translate-x-2">
+                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
+                                <Cpu size={16} className={`text-${i === 1 ? 'rose' : i === 2 ? 'amber' : i === 3 ? 'teal' : 'indigo'}-400`} />
+                            </div>
+                            <div className="flex-1">
+                                <div className="h-2 w-1/3 bg-slate-700 rounded mb-2"></div>
+                                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-teal-500 to-indigo-500 animate-progress-indeterminate"
+                                        style={{ animationDelay: `${i * 0.5}s`, width: '100%' }}
+                                    ></div>
+                                </div>
+                            </div>
+                            <div className="text-xs text-teal-400 font-mono animate-pulse">
+                                Thinking...
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {/* Glow backing */}
+                <div className="absolute inset-0 bg-teal-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+            </div>
+        </section>
+    );
+};
+
+// 4. Final Section: Call to Action
+const FooterSection = () => {
+    const navigate = useNavigate();
+    return (
+        <section className="py-32 px-6 bg-slate-950 text-center relative overflow-hidden border-t border-white/5">
+            <div className="relative z-10 max-w-4xl mx-auto">
+                <Network size={64} className="mx-auto text-white mb-8 opacity-50" />
+                <h2 className="text-5xl md:text-8xl font-bold text-white mb-10 tracking-tighter">
+                    Start Your Map.
+                </h2>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                    <button
+                        onClick={() => navigate('/gallery')}
+                        className="px-10 py-5 bg-white text-black text-xl font-bold rounded-full hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    >
+                        Launch MixBoard
+                    </button>
+                    <a href="#" className="px-10 py-5 text-slate-400 font-medium hover:text-white transition-colors">
+                        Documentation
+                    </a>
+                </div>
+            </div>
+
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-b from-indigo-900/20 to-transparent rounded-full blur-[120px] pointer-events-none"></div>
+        </section>
+    );
+};
+
+
+const LandingPage = () => {
+    const scaleRef = useRef(null);
+
+    const scrollToScale = () => {
+        scaleRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    return (
+        <div className="w-full min-h-screen bg-slate-950 text-slate-200 selection:bg-teal-500 selection:text-black font-sans overflow-x-hidden">
+            <style>{`
+                @keyframes slow-zoom {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                    100% { transform: scale(1); }
+                }
+                .animate-slow-zoom {
+                    animation: slow-zoom 20s ease-in-out infinite;
+                }
+                @keyframes pulse-random {
+                    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+                    50% { opacity: 1; transform: scale(1.2); }
+                }
+                .animate-pulse-random {
+                    animation: pulse-random 3s ease-in-out infinite;
+                }
+                @keyframes progress-indeterminate {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+                .animate-progress-indeterminate {
+                    animation: progress-indeterminate 2s infinite linear;
+                }
+                .radial-fade-mask {
+                    mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+                }
+            `}</style>
+
+            <nav className="fixed top-0 w-full z-50 px-6 py-6 flex justify-between items-center pointer-events-none mix-blend-difference">
+                <div className="font-bold text-xl tracking-tight text-white pointer-events-auto">MixBoard.</div>
+                <button onClick={() => window.location.href = '/gallery'} className="text-sm font-bold text-white uppercase tracking-widest pointer-events-auto hover:text-teal-400 transition-colors">Login</button>
             </nav>
 
-            {/* Hero Section */}
-            <header className="relative pt-40 pb-20 lg:pt-52 lg:pb-32 px-6">
-                <div className="container mx-auto text-center relative z-10">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-panel mb-8 animate-fade-in border border-rose-200/50">
-                        <Sparkles size={14} className="text-rose-500" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-rose-600/80">Next Gen Canvas</span>
-                    </div>
-
-                    <h1 className="text-5xl lg:text-7xl font-extrabold text-slate-900 dark:text-slate-100 mb-8 tracking-tight leading-tight animate-slide-up">
-                        Organize your <br />
-                        <span className="text-gradient">creative chaos.</span>
-                    </h1>
-
-                    <p className="text-lg lg:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                        An infinite canvas for your thoughts, notes, and ideas.
-                        Powered by AI to help you connect the dots and spark new inspiration.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                        <button
-                            onClick={handleStart}
-                            className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-rose-500 to-orange-500 text-white font-bold text-lg hover:shadow-xl hover:shadow-orange-500/20 transition-all hover:-translate-y-1 active:translate-y-0 active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            Start Creating for Free
-                            <ArrowRight size={20} />
-                        </button>
-                        <button className="w-full sm:w-auto px-8 py-4 rounded-full glass-panel hover:bg-white/80 text-slate-700 font-semibold transition-all hover:shadow-premium border border-white/50 backdrop-blur-md">
-                            Read the Manifesto
-                        </button>
-                    </div>
-                </div>
-
-                {/* Decorative Elements */}
-                <div className="absolute top-1/2 left-10 lg:left-20 w-64 h-64 bg-rose-300/20 rounded-full blur-[100px] -z-10 animate-float" />
-                <div className="absolute top-1/3 right-10 lg:right-20 w-72 h-72 bg-blue-300/20 rounded-full blur-[100px] -z-10 animate-float" style={{ animationDelay: '2s' }} />
-            </header>
-
-            {/* Feature Showcase */}
-            <section className="py-20 px-6">
-                <div className="container mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Feature 1 */}
-                        <div className="glass-card p-8 rounded-3xl hover:glass-card-hover transition-all duration-300 group">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <InfinityIcon className="text-indigo-600" size={28} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-3">Infinite Workspace</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                No boundaries, no pages. Just one endless surface to map out your entire project, research, or second brain.
-                            </p>
-                        </div>
-
-                        {/* Feature 2 */}
-                        <div className="glass-card p-8 rounded-3xl hover:glass-card-hover transition-all duration-300 group">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-100 to-orange-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <Brain className="text-rose-600" size={28} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-3">AI Co-pilot</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                Built-in Gemini integration to help you write, brainstorm, and generate visual mood boards instantly.
-                            </p>
-                        </div>
-
-                        {/* Feature 3 */}
-                        <div className="glass-card p-8 rounded-3xl hover:glass-card-hover transition-all duration-300 group">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <Layout className="text-emerald-600" size={28} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-3">Multimedia Cards</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                Drag and drop images, write in Markdown, paste links, or create sticky notes. Everything works together.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Value Props / Use Cases */}
-            <section className="py-24 px-6 bg-white/40 backdrop-blur-sm relative">
-                <div className="container mx-auto">
-                    <h2 className="text-3xl lg:text-5xl font-bold text-center text-slate-800 mb-16">
-                        One tool. <span className="text-rose-500">Endless possibilities.</span>
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {[
-                            { title: "Design Moodboards", icon: "🎨", desc: "Collect images, colors, and textures. Organize them freely to find your visual direction." },
-                            { title: "Research Mapping", icon: "📚", desc: "Connect citations, notes, and PDF excerpts. visualize the relationships between sources." },
-                            { title: "Project Planning", icon: "🚀", desc: "Kanban boards, timelines, and to-do lists living side-by-side with your reference materials." }
-                        ].map((item, i) => (
-                            <div key={i} className="bg-white/60 p-6 rounded-2xl shadow-sm border border-white/50">
-                                <div className="text-4xl mb-4">{item.icon}</div>
-                                <h4 className="text-xl font-bold text-slate-800 mb-2">{item.title}</h4>
-                                <p className="text-slate-600">{item.desc}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Visual Demo Section */}
-            <section className="py-20 px-6 relative overflow-hidden">
-                <div className="container mx-auto relative z-10">
-                    <div className="glass-panel p-2 rounded-3xl shadow-2xl overflow-hidden border border-white/40">
-                        {/* Mock Browser Header */}
-                        <div className="bg-slate-50/50 h-12 flex items-center gap-2 px-4 border-b border-slate-200/50">
-                            <div className="flex gap-1.5">
-                                <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-                                <div className="w-3 h-3 rounded-full bg-amber-400/80"></div>
-                                <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                            </div>
-                            <div className="flex-1 text-center text-xs text-slate-400 font-medium">Untitled Board</div>
-                        </div>
-                        {/* Mock Content */}
-                        <div className="bg-white/40 h-[500px] lg:h-[700px] w-full relative overflow-hidden flex items-center justify-center">
-                            <div className="absolute inset-0 bg-mesh-gradient opacity-30"></div>
-
-                            {/* Floating Cards Animation - Enhanced */}
-                            <div className="absolute top-[20%] left-[15%] p-5 glass-card rounded-xl w-72 animate-float shadow-lg z-20">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-500"><Sparkles size={16} /></div>
-                                    <div className="font-bold text-slate-700">Project Ideas</div>
-                                </div>
-                                <div className="h-3 w-3/4 bg-slate-200/80 rounded mb-2"></div>
-                                <div className="h-3 w-full bg-slate-100 rounded mb-2"></div>
-                                <div className="h-3 w-5/6 bg-slate-100 rounded mb-2"></div>
-                            </div>
-
-                            <div className="absolute bottom-[25%] right-[20%] p-6 bg-[#fff9c4] rounded-xl w-64 -rotate-3 animate-float shadow-xl z-30" style={{ animationDelay: '1.5s', boxShadow: '4px 8px 20px rgba(0,0,0,0.08)' }}>
-                                <div className="font-handwriting text-slate-800 text-lg leading-snug">
-                                    Don't forget to review the new design specs! We need to make it pop! 🎨
-                                </div>
-                            </div>
-
-                            <div className="absolute top-[30%] right-[10%] w-48 h-32 rounded-lg bg-cover bg-center shadow-lg rotate-6 animate-float z-10 opacity-80" style={{ animationDelay: '1s', backgroundImage: 'url(https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3)' }}></div>
-
-                            <div className="text-center relative z-40 bg-white/30 backdrop-blur-sm p-8 rounded-3xl border border-white/50 shadow-2xl">
-                                <div className="inline-block p-4 rounded-full bg-white/80 shadow-md mb-4 ring-4 ring-white/30">
-                                    <Zap size={32} className="text-amber-500 fill-amber-500" />
-                                </div>
-                                <h4 className="text-3xl font-bold text-slate-800 mb-2">Ready to dive in?</h4>
-                                <p className="text-slate-600 mb-6 max-w-sm">Experience the future of thought organization today.</p>
-                                <button
-                                    onClick={handleStart}
-                                    className="px-10 py-4 rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transform duration-200 font-semibold text-lg"
-                                >
-                                    Open Canvas
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Footer */}
-            <footer className="py-12 border-t border-slate-200/50 bg-white/60 backdrop-blur-md">
-                <div className="container mx-auto px-6 text-center text-slate-500">
-                    <p className="mb-4 text-sm">© {new Date().getFullYear()} MixBoard Canvas. All rights reserved.</p>
-                    <div className="flex justify-center gap-6 text-sm font-medium">
-                        <a href="#" className="hover:text-rose-500 transition-colors">Twitter</a>
-                        <a href="#" className="hover:text-rose-500 transition-colors">GitHub</a>
-                        <a href="#" className="hover:text-rose-500 transition-colors">Discord</a>
-                    </div>
-                </div>
-            </footer>
+            <HeroSection onScrollRequest={scrollToScale} />
+            <div ref={scaleRef}>
+                <ScaleSection />
+            </div>
+            <ParallelSection />
+            <FooterSection />
         </div>
     );
 };
