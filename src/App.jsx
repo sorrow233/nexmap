@@ -8,7 +8,7 @@ import { useStore } from './store/useStore';
 import { useCardCreator } from './hooks/useCardCreator';
 import GalleryPage from './pages/GalleryPage';
 import BoardPage from './pages/BoardPage';
-import LandingPage from './pages/LandingPage';
+import LandingPage from './modules/landing';
 import ModernDialog from './components/ModernDialog';
 import {
     createBoard,
