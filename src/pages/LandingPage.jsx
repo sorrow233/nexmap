@@ -1,365 +1,279 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSpring, useSprings, useTrail, animated, config, useChain } from '@react-spring/web';
-import { ArrowRight, Sparkles, Network, Cpu, Zap, Search } from 'lucide-react';
+import { useSpring, useSprings, animated, config, useTrail } from '@react-spring/web';
+import { ArrowRight, Sparkles, Zap, Network, CornerDownRight } from 'lucide-react';
 
-// --- Components ---
-
-// 1. Hero Section: Spark to Universe
-const HeroSection = ({ onScrollRequest }) => {
-    const [started, setStarted] = useState(false);
-    const [inputValue, setInputValue] = useState('');
-    const inputRef = useRef(null);
-    const navigate = useNavigate();
-
-    // Keyframes for the "Explosion"
-    // 1. Input fades out
-    const inputSpring = useSpring({
-        opacity: started ? 0 : 1,
-        transform: started ? 'scale(0.8)' : 'scale(1)',
-        config: config.stiff
-    });
-
-    // 2. Nodes explode outward
-    const NODE_COUNT = 40;
-    const [nodes, setNodes] = useState([]);
-
-    useEffect(() => {
-        // Generate random nodes for explosion
-        const newNodes = Array.from({ length: NODE_COUNT }).map((_, i) => ({
-            id: i,
-            angle: Math.random() * Math.PI * 2,
-            distance: 100 + Math.random() * 400, // Distance from center
-            size: 4 + Math.random() * 8,
-            delay: Math.random() * 500,
-        }));
-        setNodes(newNodes);
-    }, []);
-
-    const nodeSprings = useSprings(
-        nodes.length,
-        nodes.map(node => ({
-            to: {
-                opacity: started ? 1 : 0,
-                transform: started
-                    ? `translate(${Math.cos(node.angle) * node.distance}px, ${Math.sin(node.angle) * node.distance}px) scale(1)`
-                    : `translate(0px, 0px) scale(0)`,
-            },
-            config: { mass: 1, tension: 120, friction: 14 },
-            delay: started ? node.delay : 0
-        }))
-    );
-
-    // 3. Main Headline appears after explosion
-    const titleSpring = useSpring({
-        opacity: started ? 1 : 0,
-        transform: started ? 'translateY(0px)' : 'translateY(20px)',
-        delay: 1500, // Wait for explosion
-        config: config.molasses
-    });
-
-    const handleInputSubmit = (e) => {
-        e.preventDefault();
-        if (!inputValue.trim()) return;
-        setStarted(true);
-        // Optional: Pass the keyword to the app via URL or state
-        // For now just visual
-    };
-
-    return (
-        <section className="h-screen relative flex items-center justify-center overflow-hidden">
-            {/* Background Grid */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)] pointer-events-none"></div>
-
-            {/* Initial Input State */}
-            <animated.div style={inputSpring} className="relative z-20 w-full max-w-md px-6">
-                <form onSubmit={handleInputSubmit} className="relative group">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="What's on your mind? (e.g. Mars)"
-                        className="w-full bg-slate-900/50 backdrop-blur-xl text-white text-xl md:text-2xl py-4 px-6 rounded-2xl border border-white/10 focus:border-white/30 focus:ring-4 focus:ring-white/5 outline-none transition-all text-center placeholder-slate-500 font-light"
-                        autoFocus
-                    />
-                    <button
-                        type="submit"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-                    >
-                        <ArrowRight size={20} />
-                    </button>
-                    {/* Glow effect */}
-                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity -z-10 animate-pulse"></div>
-                </form>
-                <p className="text-slate-500 text-center mt-4 text-sm font-mono">Press Enter to ignite</p>
-            </animated.div>
-
-            {/* Explosion Visualization */}
-            {nodeSprings.map((style, i) => (
-                <animated.div
-                    key={i}
-                    style={{
-                        ...style,
-                        width: nodes[i].size,
-                        height: nodes[i].size,
-                        position: 'absolute',
-                        borderRadius: '50%',
-                        background: 'white',
-                        boxShadow: `0 0 ${nodes[i].size * 2}px rgba(255,255,255,0.8)`
-                    }}
-                />
-            ))}
-
-            {/* Connecting Lines (Svg) - Simplified for performance */}
-            {started && (
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                    <animated.g style={{ opacity: titleSpring.opacity }}>
-                        {nodes.slice(0, 15).map((node, i) => (
-                            <line
-                                key={i}
-                                x1="50%"
-                                y1="50%"
-                                x2={`calc(50% + ${Math.cos(node.angle) * node.distance}px)`}
-                                y2={`calc(50% + ${Math.sin(node.angle) * node.distance}px)`}
-                                stroke="rgba(255,255,255,0.1)"
-                                strokeWidth="1"
-                            />
-                        ))}
-                    </animated.g>
-                </svg>
-            )}
-
-            {/* Post-Explosion Title */}
-            <animated.div style={titleSpring} className="absolute z-30 text-center px-6">
-                <div className="inline-block px-3 py-1 rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-400 text-xs font-bold tracking-widest uppercase mb-6 backdrop-blur-md">
-                    System Online
-                </div>
-                <h1 className="text-4xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
-                    From Spark to <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">Supernova.</span>
-                </h1>
-                <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-                    Don't just chat. Build a universe of cognition. <br />
-                    Your infinite canvas for thoughts, research, and creation.
-                </p>
-                <div className="flex gap-4 justify-center">
-                    <button
-                        onClick={() => navigate('/gallery')}
-                        className="px-8 py-4 bg-white text-slate-950 font-bold rounded-full hover:scale-105 active:scale-95 transition-transform flex items-center gap-2"
-                    >
-                        Start Creating <ArrowRight size={18} />
-                    </button>
-                    <button
-                        onClick={onScrollRequest}
-                        className="px-8 py-4 bg-white/10 text-white font-medium rounded-full hover:bg-white/20 backdrop-blur-md transition-colors"
-                    >
-                        Explore Features
-                    </button>
-                </div>
-            </animated.div>
-        </section>
-    );
-};
-
-// 2. Scale Section: "God's Eye View"
-const ScaleSection = () => {
-    // Generate many small nodes
-    const nodes = Array.from({ length: 150 }).map((_, i) => ({
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
-        delay: Math.random() * 2000,
-        color: Math.random() > 0.8 ? '#f43f5e' : (Math.random() > 0.6 ? '#3b82f6' : '#ffffffbf')
-    }));
-
-    return (
-        <section className="h-screen min-h-[800px] relative flex md:flex-row flex-col items-center justify-between px-6 md:px-20 py-20 bg-slate-950 overflow-hidden border-t border-white/5">
-            <div className="w-full md:w-1/2 z-20 md:pr-10">
-                <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
-                    Scale Your <br />
-                    <span className="text-indigo-400">Intellect.</span>
-                </h2>
-                <h3 className="text-xl md:text-2xl text-slate-300 font-light mb-8 border-l-4 border-indigo-500 pl-4">
-                    Manage 1,000+ AI threads on a single surface.
-                </h3>
-                <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                    Break free from the linear chat stream. Zoom out to see the big picture. Zoom in to refine the details. No more lost context, no more scrolling endless history.
-                </p>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                        <div className="text-3xl font-bold text-white mb-1">∞</div>
-                        <div className="text-sm text-slate-500 uppercase tracking-wider">Canvas Size</div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                        <div className="text-3xl font-bold text-white mb-1">100+</div>
-                        <div className="text-sm text-slate-500 uppercase tracking-wider">Concurrent Threads</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Visualization of "The Hive" */}
-            <div className="w-full md:w-1/2 h-[400px] md:h-[600px] relative mt-10 md:mt-0">
-                <div className="absolute inset-0 rounded-3xl border border-white/10 bg-slate-900/50 backdrop-blur-sm overflow-hidden radial-fade-mask">
-                    {/* The "Brain" of nodes */}
-                    <div className="absolute inset-0 animate-slow-zoom origin-center">
-                        {nodes.map((node, i) => (
-                            <div
-                                key={i}
-                                className="absolute w-1 h-1 rounded-full animate-pulse-random"
-                                style={{
-                                    left: node.left,
-                                    top: node.top,
-                                    backgroundColor: node.color,
-                                    animationDelay: `${node.delay}ms`,
-                                    boxShadow: `0 0 4px ${node.color}`
-                                }}
-                            />
-                        ))}
-                        {/* Connecting lines for effect (SVG overlay) */}
-                        <svg className="absolute inset-0 w-full h-full opacity-20">
-                            <line x1="20%" y1="30%" x2="60%" y2="70%" stroke="white" strokeWidth="0.5" />
-                            <line x1="80%" y1="10%" x2="40%" y2="50%" stroke="white" strokeWidth="0.5" />
-                            <line x1="10%" y1="80%" x2="50%" y2="40%" stroke="white" strokeWidth="0.5" />
-                        </svg>
-                    </div>
-
-                    {/* Overlay Vignette */}
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.8)_100%)] pointer-events-none"></div>
-                </div>
-            </div>
-        </section>
-    );
-};
-
-// 3. Parallel Section: "Parallel Minds"
-const ParallelSection = () => {
-    return (
-        <section className="min-h-screen relative flex flex-col md:flex-row-reverse items-center justify-between px-6 md:px-20 py-20 bg-black border-t border-white/5">
-            <div className="w-full md:w-1/2 z-20 md:pl-10 mb-12 md:mb-0">
-                <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
-                    Parallel Minds <br />
-                    <span className="text-teal-400">at Work.</span>
-                </h2>
-                <h3 className="text-xl md:text-2xl text-slate-300 font-light mb-8 border-l-4 border-teal-500 pl-4">
-                    Why wait for one thought when you can have ten?
-                </h3>
-                <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                    Fire off multiple ideas at once. Watch them evolve simultaneously. MixBoard treats every card as an independent agent, orchestrating a symphony of intelligence.
-                </p>
-                <button className="text-teal-400 font-bold hover:text-teal-300 hover:underline underline-offset-4 flex items-center gap-2">
-                    See Concurrency in Action <ArrowRight size={16} />
-                </button>
-            </div>
-
-            {/* Visualization of Parallelism */}
-            <div className="w-full md:w-1/2 relative">
-                <div className="grid grid-cols-1 gap-4 relative z-10">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-slate-900 border border-white/10 p-4 rounded-xl flex items-center gap-4 transform transition-transform hover:translate-x-2">
-                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
-                                <Cpu size={16} className={`text-${i === 1 ? 'rose' : i === 2 ? 'amber' : i === 3 ? 'teal' : 'indigo'}-400`} />
-                            </div>
-                            <div className="flex-1">
-                                <div className="h-2 w-1/3 bg-slate-700 rounded mb-2"></div>
-                                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-teal-500 to-indigo-500 animate-progress-indeterminate"
-                                        style={{ animationDelay: `${i * 0.5}s`, width: '100%' }}
-                                    ></div>
-                                </div>
-                            </div>
-                            <div className="text-xs text-teal-400 font-mono animate-pulse">
-                                Thinking...
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                {/* Glow backing */}
-                <div className="absolute inset-0 bg-teal-500/10 blur-[100px] rounded-full pointer-events-none"></div>
-            </div>
-        </section>
-    );
-};
-
-// 4. Final Section: Call to Action
-const FooterSection = () => {
-    const navigate = useNavigate();
-    return (
-        <section className="py-32 px-6 bg-slate-950 text-center relative overflow-hidden border-t border-white/5">
-            <div className="relative z-10 max-w-4xl mx-auto">
-                <Network size={64} className="mx-auto text-white mb-8 opacity-50" />
-                <h2 className="text-5xl md:text-8xl font-bold text-white mb-10 tracking-tighter">
-                    Start Your Map.
-                </h2>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                    <button
-                        onClick={() => navigate('/gallery')}
-                        className="px-10 py-5 bg-white text-black text-xl font-bold rounded-full hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-                    >
-                        Launch MixBoard
-                    </button>
-                    <a href="#" className="px-10 py-5 text-slate-400 font-medium hover:text-white transition-colors">
-                        Documentation
-                    </a>
-                </div>
-            </div>
-
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-b from-indigo-900/20 to-transparent rounded-full blur-[120px] pointer-events-none"></div>
-        </section>
-    );
-};
-
+const Card = ({ style, content }) => (
+    <animated.div
+        style={{
+            ...style,
+            position: 'absolute',
+            background: 'rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            transformStyle: 'preserve-3d',
+            backfaceVisibility: 'hidden',
+        }}
+    >
+        <div className="h-2 w-1/3 bg-white/10 rounded-full" />
+        <div className="h-2 w-3/4 bg-white/5 rounded-full" />
+        <div className="h-2 w-1/2 bg-white/5 rounded-full" />
+    </animated.div>
+);
 
 const LandingPage = () => {
-    const scaleRef = useRef(null);
+    const navigate = useNavigate();
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef(null);
+    const [started, setStarted] = useState(false);
 
-    const scrollToScale = () => {
-        scaleRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // --- Data Generation ---
+    const cards = useMemo(() => Array.from({ length: 30 }).map((_, i) => ({
+        id: i,
+        x: (Math.random() - 0.5) * 120, // Spread %
+        y: (Math.random() - 0.5) * 120,
+        z: Math.random() * 500, // Depth
+        scale: 0.5 + Math.random() * 0.8,
+        delay: i * 50,
+    })), []);
+
+    // --- Scroll Listener ---
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!containerRef.current) return;
+            const scrollY = window.scrollY;
+            const innerHeight = window.innerHeight;
+            // Map scroll to 0-3 range (roughly representing sections)
+            const progress = Math.max(0, scrollY / innerHeight);
+            setScrollProgress(progress);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // --- Animations based on scroll phase ---
+
+    // Phase 1: Infinite Canvas (0.5 -> 1.5)
+    // Camera moves "forward" through the starfield of cards
+    const infiniteSprings = useSprings(
+        cards.length,
+        cards.map((card, i) => {
+            // Logic: As progress moves from 0 to 1, cards fly towards viewer
+            const active = scrollProgress > 0.2 && scrollProgress < 1.8;
+            const flyZ = scrollProgress * 800 - 400; // Move forward
+
+            return {
+                opacity: active ? 1 - Math.abs(1 - scrollProgress) : 0, // Fade in/out around 1.0
+                transform: `
+                    translate3d(${card.x}vw, ${card.y}vh, ${flyZ + card.z}px) 
+                    scale(${card.scale})
+                `,
+                config: { mass: 5, tension: 200, friction: 50 } // Heavy, dreamy feel
+            };
+        })
+    );
+
+    // Phase 2: Parallel Minds (1.5 -> 2.5)
+    // Cards align into vertical beams
+    const beamSprings = useSprings(
+        cards.length,
+        cards.map((card, i) => {
+            const active = scrollProgress > 1.2 && scrollProgress < 2.8;
+            const column = i % 5; // 5 columns
+            const row = Math.floor(i / 5);
+            // Target positions for "Beams"
+            const targetX = (column - 2) * 20; // Spread horizontally
+            const targetY = (row - 3) * 15 + ((scrollProgress - 2) * 20); // Move vertically with scroll
+
+            return {
+                opacity: active ? 1 : 0,
+                transform: active
+                    ? `translate3d(${targetX}vw, ${targetY}vh, 0px) scale(0.8)`
+                    : `translate3d(${card.x}vw, ${card.y}vh, 1000px) scale(0)`, // Explode out/in
+                border: active ? '1px solid rgba(0, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: active ? '0 0 20px rgba(0, 255, 255, 0.1)' : '0 0 0px transparent',
+            };
+        })
+    );
+
+    // Phase 3: Fission / Fractal (2.5 -> 3.5)
+    // A single seed grows branches
+    const fractalTrails = useTrail(10, {
+        opacity: scrollProgress > 2.2 ? 1 : 0,
+        transform: scrollProgress > 2.2 ? 'scale(1) translateY(0px)' : 'scale(0) translateY(50px)',
+        from: { opacity: 0, transform: 'scale(0)' },
+        config: config.active,
+        delay: 200,
+    });
+
+
+    // --- Hero Interaction ---
+    const handleStart = () => {
+        setStarted(true);
+        // Auto-scroll to trigger sequence
+        window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
     };
 
     return (
-        <div className="w-full min-h-screen bg-slate-950 text-slate-200 selection:bg-teal-500 selection:text-black font-sans overflow-x-hidden">
+        <div ref={containerRef} className="bg-[#020204] text-slate-100 font-sans selection:bg-teal-500/30 min-h-[400vh] overflow-x-hidden">
             <style>{`
-                @keyframes slow-zoom {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.1); }
-                    100% { transform: scale(1); }
+                .divine-text {
+                    background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    text-shadow: 0 0 30px rgba(255,255,255,0.1);
                 }
-                .animate-slow-zoom {
-                    animation: slow-zoom 20s ease-in-out infinite;
+                .divine-glow {
+                    box-shadow: 0 0 60px -20px rgba(255,255,255,0.1);
                 }
-                @keyframes pulse-random {
-                    0%, 100% { opacity: 0.3; transform: scale(0.8); }
-                    50% { opacity: 1; transform: scale(1.2); }
-                }
-                .animate-pulse-random {
-                    animation: pulse-random 3s ease-in-out infinite;
-                }
-                @keyframes progress-indeterminate {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
-                .animate-progress-indeterminate {
-                    animation: progress-indeterminate 2s infinite linear;
-                }
-                .radial-fade-mask {
-                    mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
-                }
+                /* Hide scrollbar for immersion */
+                ::-webkit-scrollbar { width: 0px; background: transparent; }
             `}</style>
 
-            <nav className="fixed top-0 w-full z-50 px-6 py-6 flex justify-between items-center pointer-events-none mix-blend-difference">
-                <div className="font-bold text-xl tracking-tight text-white pointer-events-auto">MixBoard.</div>
-                <button onClick={() => window.location.href = '/gallery'} className="text-sm font-bold text-white uppercase tracking-widest pointer-events-auto hover:text-teal-400 transition-colors">Login</button>
-            </nav>
+            {/* --- Fixed Viewport (The Canvas) --- */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none perspective-[1000px]">
 
-            <HeroSection onScrollRequest={scrollToScale} />
-            <div ref={scaleRef}>
-                <ScaleSection />
+                {/* Background Atmosphere */}
+                <div className="absolute inset-0 bg-[#020204]">
+                    <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] bg-[radial-gradient(ellipse_at_center,rgba(20,184,166,0.03),transparent_70%)] animate-pulse" style={{ animationDuration: '8s' }}></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[100%] h-[100%] bg-[radial-gradient(circle,rgba(99,102,241,0.03),transparent_60%)]"></div>
+                </div>
+
+                {/* VISUAL LAYERS */}
+
+                {/* Layer 1: The Spark (Hero) - Fades out */}
+                <animated.div
+                    style={{ opacity: Math.max(0, 1 - scrollProgress * 1.5), pointerEvents: scrollProgress > 0.5 ? 'none' : 'auto' }}
+                    className="absolute inset-0 flex flex-col items-center justify-center z-50 pointer-events-auto"
+                >
+                    <div className="relative group cursor-text" onClick={() => document.getElementById('hero-input')?.focus()}>
+                        <div className="absolute -inset-4 bg-gradient-to-r from-teal-500/20 via-indigo-500/20 to-purple-500/20 rounded-full blur-xl group-hover:opacity-100 opacity-50 transition-opacity duration-1000"></div>
+                        <input
+                            id="hero-input"
+                            type="text"
+                            placeholder="What creates a universe?"
+                            className="bg-transparent border-b border-white/20 text-center text-3xl md:text-5xl py-4 focus:outline-none focus:border-white/50 transition-all font-light text-white/90 placeholder-white/20 w-[90vw] md:w-[600px]"
+                            onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                        />
+                        <div className="mt-8 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-100">
+                            <span className="text-xs tracking-[0.3em] text-white/40 uppercase">Press Enter to Ignite</span>
+                        </div>
+                    </div>
+                </animated.div>
+
+                {/* Layer 2: Infinite Galaxy (Phase 1) */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none transform-style-3d">
+                    {infiniteSprings.map((style, i) => (
+                        <Card key={i} style={style} />
+                    ))}
+                </div>
+
+                {/* Layer 3: Parallel Beams (Phase 2) */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {beamSprings.map((props, i) => (
+                        <animated.div
+                            key={`beam-${i}`}
+                            style={{
+                                ...props,
+                                position: 'absolute',
+                                width: '2px', // Thin beam
+                                height: '150px',
+                                background: 'linear-gradient(to bottom, rgba(0,255,255,0), rgba(0,255,255,0.5), rgba(0,255,255,0))',
+                                borderRadius: '4px'
+                            }}
+                        >
+                            {/* Optional: Add a "head" to the beam for a data packet feel */}
+                            <div className="w-1 h-8 bg-white absolute top-1/2 left-0 transform -translate-x-1/2 -translate-y-1/2 blur-[2px]"></div>
+                        </animated.div>
+                    ))}
+                </div>
+
+                {/* Layer 4: Fractal Fission (Phase 3) */}
+                {scrollProgress > 2.0 && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="relative">
+                            {/* Core Node */}
+                            <div className="w-4 h-4 bg-white rounded-full shadow-[0_0_40px_white] absolute top-0 left-1/2 -translate-x-1/2 z-10"></div>
+
+                            {/* Branches */}
+                            {fractalTrails.map((style, i) => (
+                                <animated.div key={i} style={style} className="absolute top-0 left-1/2 origin-top ">
+                                    <div
+                                        className="w-[1px] bg-gradient-to-b from-white to-transparent"
+                                        style={{
+                                            height: `${100 + i * 20}px`,
+                                            transform: `rotate(${(i - 4.5) * 15}deg)`,
+                                            transformOrigin: 'top center'
+                                        }}
+                                    >
+                                        {/* Leaf Node */}
+                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-white/50 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+                                    </div>
+                                </animated.div>
+                            ))}
+                            {/* Text for visual anchor */}
+                            <animated.div style={{ opacity: Math.max(0, scrollProgress - 2.5) }} className="absolute top-[200px] left-1/2 -translate-x-1/2 text-center w-[500px]">
+                                <h3 className="text-3xl font-light tracking-wide text-white/90">From Spark to Supernova</h3>
+                            </animated.div>
+                        </div>
+                    </div>
+                )}
             </div>
-            <ParallelSection />
-            <FooterSection />
+
+            {/* --- Text Content Layers (Scrollytelling Triggers) --- */}
+
+            {/* Spacer for Hero */}
+            <div className="h-screen flex items-center justify-center relative pointer-events-none">
+                {/* Hero is fixed, this is just space */}
+            </div>
+
+            {/* Section 1 Text */}
+            <div className="h-screen flex items-end pb-32 justify-center relative pointer-events-none z-10">
+                <animated.div
+                    style={{
+                        opacity: scrollProgress > 0.5 && scrollProgress < 1.5 ? 1 : 0,
+                        transform: `translateY(${scrollProgress * -50}px)`
+                    }}
+                    className="text-center"
+                >
+                    <h2 className="divine-text text-5xl md:text-7xl font-bold mb-4 tracking-tighter">Scale Your Intellect</h2>
+                    <p className="text-white/60 text-lg font-light tracking-wide uppercase">One Infinite Canvas. Zero Limits.</p>
+                </animated.div>
+            </div>
+
+            {/* Section 2 Text */}
+            <div className="h-screen flex items-end pb-32 justify-center relative pointer-events-none z-10">
+                <animated.div
+                    style={{
+                        opacity: scrollProgress > 1.5 && scrollProgress < 2.5 ? 1 : 0,
+                        transform: `translateY(${scrollProgress * -50}px)`
+                    }}
+                    className="text-center"
+                >
+                    <h2 className="divine-text text-5xl md:text-7xl font-bold mb-4 tracking-tighter">Parallel Minds</h2>
+                    <p className="text-teal-400/80 text-lg font-light tracking-wide uppercase">Orchestrate 100 threads at once.</p>
+                </animated.div>
+            </div>
+
+            {/* Section 3 Text */}
+            <div className="h-screen flex items-center justify-center relative pointer-events-none z-10">
+                {/* Text is integrated in the fractal layer for better positioning */}
+                <div className="absolute bottom-20 pointer-events-auto">
+                    <button
+                        onClick={() => navigate('/gallery')}
+                        className="px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_50px_rgba(255,255,255,0.4)] flex items-center gap-2"
+                    >
+                        Enter the Void <ArrowRight size={20} />
+                    </button>
+                </div>
+            </div>
+
         </div>
     );
 };
