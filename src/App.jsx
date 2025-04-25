@@ -8,6 +8,7 @@ import { useStore } from './store/useStore';
 import { useCardCreator } from './hooks/useCardCreator';
 import GalleryPage from './pages/GalleryPage';
 import BoardPage from './pages/BoardPage';
+import LandingPage from './pages/LandingPage';
 import ModernDialog from './components/ModernDialog';
 import {
     createBoard,
@@ -178,6 +179,7 @@ function AppContent() {
     return (
         <>
             <Routes>
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/gallery" element={
                     <GalleryPage
                         boardsList={boardsList}
@@ -200,7 +202,7 @@ function AppContent() {
                         onBack={handleBackToGallery}
                     />
                 } />
-                <Route path="*" element={<Navigate to="/gallery" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
 
             <ModernDialog
