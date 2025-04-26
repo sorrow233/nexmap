@@ -327,7 +327,7 @@ const Card = React.memo(function Card({
 
             <div className="p-4 h-48 overflow-hidden relative transition-colors">
                 <p
-                    className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-text cursor-text card-content-text"
+                    className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-none cursor-grab card-content-text"
                 >
                     {previewText}
                 </p>
