@@ -25,16 +25,35 @@ const Card = React.memo(function Card({
     const cardRef = useRef(null);
 
     // Refs to hold latest values for event handlers to avoid re-binding
-    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd });
+    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd, isSelected, onSelect });
     useEffect(() => {
-        stateRef.current = { data, onMove, dragOffset, onDragEnd };
-    }, [data, onMove, dragOffset, onDragEnd]);
+        stateRef.current = { data, onMove, dragOffset, onDragEnd, isSelected, onSelect };
+    }, [data, onMove, dragOffset, onDragEnd, isSelected, onSelect]);
+
+    // Track if we should possibly deselect other cards on mouse up (if it was a click, not a drag)
+    const pendingDeselectRef = useRef(false);
+    const hasDraggedRef = useRef(false);
 
     const handleMouseDown = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
 
+        // Prevent native text selection dragging from interfering
+        // but allow text selection if clicking on text
+
+        // Handling multi-selection logic:
+        // If clicking on an already selected card WITHOUT modifiers, 
+        // we defer the "select only this one" action to MouseUp.
+        // This allows dragging multiple selected cards together.
+        const isAdditive = e.shiftKey || e.metaKey || e.ctrlKey;
+
+        if (isSelected && !isAdditive) {
+            pendingDeselectRef.current = true;
+        } else {
+            pendingDeselectRef.current = false;
+            onSelect(data.id, e);
+        }
+
         e.stopPropagation();
-        onSelect(data.id, e);
 
         // Initial setup
         const initialDragOffset = {
@@ -46,9 +65,16 @@ const Card = React.memo(function Card({
 
         setIsDragging(true);
         setDragOffset(initialDragOffset);
+        hasDraggedRef.current = false;
 
         // Update ref immediately for the listener that will start
         stateRef.current.dragOffset = initialDragOffset;
+    };
+
+    // Prevent native drag (ghost image) on images or text
+    const handleDragStart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
     };
 
     // Touch event handler for mobile/iPad support - JS Only, no CSS changes
@@ -60,7 +86,9 @@ const Card = React.memo(function Card({
             ...e,
             clientX: touch.clientX,
             clientY: touch.clientY,
-            stopPropagation: () => e.stopPropagation()
+            stopPropagation: () => e.stopPropagation(),
+            preventDefault: () => e.preventDefault(), // Fix for touch
+            target: e.target
         });
     };
 
@@ -75,6 +103,12 @@ const Card = React.memo(function Card({
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
 
+            // Check if actually moved (threshold to distinguish click from micro-drag)
+            if (Math.abs(e.clientX - dragOffset.startX) > 3 || Math.abs(e.clientY - dragOffset.startY) > 3) {
+                hasDraggedRef.current = true;
+                pendingDeselectRef.current = false; // If we dragged, we keep the selection as is
+            }
+
             // Directly update position in store for real-time rendering
             if (onMove) {
                 onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
@@ -84,13 +118,26 @@ const Card = React.memo(function Card({
         const handleMouseUp = (e) => {
             setIsDragging(false);
 
+            // Handle deferred deselect
+            if (pendingDeselectRef.current && !hasDraggedRef.current) {
+                // It was a click on an already selected card, and we didn't drag it.
+                // Now we perform the "exclusive select" (deselect others).
+                const { onSelect, data } = stateRef.current;
+                onSelect(data.id, e);
+            }
+            pendingDeselectRef.current = false;
+
             // Calculate final position
             const { dragOffset, data, onDragEnd } = stateRef.current;
-            const currentScale = useStore.getState().scale || 1;
 
+            // Only trigger move end if we actually dragged, otherwise it's just a click (or failed drag)
+            // But we might need to reset position if it was a micro-move? 
+            // The store updates continuously, so whatever the last position was, is the position.
+            // We just trigger the final save.
+
+            const currentScale = useStore.getState().scale || 1;
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
-
             const finalX = dragOffset.origX + dx;
             const finalY = dragOffset.origY + dy;
 
@@ -118,12 +165,10 @@ const Card = React.memo(function Card({
             // FIX: Tracking last known mouse/touch position in ref to pass to mouseUp logic
             // For now, let's assume handleMouseUp(e) works if e has clientX/Y. TouchEnd DOES NOT have clientX.
 
-            // Workaround: We need to store the LAST known delta/position in a ref during move.
+            // TouchEnd standard behavior: trigger cleanup.
             setIsDragging(false);
 
             if (cardRef.current) {
-                // We can read the current transform to get the distinct values if needed, 
-                // but better to track it in a ref during move.
                 const style = window.getComputedStyle(cardRef.current);
                 const matrix = new DOMMatrix(style.transform);
                 // matrix.e, matrix.f are the translate values
@@ -137,6 +182,14 @@ const Card = React.memo(function Card({
                     stateRef.current.onDragEnd(stateRef.current.data.id, finalX, finalY);
                 }
             }
+
+            // Also handle deferred select for touch if needed (less common for multi-select but consistent)
+            if (pendingDeselectRef.current && !hasDraggedRef.current) {
+                const { onSelect, data } = stateRef.current;
+                // Synthesize event since touch event doesn't match mouse event structure exactly
+                onSelect(data.id, { shiftKey: false, ctrlKey: false, metaKey: false });
+            }
+            pendingDeselectRef.current = false;
         };
 
         // Better TouchEnd handling: relying on the transform matrix is actually quite reliable for "where is it now visually"
@@ -233,6 +286,8 @@ const Card = React.memo(function Card({
                 zIndex: zIndex,
                 willChange: isDragging ? 'left, top' : 'auto' // Hint to browser
             }}
+            onPrivateKey={() => { }} // Placeholder if needed
+            onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
