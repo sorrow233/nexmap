@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Bot, User } from 'lucide-react';
+import { Sparkles, Bot, Wand2, Lightbulb, Zap } from 'lucide-react';
 
 const DemoAI = ({ scrollProgress }) => {
     // Active range: 1.5 to 2.5
@@ -9,9 +9,9 @@ const DemoAI = ({ scrollProgress }) => {
     if (!isActive) return null;
 
     // Phases
-    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.2) * 2)); // 0 -> 0.5
-    const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.2) * 3)); // 0.2 -> 0.5
-    const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.4) * 3)); // 0.4 -> 0.7
+    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.2) * 2)); // Input appears
+    const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.2) * 3)); // Particles swirl
+    const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.4) * 3)); // Cards form
 
     const opacity = localProgress < 0
         ? Math.max(0, 1 + localProgress * 4)
@@ -19,127 +19,124 @@ const DemoAI = ({ scrollProgress }) => {
 
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center z-20 pointer-events-none"
+            className="fixed inset-0 flex items-center justify-center z-30 pointer-events-none overflow-hidden"
             style={{ opacity }}
         >
-            <div className="absolute inset-0 bg-[#FDFDFC]/80 backdrop-blur-sm z-0" />
+            <div className="absolute inset-0 bg-slate-900 z-0 transition-colors duration-700"
+                style={{ backgroundColor: processingPhase > 0 ? '#0f172a' : '#FDFDFC' }}
+            />
 
-            {/* Header Text */}
-            <div className="absolute top-24 left-0 right-0 text-center z-30">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold mb-6">
+            {/* Header Text - Changes color based on phase */}
+            <div className="absolute top-24 left-0 right-0 text-center z-30 transition-colors duration-500"
+                style={{ color: processingPhase > 0.1 ? 'white' : '#1a1a1a' }}
+            >
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-md rounded-full text-blue-500 font-semibold mb-6 border border-blue-500/20">
                     <Sparkles className="w-4 h-4" />
                     <span>AI Copilot</span>
                 </div>
-                <h2 className="text-5xl md:text-7xl font-bold text-[#1a1a1a] mb-4 tracking-tight">
-                    Never start from <br /> blank again.
+                <h2 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight">
+                    Words become <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 animate-pulse">
+                        Reality.
+                    </span>
                 </h2>
             </div>
 
-            <div className="relative z-10 w-full max-w-4xl h-[600px] flex items-center justify-center">
+            <div className="relative z-10 w-full max-w-4xl h-[600px] flex items-center justify-center perspective-[1000px]">
 
-                {/* 1. The Interaction (Chat Input) */}
+                {/* 1. The Prompt Bar (Floating Input) */}
                 <div
-                    className="absolute z-30 flex flex-col items-center transition-all duration-500 will-change-transform"
+                    className="absolute z-40 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full px-8 py-4 flex items-center gap-4 shadow-2xl text-white w-full max-w-lg origin-center transition-all duration-700"
                     style={{
-                        transform: `translateY(${resultPhase * -200}px) scale(${1 - resultPhase * 0.2})`,
+                        transform: `translateY(${resultPhase * -250}px) scale(${1 - resultPhase * 0.3})`,
                         opacity: 1
                     }}
                 >
-                    <div className="w-[500px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-                            <User className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 text-lg text-gray-800 font-medium">
-                            Generate a marketing plan for...
-                        </div>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${processingPhase > 0 ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>
-                            {processingPhase > 0 ? <Bot className="w-5 h-5 animate-bounce" /> : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />}
-                        </div>
-                    </div>
+                    <Bot className="w-6 h-6 text-blue-400" />
+                    <span className="text-xl font-light opacity-90 typing-effect whitespace-nowrap overflow-hidden border-r-2 border-blue-400/50 pr-1">
+                        Draw a mindmap for a coffee shop launch...
+                    </span>
                 </div>
 
-                {/* 2. The Processing (Pulse) */}
+                {/* 2. The Magic Swirl (Particles) */}
                 <div
-                    className="absolute z-10 rounded-full bg-blue-500/10 blur-3xl transition-all duration-300"
-                    style={{
-                        width: processingPhase * 600,
-                        height: processingPhase * 600,
-                        opacity: processingPhase * (1 - resultPhase)
-                    }}
-                />
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    style={{ opacity: Math.max(0, processingPhase - resultPhase) }}
+                >
+                    {/* Simulated particles using CSS shadows/gradients */}
+                    <div className="w-[600px] h-[600px] rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-3xl animate-spin-slow" />
+                    <div className="absolute w-[300px] h-[300px] rounded-full bg-blue-400/10 blur-2xl animate-pulse" />
+                </div>
 
-                {/* 3. The Result (Cards appearing) */}
-                <div className="absolute inset-0 flex items-center justify-center z-20">
-                    {/* Center Card */}
+                {/* 3. The Result (Materializing Cards) */}
+                <div className="absolute inset-0 flex items-center justify-center z-20" style={{ transformStyle: 'preserve-3d' }}>
+                    {/* Central Hub */}
                     <Card
-                        title="Market Analysis"
-                        color="bg-blue-500"
+                        title="Coffee Shop Launch"
+                        icon={Zap}
+                        color="bg-amber-500"
                         delay={0}
                         phase={resultPhase}
-                        x={0} y={50} rotate={0}
+                        x={0} y={0} z={50}
+                        scale={1.2}
                     />
 
-                    {/* Left Card */}
-                    <Card
-                        title="User Personas"
-                        color="bg-violet-500"
-                        delay={0.1}
-                        phase={resultPhase}
-                        x={-280} y={-50} rotate={-6}
-                    />
+                    {/* Surrounding Nodes */}
+                    <Card title="Menu Strategy" icon={Lightbulb} color="bg-orange-500" delay={0.1} phase={resultPhase} x={-250} y={-100} z={0} rotate={-10} />
+                    <Card title="Marketing" icon={Wand2} color="bg-pink-500" delay={0.2} phase={resultPhase} x={250} y={-100} z={0} rotate={10} />
+                    <Card title="Operations" icon={Bot} color="bg-cyan-500" delay={0.3} phase={resultPhase} x={-200} y={150} z={0} rotate={-5} />
+                    <Card title="Finance" icon={Sparkles} color="bg-emerald-500" delay={0.4} phase={resultPhase} x={200} y={150} z={0} rotate={5} />
 
-                    {/* Right Card */}
-                    <Card
-                        title="Competitor Grid"
-                        color="bg-indigo-500"
-                        delay={0.2}
-                        phase={resultPhase}
-                        x={280} y={-20} rotate={6}
-                    />
-
-                    {/* Bottom Card */}
-                    <Card
-                        title="Growth Channels"
-                        color="bg-pink-500"
-                        delay={0.3}
-                        phase={resultPhase}
-                        x={0} y={250} rotate={2}
-                    />
+                    {/* Connecting Lines (SVG Overlay) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: resultPhase, transition: 'opacity 1s' }}>
+                        {/* Lines drawn from center to approximate card positions */}
+                        <line x1="50%" y1="50%" x2="calc(50% - 250px)" y2="calc(50% - 100px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+                        <line x1="50%" y1="50%" x2="calc(50% + 250px)" y2="calc(50% - 100px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+                        <line x1="50%" y1="50%" x2="calc(50% - 200px)" y2="calc(50% + 150px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+                        <line x1="50%" y1="50%" x2="calc(50% + 200px)" y2="calc(50% + 150px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+                    </svg>
                 </div>
             </div>
+
+            <style>{`
+                @keyframes spin-slow {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                .animate-spin-slow {
+                    animation: spin-slow 10s linear infinite;
+                }
+            `}</style>
         </div>
     );
 };
 
-// Helper Component for the popped-out cards
-const Card = ({ title, color, delay, phase, x, y, rotate }) => {
+// Helper Component for the materialized cards
+const Card = ({ title, icon: Icon, color, delay, phase, x, y, z, rotate = 0, scale = 1 }) => {
     // Calculate local deployment phase
     const deploy = Math.max(0, Math.min(1, (phase - delay) * 2));
 
-    // Spring-like overshoot logic manually (easeOutBack equivalent)
-    const scale = deploy === 0 ? 0 :
-        deploy < 0.8 ? deploy * 1.1 :
-            1.0;
+    // Spring-like overshoot logic manually
+    const currentScale = deploy * scale;
 
     return (
         <div
-            className="absolute w-64 bg-white/80 backdrop-blur-xl rounded-xl shadow-xl border border-white/50 p-5 will-change-transform"
+            className="absolute w-56 bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-5 will-change-transform flex flex-col gap-3"
             style={{
-                transform: `translate(${x * deploy}px, ${y * deploy}px) rotate(${rotate * deploy}deg) scale(${scale})`,
+                transform: `translateX(${x * deploy}px) translateY(${y * deploy}px) translateZ(${z * deploy}px) rotate(${rotate * deploy}deg) scale(${currentScale})`,
                 opacity: deploy
             }}
         >
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center text-white shadow-lg`}>
-                    <Bot className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">AI Generated</span>
+                <div className="h-2 w-16 bg-white/20 rounded-full" />
             </div>
-            <h4 className="text-lg font-bold text-gray-800 mb-2">{title}</h4>
-            <div className="space-y-2">
-                <div className="h-2 w-full bg-gray-100/50 rounded" />
-                <div className="h-2 w-5/6 bg-gray-100/50 rounded" />
-                <div className="h-2 w-4/6 bg-gray-100/50 rounded" />
+            <h4 className="text-lg font-bold text-white mb-1">{title}</h4>
+            <div className="space-y-2 opacity-50">
+                <div className="h-1 w-full bg-white/40 rounded" />
+                <div className="h-1 w-5/6 bg-white/40 rounded" />
             </div>
         </div>
     );
