@@ -205,9 +205,8 @@ export class GeminiProvider extends LLMProvider {
         const { apiKey } = this.config;
         const modelToUse = model || 'gemini-3-pro-image-preview';
 
-        // GMI Cloud API Base URL for Request Queue
-        const baseUrl = 'https://console.gmicloud.ai';
-        const requestEndpoint = `${baseUrl}/api/v1/ie/requestqueue/apikey/requests`;
+        // Use Cloudflare Function proxy to bypass CORS
+        const proxyEndpoint = '/api/image-gen';
 
         console.log('[Gemini] Starting image generation with model:', modelToUse);
 
@@ -221,13 +220,16 @@ export class GeminiProvider extends LLMProvider {
             }
         };
 
-        const submitResponse = await fetch(requestEndpoint, {
+        const submitResponse = await fetch(proxyEndpoint, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                action: 'submit',
+                apiKey: apiKey,
+                payload: payload
+            })
         });
 
         if (!submitResponse.ok) {
@@ -247,11 +249,16 @@ export class GeminiProvider extends LLMProvider {
             await new Promise(r => setTimeout(r, 2000));
             attempts++;
 
-            const statusResponse = await fetch(`${requestEndpoint}/${requestId}`, {
-                method: 'GET',
+            const statusResponse = await fetch(proxyEndpoint, {
+                method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`
-                }
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'poll',
+                    apiKey: apiKey,
+                    requestId: requestId
+                })
             });
 
             if (!statusResponse.ok) continue;
