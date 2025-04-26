@@ -5,7 +5,7 @@ import useImageUpload from '../hooks/useImageUpload';
 import { loadBoard, updateBoardMetadata } from '../services/storage';
 import { chatCompletion, imageGeneration, getRoleModel } from '../services/llm';
 
-export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, isTrashView = false }) {
+export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const [quickPrompt, setQuickPrompt] = useState('');
     const {
         images,
@@ -21,27 +21,6 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     const [generatingBoardId, setGeneratingBoardId] = useState(null);
     const fileInputRef = useRef(null);
 
-    const handleQuickStart = (e) => {
-        if ((!quickPrompt.trim() && images.length === 0)) return;
-
-        // If user pressed Enter (and not holding Shift and not in IME composition)
-        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault(); // Prevent newline if it was textarea, but here it is input.
-            const title = quickPrompt.length > 30 ? quickPrompt.substring(0, 30) + '...' : (quickPrompt || 'New Image Board');
-            onCreateBoard(title, quickPrompt, images);
-            setQuickPrompt('');
-            clearImages();
-        }
-    };
-
-    const handleStartClick = () => {
-        if ((!quickPrompt.trim() && images.length === 0)) return;
-        const title = quickPrompt.length > 30 ? quickPrompt.substring(0, 30) + '...' : (quickPrompt || 'New Image Board');
-        onCreateBoard(title, quickPrompt, images);
-        setQuickPrompt('');
-        clearImages();
-    };
-
     const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragging(true);
@@ -56,6 +35,19 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         e.preventDefault();
         setIsDragging(false);
         hookHandleDrop(e);
+    };
+
+    const handleSubmit = async () => {
+        if (!quickPrompt.trim() && images.length === 0) return;
+        await onCreateBoard(quickPrompt || 'New Board', quickPrompt, images);
+        setQuickPrompt('');
+        clearImages();
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            handleSubmit();
+        }
     };
 
     // Expiry calculation for trash items
@@ -114,8 +106,12 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             if (!imageUrl) throw new Error("Failed to generate image");
 
-            // 5. Save to board metadata
-            updateBoardMetadata(boardId, { backgroundImage: imageUrl });
+            console.log('[Background Gen] Image URL:', imageUrl);
+
+            // 5. Save to board metadata via callback
+            if (onUpdateBoardMetadata) {
+                await onUpdateBoardMetadata(boardId, { backgroundImage: imageUrl });
+            }
 
         } catch (error) {
             console.error("Background generation failed:", error);
