@@ -155,6 +155,17 @@ function AppContent() {
         if (user) saveBoardToCloud(user.uid, currentBoardId, { name: newTitle }, true);
     };
 
+    const handleUpdateBoardMetadata = async (boardId, metadata) => {
+        // 1. Update local storage
+        updateBoardMetadata(boardId, metadata);
+
+        // 2. Update in-memory state (immediate UI update)
+        setBoardsList(prev => prev.map(b => b.id === boardId ? { ...b, ...metadata } : b));
+
+        // 3. Update cloud
+        if (user) updateBoardMetadataInCloud(user.uid, boardId, metadata);
+    };
+
     if (!isInitialized) return null;
 
     return (
@@ -168,6 +179,7 @@ function AppContent() {
                         onDeleteBoard={handleSoftDeleteBoard} // Default "delete" action is soft
                         onRestoreBoard={handleRestoreBoard}
                         onPermanentlyDeleteBoard={handlePermanentDeleteBoard}
+                        onUpdateBoardMetadata={handleUpdateBoardMetadata}
                         user={user}
                         onLogin={handleLogin}
                         onLogout={handleLogout}
