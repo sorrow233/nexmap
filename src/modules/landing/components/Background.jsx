@@ -2,13 +2,17 @@ import React from 'react';
 
 const Background = () => {
     return (
-        <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-[#F9F9F8]">
-            {/* Soft Ambient Orbs */}
-            <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] bg-[radial-gradient(ellipse_at_center,rgba(255,228,230,0.4),transparent_70%)] opacity-60"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[100%] h-[100%] bg-[radial-gradient(circle,rgba(204,251,241,0.4),transparent_60%)] opacity-60"></div>
+        <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-[#FDFDFC]">
+            {/* Extremely subtle vignetting */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.02)_100%)]"></div>
 
-            {/* Grain Texture for Paper Feel */}
-            <div className="absolute inset-0 opacity-[0.035] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-multiply"></div>
+            {/* Fine grain for texture (replaces paper texture for a more digital-premium feel) */}
+            <div
+                className="absolute inset-0 opacity-[0.02] mix-blend-multiply"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+                }}
+            ></div>
         </div>
     );
 };

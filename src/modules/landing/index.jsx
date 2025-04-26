@@ -8,42 +8,66 @@ import FractalGrowth from './components/FractalGrowth';
 // The Orchestrator
 const LandingModule = () => {
     const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef(null);
+    const scrollContainerRef = useRef(null);
 
-    // --- Scroll Listener ---
+    // --- Scroll Listener (Attached to Wrapper, not Window) ---
     useEffect(() => {
-        const handleScroll = () => {
-            const scrollY = window.scrollY;
+        const handleScroll = (e) => {
+            if (!scrollContainerRef.current) return;
+            const scrollY = scrollContainerRef.current.scrollTop;
             const innerHeight = window.innerHeight;
             // Map scroll to 0-4 range
             const progress = Math.max(0, scrollY / innerHeight);
             setScrollProgress(progress);
         };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        const container = scrollContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', handleScroll);
+        }
+
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', handleScroll);
+            }
+        };
     }, []);
 
     // --- Actions ---
     const handleAutoStart = () => {
-        // Automatically scroll to the first section to "Show" the infinite canvas
-        // Doing a smooth scroll start
-        window.scrollTo({
-            top: window.innerHeight * 0.8,
-            behavior: 'smooth'
-        });
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({
+                top: window.innerHeight * 0.8,
+                behavior: 'smooth'
+            });
+        }
     };
 
     return (
-        <div ref={containerRef} className="bg-[#F9F9F8] text-slate-800 font-sans min-h-[450vh]">
+        // KEY FIX: overflow-y-auto here overrides global body hidden
+        <div
+            ref={scrollContainerRef}
+            className="fixed inset-0 overflow-y-auto overflow-x-hidden bg-[#FDFDFC] text-[#1a1a1a] font-sans selection:bg-black/10 z-50 overscroll-none"
+            style={{
+                WebkitOverflowScrolling: 'touch', // Smooth momentum scroll on iOS
+            }}
+        >
             <style>{`
-                /* Hide scrollbar for cinematic feel */
+                /* Font Helper */
+                @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+                
+                .font-inter-tight {
+                    font-family: 'Inter Tight', sans-serif;
+                }
+                
+                /* Hide scrollbar for cinematic feel but keep functionality */
                 ::-webkit-scrollbar { width: 0px; background: transparent; }
             `}</style>
 
             <Background />
 
             {/* Fixed Viewport for Animations */}
-            <div className="fixed inset-0 overflow-hidden">
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <InfiniteCanvas scrollProgress={scrollProgress} />
                 <ParallelMinds scrollProgress={scrollProgress} />
                 <FractalGrowth scrollProgress={scrollProgress} />

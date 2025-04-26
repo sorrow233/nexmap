@@ -8,7 +8,7 @@ const HeroSection = ({ scrollProgress, onStart }) => {
 
     const [text, setText] = useState('');
     const fullText = "Everything starts with a thought.";
-    const [phase, setPhase] = useState('waiting'); // waiting -> typing -> done -> starting
+    const [phase, setPhase] = useState('waiting');
 
     // Auto-Type Logic
     useEffect(() => {
@@ -17,33 +17,32 @@ const HeroSection = ({ scrollProgress, onStart }) => {
         const typeChar = (index) => {
             if (index < fullText.length) {
                 setText(fullText.slice(0, index + 1));
-                // Random typing speed for realism
-                timeout = setTimeout(() => typeChar(index + 1), 50 + Math.random() * 50);
+                // Slower, more deliberate typing
+                timeout = setTimeout(() => typeChar(index + 1), 60 + Math.random() * 40);
             } else {
                 setPhase('done');
-                // Auto-trigger start after a brief pause
                 timeout = setTimeout(() => {
                     setPhase('starting');
-                    onStart(); // Trigger the page scroll
-                }, 1200);
+                    onStart();
+                }, 1500);
             }
         };
 
-        // Start typing after 1s
         if (phase === 'waiting') {
             timeout = setTimeout(() => {
                 setPhase('typing');
                 typeChar(0);
-            }, 800);
+            }, 1000);
         }
 
         return () => clearTimeout(timeout);
     }, []);
 
-    // Fade out as user scrolls
+    // Staggered Fade
     const fadeStyles = useSpring({
-        opacity: isVisible ? 1 - scrollProgress * 2 : 0,
-        transform: `scale(${1 - scrollProgress * 0.5})`,
+        opacity: isVisible ? 1 - scrollProgress * 1.5 : 0,
+        transform: `translateY(${scrollProgress * 50}px)`,
+        config: { mass: 5, tension: 200, friction: 50 }
     });
 
     return (
@@ -52,28 +51,24 @@ const HeroSection = ({ scrollProgress, onStart }) => {
                 ...fadeStyles,
                 pointerEvents: isVisible ? 'auto' : 'none',
             }}
-            className="fixed inset-0 flex flex-col items-center justify-center z-50"
+            className="fixed inset-0 flex flex-col items-center justify-center z-50 font-inter-tight"
         >
-            <div className="max-w-4xl text-center px-6">
-                {/* The "Display" Box - Looks like an input but is a display */}
-                <div className="relative group">
-                    {/* Soft Glow */}
-                    <div className="absolute -inset-4 bg-gradient-to-r from-rose-200/30 to-teal-200/30 blur-2xl opacity-50 rounded-full"></div>
+            <div className="max-w-4xl text-center px-6 mix-blend-multiply">
 
-                    <div className="relative bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-2xl px-12 py-8 min-h-[120px] flex items-center justify-center min-w-[300px] md:min-w-[600px]">
-                        <h1 className="text-4xl md:text-5xl font-lxgw text-slate-800 tracking-tight">
-                            {text}
-                            {/* Blinking Cursor */}
-                            <span className="inline-block w-1 h-10 bg-rose-400 ml-1 animate-pulse align-middle"></span>
-                        </h1>
-                    </div>
+                {/* Pure Typography - No Input Box */}
+                <div className="relative min-h-[160px] flex items-center justify-center">
+                    <h1 className="text-5xl md:text-7xl font-medium tracking-tight text-[#1a1a1a] leading-tight">
+                        {text}
+                        {/* Minimalist Caret */}
+                        <span className="inline-block w-0.5 h-12 md:h-16 bg-[#1a1a1a] ml-1 animate-pulse align-bottom opacity-50"></span>
+                    </h1>
                 </div>
 
-                {/* Hint - only shows after typing is done */}
-                <div className={`mt-12 transition-opacity duration-1000 ${phase === 'starting' ? 'opacity-100' : 'opacity-0'}`}>
-                    <p className="text-slate-400 text-sm uppercase tracking-[0.3em] mb-4">Initialised</p>
-                    <div className="animate-bounce text-slate-300">
-                        <ArrowDown size={24} />
+                {/* Minimalist Hint */}
+                <div className={`mt-16 transition-all duration-1000 transform ${phase === 'starting' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                    <div className="flex flex-col items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-semibold">Scroll to Explore</span>
+                        <div className="w-[1px] h-12 bg-gradient-to-b from-gray-300 to-transparent"></div>
                     </div>
                 </div>
             </div>
