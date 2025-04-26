@@ -46,12 +46,7 @@ export class GeminiProvider extends LLMProvider {
     async chat(messages, model, options = {}) {
         const { apiKey, baseUrl } = this.config;
         const modelToUse = model || this.config.model;
-
-        let cleanModel = (baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
-        const authMethod = getAuthMethod(baseUrl);
-
-        let endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:generateContent`;
-        if (authMethod === 'query') endpoint += `?key=${apiKey}`;
+        const cleanModel = (baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
         const resolvedMessages = await resolveRemoteImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
@@ -72,13 +67,16 @@ export class GeminiProvider extends LLMProvider {
         let retries = 3;
         while (retries >= 0) {
             try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (authMethod === 'bearer') headers['Authorization'] = `Bearer ${apiKey}`;
-
-                const response = await fetch(endpoint, {
+                const response = await fetch('/api/gmi-proxy', {
                     method: 'POST',
-                    headers,
-                    body: JSON.stringify(requestBody)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        apiKey,
+                        baseUrl,
+                        model: cleanModel,
+                        endpoint: `/models/${cleanModel}:generateContent`,
+                        requestBody
+                    })
                 });
 
                 if (response.ok) {
@@ -103,12 +101,7 @@ export class GeminiProvider extends LLMProvider {
     async stream(messages, onToken, model, options = {}) {
         const { apiKey, baseUrl } = this.config;
         const modelToUse = model || this.config.model;
-
-        let cleanModel = (baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
-        const authMethod = getAuthMethod(baseUrl);
-
-        let endpoint = `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}:streamGenerateContent`;
-        if (authMethod === 'query') endpoint += `?key=${apiKey}`;
+        const cleanModel = (baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
         const resolvedMessages = await resolveRemoteImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
@@ -131,22 +124,25 @@ export class GeminiProvider extends LLMProvider {
 
         while (retries >= 0) {
             try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (authMethod === 'bearer') headers['Authorization'] = `Bearer ${apiKey}`;
-
-                const response = await fetch(endpoint, {
+                const response = await fetch('/api/gmi-proxy', {
                     method: 'POST',
-                    headers,
-                    body: JSON.stringify(requestBody)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        apiKey,
+                        baseUrl,
+                        model: cleanModel,
+                        endpoint: `/models/${cleanModel}:streamGenerateContent`,
+                        requestBody,
+                        stream: true
+                    })
                 });
 
                 if (!response.ok) {
-                    // Check for retryable conditions
                     if ([429, 500, 502, 503, 504].includes(response.status) && retries > 0) {
                         console.warn(`[Gemini] Request failed with ${response.status}, retrying in ${delay}ms...`);
                         await new Promise(r => setTimeout(r, delay));
                         retries--;
-                        delay *= 2; // Exponential backoff
+                        delay *= 2;
                         continue;
                     }
 
@@ -180,7 +176,7 @@ export class GeminiProvider extends LLMProvider {
                             }
                         }
                     }
-                    return; // Success, break loop
+                    return;
                 } finally {
                     reader.releaseLock();
                 }
