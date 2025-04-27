@@ -109,8 +109,14 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             console.log('[Background Gen] Image URL:', imageUrl);
 
             // 5. Save to board metadata via callback
+            console.log('[Background Gen] Calling onUpdateBoardMetadata with boardId:', boardId);
+            console.log('[Background Gen] onUpdateBoardMetadata function exists?', !!onUpdateBoardMetadata);
+
             if (onUpdateBoardMetadata) {
                 await onUpdateBoardMetadata(boardId, { backgroundImage: imageUrl });
+                console.log('[Background Gen] onUpdateBoardMetadata completed');
+            } else {
+                console.error('[Background Gen] onUpdateBoardMetadata is not defined!');
             }
 
         } catch (error) {
