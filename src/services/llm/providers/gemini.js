@@ -152,6 +152,7 @@ export class GeminiProvider extends LLMProvider {
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
+                let previousText = ''; // Track cumulative text to calculate deltas
 
                 try {
                     while (true) {
@@ -163,14 +164,27 @@ export class GeminiProvider extends LLMProvider {
                             try {
                                 const data = JSON.parse(line);
                                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                                if (text) onToken(text);
+                                if (text) {
+                                    // Gemini returns cumulative text, send only the delta
+                                    const delta = text.substring(previousText.length);
+                                    if (delta) {
+                                        onToken(delta);
+                                        previousText = text;
+                                    }
+                                }
                             } catch (e) {
                                 const jsonMatch = line.match(/\{.*\}/);
                                 if (jsonMatch) {
                                     try {
                                         const data = JSON.parse(jsonMatch[0]);
                                         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                                        if (text) onToken(text);
+                                        if (text) {
+                                            const delta = text.substring(previousText.length);
+                                            if (delta) {
+                                                onToken(delta);
+                                                previousText = text;
+                                            }
+                                        }
                                     } catch (e2) { }
                                 }
                             }
