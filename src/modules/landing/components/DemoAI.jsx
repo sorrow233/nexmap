@@ -2,20 +2,24 @@ import React from 'react';
 import { Sparkles, Bot, Wand2, Lightbulb, Zap } from 'lucide-react';
 
 const DemoAI = ({ scrollProgress }) => {
-    // Active range: 1.5 to 2.5
+    // Active range: 1.2 to 2.5 (Shifted earlier)
     const localProgress = (scrollProgress - 1.5);
-    const isActive = localProgress > -0.5 && localProgress < 1.0;
+    // Keep active longer to bridge gaps
+    const isActive = scrollProgress > 1.0 && scrollProgress < 2.8;
 
     if (!isActive) return null;
 
-    // Phases
-    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.2) * 2)); // Input appears
-    const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.2) * 3)); // Particles swirl
-    const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.4) * 3)); // Cards form
+    // Phases - Adjusted for smoother timing
+    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.3) * 2)); // Start appearing sooner
+    const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.1) * 3));
+    const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.3) * 3));
 
+    // Opacity: Overlaps better with Infinite and Bento
+    // Fade in: Starts at scroll 1.1 (local -0.4)
+    // Fade out: Starts at scroll 2.1 (local 0.6)
     const opacity = localProgress < 0
-        ? Math.max(0, 1 + localProgress * 4)
-        : Math.max(0, 1 - (localProgress - 0.5) * 4);
+        ? Math.max(0, 1 + (localProgress + 0.2) * 3)
+        : Math.max(0, 1 - (localProgress - 0.6) * 3);
 
     return (
         <div
