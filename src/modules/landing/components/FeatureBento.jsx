@@ -1,49 +1,35 @@
 import React, { useRef, useState } from 'react';
-import { Image, Download, History, MousePointer2, Layers, Type, Link, MoreHorizontal } from 'lucide-react';
+import { Image, Download, History, MousePointer2, Layers } from 'lucide-react';
 
 const FeatureBento = ({ scrollProgress }) => {
-    // Active range: 2.0 to 3.5 (Started earlier to overlap)
-    // Display sequentially as user scrolls
-    const localProgress = (scrollProgress - 2.2); // Shifted earlier from 2.5
-    const isActive = scrollProgress > 1.8 && scrollProgress < 4.0;
+    // Active range: 2.5 to 3.5 (ORIGINAL timing restored)
+    const localProgress = (scrollProgress - 2.5);
+    const isActive = localProgress > -0.5 && localProgress < 1.5;
 
     if (!isActive) return null;
 
-    // Entrance: Staggered slide up
+    // Simple fade in/out (ORIGINAL logic)
+    const opacity = localProgress < 0.8
+        ? 1
+        : Math.max(0, 1 - (localProgress - 0.8) * 3);
+
+    // Staggered entrance (ORIGINAL)
     const getStyle = (index) => {
         const trigger = index * 0.1;
-        // Smoother, earlier ease-in
-        const progress = Math.min(1, Math.max(0, (localProgress - trigger + 0.2) * 2));
-
+        const progress = Math.min(1, Math.max(0, (localProgress - trigger) * 2));
         return {
             opacity: progress,
-            transform: `translateY(${(1 - progress) * 50}px)`, // Reduced movement for stability
+            transform: `translateY(${(1 - progress) * 100}px)`,
         };
     };
 
-    // Fade entire module in/out gracefully
-    // Fix: Align opacity with content appearance so we don't show a blank white screen
-    // Content starts appearing around localProgress = -0.2
-    // Content is fully visible around localProgress = 0.3
-    let mainOpacity = 1;
-
-    if (localProgress < 0.3) {
-        // Fading in (approx scroll 2.0 to 2.5)
-        // Matches the first content item's entrance curve
-        mainOpacity = Math.min(1, Math.max(0, (localProgress + 0.2) * 2));
-    } else if (localProgress > 1.0) {
-        // Fading out
-        mainOpacity = Math.max(0, 1 - (localProgress - 1.0) * 3);
-    }
-
-    // Fix: Only enable pointer events when content is actually visible/interactable
-    // This prevents the "invisible wall" that blocks scrolling/interaction with previous section
-    const isInteractable = mainOpacity > 0.5;
+    // FIX: Only enable pointer events when visible (prevents scroll blocking)
+    const isInteractable = opacity > 0.3;
 
     return (
         <div
             className={`fixed inset-0 flex items-center justify-center z-30 p-4 md:p-12 overflow-hidden ${isInteractable ? 'pointer-events-auto' : 'pointer-events-none'}`}
-            style={{ opacity: mainOpacity }}
+            style={{ opacity }}
         >
             {/* Background Context */}
             <div className="absolute inset-0 bg-[#FDFDFC] z-0" />
