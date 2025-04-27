@@ -36,9 +36,13 @@ const FeatureBento = ({ scrollProgress }) => {
         mainOpacity = Math.max(0, 1 - (localProgress - 1.0) * 3);
     }
 
+    // Fix: Only enable pointer events when content is actually visible/interactable
+    // This prevents the "invisible wall" that blocks scrolling/interaction with previous section
+    const isInteractable = mainOpacity > 0.5;
+
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center z-30 pointer-events-auto p-4 md:p-12 overflow-hidden"
+            className={`fixed inset-0 flex items-center justify-center z-30 p-4 md:p-12 overflow-hidden ${isInteractable ? 'pointer-events-auto' : 'pointer-events-none'}`}
             style={{ opacity: mainOpacity }}
         >
             {/* Background Context */}
