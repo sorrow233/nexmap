@@ -6,6 +6,14 @@ const FeatureBento = ({ scrollProgress }) => {
     const localProgress = (scrollProgress - 2.5);
     const isActive = localProgress > -0.5 && localProgress < 1.5;
 
+    // DEBUG: Log component state
+    console.log('🎨 FeatureBento:', {
+        scrollProgress: scrollProgress.toFixed(2),
+        localProgress: localProgress.toFixed(2),
+        isActive,
+        opacity: !isActive ? 0 : (localProgress < 0.8 ? 1 : Math.max(0, 1 - (localProgress - 0.8) * 3)).toFixed(2)
+    });
+
     if (!isActive) return null;
 
     // Simple fade in/out (ORIGINAL logic)
