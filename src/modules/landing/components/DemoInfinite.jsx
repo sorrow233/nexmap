@@ -1,10 +1,11 @@
 import React from 'react';
 
 const DemoInfinite = ({ scrollProgress }) => {
-    // Active range: 0.5 to 1.5
+    // Active range: 0.5 to 1.8 (Extended to overlap AI)
     // Effectively, we want to simulate zooming from scale 1 to scale 1000
     const localProgress = (scrollProgress - 0.5);
-    const isActive = localProgress > -0.5 && localProgress < 1.0;
+    // Keep it active longer so it doesn't snap off
+    const isActive = localProgress > -0.5 && localProgress < 1.5;
 
     if (!isActive) return null;
 
@@ -12,9 +13,10 @@ const DemoInfinite = ({ scrollProgress }) => {
     // scale 1 at progress 0, scale 100 at progress 1
     const zoomLevel = Math.pow(10, localProgress * 2);
 
+    // Softer fade out: starts later (at 0.7) and slower (*2 instead of *4)
     const opacity = localProgress < 0
         ? Math.max(0, 1 + localProgress * 4)
-        : Math.max(0, 1 - (localProgress - 0.5) * 4);
+        : Math.max(0, 1 - (localProgress - 0.7) * 2);
 
     return (
         <div

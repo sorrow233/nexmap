@@ -2,30 +2,40 @@ import React, { useRef, useState } from 'react';
 import { Image, Download, History, MousePointer2, Layers, Type, Link, MoreHorizontal } from 'lucide-react';
 
 const FeatureBento = ({ scrollProgress }) => {
-    // Active range: 2.5 to 3.5
-    const localProgress = (scrollProgress - 2.5);
-    const isActive = localProgress > -0.5 && localProgress < 1.5;
+    // Active range: 2.0 to 3.5 (Started earlier to overlap)
+    // Display sequentially as user scrolls
+    const localProgress = (scrollProgress - 2.2); // Shifted earlier from 2.5
+    const isActive = scrollProgress > 1.8 && scrollProgress < 4.0;
 
     if (!isActive) return null;
 
-    const opacity = localProgress < 0.8
-        ? 1
-        : Math.max(0, 1 - (localProgress - 0.8) * 3);
-
-    // Staggered entrance
+    // Entrance: Staggered slide up
     const getStyle = (index) => {
         const trigger = index * 0.1;
-        const progress = Math.min(1, Math.max(0, (localProgress - trigger) * 2));
+        // Smoother, earlier ease-in
+        const progress = Math.min(1, Math.max(0, (localProgress - trigger + 0.2) * 2));
+
         return {
             opacity: progress,
-            transform: `translateY(${(1 - progress) * 100}px)`,
+            transform: `translateY(${(1 - progress) * 50}px)`, // Reduced movement for stability
         };
     };
+
+    // Fade entire module in/out gracefully
+    // It should fade IN as AI fades OUT
+    let mainOpacity = 1;
+    if (localProgress < 0) {
+        // Fading in (approx scroll 2.2 to 2.4)
+        mainOpacity = Math.min(1, 1 + localProgress * 3);
+    } else if (localProgress > 1.0) {
+        // Fading out
+        mainOpacity = Math.max(0, 1 - (localProgress - 1.0) * 3);
+    }
 
     return (
         <div
             className="fixed inset-0 flex items-center justify-center z-30 pointer-events-auto p-4 md:p-12 overflow-hidden"
-            style={{ opacity }}
+            style={{ opacity: mainOpacity }}
         >
             {/* Background Context */}
             <div className="absolute inset-0 bg-[#FDFDFC] z-0" />
