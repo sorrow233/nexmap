@@ -23,19 +23,11 @@ const FeatureBento = ({ scrollProgress }) => {
         };
     };
 
-    // CRITICAL FIX: Background opacity must match the FIRST content item
-    // Otherwise you get a white wall with no content
-    const firstItemProgress = Math.min(1, Math.max(0, localProgress * 2));
-    const backgroundOpacity = firstItemProgress * opacity;
-
     return (
         <div
             className="fixed inset-0 flex items-center justify-center z-30 pointer-events-none p-4 md:p-12 overflow-hidden"
             style={{ opacity }}
         >
-            {/* Background Context - Now synced with content visibility */}
-            <div className="absolute inset-0 bg-[#FDFDFC] z-0" style={{ opacity: backgroundOpacity }} />
-
             <div className="relative z-10 w-full max-w-6xl h-full flex flex-col justify-center pointer-events-auto">
                 <div className="text-center mb-12" style={getStyle(0)}>
                     <h2 className="text-4xl md:text-6xl font-bold text-[#1a1a1a] mb-4 tracking-tight">
