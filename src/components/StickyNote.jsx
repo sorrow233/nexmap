@@ -19,22 +19,26 @@ const StickyNote = React.memo(function StickyNote({
     onExpand,
     isConnecting,
     isConnectionStart,
-    onCreateNote
-}) {
+    onCreateNote,
+    onCardFullScreen // NEW Prop
+}) { // Line 22
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isEditing, setIsEditing] = useState(false); // NEW: Edit mode state
     const [isExpanded, setIsExpanded] = useState(false); // NEW: Expand/collapse state
+    const hasDraggedRef = useRef(false); // Track if drag happened
+    const pendingDeselectRef = useRef(false);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const cardRef = useRef(null);
     const contentRef = useRef(null); // Ref for scrollable content
+    const clickTimeoutRef = useRef(null); // Ref for double click detection
 
     // Refs to hold latest values for event handlers to avoid re-binding
-    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd });
+    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen });
     useEffect(() => {
-        stateRef.current = { data, onMove, dragOffset, onDragEnd };
-    }, [data, onMove, dragOffset, onDragEnd]);
+        stateRef.current = { data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen };
+    }, [data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen]);
 
     const handleMouseDown = (e) => {
         if (isEditing) return; // Allow text selection in edit mode
@@ -42,6 +46,10 @@ const StickyNote = React.memo(function StickyNote({
 
         e.stopPropagation();
         onSelect(data.id, e);
+        hasDraggedRef.current = false; // Initialize drag tracking
+        pendingDeselectRef.current = !isSelected && !(e.shiftKey || e.metaKey || e.ctrlKey); // Rough guess for pending deselect if needed, but StickyNote selection is simpler usually.
+        // Actually StickyNote selection doesn't use pendingDeselect yet in the original.
+        // Let's just track drag movement.
 
         const initialDragOffset = {
             startX: e.clientX,
@@ -77,13 +85,36 @@ const StickyNote = React.memo(function StickyNote({
             const currentScale = useStore.getState().scale || 1;
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
+
+            if (!hasDraggedRef.current && (Math.abs(e.clientX - dragOffset.startX) > 3 || Math.abs(e.clientY - dragOffset.startY) > 3)) {
+                hasDraggedRef.current = true;
+            }
+
             onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
         };
 
-        const handleMouseUp = () => {
+        const handleMouseUp = (e) => {
             setIsDragging(false);
-            if (stateRef.current.onDragEnd) {
-                stateRef.current.onDragEnd(stateRef.current.data.id);
+            const { onDragEnd, data, onCardFullScreen } = stateRef.current;
+
+            if (onDragEnd) {
+                onDragEnd(data.id);
+            }
+
+            // Click Logic (Single vs Double)
+            if (!hasDraggedRef.current) {
+                if (clickTimeoutRef.current) {
+                    // Double Click Detected
+                    clearTimeout(clickTimeoutRef.current);
+                    clickTimeoutRef.current = null;
+                    if (onCardFullScreen) onCardFullScreen(data.id);
+                } else {
+                    // Single Click - wait for potential double click
+                    clickTimeoutRef.current = setTimeout(() => {
+                        setIsExpanded(prev => !prev);
+                        clickTimeoutRef.current = null;
+                    }, 250);
+                }
             }
         };
 
@@ -205,11 +236,7 @@ const StickyNote = React.memo(function StickyNote({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onPaste={handlePaste}
-            onDoubleClick={(e) => {
-                e.stopPropagation();
-                // Toggle expand/collapse on double click
-                setIsExpanded(prev => !prev);
-            }}
+        // onDoubleClick removed - handled in mouseUp
         >
             {/* Header / Controls */}
             <div className="flex justify-between items-center p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
