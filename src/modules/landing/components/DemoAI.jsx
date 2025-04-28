@@ -14,19 +14,19 @@ const DemoAI = ({ scrollProgress }) => {
     const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.1) * 3));
     const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.3) * 3));
 
-    // Opacity Logic:
-    // Fade IN: fast (start at -0.5)
-    // Fade OUT: slower and later (start at 0.8 instead of 0.6)
+    // Opacity Logic
     const opacity = localProgress < 0
         ? Math.max(0, 1 + (localProgress + 0.2) * 3)
         : Math.max(0, 1 - (localProgress - 0.9) * 2);
 
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none overflow-hidden"
+            // FIX: Z-index lowered to 20 (was 40) to prevent blocking subsequent sections
+            // pointer-events-none is CRITICAL here so scroll events pass through to the listener
+            className="fixed inset-0 flex items-center justify-center z-20 pointer-events-none overflow-hidden"
             style={{ opacity }}
         >
-            {/* Fixed Dark Background - No transition to prevent flicker/white screen */}
+            {/* Fixed Dark Background */}
             <div className="absolute inset-0 bg-[#0f172a] z-0" />
 
             {/* Header Text - Always White */}
