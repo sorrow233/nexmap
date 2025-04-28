@@ -8,27 +8,49 @@ const FeatureBento = ({ scrollProgress }) => {
 
     if (!isActive) return null;
 
-    // Container fade in/out
-    const opacity = localProgress < 0.8
-        ? 1
-        : Math.max(0, 1 - (localProgress - 0.8) * 3);
+    // Transition Logic:
+    // We are coming from DemoAI (Dark Background).
+    // We need to transition to Light Background for Bento.
+    // So we fade in a WHITE background first.
+
+    // Opacity for the whole container content (text/cards)
+    const contentOpacity = localProgress < 0.2
+        ? Math.max(0, (localProgress + 0.2) * 2.5) // Rapid fade in of content start at -0.2
+        : (localProgress < 0.8 ? 1 : Math.max(0, 1 - (localProgress - 0.8) * 3));
 
     // Staggered entrance for content
     const getStyle = (index) => {
         const trigger = index * 0.1;
-        const progress = Math.min(1, Math.max(0, (localProgress - trigger) * 2));
+        // Make content appear slightly later than background
+        const progress = Math.min(1, Math.max(0, (localProgress - trigger - 0.1) * 2));
         return {
             opacity: progress,
-            transform: `translateY(${(1 - progress) * 100}px)`,
+            transform: `translateY(${(1 - progress) * 50}px)`,
         };
     };
 
     return (
         <div
             className="fixed inset-0 flex items-center justify-center z-30 pointer-events-none p-4 md:p-12 overflow-hidden"
-            style={{ opacity }}
+        // The container itself is invisible, we manage background and content opacity separately
         >
-            <div className="relative z-10 w-full max-w-6xl h-full flex flex-col justify-center pointer-events-auto">
+            {/* 1. The Light Background Layer 
+                This covers the previous Dark DemoAI section.
+                It needs to block view but pass clicks (pointer-events-none is inherited).
+            */}
+            <div
+                className="absolute inset-0 bg-[#FDFDFC] z-0 transition-opacity duration-300"
+                style={{
+                    // Fade in white background smoothly starting at localProgress -0.5
+                    // By localProgress 0 (center), it should be fully opaque
+                    opacity: Math.min(1, Math.max(0, (localProgress + 0.5) * 2)) * (localProgress < 0.8 ? 1 : Math.max(0, 1 - (localProgress - 0.8) * 3))
+                }}
+            />
+
+            <div
+                className="relative z-10 w-full max-w-6xl h-full flex flex-col justify-center pointer-events-auto"
+                style={{ opacity: 1 }} // Content container stays visible, children animate
+            >
                 <div className="text-center mb-12" style={getStyle(0)}>
                     <h2 className="text-4xl md:text-6xl font-bold text-[#1a1a1a] mb-4 tracking-tight">
                         Built for <span className="italic font-serif text-blue-600">Power Users</span>.
