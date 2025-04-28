@@ -21,11 +21,6 @@ const DemoInfinite = ({ scrollProgress }) => {
             className="fixed inset-0 flex items-center justify-center z-30 pointer-events-none overflow-hidden"
             style={{ opacity }}
         >
-            <div className="absolute inset-0 bg-[#FDFDFC] mix-blend-overlay z-0" />
-
-            {/* Container for the zoom content. 
-                We use a central pivot point. 
-            */}
             <div className="relative w-full h-full flex items-center justify-center perspective-[1000px]">
 
                 {/* Main Title Overlay - Static relative to screen, fades out */}
