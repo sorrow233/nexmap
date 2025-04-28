@@ -239,6 +239,7 @@ export default function Canvas({ onCreateNote, ...props }) {
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
                                 onCreateNote={onCreateNote}
+                                onCardFullScreen={props.onCardFullScreen ? () => props.onCardFullScreen(card.id) : undefined}
                             />
                         </ErrorBoundary>
                     );

@@ -49,6 +49,7 @@ export default function MessageList({
                                     message={m}
                                     index={i}
                                     marks={card.data.marks}
+                                    capturedNotes={card.data.capturedNotes}
                                     parseModelOutput={parseModelOutput}
                                     isStreaming={isStreaming}
                                     handleRetry={handleRetry}
