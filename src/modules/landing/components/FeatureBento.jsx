@@ -12,8 +12,8 @@ const FeatureBento = () => {
                     <h2 className="relative text-5xl md:text-8xl font-bold text-white mb-8 tracking-tighter">
                         For <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">Professional</span> LLM Users.
                     </h2>
-                    <p className="relative text-xl text-gray-400 max-w-3xl mx-auto font-light leading-relaxed">
-                        The interface for the <span className="text-white font-medium">Top 1%</span>. A graph-native orchestrator constructed for maximum concurrency, context depth, and architectural purity.
+                    <p className="relative text-xl text-gray-400 max-w-4xl mx-auto font-light leading-relaxed">
+                        To build the ultimate engine, we uncapped concurrency for <span className="text-white">massive parallel workloads</span>, engineered a <span className="text-white">recursive graph-walker</span> for deep context, and implemented <span className="text-white">spatial zoning</span> for city-scale architecture.
                     </p>
                 </div>
 
@@ -99,65 +99,49 @@ const FeatureBento = () => {
                         </div>
                     </SpotlightCard>
 
-                    {/* 4. DIRECT PIPELINE (Bottom Full Width) - REPLACED TRANSPARENT REASONING */}
+                    {/* 4. SEMANTIC ZONING (Bottom Full Width) - REPLACED DIRECT-TO-API */}
                     <SpotlightCard className="md:col-span-3 bg-[#080808] border-white/5 group overflow-hidden">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                         <div className="relative z-20 p-8 flex flex-col md:flex-row h-full items-center gap-12">
                             <div className="flex-1 min-w-0">
-                                <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-white/5 text-blue-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-                                    <Zap className="w-3 h-3" />
-                                    <span>Zero-Latency Architecture</span>
+                                <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-white/5 text-purple-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+                                    <Database className="w-3 h-3" />
+                                    <span>Spatial Organization</span>
                                 </div>
-                                <h3 className="text-3xl font-bold text-white mb-3">Direct-to-API Pipeline</h3>
+                                <h3 className="text-3xl font-bold text-white mb-3">Semantic Zoning.</h3>
                                 <p className="text-gray-400 max-w-xl leading-relaxed">
-                                    We eliminated the middleware bottleneck. Your client connects <span className="text-white">directly</span> to the inference provider (Gemini/OpenAI). Pure speed. Absolute privacy. No server logs.
+                                    Don't just organize—build cities. Group related thoughts into dynamic <span className="text-white">Zones</span> that auto-adjust their bounding boxes. Like "Cities: Skylines" for your neural architecture.
                                 </p>
                             </div>
 
-                            {/* Direct Connection Visualization */}
-                            <div className="w-full md:w-1/2 h-32 relative flex items-center justify-center">
-                                {/* Nodes */}
-                                <div className="absolute left-10 flex flex-col items-center gap-2 z-10">
-                                    <div className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl flex items-center justify-center shadow-2xl">
-                                        <span className="font-bold text-white">Client</span>
+                            {/* Zoning Visualization */}
+                            <div className="w-full md:w-1/2 h-40 relative flex items-center justify-center">
+                                {/* Zone Container */}
+                                <div className="absolute inset-4 border border-dashed border-purple-500/30 rounded-3xl bg-purple-500/5 backdrop-blur-sm animate-pulse-slow flex items-center justify-center">
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-[10px] font-bold text-purple-300 uppercase tracking-widest">
+                                        Zone: Architecture
+                                    </div>
+
+                                    {/* Nodes inside Zone */}
+                                    <div className="flex gap-4">
+                                        <div className="w-12 h-12 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center shadow-lg transform group-hover:-translate-y-2 transition-transform duration-500">
+                                            <div className="w-6 h-1 bg-white/20 rounded-full" />
+                                        </div>
+                                        <div className="w-12 h-12 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center shadow-lg transform group-hover:translate-x-2 transition-transform duration-500 delay-75">
+                                            <div className="w-6 h-1 bg-white/20 rounded-full" />
+                                        </div>
+                                        <div className="w-12 h-12 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center shadow-lg transform group-hover:translate-y-2 transition-transform duration-500 delay-150">
+                                            <div className="w-6 h-1 bg-white/20 rounded-full" />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="absolute right-10 flex flex-col items-center gap-2 z-10">
-                                    <div className="w-16 h-16 bg-blue-900/40 border border-blue-500/50 rounded-2xl flex items-center justify-center shadow-glow-blue">
-                                        <Brain className="text-blue-400" size={24} />
-                                    </div>
+                                {/* Floating "Add to Zone" cursor/action */}
+                                <div className="absolute -right-4 bottom-0 bg-white text-black p-2 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 group-hover:-translate-y-4 transition-all duration-300 pointer-events-none font-bold text-xs flex gap-2 items-center">
+                                    <PlusIcon className="w-3 h-3" />
+                                    <span>Auto-Expand</span>
                                 </div>
-
-                                {/* Bypassed Node (Middleware) */}
-                                <div className="absolute top-[-40px] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-40 grayscale">
-                                    <div className="w-12 h-12 border border-dashed border-gray-600 rounded-xl flex items-center justify-center">
-                                        <span className="text-[10px] text-gray-500">Middleware</span>
-                                    </div>
-                                    <XIcon className="text-red-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8" />
-                                </div>
-
-                                {/* Connection Line */}
-                                <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                                    <defs>
-                                        <linearGradient id="gradient-line" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" stopColor="#6366f1" stopOpacity="0" />
-                                            <stop offset="50%" stopColor="#818cf8" stopOpacity="1" />
-                                            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    <path
-                                        d="M 100 64 L 350 64"
-                                        stroke="url(#gradient-line)"
-                                        strokeWidth="2"
-                                        fill="none"
-                                        strokeDasharray="200"
-                                        className="animate-dash"
-                                    />
-                                    <circle cx="100" cy="64" r="3" className="fill-indigo-400 animate-ping-fast" />
-                                    <circle cx="350" cy="64" r="3" className="fill-blue-400 animate-ping-fast delay-75" />
-                                </svg>
                             </div>
                         </div>
                     </SpotlightCard>
@@ -185,11 +169,18 @@ const FeatureBento = () => {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
+                @keyframes pulse-slow {
+                    0%, 100% { opacity: 0.8; transform: scale(1); }
+                    50% { opacity: 1; transform: scale(1.02); }
+                }
                 .animate-dash {
                     animation: dash 1s linear infinite;
                 }
                 .animate-ping-fast {
                     animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+                }
+                .animate-pulse-slow {
+                    animation: pulse-slow 4s ease-in-out infinite;
                 }
                 .animate-spin-extremely-slow {
                     animation: spin-extremely-slow 60s linear infinite;
@@ -201,8 +192,8 @@ const FeatureBento = () => {
 
 // --- Subcomponents ---
 
-const XIcon = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18" /><path d="m6 6 18 18" /></svg>
+const PlusIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="M12 5v14" /></svg>
 );
 
 const GraphVisualization = () => (

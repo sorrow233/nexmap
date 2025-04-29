@@ -1,7 +1,7 @@
 // import { streamChatCompletion } from '../../services/llm'; // Removed - uses AIManager
 import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
 import favoritesService from '../../services/favoritesService';
-import { calculateLayout } from '../../utils/autoLayout';
+import { calculateLayout, calculateGridLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import { uuid } from '../../utils/uuid';
 import { createPerformanceMonitor } from '../../utils/performanceMonitor';
@@ -69,6 +69,38 @@ export const createContentSlice = (set, get) => {
         arrangeCards: () => {
             const { cards, connections } = get();
             const newPositions = calculateLayout(cards, connections);
+
+            if (newPositions.size === 0) return;
+
+            set(state => ({
+                cards: state.cards.map(card => {
+                    const newPos = newPositions.get(card.id);
+                    if (newPos) {
+                        return { ...card, x: newPos.x, y: newPos.y };
+                    }
+                    return card;
+                })
+            }));
+        },
+
+        arrangeSelectionGrid: () => {
+            const { cards, selectedIds } = get();
+            if (!selectedIds || selectedIds.length === 0) return;
+
+            const selectedCards = cards.filter(c => selectedIds.includes(c.id));
+            if (selectedCards.length === 0) return;
+
+            // Calculate bounding box start (top-left) to anchor the grid
+            let minX = Infinity;
+            let minY = Infinity;
+
+            selectedCards.forEach(c => {
+                if (c.x < minX) minX = c.x;
+                if (c.y < minY) minY = c.y;
+            });
+
+            // const { calculateGridLayout } = require('../../utils/autoLayout'); // Already imported
+            const newPositions = calculateGridLayout(selectedCards, minX, minY);
 
             if (newPositions.size === 0) return;
 

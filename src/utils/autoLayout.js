@@ -213,3 +213,51 @@ export function calculateLayout(cards, connections) {
 
     return positions;
 }
+
+/**
+ * Calculates a Grid layout for selected cards.
+ * 
+ * @param {Array} cards - Array of selected card objects {id, x, y, width, height, ...}
+ * @param {number} startX - Top-left X coordinate for the grid
+ * @param {number} startY - Top-left Y coordinate for the grid
+ * @returns {Map} Map of cardId -> {x, y}
+ */
+export function calculateGridLayout(cards, startX, startY) {
+    if (!cards || cards.length === 0) return new Map();
+
+    const CARD_WIDTH = 320;
+    const CARD_HEIGHT = 300;
+    const GAP = 40; // Spacing between cards
+
+    const positions = new Map();
+
+    // Determine grid dimensions
+    // For a nice square-ish grid, we want columns ~= sqrt(N)
+    const count = cards.length;
+    const columns = Math.ceil(Math.sqrt(count));
+
+    // Sort cards by their original visual order (Top-Left to Bottom-Right)
+    // This makes the transition feel more natural than ID-based sorting
+    const sortedCards = [...cards].sort((a, b) => {
+        // Rough row banding for sorting: prioritize Y, then X
+        // Allow for some "slop" in Y so cards on roughly the same line are treated as same row
+        const rowHeight = 100;
+        const rowA = Math.round(a.y / rowHeight);
+        const rowB = Math.round(b.y / rowHeight);
+
+        if (rowA !== rowB) return rowA - rowB;
+        return a.x - b.x;
+    });
+
+    sortedCards.forEach((card, index) => {
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+
+        const x = startX + (col * (CARD_WIDTH + GAP));
+        const y = startY + (row * (CARD_HEIGHT + GAP));
+
+        positions.set(card.id, { x, y });
+    });
+
+    return positions;
+}
