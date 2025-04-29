@@ -1,142 +1,184 @@
 import React from 'react';
-import { Sparkles, Bot, Wand2, Lightbulb, Zap } from 'lucide-react';
+import { Sparkles, Bot, Wand2, Lightbulb, Zap, Rocket, Target, Flag } from 'lucide-react';
 
 const DemoAI = ({ scrollProgress }) => {
-    // Active range: 1.2 to 2.8
-    const localProgress = (scrollProgress - 1.5);
-    // Extend active range to ensure it doesn't disappear prematurely
-    const isActive = scrollProgress > 1.0 && scrollProgress < 3.0;
+    // Scroll Timeline: 3.0 -> 4.5
+    // Normalize to 0 -> 1 for this section
+    const START = 3.0;
+    const END = 4.5;
+    const localProgress = Math.min(1, Math.max(0, (scrollProgress - START) / (END - START)));
 
-    if (!isActive) return null;
+    // Only render if we are nearby to save resources
+    if (scrollProgress < 2.5 || scrollProgress > 5.0) return null;
 
-    // Phases - Adjusted for smoother timing
-    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.3) * 2));
-    const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.1) * 3));
-    const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.3) * 3));
+    // Phases
+    // 0.0 - 0.2: Input Bar floats in
+    // 0.2 - 0.4: Typing effect
+    // 0.4 - 0.6: Explosion / Processing
+    // 0.6 - 1.0: Result fan out
 
-    // Opacity Logic
-    const opacity = localProgress < 0
-        ? Math.max(0, 1 + (localProgress + 0.2) * 3)
-        : Math.max(0, 1 - (localProgress - 0.9) * 2);
+    // 1. Input Appearance
+    const inputOpacity = localProgress < 0.1 ? localProgress * 10 : 1;
+    const inputScale = localProgress < 0.1 ? 0.8 + (localProgress * 2) : 1;
+
+    // 2. Processing (0.4 start)
+    const isProcessing = localProgress > 0.35 && localProgress < 0.6;
+    const processScale = isProcessing ? 1 + (localProgress - 0.35) * 4 : 1;
+    const processOpacity = isProcessing ? 1 - (localProgress - 0.35) * 4 : 0;
+
+    // 3. Results (0.5 start)
+    const resultPhase = Math.max(0, (localProgress - 0.5) * 2); // 0 -> 1
+
+    // Input move out (Zoom into the "O" of processing? or just fade out up)
+    const inputY = localProgress > 0.4 ? (localProgress - 0.4) * -300 : 0;
+    const inputFade = localProgress > 0.4 ? 1 - (localProgress - 0.4) * 5 : 1;
 
     return (
-        <div
-            className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none overflow-hidden"
-            style={{ opacity }}
-        >
-            {/* Header Text - Always White */}
-            <div className="absolute top-24 left-0 right-0 text-center z-30 text-white"
+        <div className="w-full h-full flex items-center justify-center relative perspective-[1000px]">
+            {/* Background Glow */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                    className="w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] transition-all duration-700"
+                    style={{
+                        opacity: localProgress > 0.2 ? 0.5 : 0,
+                        transform: `scale(${localProgress})`
+                    }}
+                />
+            </div>
+
+            {/* 1. INPUT BAR */}
+            <div
+                className="absolute z-30 flex flex-col items-center gap-6"
+                style={{
+                    opacity: Math.max(0, inputOpacity * inputFade),
+                    transform: `translateY(${inputY}px) scale(${inputScale})`
+                }}
             >
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-md rounded-full text-blue-500 font-semibold mb-6 border border-blue-500/20">
-                    <Sparkles className="w-4 h-4" />
-                    <span>AI Copilot</span>
+                <div className="bg-[#0A0A0A] border border-white/20 rounded-full px-8 py-5 flex items-center gap-4 shadow-2xl w-[90vw] max-w-2xl">
+                    <Bot className="w-6 h-6 text-blue-400" />
+                    <div className="h-6 w-[1px] bg-white/20" />
+                    <div className="text-xl md:text-2xl font-light text-white overflow-hidden whitespace-nowrap">
+                        <span className="relative">
+                            {localProgress < 0.2 ? "..." : "Create a launch plan for Mars Colony"}
+                            <span className="animate-pulse ml-1 text-blue-400">|</span>
+                        </span>
+                    </div>
                 </div>
-                <h2 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight">
-                    Words become <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 animate-pulse">
-                        Reality.
-                    </span>
+
+                <div className="text-gray-500 font-medium tracking-widest text-sm uppercase">
+                    Just ask.
+                </div>
+            </div>
+
+            {/* 2. THE EXPLOSION (Transition) */}
+            <div
+                className="absolute z-20 pointer-events-none"
+                style={{
+                    opacity: Math.max(0, processOpacity),
+                    transform: `scale(${processScale})`
+                }}
+            >
+                <div className="w-20 h-20 bg-white rounded-full blur-md" />
+                <div className="absolute inset-0 w-20 h-20 bg-blue-500 rounded-full blur-xl animate-ping" />
+            </div>
+
+            {/* 3. THE RESULT (Mind Map) */}
+            <div
+                className="absolute inset-0 flex items-center justify-center z-10 w-full h-full"
+                style={{
+                    opacity: Math.min(1, resultPhase * 2),
+                    transform: `scale(${0.5 + resultPhase * 0.5}) rotateX(20deg)`, // Tilt slightly
+                    transformStyle: 'preserve-3d'
+                }}
+            >
+                {/* Lines Container - SVG */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                    <g style={{ opacity: resultPhase }}>
+                        <Connector x1="50%" y1="50%" x2="50%" y2="20%" progress={resultPhase} />
+                        <Connector x1="50%" y1="50%" x2="20%" y2="60%" progress={resultPhase} />
+                        <Connector x1="50%" y1="50%" x2="80%" y2="60%" progress={resultPhase} />
+                        <Connector x1="80%" y1="60%" x2="85%" y2="80%" progress={resultPhase} delay={0.2} />
+                        <Connector x1="20%" y1="60%" x2="15%" y2="80%" progress={resultPhase} delay={0.2} />
+                    </g>
+                </svg>
+
+                {/* Central Node */}
+                <MindCard
+                    title="Mars Colony"
+                    icon={Rocket}
+                    color="bg-orange-500"
+                    x={0} y={0}
+                    scale={1.5}
+                    phase={resultPhase}
+                />
+
+                {/* Level 1 Nodes */}
+                <MindCard title="Habitat" icon={Target} color="bg-red-500" x={0} y={-300} phase={resultPhase} delay={0.1} />
+                <MindCard title="Resources" icon={Zap} color="bg-yellow-500" x={-300} y={100} phase={resultPhase} delay={0.15} />
+                <MindCard title="Transport" icon={Flag} color="bg-blue-500" x={300} y={100} phase={resultPhase} delay={0.2} />
+
+                {/* Level 2 Nodes - Details */}
+                <MindCard title="Oxygen" icon={Lightbulb} color="bg-cyan-500" x={-350} y={300} scale={0.8} phase={resultPhase} delay={0.3} />
+                <MindCard title="Rockets" icon={Wand2} color="bg-purple-500" x={380} y={300} scale={0.8} phase={resultPhase} delay={0.35} />
+
+            </div>
+
+            {/* Heading Text fixed at top */}
+            <div
+                className="absolute top-20 left-0 right-0 text-center z-40 transition-all duration-500"
+                style={{
+                    opacity: localProgress > 0.1 ? 1 : 0,
+                    transform: `translateY(${localProgress > 0.1 ? 0 : -20}px)`
+                }}
+            >
+                <h2 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter">
+                    {localProgress > 0.5 ? "Structure from Chaos." : "Words to Reality."}
                 </h2>
             </div>
-
-            <div className="relative z-10 w-full max-w-4xl h-[600px] flex items-center justify-center perspective-[1000px]">
-
-                {/* 1. The Prompt Bar (Floating Input) */}
-                <div
-                    className="absolute z-40 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full px-8 py-4 flex items-center gap-4 shadow-2xl text-white w-full max-w-lg origin-center transition-all duration-700"
-                    style={{
-                        transform: `translateY(${resultPhase * -250}px) scale(${1 - resultPhase * 0.3})`,
-                        opacity: 1
-                    }}
-                >
-                    <Bot className="w-6 h-6 text-blue-400" />
-                    <span className="text-xl font-light opacity-90 typing-effect whitespace-nowrap overflow-hidden border-r-2 border-blue-400/50 pr-1">
-                        Draw a mindmap for a coffee shop launch...
-                    </span>
-                </div>
-
-                {/* 2. The Magic Swirl (Particles) */}
-                <div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                    style={{ opacity: Math.max(0, processingPhase - resultPhase) }}
-                >
-                    {/* Simulated particles using CSS shadows/gradients */}
-                    <div className="w-[600px] h-[600px] rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-3xl animate-spin-slow" />
-                    <div className="absolute w-[300px] h-[300px] rounded-full bg-blue-400/10 blur-2xl animate-pulse" />
-                </div>
-
-                {/* 3. The Result (Materializing Cards) */}
-                <div className="absolute inset-0 flex items-center justify-center z-20" style={{ transformStyle: 'preserve-3d' }}>
-                    {/* Central Hub */}
-                    <Card
-                        title="Coffee Shop Launch"
-                        icon={Zap}
-                        color="bg-amber-500"
-                        delay={0}
-                        phase={resultPhase}
-                        x={0} y={0} z={50}
-                        scale={1.2}
-                    />
-
-                    {/* Surrounding Nodes */}
-                    <Card title="Menu Strategy" icon={Lightbulb} color="bg-orange-500" delay={0.1} phase={resultPhase} x={-250} y={-100} z={0} rotate={-10} />
-                    <Card title="Marketing" icon={Wand2} color="bg-pink-500" delay={0.2} phase={resultPhase} x={250} y={-100} z={0} rotate={10} />
-                    <Card title="Operations" icon={Bot} color="bg-cyan-500" delay={0.3} phase={resultPhase} x={-200} y={150} z={0} rotate={-5} />
-                    <Card title="Finance" icon={Sparkles} color="bg-emerald-500" delay={0.4} phase={resultPhase} x={200} y={150} z={0} rotate={5} />
-
-                    {/* Connecting Lines (SVG Overlay) */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: resultPhase, transition: 'opacity 1s' }}>
-                        {/* Lines drawn from center to approximate card positions */}
-                        <line x1="50%" y1="50%" x2="calc(50% - 250px)" y2="calc(50% - 100px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-                        <line x1="50%" y1="50%" x2="calc(50% + 250px)" y2="calc(50% - 100px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-                        <line x1="50%" y1="50%" x2="calc(50% - 200px)" y2="calc(50% + 150px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-                        <line x1="50%" y1="50%" x2="calc(50% + 200px)" y2="calc(50% + 150px)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-                    </svg>
-                </div>
-            </div>
-
-            <style>{`
-                @keyframes spin-slow {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                .animate-spin-slow {
-                    animation: spin-slow 10s linear infinite;
-                }
-            `}</style>
         </div>
     );
 };
 
-// Helper Component for the materialized cards
-const Card = ({ title, icon: Icon, color, delay, phase, x, y, z, rotate = 0, scale = 1 }) => {
-    // Calculate local deployment phase
-    const deploy = Math.max(0, Math.min(1, (phase - delay) * 2));
+const Connector = ({ x1, y1, x2, y2, progress, delay = 0 }) => {
+    // Only show after delay
+    const effectiveProgress = Math.max(0, (progress - delay) * 2);
+    if (effectiveProgress <= 0) return null;
 
-    // Spring-like overshoot logic manually
-    const currentScale = deploy * scale;
+    return (
+        <line
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="rgba(255,255,255,0.15)"
+            strokeWidth="2"
+            strokeDasharray="10 10"
+            className="animate-pulse"
+        />
+    );
+}
+
+const MindCard = ({ title, icon: Icon, color, x, y, scale = 1, phase, delay = 0 }) => {
+    const deploy = Math.max(0, Math.min(1, (phase - delay) * 1.5));
+    // Spring effect: overshoot
+    // Simple mock spring: 0 -> 1.1 -> 1
+    const spring = deploy < 0.8 ? deploy * 1.1 : 1.1 - (deploy - 0.8) * 0.5;
+    const finalScale = scale * (deploy > 0 ? spring : 0);
 
     return (
         <div
-            className="absolute w-56 bg-white/10 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-5 will-change-transform flex flex-col gap-3"
+            className="absolute bg-[#111] border border-white/10 p-4 rounded-xl flex items-center gap-3 shadow-xl w-48"
             style={{
-                transform: `translateX(${x * deploy}px) translateY(${y * deploy}px) translateZ(${z * deploy}px) rotate(${rotate * deploy}deg) scale(${currentScale})`,
+                transform: `translate(${x}px, ${y}px) scale(${finalScale})`,
                 opacity: deploy
             }}
         >
-            <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center text-white shadow-lg`}>
-                    <Icon className="w-4 h-4" />
-                </div>
-                <div className="h-2 w-16 bg-white/20 rounded-full" />
+            <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center text-white shrink-0`}>
+                <Icon size={20} />
             </div>
-            <h4 className="text-lg font-bold text-white mb-1">{title}</h4>
-            <div className="space-y-2 opacity-50">
-                <div className="h-1 w-full bg-white/40 rounded" />
-                <div className="h-1 w-5/6 bg-white/40 rounded" />
+            <div className="flex flex-col min-w-0">
+                <span className="font-bold text-white truncate">{title}</span>
+                <div className="h-1.5 w-12 bg-white/20 rounded-full mt-1" />
             </div>
         </div>
     );
-};
+}
 
 export default DemoAI;
