@@ -296,13 +296,25 @@ export function useCardCreator() {
             let nextNum = 1;
 
             if (lines.length > 0) {
-                // Look for the last line that matches our pattern
-                const lastLine = lines[lines.length - 1];
-                const match = lastLine.match(/^(\d+)\./);
-                if (match) {
-                    nextNum = parseInt(match[1], 10) + 1;
+                // Find the highest existing number to ensure sequential ordering
+                // This avoids issues where multi-line notes cause the counter to jump based on line count
+                const numbers = lines
+                    .map(line => {
+                        const match = line.match(/^(\d+)\./);
+                        return match ? parseInt(match[1], 10) : null;
+                    })
+                    .filter(n => n !== null);
+
+                if (numbers.length > 0) {
+                    nextNum = Math.max(...numbers) + 1;
                 } else {
-                    nextNum = lines.length + 1;
+                    // Fallback: Check if there are lines but no numbers (e.g. user manually wrote text)
+                    // We start at 1, or maybe lines.length + 1 if we wanted to be safe, 
+                    // but starting at 1 makes a new list which is usually desired.
+                    // User complained about lines.length jumping, so let's stick to 1 if no numbers found,
+                    // BUT if there is text, maybe we shouldn't overwrite? 
+                    // Actually, if no numbers, appending "01." is a good start.
+                    nextNum = 1;
                 }
             }
 
