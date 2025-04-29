@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Image as ImageIcon, Trash2, Link } from 'lucide-react';
+import { X, Image as ImageIcon, Trash2, Link, ListOrdered } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 
 import { useStore } from '../store/useStore';
@@ -146,6 +146,36 @@ const StickyNote = React.memo(function StickyNote({
         onUpdate(data.id, { ...data.data, content: e.target.value });
     };
 
+    // Auto-Renumbering Feature
+    const handleRenumber = (e) => {
+        e.stopPropagation();
+        const content = data.data?.content || '';
+        if (!content) return;
+
+        // logic:
+        // 1. Split by newlines
+        // 2. Identify lines that act as headers (e.g. "01. Title")
+        // 3. Re-assign sequential numbers
+
+        const lines = content.split('\n');
+        let counter = 1;
+        const newLines = lines.map(line => {
+            const match = line.match(/^\d+\.\s+(.*)/);
+            if (match) {
+                const text = match[1];
+                const newNum = String(counter++).padStart(2, '0');
+                return `${newNum}. ${text}`;
+            }
+            return line;
+        });
+
+        const newContent = newLines.join('\n');
+
+        if (newContent !== content) {
+            onUpdate(data.id, { ...data.data, content: newContent });
+        }
+    };
+
     const handleKeyDown = (e) => {
         // Allow creating new card with Cmd+Enter
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -261,6 +291,13 @@ const StickyNote = React.memo(function StickyNote({
                         title="Create connection"
                     >
                         <Link size={16} />
+                    </button>
+                    <button
+                        onClick={handleRenumber}
+                        className="p-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 backdrop-blur-md transition-all active:scale-95"
+                        title="Re-order List"
+                    >
+                        <ListOrdered size={16} />
                     </button>
                 </div>
             </div>
