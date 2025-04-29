@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
+import Zone from './Zone'; // NEW: Zone Component
 import ConnectionLayer from './ConnectionLayer';
 import ActiveConnectionLayer from './ActiveConnectionLayer';
 import { getCardRect, isRectIntersect } from '../utils/geometry';
@@ -13,7 +14,7 @@ import favoritesService from '../services/favoritesService';
 
 export default function Canvas({ onCreateNote, ...props }) {
     const {
-        cards, connections,
+        cards, connections, groups, // NEW: groups
         offset, scale, setOffset, setScale,
         selectedIds, setSelectedIds,
         interactionMode, setInteractionMode,
@@ -220,6 +221,16 @@ export default function Canvas({ onCreateNote, ...props }) {
                 className="absolute top-0 left-0 w-full h-full origin-top-left transition-transform duration-75 ease-out will-change-transform pointer-events-none"
                 style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
             >
+                {/* Zones Layer (Behind Cards) */}
+                {groups && groups.map(group => (
+                    <div key={group.id} className="pointer-events-auto">
+                        <Zone
+                            group={group}
+                            isSelected={false} // Zones selection separate from cards for now? Or maybe just visual?
+                        />
+                    </div>
+                ))}
+
                 {/* Cards Layer with viewport culling from beta */}
                 {visibleCards.map(card => {
                     const Component = card.type === 'note' ? StickyNote : Card;

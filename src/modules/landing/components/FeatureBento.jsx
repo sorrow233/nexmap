@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Image, Download, History, MousePointer2, Layers, Video, FileText, Music } from 'lucide-react';
+import { BrainCircuit, Cpu, Eye, Sparkles, Network, Bot, Image as ImageIcon, Code2 } from 'lucide-react';
 
 const FeatureBento = () => {
     return (
@@ -8,123 +8,123 @@ const FeatureBento = () => {
 
                 {/* HEADLINE */}
                 <div className="text-center mb-24 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
                     <h2 className="relative text-4xl md:text-7xl font-bold text-white mb-6 tracking-tighter">
-                        Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-500 animate-gradient-fast background-animate">Power Users</span>.
+                        The Ultimate <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">AI Engine</span>.
                     </h2>
                     <p className="relative text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
-                        We stripped away the clutter. <br />
-                        <span className="text-gray-500">You focus on the </span> <span className="text-white font-medium">flow</span>.
+                        Stop pasting context. <br />
+                        <span className="text-gray-500">We built an LLM interface that </span> <span className="text-white font-medium">actually understands</span> your workflow.
                     </p>
                 </div>
 
                 {/* BENTO GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-4 grid-rows-3 md:grid-rows-2 gap-6 h-auto md:h-[800px]">
 
-                    {/* 1. MEDIA CARD (2x2) */}
+                    {/* 1. KEY FEATURE: SPATIAL CONTEXT (2x2) */}
                     <SpotlightCard className="md:col-span-2 md:row-span-2 bg-[#0A0A0A] border-white/5 group overflow-hidden">
                         <div className="relative z-20 p-8 h-full flex flex-col">
-                            <div className="w-14 h-14 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-white/10 backdrop-blur-sm">
-                                <Layers className="w-7 h-7 text-purple-400" />
+                            <div className="w-14 h-14 bg-gradient-to-br from-indigo-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-white/10 backdrop-blur-sm">
+                                <BrainCircuit className="w-7 h-7 text-indigo-400" />
                             </div>
-                            <h3 className="text-3xl font-bold text-white mb-3">Rich Media Canvas</h3>
+                            <h3 className="text-3xl font-bold text-white mb-3">Spatial Context Window</h3>
                             <p className="text-gray-400 text-lg max-w-sm leading-relaxed">
-                                Don't just resize images. <span className="text-white">Crop, filter, and stack</span> videos, PDFs, and 3D models directly on the canvas.
+                                The AI reads your <span className="text-white">entire canvas</span>. It understands spatial relationships, hierarchy, and connections—not just a linear chat history.
                             </p>
                         </div>
 
-                        {/* Interactive Visual Layer */}
-                        <div className="absolute inset-0 z-10 opacity-80 group-hover:opacity-100 transition-all duration-700">
-                            {/* Floating Media Stack */}
-                            <div className="absolute bottom-[-10%] right-[-10%] w-[120%] h-[120%] rotate-[-5deg] group-hover:rotate-0 transition-transform duration-700">
-                                {/* Video Card */}
-                                <div className="absolute bottom-1/4 right-1/3 w-64 h-40 bg-[#151515] border border-white/10 rounded-lg shadow-2xl p-2 transform transition-transform duration-500 group-hover:translate-y-[-20px] group-hover:translate-x-[-10px]">
-                                    <div className="w-full h-full bg-[#222] rounded overflow-hidden relative group-hover:brightness-110 transition-all">
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
-                                                <Video className="w-5 h-5 text-white" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Interactive Visual: Scanning Effect */}
+                        <div className="absolute inset-0 z-10 opacity-50 group-hover:opacity-100 transition-all duration-700 pointer-events-none">
+                            {/* Mini Map Representation */}
+                            <div className="absolute right-10 bottom-10 w-64 h-64 opacity-50 group-hover:opacity-100 transition-opacity">
+                                {/* Central Hub */}
+                                <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-[0_0_20px_white]" />
+                                {/* Scanning Beam */}
+                                <div className="absolute top-1/2 left-1/2 w-[200px] h-[200px] bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent -translate-x-1/2 -translate-y-1/2 animate-spin-slow rounded-full border border-white/5" style={{ animationDuration: '4s' }} />
+                                {/* Connecting Nodes */}
+                                <div className="absolute top-10 left-20 w-2 h-2 bg-gray-500 rounded-full" />
+                                <div className="absolute bottom-20 right-10 w-2 h-2 bg-gray-500 rounded-full" />
+                                <div className="absolute top-20 right-20 w-2 h-2 bg-gray-500 rounded-full" />
 
-                                {/* Image Card */}
-                                <div className="absolute bottom-10 right-10 w-72 h-48 bg-[#181818] border border-white/10 rounded-lg shadow-2xl p-2 transform transition-transform duration-700 group-hover:z-30 group-hover:scale-105">
-                                    <div className="w-full h-full bg-[#2a2a2a] rounded overflow-hidden relative">
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-emerald-500/20" />
-                                        <div className="absolute bottom-3 left-3 flex gap-2">
-                                            <div className="w-20 h-2 bg-white/20 rounded-full" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Music Card */}
-                                <div className="absolute top-1/3 right-10 w-48 h-12 bg-[#1a1a1a] border border-white/10 rounded-full shadow-xl flex items-center px-3 gap-3 transform transition-transform duration-1000 group-hover:translate-y-[10px]">
-                                    <div className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center">
-                                        <Music className="w-4 h-4 text-pink-400" />
-                                    </div>
-                                    <div className="h-2 w-20 bg-white/10 rounded-full" />
-                                </div>
+                                {/* Active Connecting Lines */}
+                                <svg className="absolute inset-0 w-full h-full overflow-visible">
+                                    <line x1="50%" y1="50%" x2="30%" y2="20%" stroke="rgba(255,255,255,0.1)" />
+                                    <line x1="50%" y1="50%" x2="80%" y2="70%" stroke="rgba(255,255,255,0.1)" />
+                                </svg>
                             </div>
                         </div>
                     </SpotlightCard>
 
-                    {/* 2. UNDO CARD (1x1) */}
+                    {/* 2. MULTI-MODEL (1x1) */}
                     <SpotlightCard className="bg-[#0A0A0A] border-white/5 group relative overflow-hidden">
                         <div className="relative z-20 p-8 h-full flex flex-col justify-between">
-                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/5">
-                                <History className="w-6 h-6 text-emerald-400 transition-transform duration-500 group-hover:-rotate-180" />
+                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/5 group-hover:border-purple-500/30 transition-colors">
+                                <Cpu className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Time Travel</h3>
-                                <p className="text-gray-400 text-sm">Infinite undo history. <br /> Never lose a thought.</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">Multi-Model</h3>
+                                <p className="text-gray-400 text-sm">GPT-4, Claude 3.5, Gemini. <br /> Switch instantly.</p>
                             </div>
                         </div>
                         {/* Background Effect */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-[20px] border-emerald-500/10 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 scale-50 group-hover:scale-100" />
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-[10px] border-emerald-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100 scale-50 group-hover:scale-100" />
-                    </SpotlightCard>
-
-                    {/* 3. EXPORT CARD (1x1) */}
-                    <SpotlightCard className="bg-[#0A0A0A] border-white/5 group relative overflow-hidden">
-                        <div className="relative z-20 p-8 h-full flex flex-col justify-between">
-                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/5 group-hover:bg-blue-500/20 transition-colors">
-                                <Download className="w-6 h-6 text-blue-400 group-hover:animate-bounce" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">4K Export</h3>
-                                <p className="text-gray-400 text-sm">PDF, PNG, or JSON. <br /> Pixel perfect.</p>
+                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex gap-1">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse delay-75" />
+                                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse delay-150" />
                             </div>
                         </div>
-                        {/* Scanline Effect */}
-                        <div className="absolute inset-0 bg-blue-500/5 z-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
-                        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-blue-400/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] z-10 translate-y-full group-hover:translate-y-[-300px] transition-transform duration-1000 ease-linear opacity-0 group-hover:opacity-100 delay-100" />
                     </SpotlightCard>
 
-                    {/* 4. SYNC CARD (2x1) */}
+                    {/* 3. VISUAL IMAGINATION (1x1) */}
+                    <SpotlightCard className="bg-[#0A0A0A] border-white/5 group relative overflow-hidden">
+                        <div className="relative z-20 p-8 h-full flex flex-col justify-between">
+                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/5 group-hover:border-pink-500/30 transition-colors">
+                                <ImageIcon className="w-6 h-6 text-pink-400 group-hover:rotate-12 transition-transform" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-2">Generative Vision</h3>
+                                <p className="text-gray-400 text-sm">Words to Pixels. <br /> Integrated Image gen.</p>
+                            </div>
+                        </div>
+                        {/* Image Reveal Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </SpotlightCard>
+
+                    {/* 4. STRUCTURED OUTPUT (2x1 wide) */}
                     <SpotlightCard className="md:col-span-2 bg-[#0A0A0A] border-white/5 group overflow-hidden">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                         <div className="relative z-20 p-8 flex flex-col md:flex-row h-full items-center justify-between">
                             <div className="mb-6 md:mb-0 relative z-10">
-                                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500/10 to-pink-500/10 border border-white/5 text-orange-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-                                    <span>Coming Soon</span>
+                                <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-white/5 text-blue-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+                                    <Bot className="w-3 h-3" />
+                                    <span>Smart Formatting</span>
                                 </div>
-                                <h3 className="text-3xl font-bold text-white mb-2">Hive Mind</h3>
-                                <p className="text-gray-400 max-w-xs">Real-time collaboration with <span className="text-white">zero latency</span>.</p>
+                                <h3 className="text-3xl font-bold text-white mb-2">Structured Output</h3>
+                                <p className="text-gray-400 max-w-xs">Don't just get text. Get <span className="text-white">Mind Maps, Tables, and Code</span> directly on canvas.</p>
                             </div>
 
-                            {/* Cursors Container */}
-                            <div className="relative w-full md:w-64 h-32 pointer-events-none">
-                                <div className="absolute top-1/2 left-1/4 animate-float-slow">
-                                    <Cursor color="text-pink-500" fill="fill-pink-500" label="Designer" delay="0s" />
+                            {/* Floating Cards Visual */}
+                            <div className="relative w-full md:w-64 h-32 pointer-events-none perspective-[800px]">
+                                <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-white/10 rounded-lg p-3 w-40 transform rotate-y-[-20deg] rotate-x-[10deg] shadow-xl group-hover:translate-y-[-10px] transition-transform duration-500">
+                                    <div className="flex gap-2 mb-2">
+                                        <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center"><Code2 size={14} className="text-blue-400" /></div>
+                                        <div className="flex-1 space-y-1">
+                                            <div className="w-full h-1.5 bg-white/20 rounded-full" />
+                                            <div className="w-2/3 h-1.5 bg-white/10 rounded-full" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="absolute top-1/3 right-1/4 animate-float-medium">
-                                    <Cursor color="text-cyan-500" fill="fill-cyan-500" label="Engineer" delay="1s" />
-                                </div>
-                                <div className="absolute bottom-1/4 left-1/2 animate-float-fast">
-                                    <Cursor color="text-yellow-500" fill="fill-yellow-500" label="Manager" delay="0.5s" />
+                                <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border border-white/10 rounded-lg p-3 w-40 transform rotate-y-[20deg] rotate-x-[10deg] shadow-xl group-hover:translate-y-[10px] transition-transform duration-500">
+                                    <div className="flex gap-2 items-center">
+                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                        <div className="w-full h-1.5 bg-white/20 rounded-full" />
+                                    </div>
+                                    <div className="mt-2 space-y-1">
+                                        <div className="w-full h-1 bg-white/10 rounded-full" />
+                                        <div className="w-full h-1 bg-white/10 rounded-full" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -142,21 +142,18 @@ const FeatureBento = () => {
                      0% { filter: hue-rotate(0deg); }
                      100% { filter: hue-rotate(30deg); }
                 }
+                @keyframes spin-slow {
+                    to { transform: translate(-50%, -50%) rotate(360deg); }
+                }
+                .animate-spin-slow {
+                    animation: spin-slow 10s linear infinite;
+                }
             `}</style>
         </div>
     );
 };
 
 // --- Subcomponents ---
-
-const Cursor = ({ color, fill, label, delay }) => (
-    <div className="relative" style={{ animationDelay: delay }}>
-        <MousePointer2 className={`w-6 h-6 ${color} ${fill} drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]`} />
-        <span className={`absolute left-5 top-5 ${color.replace('text', 'bg')} text-black text-[10px] font-bold px-2 py-0.5 rounded-full rounded-tl-none whitespace-nowrap`}>
-            {label}
-        </span>
-    </div>
-);
 
 const SpotlightCard = ({ children, className = "" }) => {
     const divRef = useRef(null);
