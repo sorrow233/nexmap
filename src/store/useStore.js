@@ -22,7 +22,8 @@ const useStoreBase = create(
             equality: (a, b) => a.cards === b.cards && a.connections === b.connections,
             partialize: (state) => ({
                 cards: state.cards,
-                connections: state.connections
+                connections: state.connections,
+                groups: state.groups // Persist groups
             })
         }
     )

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu } from 'lucide-react';
-import { chatCompletion } from '../services/llm';
+// import { chatCompletion } from '../services/llm'; // Converted to dynamic import
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
 import { saveUserSettings } from '../services/storage';
@@ -68,6 +68,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             if (!currentConfig.apiKey) throw new Error("API Key is missing");
 
             // Updated signature: chatCompletion(messages, config, model, options)
+            const { chatCompletion } = await import('../services/llm');
             await chatCompletion(
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
                 currentConfig,

@@ -3,7 +3,9 @@ import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, A
 import ModernDialog from './ModernDialog';
 import useImageUpload from '../hooks/useImageUpload';
 import { loadBoard, updateBoardMetadata } from '../services/storage';
-import { chatCompletion, imageGeneration, DEFAULT_ROLES } from '../services/llm';
+// import { chatCompletion, imageGeneration, DEFAULT_ROLES } from '../services/llm'; // Converted to dynamic/registry import
+import { DEFAULT_ROLES } from '../services/llm/registry';
+
 import { uploadImageToS3, getS3Config } from '../services/s3';
 import { useStore } from '../store/useStore';
 
@@ -140,6 +142,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             NO chibi/big-head style, NO anime style, NO photorealistic elements.`;
 
             console.log('[Background Gen] Stage 1: Analyzing context...');
+            const { chatCompletion, imageGeneration } = await import('../services/llm');
             const visualConcept = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
                 config,

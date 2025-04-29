@@ -217,8 +217,19 @@ class AIManager {
         }
 
         if (task.type === 'image') {
-            // Placeholder for image gen
-            return null;
+            const { prompt } = task.payload;
+
+            // Check if we need to pass a signal? 
+            // imageGeneration signature: (prompt, config, model, options)
+            // options can take a signal if the underlying provider supports it.
+
+            const result = await imageGeneration(
+                prompt,
+                config,
+                config.model || 'dall-e-3', // Default or from config
+                { signal }
+            );
+            return result;
         }
 
         throw new Error(`Unknown task type: ${task.type}`);

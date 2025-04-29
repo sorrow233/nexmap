@@ -1,4 +1,4 @@
-import { imageGeneration } from '../services/llm';
+// import { imageGeneration } from '../services/llm'; // Removed in favor of AIManager
 import { useStore } from '../store/useStore';
 import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
@@ -215,7 +215,6 @@ export function useCardCreator() {
     const handleCreateCard = async (text, images = [], position = null) => {
         if (!text.trim() && images.length === 0) return;
 
-        // 1. Drawing command (Bypass batch logic)
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
             const promptText = text.replace(/^\/(draw|image)\s+/, '');
             const newId = uuid();
@@ -225,13 +224,25 @@ export function useCardCreator() {
                 y: (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20),
                 data: { prompt: promptText, loading: true, title: `Generating: ${promptText.substring(0, 20)}...` }
             }]);
+
             try {
                 // REFACTOR: Use store config for image generation
                 const state = useStore.getState();
                 const activeConfig = state.getActiveConfig();
-                const imageModel = state.getRoleModel('image'); // Respects user role setting
+                // const imageModel = state.getRoleModel('image'); // Respects user role setting (handled in AIManager/Config now?)
+                // Ideally passing just config and letting AIManager/LLM resolve model if not explicit
 
-                const imageUrl = await imageGeneration(promptText, activeConfig, imageModel);
+                // Use AIManager for Image Generation task
+                const imageUrl = await aiManager.requestTask({
+                    type: 'image',
+                    priority: PRIORITY.HIGH,
+                    payload: {
+                        prompt: promptText,
+                        config: activeConfig
+                    },
+                    tags: [`card:${newId}`]
+                });
+
                 setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) } } : c));
             } catch (e) {
                 console.error(e);
