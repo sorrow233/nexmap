@@ -1,130 +1,136 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { BrainCircuit, Cpu, Eye, Sparkles, Network, Bot, Image as ImageIcon, Code2 } from 'lucide-react';
+import { Network, GitBranch, Cpu, Zap, Brain, Sparkles, Workflow, Bot, Database } from 'lucide-react';
 
 const FeatureBento = () => {
     return (
         <div className="w-full relative z-20 py-32 px-4 md:px-12 flex justify-center bg-[#050505]">
-            <div className="w-full max-w-6xl flex flex-col justify-center">
+            <div className="w-full max-w-7xl flex flex-col justify-center">
 
                 {/* HEADLINE */}
                 <div className="text-center mb-24 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
-                    <h2 className="relative text-4xl md:text-7xl font-bold text-white mb-6 tracking-tighter">
-                        The Ultimate <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">AI Engine</span>.
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
+                    <h2 className="relative text-5xl md:text-8xl font-bold text-white mb-8 tracking-tighter">
+                        Beyond <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">Chatbots</span>.
                     </h2>
-                    <p className="relative text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
-                        Stop pasting context. <br />
-                        <span className="text-gray-500">We built an LLM interface that </span> <span className="text-white font-medium">actually understands</span> your workflow.
+                    <p className="relative text-xl text-gray-400 max-w-3xl mx-auto font-light leading-relaxed">
+                        We didn't just wrap an API. We built a <span className="text-white font-medium">Graph-Native AI Orchestrator</span> that thinks recursively, manages unlimited concurrency, and sees your entire project structure.
                     </p>
                 </div>
 
                 {/* BENTO GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-4 grid-rows-3 md:grid-rows-2 gap-6 h-auto md:h-[800px]">
+                <div className="grid grid-cols-1 md:grid-cols-3 grid-rows-4 md:grid-rows-2 gap-6 h-auto md:h-[900px]">
 
-                    {/* 1. KEY FEATURE: SPATIAL CONTEXT (2x2) */}
-                    <SpotlightCard className="md:col-span-2 md:row-span-2 bg-[#0A0A0A] border-white/5 group overflow-hidden">
-                        <div className="relative z-20 p-8 h-full flex flex-col">
-                            <div className="w-14 h-14 bg-gradient-to-br from-indigo-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mb-6 border border-white/10 backdrop-blur-sm">
-                                <BrainCircuit className="w-7 h-7 text-indigo-400" />
+                    {/* 1. KEY Differentiator: GRAPH CONTEXT (2x2) */}
+                    <SpotlightCard className="md:col-span-2 md:row-span-2 bg-[#080808] border-white/5 group overflow-hidden">
+                        <div className="relative z-20 p-10 h-full flex flex-col items-start justify-between pointer-events-none">
+                            <div className="w-full max-w-lg">
+                                <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
+                                    <Network className="w-3 h-3" />
+                                    <span>Graph Context Walking</span>
+                                </div>
+                                <h3 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">It reads the <br />connections.</h3>
+                                <p className="text-gray-400 text-lg leading-relaxed">
+                                    Traditional LLMs only see linear chat interactions. Our engine traverses the <span className="text-gray-200">connected graph</span> of your canvas, pruning irrelevant nodes and injecting precise neighbor context into every generation.
+                                </p>
                             </div>
-                            <h3 className="text-3xl font-bold text-white mb-3">Spatial Context Window</h3>
-                            <p className="text-gray-400 text-lg max-w-sm leading-relaxed">
-                                The AI reads your <span className="text-white">entire canvas</span>. It understands spatial relationships, hierarchy, and connections—not just a linear chat history.
-                            </p>
+
+                            <div className="flex gap-4 mt-8">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-3xl font-mono text-white font-bold">128k</span>
+                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Token Window</span>
+                                </div>
+                                <div className="w-px h-12 bg-white/10" />
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-3xl font-mono text-white font-bold">∞</span>
+                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Depth</span>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Interactive Visual: Scanning Effect */}
-                        <div className="absolute inset-0 z-10 opacity-50 group-hover:opacity-100 transition-all duration-700 pointer-events-none">
-                            {/* Mini Map Representation */}
-                            <div className="absolute right-10 bottom-10 w-64 h-64 opacity-50 group-hover:opacity-100 transition-opacity">
-                                {/* Central Hub */}
-                                <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-[0_0_20px_white]" />
-                                {/* Scanning Beam */}
-                                <div className="absolute top-1/2 left-1/2 w-[200px] h-[200px] bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent -translate-x-1/2 -translate-y-1/2 animate-spin-slow rounded-full border border-white/5" style={{ animationDuration: '4s' }} />
-                                {/* Connecting Nodes */}
-                                <div className="absolute top-10 left-20 w-2 h-2 bg-gray-500 rounded-full" />
-                                <div className="absolute bottom-20 right-10 w-2 h-2 bg-gray-500 rounded-full" />
-                                <div className="absolute top-20 right-20 w-2 h-2 bg-gray-500 rounded-full" />
-
-                                {/* Active Connecting Lines */}
-                                <svg className="absolute inset-0 w-full h-full overflow-visible">
-                                    <line x1="50%" y1="50%" x2="30%" y2="20%" stroke="rgba(255,255,255,0.1)" />
-                                    <line x1="50%" y1="50%" x2="80%" y2="70%" stroke="rgba(255,255,255,0.1)" />
-                                </svg>
+                        {/* Interactive Visual: Graph Traversal */}
+                        <div className="absolute inset-0 z-10 opacity-30 group-hover:opacity-100 transition-opacity duration-700">
+                            <div className="absolute right-[-100px] top-1/2 -translate-y-1/2 w-[600px] h-[600px]">
+                                <GraphVisualization />
                             </div>
                         </div>
                     </SpotlightCard>
 
-                    {/* 2. MULTI-MODEL (1x1) */}
-                    <SpotlightCard className="bg-[#0A0A0A] border-white/5 group relative overflow-hidden">
+                    {/* 2. RECURSIVE IDEATION (1x1) */}
+                    <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden">
                         <div className="relative z-20 p-8 h-full flex flex-col justify-between">
-                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/5 group-hover:border-purple-500/30 transition-colors">
-                                <Cpu className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
+                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500">
+                                <GitBranch className="w-7 h-7 text-emerald-400" />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Multi-Model</h3>
-                                <p className="text-gray-400 text-sm">GPT-4, Claude 3.5, Gemini. <br /> Switch instantly.</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">Recursive "Sprout"</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed">It doesn't just answer—it actively suggests. Click "Sprout" to have the AI recursively branch one idea into five divergent concepts.</p>
                             </div>
                         </div>
-                        {/* Background Effect */}
-                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="flex gap-1">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse delay-75" />
-                                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse delay-150" />
-                            </div>
+                        {/* Recursive Branching Visual */}
+                        <div className="absolute top-10 right-10 w-32 h-32 opacity-20 group-hover:opacity-100 transition-opacity duration-700">
+                            <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+                                <path d="M10 50 C 40 50, 40 20, 90 20" className="text-emerald-500 stroke-2" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'dash 2s ease-out forwards' }} />
+                                <path d="M10 50 C 40 50, 40 50, 90 50" className="text-emerald-500 stroke-2" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'dash 2s ease-out 0.2s forwards' }} />
+                                <path d="M10 50 C 40 50, 40 80, 90 80" className="text-emerald-500 stroke-2" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'dash 2s ease-out 0.4s forwards' }} />
+                                <circle cx="90" cy="20" r="3" className="fill-emerald-400 animate-pulse" />
+                                <circle cx="90" cy="50" r="3" className="fill-emerald-400 animate-pulse delay-100" />
+                                <circle cx="90" cy="80" r="3" className="fill-emerald-400 animate-pulse delay-200" />
+                            </svg>
                         </div>
                     </SpotlightCard>
 
-                    {/* 3. VISUAL IMAGINATION (1x1) */}
-                    <SpotlightCard className="bg-[#0A0A0A] border-white/5 group relative overflow-hidden">
+                    {/* 3. UNLIMITED CONCURRENCY (1x1) */}
+                    <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden">
                         <div className="relative z-20 p-8 h-full flex flex-col justify-between">
-                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/5 group-hover:border-pink-500/30 transition-colors">
-                                <ImageIcon className="w-6 h-6 text-pink-400 group-hover:rotate-12 transition-transform" />
+                            <div className="w-14 h-14 bg-gradient-to-br from-pink-500/20 to-red-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:rotate-180 transition-transform duration-700 ease-out">
+                                <Cpu className="w-7 h-7 text-pink-400" />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Generative Vision</h3>
-                                <p className="text-gray-400 text-sm">Words to Pixels. <br /> Integrated Image gen.</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">Unlimited Concurrency</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed">No "Thinking..." blockers. Fire off 50 streams at once. Our dedicated <span className="font-mono text-pink-400">AIManager</span> handles the queue, priority, and parsing.</p>
                             </div>
                         </div>
-                        {/* Image Reveal Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {/* Concurrency lines */}
+                        <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {[...Array(5)].map((_, i) => (
+                                <div key={i} className="absolute h-[1px] bg-gradient-to-r from-transparent via-pink-500/50 to-transparent w-full"
+                                    style={{ top: `${20 + i * 15}%`, animation: `scanline 2s linear infinite ${i * 0.2}s` }} />
+                            ))}
+                        </div>
                     </SpotlightCard>
 
-                    {/* 4. STRUCTURED OUTPUT (2x1 wide) */}
-                    <SpotlightCard className="md:col-span-2 bg-[#0A0A0A] border-white/5 group overflow-hidden">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {/* 4. TRANSPARENT REASONING (Bottom Full Width) */}
+                    <SpotlightCard className="md:col-span-3 bg-[#080808] border-white/5 group overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                        <div className="relative z-20 p-8 flex flex-col md:flex-row h-full items-center justify-between">
-                            <div className="mb-6 md:mb-0 relative z-10">
+                        <div className="relative z-20 p-8 flex flex-col md:flex-row h-full items-center gap-12">
+                            <div className="flex-1 min-w-0">
                                 <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-white/5 text-blue-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
-                                    <Bot className="w-3 h-3" />
-                                    <span>Smart Formatting</span>
+                                    <Brain className="w-3 h-3" />
+                                    <span>Chain of Thought</span>
                                 </div>
-                                <h3 className="text-3xl font-bold text-white mb-2">Structured Output</h3>
-                                <p className="text-gray-400 max-w-xs">Don't just get text. Get <span className="text-white">Mind Maps, Tables, and Code</span> directly on canvas.</p>
+                                <h3 className="text-3xl font-bold text-white mb-3">Transparent Reasoning</h3>
+                                <p className="text-gray-400 max-w-xl leading-relaxed">
+                                    We expose the raw <span className="font-mono text-blue-300 text-xs bg-blue-500/10 px-1 py-0.5 rounded">&lt;thinking&gt;</span> process. See exactly how the agent deconstructs your problem before it solutions it. Zero black boxes.
+                                </p>
                             </div>
 
-                            {/* Floating Cards Visual */}
-                            <div className="relative w-full md:w-64 h-32 pointer-events-none perspective-[800px]">
-                                <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-white/10 rounded-lg p-3 w-40 transform rotate-y-[-20deg] rotate-x-[10deg] shadow-xl group-hover:translate-y-[-10px] transition-transform duration-500">
-                                    <div className="flex gap-2 mb-2">
-                                        <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center"><Code2 size={14} className="text-blue-400" /></div>
-                                        <div className="flex-1 space-y-1">
-                                            <div className="w-full h-1.5 bg-white/20 rounded-full" />
-                                            <div className="w-2/3 h-1.5 bg-white/10 rounded-full" />
-                                        </div>
-                                    </div>
+                            {/* Code/Reasoning Visualization */}
+                            <div className="w-full md:w-1/2 bg-[#000] border border-white/10 rounded-xl p-4 font-mono text-xs overflow-hidden relative shadow-2xl">
+                                <div className="absolute top-0 left-0 w-full h-8 bg-[#111] border-b border-white/5 flex items-center px-4 gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                    <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                                    <div className="ml-auto text-gray-600">agent_reasoning.log</div>
                                 </div>
-                                <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border border-white/10 rounded-lg p-3 w-40 transform rotate-y-[20deg] rotate-x-[10deg] shadow-xl group-hover:translate-y-[10px] transition-transform duration-500">
-                                    <div className="flex gap-2 items-center">
-                                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                                        <div className="w-full h-1.5 bg-white/20 rounded-full" />
-                                    </div>
-                                    <div className="mt-2 space-y-1">
-                                        <div className="w-full h-1 bg-white/10 rounded-full" />
-                                        <div className="w-full h-1 bg-white/10 rounded-full" />
-                                    </div>
+                                <div className="mt-6 space-y-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                                    <div className="text-gray-500">&lt;thinking&gt;</div>
+                                    <div className="text-emerald-600 pl-4">1. Analyze user intent: "Refactor auth middleware"</div>
+                                    <div className="text-emerald-600 pl-4">2. Scan dependency graph: Found 3 connected services.</div>
+                                    <div className="text-emerald-600 pl-4">3. Identified potential race condition in token refresh.</div>
+                                    <div className="text-emerald-600 pl-4">4. Formulating strategy: Implement mutex lock pattern.</div>
+                                    <div className="text-gray-500">&lt;/thinking&gt;</div>
+                                    <div className="text-blue-400 mt-2">Based on the analysis of the auth service connections...</div>
                                 </div>
                             </div>
                         </div>
@@ -142,11 +148,19 @@ const FeatureBento = () => {
                      0% { filter: hue-rotate(0deg); }
                      100% { filter: hue-rotate(30deg); }
                 }
-                @keyframes spin-slow {
-                    to { transform: translate(-50%, -50%) rotate(360deg); }
+                @keyframes dash {
+                    to { stroke-dashoffset: 0; }
                 }
-                .animate-spin-slow {
-                    animation: spin-slow 10s linear infinite;
+                @keyframes scanline {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+                @keyframes spin-extremely-slow {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                .animate-spin-extremely-slow {
+                    animation: spin-extremely-slow 60s linear infinite;
                 }
             `}</style>
         </div>
@@ -155,9 +169,32 @@ const FeatureBento = () => {
 
 // --- Subcomponents ---
 
+const GraphVisualization = () => (
+    <div className="relative w-full h-full animate-spin-extremely-slow">
+        {/* Central Hub */}
+        <div className="absolute top-1/2 left-1/2 w-8 h-8 bg-indigo-500 rounded-full blur-xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 z-10" />
+
+        {/* Orbiting Nodes */}
+        {[...Array(6)].map((_, i) => {
+            const angle = (i * 60) * (Math.PI / 180);
+            const radius = 150;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            return (
+                <div key={i} className="absolute top-1/2 left-1/2" style={{ transform: `translate(${x}px, ${y}px)` }}>
+                    <div className="w-3 h-3 bg-indigo-400 rounded-full animate-pulse opacity-50" style={{ animationDelay: `${i * 0.2}s` }} />
+                    <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] pointer-events-none" style={{ left: -x, top: -y }}>
+                        <line x1="150" y1="150" x2={150 + x} y2={150 + y} stroke="rgba(99, 102, 241, 0.2)" strokeWidth="1" />
+                    </svg>
+                </div>
+            );
+        })}
+    </div>
+);
+
 const SpotlightCard = ({ children, className = "" }) => {
     const divRef = useRef(null);
-    const [isFocused, setIsFocused] = useState(false);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [opacity, setOpacity] = useState(0);
 
@@ -168,36 +205,16 @@ const SpotlightCard = ({ children, className = "" }) => {
         setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     };
 
-    const handleFocus = () => {
-        setIsFocused(true);
-        setOpacity(1);
-    };
-
-    const handleBlur = () => {
-        setIsFocused(false);
-        setOpacity(0);
-    };
-
-    const handleMouseEnter = () => {
-        setOpacity(1);
-    };
-
-    const handleMouseLeave = () => {
-        setOpacity(0);
-    };
-
     return (
         <div
             ref={divRef}
             onMouseMove={handleMouseMove}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            className={`relative rounded-3xl border border-white/10 bg-[#121212] overflow-hidden ${className}`}
+            onMouseEnter={() => setOpacity(1)}
+            onMouseLeave={() => setOpacity(0)}
+            className={`relative rounded-3xl border border-white/10 bg-[#121212] overflow-hidden transition-all duration-300 hover:border-white/20 ${className}`}
         >
             <div
-                className="pointer-events-none absolute -inset-px opacity-0 transition duration-300"
+                className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 z-10"
                 style={{
                     opacity,
                     background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(255,255,255,.06), transparent 40%)`,
