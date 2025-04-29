@@ -107,7 +107,7 @@ export const loadBoard = async (id) => {
     }
 
     if (!stored) {
-        return { cards: [], connections: [] };
+        return { cards: [], connections: [], groups: [] };
     }
 
     // Process S3 URL images: download and convert to base64

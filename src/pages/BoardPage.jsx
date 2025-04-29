@@ -20,6 +20,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const {
         cards,
         connections,
+        groups, // NEW: Needed for autosave
         selectedIds,
         generatingCardIds,
         expandedCardId,
@@ -64,18 +65,18 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const lastSavedState = useRef('');
     useEffect(() => {
         if (currentBoardId && cards.length > 0) {
-            const currentState = JSON.stringify({ cards, connections });
+            const currentState = JSON.stringify({ cards, connections, groups }); // Include groups
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
-                saveBoard(currentBoardId, { cards, connections });
+                saveBoard(currentBoardId, { cards, connections, groups }); // Save groups
                 lastSavedState.current = currentState;
             }, 500);
 
             let cloudTimeout;
             if (user) {
                 cloudTimeout = setTimeout(() => {
-                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections });
+                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups }); // Save groups to cloud
                 }, 2000);
             }
 
@@ -84,7 +85,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, currentBoardId, user]);
+    }, [cards, connections, groups, currentBoardId, user]); // Watch groups
 
     // Persist canvas state
     useEffect(() => {
