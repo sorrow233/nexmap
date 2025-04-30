@@ -37,7 +37,7 @@ function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
-    const { setCards, setConnections } = useStore();
+    const { setCards, setConnections, setGroups } = useStore();
     const { createCardWithText } = useCardCreator();
 
     // Dialog State
@@ -91,6 +91,7 @@ function AppContent() {
                 const data = await loadBoard(currentBoardId);
                 setCards(data.cards || []);
                 setConnections(data.connections || []);
+                setGroups(data.groups || []);
                 storageSetCurrentBoardId(currentBoardId);
             }
         };

@@ -59,13 +59,10 @@ const DemoInfinite = () => {
     const easedSort = sortProgress < 0.5 ? 2 * sortProgress * sortProgress : -1 + (4 - 2 * sortProgress) * sortProgress;
 
     const scale = localProgress > 0.8 ? 1 - (localProgress - 0.8) * 0.5 : 1;
-    const opacity = localProgress < 0.1 ? localProgress * 10 : localProgress > 0.9 ? 1 - (localProgress - 0.9) * 10 : 1;
+    const opacity = localProgress > 0.9 ? 1 - (localProgress - 0.9) * 10 : 1;
 
     return (
-        <div
-            ref={containerRef}
-            className="w-full h-full"
-        >
+        <div ref={containerRef} className="h-[200vh] relative">
             <div
                 className="sticky top-0 w-full h-screen flex items-center justify-center relative perspective-[1000px] overflow-hidden bg-[#050505]"
                 style={{ opacity }}
@@ -85,7 +82,7 @@ const DemoInfinite = () => {
                 <div
                     className="absolute top-32 left-0 right-0 text-center z-10 transition-all duration-700"
                     style={{
-                        opacity: localProgress > 0.1 && localProgress < 0.9 ? 1 : 0,
+                        opacity: localProgress < 0.9 ? 1 : 0,
                         transform: `translateY(${localProgress < 0.5 ? 0 : -30}px)`
                     }}
                 >
@@ -160,27 +157,21 @@ const DemoInfinite = () => {
                     })}
 
 
-                    {/* Connection Lines (Fade in only when organized) */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+                    {/* Connection Lines (Fade in only when organized) using CSS borders */}
+                    <div
+                        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
                         style={{ opacity: easedSort > 0.8 ? (easedSort - 0.8) * 5 : 0 }}
                     >
-                        <defs>
-                            <linearGradient id="gridLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-                                <stop offset="50%" stopColor="rgba(255,255,255,0.1)" />
-                                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                            </linearGradient>
-                        </defs>
                         {/* Vertical Lines */}
-                        <path d="M calc(50% - 220px) calc(50% - 400px) L calc(50% - 220px) calc(50% + 400px)" stroke="url(#gridLine)" strokeWidth="1" />
-                        <path d="M calc(50%) calc(50% - 400px) L calc(50%) calc(50% + 400px)" stroke="url(#gridLine)" strokeWidth="1" />
-                        <path d="M calc(50% + 220px) calc(50% - 400px) L calc(50% + 220px) calc(50% + 400px)" stroke="url(#gridLine)" strokeWidth="1" />
+                        <div className="absolute top-1/2 left-1/2 w-px h-[800px] bg-white/5 -translate-y-1/2 -translate-x-[220px]" />
+                        <div className="absolute top-1/2 left-1/2 w-px h-[800px] bg-white/5 -translate-y-1/2" />
+                        <div className="absolute top-1/2 left-1/2 w-px h-[800px] bg-white/5 -translate-y-1/2 translate-x-[220px]" />
 
                         {/* Horizontal Lines */}
-                        <path d="M calc(50% - 400px) calc(50% - 280px) L calc(50% + 400px) calc(50% - 280px)" stroke="url(#gridLine)" strokeWidth="1" />
-                        <path d="M calc(50% - 400px) calc(50%) L calc(50% + 400px) calc(50%)" stroke="url(#gridLine)" strokeWidth="1" />
-                        <path d="M calc(50% - 400px) calc(50% + 280px) L calc(50% + 400px) calc(50% + 280px)" stroke="url(#gridLine)" strokeWidth="1" />
-                    </svg>
+                        <div className="absolute top-1/2 left-1/2 h-px w-[800px] bg-white/5 -translate-x-1/2 -translate-y-[280px]" />
+                        <div className="absolute top-1/2 left-1/2 h-px w-[800px] bg-white/5 -translate-x-1/2" />
+                        <div className="absolute top-1/2 left-1/2 h-px w-[800px] bg-white/5 -translate-x-1/2 translate-y-[280px]" />
+                    </div>
 
                 </div>
 
