@@ -7,38 +7,30 @@ import FeatureBento from './components/FeatureBento';
 // The Orchestrator
 const LandingModule = () => {
     const [scrollProgress, setScrollProgress] = useState(0);
-    const scrollContainerRef = useRef(null);
 
     // --- Global Scroll Listener ---
     useEffect(() => {
         const handleScroll = () => {
-            if (!scrollContainerRef.current) return;
-            const scrTop = scrollContainerRef.current.scrollTop;
+            const scrTop = window.scrollY;
             const innerH = window.innerHeight;
             const progress = scrTop / innerH;
             setScrollProgress(progress);
         };
 
-        const container = scrollContainerRef.current;
-        if (container) {
-            container.addEventListener('scroll', handleScroll);
-            // Initial call
-            handleScroll();
-        }
-        return () => { if (container) container.removeEventListener('scroll', handleScroll); };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        // Initial call
+        handleScroll();
+
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const handleAutoStart = () => {
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTo({ top: window.innerHeight * 1.2, behavior: 'smooth' });
-        }
+        window.scrollTo({ top: window.innerHeight * 1.2, behavior: 'smooth' });
     };
 
     return (
         <div
-            ref={scrollContainerRef}
-            className="fixed inset-0 overflow-y-auto overflow-x-hidden bg-[#050505] text-white font-sans selection:bg-purple-500/30 z-50 overscroll-none"
-            style={{ WebkitOverflowScrolling: 'touch' }}
+            className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-500/30 overflow-x-hidden"
         >
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');

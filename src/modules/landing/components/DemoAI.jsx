@@ -15,10 +15,19 @@ const DemoAI = () => {
 
             if (totalScrollDistance <= 0) return;
 
+            // rect.top calculation for sticky progress
             const scrolled = -rect.top;
             const p = Math.max(0, Math.min(1, scrolled / totalScrollDistance));
-
             setLocalProgress(p);
+
+            // Calculate entrance progress
+            if (containerRef.current) {
+                const distFromTop = rect.top;
+                // Fade in during the approach
+                const entrance = 1 - Math.max(0, Math.min(1, distFromTop / (viewportHeight * 0.6)));
+                containerRef.current.style.setProperty('--entrance-opacity', entrance);
+                containerRef.current.style.setProperty('--entrance-scale', 0.9 + (0.1 * entrance));
+            }
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
@@ -56,7 +65,14 @@ const DemoAI = () => {
 
     return (
         <div ref={containerRef} className="h-[200vh] relative">
-            <div className="sticky top-0 w-full h-screen flex items-center justify-center relative perspective-[1200px] overflow-hidden">
+            <div
+                className="sticky top-0 w-full h-screen flex items-center justify-center relative perspective-[1200px] overflow-hidden"
+                style={{
+                    opacity: 'var(--entrance-opacity, 0)',
+                    transform: 'scale(var(--entrance-scale, 0.9))',
+                    transition: 'opacity 0.1s linear, transform 0.1s linear'
+                }}
+            >
 
                 {/* Ambient Background Glow */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
