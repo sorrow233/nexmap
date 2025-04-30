@@ -2,68 +2,208 @@ import React, { useEffect, useRef } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 const HeroSection = ({ onStart }) => {
+    const canvasRef = useRef(null);
+    const containerRef = useRef(null);
+
+    // --- Neural Engine Canvas Animation ---
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const particleCount = 120; // High density but performant
+        const connectionDistance = 180;
+        const mouseDistance = 300;
+        const particles = [];
+        let time = 0;
+
+        let mouse = { x: -1000, y: -1000 };
+
+        const resize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        window.addEventListener('resize', resize);
+        resize();
+
+        const handleMouseMove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2 + 1;
+                this.color = `rgba(59, 130, 246, ${Math.random() * 0.5 + 0.2})`; // Blueish
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce off edges
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                // Mouse repulsion/attraction swirl
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < mouseDistance) {
+                    const force = (mouseDistance - dist) / mouseDistance;
+                    // Gentle push 
+                    this.vx -= dx * force * 0.0005;
+                    this.vy -= dy * force * 0.0005;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        // Initialize
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            time++;
+
+            // Update and Draw Particles
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // Draw Connections
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)'; // Connection color
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < connectionDistance) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        // Control point for curve? No, straight lines are faster and look "structural"
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        // Opacity based on distance
+                        ctx.globalAlpha = 1 - (dist / connectionDistance);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    }
+                }
+            }
+
+            // Draw "Neural Pulses" (Random signal travel)
+            if (time % 5 === 0) {
+                // Potentially add pulse logic here for "data flow"
+                // Simplified: Just flash connections randomly? 
+                // Or draw a few brighter connections
+                const p1 = particles[Math.floor(Math.random() * particleCount)];
+                const p2 = particles[Math.floor(Math.random() * particleCount)];
+                // If close enough, draw a "zap"
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < connectionDistance * 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.5})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        };
+        animate();
+
+        return () => {
+            window.removeEventListener('resize', resize);
+            window.removeEventListener('mousemove', handleMouseMove);
+        };
+    }, []);
+
     return (
-        <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#050505] text-white">
+        <div ref={containerRef} className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-black text-white perspective-[1000px]">
 
-            {/* Ambient Background */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[80vw] h-[80vh] bg-blue-600/10 blur-[150px] rounded-full mix-blend-screen animate-pulse" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[80vw] h-[80vh] bg-purple-600/10 blur-[150px] rounded-full mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }} />
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] brightness-100 contrast-150" />
-            </div>
+            {/* 1. NEURAL ENGINE CANVAS BACKGROUND */}
+            <canvas
+                ref={canvasRef}
+                className="absolute inset-0 z-0 opacity-60"
+            />
 
-            {/* Main Content */}
-            <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
+            {/* Gradient Overlay for Depth */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black pointer-events-none z-0" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000000_120%)] pointer-events-none z-0" />
+
+            {/* 2. HERO CONTENT */}
+            <div className="relative z-10 max-w-7xl mx-auto px-6 text-center will-change-transform">
 
                 {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10 mb-8 animate-fade-in-up hover:border-white/20 transition-colors cursor-default">
-                    <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                    </span>
-                    <span className="text-sm font-medium text-gray-300 tracking-wide">For Professional LLM Users</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10 mb-8 animate-fade-in-up md:mb-12">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse" />
+                    <span className="text-xs font-mono text-blue-300 tracking-widest uppercase">System Online</span>
                 </div>
 
-                {/* Headline */}
-                <h1 className="text-6xl md:text-8xl lg:text-[9rem] leading-[0.9] font-bold tracking-tighter mb-8 font-inter-tight">
-                    Build the <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 relative">
-                        Ultimate Engine.
-                    </span>
-                </h1>
+                {/* Massive Headline */}
+                <div className="relative mb-8 md:mb-12">
+                    <h1 className="text-7xl md:text-9xl lg:text-[11rem] leading-[0.85] font-bold tracking-tighter font-inter-tight mix-blend-overlay text-white opacity-90 animate-fade-in-up delay-100">
+                        ULTIMATE
+                    </h1>
+                    <h1 className="text-7xl md:text-9xl lg:text-[11rem] leading-[0.85] font-bold tracking-tighter font-inter-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 animate-fade-in-up delay-200">
+                        ENGINE
+                    </h1>
+                </div>
 
-                {/* Subheadline - The Narrative */}
-                <p className="max-w-3xl mx-auto text-xl md:text-2xl text-gray-400 leading-relaxed font-light mb-12 animate-fade-in-up delay-100">
-                    We <span className="text-white font-semibold">uncapped concurrency</span> for massive parallel workloads,
-                    engineered a <span className="text-white font-semibold">recursive graph-walker</span> for deep context,
-                    and implemented <span className="text-white font-semibold">spatial zoning</span> for city-scale architecture.
+                {/* Narrative Copy */}
+                <p className="max-w-2xl mx-auto text-lg md:text-2xl text-gray-400 font-light leading-relaxed mb-12 animate-fade-in-up delay-[300ms]">
+                    Recursive context walking. <span className="text-white font-medium">Uncapped concurrency.</span><br />
+                    The operating system for your ideas.
                 </p>
 
-                {/* CTA */}
-                <div className="flex flex-col md:flex-row gap-6 justify-center items-center animate-fade-in-up delay-[200ms]">
+                {/* Primary CTA */}
+                <div className="flex flex-col md:flex-row gap-6 justify-center items-center animate-fade-in-up delay-[400ms]">
                     <button
                         onClick={() => window.location.href = '/gallery'}
-                        className="group relative px-10 py-5 bg-white text-black rounded-full text-xl font-bold overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                        className="group relative px-12 py-5 bg-white text-black rounded-full text-xl font-bold tracking-tight overflow-hidden hover:scale-105 transition-transform duration-300"
                     >
                         <span className="relative z-10 flex items-center gap-2">
-                            Initialize Engine
+                            Initialize v2.0
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </span>
+                        {/* Button Glow Effect */}
+                        <div className="absolute inset-0 bg-blue-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
 
                     <button
                         onClick={onStart}
-                        className="px-8 py-5 text-gray-400 hover:text-white transition-colors flex items-center gap-2 font-medium"
+                        className="text-gray-500 hover:text-white transition-colors font-mono text-sm uppercase tracking-widest"
                     >
-                        Explore Architecture <span className="animate-bounce mt-1">↓</span>
+                        [ SCROLL TO EXPLORE ]
                     </button>
                 </div>
             </div>
 
-            {/* Scroll Indicator */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-50 animate-pulse">
-                <div className="w-[1px] h-24 bg-gradient-to-b from-transparent via-white/50 to-transparent" />
-            </div>
+            {/* Bottom Fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#050505] to-transparent z-10 pointer-events-none" />
         </div>
     );
 };
