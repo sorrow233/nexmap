@@ -12,8 +12,15 @@ const LandingModule = () => {
     // --- Global Scroll Listener & Body Overflow Override ---
     useEffect(() => {
         // Enable native scrolling for Landing Page
+        // We must also target #root because index.css forces it to height: 100% & overflow: hidden
         document.documentElement.style.overflowY = 'auto';
         document.body.style.overflowY = 'auto';
+
+        const rootEl = document.getElementById('root');
+        if (rootEl) {
+            rootEl.style.overflowY = 'visible';
+            rootEl.style.height = 'auto';
+        }
 
         const handleScroll = () => {
             const scrTop = window.scrollY;
@@ -31,6 +38,11 @@ const LandingModule = () => {
             // Revert to app-mode (no scroll) when leaving landing page
             document.documentElement.style.overflowY = '';
             document.body.style.overflowY = '';
+
+            if (rootEl) {
+                rootEl.style.overflowY = '';
+                rootEl.style.height = '';
+            }
         };
     }, []);
 
