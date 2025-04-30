@@ -127,6 +127,7 @@ export class GeminiProvider extends LLMProvider {
                 const response = await fetch('/api/gmi-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: options.signal, // Pass AbortSignal
                     body: JSON.stringify({
                         apiKey,
                         baseUrl,
