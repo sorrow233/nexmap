@@ -153,19 +153,24 @@ export class GeminiProvider extends LLMProvider {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let previousText = ''; // Track cumulative text to calculate deltas
+                let buffer = '';
 
                 try {
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split('\n').filter(l => l.trim());
+                        buffer += chunk;
+                        const lines = buffer.split('\n');
+                        // Keep the last line in the buffer as it might be incomplete
+                        buffer = lines.pop();
+
                         for (const line of lines) {
+                            if (!line.trim()) continue;
                             try {
                                 const data = JSON.parse(line);
                                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (text) {
-                                    // Gemini returns cumulative text, send only the delta
                                     const delta = text.substring(previousText.length);
                                     if (delta) {
                                         onToken(delta);
@@ -173,23 +178,27 @@ export class GeminiProvider extends LLMProvider {
                                     }
                                 }
                             } catch (e) {
-                                const jsonMatch = line.match(/\{.*\}/);
-                                if (jsonMatch) {
-                                    try {
-                                        const data = JSON.parse(jsonMatch[0]);
-                                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                                        if (text) {
-                                            const delta = text.substring(previousText.length);
-                                            if (delta) {
-                                                onToken(delta);
-                                                previousText = text;
-                                            }
-                                        }
-                                    } catch (e2) { }
-                                }
+                                console.warn('[Gemini] Parse error for line:', line, e);
                             }
                         }
                     }
+
+                    // Process any remaining buffer
+                    if (buffer.trim()) {
+                        try {
+                            const data = JSON.parse(buffer);
+                            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (text) {
+                                const delta = text.substring(previousText.length);
+                                if (delta) {
+                                    onToken(delta);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('[Gemini] Final buffer parse error:', buffer, e);
+                        }
+                    }
+
                     return;
                 } finally {
                     reader.releaseLock();
