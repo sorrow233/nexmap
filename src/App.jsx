@@ -20,7 +20,8 @@ import {
     deleteBoardFromCloud,
     updateBoardMetadata,
     updateBoardMetadataInCloud,
-    setCurrentBoardId as storageSetCurrentBoardId
+    setCurrentBoardId as storageSetCurrentBoardId,
+    getBoardsList
 } from './services/storage';
 
 export default function App() {
