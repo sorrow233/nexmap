@@ -73,14 +73,14 @@ const LandingModule = () => {
             {/* 1. HERO */}
             <HeroSection onStart={handleStart} />
 
-            {/* 2. SPATIAL ORGANIZATION */}
-            <div className="relative z-10 border-t border-white/5">
-                <SpatialSection />
-            </div>
-
-            {/* 3. UNLIMITED CONCURRENCY */}
+            {/* 2. UNLIMITED CONCURRENCY */}
             <div className="relative z-10 border-t border-white/5">
                 <ConcurrencySection />
+            </div>
+
+            {/* 3. SPATIAL ORGANIZATION */}
+            <div className="relative z-10 border-t border-white/5">
+                <SpatialSection />
             </div>
 
             {/* 4. RECURSIVE SPROUT */}
