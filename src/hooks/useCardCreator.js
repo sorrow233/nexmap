@@ -4,6 +4,7 @@ import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
 import { uuid } from '../utils/uuid';
 import { createPerformanceMonitor } from '../utils/performanceMonitor';
+import { aiManager, PRIORITY } from '../services/ai/AIManager';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -75,9 +76,17 @@ export function useCardCreator() {
                 });
 
                 let firstToken = true;
-                await streamChatCompletion(
-                    [{ role: 'user', content: messageContent }],
-                    (chunk) => {
+                // Use AIManager for centralized scheduling
+                await aiManager.requestTask({
+                    type: 'chat',
+                    priority: PRIORITY.HIGH, // Card creation is high priority
+                    payload: {
+                        messages: [{ role: 'user', content: messageContent }],
+                        model: activeConfig.model,
+                        temperature: undefined
+                    },
+                    tags: [`card:${newId}`],
+                    onProgress: (chunk) => {
                         if (firstToken) {
                             perfMonitor.onFirstToken();
                             firstToken = false;
@@ -85,10 +94,8 @@ export function useCardCreator() {
                         perfMonitor.onChunk(chunk);
                         console.log('[DEBUG _generateAICard] Received chunk for:', newId);
                         updateCardContent(newId, chunk);
-                    },
-                    activeConfig.model,
-                    { providerId: activeConfig.id }
-                );
+                    }
+                });
 
                 perfMonitor.onComplete();
                 console.log('[DEBUG _generateAICard] Streaming completed for:', newId);

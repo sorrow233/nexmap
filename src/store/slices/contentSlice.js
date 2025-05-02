@@ -5,6 +5,7 @@ import { calculateLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import { uuid } from '../../utils/uuid';
 import { createPerformanceMonitor } from '../../utils/performanceMonitor';
+import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 
 export const createContentSlice = (set, get) => {
     // Throttling buffer for AI streaming
@@ -325,19 +326,31 @@ export const createContentSlice = (set, get) => {
                     model,
                     providerId,
                     messages: fullMessages,
-                    temperature: undefined, // streamChatCompletion doesn't expose this yet
+                    temperature: undefined,
                     stream: true
                 });
 
                 let firstToken = true;
-                await streamChatCompletion(fullMessages, (chunk) => {
-                    if (firstToken) {
-                        perfMonitor.onFirstToken();
-                        firstToken = false;
+
+                // Use AIManager for centralized scheduling and cancellation
+                await aiManager.requestTask({
+                    type: 'chat',
+                    priority: PRIORITY.CRITICAL, // Chat is high priority
+                    payload: {
+                        messages: fullMessages,
+                        model,
+                        temperature: undefined
+                    },
+                    tags: [`card:${cardId}`], // Cancel any previous generation for this card
+                    onProgress: (chunk) => {
+                        if (firstToken) {
+                            perfMonitor.onFirstToken();
+                            firstToken = false;
+                        }
+                        perfMonitor.onChunk(chunk);
+                        onToken(chunk);
                     }
-                    perfMonitor.onChunk(chunk);
-                    onToken(chunk);
-                }, model, { providerId });
+                });
 
                 perfMonitor.onComplete();
             } catch (e) {
