@@ -125,10 +125,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 try {
                     console.log('[Background Gen] S3 is enabled, transferring image...');
 
-                    // Fetch the image specifically to upload it
-                    // Note: GMI URLs usually allow CORS for GET, but if not we might need proxy in future
-                    const response = await fetch(imageUrl);
-                    if (!response.ok) throw new Error("Failed to download generated image");
+                    // Use proxy to bypass CORS restrictions from GMI storage
+                    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+                    const response = await fetch(proxyUrl);
+
+                    if (!response.ok) throw new Error("Failed to download generated image via proxy");
 
                     const blob = await response.blob();
                     const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
