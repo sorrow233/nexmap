@@ -90,18 +90,18 @@ const LandingModule = () => {
                 .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
             `}</style>
 
-            {/* 1. FEATURE BENTO (Experimental First) */}
-            <div className="relative z-20 bg-[#050505] border-b border-white/5">
-                <FeatureBento />
-            </div>
-
-            {/* 2. VISUAL HERO (Sticky) */}
+            {/* 1. VISUAL HERO (Sticky) */}
             <div className="h-screen w-full sticky top-0 z-0">
                 <VisualHero scrollProgress={scrollProgress} onStart={handleStart} />
             </div>
 
             {/* Spacer for Sticky Hero */}
             <div className="h-[50vh]" />
+
+            {/* 2. FEATURE BENTO (Moved here) */}
+            <div className="relative z-20 bg-[#050505] border-t border-b border-white/5">
+                <FeatureBento />
+            </div>
 
             {/* 3. UNLIMITED CONCURRENCY */}
             <div className="relative z-10 bg-[#050505] border-t border-white/5">
