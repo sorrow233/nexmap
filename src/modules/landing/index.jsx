@@ -11,8 +11,6 @@ import FeatureBento from './components/FeatureBento';
 // The New Landing Orchestrator
 const LandingModule = () => {
     // --- Global Scroll Fix ---
-    // This ensures that the landing page overrides the app's default "hidden" overflow 
-    // which is used for the infinite canvas, allowing the user to scroll normally here.
     useEffect(() => {
         const doc = document.documentElement;
         const body = document.body;
@@ -36,7 +34,6 @@ const LandingModule = () => {
         }
 
         return () => {
-            // Revert to CSS defaults (empty string removes inline style)
             doc.style.height = '';
             doc.style.overflowY = '';
             doc.style.overflowX = '';
@@ -91,53 +88,47 @@ const LandingModule = () => {
                     66% { transform: translate(-5px, 15px) rotate(-1deg); }
                 }
                 .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
-                
-                @keyframes float-medium {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-15px); }
-                }
-                .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
             `}</style>
 
-            {/* 1. VISUAL HERO (Replaces previous HeroSection) */}
+            {/* 1. FEATURE BENTO (Experimental First) */}
+            <div className="relative z-20 bg-[#050505] border-b border-white/5">
+                <FeatureBento />
+            </div>
+
+            {/* 2. VISUAL HERO (Sticky) */}
             <div className="h-screen w-full sticky top-0 z-0">
                 <VisualHero scrollProgress={scrollProgress} onStart={handleStart} />
             </div>
 
-            {/* Content Spacer to allow scrolling past sticky hero */}
+            {/* Spacer for Sticky Hero */}
             <div className="h-[50vh]" />
 
-            {/* 2. UNLIMITED CONCURRENCY */}
+            {/* 3. UNLIMITED CONCURRENCY */}
             <div className="relative z-10 bg-[#050505] border-t border-white/5">
                 <ConcurrencySection />
             </div>
 
-            {/* 3. SPATIAL ORGANIZATION */}
+            {/* 4. SPATIAL ORGANIZATION */}
             <div className="relative z-10 border-t border-white/5">
                 <SpatialSection />
             </div>
 
-            {/* 4. RECURSIVE SPROUT */}
+            {/* 5. RECURSIVE SPROUT */}
             <div className="relative z-10 border-t border-white/5">
                 <SproutSection />
             </div>
 
-            {/* 5. GRAPH CONTEXT WALKING */}
+            {/* 6. GRAPH CONTEXT WALKING */}
             <div className="relative z-10 border-t border-white/5">
                 <GraphSection />
             </div>
 
-            {/* 6. DEMO INFINITE (Appended) */}
+            {/* 7. DEMO INFINITE (Embrace Chaos) */}
             <div className="relative z-10 border-t border-white/5">
-                <DemoInfinite scrollProgress={scrollProgress} />
+                <DemoInfinite />
             </div>
 
-            {/* 7. FEATURE BENTO (Appended) */}
-            <div className="relative z-10 border-t border-white/5">
-                <FeatureBento />
-            </div>
-
-            {/* FOOTER / FINAL CTA */}
+            {/* FOOTER */}
             <div className="relative z-20">
                 <FooterSection />
             </div>
