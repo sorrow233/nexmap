@@ -167,9 +167,32 @@ export class GeminiProvider extends LLMProvider {
                         buffer = lines.pop();
 
                         for (const line of lines) {
-                            if (!line.trim()) continue;
+                            let cleanLine = line.trim();
+                            if (!cleanLine) continue;
+
+                            // 1. Remove "data: " prefix (Standard SSE)
+                            if (cleanLine.startsWith('data: ')) {
+                                cleanLine = cleanLine.substring(6).trim();
+                            }
+
+                            if (cleanLine === '[DONE]') continue;
+
                             try {
-                                const data = JSON.parse(line);
+                                let data;
+                                try {
+                                    data = JSON.parse(cleanLine);
+                                } catch (jsonError) {
+                                    // 2. Handle Python bytes string representation: b'{...}'
+                                    // This happens when backend proxies the error bytes directly without decoding
+                                    if (cleanLine.startsWith("b'") && cleanLine.endsWith("'")) {
+                                        const inner = cleanLine.substring(2, cleanLine.length - 1);
+                                        // Try to parse the inner content (assuming it's JSON inside)
+                                        data = JSON.parse(inner);
+                                    } else {
+                                        throw jsonError;
+                                    }
+                                }
+
                                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (text) {
                                     const delta = text.substring(previousText.length);
@@ -186,8 +209,24 @@ export class GeminiProvider extends LLMProvider {
 
                     // Process any remaining buffer
                     if (buffer.trim()) {
+                        let cleanLine = buffer.trim();
+                        if (cleanLine.startsWith('data: ')) {
+                            cleanLine = cleanLine.substring(6).trim();
+                        }
+
                         try {
-                            const data = JSON.parse(buffer);
+                            let data;
+                            try {
+                                data = JSON.parse(cleanLine);
+                            } catch (jsonError) {
+                                if (cleanLine.startsWith("b'") && cleanLine.endsWith("'")) {
+                                    const inner = cleanLine.substring(2, cleanLine.length - 1);
+                                    data = JSON.parse(inner);
+                                } else {
+                                    throw jsonError;
+                                }
+                            }
+
                             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                             if (text) {
                                 const delta = text.substring(previousText.length);
