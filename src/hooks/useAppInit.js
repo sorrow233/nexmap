@@ -65,14 +65,13 @@ export function useAppInit() {
 
                 loadUserSettings(u.uid).then(settings => {
                     if (settings) {
-                        // CRITICAL FIX: Must include roles when syncing from cloud
-                        // Previously only saved providers + activeId, causing roles to reset on page refresh
+                        // CRITICAL FIX: Sync cloud settings to Store (which handles localStorage persistence)
                         if (settings.providers) {
-                            localStorage.setItem('mixboard_providers_v3', JSON.stringify({
+                            useStore.getState().setFullConfig({
                                 providers: settings.providers,
                                 activeId: settings.activeId || 'google',
                                 roles: settings.roles || { chat: '', analysis: '' }
-                            }));
+                            });
                         }
                         if (settings.s3Config) {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
