@@ -44,7 +44,7 @@ class AIManager {
      * @param {Object} params.payload - Data needed for the task
      * @param {string[]} params.tags - For cancellation/deduplication (e.g. ['card:123'])
      * @param {Function} params.onProgress - Callback for streaming
-     * @returns {PromiseString} taskId
+     * @returns {PromiseString} A promise that resolves with the full generated text/result
      */
     requestTask({ type, priority = PRIORITY.LOW, payload, tags = [], onProgress }) {
         // 1. Check for Conflicts (Cancellation)
@@ -60,34 +60,26 @@ class AIManager {
             onProgress,
             status: STATUS.PENDING,
             timestamp: Date.now(),
-            resolve: null,
-            reject: null,
         };
 
-        // 3. Return Promise that resolves with result
+        // 3. Create Promise
         const promise = new Promise((resolve, reject) => {
             task.resolve = resolve;
             task.reject = reject;
         });
 
-        // Store promise on task so we can return it if needed, 
-        // but mainly we return taskId so UI can subscribe if they want, 
-        // or just await the task result if I change the signature.
-        // For now, let's keep it simple: return the Task Object or ID?
-        // The pattern proposed: "UI subscribes to changes".
-        // But for integration ease, returning a Promise that resolves to the result is often easier for simple cases.
-        // Let's attach the promise to the task and push to queue.
+        // Attach taskId to promise for consumers who need the ID immediately
+        promise.taskId = task.id;
 
-        task.promise = promise;
-
+        // 4. Enqueue
         this.queue.push(task);
-        this.queue.sort((a, b) => b.priority - a.priority); // High priority first
+        this.queue.sort((a, b) => b.priority - a.priority || a.timestamp - b.timestamp);
 
-        console.log(`[AIManager] Task enqueued: ${task.id} (${type}) Priority: ${priority}`);
+        console.log(`[AIManager] Task enqueued: ${task.id} (${type}) Priority: ${priority}. Queue size: ${this.queue.length}`);
 
         this._processQueue();
 
-        return task; // Return task object containing .id and .promise
+        return promise;
     }
 
     /**
@@ -102,8 +94,7 @@ class AIManager {
             if (hasConflict) {
                 console.log(`[AIManager] Cancelling active task ${id} due to conflict tags: ${tags}`);
                 active.controller.abort();
-                this.activeTasks.delete(id);
-                // The task promise should be rejected/resolved with cancel status in the execution block
+                // Note: The task will be cleaned up in the finally block of _processQueue
             }
         }
 
@@ -120,37 +111,52 @@ class AIManager {
     }
 
     async _processQueue() {
+        if (this.processing) return;
         if (this.activeTasks.size >= this.concurrencyLimit) return;
         if (this.queue.length === 0) return;
 
-        const task = this.queue.shift();
-        const controller = new AbortController();
-
-        this.activeTasks.set(task.id, { controller, task });
+        this.processing = true;
 
         try {
-            console.log(`[AIManager] Starting task ${task.id}`);
+            while (this.activeTasks.size < this.concurrencyLimit && this.queue.length > 0) {
+                const task = this.queue.shift();
+                const controller = new AbortController();
+
+                this.activeTasks.set(task.id, { controller, task });
+
+                // Non-blocking execution of the task
+                this._runTask(task, controller);
+            }
+        } finally {
+            this.processing = false;
+        }
+    }
+
+    async _runTask(task, controller) {
+        try {
+            console.log(`[AIManager] Starting task ${task.id} (${task.type})`);
             task.status = STATUS.RUNNING;
 
-            // Execute the actual AI Logic based on type
             const result = await this._executeTask(task, controller.signal);
 
             task.status = STATUS.COMPLETED;
             this.results.set(task.id, result);
             task.resolve(result);
+            console.log(`[AIManager] Task completed: ${task.id}`);
 
         } catch (error) {
-            if (error.name === 'AbortError') {
+            if (error.name === 'AbortError' || controller.signal.aborted) {
                 task.status = STATUS.CANCELLED;
                 console.log(`[AIManager] Task ${task.id} cancelled`);
+                task.reject(new Error('Task cancelled'));
             } else {
                 task.status = STATUS.FAILED;
-                console.error(`[AIManager] Task ${task.id} failed`, error);
+                console.error(`[AIManager] Task ${task.id} failed:`, error);
+                task.reject(error);
             }
-            task.reject(error);
         } finally {
             this.activeTasks.delete(task.id);
-            this._processQueue(); // Loop
+            this._processQueue(); // Check for next task
         }
     }
 

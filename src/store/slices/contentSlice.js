@@ -162,7 +162,7 @@ export const createContentSlice = (set, get) => {
         },
 
         handleRegenerate: async () => {
-            const { cards, selectedIds, updateCardContent, setCardGenerating } = get();
+            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate } = get();
             // Filter out cards that don't have messages (like sticky notes)
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
@@ -171,7 +171,7 @@ export const createContentSlice = (set, get) => {
             set(state => ({
                 cards: state.cards.map(c => {
                     if (selectedIds.indexOf(c.id) !== -1) {
-                        const newMsgs = [...c.data.messages];
+                        const newMsgs = [...(c.data.messages || [])];
                         if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
                             newMsgs.pop();
                         }
@@ -183,35 +183,19 @@ export const createContentSlice = (set, get) => {
                 generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
             }));
 
+            // Use handleChatGenerate which now uses AIManager
             try {
                 await Promise.all(targets.map(async (card) => {
-                    const currentMsgs = [...card.data.messages];
+                    const currentMsgs = [...(card.data.messages || [])];
                     if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
                         currentMsgs.pop();
                     }
 
-                    // Since we are in the store, we can use the card's protocol/model if available
-                    const model = card.data.model;
-                    const providerId = card.data.providerId;
-
-                    // Resolve config
-                    const state = get();
-                    const config = providerId && state.providers[providerId]
-                        ? state.providers[providerId]
-                        : state.getActiveConfig();
-
-                    await streamChatCompletion(
-                        currentMsgs,
-                        config, // Pass config explicitly
-                        (chunk) => updateCardContent(card.id, chunk),
-                        model,
-                        { providerId }
-                    );
+                    // handleChatGenerate handles config resolution and AIManager enqueuing
+                    return handleChatGenerate(card.id, currentMsgs, (chunk) => updateCardContent(card.id, chunk));
                 }));
             } catch (e) {
                 console.error("Regeneration failed", e);
-            } finally {
-                targets.forEach(card => setCardGenerating(card.id, false));
             }
         },
 
@@ -345,6 +329,7 @@ export const createContentSlice = (set, get) => {
                 const config = providerId && state.providers[providerId] ? state.providers[providerId] : state.getActiveConfig();
 
                 // Use AIManager for centralized scheduling and cancellation
+                // AWAIT the promise returned by requestTask!
                 await aiManager.requestTask({
                     type: 'chat',
                     priority: PRIORITY.CRITICAL, // Chat is high priority
