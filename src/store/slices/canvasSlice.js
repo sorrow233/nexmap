@@ -25,7 +25,6 @@ export const createCanvasSlice = (set, get) => ({
     })),
     setIsConnecting: (val) => set({ isConnecting: val }),
     setConnectionStartId: (val) => set({ connectionStartId: val }),
-    setBackgroundImage: (url) => set({ backgroundImage: url }), // New action
 
     moveOffset: (dx, dy) => set((state) => ({
         offset: { x: state.offset.x + dx, y: state.offset.y + dy }
