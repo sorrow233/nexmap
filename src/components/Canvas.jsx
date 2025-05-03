@@ -24,7 +24,8 @@ export default function Canvas({ onCreateNote, ...props }) {
         handleCardMove, handleCardMoveEnd,
         handleConnect, deleteCard, updateCardFull,
         toCanvasCoords, // Now from store
-        toggleFavorite, favoritesLastUpdate // For favorites
+        toggleFavorite, favoritesLastUpdate, // For favorites
+        backgroundImage // Read background image from store
     } = useStore();
 
     const canvasRef = useRef(null);
@@ -204,6 +205,19 @@ export default function Canvas({ onCreateNote, ...props }) {
                 backgroundPosition: `${offset.x}px ${offset.y}px`
             }}
         >
+            {/* Board Background Image Layer */}
+            {backgroundImage && (
+                <div
+                    className="absolute inset-0 pointer-events-none transition-opacity duration-1000 opacity-30 dark:opacity-20 will-change-transform"
+                    style={{
+                        backgroundImage: `url(${backgroundImage})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        // Subtle parallax or fixed effect? Let's keep it fixed for now but it could follow offset
+                        filter: 'blur(2px)' // Slight blur for canvas backgrounds to not distract from cards
+                    }}
+                />
+            )}
             {/* ConnectionLayer from beta - optimized Canvas rendering */}
             <ConnectionLayer cards={cards} connections={connections} offset={offset} scale={scale} />
 

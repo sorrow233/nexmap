@@ -111,7 +111,8 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 updatedAt: b.updatedAt || Date.now(),
                 lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
                 cardCount: b.cards?.length || 0,
-                deletedAt: b.deletedAt // Sync deleted status!
+                deletedAt: b.deletedAt, // Sync deleted status!
+                backgroundImage: b.backgroundImage // Sync background image!
             })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
