@@ -47,10 +47,40 @@ class AIManager {
      * @returns {PromiseString} A promise that resolves with the full generated text/result
      */
     requestTask({ type, priority = PRIORITY.LOW, payload, tags = [], onProgress }) {
-        // 1. Check for Conflicts (Cancellation)
-        this._cancelConflictingTasks(tags);
+        // 1. Deduplication: Check if an identical task is already active or queued
+        const identicalTask = [...this.activeTasks.values(), ...this.queue].find(item => {
+            const t = item.task || item;
+            // Simple shallow comparison of tags and payload references or key props
+            // For chat, we compare the last user message content?
+            // Let's rely on tags + payload equality (JSON stringify for safety?) -> expensive.
+            // Let's assume if tags match and it's the same type, we check strict equality of payload.
+            // Or just check if tags match completely.
+            return t.type === type &&
+                t.tags.length === tags.length &&
+                t.tags.every((tag, i) => tag === tags[i]) &&
+                JSON.stringify(t.payload) === JSON.stringify(payload);
+        });
 
-        // 2. Create Task
+        if (identicalTask) {
+            console.log(`[AIManager] Deduplicated task request (Tags: ${tags})`);
+            const t = identicalTask.task || identicalTask;
+            // If the task already has a promise attached, return it.
+            if (t.promise) {
+                return t.promise;
+            }
+            // Fallback (shouldn't happen if we attach promise properly)
+            return Promise.resolve(null);
+        }
+
+        // 2. Conflict Handling (No longer aggressive cancellation)
+        // We ONLY cancel if explicitly requested or if we implement a 'replace' strategy.
+        // For now, we simply enqueue the new task. The concurrencyLimit=1 will ensure it waits.
+        // We will remove the queued tasks that are obsolete?
+        // e.g. User types "A", "B", "C". We want to process "C". "A" is running. "B" is queued. "B" should be cancelled?
+        // Yes, queued tasks with conflict tags should probably be replaced.
+        this._cancelConflictingQueuedTasks(tags);
+
+        // 3. Create Task
         const task = {
             id: uuid(),
             type,
@@ -62,16 +92,17 @@ class AIManager {
             timestamp: Date.now(),
         };
 
-        // 3. Create Promise
+        // 4. Create Promise
         const promise = new Promise((resolve, reject) => {
             task.resolve = resolve;
             task.reject = reject;
         });
 
-        // Attach taskId to promise for consumers who need the ID immediately
+        // Attach promise and ID to task/promise for access
+        task.promise = promise;
+        promise.taskId = task.id;
         promise.taskId = task.id;
 
-        // 4. Enqueue
         this.queue.push(task);
         this.queue.sort((a, b) => b.priority - a.priority || a.timestamp - b.timestamp);
 
@@ -83,26 +114,16 @@ class AIManager {
     }
 
     /**
-     * Cancel tasks that match the given tags
+     * Cancel ONLY QUEUED tasks that match the tags (Strategy: Replace Obsolete)
+     * Active tasks are allowed to finish.
      */
-    _cancelConflictingTasks(tags) {
+    _cancelConflictingQueuedTasks(tags) {
         if (!tags || tags.length === 0) return;
 
-        // check active tasks
-        for (const [id, active] of this.activeTasks) {
-            const hasConflict = active.task.tags.some(tag => tags.includes(tag));
-            if (hasConflict) {
-                console.log(`[AIManager] Cancelling active task ${id} due to conflict tags: ${tags}`);
-                active.controller.abort();
-                // Note: The task will be cleaned up in the finally block of _processQueue
-            }
-        }
-
-        // check queued tasks
         this.queue = this.queue.filter(t => {
             const hasConflict = t.tags.some(tag => tags.includes(tag));
             if (hasConflict) {
-                console.log(`[AIManager] Removing queued task ${t.id} due to conflict`);
+                console.log(`[AIManager] Replacing queued task ${t.id} with newer request (Tags: ${tags})`);
                 t.reject(new Error('Cancelled by newer task'));
                 return false;
             }
