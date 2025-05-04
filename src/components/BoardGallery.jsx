@@ -105,21 +105,26 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             // 3. Generate Image Prompt - STRICTER & MORE RELEVANT
             // User feedback: "Completely inconsistent with content"
             // Change: Remove "abstract" bias, force thematic relevance
-            const analysisPrompt = `You are a world-class Anime Background Artist (referencing Makoto Shinkai or Ghibli styles).
-            Your task is to design a detailed English image generation prompt based on the user's board content.
+            const analysisPrompt = `Role: World-class Anime Scenery Artist (Ghibli/Makoto Shinkai style).
 
-            User's Board Content Summary:
-            ${boardContext.slice(0, 1500)}
+            **GOAL**: Create a background image that allows the user to INSTANTLY recognize the topic of their board just by looking at the image.
 
-            Design Requirements:
-            1. **Style**: Strong Anime/2D aesthetic. Cel-shaded, hand-drawn feel. Vibrant but soft, messy-painterly clouds, sparkling lighting.
-            2. **Forbidden**: NO photorealism, NO 3D render, NO cinematic sci-fi, NO dark/gritty moods.
-            3. **Metaphor**: Translate the content topics into abstract visual metaphors (e.g., floating islands, constellations, libraries in the sky, futuristic gardens).
-            4. **Atmosphere**: Healing, peaceful, curious, clear blue skies or starry nights.
-            5. **Composition**: Wide-angle, clean negative space for icons.
-            6. **Strictly NO TEXT** in the image.
+            1. **ANALYZE**: Read the User's Board Content below. Identify the single most important TOPIC (e.g., 'Coffee', 'Coding', 'Marketing', 'Travel', 'Meeting').
+            2. **DESIGN**: Create a prompt for an Anime-style background that VISUALIZES this topic.
+               - If topic is 'Coffee' -> Draw a cozy, sun-drenched cafe corner with steam rising.
+               - If topic is 'Coding' -> Draw a fantasy digital library or cyber-city at twilight.
+               - If topic is 'Planning' -> Draw a messy but artistic desk with maps and compasses.
+            
+            **User's Board Content**:
+            """
+            ${boardContext.slice(0, 2000)}
+            """
 
-            Output ONLY the English prompt string.`;
+            **Output Rules**:
+            - Style: Anime, Cel-shaded, Hand-drawn, High-quality, 8k.
+            - MOOD: Matching the content (e.g., serious content = calm night; fast content = windy day).
+            - STRICTLY NO TEXT in the image.
+            - OUTPUT FORMAT: return ONLY the English prompt string.`;
 
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
