@@ -113,19 +113,19 @@ const LandingModule = () => {
                 <SpatialSection />
             </div>
 
-            {/* 5. RECURSIVE SPROUT */}
+            {/* 5. DEMO INFINITE (Embrace Chaos) - Moved Here */}
+            <div className="relative z-10 border-t border-white/5">
+                <DemoInfinite />
+            </div>
+
+            {/* 6. RECURSIVE SPROUT */}
             <div className="relative z-10 border-t border-white/5">
                 <SproutSection />
             </div>
 
-            {/* 6. GRAPH CONTEXT WALKING */}
+            {/* 7. GRAPH CONTEXT WALKING */}
             <div className="relative z-10 border-t border-white/5">
                 <GraphSection />
-            </div>
-
-            {/* 7. DEMO INFINITE (Embrace Chaos) */}
-            <div className="relative z-10 border-t border-white/5">
-                <DemoInfinite />
             </div>
 
             {/* FOOTER */}
