@@ -92,9 +92,17 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             // 2. Extract text from cards
             const boardContext = boardData.cards
-                .map(c => c.data?.title || c.data?.text || '')
-                .filter(Boolean)
+                .map(c => {
+                    const parts = [];
+                    if (c.data?.title) parts.push(c.data.title);
+                    if (c.data?.text) parts.push(c.data.text);
+                    if (c.data?.content) parts.push(c.data.content); // For Note cards
+                    return parts.join(' ');
+                })
+                .filter(text => text && text.trim().length > 0)
                 .join('\n');
+
+            console.log('[Background Gen] Extracted context length:', boardContext.length);
 
             if (!boardContext.trim()) {
                 alert("No text found on board. Add some text first!");
@@ -102,39 +110,66 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 return;
             }
 
-            // 3. Generate Image Prompt - STRICTER & MORE RELEVANT
-            // User feedback: "Completely inconsistent with content"
-            // Change: Remove "abstract" bias, force thematic relevance
-            const analysisPrompt = `Role: Expert Minimalist Vector Artist.
-
-            **GOAL**: Create a SIMPLE, ICONIC background that clearly communicates the board's topic.
-
-            1. **ANALYZE**: Identify the single main topic from the content below (e.g. 'Meeting', 'Code', 'Travel').
-            2. **DESIGN**: A Flat Vector style illustration.
-               - **Style**: Minimalist, Flat, Vector Art, Clean Lines, Solid Colors. (Like Kurzgesagt or Notion style).
-               - **Composition**: One simple central icon/metaphor, surrounded by plenty of clean, empty space.
-               - **NO**: No complex scenes, no 3D, no textures, no noise.
-               - **Palette**: Unified, limited color palette (2-3 main colors).
-
-            **User's Board Content**:
+            // 3. Stage 1: Context Analysis & Visual Concept
+            // Use 'analysis' model (Gemini Flash) to deeply understand the board
+            const analysisPrompt = `You are a world-class Art Director and Creative Strategist.
+            
+            **TASK**: Analyze the board content below and derive a unique "Visual Soul" and concept for its background.
+            
+            **CONTENT TO ANALYZE**:
             """
-            ${boardContext.slice(0, 2000)}
+            ${boardContext.slice(0, 3000)}
             """
+            
+            **YOUR OBJECTIVE**:
+            1. **Deconstruct**: What is the core essence/topic? (e.g., Hidden technical architecture, emotional journey, mathematical precision, lush botanical growth).
+            2. **Style Selection**: Choose an sophisticated art style that matches the vibe perfectly. 
+               - AVOID generic "minimalist vector". 
+               - THINK: Brutalist architecture, Ethereal watercolor, Makoto Shinkai-esque scenery, Bauhaus geometric, Macro photography of crystals, 19th-century botanical engravings, etc.
+            3. **Visual Metaphor**: Propose a specific, powerful visual metaphor.
+            
+            **OUTPUT FORMAT**:
+            Return a concise description of the visual concept (mood, colors, main subject, and art style) in 1-2 sentences. 
+            Example: "Concept: A sprawling, glowing neural network made of golden threads suspended in a deep obsidian void. Style: Cyber-Baroque with dramatic chiaroscuro lighting."`;
 
-            **Output Rules**:
-            - STRICTLY NO TEXT.
-            - Keep it simple and scalable (suitable for 720p).
-            - Output ONLY the English prompt string.`;
-
-            const imagePrompt = await chatCompletion(
+            console.log('[Background Gen] Stage 1: Analyzing context...');
+            const visualConcept = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
-                config, // Pass config explicitly
-                getModelForRole('analysis') // Pass model explicitly
+                config,
+                getModelForRole('analysis')
             );
 
-            console.log('[Background Gen] Generated prompt:', imagePrompt);
+            console.log('[Background Gen] Visual Concept:', visualConcept);
 
-            if (!imagePrompt) throw new Error("Failed to generate prompt");
+            if (!visualConcept) throw new Error("Failed to analyze context");
+
+            // Stage 2: Prompt Generation
+            // Use the concept to build the final technical prompt
+            const promptGenPrompt = `You are an expert Prompt Engineer for high-end AI image generation.
+            
+            **YOUR GOAL**: Transform the provided "Visual Concept" into a professional prompt for a state-of-the-art image model.
+            
+            **VISUAL CONCEPT**: "${visualConcept}"
+            
+            **STRICT RULES**:
+            1. **Composition**: Wide cinematic shot, focus on atmosphere and texture.
+            2. **UI Readability**: Ensure there's plenty of "Negative Space" or soft areas so that text and UI elements placed on top remain readable.
+            3. **Quality Keywords**: Include relevant technical terms (e.g., "8k resolution", "volumetric lighting", "ray tracing", "highly detailed", "sharp focus").
+            4. **Constraint**: Do NOT include any text, letters, or numbers in the image.
+            5. **Output**: Return ONLY the final English prompt string. No conversational filler.
+            
+            **FINAL PROMPT**:`;
+
+            console.log('[Background Gen] Stage 2: Drafting final prompt...');
+            const imagePrompt = await chatCompletion(
+                [{ role: 'user', content: promptGenPrompt }],
+                config,
+                getModelForRole('analysis') // Or use 'chat' if preferred, but Flash is fine for this
+            );
+
+            console.log('[Background Gen] Final Generated Prompt:', imagePrompt);
+
+            if (!imagePrompt) throw new Error("Failed to generate final prompt");
 
             // 4. Generate Image
             const imageUrl = await imageGeneration(

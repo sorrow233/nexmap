@@ -297,7 +297,7 @@ export class GeminiProvider extends LLMProvider {
             model: modelToUse,
             payload: {
                 prompt: prompt,
-                image_size: "1K",
+                image_size: "1K", // 1K (approx 1024px width) fits the "max 720p" requirement well enough for performance
                 aspect_ratio: "16:9" // Suitable for background
             }
         };
