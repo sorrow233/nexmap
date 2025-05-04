@@ -105,26 +105,26 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             // 3. Generate Image Prompt - STRICTER & MORE RELEVANT
             // User feedback: "Completely inconsistent with content"
             // Change: Remove "abstract" bias, force thematic relevance
-            const analysisPrompt = `Role: World-class Anime Scenery Artist (Ghibli/Makoto Shinkai style).
+            const analysisPrompt = `Role: Expert Minimalist Vector Artist.
 
-            **GOAL**: Create a background image that allows the user to INSTANTLY recognize the topic of their board just by looking at the image.
+            **GOAL**: Create a SIMPLE, ICONIC background that clearly communicates the board's topic.
 
-            1. **ANALYZE**: Read the User's Board Content below. Identify the single most important TOPIC (e.g., 'Coffee', 'Coding', 'Marketing', 'Travel', 'Meeting').
-            2. **DESIGN**: Create a prompt for an Anime-style background that VISUALIZES this topic.
-               - If topic is 'Coffee' -> Draw a cozy, sun-drenched cafe corner with steam rising.
-               - If topic is 'Coding' -> Draw a fantasy digital library or cyber-city at twilight.
-               - If topic is 'Planning' -> Draw a messy but artistic desk with maps and compasses.
-            
+            1. **ANALYZE**: Identify the single main topic from the content below (e.g. 'Meeting', 'Code', 'Travel').
+            2. **DESIGN**: A Flat Vector style illustration.
+               - **Style**: Minimalist, Flat, Vector Art, Clean Lines, Solid Colors. (Like Kurzgesagt or Notion style).
+               - **Composition**: One simple central icon/metaphor, surrounded by plenty of clean, empty space.
+               - **NO**: No complex scenes, no 3D, no textures, no noise.
+               - **Palette**: Unified, limited color palette (2-3 main colors).
+
             **User's Board Content**:
             """
             ${boardContext.slice(0, 2000)}
             """
 
             **Output Rules**:
-            - Style: Anime, Cel-shaded, Hand-drawn, High-quality, 8k.
-            - MOOD: Matching the content (e.g., serious content = calm night; fast content = windy day).
-            - STRICTLY NO TEXT in the image.
-            - OUTPUT FORMAT: return ONLY the English prompt string.`;
+            - STRICTLY NO TEXT.
+            - Keep it simple and scalable (suitable for 720p).
+            - Output ONLY the English prompt string.`;
 
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
