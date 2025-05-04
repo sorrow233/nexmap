@@ -111,10 +111,10 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             }
 
             // 3. Stage 1: Context Analysis & Character/Scene Design
-            // Use 'analysis' model (Gemini Flash) to understand the board and design chibi characters/scenes
-            const analysisPrompt = `You are an expert Japanese manga/anime character artist specializing in **chibi** (cute simplified) style.
+            // Use 'analysis' model (Gemini Flash) to understand the board and design flat illustration characters/scenes
+            const analysisPrompt = `You are an expert Japanese commercial illustrator specializing in **flat design style** (扁平化插画風格), similar to irasutoya (いらすとや).
             
-            **MANDATORY STYLE**: All images MUST use **Japanese chibi/stick figure manga style** (日本小人漫画風格) - simple, cute, cartoonish characters with large heads and small bodies.
+            **MANDATORY STYLE**: All images MUST use **Japanese flat illustration style** (日本插画小人風格) - simple, clean, friendly characters with NORMAL proportions (not big-headed chibi), soft rounded shapes, minimal details.
             
             **CONTENT TO ANALYZE**:
             """
@@ -123,21 +123,21 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             
             **YOUR TASK**:
             1. **Identify the Core Topic**:
-               - If it mentions a **specific person** (e.g., "Elon Musk", "马斯克"), design that person as a chibi character
-               - If it's about **testing/debugging** (e.g., "测试", "你好"), design a chibi IT engineer/developer testing systems
-               - If it's about **sleep issues** (e.g., "睡眠", "失眠"), design a tired chibi character with sleep problems
-               - For other topics, design relevant chibi characters doing related activities
+               - If it mentions a **specific person** (e.g., "Elon Musk", "马斯克"), design that person in flat illustration style with recognizable features
+               - If it's about **testing/debugging** (e.g., "测试", "你好"), design a friendly IT engineer/developer testing systems
+               - If it's about **sleep issues** (e.g., "睡眠", "失眠"), design a tired person with sleep problems
+               - For other topics, design relevant characters doing related activities
             
-            2. **Character Design**: Describe the chibi character(s) and their action/expression in simple terms
-               - Example for Musk: "Chibi Elon Musk with characteristic hair, wearing black turtleneck, pointing at rockets"
-               - Example for testing: "Chibi engineer with glasses, typing on laptop, surrounded by floating test icons"
-               - Example for sleep: "Exhausted chibi person with dark eye circles, yawning, clock showing late night"
+            2. **Character Design**: Describe the character(s) with NORMAL body proportions (not chibi), simple friendly expression
+               - Example for Musk: "Person with Elon's hair and features, wearing black shirt, pointing at simple rocket drawing, friendly smile"
+               - Example for testing: "IT engineer with glasses, sitting at desk with laptop, simple office background with floating test icons"
+               - Example for sleep: "Tired person with slightly dark eyes, yawning, holding pillow, simple bedroom background with clock"
             
-            3. **Background**: Simple, clean background that doesn't distract from the character
+            3. **Style**: Flat design, rounded shapes, soft colors, minimal shadows, commercial illustration aesthetic
             
             **OUTPUT FORMAT** (1-2 sentences):
-            Describe ONLY the chibi character(s), their action, and simple background.
-            NO abstract concepts, NO photorealistic elements, NO complex artistic styles.`;
+            Describe ONLY the flat illustration character(s) with normal proportions, their action, and simple background.
+            NO chibi/big-head style, NO anime style, NO photorealistic elements.`;
 
             console.log('[Background Gen] Stage 1: Analyzing context...');
             const visualConcept = await chatCompletion(
@@ -150,25 +150,27 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             if (!visualConcept) throw new Error("Failed to analyze context");
 
-            // Stage 2: Prompt Generation for Chibi Style
+            // Stage 2: Prompt Generation for Flat Illustration Style
             // Convert the character concept into a simple, direct image prompt
-            const promptGenPrompt = `You are an expert prompt engineer for **Japanese chibi/manga style** image generation.
+            const promptGenPrompt = `You are an expert prompt engineer for **Japanese flat illustration style** image generation.
             
             **CHARACTER CONCEPT**: "${visualConcept}"
             
             **CRITICAL RULES**:
-            1. **Style MUST be**: Japanese chibi manga style, simple cute cartoon characters with large heads and small bodies (日本小人漫画)
-            2. **Simplicity**: Clean, simple illustration - NO photorealism, NO 3D rendering, NO complex lighting
-            3. **Background**: Minimal, clean background with soft colors - must have plenty of empty space for UI text readability
-            4. **No Text**: The image must NOT contain any text, letters, numbers, or words
-            5. **Quality**: Add only basic quality terms like "clean lineart", "soft colors", "professional manga illustration"
+            1. **Style MUST be**: Japanese flat design illustration, simple commercial art style like irasutoya (いらすとや), with NORMAL body proportions
+            2. **Simplicity**: Clean flat design - NO gradients, NO complex shading, simple rounded shapes
+            3. **Proportions**: NORMAL head-to-body ratio (NOT chibi/big-head style)
+            4. **Background**: Minimal, clean background with soft solid colors - must have plenty of empty space for UI text readability
+            5. **No Text**: The image must NOT contain any text, letters, numbers, or words
+            6. **Quality**: Add only basic quality terms like "clean simple illustration", "soft colors", "professional flat design"
             
             **FORBIDDEN STYLE KEYWORDS** (DO NOT USE):
-            - NO "8k resolution", "ray tracing", "volumetric lighting", "photorealistic", "cinematic", "industrial", "brutalism"
-            - NO "Makoto Shinkai", "watercolor", "3D render", "blueprint", "chiaroscuro"
+            - NO "chibi", "kawaii", "big head", "SD style", "Q-version"
+            - NO "8k resolution", "ray tracing", "volumetric lighting", "photorealistic", "cinematic", "anime style"
+            - NO "Makoto Shinkai", "watercolor", "3D render", "manga", "gradient shading"
             
             **ALLOWED STYLE KEYWORDS**:
-            - "Japanese chibi manga style", "cute cartoon", "simple illustration", "clean lineart", "soft pastel colors", "kawaii"
+            - "Japanese flat illustration", "irasutoya style", "simple flat design", "clean minimalist illustration", "soft rounded shapes", "commercial art style", "normal proportions"
             
             **OUTPUT**: Return ONLY the final English image prompt (1-2 sentences maximum).
             
