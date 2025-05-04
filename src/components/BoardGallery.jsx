@@ -105,20 +105,21 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             // 3. Generate Image Prompt - STRICTER & MORE RELEVANT
             // User feedback: "Completely inconsistent with content"
             // Change: Remove "abstract" bias, force thematic relevance
-            const analysisPrompt = `You are a professional Concept Artist.
-            Create a detailed image generation prompt for a background wallpaper based on the following board content.
-            
-            Board Content:
+            const analysisPrompt = `You are a world-class Anime Background Artist (referencing Makoto Shinkai or Ghibli styles).
+            Your task is to design a detailed English image generation prompt based on the user's board content.
+
+            User's Board Content Summary:
             ${boardContext.slice(0, 1500)}
 
-            Rules:
-            1. The image MUST directly reflect the themes, mood, and topics of the content.
-            2. Style: High-quality, cinematic, elegant, and artistic.
-            3. Composition: Spacious, suitable for a background (not too busy).
-            4. Color Palette: Derive colors from the emotion of the text.
-            5. NO TEXT in the image.
-            
-            Return ONLY the English prompt string.`;
+            Design Requirements:
+            1. **Style**: Strong Anime/2D aesthetic. Cel-shaded, hand-drawn feel. Vibrant but soft, messy-painterly clouds, sparkling lighting.
+            2. **Forbidden**: NO photorealism, NO 3D render, NO cinematic sci-fi, NO dark/gritty moods.
+            3. **Metaphor**: Translate the content topics into abstract visual metaphors (e.g., floating islands, constellations, libraries in the sky, futuristic gardens).
+            4. **Atmosphere**: Healing, peaceful, curious, clear blue skies or starry nights.
+            5. **Composition**: Wide-angle, clean negative space for icons.
+            6. **Strictly NO TEXT** in the image.
+
+            Output ONLY the English prompt string.`;
 
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
