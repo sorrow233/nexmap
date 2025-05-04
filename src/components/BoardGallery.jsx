@@ -110,27 +110,34 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 return;
             }
 
-            // 3. Stage 1: Context Analysis & Visual Concept
-            // Use 'analysis' model (Gemini Flash) to deeply understand the board
-            const analysisPrompt = `You are a world-class Art Director and Creative Strategist.
+            // 3. Stage 1: Context Analysis & Character/Scene Design
+            // Use 'analysis' model (Gemini Flash) to understand the board and design chibi characters/scenes
+            const analysisPrompt = `You are an expert Japanese manga/anime character artist specializing in **chibi** (cute simplified) style.
             
-            **TASK**: Analyze the board content below and derive a unique "Visual Soul" and concept for its background.
+            **MANDATORY STYLE**: All images MUST use **Japanese chibi/stick figure manga style** (日本小人漫画風格) - simple, cute, cartoonish characters with large heads and small bodies.
             
             **CONTENT TO ANALYZE**:
             """
             ${boardContext.slice(0, 3000)}
             """
             
-            **YOUR OBJECTIVE**:
-            1. **Deconstruct**: What is the core essence/topic? (e.g., Hidden technical architecture, emotional journey, mathematical precision, lush botanical growth).
-            2. **Style Selection**: Choose an sophisticated art style that matches the vibe perfectly. 
-               - AVOID generic "minimalist vector". 
-               - THINK: Brutalist architecture, Ethereal watercolor, Makoto Shinkai-esque scenery, Bauhaus geometric, Macro photography of crystals, 19th-century botanical engravings, etc.
-            3. **Visual Metaphor**: Propose a specific, powerful visual metaphor.
+            **YOUR TASK**:
+            1. **Identify the Core Topic**:
+               - If it mentions a **specific person** (e.g., "Elon Musk", "马斯克"), design that person as a chibi character
+               - If it's about **testing/debugging** (e.g., "测试", "你好"), design a chibi IT engineer/developer testing systems
+               - If it's about **sleep issues** (e.g., "睡眠", "失眠"), design a tired chibi character with sleep problems
+               - For other topics, design relevant chibi characters doing related activities
             
-            **OUTPUT FORMAT**:
-            Return a concise description of the visual concept (mood, colors, main subject, and art style) in 1-2 sentences. 
-            Example: "Concept: A sprawling, glowing neural network made of golden threads suspended in a deep obsidian void. Style: Cyber-Baroque with dramatic chiaroscuro lighting."`;
+            2. **Character Design**: Describe the chibi character(s) and their action/expression in simple terms
+               - Example for Musk: "Chibi Elon Musk with characteristic hair, wearing black turtleneck, pointing at rockets"
+               - Example for testing: "Chibi engineer with glasses, typing on laptop, surrounded by floating test icons"
+               - Example for sleep: "Exhausted chibi person with dark eye circles, yawning, clock showing late night"
+            
+            3. **Background**: Simple, clean background that doesn't distract from the character
+            
+            **OUTPUT FORMAT** (1-2 sentences):
+            Describe ONLY the chibi character(s), their action, and simple background.
+            NO abstract concepts, NO photorealistic elements, NO complex artistic styles.`;
 
             console.log('[Background Gen] Stage 1: Analyzing context...');
             const visualConcept = await chatCompletion(
@@ -143,20 +150,27 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             if (!visualConcept) throw new Error("Failed to analyze context");
 
-            // Stage 2: Prompt Generation
-            // Use the concept to build the final technical prompt
-            const promptGenPrompt = `You are an expert Prompt Engineer for high-end AI image generation.
+            // Stage 2: Prompt Generation for Chibi Style
+            // Convert the character concept into a simple, direct image prompt
+            const promptGenPrompt = `You are an expert prompt engineer for **Japanese chibi/manga style** image generation.
             
-            **YOUR GOAL**: Transform the provided "Visual Concept" into a professional prompt for a state-of-the-art image model.
+            **CHARACTER CONCEPT**: "${visualConcept}"
             
-            **VISUAL CONCEPT**: "${visualConcept}"
+            **CRITICAL RULES**:
+            1. **Style MUST be**: Japanese chibi manga style, simple cute cartoon characters with large heads and small bodies (日本小人漫画)
+            2. **Simplicity**: Clean, simple illustration - NO photorealism, NO 3D rendering, NO complex lighting
+            3. **Background**: Minimal, clean background with soft colors - must have plenty of empty space for UI text readability
+            4. **No Text**: The image must NOT contain any text, letters, numbers, or words
+            5. **Quality**: Add only basic quality terms like "clean lineart", "soft colors", "professional manga illustration"
             
-            **STRICT RULES**:
-            1. **Composition**: Wide cinematic shot, focus on atmosphere and texture.
-            2. **UI Readability**: Ensure there's plenty of "Negative Space" or soft areas so that text and UI elements placed on top remain readable.
-            3. **Quality Keywords**: Include relevant technical terms (e.g., "8k resolution", "volumetric lighting", "ray tracing", "highly detailed", "sharp focus").
-            4. **Constraint**: Do NOT include any text, letters, or numbers in the image.
-            5. **Output**: Return ONLY the final English prompt string. No conversational filler.
+            **FORBIDDEN STYLE KEYWORDS** (DO NOT USE):
+            - NO "8k resolution", "ray tracing", "volumetric lighting", "photorealistic", "cinematic", "industrial", "brutalism"
+            - NO "Makoto Shinkai", "watercolor", "3D render", "blueprint", "chiaroscuro"
+            
+            **ALLOWED STYLE KEYWORDS**:
+            - "Japanese chibi manga style", "cute cartoon", "simple illustration", "clean lineart", "soft pastel colors", "kawaii"
+            
+            **OUTPUT**: Return ONLY the final English image prompt (1-2 sentences maximum).
             
             **FINAL PROMPT**:`;
 
