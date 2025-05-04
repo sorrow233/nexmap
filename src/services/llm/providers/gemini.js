@@ -179,7 +179,14 @@ export class GeminiProvider extends LLMProvider {
                             if (cleanLine.startsWith('data: ')) {
                                 cleanLine = cleanLine.substring(6).trim();
                             }
-                            if (cleanLine === '[DONE]') continue;
+
+                            // Clean up Python byte string artifacts (common in some proxy responses)
+                            if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
+                                cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
+                                console.warn('[Gemini] Detected Python byte string, auto-cleaning:', cleanLine);
+                            }
+
+                            if (!cleanLine || cleanLine === '[DONE]') continue;
 
                             try {
                                 const data = JSON.parse(cleanLine);
@@ -225,7 +232,13 @@ export class GeminiProvider extends LLMProvider {
                     // Process remaining buffer
                     if (buffer.trim()) {
                         try {
-                            const cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
+                            let cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
+
+                            // Clean up Python byte string artifacts
+                            if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
+                                cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
+                            }
+
                             const data = JSON.parse(cleanLine);
 
                             if (data.error) {

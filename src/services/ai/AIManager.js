@@ -30,7 +30,7 @@ class AIManager {
         this.queue = [];
         this.activeTasks = new Map(); // taskId -> { controller, task }
         this.results = new Map();     // taskId -> result
-        this.concurrencyLimit = 2;    // Max concurrent AI requests
+        this.concurrencyLimit = 1; // STRICT LIMIT: 1 concurrent request for stability
         this.processing = false;
 
         AIManager.instance = this;

@@ -53,34 +53,51 @@ export async function onRequest(context) {
             headers['Authorization'] = `Bearer ${apiKey}`;
         }
 
-        // Make the request
-        const response = await fetch(url, {
+        console.log(`[Proxy] Forwarding to: ${url}`);
+
+        // Make the upstream request
+        const upstreamResponse = await fetch(url, {
             method: method,
             headers: headers,
             body: requestBody ? JSON.stringify(requestBody) : undefined
         });
 
-        // Handle streaming responses
+        // Handle upstream errors immediately
+        if (!upstreamResponse.ok) {
+            const errText = await upstreamResponse.text();
+            console.error(`[Proxy] Upstream error ${upstreamResponse.status}:`, errText);
+            return new Response(JSON.stringify({
+                error: { message: `Upstream Error ${upstreamResponse.status}: ${errText}` }
+            }), {
+                status: upstreamResponse.status,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+
+        // Handle streaming responses - DIRECT PIPE
         if (stream) {
             const { readable, writable } = new TransformStream();
-            response.body.pipeTo(writable);
+            upstreamResponse.body.pipeTo(writable);
 
             return new Response(readable, {
-                status: response.status,
+                status: upstreamResponse.status,
                 headers: {
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',
                     'Connection': 'keep-alive',
                     'Access-Control-Allow-Origin': '*',
-                    'X-Accel-Buffering': 'no' // Nginx hint to disable buffering
+                    'X-Accel-Buffering': 'no' // Nginx hint
                 }
             });
         }
 
         // Handle regular responses
-        const data = await response.json();
+        const data = await upstreamResponse.json();
         return new Response(JSON.stringify(data), {
-            status: response.status,
+            status: upstreamResponse.status,
             headers: {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
