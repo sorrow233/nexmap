@@ -25,10 +25,17 @@ const DemoInfinite = () => {
             // This gives the maximum scroll distance to play the animation.
 
             const startPoint = viewportHeight; // Top enters bottom
-            const endPoint = -elementHeight * 0.5; // Top moves up past top. Let's say when it's halfway out the top.
+            // Map:
+            // 0% -> Top of element enters bottom of viewport (rect.top = vh)
+            // 100% -> Bottom of element enters top of viewport? Or center?
 
-            // This range is (viewportHeight + 0.5 * elementHeight).
-            // The previous logic was (viewportHeight * 0.8), which was very short/fast.
+            // To make it faster (by ~20%), we reduce the distance required to complete.
+            // Previous: endPoint = -elementHeight * 0.5;
+            // New: endPoint = -elementHeight * 0.1; 
+            // This means it finishes when the top is just 10% past the top of viewport, 
+            // instead of 50% past the top.
+
+            const endPoint = -elementHeight * 0.1; // Finishes earlier -> Faster animation
 
             let p = (startPoint - rect.top) / (startPoint - endPoint);
 
