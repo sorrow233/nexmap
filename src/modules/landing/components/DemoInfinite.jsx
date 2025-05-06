@@ -1,25 +1,20 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react';
-import { useSprings, animated, to } from '@react-spring/web';
-import { FileText, Image as ImageIcon, Link, Database, BrainCircuit, Globe, LayoutGrid } from 'lucide-react';
-
-const CARD_COUNT = 16;
+import React, { useRef, useState, useEffect } from 'react';
+import { FileText, Image as ImageIcon, Link, Database, Tag, Zap } from 'lucide-react';
 
 const DemoInfinite = () => {
     const containerRef = useRef(null);
     const [progress, setProgress] = useState(0);
 
-    // --- SCROLL LOGIC ---
+    // Scroll tracking
     useEffect(() => {
         const handleScroll = () => {
             if (!containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
             const vh = window.innerHeight;
 
-            // We want a long scroll interaction. 
-            // Start: Top of element is at 80% viewport (enters focus)
-            // End: Top of element is at -20% viewport (leaves upwards)
-            const start = vh * 0.8;
-            const end = -rect.height * 0.2;
+            // Start when element is 60% into view, end when it's centered
+            const start = vh * 0.6;
+            const end = -rect.height * 0.3;
 
             let p = (start - rect.top) / (start - end);
             p = Math.min(1, Math.max(0, p));
@@ -30,156 +25,172 @@ const DemoInfinite = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // --- DATA GENERATION ---
-    const items = useMemo(() => {
-        return Array.from({ length: CARD_COUNT }).map((_, i) => {
-            // Chaos/Random Positions (Spread widely in 3D space)
-            const x = (Math.random() - 0.5) * 1200; // Wide horizontal spread
-            const y = (Math.random() - 0.5) * 800;  // Vertical spread
-            const z = (Math.random() - 0.5) * 500;  // Depth spread
-            const rotC = (Math.random() - 0.5) * 120; // Chaos rotation
+    // Card data - organized into semantic groups
+    const cards = [
+        // Work Group (Blue)
+        { id: 1, type: 'note', title: 'Q4 Goals', group: 'work', color: 'blue', chaosX: -200, chaosY: -50, orderX: -400, orderY: -150 },
+        { id: 2, type: 'link', title: 'Team Doc', group: 'work', color: 'blue', chaosX: 150, chaosY: -80, orderX: -250, orderY: -150 },
+        { id: 3, type: 'image', title: 'Mockup', group: 'work', color: 'blue', chaosX: -50, chaosY: 100, orderX: -325, orderY: -50 },
 
-            // Order/Grid Positions
-            const col = i % 4;
-            const row = Math.floor(i / 4);
-            const gx = (col - 1.5) * 220;
-            const gy = (row - 1.5) * 140;
+        // Research Group (Purple)
+        { id: 4, type: 'note', title: 'AI Paper', group: 'research', color: 'purple', chaosX: 200, chaosY: -150, orderX: 0, orderY: -150 },
+        { id: 5, type: 'data', title: 'Dataset', group: 'research', color: 'purple', chaosX: -100, chaosY: -20, orderX: 150, orderY: -150 },
+        { id: 6, type: 'link', title: 'GitHub', group: 'research', color: 'purple', chaosX: 100, chaosY: 80, orderX: 75, orderY: -50 },
 
-            // Type & Colors
-            const types = ['note', 'image', 'link', 'data'];
-            const type = types[i % 4];
-            const colors = [
-                'from-rose-500/20 to-rose-900/40 border-rose-500/30',
-                'from-blue-500/20 to-blue-900/40 border-blue-500/30',
-                'from-emerald-500/20 to-emerald-900/40 border-emerald-500/30',
-                'from-amber-500/20 to-amber-900/40 border-amber-500/30'
-            ];
+        // Ideas Group (Emerald)
+        { id: 7, type: 'note', title: 'Brainstorm', group: 'ideas', color: 'emerald', chaosX: -150, chaosY: 120, orderX: -400, orderY: 100 },
+        { id: 8, type: 'image', title: 'Sketch', group: 'ideas', color: 'emerald', chaosX: 250, chaosY: 50, orderX: -250, orderY: 100 },
+        { id: 9, type: 'note', title: 'Concepts', group: 'ideas', color: 'emerald', chaosX: 50, chaosY: -100, orderX: -325, orderY: 200 },
 
-            return { id: i, chaos: { x, y, z, rot: rotC }, order: { x: gx, y: gy, z: 0, rot: 0 }, type, colorClass: colors[i % 4] };
-        });
-    }, []);
+        // Personal Group (Amber)
+        { id: 10, type: 'note', title: 'Todo', group: 'personal', color: 'amber', chaosX: -250, chaosY: 0, orderX: 0, orderY: 100 },
+        { id: 11, type: 'link', title: 'Recipe', group: 'personal', color: 'amber', chaosX: 180, chaosY: 120, orderX: 150, orderY: 100 },
+        { id: 12, type: 'image', title: 'Photos', group: 'personal', color: 'amber', chaosX: 20, chaosY: 30, orderX: 75, orderY: 200 },
+    ];
 
-    // --- ANIMATION SPRINGS ---
-    // We map 'progress' (0-1) to spring values.
-    // React-spring handles the interpolation, but we update the destination based on progress.
-    // Phase 1 (0.0 - 0.3): Chaos drifting (handled by random noise or just initial state)
-    // Phase 2 (0.3 - 0.8): The "Snap" to order.
+    const groups = {
+        work: { x: -325, y: -100, color: 'blue' },
+        research: { x: 75, y: -100, color: 'purple' },
+        ideas: { x: -325, y: 150, color: 'emerald' },
+        personal: { x: 75, y: 150, color: 'amber' }
+    };
 
-    // Smooth step function for the transition
-    const smoothProgress = Math.min(1, Math.max(0, (progress - 0.2) / 0.6)); // Active between 0.2 and 0.8
-    // Easing: easeInOutCubic
-    const t = smoothProgress < .5 ? 4 * smoothProgress * smoothProgress * smoothProgress : 1 - Math.pow(-2 * smoothProgress + 2, 3) / 2;
+    // Smooth easing function
+    const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-    const [springs] = useSprings(CARD_COUNT, (i) => {
-        const item = items[i];
+    // Different phase progressions
+    const pulseProgress = Math.max(0, Math.min(1, (progress - 0.2) / 0.2)); // 0.2-0.4
+    const organizeProgress = easeInOutCubic(Math.max(0, Math.min(1, (progress - 0.4) / 0.3))); // 0.4-0.7
+    const connectProgress = Math.max(0, Math.min(1, (progress - 0.7) / 0.2)); // 0.7-0.9
+
+    const getCardStyle = (card, index) => {
+        const x = card.chaosX + (card.orderX - card.chaosX) * organizeProgress;
+        const y = card.chaosY + (card.orderY - card.chaosY) * organizeProgress;
+        const rotation = (1 - organizeProgress) * (Math.random() - 0.5) * 30;
+        const delay = index * 0.05;
+
         return {
-            x: item.chaos.x + (item.order.x - item.chaos.x) * t,
-            y: item.chaos.y + (item.order.y - item.chaos.y) * t,
-            z: item.chaos.z + (item.order.z - item.chaos.z) * t,
-            rot: item.chaos.rot + (item.order.rot - item.chaos.rot) * t,
-            opacity: 1, // Always visible
-            scale: 1,
-            immediate: false, // animate
-            config: { mass: 1, tension: 120, friction: 20 } // Physics feel
+            transform: `translate(${x}px, ${y}px) rotate(${rotation}deg)`,
+            transitionDelay: `${delay}s`,
+            opacity: 0.3 + organizeProgress * 0.7,
+            zIndex: Math.floor(organizeProgress * 10)
         };
-    }, [t]); // Update when t changes
+    };
+
+    const colorMap = {
+        blue: 'from-blue-500/20 to-blue-600/30 border-blue-400/40',
+        purple: 'from-purple-500/20 to-purple-600/30 border-purple-400/40',
+        emerald: 'from-emerald-500/20 to-emerald-600/30 border-emerald-400/40',
+        amber: 'from-amber-500/20 to-amber-600/30 border-amber-400/40'
+    };
+
+    const groupLabelColor = {
+        blue: 'text-blue-300 bg-blue-500/10 border-blue-400/30',
+        purple: 'text-purple-300 bg-purple-500/10 border-purple-400/30',
+        emerald: 'text-emerald-300 bg-emerald-500/10 border-emerald-400/30',
+        amber: 'text-amber-300 bg-amber-500/10 border-amber-400/30'
+    };
 
     return (
-        <div ref={containerRef} className="relative w-full h-[250vh] bg-[#050505]">
+        <div ref={containerRef} className="relative w-full h-[200vh] bg-[#050505]">
+            {/* Sticky container */}
+            <div className="sticky top-0 w-full h-screen flex items-center justify-center overflow-hidden">
 
-            {/* STICKY STAGE */}
-            <div className="sticky top-0 w-full h-screen flex flex-col items-center justify-center overflow-hidden perspective-[1200px]">
-
-                {/* BACKGROUND FIELD */}
-                <div className={`absolute inset-0 transition-opacity duration-1000 ${t > 0.5 ? 'opacity-30' : 'opacity-0'}`}>
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent" />
+                {/* Title */}
+                <div className="absolute top-20 z-50 text-center">
+                    <h2 className="text-7xl font-bold text-white mb-4 tracking-tight">
+                        {organizeProgress < 0.5 ? 'Chaos' : 'Clarity'}
+                        <span className="text-blue-400">.</span>
+                    </h2>
+                    <p className="text-white/60 text-xl" style={{ opacity: connectProgress }}>
+                        AI-powered organization in seconds
+                    </p>
                 </div>
 
-                {/* TEXT LAYER */}
-                <div className="absolute top-24 z-50 text-center mix-blend-screen pointer-events-none">
-                    <h2
-                        className="text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 transition-all duration-700"
-                        style={{
-                            transform: `translateY(${t < 0.5 ? 0 : -100}px) scale(${1 - t * 0.2})`,
-                            opacity: 1 - t * 0.5
-                        }}
-                    >
-                        Chaos.
-                    </h2>
-                    <h2
-                        className="absolute top-0 left-0 right-0 text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-blue-400 to-purple-400 transition-all duration-700"
-                        style={{
-                            transform: `translateY(${t < 0.5 ? 100 : 0}px) scale(${1 + t * 0.1})`,
-                            filter: `blur(${(1 - t) * 20}px)`,
-                            opacity: t
-                        }}
-                    >
-                        Clarity.
-                    </h2>
-                </div>
+                {/* Pulse effect */}
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        opacity: pulseProgress * (1 - pulseProgress) * 4,
+                        background: 'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
+                        transform: `scale(${1 + pulseProgress * 2})`
+                    }}
+                />
 
-                {/* 3D SCENE */}
-                <div className="relative w-[1000px] h-[800px] [transform-style:preserve-3d]">
-                    {springs.map(({ x, y, z, rot, scale, opacity }, i) => {
-                        const item = items[i];
-                        return (
-                            <animated.div
-                                key={i}
-                                className={`absolute w-[200px] h-[120px] rounded-xl border backdrop-blur-md shadow-2xl bg-gradient-to-br ${item.colorClass} flex flex-col p-4 overflow-hidden`}
-                                style={{
-                                    transform: to([x, y, z, rot, scale], (x, y, z, r, s) =>
-                                        `translate3d(${x}px,${y}px,${z}px) rotateX(${r * 0.5}deg) rotateY(${r * 0.5}deg) rotateZ(${r}deg) scale(${s})`
-                                    ),
-                                    opacity
-                                }}
-                            >
-                                {/* CARD CONTENT SKELETON */}
-                                <div className="flex items-center gap-3 mb-3 border-b border-white/10 pb-2">
-                                    <div className="p-1.5 rounded-md bg-white/10">
-                                        {item.type === 'note' && <FileText size={14} className="text-rose-300" />}
-                                        {item.type === 'image' && <ImageIcon size={14} className="text-blue-300" />}
-                                        {item.type === 'link' && <Link size={14} className="text-emerald-300" />}
-                                        {item.type === 'data' && <Database size={14} className="text-amber-300" />}
-                                    </div>
-                                    <div className="h-2 w-16 bg-white/20 rounded-full" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                    <div className="h-2 w-full bg-white/10 rounded-full" />
-                                    <div className="h-2 w-3/4 bg-white/10 rounded-full" />
-                                    {item.type === 'image' && (
-                                        <div className="mt-2 h-10 w-full bg-black/20 rounded-md border border-white/5" />
-                                    )}
-                                </div>
-                            </animated.div>
-                        );
-                    })}
+                {/* Cards container */}
+                <div className="relative w-[1000px] h-[600px]">
+                    {/* Group labels */}
+                    {Object.entries(groups).map(([name, group]) => (
+                        <div
+                            key={name}
+                            className={`absolute px-3 py-1 rounded-full text-sm font-medium border backdrop-blur-sm transition-all duration-700 ${groupLabelColor[group.color]}`}
+                            style={{
+                                left: `calc(50% + ${group.x - 80}px)`,
+                                top: `calc(50% + ${group.y - 40}px)`,
+                                opacity: connectProgress,
+                                transform: `translateY(${(1 - connectProgress) * 20}px)`
+                            }}
+                        >
+                            {name.charAt(0).toUpperCase() + name.slice(1)}
+                        </div>
+                    ))}
 
-                    {/* CONNECTION LINES (SVG) */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-[-1]">
-                        {/* Only show lines when ordered (t > 0.8) */}
-                        <g style={{ opacity: Math.max(0, (t - 0.7) * 3), transition: 'opacity 0.5s ease' }}>
-                            {items.map((item, i) => {
-                                // Draw lines to center or neighbors
-                                if (i % 4 === 0) return null; // Skip some to form clusters
-                                const startX = item.order.x + 100 + 500; // Center offset
-                                const startY = item.order.y + 60 + 400;
-                                const endX = items[i - 1].order.x + 100 + 500;
-                                const endY = items[i - 1].order.y + 60 + 400;
-                                return (
-                                    <path
-                                        key={`line-${i}`}
-                                        d={`M ${startX} ${startY} L ${endX} ${endY}`}
-                                        stroke="rgba(255,255,255,0.15)"
-                                        strokeWidth="2"
-                                        strokeDasharray="4 4"
-                                    />
-                                );
-                            })}
-                        </g>
+                    {/* Cards */}
+                    {cards.map((card, i) => (
+                        <div
+                            key={card.id}
+                            className={`absolute w-[140px] h-[100px] rounded-xl bg-gradient-to-br ${colorMap[card.color]} border backdrop-blur-md shadow-xl p-3 transition-all duration-700 ease-out hover:scale-105`}
+                            style={{
+                                left: 'calc(50% - 70px)',
+                                top: 'calc(50% - 50px)',
+                                ...getCardStyle(card, i)
+                            }}
+                        >
+                            {/* Card icon */}
+                            <div className="flex items-center gap-2 mb-2 border-b border-white/10 pb-2">
+                                {card.type === 'note' && <FileText size={14} className="text-white/70" />}
+                                {card.type === 'image' && <ImageIcon size={14} className="text-white/70" />}
+                                {card.type === 'link' && <Link size={14} className="text-white/70" />}
+                                {card.type === 'data' && <Database size={14} className="text-white/70" />}
+                                <div className="h-2 w-16 bg-white/20 rounded-full" />
+                            </div>
+                            {/* Card content */}
+                            <div className="space-y-1">
+                                <div className="h-1.5 w-full bg-white/15 rounded-full" />
+                                <div className="h-1.5 w-3/4 bg-white/10 rounded-full" />
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Connection lines */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: connectProgress }}>
+                        {cards.map((card, i) => {
+                            if (i === 0 || card.group !== cards[i - 1].group) return null;
+                            const prev = cards[i - 1];
+                            return (
+                                <line
+                                    key={`line-${i}`}
+                                    x1={`calc(50% + ${card.orderX}px)`}
+                                    y1={`calc(50% + ${card.orderY}px)`}
+                                    x2={`calc(50% + ${prev.orderX}px)`}
+                                    y2={`calc(50% + ${prev.orderY}px)`}
+                                    stroke="rgba(255,255,255,0.2)"
+                                    strokeWidth="1.5"
+                                    strokeDasharray="4 4"
+                                />
+                            );
+                        })}
                     </svg>
 
+                    {/* AI indicator */}
+                    <div
+                        className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 border border-blue-400/30 rounded-full backdrop-blur-sm"
+                        style={{ opacity: pulseProgress }}
+                    >
+                        <Zap size={14} className="text-blue-300" />
+                        <span className="text-blue-300 text-sm font-medium">AI Organizing...</span>
+                    </div>
                 </div>
-
             </div>
         </div>
     );
