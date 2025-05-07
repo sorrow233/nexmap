@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import VisualHero from './components/VisualHero';
 import DemoInfinite from './components/DemoInfinite';
 import DemoAI from './components/DemoAI';
-import DemoFractal from './components/DemoFractal';
+import FeatureBento from './components/FeatureBento';
 
 // The Orchestrator
 const LandingModule = () => {
@@ -15,7 +15,7 @@ const LandingModule = () => {
             if (!scrollContainerRef.current) return;
             const scrollY = scrollContainerRef.current.scrollTop;
             const innerHeight = window.innerHeight;
-            // Map scroll to 0-4 range (Hero -> Infinite -> AI -> Fractal -> Footer)
+            // Map scroll to 0-4 range (Hero -> Infinite -> AI -> Bento -> Footer)
             const progress = Math.max(0, scrollY / innerHeight);
             setScrollProgress(progress);
         };
@@ -60,12 +60,26 @@ const LandingModule = () => {
                 
                 /* Hide scrollbar for cinematic feel but keep functionality */
                 ::-webkit-scrollbar { width: 0px; background: transparent; }
+                
+                @keyframes gradient-x {
+                    0%, 100% {
+                        background-size: 200% 200%;
+                        background-position: left center;
+                    }
+                    50% {
+                        background-size: 200% 200%;
+                        background-position: right center;
+                    }
+                }
+                .animate-gradient-x {
+                    animation: gradient-x 3s ease infinite;
+                }
             `}</style>
 
             {/* Background elements can go here if global */}
             <div className="fixed inset-0 pointer-events-none">
-                {/* Subtle grid or noise could go here */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+                {/* Subtle noise texture */}
+                <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
             </div>
 
             {/* Fixed Viewport for Animations */}
@@ -73,15 +87,15 @@ const LandingModule = () => {
                 <VisualHero scrollProgress={scrollProgress} onStart={handleAutoStart} />
                 <DemoInfinite scrollProgress={scrollProgress} />
                 <DemoAI scrollProgress={scrollProgress} />
-                <DemoFractal scrollProgress={scrollProgress} />
+                <FeatureBento scrollProgress={scrollProgress} />
             </div>
 
             {/* Scroll Triggers (Invisible Layout Preservation) */}
             <div className="relative pointer-events-none">
-                <div className="h-screen" /> {/* Hero Space (0 - 1) */}
+                <div className="h-screen" /> {/* Hero Trigger (0 - 1) */}
                 <div className="h-screen" /> {/* Infinite Trigger (1 - 2) */}
                 <div className="h-screen" /> {/* AI Trigger (2 - 3) */}
-                <div className="h-screen" /> {/* Fractal Trigger (3 - 4) */}
+                <div className="h-screen" /> {/* Bento Trigger (3 - 4) */}
                 <div className="h-[50vh]" /> {/* Buffer */}
             </div>
 
@@ -90,7 +104,7 @@ const LandingModule = () => {
                 <div className="fixed bottom-10 left-0 right-0 z-50 flex justify-center pointer-events-auto animate-fade-in-up">
                     <button
                         onClick={() => window.location.href = '/gallery'}
-                        className="px-8 py-4 bg-black text-white rounded-full text-xl font-bold shadow-2xl hover:scale-110 transition-transform"
+                        className="px-10 py-4 bg-black text-white rounded-full text-xl font-bold shadow-2xl hover:scale-110 transition-transform active:scale-95 flex items-center gap-2"
                     >
                         Start Your Journey
                     </button>
