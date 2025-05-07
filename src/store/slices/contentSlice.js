@@ -104,8 +104,16 @@ export const createContentSlice = (set, get) => {
                 return;
             }
 
+            // Determine which cards initiated the move
             const isSelected = selectedIds.indexOf(id) !== -1;
-            const moveIds = isSelected ? new Set(selectedIds) : getConnectedGraph(id, connections);
+            const sourceIds = isSelected ? selectedIds : [id];
+
+            // Resolve ALL connected components for the source cards
+            const moveIds = new Set();
+            sourceIds.forEach(sourceId => {
+                const connectedParams = getConnectedGraph(sourceId, connections);
+                connectedParams.forEach(cid => moveIds.add(cid));
+            });
 
             set(state => ({
                 cards: state.cards.map(c => {
