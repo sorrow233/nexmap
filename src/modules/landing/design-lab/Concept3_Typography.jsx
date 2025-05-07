@@ -1,59 +1,80 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const Concept3_Typography = () => {
+const Concept3_InfiniteDepth = () => {
+    const [zoomLevel, setZoomLevel] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setZoomLevel(prev => (prev + 1) % 4);
+        }, 2500);
+        return () => clearInterval(interval);
+    }, []);
+
+    const levels = [
+        { title: 'Project Dashboard', color: 'blue' },
+        { title: 'AI Research', color: 'purple' },
+        { title: 'Neural Networks', color: 'emerald' },
+        { title: 'Backpropagation', color: 'amber' }
+    ];
+
     return (
-        <div className="w-full min-h-screen bg-[#e8e8e5] text-[#1a1a1a] overflow-x-hidden font-sans">
-            <div className="fixed top-0 left-0 w-full p-6 flex justify-between mix-blend-difference z-50 text-white md:mix-blend-normal md:text-[#1a1a1a]">
-                <div className="text-sm font-bold uppercase tracking-tighter">AntiGravity™</div>
-                <div className="text-sm font-bold uppercase tracking-tighter">2025</div>
+        <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center">
+            <div
+                className="relative transition-transform duration-2000 ease-in-out"
+                style={{
+                    transform: `scale(${Math.pow(3, zoomLevel)}) translateZ(0)`,
+                    transformOrigin: 'center center'
+                }}
+            >
+                {levels.map((level, depth) => {
+                    const scale = Math.pow(0.33, depth);
+                    const colorMap = {
+                        blue: 'from-blue-600/30 to-blue-900/50 border-blue-400/40',
+                        purple: 'from-purple-600/30 to-purple-900/50 border-purple-400/40',
+                        emerald: 'from-emerald-600/30 to-emerald-900/50 border-emerald-400/40',
+                        amber: 'from-amber-600/30 to-amber-900/50 border-amber-400/40'
+                    };
+
+                    return (
+                        <div
+                            key={depth}
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={{
+                                transform: `scale(${scale})`,
+                                transformOrigin: 'center center'
+                            }}
+                        >
+                            <div className={`w-[600px] h-[400px] bg-gradient-to-br ${colorMap[level.color]} backdrop-blur-sm border-2 rounded-2xl p-8 flex flex-col shadow-2xl`}>
+                                <h2 className="text-4xl font-bold text-white mb-4">{level.title}</h2>
+                                <div className="flex-1 grid grid-cols-3 gap-4">
+                                    {[...Array(6)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="bg-white/10 rounded-lg backdrop-blur-sm border border-white/20"
+                                        />
+                                    ))}
+                                </div>
+                                {depth < levels.length - 1 && (
+                                    <div className="absolute bottom-12 right-12 w-24 h-24 bg-zinc-900 rounded-lg border-2 border-white/30 flex items-center justify-center shadow-xl">
+                                        <div className="text-white/50 text-xs">→ Zoom In</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
-            <section className="h-screen flex flex-col justify-center items-center px-4">
-                <h1 className="text-[12vw] leading-[0.85] font-black tracking-tighter text-center scale-y-110">
-                    THINK<br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600">FASTER</span>
-                </h1>
-            </section>
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center z-50 pointer-events-none">
+                <h1 className="text-6xl font-bold text-white mb-2">Infinite Depth</h1>
+                <p className="text-white/70 text-xl">Zoom forever. Every card contains a universe.</p>
+            </div>
 
-            <section className="py-24 px-4 md:px-20 border-t border-black/10">
-                <div className="max-w-4xl">
-                    <p className="text-4xl md:text-6xl font-medium leading-tight tracking-tight">
-                        We built a tool for the <span className="underline decoration-4 decoration-orange-500 underline-offset-4">mind</span>, not just the screen. A recursive canvas that adapts to your thought process.
-                    </p>
-                </div>
-            </section>
-
-            <section className="whitespace-nowrap overflow-hidden py-10 bg-black text-[#e8e8e5]">
-                <div className="animate-marquee inline-block">
-                    <span className="text-9xl font-black tracking-tighter mx-8">INFINITE CANVAS</span>
-                    <span className="text-9xl font-black tracking-tighter mx-8 opacity-50">SPATIAL LOGIC</span>
-                    <span className="text-9xl font-black tracking-tighter mx-8">RECURSIVE AI</span>
-                    <span className="text-9xl font-black tracking-tighter mx-8 opacity-50">COLLABORATION</span>
-                    <span className="text-9xl font-black tracking-tighter mx-8">INFINITE CANVAS</span>
-                    <span className="text-9xl font-black tracking-tighter mx-8 opacity-50">SPATIAL LOGIC</span>
-                </div>
-            </section>
-
-            <section className="h-[80vh] flex items-center justify-center bg-[#e8e8e5]">
-                <div className="relative group cursor-pointer">
-                    <div className="absolute -inset-4 bg-orange-500 rounded-full opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
-                    <h2 className="relative text-8xl font-black tracking-tighter z-10 skew-x-[-10deg] group-hover:skew-x-0 transition-transform duration-500">
-                        START NOW
-                    </h2>
-                </div>
-            </section>
-
-            <style>{`
-                @keyframes marquee {
-                    0% { transform: translateX(0); }
-                    100% { transform: translateX(-50%); }
-                }
-                .animate-marquee {
-                    animation: marquee 20s linear infinite;
-                }
-            `}</style>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/60 text-sm z-50">
+                Level {zoomLevel + 1} / ∞
+            </div>
         </div>
     );
 };
 
-export default Concept3_Typography;
+export default Concept3_InfiniteDepth;
