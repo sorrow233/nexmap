@@ -1,38 +1,53 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, MousePointer2 } from 'lucide-react';
+import { ArrowRight, MousePointer2, Star, Zap, Grid } from 'lucide-react';
 
 const VisualHero = ({ scrollProgress, onStart }) => {
     const navigate = useNavigate();
 
-    // Core animation values based on scroll
+    // Core animation values
     // 0 -> 1 range
+    // Fade out and zoom in as we scroll past
     const opacity = Math.max(0, 1 - scrollProgress * 2.5);
-    const scale = 1 + scrollProgress * 1.5; // Zoom in effect
-    const blur = scrollProgress * 20; // Blur as it zooms out
-    const translateY = scrollProgress * 100;
+    const scale = 1 + scrollProgress * 1;
+    const blur = scrollProgress * 10;
+    const translateY = scrollProgress * 200;
 
-    // Background Parallax
-    const gridScale = 1 + scrollProgress * 0.2;
-    const gridOpacity = Math.max(0, 0.4 - scrollProgress);
+    // "Cloud" Parallax
+    const cloudRotate = scrollProgress * 20; // Rotate the cloud slightly
 
     return (
         <div className="absolute inset-0 flex flex-col items-center justify-center z-40 overflow-hidden pointer-events-none">
-            {/* Dynamic Background Grid */}
+            {/* Dynamic Background Gradient */}
+            <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#FDFDFC] via-[#F8FAFC] to-[#EFF6FF] opacity-80" />
+
+            {/* 3D Cloud of Cards Background */}
             <div
-                className="absolute inset-0 z-0 opacity-40 pointer-events-none"
+                className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
                 style={{
-                    opacity: gridOpacity,
-                    transform: `scale(${gridScale})`,
-                    backgroundSize: '40px 40px',
-                    backgroundImage: `
-                       linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
-                       linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)
-                   `,
-                    maskImage: 'radial-gradient(circle at center, black, transparent 80%)',
-                    WebkitMaskImage: 'radial-gradient(circle at center, black, transparent 80%)'
+                    perspective: '1000px',
+                    transformStyle: 'preserve-3d',
                 }}
-            />
+            >
+                <div
+                    className="relative w-[100vw] h-[100vh]"
+                    style={{
+                        transform: `scale(${1 + scrollProgress}) rotateX(${cloudRotate * 0.5}deg) rotateY(${cloudRotate}deg) translateZ(${-scrollProgress * 500}px)`,
+                        transformStyle: 'preserve-3d',
+                        transition: 'transform 0.1s linear'
+                    }}
+                >
+                    {/* Floating Cards - Strategic Placement */}
+                    <FloatingCard x={-35} y={-25} z={-100} rotate={-10} icon={Star} color="bg-yellow-400" delay={0} />
+                    <FloatingCard x={35} y={-20} z={-150} rotate={15} icon={Zap} color="bg-blue-500" delay={1} />
+                    <FloatingCard x={-45} y={15} z={-200} rotate={-5} icon={Grid} color="bg-purple-500" delay={2} />
+                    <FloatingCard x={40} y={25} z={-120} rotate={8} icon={MousePointer2} color="bg-pink-500" delay={3} />
+
+                    {/* Deeper Layer */}
+                    <FloatingCard x={-15} y={-40} z={-400} rotate={20} icon={Star} color="bg-green-400" size="sm" delay={1.5} />
+                    <FloatingCard x={20} y={35} z={-350} rotate={-15} icon={Zap} color="bg-orange-500" size="sm" delay={2.5} />
+                </div>
+            </div>
 
             {/* Main Content */}
             <div
@@ -43,28 +58,30 @@ const VisualHero = ({ scrollProgress, onStart }) => {
                     filter: `blur(${blur}px)`,
                 }}
             >
-                <div className="relative inline-block mb-6 pt-20">
-                    <div className="absolute -top-12 -left-12 opacity-20 animate-pulse hidden md:block">
-                        <MousePointer2 className="w-12 h-12 -rotate-12" />
-                    </div>
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/50 backdrop-blur-md rounded-full border border-gray-200/50 shadow-sm mb-8 animate-fade-in-up">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-sm font-semibold text-gray-600 tracking-wide">v2.0 Now Available</span>
+                </div>
 
+                <div className="relative inline-block mb-8">
                     <h1
-                        className="text-7xl md:text-9xl lg:text-[12rem] font-bold tracking-tighter text-[#1a1a1a] leading-[0.85] mix-blend-multiply"
+                        className="text-6xl md:text-8xl lg:text-[10rem] font-bold tracking-tighter text-[#1a1a1a] leading-[0.9] mix-blend-tighten"
                         style={{ fontFamily: '"Inter Tight", sans-serif' }}
                     >
-                        Think inside<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-600 to-indigo-600 animate-gradient-x">
-                            the Infinite.
+                        Your Mind,<br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradient-x p-2 block">
+                            Unbounded.
                         </span>
                     </h1>
                 </div>
 
-                <p className="text-xl md:text-3xl text-gray-600 max-w-3xl mx-auto font-light leading-relaxed mt-8 mb-12">
-                    The canvas that grows with your mind. <br className="hidden md:block" />
-                    From messy thoughts to clear masterplans.
+                <p className="text-xl md:text-2xl text-gray-500 max-w-2xl mx-auto font-light leading-relaxed mb-12 animate-fade-in-up delay-100">
+                    The infinite canvas where ideas grow, connect, and evolve. <br className="hidden md:block" />
+                    <b>Stop organizing files. Start organizing thoughts.</b>
                 </p>
 
-                <div className="pointer-events-auto flex flex-col md:flex-row gap-4 justify-center items-center">
+                <div className="pointer-events-auto flex flex-col md:flex-row gap-6 justify-center items-center animate-fade-in-up delay-200">
                     <button
                         onClick={() => navigate('/gallery')}
                         className="group relative px-10 py-5 bg-[#1a1a1a] text-white rounded-full text-xl font-medium overflow-hidden transition-all hover:scale-105 hover:shadow-2xl shadow-xl active:scale-95"
@@ -78,20 +95,47 @@ const VisualHero = ({ scrollProgress, onStart }) => {
 
                     <button
                         onClick={onStart}
-                        className="px-8 py-5 text-gray-500 hover:text-black font-medium transition-colors text-lg"
+                        className="group px-8 py-5 bg-white/50 backdrop-blur-sm border border-gray-200 text-gray-600 hover:text-black hover:bg-white rounded-full font-medium transition-all text-lg shadow-sm hover:shadow-lg"
                     >
-                        See how it works
+                        <span className="flex items-center gap-2">
+                            Full Tour
+                            <span className="group-hover:translate-y-1 transition-transform">↓</span>
+                        </span>
                     </button>
                 </div>
             </div>
 
-            {/* Scroll Indicator */}
-            <div
-                className="absolute bottom-12 flex flex-col items-center gap-2 opacity-40 animate-bounce pointer-events-auto cursor-pointer transition-opacity hover:opacity-100"
-                onClick={onStart}
-            >
-                <span className="text-sm font-medium uppercase tracking-widest">Scroll to Explore</span>
-                <div className="w-px h-12 bg-gradient-to-b from-gray-800 to-transparent" />
+            {/* Bottom Fade Gradient */}
+            <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-[#FDFDFC] to-transparent z-20 pointer-events-none" />
+        </div>
+    );
+};
+
+const FloatingCard = ({ x, y, z, rotate, icon: Icon, color, size = 'md', delay }) => {
+    // x, y in percentage relative to center
+    // z in px
+    const style = {
+        left: `calc(50% + ${x}vw)`,
+        top: `calc(50% + ${y}vh)`,
+        transform: `translate(-50%, -50%) translateZ(${z}px) rotate(${rotate}deg)`,
+    };
+
+    const sizeClasses = size === 'md' ? 'w-48 h-32 md:w-64 md:h-40' : 'w-32 h-20 md:w-40 md:h-24';
+
+    return (
+        <div
+            className={`absolute ${sizeClasses} bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100/50 flex flex-col p-4 animate-float`}
+            style={{
+                ...style,
+                animationDelay: `${delay}s`
+            }}
+        >
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${color} flex items-center justify-center text-white shadow-sm mb-auto`}>
+                <Icon className="w-4 h-4 md:w-5 md:h-5" />
+            </div>
+            <div className="space-y-2 opacity-40">
+                <div className="h-2 w-3/4 bg-gray-200 rounded" />
+                <div className="h-2 w-1/2 bg-gray-200 rounded" />
             </div>
         </div>
     );
