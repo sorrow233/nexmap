@@ -298,8 +298,8 @@ body,
     }
 
     .card-sharp-selected {
-        box-shadow: 0 0 0 1.5px var(--luminous-white), 0 0 40px rgba(255, 255, 255, 0.1) !important;
-        border-color: var(--luminous-white) !important;
+        box-shadow: 0 0 0 2px #8b5cf6, 0 0 20px rgba(139, 92, 246, 0.5) !important;
+        border-color: #8b5cf6 !important;
         transform: scale(1.005);
         z-index: 60 !important;
     }
