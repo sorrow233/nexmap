@@ -1,57 +1,76 @@
 import React from 'react';
 
-const Concept6_Perspective3D = () => {
+const Concept6_Velocity = () => {
     return (
-        <div className="w-full h-full bg-slate-900 perspective-1000 overflow-hidden flex items-center justify-center">
-            <div className="relative w-[600px] h-[600px] preserve-3d animate-spin-slow">
-                {/* Central Core */}
-                <div className="absolute inset-0 m-auto w-40 h-40 bg-blue-500 rounded-full shadow-[0_0_100px_rgba(59,130,246,0.5)] flex items-center justify-center z-10">
-                    <span className="text-white font-bold tracking-widest">CORE</span>
+        <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center">
+            {/* Motion blur streaks */}
+            <div className="absolute inset-0">
+                {[...Array(20)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="absolute h-1 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent animate-streak"
+                        style={{
+                            top: `${(i * 5) + 10}%`,
+                            width: `${30 + Math.random() * 40}%`,
+                            left: '-50%',
+                            animationDelay: `${i * 0.1}s`,
+                            animationDuration: `${0.8 + Math.random() * 0.4}s`
+                        }}
+                    />
+                ))}
+            </div>
+
+            {/* Speed metrics */}
+            <div className="relative z-10 text-center space-y-12">
+                <div className="animate-slide-in">
+                    <div className="text-[120px] font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 leading-none">
+                        10,000
+                    </div>
+                    <div className="text-white/60 text-2xl mt-4">Cards. Zero lag.</div>
                 </div>
 
-                {/* Orbiting Plane 1 */}
-                <div className="absolute inset-0 border border-white/10 rounded-full transform rotate-x-60 animate-pulse"></div>
-
-                {/* Floating Cards */}
-                <div className="absolute top-0 right-0 w-48 h-64 bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-xl transform translate-z-50 rotate-y-12 shadow-2xl">
-                    <div className="h-4 w-20 bg-white/20 rounded mb-4"></div>
-                    <div className="h-2 w-full bg-white/10 rounded mb-2"></div>
-                    <div className="h-2 w-3/4 bg-white/10 rounded"></div>
+                <div className="animate-slide-in delay-500">
+                    <div className="text-[120px] font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 leading-none">
+                        60 FPS
+                    </div>
+                    <div className="text-white/60 text-2xl mt-4">Buttery smooth.</div>
                 </div>
 
-                <div className="absolute bottom-20 left-20 w-48 h-32 bg-purple-500/20 backdrop-blur-md border border-purple-500/30 p-4 rounded-xl transform translate-z-20 -rotate-x-12 shadow-2xl">
-                    <h3 className="text-purple-300 font-bold">Data Node</h3>
-                    <p className="text-xs text-purple-200/50 mt-2">Processing...</p>
-                </div>
-
-                <div className="absolute top-20 left-0 w-32 h-32 bg-pink-500/20 backdrop-blur-md border border-pink-500/30 rounded-full transform translate-z-80 rotate-y-45 flex items-center justify-center">
-                    <span className="text-pink-300 text-xs text-center px-2">Creative<br />Sphere</span>
-                </div>
-
-                {/* Text Layer */}
-                <div className="absolute inset-0 pointer-events-none transform translate-z-100 flex items-center justify-center">
-                    <h1 className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-transparent opacity-20">3D</h1>
+                <div className="animate-slide-in delay-1000">
+                    <div className="text-[120px] font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 leading-none">
+                        &lt;16ms
+                    </div>
+                    <div className="text-white/60 text-2xl mt-4">Response time.</div>
                 </div>
             </div>
 
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center">
+                <h1 className="text-6xl font-bold text-white mb-2">Velocity</h1>
+                <p className="text-white/70 text-xl">Think at the speed of light</p>
+            </div>
+
             <style>{`
-                .perspective-1000 { perspective: 1000px; }
-                .preserve-3d { transform-style: preserve-3d; }
-                .translate-z-50 { transform: translateZ(50px); }
-                .translate-z-20 { transform: translateZ(20px); }
-                .translate-z-80 { transform: translateZ(80px); }
-                .translate-z-100 { transform: translateZ(100px); }
-                
-                @keyframes spin-slow {
-                    0% { transform: rotateY(0deg) rotateX(10deg); }
-                    100% { transform: rotateY(360deg) rotateX(10deg); }
+                @keyframes streak {
+                    0% { transform: translateX(0); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateX(200vw); opacity: 0; }
                 }
-                .animate-spin-slow {
-                    animation: spin-slow 20s linear infinite;
+                .animate-streak {
+                    animation: streak 1.2s ease-out infinite;
                 }
+                @keyframes slide-in {
+                    from { transform: translateX(-100px); opacity: 0; filter: blur(10px); }
+                    to { transform: translateX(0); opacity: 1; filter: blur(0); }
+                }
+                .animate-slide-in {
+                    animation: slide-in 0.6s ease-out forwards;
+                    opacity: 0;
+                }
+                .delay-500 { animation-delay: 0.5s; }
+                .delay-1000 { animation-delay: 1s; }
             `}</style>
         </div>
     );
 };
 
-export default Concept6_Perspective3D;
+export default Concept6_Velocity;
