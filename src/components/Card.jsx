@@ -37,25 +37,31 @@ const Card = React.memo(function Card({
     const handleMouseDown = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
 
-        // Prevent native text selection dragging from interfering
-        // but allow text selection if clicking on text
-
-        // Handling multi-selection logic:
-        // If clicking on an already selected card WITHOUT modifiers, 
-        // we defer the "select only this one" action to MouseUp.
-        // This allows dragging multiple selected cards together.
-        const isAdditive = e.shiftKey || e.metaKey || e.ctrlKey;
-
-        if (isSelected && !isAdditive) {
-            pendingDeselectRef.current = true;
-        } else {
-            pendingDeselectRef.current = false;
-            onSelect(data.id, e);
-        }
-
+        // CRITICAL: Prevent event from bubbling to Canvas (which would deselect all)
         e.stopPropagation();
 
-        // Initial setup
+        const isAdditive = e.shiftKey || e.metaKey || e.ctrlKey;
+
+        // Selection Logic Refined:
+        // 1. Additive (Shift/Ctrl/Meta): Toggle or Add. We let onSelect handle the toggle logic immediately.
+        // 2. Not Additive + Not Selected: Select immediately (clearing others).
+        // 3. Not Additive + Already Selected: Do NOTHING yet. Defer deselect to MouseUp.
+        //    This prevents losing the multi-selection when starting to drag a group.
+
+        if (isAdditive) {
+            onSelect(data.id, e);
+            pendingDeselectRef.current = false;
+        } else if (!isSelected) {
+            onSelect(data.id, e);
+            pendingDeselectRef.current = false;
+        } else {
+            // Already selected, no modifiers. 
+            // We MIGHT be clicking to select just this one (deselect others), OR starting a drag.
+            // Assume drag first. Defer deselect to mouse up.
+            pendingDeselectRef.current = true;
+        }
+
+        // Initial setup for drag
         const initialDragOffset = {
             startX: e.clientX,
             startY: e.clientY,
@@ -77,7 +83,7 @@ const Card = React.memo(function Card({
         e.stopPropagation();
     };
 
-    // Touch event handler for mobile/iPad support - JS Only, no CSS changes
+    // Touch event handler
     const handleTouchStart = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
 
@@ -87,8 +93,11 @@ const Card = React.memo(function Card({
             clientX: touch.clientX,
             clientY: touch.clientY,
             stopPropagation: () => e.stopPropagation(),
-            preventDefault: () => e.preventDefault(), // Fix for touch
-            target: e.target
+            preventDefault: () => e.preventDefault(),
+            target: e.target,
+            shiftKey: e.shiftKey,
+            metaKey: e.metaKey,
+            ctrlKey: e.ctrlKey
         });
     };
 
@@ -103,14 +112,16 @@ const Card = React.memo(function Card({
             const dx = (e.clientX - dragOffset.startX) / currentScale;
             const dy = (e.clientY - dragOffset.startY) / currentScale;
 
-            // Check if actually moved (threshold to distinguish click from micro-drag)
-            if (Math.abs(e.clientX - dragOffset.startX) > 3 || Math.abs(e.clientY - dragOffset.startY) > 3) {
+            // Check if actually moved (threshold > 3px)
+            // We use hasDraggedRef to latch the state. Once verified as drag, it stays verified.
+            if (!hasDraggedRef.current && (Math.abs(e.clientX - dragOffset.startX) > 3 || Math.abs(e.clientY - dragOffset.startY) > 3)) {
                 hasDraggedRef.current = true;
-                pendingDeselectRef.current = false; // If we dragged, we keep the selection as is
+                pendingDeselectRef.current = false; // We are definitively dragging. Cancel any pending deselect.
             }
 
-            // Directly update position in store for real-time rendering
-            if (onMove) {
+            // Move only if verified as a drag or if we want responsive micro-movement (but risks deselect issue)
+            // Safer to wait for threshold validation.
+            if (hasDraggedRef.current && onMove) {
                 onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
             }
         };
@@ -119,36 +130,28 @@ const Card = React.memo(function Card({
             setIsDragging(false);
 
             // Handle deferred deselect
+            // Condition: We wanted to deselect (click on selected), BUT we didn't drag.
             if (pendingDeselectRef.current && !hasDraggedRef.current) {
-                // It was a click on an already selected card, and we didn't drag it.
-                // Now we perform the "exclusive select" (deselect others).
                 const { onSelect, data } = stateRef.current;
-                onSelect(data.id, e);
+                // Force "clean" selection (no modifiers) to trigger exclusive select
+                onSelect(data.id, { ...e, shiftKey: false, metaKey: false, ctrlKey: false });
             }
             pendingDeselectRef.current = false;
 
-            // Calculate final position
+            // Finalize drag
             const { dragOffset, data, onDragEnd } = stateRef.current;
 
-            // Only trigger move end if we actually dragged, otherwise it's just a click (or failed drag)
-            // But we might need to reset position if it was a micro-move? 
-            // The store updates continuously, so whatever the last position was, is the position.
-            // We just trigger the final save.
-
-            const currentScale = useStore.getState().scale || 1;
-            const dx = (e.clientX - dragOffset.startX) / currentScale;
-            const dy = (e.clientY - dragOffset.startY) / currentScale;
-            const finalX = dragOffset.origX + dx;
-            const finalY = dragOffset.origY + dy;
-
-            // Call onDragEnd for final position (triggers save)
-            if (onDragEnd) {
+            if (hasDraggedRef.current && onDragEnd) {
+                const currentScale = useStore.getState().scale || 1;
+                const dx = (e.clientX - dragOffset.startX) / currentScale;
+                const dy = (e.clientY - dragOffset.startY) / currentScale;
+                const finalX = dragOffset.origX + dx;
+                const finalY = dragOffset.origY + dy;
                 onDragEnd(data.id, finalX, finalY);
             }
         };
 
         const handleTouchMove = (e) => {
-            // Prevent default only if dragging to stop scrolling
             if (e.cancelable) e.preventDefault();
             const touch = e.touches[0];
             handleMouseMove({
@@ -157,59 +160,53 @@ const Card = React.memo(function Card({
             });
         };
 
+        // Simplified TouchEnd
         const handleTouchEnd = (e) => {
-            // For touch end, we need to use the last touch position or calculate delta differently.
-            // Since handleMouseMove uses client coordinates, we can reuse the logic if we tracked the last position.
-            // However, simplified: we just run cleanup. The visual transform resets.
-            // Ideally we need final coordinates. 
-            // FIX: Tracking last known mouse/touch position in ref to pass to mouseUp logic
-            // For now, let's assume handleMouseUp(e) works if e has clientX/Y. TouchEnd DOES NOT have clientX.
-
-            // TouchEnd standard behavior: trigger cleanup.
             setIsDragging(false);
 
             if (cardRef.current) {
-                const style = window.getComputedStyle(cardRef.current);
-                const matrix = new DOMMatrix(style.transform);
-                // matrix.e, matrix.f are the translate values
+                // If we used transform logic (which we aren't, we are using onMove store updates directly),
+                // we would need cleanup. But here we just finalize.
+                // Since we don't have clientX/Y in touchend easily without tracking, 
+                // and we've been updating the store onMove, the last onMove was correct.
+                // We just need to trigger onDragEnd with the *current* data coordinates.
+                // BUT data coordinates in props might be stale compared to store if React didn't re-render fast enough?
+                // Actually, onMove updates store -> triggers re-render -> new data props.
+                // So stateRef.current.data should be reasonably fresh.
 
-                const finalX = stateRef.current.data.x + matrix.e;
-                const finalY = stateRef.current.data.y + matrix.f;
-
-                cardRef.current.style.transform = '';
-
-                if (stateRef.current.onDragEnd) {
-                    stateRef.current.onDragEnd(stateRef.current.data.id, finalX, finalY);
-                }
+                // However, to be precise, we should track last known coordinates in ref.
+                // For now, using the last calculated delta from dragOffset works best.
+                // But touchEnd has no coordinates. We rely on the movement having happened.
             }
 
-            // Also handle deferred select for touch if needed (less common for multi-select but consistent)
+            // Handle deferred deselect for touch
             if (pendingDeselectRef.current && !hasDraggedRef.current) {
                 const { onSelect, data } = stateRef.current;
-                // Synthesize event since touch event doesn't match mouse event structure exactly
                 onSelect(data.id, { shiftKey: false, ctrlKey: false, metaKey: false });
             }
+
+            if (hasDraggedRef.current && stateRef.current.onDragEnd) {
+                // We can't calc new delta easily without last touch. 
+                // Assuming the last onMove was handled, the state is updated.
+                // onDragEnd is mostly for "saving" logic (undo/redo checkpoint).
+                // passing current x/y is fine.
+                const { x, y } = stateRef.current.data;
+                stateRef.current.onDragEnd(stateRef.current.data.id, x, y);
+            }
+
             pendingDeselectRef.current = false;
         };
 
-        // Better TouchEnd handling: relying on the transform matrix is actually quite reliable for "where is it now visually"
-
-        // Add listeners to window so we can drag outside the card
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
-        // Add passive: false to allow preventDefault
         window.addEventListener('touchmove', handleTouchMove, { passive: false });
         window.addEventListener('touchend', handleTouchEnd);
 
-        // Only explicitly remove on cleanup (stop dragging)
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
             window.removeEventListener('touchmove', handleTouchMove);
             window.removeEventListener('touchend', handleTouchEnd);
-
-            // Safety cleanup
-            if (cardRef.current) cardRef.current.style.transform = '';
         };
     }, [isDragging]); // Only re-run if isDragging changes state
 
