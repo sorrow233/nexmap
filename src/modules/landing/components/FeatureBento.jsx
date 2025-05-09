@@ -22,11 +22,15 @@ const FeatureBento = ({ scrollProgress }) => {
     };
 
     // Fade entire module in/out gracefully
-    // It should fade IN as AI fades OUT
+    // Fix: Align opacity with content appearance so we don't show a blank white screen
+    // Content starts appearing around localProgress = -0.2
+    // Content is fully visible around localProgress = 0.3
     let mainOpacity = 1;
-    if (localProgress < 0) {
-        // Fading in (approx scroll 2.2 to 2.4)
-        mainOpacity = Math.min(1, 1 + localProgress * 3);
+
+    if (localProgress < 0.3) {
+        // Fading in (approx scroll 2.0 to 2.5)
+        // Matches the first content item's entrance curve
+        mainOpacity = Math.min(1, Math.max(0, (localProgress + 0.2) * 2));
     } else if (localProgress > 1.0) {
         // Fading out
         mainOpacity = Math.max(0, 1 - (localProgress - 1.0) * 3);
