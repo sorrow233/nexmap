@@ -1,220 +1,229 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code, Sparkles } from 'lucide-react';
+import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code, Sparkles, Layers, Box, Cpu, GitBranch, Database } from 'lucide-react';
 
 const DemoInfinite = () => {
     const [isVisible, setIsVisible] = useState(false);
-    const [scanProgress, setScanProgress] = useState(0);
+    const [scanProgress, setScanProgress] = useState(0); // 0 to 1.5
+    const [cycleState, setCycleState] = useState('idle'); // idle, scanning, holding, resetting
     const sectionRef = useRef(null);
 
-    // Auto-play trigger
+    // Visibility Observer
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
-                if (entry.isIntersecting && !isVisible) {
+                if (entry.isIntersecting) {
                     setIsVisible(true);
-
-                    // Start scanning sequence after a short delay
-                    setTimeout(() => {
-                        let progress = 0;
-                        const interval = setInterval(() => {
-                            progress += 0.015; // Speed of scan
-                            if (progress >= 1.2) { // Go slightly past to clear screen
-                                progress = 1.2;
-                                clearInterval(interval);
-                            }
-                            setScanProgress(progress);
-                        }, 16);
-                    }, 500);
+                } else {
+                    setIsVisible(false);
+                    // Optional: Pause loop when out of view?
                 }
             },
-            { threshold: 0.4 }
+            { threshold: 0.3 }
         );
 
         if (sectionRef.current) observer.observe(sectionRef.current);
         return () => observer.disconnect();
+    }, []);
+
+    // Animation Loop
+    useEffect(() => {
+        if (!isVisible) return;
+
+        let interval;
+        let timer;
+
+        const startCycle = () => {
+            // Phase 1: Scanning (0s - 2s)
+            setCycleState('scanning');
+            let p = 0;
+            interval = setInterval(() => {
+                p += 0.01;
+                if (p >= 1.4) { // Scan past the end
+                    p = 1.4;
+                    clearInterval(interval);
+
+                    // Phase 2: Holding (2s - 5s)
+                    setCycleState('holding');
+                    timer = setTimeout(() => {
+                        // Phase 3: Resetting (5s - 6s)
+                        setCycleState('resetting');
+                        setScanProgress(0); // Snap beam back instantly or fade it out
+
+                        // Wait for reset transition to finish before restarting
+                        setTimeout(() => {
+                            startCycle();
+                        }, 1500);
+                    }, 3000);
+                }
+                setScanProgress(p);
+            }, 16);
+        };
+
+        startCycle();
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timer);
+        };
     }, [isVisible]);
 
-    // Card Configuration
+    // Card Data - Increased to 12 items
     const cards = [
-        {
-            id: 1, icon: FileText, title: 'Roadmap', tag: 'Planning', color: 'blue',
-            chaos: { x: -30, y: -40, r: -12 },
-            order: { x: 0, y: 0 }
-        },
-        {
-            id: 2, icon: ImageIcon, title: 'Assets', tag: 'Design', color: 'purple',
-            chaos: { x: 40, y: -20, r: 8 },
-            order: { x: 1, y: 0 }
-        },
-        {
-            id: 3, icon: Code, title: 'Schema', tag: 'Dev', color: 'emerald',
-            chaos: { x: -20, y: 30, r: -5 },
-            order: { x: 2, y: 0 }
-        },
-        {
-            id: 4, icon: Lightbulb, title: 'Ideas', tag: 'Brainstorm', color: 'amber',
-            chaos: { x: 25, y: 35, r: 15 },
-            order: { x: 0, y: 1 }
-        },
-        {
-            id: 5, icon: Link, title: 'Sources', tag: 'Research', color: 'rose',
-            chaos: { x: -40, y: 10, r: -8 },
-            order: { x: 1, y: 1 }
-        },
-        {
-            id: 6, icon: Calendar, title: 'Sprints', tag: 'Agile', color: 'cyan',
-            chaos: { x: 30, y: -50, r: 10 },
-            order: { x: 2, y: 1 }
-        },
+        // Row 1
+        { id: 1, icon: FileText, title: 'Q4 Goals', tag: 'Plan', color: 'blue', chaos: { x: -40, y: -60, r: -15, z: 20 }, order: { x: 0, y: 0 } },
+        { id: 2, icon: ImageIcon, title: 'Assets', tag: 'Design', color: 'purple', chaos: { x: 50, y: -30, r: 10, z: -10 }, order: { x: 1, y: 0 } },
+        { id: 3, icon: Database, title: 'Schema', tag: 'Data', color: 'emerald', chaos: { x: -20, y: 50, r: -5, z: 30 }, order: { x: 2, y: 0 } },
+        { id: 4, icon: GitBranch, title: 'Flow', tag: 'Logic', color: 'amber', chaos: { x: 60, y: 20, r: 20, z: -20 }, order: { x: 3, y: 0 } },
+
+        // Row 2
+        { id: 5, icon: Link, title: 'Refs', tag: 'Source', color: 'rose', chaos: { x: -70, y: 10, r: -25, z: 10 }, order: { x: 0, y: 1 } },
+        { id: 6, icon: Lightbulb, title: 'Ideas', tag: 'Brain', color: 'cyan', chaos: { x: 30, y: -80, r: 15, z: -30 }, order: { x: 1, y: 1 } },
+        { id: 7, icon: Calendar, title: 'Sprint', tag: 'Agile', color: 'blue', chaos: { x: -10, y: 90, r: -10, z: 40 }, order: { x: 2, y: 1 } },
+        { id: 8, icon: Code, title: 'Utils', tag: 'Dev', color: 'purple', chaos: { x: 80, y: -40, r: 30, z: -15 }, order: { x: 3, y: 1 } },
+
+        // Row 3 (Offset/More Chaos)
+        { id: 9, icon: Layers, title: 'Stack', tag: 'Tech', color: 'emerald', chaos: { x: -50, y: -20, r: -8, z: 5 }, order: { x: 0, y: 2 } },
+        { id: 10, icon: Box, title: 'Docs', tag: 'Archive', color: 'amber', chaos: { x: 90, y: 60, r: 12, z: -25 }, order: { x: 1, y: 2 } },
+        { id: 11, icon: Cpu, title: 'Core', tag: 'Sys', color: 'rose', chaos: { x: -30, y: 40, r: -18, z: 15 }, order: { x: 2, y: 2 } },
+        { id: 12, icon: Sparkles, title: 'AI', tag: 'Model', color: 'cyan', chaos: { x: 40, y: -70, r: 22, z: -5 }, order: { x: 3, y: 2 } },
     ];
 
-    const cardWidth = 160;
-    const cardHeight = 110;
-    const gap = 20;
+    const cardWidth = 140;
+    const cardHeight = 100;
+    const gapX = 20;
+    const gapY = 20;
+    const gridWidth = 4 * cardWidth + 3 * gapX;
 
     return (
         <div ref={sectionRef} className="relative w-full min-h-screen flex flex-col items-center justify-center bg-[#050505] overflow-hidden py-20">
 
-            {/* Ambient Background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 blur-[120px] rounded-full animate-pulse delay-700" />
+            {/* Ambient Depth Background */}
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/5 blur-[150px] rounded-full animate-pulse-slow" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-600/5 blur-[150px] rounded-full animate-pulse-slow delay-1000" />
             </div>
 
-            {/* Content Container */}
-            <div className="relative z-10 max-w-5xl w-full flex flex-col items-center">
+            <div className="relative z-10 max-w-6xl w-full flex flex-col items-center">
 
-                {/* Header Text */}
-                <div className="text-center mb-24 transition-all duration-1000"
-                    style={{
-                        opacity: isVisible ? 1 : 0,
-                        transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
-                    }}>
+                {/* Header */}
+                <div className="text-center mb-20 transition-all duration-1000">
                     <h2 className="text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 mb-6">
-                        Intelligent Order.
+                        Continuous Order.
                     </h2>
                     <p className="text-lg text-white/50 max-w-xl mx-auto">
-                        Watch AI scan your scattered thoughts and instantly structure them into actionable workflows.
+                        The engine that never stops refining your workspace.
                     </p>
                 </div>
 
                 {/* Animation Stage */}
-                <div className="relative w-[600px] h-[300px]">
+                <div className="relative w-[800px] h-[500px] perspective-[2000px]">
 
                     {/* Scanner Beam */}
                     <div
-                        className="absolute top-[-50px] bottom-[-50px] w-2 z-50 pointer-events-none"
+                        className="absolute top-[-100px] bottom-[-100px] w-1 z-50 pointer-events-none transition-opacity duration-300"
                         style={{
                             left: '0%',
-                            transform: `translateX(${scanProgress * 600}px)`,
-                            opacity: scanProgress > 0 && scanProgress < 1.1 ? 1 : 0,
-                            background: 'linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.8), transparent)',
-                            boxShadow: '0 0 40px 5px rgba(59, 130, 246, 0.5)'
+                            transform: `translateX(${(scanProgress / 1.4) * 1000 - 100}px)`, // Map 0-1.4 to pixels covering stage
+                            opacity: cycleState === 'scanning' ? 1 : 0,
+                            background: 'linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.9), transparent)',
+                            boxShadow: '0 0 50px 10px rgba(59, 130, 246, 0.4)'
                         }}
                     >
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[1px] bg-blue-500/30 rotate-90" />
+                        {/* Laser line horizontal cross-section */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[1px] bg-blue-500/20 rotate-90" />
                     </div>
 
                     {/* Cards */}
                     {cards.map((card, i) => {
-                        // Calculate Grid Position
-                        const orderX = (card.order.x - 1) * (cardWidth + gap);
-                        const orderY = (card.order.y - 0.5) * (cardHeight + gap);
+                        // Grid Positioning
+                        const orderX = (card.order.x * (cardWidth + gapX)) - (gridWidth / 2) + (cardWidth / 2) + 400; // Centered X
+                        const orderY = card.order.y * (cardHeight + gapY) + 50;
 
-                        // Calculate Chaos Percentage for this specific card based on scan progress
-                        // Map card X center to scan progress (0 to 1)
-                        const cardCenterXNormalized = (orderX + 300) / 600; // 0 to 1 approximate
-                        const isScanned = scanProgress > cardCenterXNormalized;
+                        // Calculate trigger point for this card
+                        const cardTriggerX = (orderX / 800) * 1.4; // Normalized beam position
+                        const isScanned = scanProgress > cardTriggerX;
+                        const isHolding = cycleState === 'holding';
+                        const isResetting = cycleState === 'resetting';
 
-                        // Position Logic
-                        const x = isScanned ? orderX : card.chaos.x * 4;
-                        const y = isScanned ? orderY : card.chaos.y * 3;
-                        const r = isScanned ? 0 : card.chaos.r;
-                        const scale = isScanned ? 1 : 0.9;
-                        const opacity = isScanned ? 1 : 0.6;
-                        const glow = isScanned ? 'shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)]' : '';
+                        // State Logic
+                        // If resetting, float back to chaos. If scanned, snap to order. Else, stay in chaos.
+                        const useOrder = (isScanned || isHolding) && !isResetting;
 
-                        // Colors
-                        const colors = {
-                            blue: 'from-blue-500/20 to-blue-900/40 border-blue-500/30 text-blue-200',
-                            purple: 'from-purple-500/20 to-purple-900/40 border-purple-500/30 text-purple-200',
-                            emerald: 'from-emerald-500/20 to-emerald-900/40 border-emerald-500/30 text-emerald-200',
-                            amber: 'from-amber-500/20 to-amber-900/40 border-amber-500/30 text-amber-200',
-                            rose: 'from-rose-500/20 to-rose-900/40 border-rose-500/30 text-rose-200',
-                            cyan: 'from-cyan-500/20 to-cyan-900/40 border-cyan-500/30 text-cyan-200',
-                        };
+                        const x = useOrder ? orderX : orderX + card.chaos.x * 5;
+                        const y = useOrder ? orderY : orderY + card.chaos.y * 4;
+                        const r = useOrder ? 0 : card.chaos.r;
+                        const z = useOrder ? 0 : card.chaos.z * 10;
+                        const scale = useOrder ? 1 : 0.8;
+                        const opacity = useOrder ? 1 : 0.4;
+                        const glow = useOrder ? 'shadow-[0_0_20px_-5px_rgba(59,130,246,0.2)]' : '';
+
+                        // Delicacy: Add parallax hover effect or subtle float if not ordered
+                        // We use CSS transiton for smooth state change
 
                         return (
                             <div
                                 key={card.id}
-                                className={`absolute top-1/2 left-1/2 w-[${cardWidth}px] h-[${cardHeight}px] rounded-xl border backdrop-blur-md bg-gradient-to-br ${colors[card.color]} transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${glow} flex flex-col p-4`}
+                                className={`absolute w-[${cardWidth}px] h-[${cardHeight}px] rounded-xl border backdrop-blur-md bg-gradient-to-br transition-all duration-700 cubic-bezier(0.2, 0.8, 0.2, 1) ${glow} flex flex-col p-3 overflow-hidden`}
                                 style={{
                                     width: cardWidth,
                                     height: cardHeight,
-                                    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${r}deg) scale(${scale})`,
+                                    // Complex 3D transform
+                                    transform: `translate3d(${x - 400}px, ${y}px, ${z}px) rotateZ(${r}deg) scale(${scale})`,
+                                    left: '50%', // Center reference
+                                    top: 0,
                                     opacity: opacity,
-                                    zIndex: isScanned ? 10 : 1
+                                    zIndex: useOrder ? 10 : 1,
+                                    // Dynamic colors
+                                    borderColor: useOrder ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
+                                    background: useOrder
+                                        ? `linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01))`
+                                        : `linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0))`
                                 }}
                             >
-                                <div className="flex items-center gap-2 mb-2">
-                                    <card.icon size={16} className="opacity-80" />
-                                    <span className="text-xs font-bold uppercase tracking-wider opacity-60">{card.tag}</span>
+                                <div className="flex items-center gap-2 mb-1.5">
+                                    <div className={`p-1 rounded-md bg-${card.color}-500/20`}>
+                                        <card.icon size={12} className={`text-${card.color}-300`} />
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">{card.tag}</span>
                                 </div>
-                                <div className="font-semibold text-lg leading-tight mb-1">{card.title}</div>
-                                <div className="h-1 w-12 bg-white/20 rounded-full mt-auto" />
+                                <div className="font-medium text-sm text-white/90 leading-tight mb-1">{card.title}</div>
+                                <div className="h-0.5 w-8 bg-white/10 rounded-full mt-auto" />
                             </div>
                         );
                     })}
 
-                    {/* Dynamic Connections (Only appear when scanned) */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                    {/* Connection Lines (Only visible when holding) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible transition-opacity duration-500"
+                        style={{ opacity: cycleState === 'holding' ? 1 : 0 }}
+                    >
                         {cards.map((card, i) => {
-                            // Simple logic: connect to previous if scanned
-                            if (i === 0) return null;
+                            // Horizontal connections in rows
+                            if (i % 4 === 0) return null; // First in row has no left neighbor
+
                             const prev = cards[i - 1];
-                            const currX = (card.order.x - 1) * (cardWidth + gap) + 300;
-                            const currY = (card.order.y - 0.5) * (cardHeight + gap) + 150;
-                            const prevX = (prev.order.x - 1) * (cardWidth + gap) + 300;
-                            const prevY = (prev.order.y - 0.5) * (cardHeight + gap) + 150;
-
-                            const cardCenterXNormalized = ((card.order.x - 1) * (cardWidth + gap) + 300) / 600;
-                            const isScanned = scanProgress > cardCenterXNormalized;
-
-                            if (!isScanned) return null;
-
-                            // Only draw some lines
-                            if (card.order.y !== prev.order.y && card.order.x !== prev.order.x) return null;
+                            const currX = (card.order.x * (cardWidth + gapX)) - (gridWidth / 2) + (cardWidth / 2) + 400;
+                            const currY = card.order.y * (cardHeight + gapY) + 50 + (cardHeight / 2);
+                            const prevX = (prev.order.x * (cardWidth + gapX)) - (gridWidth / 2) + (cardWidth / 2) + 400;
+                            const prevY = prev.order.y * (cardHeight + gapY) + 50 + (cardHeight / 2);
 
                             return (
                                 <line
-                                    key={i}
-                                    x1={currX} y1={currY}
-                                    x2={prevX} y2={prevY}
+                                    key={`h-${i}`}
+                                    x1={currX - cardWidth / 2} y1={currY}
+                                    x2={prevX + cardWidth / 2} y2={prevY}
                                     stroke="rgba(255,255,255,0.1)"
-                                    strokeWidth="2"
-                                    strokeDasharray="4 4"
+                                    strokeWidth="1"
                                 />
                             );
                         })}
                     </svg>
-
                 </div>
 
-                {/* Status Pill */}
-                <div className="mt-16 transition-all duration-500" style={{ opacity: scanProgress > 0 ? 1 : 0, transform: `scale(${scanProgress > 0 ? 1 : 0.8})` }}>
-                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-                        {scanProgress < 1.1 ? (
-                            <>
-                                <Sparkles size={16} className="text-blue-400 animate-spin-slow" />
-                                <span className="text-sm font-medium text-white/80">AI Organizing... {Math.round(scanProgress * 100)}%</span>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                                <span className="text-sm font-medium text-white/80">Structure Complete</span>
-                            </>
-                        )}
-                    </div>
+                {/* Status Indicator */}
+                <div className="mt-8 flex gap-2">
+                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${cycleState === 'scanning' ? 'bg-blue-400 animate-pulse' : 'bg-white/10'}`} />
+                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${cycleState === 'holding' ? 'bg-emerald-400' : 'bg-white/10'}`} />
+                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${cycleState === 'resetting' ? 'bg-amber-400' : 'bg-white/10'}`} />
                 </div>
 
             </div>
