@@ -31,18 +31,19 @@ const FeatureBento = ({ scrollProgress }) => {
         };
     };
 
-    // FIX: Only enable pointer events when visible (prevents scroll blocking)
-    const isInteractable = opacity > 0.3;
+    // FIX: Background should ONLY be visible when content is visible
+    // This prevents the "white wall" that blocks scrolling
+    const backgroundOpacity = Math.min(1, Math.max(0, (localProgress + 0.5) * 2)) * opacity;
 
     return (
         <div
-            className={`fixed inset-0 flex items-center justify-center z-30 p-4 md:p-12 overflow-hidden ${isInteractable ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            className="fixed inset-0 flex items-center justify-center z-30 pointer-events-none p-4 md:p-12 overflow-hidden"
             style={{ opacity }}
         >
-            {/* Background Context */}
-            <div className="absolute inset-0 bg-[#FDFDFC] z-0" />
+            {/* Background Context - Now synced with content visibility */}
+            <div className="absolute inset-0 bg-[#FDFDFC] z-0" style={{ opacity: backgroundOpacity }} />
 
-            <div className="relative z-10 w-full max-w-6xl h-full flex flex-col justify-center">
+            <div className="relative z-10 w-full max-w-6xl h-full flex flex-col justify-center pointer-events-auto">
                 <div className="text-center mb-12" style={getStyle(0)}>
                     <h2 className="text-4xl md:text-6xl font-bold text-[#1a1a1a] mb-4 tracking-tight">
                         Built for <span className="italic font-serif text-blue-600">Power Users</span>.
