@@ -7,6 +7,13 @@ const DemoInfinite = ({ scrollProgress }) => {
     // Keep it active longer so it doesn't snap off
     const isActive = localProgress > -0.5 && localProgress < 1.5;
 
+    // DEBUG: Log component state
+    console.log('∞ DemoInfinite:', {
+        scrollProgress: scrollProgress.toFixed(2),
+        localProgress: localProgress.toFixed(2),
+        isActive
+    });
+
     if (!isActive) return null;
 
     // Easing: Exponential for natural "zoom" feel
