@@ -2,36 +2,35 @@ import React from 'react';
 import { Sparkles, Bot, Wand2, Lightbulb, Zap } from 'lucide-react';
 
 const DemoAI = ({ scrollProgress }) => {
-    // Active range: 1.2 to 2.5 (Shifted earlier)
+    // Active range: 1.2 to 2.8
     const localProgress = (scrollProgress - 1.5);
-    const isActive = scrollProgress > 1.0 && scrollProgress < 2.8;
+    // Extend active range to ensure it doesn't disappear prematurely
+    const isActive = scrollProgress > 1.0 && scrollProgress < 3.0;
 
     if (!isActive) return null;
 
     // Phases - Adjusted for smoother timing
-    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.3) * 2)); // Start appearing sooner
+    const inputPhase = Math.min(1, Math.max(0, (localProgress + 0.3) * 2));
     const processingPhase = Math.min(1, Math.max(0, (localProgress - 0.1) * 3));
     const resultPhase = Math.min(1, Math.max(0, (localProgress - 0.3) * 3));
 
-    // Opacity: Overlaps better with Infinite and Bento
-    // Fade in: Starts at scroll 1.1 (local -0.4)
-    // Fade out: Starts at scroll 2.1 (local 0.6)
+    // Opacity Logic:
+    // Fade IN: fast (start at -0.5)
+    // Fade OUT: slower and later (start at 0.8 instead of 0.6)
     const opacity = localProgress < 0
         ? Math.max(0, 1 + (localProgress + 0.2) * 3)
-        : Math.max(0, 1 - (localProgress - 0.6) * 3);
+        : Math.max(0, 1 - (localProgress - 0.9) * 2);
 
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center z-30 pointer-events-none overflow-hidden"
+            className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none overflow-hidden"
             style={{ opacity }}
         >
-            <div className="absolute inset-0 bg-slate-900 z-0 transition-colors duration-700"
-                style={{ backgroundColor: processingPhase > 0 ? '#0f172a' : '#FDFDFC' }}
-            />
+            {/* Fixed Dark Background - No transition to prevent flicker/white screen */}
+            <div className="absolute inset-0 bg-[#0f172a] z-0" />
 
-            {/* Header Text - Changes color based on phase */}
-            <div className="absolute top-24 left-0 right-0 text-center z-30 transition-colors duration-500"
-                style={{ color: processingPhase > 0.1 ? 'white' : '#1a1a1a' }}
+            {/* Header Text - Always White */}
+            <div className="absolute top-24 left-0 right-0 text-center z-30 text-white"
             >
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-md rounded-full text-blue-500 font-semibold mb-6 border border-blue-500/20">
                     <Sparkles className="w-4 h-4" />
