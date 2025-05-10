@@ -40,7 +40,9 @@ document.addEventListener('wheel', (e) => {
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <BrowserRouter>
-            <App />
+            <LanguageProvider>
+                <App />
+            </LanguageProvider>
         </BrowserRouter>
     </React.StrictMode>,
 )
