@@ -2,17 +2,8 @@ import React from 'react';
 
 const DemoInfinite = ({ scrollProgress }) => {
     // Active range: 0.5 to 1.8 (Extended to overlap AI)
-    // Effectively, we want to simulate zooming from scale 1 to scale 1000
     const localProgress = (scrollProgress - 0.5);
-    // Keep it active longer so it doesn't snap off
     const isActive = localProgress > -0.5 && localProgress < 1.5;
-
-    // DEBUG: Log component state
-    console.log('∞ DemoInfinite:', {
-        scrollProgress: scrollProgress.toFixed(2),
-        localProgress: localProgress.toFixed(2),
-        isActive
-    });
 
     if (!isActive) return null;
 

@@ -2,26 +2,18 @@ import React, { useRef, useState } from 'react';
 import { Image, Download, History, MousePointer2, Layers } from 'lucide-react';
 
 const FeatureBento = ({ scrollProgress }) => {
-    // Active range: 2.5 to 3.5 (ORIGINAL timing restored)
+    // Active range: 2.5 to 3.5
     const localProgress = (scrollProgress - 2.5);
     const isActive = localProgress > -0.5 && localProgress < 1.5;
 
-    // DEBUG: Log component state
-    console.log('🎨 FeatureBento:', {
-        scrollProgress: scrollProgress.toFixed(2),
-        localProgress: localProgress.toFixed(2),
-        isActive,
-        opacity: !isActive ? 0 : (localProgress < 0.8 ? 1 : Math.max(0, 1 - (localProgress - 0.8) * 3)).toFixed(2)
-    });
-
     if (!isActive) return null;
 
-    // Simple fade in/out (ORIGINAL logic)
+    // Container fade in/out
     const opacity = localProgress < 0.8
         ? 1
         : Math.max(0, 1 - (localProgress - 0.8) * 3);
 
-    // Staggered entrance (ORIGINAL)
+    // Staggered entrance for content
     const getStyle = (index) => {
         const trigger = index * 0.1;
         const progress = Math.min(1, Math.max(0, (localProgress - trigger) * 2));
@@ -31,9 +23,10 @@ const FeatureBento = ({ scrollProgress }) => {
         };
     };
 
-    // FIX: Background should ONLY be visible when content is visible
-    // This prevents the "white wall" that blocks scrolling
-    const backgroundOpacity = Math.min(1, Math.max(0, (localProgress + 0.5) * 2)) * opacity;
+    // CRITICAL FIX: Background opacity must match the FIRST content item
+    // Otherwise you get a white wall with no content
+    const firstItemProgress = Math.min(1, Math.max(0, localProgress * 2));
+    const backgroundOpacity = firstItemProgress * opacity;
 
     return (
         <div

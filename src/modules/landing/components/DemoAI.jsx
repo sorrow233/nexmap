@@ -4,15 +4,7 @@ import { Sparkles, Bot, Wand2, Lightbulb, Zap } from 'lucide-react';
 const DemoAI = ({ scrollProgress }) => {
     // Active range: 1.2 to 2.5 (Shifted earlier)
     const localProgress = (scrollProgress - 1.5);
-    // Keep active longer to bridge gaps
     const isActive = scrollProgress > 1.0 && scrollProgress < 2.8;
-
-    // DEBUG: Log component state
-    console.log('🤖 DemoAI:', {
-        scrollProgress: scrollProgress.toFixed(2),
-        localProgress: localProgress.toFixed(2),
-        isActive
-    });
 
     if (!isActive) return null;
 
