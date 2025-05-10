@@ -215,7 +215,25 @@ export default function ChatView({
         e.stopPropagation();
         if (!selection || !onCreateNote) return;
 
-        onCreateNote(selection.text, true);
+        const text = selection.text;
+        if (text) {
+            // 1. Create the note (existing logic)
+            onCreateNote(text, true);
+
+            // 2. Persist the highlight (New logic)
+            onUpdate(card.id, (currentData) => {
+                if (!currentData) return currentData;
+                const currentNotes = currentData.capturedNotes || [];
+                // Avoid duplicates to keep array clean
+                if (currentNotes.indexOf(text) === -1) {
+                    return {
+                        ...currentData,
+                        capturedNotes: [...currentNotes, text]
+                    };
+                }
+                return currentData;
+            });
+        }
 
         // Clear selection
         window.getSelection()?.removeAllRanges();

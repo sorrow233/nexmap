@@ -202,6 +202,14 @@ function AppContent() {
                         onBack={handleBackToGallery}
                     />
                 } />
+                <Route path="/board/:id/note/:noteId" element={
+                    <BoardPage
+                        user={user}
+                        boardsList={boardsList}
+                        onUpdateBoardTitle={handleUpdateBoardTitle}
+                        onBack={handleBackToGallery}
+                    />
+                } />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
 

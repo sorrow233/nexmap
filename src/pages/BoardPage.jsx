@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import NotePage from './NotePage';
 import { LayoutGrid, Sparkles, RefreshCw, Trash2, Undo2, Redo2 } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
@@ -13,7 +14,8 @@ import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
-    const { id: currentBoardId } = useParams();
+    const { id: currentBoardId, noteId } = useParams();
+    const navigate = useNavigate();
     const { undo, redo, pastStates, futureStates } = useTemporalStore((state) => state);
     const {
         cards,
@@ -163,6 +165,10 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleCreateCard(text, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
     };
 
+    const handleFullScreen = (cardId) => {
+        navigate(`/board/${currentBoardId}/note/${cardId}`);
+    };
+
     // Wrapper to bridge ChatModal's signature with handleChatGenerate
     const handleChatModalGenerate = async (cardId, text, images = []) => {
         console.log('[DEBUG handleChatModalGenerate] Called with:', { cardId, text, imagesCount: images.length });
@@ -224,8 +230,15 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 <Canvas
                     onCreateNote={handleCreateNote}
                     onCanvasDoubleClick={handleCanvasDoubleClick}
+                    onCardFullScreen={handleFullScreen}
                 />
             </ErrorBoundary>
+
+            {noteId && (
+                <div className="fixed inset-0 z-[200]">
+                    <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                </div>
+            )}
 
             {/* Quick Prompt Modal */}
             <QuickPromptModal
