@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code, Sparkles, Layers, Box, Cpu, GitBranch, Database } from 'lucide-react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const DemoInfinite = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [scanProgress, setScanProgress] = useState(0); // 0 to 1.5
     const [cycleState, setCycleState] = useState('idle'); // idle, scanning, holding, resetting
     const sectionRef = useRef(null);
+    const { t } = useLanguage();
 
     // Visibility Observer
     useEffect(() => {
@@ -70,15 +72,15 @@ const DemoInfinite = () => {
     // Card Data - Increased to 12 items
     const cards = [
         // Row 1
-        { id: 1, icon: FileText, title: 'Q4 Goals', tag: 'Plan', color: 'blue', chaos: { x: -40, y: -60, r: -15, z: 20 }, order: { x: 0, y: 0 } },
-        { id: 2, icon: ImageIcon, title: 'Assets', tag: 'Design', color: 'purple', chaos: { x: 50, y: -30, r: 10, z: -10 }, order: { x: 1, y: 0 } },
-        { id: 3, icon: Database, title: 'Schema', tag: 'Data', color: 'emerald', chaos: { x: -20, y: 50, r: -5, z: 30 }, order: { x: 2, y: 0 } },
+        { id: 1, icon: FileText, title: t.demoInfinite.cards.roadmap, tag: t.demoInfinite.cards.planning, color: 'blue', chaos: { x: -40, y: -60, r: -15, z: 20 }, order: { x: 0, y: 0 } },
+        { id: 2, icon: ImageIcon, title: t.demoInfinite.cards.assets, tag: t.demoInfinite.cards.design, color: 'purple', chaos: { x: 50, y: -30, r: 10, z: -10 }, order: { x: 1, y: 0 } },
+        { id: 3, icon: Database, title: t.demoInfinite.cards.schema, tag: t.demoInfinite.cards.dev, color: 'emerald', chaos: { x: -20, y: 50, r: -5, z: 30 }, order: { x: 2, y: 0 } },
         { id: 4, icon: GitBranch, title: 'Flow', tag: 'Logic', color: 'amber', chaos: { x: 60, y: 20, r: 20, z: -20 }, order: { x: 3, y: 0 } },
 
         // Row 2
-        { id: 5, icon: Link, title: 'Refs', tag: 'Source', color: 'rose', chaos: { x: -70, y: 10, r: -25, z: 10 }, order: { x: 0, y: 1 } },
-        { id: 6, icon: Lightbulb, title: 'Ideas', tag: 'Brain', color: 'cyan', chaos: { x: 30, y: -80, r: 15, z: -30 }, order: { x: 1, y: 1 } },
-        { id: 7, icon: Calendar, title: 'Sprint', tag: 'Agile', color: 'blue', chaos: { x: -10, y: 90, r: -10, z: 40 }, order: { x: 2, y: 1 } },
+        { id: 5, icon: Link, title: t.demoInfinite.cards.sources, tag: t.demoInfinite.cards.research, color: 'rose', chaos: { x: -70, y: 10, r: -25, z: 10 }, order: { x: 0, y: 1 } },
+        { id: 6, icon: Lightbulb, title: t.demoInfinite.cards.ideas, tag: t.demoInfinite.cards.brainstorm, color: 'cyan', chaos: { x: 30, y: -80, r: 15, z: -30 }, order: { x: 1, y: 1 } },
+        { id: 7, icon: Calendar, title: t.demoInfinite.cards.sprints, tag: t.demoInfinite.cards.agile, color: 'blue', chaos: { x: -10, y: 90, r: -10, z: 40 }, order: { x: 2, y: 1 } },
         { id: 8, icon: Code, title: 'Utils', tag: 'Dev', color: 'purple', chaos: { x: 80, y: -40, r: 30, z: -15 }, order: { x: 3, y: 1 } },
 
         // Row 3 (Offset/More Chaos)
@@ -108,10 +110,10 @@ const DemoInfinite = () => {
                 {/* Header */}
                 <div className="text-center mb-20 transition-all duration-1000">
                     <h2 className="text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 mb-6">
-                        Continuous Order.
+                        {t.demoInfinite.title}
                     </h2>
                     <p className="text-lg text-white/50 max-w-xl mx-auto">
-                        The engine that never stops refining your workspace.
+                        {t.demoInfinite.text}
                     </p>
                 </div>
 

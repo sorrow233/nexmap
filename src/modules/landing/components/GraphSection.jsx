@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const GraphSection = () => {
     const [activeNode, setActiveNode] = useState(0);
     const [prunedNodes, setPrunedNodes] = useState([]);
+    const { t } = useLanguage();
 
     // Auto-play simulation cycle
     useEffect(() => {
@@ -30,17 +32,14 @@ const GraphSection = () => {
             {/* Left Content */}
             <div className="w-full md:w-1/2 z-10 mb-12 md:mb-0">
                 <div className="inline-block px-3 py-1 mb-6 border border-emerald-500/30 rounded-full bg-emerald-500/10">
-                    <span className="text-emerald-400 text-xs font-bold tracking-wider uppercase">Engine Core v2.1</span>
+                    <span className="text-emerald-400 text-xs font-bold tracking-wider uppercase">{t.graph.badge}</span>
                 </div>
                 <h2 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-                    Graph Context <br />
-                    <span className="text-emerald-500">Walking.</span>
+                    {t.graph.title1} <br />
+                    <span className="text-emerald-500">{t.graph.title2}</span>
                 </h2>
                 <p className="text-gray-400 text-xl leading-relaxed max-w-md">
-                    It reads the <span className="text-white border-b border-white/20">connections</span>.
-                    Traditional chat UIs are oblivious to structure. Our engine traverses the semantic graph of your canvas,
-                    <span className="text-red-400/80 mx-1">pruning irrelevant nodes</span>
-                    and injecting precise neighbor context into every generation.
+                    {t.graph.text}
                 </p>
             </div>
 
@@ -99,7 +98,7 @@ const Node = ({ x, y, active, isPruned, isCurrent }) => (
         <circle
             r={12}
             className={`transition-all duration-500 ${isPruned ? 'fill-red-900/20 stroke-red-900/50' :
-                    active ? 'fill-emerald-500 stroke-emerald-400' : 'fill-[#1a1a1a] stroke-white/20'
+                active ? 'fill-emerald-500 stroke-emerald-400' : 'fill-[#1a1a1a] stroke-white/20'
                 }`}
             strokeWidth={2}
         />
@@ -117,7 +116,7 @@ const Edge = ({ start, end, active, pruned }) => (
         x1={`${start.x}%`} y1={`${start.y}%`}
         x2={`${end.x}%`} y2={`${end.y}%`}
         className={`transition-all duration-700 ${pruned ? 'stroke-red-900/30 stroke-[1] stroke-dashed' :
-                active ? 'stroke-emerald-500 stroke-[3]' : 'stroke-white/5 stroke-[1]'
+            active ? 'stroke-emerald-500 stroke-[3]' : 'stroke-white/5 stroke-[1]'
             }`}
         strokeDasharray={pruned ? "4 4" : "0"}
     />
