@@ -16,18 +16,7 @@ const LandingModule = () => {
             if (!scrollContainerRef.current) return;
             const scrTop = scrollContainerRef.current.scrollTop;
             const innerH = window.innerHeight;
-            // Map scroll to 0-4 range (Hero -> Infinite -> AI -> Bento -> Footer)
-            // Using a slightly larger divisor to make the scroll feel "heavier" and more cinematic
             const progress = Math.max(0, scrTop / innerH);
-
-            // DEBUG: Log scroll state
-            console.log('📊 Scroll Debug:', {
-                scrollTop: scrTop,
-                scrollProgress: progress.toFixed(2),
-                windowHeight: innerH,
-                maxScroll: scrollContainerRef.current.scrollHeight - innerH
-            });
-
             setScrollProgress(progress);
         };
 
