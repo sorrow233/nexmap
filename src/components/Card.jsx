@@ -83,9 +83,22 @@ const Card = React.memo(function Card({
         e.stopPropagation();
     };
 
+    const lastTouchTimeRef = useRef(0);
+
     // Touch event handler
     const handleTouchStart = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
+
+        // Double-tap detection for touch devices
+        const now = Date.now();
+        if (now - lastTouchTimeRef.current < 300) {
+            e.preventDefault(); // Prevent default zoom/scroll
+            e.stopPropagation();
+            onExpand(data.id);
+            lastTouchTimeRef.current = 0;
+            return;
+        }
+        lastTouchTimeRef.current = now;
 
         const touch = e.touches[0];
         handleMouseDown({
