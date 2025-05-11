@@ -1,7 +1,7 @@
 const translations = {
     en: {
         hero: {
-            brand: "Mixboard 2.0",
+            brand: "NexMap",
             title1: "Infinite",
             title2: "Canvas.",
             sub1: "Stop thinking in files and folders.",
@@ -106,12 +106,12 @@ const translations = {
         footer: {
             title: "Start Thinking in Connections.",
             cta: "Launch Alpha",
-            rights: "© 2024 Mixboard. All rights reserved."
+            rights: "© 2024 NexMap. All rights reserved."
         }
     },
     zh: {
         hero: {
-            brand: "Mixboard 2.0",
+            brand: "NexMap",
             title1: "无限",
             title2: "画布。",
             sub1: "停止以文件和文件夹思考。",
@@ -216,12 +216,12 @@ const translations = {
         footer: {
             title: "开始以连接思考。",
             cta: "启动 Alpha",
-            rights: "© 2024 Mixboard. 保留所有权利。"
+            rights: "© 2024 NexMap. 保留所有权利。"
         }
     },
     ja: {
         hero: {
-            brand: "Mixboard 2.0",
+            brand: "NexMap",
             title1: "無限の",
             title2: "キャンバス。",
             sub1: "ファイルやフォルダで考えるのはやめましょう。",
@@ -326,7 +326,7 @@ const translations = {
         footer: {
             title: "つながりで考え始めましょう。",
             cta: "Alphaを起動",
-            rights: "© 2024 Mixboard. All rights reserved."
+            rights: "© 2024 NexMap. All rights reserved."
         }
     }
 };
