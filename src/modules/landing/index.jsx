@@ -7,6 +7,7 @@ import GraphSection from './components/GraphSection';
 import FooterSection from './components/FooterSection';
 import DemoInfinite from './components/DemoInfinite';
 import FeatureBento from './components/FeatureBento';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
 // The New Landing Orchestrator
 const LandingModule = () => {
@@ -91,6 +92,7 @@ const LandingModule = () => {
             `}</style>
 
             {/* 1. VISUAL HERO (Sticky) */}
+            <LanguageSwitcher />
             <div className="h-screen w-full sticky top-0 z-0">
                 <VisualHero scrollProgress={scrollProgress} onStart={handleStart} />
             </div>
