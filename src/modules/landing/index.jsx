@@ -92,7 +92,6 @@ const LandingModule = () => {
             `}</style>
 
             {/* 1. VISUAL HERO (Sticky) */}
-            <LanguageSwitcher />
             <div className="h-screen w-full sticky top-0 z-0">
                 <VisualHero scrollProgress={scrollProgress} onStart={handleStart} />
             </div>
@@ -134,6 +133,8 @@ const LandingModule = () => {
             <div className="relative z-20">
                 <FooterSection />
             </div>
+
+            <LanguageSwitcher />
 
         </div>
     );

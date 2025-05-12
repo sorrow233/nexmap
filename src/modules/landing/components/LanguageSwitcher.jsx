@@ -16,14 +16,16 @@ const LanguageSwitcher = () => {
 
     return (
         <div
-            className="fixed top-6 right-6 z-50 flex flex-col items-end"
+            className="fixed top-6 right-6 z-[9999] flex flex-col items-end pointer-events-auto"
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
+            onClick={() => setIsOpen(!isOpen)}
         >
             {/* Toggle Button */}
             <button
+                type="button"
                 className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-xl transition-all duration-300
+                    cursor-pointer flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-xl transition-all duration-300
                     ${isOpen
                         ? 'bg-white/10 border-white/20 text-white shadow-[0_0_20px_rgba(255,255,255,0.1)]'
                         : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'}
