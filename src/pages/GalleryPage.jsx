@@ -37,7 +37,7 @@ export default function GalleryPage({
         localStorage.setItem('hasVisitedBefore', 'true');
 
         // Auto-create guide board for new users
-        const guideTitle = "Neural Canvas 使用指南 🚀";
+        const guideTitle = "NexMap 使用指南 🚀";
         const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
 
         if (!existingBoard) {
@@ -57,7 +57,7 @@ export default function GalleryPage({
 
     const handleCreateGuide = async () => {
         // Check if guide board already exists (Chinese title)
-        const guideTitle = "Neural Canvas 使用指南 🚀";
+        const guideTitle = "NexMap 使用指南 🚀";
         const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
 
         if (existingBoard) {
@@ -95,7 +95,7 @@ export default function GalleryPage({
                 <div className="sticky top-4 z-50 flex justify-between items-center mb-16 py-4 px-6 glass-card rounded-2xl transition-all duration-300">
                     <div className="flex items-center gap-6">
                         <h1 className="text-3xl font-black tracking-tight cursor-pointer" onClick={() => setViewMode('active')}>
-                            <span className="text-gradient">Neural</span> Canvas
+                            <span className="text-gradient">Nex</span> Map
                         </h1>
 
                         {/* View Switcher */}
