@@ -55,7 +55,7 @@ const MessageImage = ({ img }) => {
 
 import { Share2, Star } from 'lucide-react';
 
-const MessageItem = React.memo(({ message, index, marks, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
+const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
     let textContent = "";
     let msgImages = [];
@@ -74,14 +74,15 @@ const MessageItem = React.memo(({ message, index, marks, parseModelOutput, isStr
         : parseModelOutput(textContent);
 
     // Helper to render content with highlights safely
-    const renderMessageContent = (cnt, currentMarks) => {
+    const renderMessageContent = (cnt, currentMarks, currentNotes) => {
         if (!cnt) return '';
         let html = marked ? marked.parse(cnt) : cnt;
 
-        if (!currentMarks || currentMarks.length === 0) return html;
+        if ((!currentMarks || currentMarks.length === 0) && (!currentNotes || currentNotes.length === 0)) return html;
 
         // Sort marks by length descending to match longest phrases first
-        const sortedMarks = [...currentMarks].sort((a, b) => b.length - a.length);
+        const sortedMarks = currentMarks ? [...currentMarks].sort((a, b) => b.length - a.length) : [];
+        const sortedNotes = currentNotes ? [...currentNotes].sort((a, b) => b.length - a.length) : [];
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
@@ -96,8 +97,28 @@ const MessageItem = React.memo(({ message, index, marks, parseModelOutput, isStr
                 sortedMarks.forEach(mark => {
                     const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const regex = new RegExp(`(${escapedMark})`, 'gi');
+                    // Avoid matching inside already replaced tags if possible, but simplest is plain replace
+                    // Note: This simple replacement might break if marks overlap or are nested ideally.
+                    // Given the simple use case, we proceed.
                     if (regex.test(newHtml)) {
                         newHtml = newHtml.replace(regex, '___MARK_START___$1___MARK_END___');
+                        hasChange = true;
+                    }
+                });
+
+                sortedNotes.forEach(note => {
+                    const escapedNote = note.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    // We need a regex that matches the text BUT NOT if it is part of our special tags
+                    // However, `newHtml` here contains special tags.
+                    // If we just replace, we might replace part of a tag.
+                    // E.g. "MARK" is in ___MARK_START___.
+                    // We should use a regex that matches word boundaries or ensure we don't match tags.
+                    // But tags are UPPERCASE with underscores.
+                    // As long as user text doesn't look like ___MARK_START___ we describe.
+                    const regex = new RegExp(`(${escapedNote})`, 'gi');
+                    if (regex.test(newHtml)) {
+                        // Check if the match is inside a tag? No, assume text.
+                        newHtml = newHtml.replace(regex, '___NOTE_START___$1___NOTE_END___');
                         hasChange = true;
                     }
                 });
@@ -109,7 +130,9 @@ const MessageItem = React.memo(({ message, index, marks, parseModelOutput, isStr
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;')
                         .replace(/___MARK_START___/g, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">')
-                        .replace(/___MARK_END___/g, '</mark>');
+                        .replace(/___MARK_END___/g, '</mark>')
+                        .replace(/___NOTE_START___/g, '<span class="border-b-[1.5px] border-dashed border-slate-400/60 dark:border-slate-400/50 decoration-slate-400/30">')
+                        .replace(/___NOTE_END___/g, '</span>');
                     span.innerHTML = escapedText;
                     node.parentNode.replaceChild(span, node);
                 }
@@ -125,9 +148,9 @@ const MessageItem = React.memo(({ message, index, marks, parseModelOutput, isStr
     const renderedHtml = React.useMemo(() => {
         if (isUser) return null;
         return content
-            ? renderMessageContent(content, marks)
+            ? renderMessageContent(content, marks, capturedNotes)
             : '';
-    }, [content, marks, isUser]);
+    }, [content, marks, capturedNotes, isUser]);
 
     return (
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
