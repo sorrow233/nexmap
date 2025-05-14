@@ -90,11 +90,23 @@ function AppContent() {
     useEffect(() => {
         const load = async () => {
             if (currentBoardId) {
-                const data = await loadBoard(currentBoardId);
-                setCards(data.cards || []);
-                setConnections(data.connections || []);
-                setGroups(data.groups || []);
-                storageSetCurrentBoardId(currentBoardId);
+                // 1. Start loading state & clear existing data to prevent bleed-over
+                useStore.getState().setIsBoardLoading(true);
+                setCards([]);
+                setConnections([]);
+                setGroups([]);
+
+                try {
+                    // 2. Load new data
+                    const data = await loadBoard(currentBoardId);
+                    setCards(data.cards || []);
+                    setConnections(data.connections || []);
+                    setGroups(data.groups || []);
+                    storageSetCurrentBoardId(currentBoardId);
+                } finally {
+                    // 3. End loading state
+                    useStore.getState().setIsBoardLoading(false);
+                }
             }
         };
         load();

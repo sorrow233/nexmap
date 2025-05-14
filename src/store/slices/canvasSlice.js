@@ -30,6 +30,9 @@ export const createCanvasSlice = (set, get) => ({
         offset: { x: state.offset.x + dx, y: state.offset.y + dy }
     })),
 
+    isBoardLoading: false, // New field to track board loading state
+    setIsBoardLoading: (val) => set({ isBoardLoading: val }),
+
     toCanvasCoords: (viewX, viewY) => {
         const { offset, scale } = get();
         return {

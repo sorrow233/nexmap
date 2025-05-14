@@ -36,7 +36,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         createGroup, // NEW: Group action
         getConnectedCards, // NEW: Helper
         setSelectedIds, // Need this for select connected
-        arrangeSelectionGrid // NEW: Grid Layout
+        arrangeSelectionGrid, // NEW: Grid Layout
+        isBoardLoading // NEW: Loading State
     } = useStore();
 
     const {
@@ -64,6 +65,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     // Autosave Logic
     const lastSavedState = useRef('');
     useEffect(() => {
+        if (isBoardLoading) return; // SKIP SAVE IF LOADING
         if (currentBoardId && cards.length > 0) {
             const currentState = JSON.stringify({ cards, connections, groups }); // Include groups
             if (currentState === lastSavedState.current) return;
