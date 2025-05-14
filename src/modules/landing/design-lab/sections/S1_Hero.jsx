@@ -1,67 +1,123 @@
 import React, { useRef, useEffect } from 'react';
 import { useSpring, animated } from '@react-spring/web';
 
-const S1_Hero = () => {
+const S1_TheEye = () => {
     const canvasRef = useRef(null);
-    const [props, api] = useSpring(() => ({ opacity: 1, scale: 1 }));
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        let width, height;
-        let stars = [];
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let mouse = { x: width / 2, y: height / 2 };
+        let particles = [];
 
-        const resize = () => {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-            initStars();
-        };
+        canvas.width = width;
+        canvas.height = height;
 
-        const initStars = () => {
-            stars = [];
-            for (let i = 0; i < 400; i++) {
-                stars.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    z: Math.random() * 2,
-                    size: Math.random() * 1.5,
-                    opacity: Math.random()
-                });
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2;
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.density = (Math.random() * 30) + 1;
+            }
+
+            draw() {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            update() {
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                let forceDirectionX = dx / distance;
+                let forceDirectionY = dy / distance;
+                let maxDistance = 300; // Interaction radius
+                let force = (maxDistance - distance) / maxDistance;
+                let directionX = forceDirectionX * force * this.density;
+                let directionY = forceDirectionY * force * this.density;
+
+                if (distance < maxDistance) {
+                    this.x -= directionX * 5; // Repel
+                    this.y -= directionY * 5;
+                } else {
+                    if (this.x !== this.baseX) {
+                        let dx = this.x - this.baseX;
+                        this.x -= dx / 10;
+                    }
+                    if (this.y !== this.baseY) {
+                        let dy = this.y - this.baseY;
+                        this.y -= dy / 10;
+                    }
+                }
+                this.draw();
+            }
+        }
+
+        const init = () => {
+            particles = [];
+            // Create a dense grid of particles forming a circle/eye shape initially
+            for (let i = 0; i < 2000; i++) {
+                particles.push(new Particle());
             }
         };
 
         const animate = () => {
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = 'rgba(0,0,0,0.1)'; // Trails
             ctx.fillRect(0, 0, width, height);
-            stars.forEach(star => {
-                star.y -= star.z * 0.2;
-                if (star.y < 0) star.y = height;
-                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
+
+            particles.forEach(p => p.update());
             requestAnimationFrame(animate);
         };
 
-        window.addEventListener('resize', resize);
-        resize();
+        const handleMove = (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        };
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            init();
+        });
+
+        init();
         animate();
-        return () => window.removeEventListener('resize', resize);
+
+        return () => window.removeEventListener('mousemove', handleMove);
     }, []);
 
     return (
-        <section className="h-screen w-full relative overflow-hidden flex items-center justify-center">
+        <section className="h-screen w-full relative bg-black overflow-hidden flex items-center justify-center">
             <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-            <animated.div style={props} className="relative z-10 text-center p-8">
-                <h1 className="text-7xl md:text-9xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-600">The Void</h1>
-                <p className="text-xl md:text-3xl text-gray-400 font-light max-w-2xl mx-auto">The mind is not a list.<br />It is a universe.</p>
-                <div className="mt-12 animate-bounce"><span className="text-white/30 text-sm tracking-widest uppercase">Scroll to Enter</span></div>
-            </animated.div>
+
+            <div className="relative z-10 pointer-events-none mix-blend-exclusion text-center">
+                <h1 className="text-[12vw] font-black tracking-tighter leading-none text-white opacity-90">
+                    THE VOID
+                </h1>
+                <p className="text-xl tracking-[1em] text-white uppercase mt-4">
+                    Stare Back
+                </p>
+            </div>
+
+            {/* Grain Overlay */}
+            <div className="absolute inset-0 z-20 pointer-events-none opacity-20"
+                style={{
+                    backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")'
+                }}
+            />
         </section>
     );
 };
-export default S1_Hero;
+
+export default S1_TheEye;

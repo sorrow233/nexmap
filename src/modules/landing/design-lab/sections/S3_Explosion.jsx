@@ -1,46 +1,43 @@
-import React, { useState } from 'react';
-import { useSpring, animated, config } from '@react-spring/web';
+import React, { useRef, useEffect } from 'react';
+import { useSpring, animated, to } from '@react-spring/web';
 
-const S3_Explosion = () => {
-    const [exploded, setExploded] = useState(false);
-    const { expansion } = useSpring({ expansion: exploded ? 1 : 0, config: config.molasses });
-    const trigger = () => setExploded(true);
-    const TriggerRef = ({ onEnter, children }) => {
-        const ref = React.useRef();
-        React.useEffect(() => {
-            const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) onEnter(); }, { threshold: 0.6 });
-            if (ref.current) observer.observe(ref.current);
-            return () => observer.disconnect();
-        }, []);
-        return <div ref={ref} className="w-full h-full">{children}</div>;
-    };
+const calc = (x, y) => [x - window.innerWidth / 2, y - window.innerHeight / 2];
+const trans1 = (x, y) => `translate3d(${x / 10}px,${y / 10}px,0)`;
+const trans2 = (x, y) => `translate3d(${x / 8 + 35}px,${y / 8 - 230}px,0)`;
+const trans3 = (x, y) => `translate3d(${x / 6 - 250}px,${y / 6 + 200}px,0)`;
+const trans4 = (x, y) => `translate3d(${x / 3.5}px,${y / 3.5}px,0)`;
+
+const S3_ZeroGravity = () => {
+    const [props, set] = useSpring(() => ({ xy: [0, 0], config: { mass: 10, tension: 550, friction: 140 } }));
 
     return (
-        <section className="h-screen w-full bg-black overflow-hidden relative">
-            <TriggerRef onEnter={trigger}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative z-50 text-center pointer-events-none mix-blend-difference">
-                        <animated.h2 style={{ opacity: expansion, transform: expansion.to(e => `scale(${0.5 + e * 0.5})`) }} className="text-8xl font-black text-white">BREAK FREE</animated.h2>
-                    </div>
-                    {[...Array(12)].map((_, i) => (
-                        <animated.div key={i} className="absolute w-32 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-2xl border border-white/20"
-                            style={{
-                                opacity: expansion,
-                                transform: expansion.to(e => {
-                                    const angle = (i / 12) * Math.PI * 2;
-                                    const radius = 100 + e * 600;
-                                    const x = Math.cos(angle) * radius;
-                                    const y = Math.sin(angle) * radius;
-                                    const rot = e * 360 * (i % 2 === 0 ? 1 : -1);
-                                    return `translate(${x}px, ${y}px) rotate(${rot}deg)`;
-                                })
-                            }}
-                        />
-                    ))}
-                    <animated.div className="absolute w-full h-full border-4 border-white rounded-full bg-blue-500/20" style={{ opacity: expansion.to(e => 1 - e), transform: expansion.to(e => `scale(${e * 3})`) }} />
-                </div>
-            </TriggerRef>
+        <section
+            className="h-screen w-full bg-[#1a1a1a] relative overflow-hidden flex items-center justify-center"
+            onMouseMove={({ clientX: x, clientY: y }) => set({ xy: calc(x, y) })}
+        >
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                <div className="text-[30vw] font-bold text-[#2a2a2a]">ØG</div>
+            </div>
+
+            <animated.div className="absolute w-[400px] h-[500px] bg-zinc-800 rounded-xl shadow-2xl border border-white/5"
+                style={{ transform: props.xy.to(trans1) }} />
+
+            <animated.div className="absolute w-[250px] h-[250px] bg-red-600 rounded-full mix-blend-multiply opacity-80 blur-xl"
+                style={{ transform: props.xy.to(trans2) }} />
+
+            <animated.div className="absolute w-[300px] h-[400px] bg-blue-600 rounded-xl mix-blend-exclusion opacity-50 blur-md"
+                style={{ transform: props.xy.to(trans3) }} />
+
+            <animated.div className="absolute z-10 p-12 bg-black/40 backdrop-blur-xl border border-white/10 text-white max-w-xl"
+                style={{ transform: props.xy.to(trans4) }}>
+                <h3 className="text-4xl font-bold mb-4">Weightless Interaction</h3>
+                <p className="text-lg text-gray-300">
+                    The canvas has no friction. Ideas float in suspension until you tether them.
+                    Experience true spatial freedom.
+                </p>
+            </animated.div>
         </section>
     );
 };
-export default S3_Explosion;
+
+export default S3_ZeroGravity;
