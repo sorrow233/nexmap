@@ -139,12 +139,13 @@ function AppContent() {
 
     const handleBackToGallery = async () => {
         // Save handled by Autosave in BoardPage mostly
-        const { cards, connections } = useStore.getState();
-        if (currentBoardId) await saveBoard(currentBoardId, { cards, connections });
+        const { cards, connections, groups } = useStore.getState();
+        if (currentBoardId) await saveBoard(currentBoardId, { cards, connections, groups });
 
         navigate('/gallery');
         setCards([]);
         setConnections([]);
+        setGroups([]);
     };
 
     const handleUpdateBoardTitle = async (newTitle) => {
