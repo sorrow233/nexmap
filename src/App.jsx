@@ -9,7 +9,7 @@ import { useCardCreator } from './hooks/useCardCreator';
 import GalleryPage from './pages/GalleryPage';
 import BoardPage from './pages/BoardPage';
 import LandingPage from './modules/landing';
-import DesignLab from './modules/landing/DesignLab';
+
 
 import ModernDialog from './components/ModernDialog';
 import {
@@ -196,7 +196,6 @@ function AppContent() {
         <>
             <Routes>
                 <Route path="/" element={<LandingPage />} />
-                <Route path="/design-test" element={<DesignLab />} />
 
 
 
