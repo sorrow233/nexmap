@@ -6,6 +6,74 @@ import { uuid } from '../utils/uuid';
 import { createPerformanceMonitor } from '../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
 
+// Smart position finder for new cards
+const findOptimalPosition = (cards, offset, scale, selectedIds) => {
+    const CARD_WIDTH = 320;
+    const CARD_HEIGHT = 200;
+    const MARGIN = 50;
+
+    // Calculate viewport range
+    const viewportLeft = -offset.x / scale;
+    const viewportTop = -offset.y / scale;
+    const viewportCenterX = viewportLeft + (window.innerWidth / 2) / scale;
+    const viewportCenterY = viewportTop + (window.innerHeight / 2) / scale;
+
+    // If there are selected cards, find position near them
+    const selectedCards = cards.filter(c => selectedIds?.includes(c.id));
+
+    if (selectedCards.length > 0) {
+        // Strategy 1: Find space to the right of selected cards
+        const rightMost = Math.max(...selectedCards.map(c => c.x));
+        const avgY = selectedCards.reduce((sum, c) => sum + c.y, 0) / selectedCards.length;
+
+        let candidateX = rightMost + CARD_WIDTH + MARGIN;
+        let candidateY = avgY;
+
+        // Check for overlap and shift down if needed
+        let attempts = 0;
+        while (attempts < 10) {
+            const hasOverlap = cards.some(c =>
+                Math.abs(c.x - candidateX) < CARD_WIDTH &&
+                Math.abs(c.y - candidateY) < CARD_HEIGHT
+            );
+
+            if (!hasOverlap) {
+                return { x: candidateX, y: candidateY };
+            }
+
+            candidateY += CARD_HEIGHT + MARGIN;
+            attempts++;
+        }
+    }
+
+    // Strategy 2: Spiral search around viewport center
+    const gridSize = CARD_WIDTH + MARGIN;
+    const searchRadius = 3;
+
+    for (let ring = 0; ring < searchRadius; ring++) {
+        for (let angle = 0; angle < 360; angle += 45) {
+            const rad = (angle * Math.PI) / 180;
+            const testX = viewportCenterX + Math.cos(rad) * ring * gridSize;
+            const testY = viewportCenterY + Math.sin(rad) * ring * gridSize;
+
+            const hasOverlap = cards.some(c =>
+                Math.abs(c.x - testX) < CARD_WIDTH &&
+                Math.abs(c.y - testY) < CARD_HEIGHT
+            );
+
+            if (!hasOverlap) {
+                return { x: testX - CARD_WIDTH / 2, y: testY - CARD_HEIGHT / 2 };
+            }
+        }
+    }
+
+    // Strategy 3: Fallback to random offset near center
+    return {
+        x: viewportCenterX - CARD_WIDTH / 2 + (Math.random() * 100 - 50),
+        y: viewportCenterY - CARD_HEIGHT / 2 + (Math.random() * 100 - 50)
+    };
+};
+
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
     const {
@@ -127,8 +195,10 @@ export function useCardCreator() {
             targetX = position.x;
             targetY = position.y;
         } else {
-            targetX = Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160);
-            targetY = Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 100);
+            // Use smart positioning
+            const optimalPos = findOptimalPosition(cards, offset, scale, selectedIds);
+            targetX = optimalPos.x;
+            targetY = optimalPos.y;
         }
 
         await _generateAICard(text, targetX, targetY, images);
@@ -250,7 +320,7 @@ export function useCardCreator() {
             }
         }
 
-        // 2. Intelligent positioning (Existing fallback logic)
+        // 2. Intelligent positioning
         let targetX, targetY;
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
 
@@ -259,28 +329,10 @@ export function useCardCreator() {
             targetX = position.x;
             targetY = position.y;
         } else {
-            if (contextCards.length > 0) {
-                const rightMostCard = contextCards.reduce((prev, current) => (prev.x > current.x) ? prev : current);
-                const topMostY = Math.min(...contextCards.map(c => c.y));
-
-                targetX = rightMostCard.x + 340;
-                targetY = topMostY;
-
-                let safetyCounter = 0;
-                while (
-                    cards.some(c =>
-                        Math.abs(c.x - targetX) < 100 &&
-                        Math.abs(c.y - targetY) < 100
-                    ) && safetyCounter < 10
-                ) {
-                    targetY += 150;
-                    targetX += 20;
-                    safetyCounter++;
-                }
-            } else {
-                targetX = (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20);
-                targetY = (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20);
-            }
+            // Use smart positioning
+            const optimalPos = findOptimalPosition(cards, offset, scale, selectedIds);
+            targetX = optimalPos.x;
+            targetY = optimalPos.y;
         }
 
         // 4. Context Construction

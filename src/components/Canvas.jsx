@@ -241,10 +241,10 @@ export default function Canvas({ onCreateNote, ...props }) {
                                 isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
                                 isTarget={targetCardIds.has(card.id)}
                                 onSelect={handleCardSelect}
-                                onMove={handleCardMove}
+                                onMove={(id, x, y, withConnections) => handleCardMove(id, x, y, withConnections)}
                                 onDelete={() => deleteCard(card.id)}
                                 onUpdate={updateCardFull}
-                                onDragEnd={handleCardMoveEnd}
+                                onDragEnd={(id, x, y, withConnections) => handleCardMoveEnd(id, x, y, withConnections)}
                                 onConnect={() => handleConnect(card.id)}
                                 onExpand={() => setExpandedCardId(card.id)}
                                 isConnecting={isConnecting}

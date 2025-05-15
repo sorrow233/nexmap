@@ -144,7 +144,7 @@ export const createCardSlice = (set, get) => ({
         }
     },
 
-    handleCardMove: (id, newX, newY) => {
+    handleCardMove: (id, newX, newY, moveWithConnections = false) => {
         const { cards, connections, selectedIds } = get();
         const sourceCard = cards.find(c => c.id === id);
         if (!sourceCard) return;
@@ -157,16 +157,22 @@ export const createCardSlice = (set, get) => ({
             return;
         }
 
-        // Determine which cards initiated the move
+        // Determine which cards to move based on mode
         const isSelected = selectedIds ? selectedIds.indexOf(id) !== -1 : false;
-        const sourceIds = isSelected ? selectedIds : [id];
+        let moveIds;
 
-        // Resolve ALL connected components for the source cards
-        const moveIds = new Set();
-        sourceIds.forEach(sourceId => {
-            const connectedParams = getConnectedGraph(sourceId, connections || []);
-            connectedParams.forEach(cid => moveIds.add(cid));
-        });
+        if (moveWithConnections) {
+            // Cmd pressed: Move entire connected graph
+            const sourceIds = isSelected ? selectedIds : [id];
+            moveIds = new Set();
+            sourceIds.forEach(sourceId => {
+                const connectedParams = getConnectedGraph(sourceId, connections || []);
+                connectedParams.forEach(cid => moveIds.add(cid));
+            });
+        } else {
+            // Default: Move only the selected card(s) independently
+            moveIds = new Set(isSelected ? selectedIds : [id]);
+        }
 
         set(state => ({
             cards: state.cards.map(c => {
@@ -179,7 +185,7 @@ export const createCardSlice = (set, get) => ({
     },
 
     // Alias for explicit drag end handling
-    handleCardMoveEnd: (id, newX, newY) => {
-        get().handleCardMove(id, newX, newY);
+    handleCardMoveEnd: (id, newX, newY, moveWithConnections = false) => {
+        get().handleCardMove(id, newX, newY, moveWithConnections);
     },
 });
