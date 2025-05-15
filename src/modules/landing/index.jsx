@@ -20,88 +20,97 @@ const LandingModule = () => {
         };
 
         const container = scrollContainerRef.current;
-        if (container) container.addEventListener('scroll', handleScroll);
+        if (container) {
+            container.addEventListener('scroll', handleScroll);
+            // Initial call
+            handleScroll();
+        }
         return () => { if (container) container.removeEventListener('scroll', handleScroll); };
     }, []);
 
-    // --- Compute Global Background ---
-    // Transition from Light to Dark for DemoAI
-    // AI starts appearing at 1.5, becomes prominent by 2.0, ends by 3.0
-    const isDark = scrollProgress > 1.3 && scrollProgress < 2.9;
-    const bgTranslate = isDark ? '#080c14' : '#FDFDFC'; // Deeper dark for AI
-
     const handleAutoStart = () => {
         if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTo({ top: window.innerHeight * 0.8, behavior: 'smooth' });
+            scrollContainerRef.current.scrollTo({ top: window.innerHeight * 1.2, behavior: 'smooth' });
         }
     };
 
     return (
         <div
             ref={scrollContainerRef}
-            className="fixed inset-0 overflow-y-auto overflow-x-hidden transition-colors duration-700 font-sans selection:bg-blue-500/20 z-50 overscroll-none"
-            style={{
-                backgroundColor: bgTranslate,
-                WebkitOverflowScrolling: 'touch'
-            }}
+            className="fixed inset-0 overflow-y-auto overflow-x-hidden bg-[#050505] text-white font-sans selection:bg-purple-500/30 z-50 overscroll-none"
+            style={{ WebkitOverflowScrolling: 'touch' }}
         >
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');
                 ::-webkit-scrollbar { width: 0px; background: transparent; }
                 .font-inter-tight { font-family: 'Inter Tight', sans-serif; }
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px) rotate(0deg); }
-                    50% { transform: translateY(-10px) rotate(2deg); }
+                
+                @keyframes float-slow {
+                    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                    33% { transform: translate(10px, -10px) rotate(2deg); }
+                    66% { transform: translate(-5px, 15px) rotate(-1deg); }
                 }
-                .animate-float { animation: float 6s ease-in-out infinite; }
+                .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
+                
+                @keyframes float-medium {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-15px); }
+                }
+                .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
             `}</style>
 
-            {/* Global Background Particles - Extremely subtle */}
-            <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.4]">
-                {/* Always active gradients */}
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-200/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-200/10 blur-[120px] rounded-full" />
-
-                {/* AI Star Field - Only visible when dark */}
+            {/* Global Ambient Background */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vh] bg-blue-500/10 blur-[150px] rounded-full mix-blend-screen animate-float-slow" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vh] bg-purple-500/10 blur-[150px] rounded-full mix-blend-screen animate-float-slow" style={{ animationDelay: '-5s' }} />
                 <div
-                    className="absolute inset-0 transition-opacity duration-1000"
-                    style={{
-                        opacity: isDark ? 0.3 : 0,
-                        backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-                        backgroundSize: '40px 40px'
-                    }}
+                    className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] brightness-100 contrast-150"
+                    style={{ backgroundRepeat: 'repeat' }}
                 />
             </div>
 
-            {/* THE STAGE: All animations happen here */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none z-10">
-                <VisualHero scrollProgress={scrollProgress} onStart={handleAutoStart} />
-                <DemoInfinite scrollProgress={scrollProgress} />
-                <DemoAI scrollProgress={scrollProgress} />
-                <FeatureBento scrollProgress={scrollProgress} />
+            {/* sticky-stacking context */}
+            <div className="relative z-10">
+                {/* 1. HERO - Sticky until 1.5 */}
+                <div className="h-[200vh] relative">
+                    <div className="sticky top-0 h-screen overflow-hidden">
+                        <VisualHero scrollProgress={scrollProgress} onStart={handleAutoStart} />
+                    </div>
+                </div>
+
+                {/* 2. INFINITE / CHAOS - Sticky from 1.5 to 3.0 */}
+                <div className="h-[200vh] relative">
+                    <div className="sticky top-0 h-screen overflow-hidden">
+                        {/* Relative progress for this section: 0 at start, 1 at end */}
+                        <DemoInfinite scrollProgress={scrollProgress} />
+                    </div>
+                </div>
+
+                {/* 3. AI MAGIC - Sticky from 3.0 to 4.5 */}
+                <div className="h-[200vh] relative">
+                    <div className="sticky top-0 h-screen overflow-hidden">
+                        <DemoAI scrollProgress={scrollProgress} />
+                    </div>
+                </div>
+
+                {/* 4. FEATURES BENTO - Normal flow at the end */}
+                <div className="relative bg-[#050505]">
+                    <FeatureBento />
+                </div>
             </div>
 
-            {/* SCROLLABLE SURFACE: Determines scroll length */}
-            <div className="relative z-0 pointer-events-none opacity-0">
-                <div className="h-[120vh]" /> {/* Hero */}
-                <div className="h-[150vh]" /> {/* Infinite */}
-                <div className="h-[150vh]" /> {/* AI */}
-                <div className="h-[120vh]" /> {/* Bento */}
-                <div className="h-[50vh]" />  {/* Footer */}
-            </div>
-
-            {/* CTA Overlay */}
+            {/* Persistent CTA Bottom Bar */}
             <div
-                className={`fixed bottom-10 left-0 right-0 z-[60] flex justify-center pointer-events-auto transition-all duration-500 transform ${scrollProgress > 3.8 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}
+                className={`fixed bottom-8 left-0 right-0 z-[60] flex justify-center pointer-events-none transition-all duration-700 transform ${scrollProgress > 0.1 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}
             >
-                <div className="bg-white/90 backdrop-blur-xl p-2 rounded-full shadow-2xl border border-gray-200/50 flex items-center gap-4 pr-6">
+                <div className="pointer-events-auto bg-white/10 backdrop-blur-md p-1.5 pl-2 pr-2 rounded-full shadow-2xl border border-white/10 flex items-center gap-2">
+                    <span className="text-white/60 text-xs font-medium px-2 hidden md:block">Ready to think unlimited?</span>
                     <button
                         onClick={() => window.location.href = '/gallery'}
-                        className="px-8 py-3 bg-black text-white rounded-full text-lg font-bold hover:scale-105 transition-transform"
+                        className="px-6 py-2.5 bg-white text-black rounded-full text-sm font-bold hover:scale-105 transition-transform hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                     >
-                        Get Started
+                        Launch Beta
                     </button>
-                    <span className="text-gray-500 text-sm font-medium">Free Beta</span>
                 </div>
             </div>
         </div>

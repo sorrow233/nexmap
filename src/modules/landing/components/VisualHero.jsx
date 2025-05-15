@@ -1,139 +1,156 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, MousePointer2, Star, Zap, Grid } from 'lucide-react';
+import { ArrowRight, MousePointer2, Layout, Zap, Hash, Compass } from 'lucide-react';
 
 const VisualHero = ({ scrollProgress, onStart }) => {
     const navigate = useNavigate();
 
-    // Core animation values
-    // 0 -> 1 range
-    // Fade out and zoom in as we scroll past
-    const opacity = Math.max(0, 1 - scrollProgress * 2.5);
-    const scale = 1 + scrollProgress * 1;
-    const blur = scrollProgress * 10;
-    const translateY = scrollProgress * 200;
+    // Keyframes for the "Dive" effect
+    // 0 -> 1: The camera moves forward into the cloud of cards
+    const clampedProgress = Math.max(0, Math.min(1, scrollProgress));
 
-    // "Cloud" Parallax
-    const cloudRotate = scrollProgress * 20; // Rotate the cloud slightly
+    // Camera movement
+    const zOffset = clampedProgress * 2500; // Move deeply into the scene
+    const fadeOut = Math.max(0, 1 - clampedProgress * 2); // Text fades out quickly
 
     return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 overflow-hidden pointer-events-none">
-            {/* 3D Cloud of Cards Background */}
+        <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden perspective-[1000px]">
+
+            {/* 3D SCENE CONTAINER */}
             <div
-                className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 style={{
                     perspective: '1000px',
                     transformStyle: 'preserve-3d',
                 }}
             >
+                {/* THE UNIVERSE OF CARDS */}
                 <div
                     className="relative w-[100vw] h-[100vh]"
                     style={{
-                        transform: `scale(${1 + scrollProgress}) rotateX(${cloudRotate * 0.5}deg) rotateY(${cloudRotate}deg) translateZ(${-scrollProgress * 500}px)`,
+                        transform: `translateZ(${clampedProgress * 1500}px)`,
                         transformStyle: 'preserve-3d',
-                        transition: 'transform 0.1s linear'
+                        transition: 'transform 0.1s linear' // Smooth scroll link
                     }}
                 >
-                    {/* Floating Cards - Strategic Placement */}
-                    <FloatingCard x={-35} y={-25} z={-100} rotate={-10} icon={Star} color="bg-yellow-400" delay={0} />
-                    <FloatingCard x={35} y={-20} z={-150} rotate={15} icon={Zap} color="bg-blue-500" delay={1} />
-                    <FloatingCard x={-45} y={15} z={-200} rotate={-5} icon={Grid} color="bg-purple-500" delay={2} />
-                    <FloatingCard x={40} y={25} z={-120} rotate={8} icon={MousePointer2} color="bg-pink-500" delay={3} />
+                    {/* Background Grid Floor - giving sense of depth */}
+                    <div
+                        className="absolute inset-[-100%] opacity-20"
+                        style={{
+                            transform: 'rotateX(80deg) translateY(500px) translateZ(-500px)',
+                            backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
+                            backgroundSize: '100px 100px',
+                            width: '300%',
+                            height: '300%'
+                        }}
+                    />
 
-                    {/* Deeper Layer */}
-                    <FloatingCard x={-15} y={-40} z={-400} rotate={20} icon={Star} color="bg-green-400" size="sm" delay={1.5} />
-                    <FloatingCard x={20} y={35} z={-350} rotate={-15} icon={Zap} color="bg-orange-500" size="sm" delay={2.5} />
+                    {/* HERO CARDS - The ones closest to camera initially */}
+                    <FloatingCard x={-20} y={-15} z={0} rotate={-12} icon={Layout} color="bg-blue-500" title="Project Alpha" />
+                    <FloatingCard x={25} y={10} z={-100} rotate={15} icon={Zap} color="bg-amber-500" title="Ideas" delay={0.2} />
+                    <FloatingCard x={-30} y={25} z={-200} rotate={-8} icon={Hash} color="bg-purple-500" title="Tags flow" delay={0.5} />
+                    <FloatingCard x={35} y={-25} z={-150} rotate={10} icon={Compass} color="bg-emerald-500" title="Exploration" delay={0.3} />
+
+                    {/* DEEP FIELD CARDS - Create the "Tunnel" effect */}
+                    <FloatingCard x={-10} y={-40} z={-500} rotate={20} icon={MousePointer2} color="bg-pink-500" size="sm" />
+                    <FloatingCard x={40} y={40} z={-600} rotate={-15} icon={Layout} color="bg-indigo-500" size="sm" />
+                    <FloatingCard x={-45} y={15} z={-800} rotate={-5} icon={Hash} color="bg-cyan-500" size="sm" />
+                    <FloatingCard x={20} y={-30} z={-900} rotate={12} icon={Zap} color="bg-rose-500" size="sm" />
+
+                    {/* The "Event Horizon" cards */}
+                    <FloatingCard x={0} y={0} z={-1500} rotate={0} icon={Compass} color="bg-white/10" size="lg" isGhost />
                 </div>
             </div>
 
-            {/* Main Content */}
+            {/* HERO TEXT - Stays front and center until scroll */}
             <div
-                className="relative z-10 text-center px-4 will-change-transform"
+                className="relative z-10 text-center px-4 max-w-5xl mx-auto will-change-transform mt-[-5vh]"
                 style={{
-                    opacity,
-                    transform: `translateY(${translateY}px) scale(${scale})`,
-                    filter: `blur(${blur}px)`,
+                    opacity: fadeOut,
+                    transform: `scale(${1 + clampedProgress * 0.5}) blur(${clampedProgress * 20}px)`,
+                    pointerEvents: fadeOut <= 0.1 ? 'none' : 'auto'
                 }}
             >
-                {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/50 backdrop-blur-md rounded-full border border-gray-200/50 shadow-sm mb-8 animate-fade-in-up">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm font-semibold text-gray-600 tracking-wide">v2.0 Now Available</span>
+                {/* Brand Pill */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-xl rounded-full border border-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)] mb-8 animate-fade-in-up">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-gray-400 text-sm font-medium tracking-wide">Mixboard 2.0</span>
                 </div>
 
-                <div className="relative inline-block mb-8">
-                    <h1
-                        className="text-6xl md:text-8xl lg:text-[10rem] font-bold tracking-tighter text-[#1a1a1a] leading-[0.9] mix-blend-tighten"
-                        style={{ fontFamily: '"Inter Tight", sans-serif' }}
-                    >
-                        Your Mind,<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 animate-gradient-x p-2 block">
-                            Unbounded.
-                        </span>
-                    </h1>
-                </div>
+                <h1 className="text-7xl md:text-[8rem] lg:text-[10rem] leading-[0.9] font-bold tracking-tighter text-white mb-6 font-inter-tight">
+                    Infinite <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 relative">
+                        Canvas.
+                        <div className="absolute inset-0 bg-blue-500/20 blur-[100px] -z-10" />
+                    </span>
+                </h1>
 
-                <p className="text-xl md:text-2xl text-gray-500 max-w-2xl mx-auto font-light leading-relaxed mb-12 animate-fade-in-up delay-100">
-                    The infinite canvas where ideas grow, connect, and evolve. <br className="hidden md:block" />
-                    <b>Stop organizing files. Start organizing thoughts.</b>
+                <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-12 animate-fade-in-up delay-[200ms]">
+                    Stop thinking in files and folders. <br />
+                    Start thinking in <span className="text-white font-semibold">connections</span>.
                 </p>
 
-                <div className="pointer-events-auto flex flex-col md:flex-row gap-6 justify-center items-center animate-fade-in-up delay-200">
+                <div className="flex flex-col md:flex-row gap-6 justify-center items-center animate-fade-in-up delay-[400ms]">
                     <button
                         onClick={() => navigate('/gallery')}
-                        className="group relative px-10 py-5 bg-[#1a1a1a] text-white rounded-full text-xl font-medium overflow-hidden transition-all hover:scale-105 hover:shadow-2xl shadow-xl active:scale-95"
+                        className="group relative px-10 py-5 bg-white text-black rounded-full text-xl font-bold overflow-hidden transition-transform hover:scale-105"
                     >
-                        <span className="relative z-10 flex items-center gap-3">
-                            Start Creating Free
+                        <span className="relative z-10 flex items-center gap-2">
+                            Start Thinking for Free
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-indigo-100 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
 
                     <button
                         onClick={onStart}
-                        className="group px-8 py-5 bg-white/50 backdrop-blur-sm border border-gray-200 text-gray-600 hover:text-black hover:bg-white rounded-full font-medium transition-all text-lg shadow-sm hover:shadow-lg"
+                        className="px-8 py-5 text-gray-400 hover:text-white transition-colors flex items-center gap-2 font-medium"
                     >
-                        <span className="flex items-center gap-2">
-                            Full Tour
-                            <span className="group-hover:translate-y-1 transition-transform">↓</span>
-                        </span>
+                        See the magic <span className="animate-bounce">↓</span>
                     </button>
                 </div>
             </div>
 
-            {/* Bottom Fade Gradient */}
-            <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-[#FDFDFC] to-transparent z-20 pointer-events-none" />
+            {/* Scroll Indicator */}
+            <div
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 transition-opacity duration-500"
+                style={{ opacity: fadeOut }}
+            >
+                <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+            </div>
         </div>
     );
 };
 
-const FloatingCard = ({ x, y, z, rotate, icon: Icon, color, size = 'md', delay }) => {
-    // x, y in percentage relative to center
-    // z in px
-    const style = {
-        left: `calc(50% + ${x}vw)`,
-        top: `calc(50% + ${y}vh)`,
-        transform: `translate(-50%, -50%) translateZ(${z}px) rotate(${rotate}deg)`,
-    };
-
-    const sizeClasses = size === 'md' ? 'w-48 h-32 md:w-64 md:h-40' : 'w-32 h-20 md:w-40 md:h-24';
+const FloatingCard = ({ x, y, z, rotate, icon: Icon, color, title, size = 'md', delay = 0, isGhost = false }) => {
+    // x, y in vw/vh
+    const sizeClasses = size === 'sm' ? 'w-48 h-32' : size === 'lg' ? 'w-96 h-64' : 'w-72 h-44';
 
     return (
         <div
-            className={`absolute ${sizeClasses} bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100/50 flex flex-col p-4 animate-float`}
+            className={`absolute ${sizeClasses} rounded-2xl flex flex-col p-5 border shadow-2xl animate-float-medium transition-all duration-700
+                ${isGhost ? 'bg-transparent border-white/5' : 'bg-[#0A0A0A] border-white/10'}`}
             style={{
-                ...style,
+                left: `calc(50% + ${x}vw)`,
+                top: `calc(50% + ${y}vh)`,
+                transform: `translate(-50%, -50%) translateZ(${z}px) rotate(${rotate}deg)`,
                 animationDelay: `${delay}s`
             }}
         >
-            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${color} flex items-center justify-center text-white shadow-sm mb-auto`}>
-                <Icon className="w-4 h-4 md:w-5 md:h-5" />
-            </div>
-            <div className="space-y-2 opacity-40">
-                <div className="h-2 w-3/4 bg-gray-200 rounded" />
-                <div className="h-2 w-1/2 bg-gray-200 rounded" />
-            </div>
+            {!isGhost && (
+                <>
+                    <div className="flex items-center gap-3 mb-auto">
+                        <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white shadow-[0_0_15px_rgba(0,0,0,0.3)]`}>
+                            <Icon className="w-5 h-5" />
+                        </div>
+                        {title && <span className="text-white/80 font-semibold text-sm">{title}</span>}
+                    </div>
+                    <div className="space-y-3 opacity-30">
+                        <div className="h-2 w-3/4 bg-white/50 rounded-full" />
+                        <div className="h-2 w-1/2 bg-white/50 rounded-full" />
+                    </div>
+                </>
+            )}
         </div>
     );
 };
