@@ -24,7 +24,8 @@ import {
     updateBoardMetadata,
     updateBoardMetadataInCloud,
     setCurrentBoardId as storageSetCurrentBoardId,
-    getBoardsList
+    getBoardsList,
+    loadViewportState
 } from './services/storage';
 
 export default function App() {
@@ -103,8 +104,12 @@ function AppContent() {
                     setConnections(data.connections || []);
                     setGroups(data.groups || []);
                     storageSetCurrentBoardId(currentBoardId);
+
+                    // 3. Restore viewport state
+                    const viewport = loadViewportState(currentBoardId);
+                    useStore.getState().restoreViewport(viewport);
                 } finally {
-                    // 3. End loading state
+                    // 4. End loading state
                     useStore.getState().setIsBoardLoading(false);
                 }
             }
