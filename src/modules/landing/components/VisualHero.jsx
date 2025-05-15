@@ -17,10 +17,7 @@ const VisualHero = ({ scrollProgress, onStart }) => {
     const cloudRotate = scrollProgress * 20; // Rotate the cloud slightly
 
     return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-40 overflow-hidden pointer-events-none">
-            {/* Dynamic Background Gradient */}
-            <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#FDFDFC] via-[#F8FAFC] to-[#EFF6FF] opacity-80" />
-
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 overflow-hidden pointer-events-none">
             {/* 3D Cloud of Cards Background */}
             <div
                 className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none"

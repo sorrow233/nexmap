@@ -21,14 +21,9 @@ const DemoAI = ({ scrollProgress }) => {
 
     return (
         <div
-            // FIX: Z-index lowered to 20 (was 40) to prevent blocking subsequent sections
-            // pointer-events-none is CRITICAL here so scroll events pass through to the listener
-            className="fixed inset-0 flex items-center justify-center z-20 pointer-events-none overflow-hidden"
+            className="fixed inset-0 flex items-center justify-center z-40 pointer-events-none overflow-hidden"
             style={{ opacity }}
         >
-            {/* Fixed Dark Background */}
-            <div className="absolute inset-0 bg-[#0f172a] z-0" />
-
             {/* Header Text - Always White */}
             <div className="absolute top-24 left-0 right-0 text-center z-30 text-white"
             >
