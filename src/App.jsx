@@ -70,7 +70,7 @@ function AppContent() {
 
         const newBoard = await createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
-        if (user) saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [] });
+        if (user) saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [], groups: [] });
 
         navigate(`/board/${newBoard.id}`);
 
