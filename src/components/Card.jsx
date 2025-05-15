@@ -16,21 +16,18 @@ const Card = React.memo(function Card({
     onExpand,
     isConnectionStart,
     isConnecting,
-    onConnect,
     onDragEnd,
-    onDelete,
-    onCardFullScreen // NEW Prop
-}) { // Line 22
+    onDelete
+}) {
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const cardRef = useRef(null);
-    const clickTimeoutRef = useRef(null); // Ref for double click detection
 
-    // Refs to hold latest values
-    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen });
+    // Refs to hold latest values for event handlers to avoid re-binding
+    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd, isSelected, onSelect });
     useEffect(() => {
-        stateRef.current = { data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen };
-    }, [data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen]);
+        stateRef.current = { data, onMove, dragOffset, onDragEnd, isSelected, onSelect };
+    }, [data, onMove, dragOffset, onDragEnd, isSelected, onSelect]);
 
     // Track if we should possibly deselect other cards on mouse up (if it was a click, not a drag)
     const pendingDeselectRef = useRef(false);
@@ -150,25 +147,6 @@ const Card = React.memo(function Card({
                 const { onSelect, data } = stateRef.current;
                 // Force "clean" selection (no modifiers) to trigger exclusive select
                 onSelect(data.id, { ...e, shiftKey: false, metaKey: false, ctrlKey: false });
-            }
-
-            // Click Logic (Single vs Double)
-            if (!hasDraggedRef.current) { // Allow click even if we just handled deselect logic
-                // Actually, even if we deselected, we clicked. So we should probably Expand.
-                const { onExpand, onCardFullScreen, data } = stateRef.current;
-
-                if (clickTimeoutRef.current) {
-                    // Double Click Detected
-                    clearTimeout(clickTimeoutRef.current);
-                    clickTimeoutRef.current = null;
-                    if (onCardFullScreen) onCardFullScreen(data.id);
-                } else {
-                    // Single Click - wait for potential double click
-                    clickTimeoutRef.current = setTimeout(() => {
-                        if (onExpand) onExpand(data.id);
-                        clickTimeoutRef.current = null;
-                    }, 250); // 250ms tolerance
-                }
             }
 
             pendingDeselectRef.current = false;
@@ -322,7 +300,7 @@ const Card = React.memo(function Card({
             onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-        // onDoubleClick removed - handled in mouseUp
+            onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
         >
             {/* Top Bar - Model + Buttons */}
             <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
@@ -348,11 +326,7 @@ const Card = React.memo(function Card({
                         <Link size={14} />
                     </button>
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            // Direct click on Expand button should just expand immediately
-                            onExpand(data.id);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
                         className="p-1.5 text-slate-500 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Expand"
                     >
