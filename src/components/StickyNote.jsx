@@ -23,6 +23,14 @@ const StickyNote = React.memo(function StickyNote({
     onCreateNote,
     onCardFullScreen // NEW Prop
 }) { // Line 22
+    const [isEditing, setIsEditing] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const textareaRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const cardRef = useRef(null);
+    const contentRef = useRef(null);
+    const clickTimeoutRef = useRef(null);
+
     const {
         isDragging,
         handleMouseDown,
@@ -51,14 +59,6 @@ const StickyNote = React.memo(function StickyNote({
         },
         disabled: isEditing
     });
-
-    const [isEditing, setIsEditing] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const textareaRef = useRef(null);
-    const fileInputRef = useRef(null);
-    const cardRef = useRef(null);
-    const contentRef = useRef(null);
-    const clickTimeoutRef = useRef(null);
 
     const handleContentChange = (e) => {
         onUpdate(data.id, { ...data.data, content: e.target.value });
