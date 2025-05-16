@@ -11,9 +11,16 @@ export const createCardSlice = (set, get) => ({
 
     setExpandedCardId: (id) => set({ expandedCardId: id }),
 
-    addCard: (card) => set((state) => ({
-        cards: [...state.cards, card]
-    })),
+    addCard: (card) => {
+        set((state) => ({
+            cards: [...state.cards, card]
+        }));
+
+        // Auto-add to zone if inside one
+        setTimeout(() => {
+            get().autoAddCardToZone?.(card.id, card.x, card.y);
+        }, 50);
+    },
 
     updateCard: (id, updater) => set((state) => ({
         cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c.data) : { ...c, data: { ...c.data, ...updater } }) : c)
