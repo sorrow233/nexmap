@@ -1,17 +1,24 @@
 import { calculateLayout, calculateGridLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
+import { debugLog } from '../../utils/debugLogger';
 
 export const createCardSlice = (set, get) => ({
     cards: [],
     expandedCardId: null,
 
-    setCards: (cardsOrUpdater) => set((state) => ({
-        cards: typeof cardsOrUpdater === 'function' ? cardsOrUpdater(state.cards) : cardsOrUpdater
-    })),
+    setCards: (cardsOrUpdater) => {
+        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
+        debugLog.store('Bulk setting cards', { count: nextCards.length });
+        set({ cards: nextCards });
+    },
 
-    setExpandedCardId: (id) => set({ expandedCardId: id }),
+    setExpandedCardId: (id) => {
+        debugLog.ui(`Focusing/Expanding card: ${id}`);
+        set({ expandedCardId: id });
+    },
 
     addCard: (card) => {
+        debugLog.store(`Adding new card: ${card.id}`, card);
         set((state) => ({
             cards: [...state.cards, card]
         }));
@@ -22,49 +29,59 @@ export const createCardSlice = (set, get) => ({
         }, 50);
     },
 
-    updateCard: (id, updater) => set((state) => ({
-        cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c.data) : { ...c, data: { ...c.data, ...updater } }) : c)
-    })),
+    updateCard: (id, updater) => {
+        debugLog.store(`Updating card data: ${id}`, updater);
+        set((state) => ({
+            cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c.data) : { ...c, data: { ...c.data, ...updater } }) : c)
+        }));
+    },
 
     // Special handler for the component refactor
-    updateCardFull: (id, updater) => set((state) => ({
-        cards: state.cards.map(c => {
-            if (c.id !== id) return c;
+    updateCardFull: (id, updater) => {
+        debugLog.store(`Full update for card: ${id}`, updater);
+        set((state) => ({
+            cards: state.cards.map(c => {
+                if (c.id !== id) return c;
 
-            // Apply the updater (can be function or object)
-            // CRITICAL: When updater is a function, pass c.data (not c) because
-            // ChatModal expects to update card.data, not the entire card object
-            const updatedData = typeof updater === 'function'
-                ? updater(c.data)  // Pass c.data to function updaters
-                : updater;         // Object updaters are used as-is
+                // Apply the updater (can be function or object)
+                // CRITICAL: When updater is a function, pass c.data (not c) because
+                // ChatModal expects to update card.data, not the entire card object
+                const updatedData = typeof updater === 'function'
+                    ? updater(c.data)  // Pass c.data to function updaters
+                    : updater;         // Object updaters are used as-is
 
-            // Preserve all card properties (x, y, id, type, etc.)
-            // and only update the data portion
+                // Preserve all card properties (x, y, id, type, etc.)
+                // and only update the data portion
+                return {
+                    ...c,              // Keep x, y, id, type, etc.
+                    data: {            // Only merge data
+                        ...(c.data || {}),
+                        ...updatedData
+                    }
+                };
+            })
+        }));
+    },
+
+    deleteCard: (id) => {
+        debugLog.store(`Deleting card: ${id}`);
+        set((state) => {
+            const nextGenerating = new Set(state.generatingCardIds);
+            nextGenerating.delete(id);
+            const nextSelected = state.selectedIds ? state.selectedIds.filter(sid => sid !== id) : [];
             return {
-                ...c,              // Keep x, y, id, type, etc.
-                data: {            // Only merge data
-                    ...(c.data || {}),
-                    ...updatedData
-                }
+                cards: state.cards.filter(c => c.id !== id),
+                connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
+                generatingCardIds: nextGenerating,
+                selectedIds: nextSelected,
+                expandedCardId: state.expandedCardId === id ? null : state.expandedCardId
             };
-        })
-    })),
-
-    deleteCard: (id) => set((state) => {
-        const nextGenerating = new Set(state.generatingCardIds);
-        nextGenerating.delete(id);
-        const nextSelected = state.selectedIds ? state.selectedIds.filter(sid => sid !== id) : [];
-        return {
-            cards: state.cards.filter(c => c.id !== id),
-            connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
-            generatingCardIds: nextGenerating,
-            selectedIds: nextSelected,
-            expandedCardId: state.expandedCardId === id ? null : state.expandedCardId
-        };
-    }),
+        });
+    },
 
     arrangeCards: () => {
         const { cards, connections, groups } = get();
+        debugLog.ui('Arranging cards layout...', { hasGroups: groups?.length > 0, hasConnections: connections?.length > 0 });
 
         // 1. If Groups Exist: Respect them, Grid the rest
         if (groups && groups.length > 0) {
@@ -160,7 +177,7 @@ export const createCardSlice = (set, get) => ({
         const dy = newY - sourceCard.y;
         if (dx === 0 && dy === 0) return;
         if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
-            console.warn("Invalid move delta detected", dx, dy);
+            debugLog.error("Invalid move delta detected", { dx, dy });
             return;
         }
 
@@ -193,6 +210,7 @@ export const createCardSlice = (set, get) => ({
 
     // Alias for explicit drag end handling
     handleCardMoveEnd: (id, newX, newY, moveWithConnections = false) => {
+        debugLog.ui(`Card move end: ${id}`, { newX, newY });
         get().handleCardMove(id, newX, newY, moveWithConnections);
     },
 });

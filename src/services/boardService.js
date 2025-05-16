@@ -1,5 +1,6 @@
 import { idbGet, idbSet, idbDel } from './db/indexedDB';
 import { downloadImageAsBase64 } from './imageStore';
+import { debugLog } from '../utils/debugLogger';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -7,6 +8,7 @@ const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 
 export const getCurrentBoardId = () => localStorage.getItem(CURRENT_BOARD_ID_KEY);
 export const setCurrentBoardId = (id) => {
+    debugLog.storage(`Setting current board to: ${id}`);
     if (id) localStorage.setItem(CURRENT_BOARD_ID_KEY, id);
     else localStorage.removeItem(CURRENT_BOARD_ID_KEY);
 };
@@ -26,6 +28,7 @@ export const getTrashBoards = () => {
 };
 
 export const loadBoardsMetadata = () => {
+    debugLog.storage('Loading boards metadata list');
     // Return ALL boards (Active + Trash) sorted by createdAt so UI can filter
     return getRawBoardsList().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 };
@@ -39,6 +42,7 @@ export const createBoard = async (name) => {
         lastAccessedAt: Date.now(),
         cardCount: 0
     };
+    debugLog.storage(`Creating new board: ${newBoard.name}`, { id: newBoard.id });
     const list = getRawBoardsList();
     const newList = [newBoard, ...list];
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
@@ -49,6 +53,7 @@ export const createBoard = async (name) => {
 
 // Update board metadata (name, etc.) in localStorage
 export const updateBoardMetadata = (id, metadata) => {
+    debugLog.storage(`Updating metadata for board: ${id}`, metadata);
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
@@ -66,7 +71,11 @@ export const updateBoardMetadata = (id, metadata) => {
 export const saveBoard = async (id, data) => {
     // data: { cards, connections, updatedAt? }
     const timestamp = data.updatedAt || Date.now();
-    // console.log('[Storage] saveBoard called. Board:', id, 'Cards:', data.cards?.length || 0);
+    debugLog.storage(`Saving board: ${id}`, {
+        cardsCount: data.cards?.length || 0,
+        connectionsCount: data.connections?.length || 0,
+        groupsCount: data.groups?.length || 0
+    });
 
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
@@ -83,11 +92,12 @@ export const saveBoard = async (id, data) => {
 };
 
 export const loadBoard = async (id) => {
+    debugLog.storage(`Loading board: ${id}`);
     let stored = null;
     try {
         stored = await idbGet(BOARD_PREFIX + id);
     } catch (e) {
-        console.warn("IDB read failed for board", id, e);
+        debugLog.error(`IDB read failed for board ${id}`, e);
     }
 
     if (!stored) {
@@ -95,18 +105,19 @@ export const loadBoard = async (id) => {
         try {
             const legacy = localStorage.getItem(BOARD_PREFIX + id);
             if (legacy) {
-                console.log("Found legacy data in localStorage for board:", id);
+                debugLog.storage(`Found legacy data in localStorage for board: ${id}`);
                 const parsed = JSON.parse(legacy);
                 // Migrate to IDB in background
-                idbSet(BOARD_PREFIX + id, parsed).catch(e => console.error("Migration save failed", e));
+                idbSet(BOARD_PREFIX + id, parsed).catch(e => debugLog.error("Migration save failed", e));
                 stored = parsed;
             }
         } catch (e) {
-            console.error("Legacy localStorage load failed", e);
+            debugLog.error(`Legacy localStorage load failed for board ${id}`, e);
         }
     }
 
     if (!stored) {
+        debugLog.storage(`Board ${id} not found, returning empty template`);
         return { cards: [], connections: [], groups: [] };
     }
 
@@ -120,10 +131,9 @@ export const loadBoard = async (id) => {
                         const processedContent = await Promise.all(msg.content.map(async (part) => {
                             // Detect URL type image (from S3 sync)
                             if (part.type === 'image' && part.source?.type === 'url' && part.source?.url) {
-                                console.log('[S3 Download] Detected URL image, downloading:', part.source.url.substring(0, 50));
+                                debugLog.sync(`Downloading S3 image: ${part.source.url.substring(0, 50)}...`);
                                 const base64 = await downloadImageAsBase64(part.source.url);
                                 if (base64) {
-                                    // console.log('[S3 Download] Successfully converted to base64');
                                     return {
                                         ...part,
                                         source: {
@@ -134,11 +144,7 @@ export const loadBoard = async (id) => {
                                         }
                                     };
                                 }
-                                // Download failed, keep URL as fallback
-                                console.warn('[S3 Download] Failed, keeping URL fallback:', part.source.url);
-                            } else if (part.type === 'image' && part.source?.type === 'base64') {
-                                // Base64 image - pass through unchanged
-                                // console.log('[Load Board] Base64 image detected, data length:', part.source.data?.length || 0);
+                                debugLog.error(`S3 Download failed for: ${part.source.url}`);
                             }
                             return part;
                         }));
@@ -148,13 +154,13 @@ export const loadBoard = async (id) => {
                 }));
                 return { ...card, data: { ...card.data, messages: processedMessages } };
             } catch (e) {
-                console.error('[Load Board] Card processing error:', e);
+                debugLog.error(`Card processing error in board ${id}`, e);
                 return card; // Return original card on error
             }
         }));
         finalBoard = { ...stored, cards: processedCards };
     } catch (e) {
-        console.error('[Load Board] S3 processing error:', e);
+        debugLog.error(`S3 processing error in board ${id}`, e);
     }
 
     // Always update last accessed time if we have a board
@@ -170,6 +176,7 @@ export const loadBoard = async (id) => {
         }
     }
 
+    debugLog.storage(`Board ${id} loaded successfully`, { cards: finalBoard.cards?.length || 0 });
     return finalBoard;
 };
 
@@ -181,43 +188,44 @@ export const cleanupExpiredTrash = async () => {
 
     for (const board of list) {
         if (board.deletedAt && board.deletedAt < thirtyDaysAgo) {
-            console.log(`[Cleanup] Board ${board.id} expired (deleted > 30 days ago). Permanently removing.`);
+            debugLog.storage(`Board ${board.id} expired (deleted > 30 days ago). Permanently removing.`);
             await permanentlyDeleteBoard(board.id);
             deletedCount++;
         }
     }
     if (deletedCount > 0) {
-        console.log(`[Cleanup] Removed ${deletedCount} expired boards from trash.`);
+        debugLog.storage(`Cleanup removed ${deletedCount} expired boards from trash.`);
     }
 };
 
 // Soft Delete (Rename original function to prevent breaking API but change behavior)
 export const deleteBoard = async (id) => {
+    debugLog.storage(`Soft deleting board: ${id}`);
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
         list[boardIndex] = { ...list[boardIndex], deletedAt: Date.now() };
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
-        console.log(`[Storage] Board ${id} soft deleted (moved to trash).`);
     } else {
-        console.warn(`[Storage] Board ${id} not found for soft deletion.`);
+        debugLog.error(`Board ${id} not found for soft deletion.`);
     }
 };
 
 export const restoreBoard = async (id) => {
+    debugLog.storage(`Restoring board: ${id}`);
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
         const { deletedAt, ...rest } = list[boardIndex];
         list[boardIndex] = rest; // Remove deletedAt
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
-        console.log(`[Storage] Board ${id} restored.`);
         return true;
     }
     return false;
 };
 
 export const permanentlyDeleteBoard = async (id) => {
+    debugLog.storage(`Permanently deleting board: ${id}`);
     const list = getRawBoardsList();
     const newList = list.filter(b => b.id !== id);
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
@@ -225,7 +233,6 @@ export const permanentlyDeleteBoard = async (id) => {
     await idbDel(BOARD_PREFIX + id);
     localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy
     localStorage.removeItem(`mixboard_viewport_${id}`); // Cleanup viewport state
-    console.log(`[Storage] Board ${id} permanently deleted.`);
 };
 
 // Viewport State Management
@@ -233,22 +240,26 @@ const VIEWPORT_PREFIX = 'mixboard_viewport_';
 
 export const saveViewportState = (boardId, viewport) => {
     if (!boardId) return;
+    debugLog.storage(`Saving viewport for board ${boardId}`, viewport);
     try {
         localStorage.setItem(VIEWPORT_PREFIX + boardId, JSON.stringify(viewport));
     } catch (e) {
-        console.warn('[Storage] Failed to save viewport state:', e);
+        debugLog.error(`Failed to save viewport state for board ${boardId}`, e);
     }
 };
 
 export const loadViewportState = (boardId) => {
     if (!boardId) return { offset: { x: 0, y: 0 }, scale: 1 };
+    debugLog.storage(`Loading viewport for board ${boardId}`);
     try {
         const stored = localStorage.getItem(VIEWPORT_PREFIX + boardId);
         if (stored) {
-            return JSON.parse(stored);
+            const parsed = JSON.parse(stored);
+            debugLog.storage(`Viewport loaded for board ${boardId}`, parsed);
+            return parsed;
         }
     } catch (e) {
-        console.warn('[Storage] Failed to load viewport state:', e);
+        debugLog.error(`Failed to load viewport state for board ${boardId}`, e);
     }
     return { offset: { x: 0, y: 0 }, scale: 1 };
 };
