@@ -50,9 +50,6 @@ export function getBestAnchorPair(cardA, cardB) {
 
     // Bias towards horizontal layout if horizontal distance is significantly larger
     // or if the cards are roughly on the same level.
-    // KEY FIX: If there is substantial horizontal separation (> 200px), 
-    // we almost ALWAYS want a horizontal connection (MindMap style),
-    // even if the vertical distance is larger (e.g., tall tree branches).
     const isHorizontal = Math.abs(dx) > Math.abs(dy) || Math.abs(dx) > 200;
 
     for (const a of anchorsA) {
@@ -60,7 +57,6 @@ export function getBestAnchorPair(cardA, cardB) {
             let dist = Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 
             // Penalty system to enforce semantic flow
-            // Add a massive penalty for "wrong" anchors to force the desired connection type
             const penalty = 5000;
 
             if (isHorizontal) {
@@ -101,10 +97,7 @@ export function getBestAnchorPair(cardA, cardB) {
 
 export function generateBezierPath(source, target) {
     const dx = Math.abs(source.x - target.x);
-    const dy = Math.abs(source.y - target.y);
-
     const calculateCP = (point, distance) => {
-        // Increase horizontal handle length for nicer tree curves
         const hFactor = 0.6; // 60% of distance
         const vFactor = 0.5;
 
@@ -117,12 +110,7 @@ export function generateBezierPath(source, target) {
         }
     };
 
-    // Adaptive control point distance
-    // FIXED: Use dx primarily. Do NOT use dy, otherwise tall vertical gaps cause excessive horizontal bulging.
-    // We want a nice S-curve that depends on the horizontal space available.
-    // Clamp between 80px (for very close cards) and a reasonable max.
     const distance = Math.max(dx * 0.5, 80);
-
     const cp1 = calculateCP(source, distance);
     const cp2 = calculateCP(target, distance);
 
@@ -136,4 +124,74 @@ export function isRectIntersect(rectA, rectB) {
         rectA.top < rectB.bottom &&
         rectA.bottom > rectB.top
     );
+}
+
+/**
+ * Smart position finder for new cards to avoid overlaps and follow selection context.
+ */
+export function findOptimalPosition(cards, offset, scale, selectedIds) {
+    const CARD_WIDTH = 320;
+    const CARD_HEIGHT = 200;
+    const MARGIN = 50;
+
+    // Calculate viewport range
+    const viewportLeft = -offset.x / scale;
+    const viewportTop = -offset.y / scale;
+    const viewportCenterX = viewportLeft + (window.innerWidth / 2) / scale;
+    const viewportCenterY = viewportTop + (window.innerHeight / 2) / scale;
+
+    // If there are selected cards, find position near them
+    const selectedCards = cards.filter(c => selectedIds?.includes(c.id));
+
+    if (selectedCards.length > 0) {
+        // Strategy 1: Find space to the right of selected cards
+        const rightMost = Math.max(...selectedCards.map(c => c.x));
+        const avgY = selectedCards.reduce((sum, c) => sum + c.y, 0) / selectedCards.length;
+
+        let candidateX = rightMost + CARD_WIDTH + MARGIN;
+        let candidateY = avgY;
+
+        // Check for overlap and shift down if needed
+        let attempts = 0;
+        while (attempts < 10) {
+            const hasOverlap = cards.some(c =>
+                Math.abs(c.x - candidateX) < CARD_WIDTH &&
+                Math.abs(c.y - candidateY) < CARD_HEIGHT
+            );
+
+            if (!hasOverlap) {
+                return { x: candidateX, y: candidateY };
+            }
+
+            candidateY += CARD_HEIGHT + MARGIN;
+            attempts++;
+        }
+    }
+
+    // Strategy 2: Spiral search around viewport center
+    const gridSize = CARD_WIDTH + MARGIN;
+    const searchRadius = 3;
+
+    for (let ring = 0; ring < searchRadius; ring++) {
+        for (let angle = 0; angle < 360; angle += 45) {
+            const rad = (angle * Math.PI) / 180;
+            const testX = viewportCenterX + Math.cos(rad) * ring * gridSize;
+            const testY = viewportCenterY + Math.sin(rad) * ring * gridSize;
+
+            const hasOverlap = cards.some(c =>
+                Math.abs(c.x - testX) < CARD_WIDTH &&
+                Math.abs(c.y - testY) < CARD_HEIGHT
+            );
+
+            if (!hasOverlap) {
+                return { x: testX - CARD_WIDTH / 2, y: testY - CARD_HEIGHT / 2 };
+            }
+        }
+    }
+
+    // Strategy 3: Fallback to random offset near center
+    return {
+        x: viewportCenterX - CARD_WIDTH / 2 + (Math.random() * 100 - 50),
+        y: viewportCenterY - CARD_HEIGHT / 2 + (Math.random() * 100 - 50)
+    };
 }
