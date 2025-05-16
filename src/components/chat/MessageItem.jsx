@@ -160,8 +160,8 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
             const card = cards.find(c => c.id === id);
             if (card) {
                 const title = card.data?.title || "Untitled Card";
-                // Return a styled link-like span
-                return `<span class="card-ref-link text-brand-500 font-bold cursor-pointer hover:underline bg-brand-500/5 px-1.5 py-0.5 rounded-md border border-brand-500/10 shadow-sm" data-card-id="${id}">@${title}</span>`;
+                // Return a styled link-like span with z-index and pointer-events
+                return `<span class="card-ref-link relative z-10 text-brand-500 font-bold cursor-pointer hover:underline bg-brand-500/5 px-1.5 py-0.5 rounded-md border border-brand-500/10 shadow-sm transition-all hover:bg-brand-500/10 active:scale-95" data-card-id="${id}" style="pointer-events: auto !important;">@${title}</span>`;
             }
             return match;
         });
@@ -173,24 +173,22 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         return resolveCardReferences(html);
     }, [content, marks, capturedNotes, isUser, cards]);
 
-    // Handle clicks on card references
-    React.useEffect(() => {
-        const el = contentRef.current;
-        if (!el) return;
+    const handleMessageClick = (e) => {
+        const link = e.target.closest('.card-ref-link');
+        if (link) {
+            const cardId = link.getAttribute('data-card-id');
+            console.log('[DEBUG] Card click caught by handleMessageClick, ID:', cardId);
+            if (cardId) {
+                focusOnCard(cardId);
 
-        const handleClick = (e) => {
-            const link = e.target.closest('.card-ref-link');
-            if (link) {
-                const cardId = link.getAttribute('data-card-id');
-                if (cardId) {
-                    focusOnCard(cardId);
+                const { setExpandedCardId } = useStore.getState();
+                if (setExpandedCardId) {
+                    console.log('[DEBUG] Auto-closing modal to show focus');
+                    setExpandedCardId(null);
                 }
             }
-        };
-
-        el.addEventListener('click', handleClick);
-        return () => el.removeEventListener('click', handleClick);
-    }, [focusOnCard]);
+        }
+    };
 
     return (
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
@@ -225,7 +223,11 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
 
 
                 {/* Message Content */}
-                <div className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem]" ref={contentRef}>
+                <div
+                    className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem]"
+                    ref={contentRef}
+                    onClick={handleMessageClick}
+                >
                     {isUser ? (
                         <div className="whitespace-pre-wrap font-sans">{textContent}</div>
                     ) : (
