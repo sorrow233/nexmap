@@ -289,6 +289,7 @@ export function useCardCreator() {
                 type: 'note',
                 x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
                 y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 250),
+                createdAt: Date.now(),
                 data: {
                     content: `01. ${safeText}`,
                     color: 'yellow',

@@ -10,6 +10,7 @@ import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
 import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/storage';
+import { debugLog } from '../utils/debugLogger';
 import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
 
@@ -37,7 +38,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         getConnectedCards, // NEW: Helper
         setSelectedIds, // Need this for select connected
         arrangeSelectionGrid, // NEW: Grid Layout
-        isBoardLoading // NEW: Loading State
+        isBoardLoading, // NEW: Loading State
+        lastSavedAt,
+        setLastSavedAt
     } = useStore();
 
     const {
@@ -78,15 +81,18 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
+                const now = Date.now();
                 saveBoard(currentBoardId, { cards, connections, groups });
+                setLastSavedAt(now);
                 lastSavedState.current = currentState;
+                debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
             }, 1000); // Slightly longer delay for local debounce
 
             let cloudTimeout;
             if (user) {
                 cloudTimeout = setTimeout(() => {
-                    // When saving to cloud, we update the timestamp in the service
                     saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
+                    debugLog.sync(`Cloud autosave triggered for board: ${currentBoardId}`);
                 }, 3000); // Longer delay for cloud to avoid hammering
             }
 

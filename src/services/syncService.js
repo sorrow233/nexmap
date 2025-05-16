@@ -28,14 +28,26 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                         try {
                             const localData = await idbGet(BOARD_PREFIX + boardData.id);
 
-                            if (localData && boardData.updatedAt && localData.updatedAt >= boardData.updatedAt) {
+                            // Get state for immediate comparison if it's the active board
+                            const { useStore } = await import('../store/useStore');
+                            const store = useStore.getState();
+                            const currentActiveId = localStorage.getItem('mixboard_current_board_id');
+                            const isCurrentBoard = boardData.id === currentActiveId;
+
+                            const localCards = isCurrentBoard ? store.cards : (localData?.cards || []);
+                            const localConnections = isCurrentBoard ? store.connections : (localData?.connections || []);
+                            const localGroups = isCurrentBoard ? store.groups : (localData?.groups || []);
+                            const localUpdatedAt = isCurrentBoard ? (store.lastSavedAt || localData?.updatedAt || 0) : (localData?.updatedAt || 0);
+
+                            if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
                                 debugLog.sync(`Skipping cloud update for ${boardData.id}: local version is up-to-date`);
                                 return;
                             }
 
                             debugLog.sync(`Merging cloud updates for board: ${boardData.id}`, { type: change.type });
                             hasChanges = true;
-                            if (!localData || !localData.cards) {
+
+                            if (!localCards || localCards.length === 0) {
                                 await saveBoard(boardData.id, {
                                     cards: boardData.cards || [],
                                     connections: boardData.connections || [],
@@ -45,10 +57,19 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 return;
                             }
 
-                            // Smart Merge: Preserve local base64 but take cloud structure/S3 URLs
-                            const mergedCards = (boardData.cards || []).map(cloudCard => {
-                                const localCard = localData.cards.find(c => c.id === cloudCard.id);
-                                if (!localCard) return cloudCard;
+                            // Robust Merge with Deletion Reconciliation
+                            const cloudCards = boardData.cards || [];
+
+                            // 1. Reconcile Cloud Cards (Keep unless locally deleted)
+                            const mergedCards = cloudCards.map(cloudCard => {
+                                const localCard = localCards.find(c => c.id === cloudCard.id);
+                                if (!localCard) {
+                                    // RECONCILIATION: Is this a remote addition or a local deletion?
+                                    if (cloudCard.createdAt && cloudCard.createdAt > localUpdatedAt) {
+                                        return cloudCard; // Remote addition
+                                    }
+                                    return null; // Likely local deletion
+                                }
 
                                 // Robust content merging for 'note' type cards
                                 if (cloudCard.type === 'note' && localCard.type === 'note') {
@@ -87,15 +108,33 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     return { ...cloudMsg, content: mergedContent };
                                 });
 
-                                return { ...cloudCard, data: { ...cloudCard.data, ...localCard.data, messages: mergedMessages, content: cloudCard.data.content } };
-                            });
+                                return {
+                                    ...cloudCard,
+                                    data: {
+                                        ...cloudCard.data,
+                                        ...localCard.data,
+                                        messages: mergedMessages,
+                                        content: cloudCard.data.content
+                                    }
+                                };
+                            }).filter(Boolean);
 
-                            const localOnlyCards = localData.cards.filter(lc => !boardData.cards?.find(cc => cc.id === lc.id));
+                            // 2. Reconcile Local Cards (Keep new local additions)
+                            const localOnlyCards = localCards.filter(lc => {
+                                const inCloud = cloudCards.find(cc => cc.id === lc.id);
+                                if (inCloud) return false;
+
+                                // RECONCILIATION: Is this a new local card or a remote deletion?
+                                if (lc.createdAt && lc.createdAt > (boardData.updatedAt || 0)) {
+                                    return true; // New local addition
+                                }
+                                return false; // Likely remote deletion
+                            });
 
                             await saveBoard(boardData.id, {
                                 cards: [...mergedCards, ...localOnlyCards],
-                                connections: boardData.connections || localData.connections || [],
-                                groups: boardData.groups !== undefined ? boardData.groups : (localData.groups || []),
+                                connections: boardData.connections || localConnections || [],
+                                groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
                                 updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
