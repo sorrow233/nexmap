@@ -38,6 +38,49 @@ export const createCanvasSlice = (set, get) => ({
     isBoardLoading: false, // New field to track board loading state
     setIsBoardLoading: (val) => set({ isBoardLoading: val }),
 
+    // Smoothly focus/zoom on a specific card
+    focusOnCard: (cardId) => {
+        const { cards, offset, scale, setOffset, setScale } = get();
+        const card = cards.find(c => c.id === cardId);
+        if (!card) return;
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // Target state: center of screen, fixed scale for focus
+        const targetScale = 0.85;
+        const CARD_WIDTH = 320;
+        const CARD_HEIGHT = 400;
+
+        const targetX = viewportWidth / 2 - card.x * targetScale - (CARD_WIDTH * targetScale) / 2;
+        const targetY = viewportHeight / 2 - card.y * targetScale - (CARD_HEIGHT * targetScale) / 2;
+
+        const startOffset = { ...offset };
+        const startScale = scale;
+        const startTime = performance.now();
+        const duration = 800; // Silky smooth 800ms
+
+        function animate(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // easeOutExpo for a premium feel
+            const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+
+            setOffset({
+                x: startOffset.x + (targetX - startOffset.x) * ease,
+                y: startOffset.y + (targetY - startOffset.y) * ease
+            });
+            setScale(startScale + (targetScale - startScale) * ease);
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        requestAnimationFrame(animate);
+    },
+
     toCanvasCoords: (viewX, viewY) => {
         const { offset, scale } = get();
         return {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
 import ErrorBoundary from '../ErrorBoundary';
 import { getImageFromIDB } from '../../services/storage';
@@ -57,6 +58,8 @@ import { Share2, Star } from 'lucide-react';
 
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
+    const { cards, focusOnCard } = useStore();
+    const contentRef = React.useRef(null);
     let textContent = "";
     let msgImages = [];
 
@@ -145,12 +148,49 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         return container.innerHTML;
     };
 
+    // Card Reference Resolution Logic
+    const resolveCardReferences = (html) => {
+        if (!html) return '';
+
+        // Regex to match UUID: [xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx]
+        // This regex looks for UUIDs optionally wrapped in brackets
+        const uuidRegex = /\[?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\]?/gi;
+
+        return html.replace(uuidRegex, (match, id) => {
+            const card = cards.find(c => c.id === id);
+            if (card) {
+                const title = card.data?.title || "Untitled Card";
+                // Return a styled link-like span
+                return `<span class="card-ref-link text-brand-500 font-bold cursor-pointer hover:underline bg-brand-500/5 px-1.5 py-0.5 rounded-md border border-brand-500/10 shadow-sm" data-card-id="${id}">@${title}</span>`;
+            }
+            return match;
+        });
+    };
+
     const renderedHtml = React.useMemo(() => {
         if (isUser) return null;
-        return content
-            ? renderMessageContent(content, marks, capturedNotes)
-            : '';
-    }, [content, marks, capturedNotes, isUser]);
+        const html = content ? renderMessageContent(content, marks, capturedNotes) : '';
+        return resolveCardReferences(html);
+    }, [content, marks, capturedNotes, isUser, cards]);
+
+    // Handle clicks on card references
+    React.useEffect(() => {
+        const el = contentRef.current;
+        if (!el) return;
+
+        const handleClick = (e) => {
+            const link = e.target.closest('.card-ref-link');
+            if (link) {
+                const cardId = link.getAttribute('data-card-id');
+                if (cardId) {
+                    focusOnCard(cardId);
+                }
+            }
+        };
+
+        el.addEventListener('click', handleClick);
+        return () => el.removeEventListener('click', handleClick);
+    }, [focusOnCard]);
 
     return (
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
@@ -185,7 +225,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
 
 
                 {/* Message Content */}
-                <div className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem]">
+                <div className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem]" ref={contentRef}>
                     {isUser ? (
                         <div className="whitespace-pre-wrap font-sans">{textContent}</div>
                     ) : (
