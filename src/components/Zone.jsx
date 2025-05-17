@@ -3,12 +3,43 @@ import { useStore } from '../store/useStore';
 import { Trash2, GripVertical, CaseSensitive } from 'lucide-react';
 
 const COLORS = {
-    blue: { bg: 'bg-blue-100/50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-700 dark:text-blue-300' },
-    green: { bg: 'bg-emerald-100/50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-700 dark:text-emerald-300' },
-    purple: { bg: 'bg-purple-100/50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300' },
-    orange: { bg: 'bg-orange-100/50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300' },
-    red: { bg: 'bg-rose-100/50 dark:bg-rose-900/20', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-300' },
-    gray: { bg: 'bg-slate-100/50 dark:bg-slate-800/40', border: 'border-slate-200 dark:border-slate-700', text: 'text-slate-600 dark:text-slate-400' },
+    // Modern, premium glass-like aesthetic
+    blue: {
+        bg: 'bg-indigo-500/5 dark:bg-indigo-500/10',
+        border: 'border-indigo-500/20 dark:border-indigo-400/30',
+        text: 'text-indigo-600 dark:text-indigo-300',
+        ring: 'ring-indigo-500/20'
+    },
+    purple: {
+        bg: 'bg-purple-500/5 dark:bg-purple-500/10',
+        border: 'border-purple-500/20 dark:border-purple-400/30',
+        text: 'text-purple-600 dark:text-purple-300',
+        ring: 'ring-purple-500/20'
+    },
+    teal: {
+        bg: 'bg-teal-500/5 dark:bg-teal-500/10',
+        border: 'border-teal-500/20 dark:border-teal-400/30',
+        text: 'text-teal-600 dark:text-teal-300',
+        ring: 'ring-teal-500/20'
+    },
+    rose: {
+        bg: 'bg-rose-500/5 dark:bg-rose-500/10',
+        border: 'border-rose-500/20 dark:border-rose-400/30',
+        text: 'text-rose-600 dark:text-rose-300',
+        ring: 'ring-rose-500/20'
+    },
+    amber: {
+        bg: 'bg-amber-500/5 dark:bg-amber-500/10',
+        border: 'border-amber-500/20 dark:border-amber-400/30',
+        text: 'text-amber-600 dark:text-amber-300',
+        ring: 'ring-amber-500/20'
+    },
+    slate: {
+        bg: 'bg-slate-500/5 dark:bg-slate-500/10',
+        border: 'border-slate-500/20 dark:border-slate-400/30',
+        text: 'text-slate-600 dark:text-slate-300',
+        ring: 'ring-slate-500/20'
+    },
 };
 
 const Zone = ({ group, isSelected }) => {
@@ -24,25 +55,51 @@ const Zone = ({ group, isSelected }) => {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
         groupCards.forEach(c => {
-            minX = Math.min(minX, c.x);
-            minY = Math.min(minY, c.y);
-            // Assuming standard card size if not available, but usually Cards have diverse heights.
-            // For now, let's assume a rough standard or try to get dynamic size if possible.
-            // Since we don't store w/h in store explicitly for all types, we use a heuristic.
-            const cardWidth = 340; // Approx card width
-            const cardHeight = c.type === 'note' && c.data.isExpanded ? 600 : 200; // Heuristic
+            const x = c.x || 0;
+            const y = c.y || 0;
 
-            maxX = Math.max(maxX, c.x + cardWidth);
-            maxY = Math.max(maxY, c.y + cardHeight);
+            // Refined heuristic for card dimensions
+            // 1. If card has explicit width/height (e.g. resized sticky note), use it.
+            // 2. Chat Cards: Standard width ~384px (w-96). Height varies, but we can estimate 
+            //    or assume a safe minimum.
+            // 3. Sticky Notes: Standard width 256px (w-64) if not resized.
+
+            // Default widths based on type
+            let width = 320;
+            let height = 200;
+
+            if (c.type === 'note') {
+                width = c.width || 280; // slightly wider than standard w-64 (256px) to be safe
+                height = c.height || (c.data?.isExpanded ? 400 : 280);
+            } else {
+                // Chat card
+                width = 400; // w-[400px] often used
+                // Estimate height based on message content length? Hard without DOM.
+                // Let's use a generous default for now, or maybe the zone shouldn't be too tight.
+                const msgCount = c.data?.messages?.length || 0;
+                height = 200 + (msgCount * 50); // Rough growth
+                height = Math.min(height, 800); // Cap it
+            }
+
+            // If store has precise dimensions (future proofing), use them
+            if (c.width) width = c.width;
+            if (c.height) height = c.height;
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x + width);
+            maxY = Math.max(maxY, y + height);
         });
 
-        // Add padding
-        const PADDING = 60;
+        // Add generous padding for the "City district" feel
+        const PADDING_X = 80;
+        const PADDING_Y = 80;
+
         return {
-            x: minX - PADDING,
-            y: minY - PADDING - 40, // Extra top padding for title
-            width: (maxX - minX) + (PADDING * 2),
-            height: (maxY - minY) + (PADDING * 2) + 40
+            x: minX - PADDING_X,
+            y: minY - PADDING_Y - 40, // Extra for title
+            width: (maxX - minX) + (PADDING_X * 2),
+            height: (maxY - minY) + (PADDING_Y * 2) + 40
         };
     }, [cards, group.cardIds]);
 
@@ -63,16 +120,17 @@ const Zone = ({ group, isSelected }) => {
 
     return (
         <div
-            className={`absolute rounded-[2.5rem] transition-all duration-300 group
-                ${colorTheme.bg} ${colorTheme.border} border-2
-                ${isSelected ? 'ring-4 ring-brand-500/20' : ''}
+            className={`absolute rounded-[3rem] transition-all duration-500 ease-out group
+                ${colorTheme.bg} ${colorTheme.border} border
+                ${isSelected ? `ring-4 ${colorTheme.ring}` : 'hover:ring-2 hover:ring-black/5 dark:hover:ring-white/5'}
             `}
             style={{
                 left: rect.x,
                 top: rect.y,
                 width: rect.width,
                 height: rect.height,
-                zIndex: 0 // Behind everything
+                zIndex: 0, // Behind everything
+                backdropFilter: 'blur(0px)' // Performance: avoid heavy blur on large areas, use opacity
             }}
         >
             {/* Title Bar */}
@@ -107,7 +165,8 @@ const Zone = ({ group, isSelected }) => {
                             <button
                                 key={c}
                                 onClick={() => handleColorChange(c)}
-                                className={`w-3 h-3 rounded-full ${COLORS[c].bg.replace('/50', '')} border border-slate-300 hover:scale-125 transition-transform`}
+                                className={`w-3 h-3 rounded-full ${COLORS[c].bg.replace('/5', '/80').replace('dark:bg-', '')} border border-slate-300/50 hover:scale-125 transition-transform`}
+                                title={c.charAt(0).toUpperCase() + c.slice(1)}
                             />
                         ))}
                         <button
