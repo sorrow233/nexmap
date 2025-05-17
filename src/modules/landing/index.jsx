@@ -9,7 +9,12 @@ const LandingModule = () => {
     const [scrollProgress, setScrollProgress] = useState(0);
 
     // --- Global Scroll Listener ---
+    // --- Global Scroll Listener & Body Overflow Override ---
     useEffect(() => {
+        // Enable native scrolling for Landing Page
+        document.documentElement.style.overflowY = 'auto';
+        document.body.style.overflowY = 'auto';
+
         const handleScroll = () => {
             const scrTop = window.scrollY;
             const innerH = window.innerHeight;
@@ -21,7 +26,12 @@ const LandingModule = () => {
         // Initial call
         handleScroll();
 
-        return () => window.removeEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            // Revert to app-mode (no scroll) when leaving landing page
+            document.documentElement.style.overflowY = '';
+            document.body.style.overflowY = '';
+        };
     }, []);
 
     const handleAutoStart = () => {
