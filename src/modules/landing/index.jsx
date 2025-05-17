@@ -71,31 +71,31 @@ const LandingModule = () => {
 
             {/* sticky-stacking context */}
             <div className="relative z-10">
-                {/* 1. HERO - Sticky until 1.5 */}
+                {/* 1. HERO - Sticky until 1.5, now just self-contained mostly */}
                 <div className="h-[200vh] relative">
                     <div className="sticky top-0 h-screen overflow-hidden">
                         <VisualHero scrollProgress={scrollProgress} onStart={handleAutoStart} />
                     </div>
                 </div>
 
-                {/* 2. INFINITE / CHAOS - Sticky from 1.5 to 3.0 */}
-                <div className="h-[200vh] relative">
-                    <div className="sticky top-0 h-screen overflow-hidden">
-                        {/* Relative progress for this section: 0 at start, 1 at end */}
-                        <DemoInfinite scrollProgress={scrollProgress} />
-                    </div>
-                </div>
-
-                {/* 3. AI MAGIC - Sticky from 3.0 to 4.5 */}
-                <div className="h-[200vh] relative">
-                    <div className="sticky top-0 h-screen overflow-hidden">
-                        <DemoAI scrollProgress={scrollProgress} />
-                    </div>
-                </div>
-
-                {/* 4. FEATURES BENTO - Normal flow at the end */}
-                <div className="relative bg-[#050505]">
+                {/* 2. FEATURES BENTO - Moved here as requested (Pro Page) */}
+                <div className="relative bg-[#050505] z-30">
+                    {/* Added z-index to sit on top if needed, though normal flow is fine */}
                     <FeatureBento />
+                </div>
+
+                {/* 3. INFINITE / CHAOS */}
+                <div className="h-[200vh] relative">
+                    <div className="sticky top-0 h-screen overflow-hidden">
+                        <DemoInfinite />
+                    </div>
+                </div>
+
+                {/* 4. AI MAGIC */}
+                <div className="h-[200vh] relative">
+                    <div className="sticky top-0 h-screen overflow-hidden">
+                        <DemoAI />
+                    </div>
                 </div>
             </div>
 

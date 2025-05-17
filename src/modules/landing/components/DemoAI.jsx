@@ -1,15 +1,36 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Sparkles, Bot, Wand2, Lightbulb, Zap, Rocket, Target, Flag, GripHorizontal } from 'lucide-react';
 
-const DemoAI = ({ scrollProgress }) => {
-    // Scroll Timeline: 3.0 -> 4.5
-    // Normalize to 0 -> 1 for this section
-    const START = 3.0;
-    const END = 4.5;
-    const localProgress = Math.min(1, Math.max(0, (scrollProgress - START) / (END - START)));
+const DemoAI = () => {
+    const containerRef = useRef(null);
+    const [localProgress, setLocalProgress] = useState(0);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            // Same logic as DemoInfinite
+            const viewportHeight = window.innerHeight;
+            const totalScrollDistance = rect.height - viewportHeight;
+
+            if (totalScrollDistance <= 0) return;
+
+            const scrolled = -rect.top;
+            const p = Math.max(0, Math.min(1, scrolled / totalScrollDistance));
+
+            setLocalProgress(p);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Only render if we are nearby to save resources
-    if (scrollProgress < 2.5 || scrollProgress > 5.0) return null;
+    // We can check localProgress (0 means not started or finished, but here 0 means start)
+    // Actually simpler: just check rect in handleScroll maybe? 
+    // For now, let's keep rendering but use opcode opacity 0 if not needed.
+    // Optimization: if (p <= 0 || p >= 1) ... but we need to see the start/end states perfectly.
 
     // Phases
     // 0.0 - 0.25: Input Bar floats in
@@ -34,135 +55,137 @@ const DemoAI = ({ scrollProgress }) => {
     const inputFade = localProgress > 0.45 ? 1 - (localProgress - 0.45) * 8 : 1;
 
     return (
-        <div className="w-full h-full flex items-center justify-center relative perspective-[1200px] overflow-hidden">
+        <div ref={containerRef} className="w-full h-full">
+            <div className="sticky top-0 w-full h-screen flex items-center justify-center relative perspective-[1200px] overflow-hidden">
 
-            {/* Ambient Background Glow */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div
-                    className="w-[1000px] h-[1000px] bg-indigo-600/10 rounded-full blur-[100px] transition-all duration-1000"
-                    style={{
-                        opacity: localProgress > 0.2 ? 0.4 : 0,
-                        transform: `scale(${localProgress * 1.2})`
-                    }}
-                />
-            </div>
-
-            {/* 1. INPUT BAR */}
-            <div
-                className="absolute z-30 flex flex-col items-center gap-6"
-                style={{
-                    opacity: Math.max(0, inputOpacity * inputFade),
-                    transform: `translateY(${inputY}px) scale(${inputScale})`
-                }}
-            >
-                <div className="bg-[#050505]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-8 py-6 flex items-center gap-5 shadow-[0_0_50px_rgba(0,0,0,0.5)] w-[80vw] max-w-xl transition-all duration-300 hover:border-white/20">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
-                        <Sparkles className="w-5 h-5 text-blue-400 fill-blue-400" />
-                    </div>
-                    <div className="h-8 w-[1px] bg-white/10" />
-                    <div className="flex-1 text-2xl font-light text-white overflow-hidden whitespace-nowrap font-serif tracking-wide">
-                        <span className="relative">
-                            {localProgress < 0.25 ? "" : "Plan a Mars Colony..."}
-                            <span className="animate-pulse ml-1 text-blue-400">|</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* 2. THE PARTICLE EXPLOSION */}
-            <div
-                className="absolute z-20 pointer-events-none flex items-center justify-center"
-                style={{
-                    opacity: Math.max(0, processOpacity),
-                    transform: `scale(${processScale})`
-                }}
-            >
-                {/* Core Flash */}
-                <div className="w-4 h-4 bg-white rounded-full blur-[2px] shadow-[0_0_40px_white]" />
-                {/* Shockwave */}
-                <div className="absolute inset-0 w-4 h-4 border-2 border-white/50 rounded-full animate-ping" />
-                {/* Particles */}
-                {[...Array(8)].map((_, i) => (
+                {/* Ambient Background Glow */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div
-                        key={i}
-                        className="absolute w-1 h-1 bg-blue-400 rounded-full"
+                        className="w-[1000px] h-[1000px] bg-indigo-600/10 rounded-full blur-[100px] transition-all duration-1000"
                         style={{
-                            transform: `rotate(${i * 45}deg) translateX(${20 + Math.random() * 20}px)`,
-                            opacity: 0.8
+                            opacity: localProgress > 0.2 ? 0.4 : 0,
+                            transform: `scale(${localProgress * 1.2})`
                         }}
                     />
-                ))}
-            </div>
+                </div>
 
-            {/* 3. THE RESULT (High Fidelity Node Graph) */}
-            <div
-                className="absolute inset-0 flex items-center justify-center z-10 w-full h-full"
-                style={{
-                    opacity: Math.min(1, resultPhase * 3),
-                    transform: `scale(${0.8 + resultPhase * 0.2})`, // Gentle zoom in
-                }}
-            >
-                {/* BEAM CONNECTIONS (SVG) */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-                    <defs>
-                        <linearGradient id="beamGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="rgba(59, 130, 246, 0.0)" />
-                            <stop offset="50%" stopColor="rgba(59, 130, 246, 1)" />
-                            <stop offset="100%" stopColor="rgba(59, 130, 246, 0.0)" />
-                        </linearGradient>
-                        <filter id="glow">
-                            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                            <feMerge>
-                                <feMergeNode in="coloredBlur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
-                    </defs>
-                    <g style={{ opacity: resultPhase, filter: "url(#glow)" }}>
-                        <BeamConnector x1="50%" y1="50%" x2="50%" y2="25%" progress={resultPhase} color="#ef4444" />
-                        <BeamConnector x1="50%" y1="50%" x2="25%" y2="60%" progress={resultPhase} delay={0.1} color="#eab308" />
-                        <BeamConnector x1="50%" y1="50%" x2="75%" y2="60%" progress={resultPhase} delay={0.1} color="#3b82f6" />
+                {/* 1. INPUT BAR */}
+                <div
+                    className="absolute z-30 flex flex-col items-center gap-6"
+                    style={{
+                        opacity: Math.max(0, inputOpacity * inputFade),
+                        transform: `translateY(${inputY}px) scale(${inputScale})`
+                    }}
+                >
+                    <div className="bg-[#050505]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-8 py-6 flex items-center gap-5 shadow-[0_0_50px_rgba(0,0,0,0.5)] w-[80vw] max-w-xl transition-all duration-300 hover:border-white/20">
+                        <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
+                            <Sparkles className="w-5 h-5 text-blue-400 fill-blue-400" />
+                        </div>
+                        <div className="h-8 w-[1px] bg-white/10" />
+                        <div className="flex-1 text-2xl font-light text-white overflow-hidden whitespace-nowrap font-serif tracking-wide">
+                            <span className="relative">
+                                {localProgress < 0.25 ? "" : "Plan a Mars Colony..."}
+                                <span className="animate-pulse ml-1 text-blue-400">|</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-                        <BeamConnector x1="75%" y1="60%" x2="85%" y2="80%" progress={resultPhase} delay={0.3} color="#a855f7" />
-                        <BeamConnector x1="25%" y1="60%" x2="15%" y2="80%" progress={resultPhase} delay={0.3} color="#06b6d4" />
-                    </g>
-                </svg>
+                {/* 2. THE PARTICLE EXPLOSION */}
+                <div
+                    className="absolute z-20 pointer-events-none flex items-center justify-center"
+                    style={{
+                        opacity: Math.max(0, processOpacity),
+                        transform: `scale(${processScale})`
+                    }}
+                >
+                    {/* Core Flash */}
+                    <div className="w-4 h-4 bg-white rounded-full blur-[2px] shadow-[0_0_40px_white]" />
+                    {/* Shockwave */}
+                    <div className="absolute inset-0 w-4 h-4 border-2 border-white/50 rounded-full animate-ping" />
+                    {/* Particles */}
+                    {[...Array(8)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute w-1 h-1 bg-blue-400 rounded-full"
+                            style={{
+                                transform: `rotate(${i * 45}deg) translateX(${20 + Math.random() * 20}px)`,
+                                opacity: 0.8
+                            }}
+                        />
+                    ))}
+                </div>
 
-                {/* CENTRAL NODE */}
-                <GlassNode
-                    title="Mars Colony"
-                    icon={Rocket}
-                    accent="blue"
-                    x={0} y={0}
-                    scale={1.5}
-                    phase={resultPhase}
-                />
+                {/* 3. THE RESULT (High Fidelity Node Graph) */}
+                <div
+                    className="absolute inset-0 flex items-center justify-center z-10 w-full h-full"
+                    style={{
+                        opacity: Math.min(1, resultPhase * 3),
+                        transform: `scale(${0.8 + resultPhase * 0.2})`, // Gentle zoom in
+                    }}
+                >
+                    {/* BEAM CONNECTIONS (SVG) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                        <defs>
+                            <linearGradient id="beamGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="rgba(59, 130, 246, 0.0)" />
+                                <stop offset="50%" stopColor="rgba(59, 130, 246, 1)" />
+                                <stop offset="100%" stopColor="rgba(59, 130, 246, 0.0)" />
+                            </linearGradient>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <g style={{ opacity: resultPhase, filter: "url(#glow)" }}>
+                            <BeamConnector x1="50%" y1="50%" x2="50%" y2="25%" progress={resultPhase} color="#ef4444" />
+                            <BeamConnector x1="50%" y1="50%" x2="25%" y2="60%" progress={resultPhase} delay={0.1} color="#eab308" />
+                            <BeamConnector x1="50%" y1="50%" x2="75%" y2="60%" progress={resultPhase} delay={0.1} color="#3b82f6" />
 
-                {/* LEVEL 1 NODES */}
-                <GlassNode title="Habitat" icon={Target} accent="rose" x={0} y={-250} phase={resultPhase} delay={0.1} />
-                <GlassNode title="Resources" icon={Zap} accent="amber" x={-300} y={150} phase={resultPhase} delay={0.2} />
-                <GlassNode title="Transport" icon={Flag} accent="indigo" x={300} y={150} phase={resultPhase} delay={0.25} />
+                            <BeamConnector x1="75%" y1="60%" x2="85%" y2="80%" progress={resultPhase} delay={0.3} color="#a855f7" />
+                            <BeamConnector x1="25%" y1="60%" x2="15%" y2="80%" progress={resultPhase} delay={0.3} color="#06b6d4" />
+                        </g>
+                    </svg>
 
-                {/* LEVEL 2 NODES */}
-                <GlassNode title="Life Support" icon={Lightbulb} accent="cyan" x={-400} y={350} scale={0.85} phase={resultPhase} delay={0.4} />
-                <GlassNode title="Propulsion" icon={Wand2} accent="purple" x={450} y={350} scale={0.85} phase={resultPhase} delay={0.45} />
+                    {/* CENTRAL NODE */}
+                    <GlassNode
+                        title="Mars Colony"
+                        icon={Rocket}
+                        accent="blue"
+                        x={0} y={0}
+                        scale={1.5}
+                        phase={resultPhase}
+                    />
 
-            </div>
+                    {/* LEVEL 1 NODES */}
+                    <GlassNode title="Habitat" icon={Target} accent="rose" x={0} y={-250} phase={resultPhase} delay={0.1} />
+                    <GlassNode title="Resources" icon={Zap} accent="amber" x={-300} y={150} phase={resultPhase} delay={0.2} />
+                    <GlassNode title="Transport" icon={Flag} accent="indigo" x={300} y={150} phase={resultPhase} delay={0.25} />
 
-            {/* Dynamic Heading Text */}
-            <div
-                className="absolute top-24 left-0 right-0 text-center z-40 transition-all duration-700 ease-out"
-                style={{
-                    opacity: localProgress > 0.1 ? 1 : 0,
-                    transform: `translateY(${localProgress > 0.1 ? 0 : -30}px)`
-                }}
-            >
-                <h2 className="text-5xl md:text-8xl font-bold text-white tracking-tighter mb-4 drop-shadow-2xl">
-                    {localProgress > 0.55 ? "Structure from Chaos." : "Words become Reality."}
-                </h2>
-                <p className="text-gray-400 text-xl font-light tracking-wide uppercase">
-                    AI-Powered Brainstorming
-                </p>
+                    {/* LEVEL 2 NODES */}
+                    <GlassNode title="Life Support" icon={Lightbulb} accent="cyan" x={-400} y={350} scale={0.85} phase={resultPhase} delay={0.4} />
+                    <GlassNode title="Propulsion" icon={Wand2} accent="purple" x={450} y={350} scale={0.85} phase={resultPhase} delay={0.45} />
+
+                </div>
+
+                {/* Dynamic Heading Text */}
+                <div
+                    className="absolute top-24 left-0 right-0 text-center z-40 transition-all duration-700 ease-out"
+                    style={{
+                        opacity: localProgress > 0.1 ? 1 : 0,
+                        transform: `translateY(${localProgress > 0.1 ? 0 : -30}px)`
+                    }}
+                >
+                    <h2 className="text-5xl md:text-8xl font-bold text-white tracking-tighter mb-4 drop-shadow-2xl">
+                        {localProgress > 0.55 ? "Structure from Chaos." : "Words become Reality."}
+                    </h2>
+                    <p className="text-gray-400 text-xl font-light tracking-wide uppercase">
+                        AI-Powered Brainstorming
+                    </p>
+                </div>
             </div>
         </div>
     );
