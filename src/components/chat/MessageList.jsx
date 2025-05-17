@@ -29,7 +29,7 @@ export default function MessageList({
         <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors"
+            className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y"
         >
             <div className="reader-width">
                 {card.type === 'note' ? (
@@ -37,7 +37,7 @@ export default function MessageList({
                         <textarea
                             value={card.data.content || ''}
                             onChange={(e) => onUpdate(card.id, (currentData) => ({ ...currentData, content: e.target.value }))}
-                            className="w-full bg-transparent border-none outline-none font-lxgw leading-[2.5] text-[1.1rem] text-slate-800 dark:text-slate-100 resize-none h-[calc(100vh-320px)] custom-scrollbar"
+                            className="w-full bg-transparent border-none outline-none font-lxgw leading-[2.5] text-[1.1rem] text-slate-800 dark:text-slate-100 resize-none h-[calc(100vh-320px)] custom-scrollbar ios-scroll-fix touch-pan-y"
                             placeholder="Start writing..."
                         />
                     </div>
