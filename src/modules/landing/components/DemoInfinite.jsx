@@ -21,10 +21,31 @@ const DemoInfinite = () => {
             if (totalScrollDistance <= 0) return;
 
             // rect.top is position of container top relative to viewport top
+            // 1. Approach Phase: rect.top enters from bottom (viewportHeight) -> 0
+            // 2. Sticky Phase: rect.top stays at 0 (or close) for a long time
+            // 3. Exit Phase: rect.top goes negative
+
+            // We want to map the WHOLE lifecycle.
+            // But 'localProgress' as implemented was: 0 when rect.top = 0, 1 when rect.top = -totalScrollDistance
+            // This means during approach, localProgress was 0.
+
+            // Fix: We manually handle "entrance" animation using rect.top directly.
+            const distFromTop = rect.top;
+            const entered = distFromTop < viewportHeight;
+            const left = distFromTop < -totalScrollDistance;
+
+            // Main scroll progress (0 to 1) for the sticky internal animation
             const scrolled = -rect.top;
             const p = Math.max(0, Math.min(1, scrolled / totalScrollDistance));
-
             setLocalProgress(p);
+
+            // Calculate entrance progress (0 when just entered, 1 when at top)
+            // Used for fading in
+            if (containerRef.current) {
+                const entrance = 1 - Math.max(0, Math.min(1, distFromTop / (viewportHeight * 0.5))); // Animate over last 50% of viewport
+                containerRef.current.style.setProperty('--entrance-opacity', entrance);
+                containerRef.current.style.setProperty('--entrance-scale', 0.8 + (0.2 * entrance));
+            }
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
@@ -59,13 +80,15 @@ const DemoInfinite = () => {
     const easedSort = sortProgress < 0.5 ? 2 * sortProgress * sortProgress : -1 + (4 - 2 * sortProgress) * sortProgress;
 
     const scale = localProgress > 0.8 ? 1 - (localProgress - 0.8) * 0.5 : 1;
-    const opacity = localProgress > 0.9 ? 1 - (localProgress - 0.9) * 10 : 1;
-
     return (
         <div ref={containerRef} className="h-[200vh] relative">
             <div
                 className="sticky top-0 w-full h-screen flex items-center justify-center relative perspective-[1000px] overflow-hidden bg-[#050505]"
-                style={{ opacity }}
+                style={{
+                    opacity: 'var(--entrance-opacity, 0)',
+                    transform: 'scale(var(--entrance-scale, 0.8))',
+                    transition: 'opacity 0.1s linear, transform 0.1s linear'
+                }}
             >
                 {/* Background Grain/Gradient */}
                 <div className="absolute inset-0 pointer-events-none">
