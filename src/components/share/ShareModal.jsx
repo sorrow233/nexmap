@@ -26,19 +26,26 @@ export default function ShareModal({ isOpen, onClose, content }) {
             // Wait a moment for any renders
             await new Promise(resolve => setTimeout(resolve, 100));
 
+            const isTechTheme = theme === 'tech';
+
             const canvas = await html2canvas(captureRef.current, {
-                scale: 2, // High resolution (Retina)
-                backgroundColor: null, // Allow transparency if needed (though we set bg)
+                scale: 3, // Increased resolution for better clarity
+                backgroundColor: isTechTheme ? '#020617' : '#ffffff', // Explicit background
                 logging: false,
-                useCORS: true // For images if any
+                useCORS: true
             });
 
-            const image = canvas.toDataURL("image/png");
+            // Use JPEG for tech theme (handles gradients better/smaller size), PNG for business (crisp text)
+            const fileType = isTechTheme ? 'image/jpeg' : 'image/png';
+            const fileExt = isTechTheme ? 'jpg' : 'png';
+            const quality = isTechTheme ? 0.95 : undefined;
+
+            const image = canvas.toDataURL(fileType, quality);
 
             // Create download link
             const link = document.createElement('a');
             link.href = image;
-            link.download = `neural-insight-${Date.now()}.png`;
+            link.download = `neural-insight-${Date.now()}.${fileExt}`;
             link.click();
         } catch (err) {
             console.error("Capture failed:", err);
