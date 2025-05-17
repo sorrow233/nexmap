@@ -15,6 +15,8 @@ export const createContentSlice = (set, get) => {
     return {
         cards: [],
         connections: [],
+        groups: [], // NEW: Groups/Zones state
+        generatingCardIds: new Set(),
         generatingCardIds: new Set(),
         expandedCardId: null,
 
@@ -23,6 +25,9 @@ export const createContentSlice = (set, get) => {
         })),
         setConnections: (connectionsOrUpdater) => set((state) => ({
             connections: typeof connectionsOrUpdater === 'function' ? connectionsOrUpdater(state.connections) : connectionsOrUpdater
+        })),
+        setGroups: (valOrUpdater) => set((state) => ({
+            groups: typeof valOrUpdater === 'function' ? valOrUpdater(state.groups) : valOrUpdater
         })),
         setGeneratingCardIds: (valOrUpdater) => set((state) => ({
             generatingCardIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.generatingCardIds) : valOrUpdater
@@ -155,6 +160,34 @@ export const createContentSlice = (set, get) => {
             }
         },
 
+        // --- Group Actions ---
+        createGroup: (cardIds, title = 'New Zone') => set(state => {
+            const newGroup = {
+                id: uuid(),
+                title,
+                cardIds,
+                color: 'blue' // Default color
+            };
+            return {
+                groups: [...state.groups, newGroup],
+                selectedIds: [] // Deselect cards after grouping
+            };
+        }),
+
+        updateGroup: (id, updater) => set(state => ({
+            groups: state.groups.map(g => g.id === id ? { ...g, ...updater } : g)
+        })),
+
+        deleteGroup: (id) => set(state => ({
+            groups: state.groups.filter(g => g.id !== id)
+        })),
+
+        // Helper to get connected network (moved from handleCardMove to be exposed)
+        getConnectedCards: (startId) => {
+            const { connections } = get();
+            return Array.from(getConnectedGraph(startId, connections));
+        },
+
         handleBatchDelete: () => {
             const { selectedIds } = get();
             if (selectedIds.length === 0) return;
@@ -164,6 +197,18 @@ export const createContentSlice = (set, get) => {
                 connections: state.connections.filter(conn =>
                     selectedIds.indexOf(conn.from) === -1 && selectedIds.indexOf(conn.to) === -1
                 ),
+                selectedIds: [],
+                cards: state.cards.filter(c => selectedIds.indexOf(c.id) === -1),
+                connections: state.connections.filter(conn =>
+                    selectedIds.indexOf(conn.from) === -1 && selectedIds.indexOf(conn.to) === -1
+                ),
+                // Clean up groups that might lose all their cards? 
+                // Currently we keep empty groups or groups with missing cards, 
+                // but let's filter cardIds inside groups to keep it clean.
+                groups: state.groups.map(g => ({
+                    ...g,
+                    cardIds: g.cardIds.filter(id => selectedIds.indexOf(id) === -1)
+                })).filter(g => g.cardIds.length > 0), // Remove empty groups
                 selectedIds: [],
                 expandedCardId: selectedIds.indexOf(state.expandedCardId) !== -1 ? null : state.expandedCardId
             }));

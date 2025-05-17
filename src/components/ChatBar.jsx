@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus } from 'lucide-react';
+import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Frame, Network } from 'lucide-react';
 
 /**
  * ChatBar Component - Isolated input bar to prevent parent re-renders during typing
@@ -19,7 +19,9 @@ const ChatBar = React.memo(function ChatBar({
     onImageUpload,
     globalImages,
     onRemoveImage,
-    onBatchChat
+    onBatchChat,
+    onGroup, // New prop
+    onSelectConnected // New prop
 }) {
     const [promptInput, setPromptInput] = useState('');
     const globalPromptInputRef = useRef(null);
@@ -112,6 +114,27 @@ const ChatBar = React.memo(function ChatBar({
                                     <span className="text-[10px] font-bold uppercase tracking-tighter">Topics</span>
                                 </button>
                             )}
+
+                            {/* Selection Actions (Group / Connect) */}
+                            {selectedIds.length > 0 && (
+                                <>
+                                    <div className="w-px h-6 bg-white/10 mx-1" />
+                                    <button
+                                        onClick={() => onSelectConnected(selectedIds[0])}
+                                        className="p-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
+                                        title="Select Connected Cluster"
+                                    >
+                                        <Network size={20} />
+                                    </button>
+                                    <button
+                                        onClick={() => onGroup(selectedIds)}
+                                        className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-full transition-all"
+                                        title="Create Zone (Group)"
+                                    >
+                                        <Frame size={20} />
+                                    </button>
+                                </>
+                            )}
                         </div>
 
                         {/* Input Area */}
@@ -181,7 +204,7 @@ const ChatBar = React.memo(function ChatBar({
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 });
 

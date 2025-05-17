@@ -31,7 +31,10 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         updateCardContent,
         offset,
         scale,
-        toggleFavorite, favoritesLastUpdate // For ChatModal favorites
+        toggleFavorite, favoritesLastUpdate, // For ChatModal favorites
+        createGroup, // NEW: Group action
+        getConnectedCards, // NEW: Helper
+        setSelectedIds // Need this for select connected
     } = useStore();
 
     const {
@@ -224,6 +227,14 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         }
     };
 
+    const handleSelectConnected = (startId) => {
+        const connectedIds = getConnectedCards(startId);
+        // Include the start card itself if not already included (graphUtils usually returns visited set including start)
+        // Ensure unique
+        const uniqueIds = Array.from(new Set([...connectedIds, startId]));
+        setSelectedIds(uniqueIds);
+    };
+
     return (
         <React.Fragment>
             <ErrorBoundary level="canvas">
@@ -320,6 +331,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 onImageUpload={handleGlobalImageUpload}
                 globalImages={globalImages}
                 onRemoveImage={removeGlobalImage}
+                onGroup={(ids) => createGroup(ids)}
+                onSelectConnected={handleSelectConnected}
             />
 
             {selectedIds.length > 0 && (
