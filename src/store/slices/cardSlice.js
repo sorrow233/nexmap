@@ -29,11 +29,8 @@ export const createCardSlice = (set, get) => ({
         set((state) => ({
             cards: [...state.cards, newCard]
         }));
-
-        // Auto-add to zone if inside one
-        setTimeout(() => {
-            get().autoAddCardToZone?.(newCard.id, newCard.x, newCard.y);
-        }, 50);
+        // Removed: position-based auto-add to zone
+        // Cards now only join zones via connections
     },
 
     updateCard: (id, updater) => {

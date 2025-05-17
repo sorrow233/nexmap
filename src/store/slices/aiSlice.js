@@ -94,10 +94,8 @@ export const createAISlice = (set, get) => {
                 generatingCardIds: new Set(state.generatingCardIds).add(newId)
             }));
 
-            // Auto-add to zone if card is inside one
-            setTimeout(() => {
-                get().autoAddCardToZone?.(newId, x, y);
-            }, 50);
+            // Removed: position-based auto-add to zone
+            // Cards now only join zones via connections
 
             return newId;
         },
@@ -112,6 +110,25 @@ export const createAISlice = (set, get) => {
                 const neighborIds = Array.from(visited).filter(id => id !== cardId);
 
                 let contextMessages = [];
+
+                // Add current time in Japan timezone
+                const now = new Date();
+                const japanTime = new Intl.DateTimeFormat('ja-JP', {
+                    timeZone: 'Asia/Tokyo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    weekday: 'long'
+                }).format(now);
+
+                contextMessages.push({
+                    role: 'system',
+                    content: `[System] Current time in Japan (JST/UTC+9): ${japanTime}`
+                });
+
                 if (neighborIds.length > 0) {
                     const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
                     const contextText = neighbors.map(c =>
@@ -130,7 +147,43 @@ export const createAISlice = (set, get) => {
                     }
                 }
 
-                const fullMessages = [...contextMessages, ...messages];
+                // Inject current time and search instructions
+                const currentTime = new Date().toLocaleString('zh-CN', {
+                    timeZone: 'Asia/Tokyo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+
+                const systemMessage = {
+                    role: 'system',
+                    content: `SYSTEM CONTEXT (Current Time: ${currentTime} JST)
+
+CRITICAL INSTRUCTIONS:
+1. The current date and time is: ${currentTime} (Japan Standard Time, UTC+9)
+2. Before answering ANY question, especially those involving:
+   - Current events or news
+   - Recent developments
+   - Time-sensitive information
+   - "What is happening now" type questions
+   - Any query about "today", "this week", "this month", "this year"
+   
+   YOU MUST:
+   - Use the google_search tool to find the latest information
+   - Search first, then synthesize your answer based on the search results
+   - Clearly indicate in your response when information comes from search results
+   
+3. Always consider the current time when interpreting user queries
+4. If search results are not available or relevant, proceed with your knowledge but acknowledge the limitation
+
+Remember: Fresh, accurate information is more valuable than outdated knowledge. When in doubt, search.`
+                };
+
+                const fullMessages = [systemMessage, ...contextMessages, ...messages];
                 const card = cards.find(c => c.id === cardId);
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
