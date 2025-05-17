@@ -247,7 +247,7 @@ export default function ChatView({
             className={`w-full h-full flex flex-col overflow-hidden animate-fade-in relative z-10 transition-all duration-500
                 ${isFullScreen
                     ? 'bg-white dark:bg-slate-900'
-                    : `${isSafari || isIOS ? 'bg-white dark:bg-slate-900 border-slate-300' : 'bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-200 dark:border-white/10'} sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border`
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
                 }`}
             style={{ willChange: 'transform, opacity' }}
             onMouseUp={handleTextSelection}
