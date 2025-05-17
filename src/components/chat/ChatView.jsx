@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Sparkles, Loader2, StickyNote, Sprout } from 'lucide-react';
-import { generateFollowUpTopics } from '../../services/llm';
+// import { generateFollowUpTopics } from '../../services/llm'; // Converted to dynamic import
 import { parseModelOutput } from '../../services/llm/parser';
 import { isSafari, isIOS } from '../../utils/browser';
 import { useStore } from '../../store/useStore';
@@ -58,6 +58,7 @@ export default function ChatView({
         if (isSprouting) return;
         setIsSprouting(true);
         try {
+            const { generateFollowUpTopics } = await import('../../services/llm');
             const topics = await generateFollowUpTopics(card.data.messages, config, analysisModel);
             setSproutTopics(topics);
             setSelectedTopics(topics.slice(0, 3)); // Default select first 3

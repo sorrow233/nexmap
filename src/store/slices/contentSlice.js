@@ -1,4 +1,4 @@
-import { streamChatCompletion } from '../../services/llm';
+// import { streamChatCompletion } from '../../services/llm'; // Removed - uses AIManager
 import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
 import favoritesService from '../../services/favoritesService';
 import { calculateLayout } from '../../utils/autoLayout';

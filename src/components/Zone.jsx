@@ -8,37 +8,43 @@ const COLORS = {
         bg: 'bg-indigo-500/5 dark:bg-indigo-500/10',
         border: 'border-indigo-500/20 dark:border-indigo-400/30',
         text: 'text-indigo-600 dark:text-indigo-300',
-        ring: 'ring-indigo-500/20'
+        ring: 'ring-indigo-500/20',
+        indicator: 'bg-indigo-500'
     },
     purple: {
         bg: 'bg-purple-500/5 dark:bg-purple-500/10',
         border: 'border-purple-500/20 dark:border-purple-400/30',
         text: 'text-purple-600 dark:text-purple-300',
-        ring: 'ring-purple-500/20'
+        ring: 'ring-purple-500/20',
+        indicator: 'bg-purple-500'
     },
     teal: {
         bg: 'bg-teal-500/5 dark:bg-teal-500/10',
         border: 'border-teal-500/20 dark:border-teal-400/30',
         text: 'text-teal-600 dark:text-teal-300',
-        ring: 'ring-teal-500/20'
+        ring: 'ring-teal-500/20',
+        indicator: 'bg-teal-500'
     },
     rose: {
         bg: 'bg-rose-500/5 dark:bg-rose-500/10',
         border: 'border-rose-500/20 dark:border-rose-400/30',
         text: 'text-rose-600 dark:text-rose-300',
-        ring: 'ring-rose-500/20'
+        ring: 'ring-rose-500/20',
+        indicator: 'bg-rose-500'
     },
     amber: {
         bg: 'bg-amber-500/5 dark:bg-amber-500/10',
         border: 'border-amber-500/20 dark:border-amber-400/30',
         text: 'text-amber-600 dark:text-amber-300',
-        ring: 'ring-amber-500/20'
+        ring: 'ring-amber-500/20',
+        indicator: 'bg-amber-500'
     },
     slate: {
         bg: 'bg-slate-500/5 dark:bg-slate-500/10',
         border: 'border-slate-500/20 dark:border-slate-400/30',
         text: 'text-slate-600 dark:text-slate-300',
-        ring: 'ring-slate-500/20'
+        ring: 'ring-slate-500/20',
+        indicator: 'bg-slate-500'
     },
 };
 
@@ -165,7 +171,7 @@ const Zone = ({ group, isSelected }) => {
                             <button
                                 key={c}
                                 onClick={() => handleColorChange(c)}
-                                className={`w-3 h-3 rounded-full ${COLORS[c].bg.replace('/5', '/80').replace('dark:bg-', '')} border border-slate-300/50 hover:scale-125 transition-transform`}
+                                className={`w-3 h-3 rounded-full ${COLORS[c].indicator} border border-slate-300/50 hover:scale-125 transition-transform`}
                                 title={c.charAt(0).toUpperCase() + c.slice(1)}
                             />
                         ))}
