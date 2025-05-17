@@ -34,7 +34,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         toggleFavorite, favoritesLastUpdate, // For ChatModal favorites
         createGroup, // NEW: Group action
         getConnectedCards, // NEW: Helper
-        setSelectedIds // Need this for select connected
+        setSelectedIds, // Need this for select connected
+        arrangeSelectionGrid // NEW: Grid Layout
     } = useStore();
 
     const {
@@ -333,6 +334,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 onRemoveImage={removeGlobalImage}
                 onGroup={(ids) => createGroup(ids)}
                 onSelectConnected={handleSelectConnected}
+                onLayoutGrid={arrangeSelectionGrid} // Wire up the action
             />
 
             {selectedIds.length > 0 && (

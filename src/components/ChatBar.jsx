@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Frame, Network } from 'lucide-react';
+import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Frame, Network, LayoutGrid } from 'lucide-react';
 
 /**
  * ChatBar Component - Isolated input bar to prevent parent re-renders during typing
@@ -20,8 +20,10 @@ const ChatBar = React.memo(function ChatBar({
     globalImages,
     onRemoveImage,
     onBatchChat,
+
     onGroup, // New prop
-    onSelectConnected // New prop
+    onSelectConnected, // New prop
+    onLayoutGrid // New prop
 }) {
     const [promptInput, setPromptInput] = useState('');
     const globalPromptInputRef = useRef(null);
@@ -133,11 +135,19 @@ const ChatBar = React.memo(function ChatBar({
                                     >
                                         <Frame size={20} />
                                     </button>
+                                    <button
+                                        onClick={() => onLayoutGrid && onLayoutGrid()}
+                                        className="p-2 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 rounded-full transition-all"
+                                        title="Grid Layout"
+                                    >
+                                        <LayoutGrid size={20} />
+                                    </button>
                                 </>
                             )}
                         </div>
 
                         {/* Input Area */}
+
                         <div className="flex-1 relative">
                             <textarea
                                 ref={globalPromptInputRef}
