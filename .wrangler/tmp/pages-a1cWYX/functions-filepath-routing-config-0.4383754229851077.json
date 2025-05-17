@@ -1,0 +1,29 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/gmi-proxy",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/gmi-proxy.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/image-gen",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/image-gen.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/image-proxy",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/image-proxy.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
