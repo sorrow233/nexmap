@@ -3,7 +3,11 @@ import { temporal } from 'zundo';
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 
 import { createCanvasSlice } from './slices/canvasSlice';
-import { createContentSlice } from './slices/contentSlice';
+import { createCardSlice } from './slices/cardSlice';
+import { createConnectionSlice } from './slices/connectionSlice';
+import { createGroupSlice } from './slices/groupSlice';
+import { createSelectionSlice } from './slices/selectionSlice';
+import { createAISlice } from './slices/aiSlice';
 import { createSettingsSlice } from './slices/settingsSlice';
 import { createShareSlice } from './slices/shareSlice';
 
@@ -13,7 +17,11 @@ const useStoreBase = create(
     temporal(
         (set, get) => ({
             ...createCanvasSlice(set, get),
-            ...createContentSlice(set, get),
+            ...createCardSlice(set, get),
+            ...createConnectionSlice(set, get),
+            ...createGroupSlice(set, get),
+            ...createSelectionSlice(set, get),
+            ...createAISlice(set, get),
             ...createSettingsSlice(set, get),
             ...createShareSlice(set, get)
         }),

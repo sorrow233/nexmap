@@ -18,7 +18,7 @@ export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
     const [isInitialized, setIsInitialized] = useState(false);
-    const { setCards } = useStore();
+    const { setCards, setConnections, setGroups } = useStore();
     const location = useLocation();
 
     // Load initial boards metadata
@@ -58,7 +58,11 @@ export function useAppInit() {
                     const currentActiveId = localStorage.getItem('mixboard_current_board_id');
                     if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
                         loadBoard(currentActiveId).then(data => {
-                            if (data && data.cards) setCards(data.cards);
+                            if (data) {
+                                if (data.cards) setCards(data.cards);
+                                if (data.connections) setConnections(data.connections);
+                                if (data.groups) setGroups(data.groups);
+                            }
                         });
                     }
                 });

@@ -85,18 +85,10 @@ const LandingModule = () => {
                 </div>
 
                 {/* 3. INFINITE / CHAOS */}
-                <div className="h-[200vh] relative">
-                    <div className="sticky top-0 h-screen overflow-hidden">
-                        <DemoInfinite />
-                    </div>
-                </div>
+                <DemoInfinite />
 
                 {/* 4. AI MAGIC */}
-                <div className="h-[200vh] relative">
-                    <div className="sticky top-0 h-screen overflow-hidden">
-                        <DemoAI />
-                    </div>
-                </div>
+                <DemoAI />
             </div>
 
             {/* Persistent CTA Bottom Bar */}

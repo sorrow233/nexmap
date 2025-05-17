@@ -39,8 +39,8 @@ const DemoAI = () => {
     // 0.60 - 1.00: Result fan out (Nodes & Beams)
 
     // 1. Input Appearance
-    const inputOpacity = localProgress < 0.1 ? localProgress * 10 : 1;
-    const inputScale = localProgress < 0.1 ? 0.8 + (localProgress * 2) : 1;
+    const inputOpacity = 1;
+    const inputScale = 1;
 
     // 2. Processing (0.45 start)
     const isProcessing = localProgress > 0.40 && localProgress < 0.65;
@@ -55,7 +55,7 @@ const DemoAI = () => {
     const inputFade = localProgress > 0.45 ? 1 - (localProgress - 0.45) * 8 : 1;
 
     return (
-        <div ref={containerRef} className="w-full h-full">
+        <div ref={containerRef} className="h-[200vh] relative">
             <div className="sticky top-0 w-full h-screen flex items-center justify-center relative perspective-[1200px] overflow-hidden">
 
                 {/* Ambient Background Glow */}
@@ -175,7 +175,7 @@ const DemoAI = () => {
                 <div
                     className="absolute top-24 left-0 right-0 text-center z-40 transition-all duration-700 ease-out"
                     style={{
-                        opacity: localProgress > 0.1 ? 1 : 0,
+                        opacity: 1,
                         transform: `translateY(${localProgress > 0.1 ? 0 : -30}px)`
                     }}
                 >
