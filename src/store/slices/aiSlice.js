@@ -147,43 +147,8 @@ export const createAISlice = (set, get) => {
                     }
                 }
 
-                // Inject current time and search instructions
-                const currentTime = new Date().toLocaleString('zh-CN', {
-                    timeZone: 'Asia/Tokyo',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                });
 
-                const systemMessage = {
-                    role: 'system',
-                    content: `SYSTEM CONTEXT (Current Time: ${currentTime} JST)
-
-CRITICAL INSTRUCTIONS:
-1. The current date and time is: ${currentTime} (Japan Standard Time, UTC+9)
-2. Before answering ANY question, especially those involving:
-   - Current events or news
-   - Recent developments
-   - Time-sensitive information
-   - "What is happening now" type questions
-   - Any query about "today", "this week", "this month", "this year"
-   
-   YOU MUST:
-   - Use the google_search tool to find the latest information
-   - Search first, then synthesize your answer based on the search results
-   - Clearly indicate in your response when information comes from search results
-   
-3. Always consider the current time when interpreting user queries
-4. If search results are not available or relevant, proceed with your knowledge but acknowledge the limitation
-
-Remember: Fresh, accurate information is more valuable than outdated knowledge. When in doubt, search.`
-                };
-
-                const fullMessages = [systemMessage, ...contextMessages, ...messages];
+                const fullMessages = [...contextMessages, ...messages];
                 const card = cards.find(c => c.id === cardId);
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
@@ -215,7 +180,6 @@ Remember: Fresh, accurate information is more valuable than outdated knowledge. 
                         model,
                         temperature: undefined,
                         config, // Pass config explicitly
-                        options: { enforceSearch: true } // <-- Enforce Search for Main Chat
                     },
                     tags: [`card:${cardId}`], // Cancel any previous generation for this card
                     onProgress: (chunk) => {

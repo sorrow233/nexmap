@@ -239,7 +239,7 @@ export function useCardCreator() {
         let contextPrefix = "";
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         if (contextCards.length > 0) {
-            contextPrefix = `[System Context: You are referencing multiple linked cards. IMPORTANT: When you want to refer to a specific card's content, ALWAYS use its ID in brackets like [cd14af...]. The system will automatically convert these IDs into clickable titles for the user. Do NOT write the titles yourself in the reference, just the ID.]\n\n${contextCards.map(c => `- Card "${c.data.title}" -> ID: [${c.id}]`).join('\n')}\n\n---\n\n`;
+            contextPrefix = `${contextCards.map(c => `Card "${c.data.title}" [${c.id}]`).join('\n')}\n\n---\n\n`;
         }
 
         await _generateAICard(text, targetX, targetY, images, contextPrefix);

@@ -66,15 +66,13 @@ export async function generateFollowUpTopics(messages, config, model = null, opt
 
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        // Create a focused system prompt that forces search
+        // Create a focused prompt for follow-up questions
         const finalPrompt = `CONTEXT:
 ${contextText}
 
 TASK: Based on the conversation history above, predict exactly 5 follow-up questions a user would naturally ask next.
 
-CRITICAL INSTRUCTION:
-You MUST FIRST use the 'google_search' tool to find the most recent updates, trends, or related discussions about the topics mentioned in the conversation.
-Do NOT just hallucinate questions. Base the questions on REAL, CURRENT trends or deeper technical details found via search.
+Generate thoughtful, relevant questions that would help deepen understanding or explore related aspects of the topic discussed.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON array with exactly 5 question strings.
@@ -86,7 +84,7 @@ Example: ["How does this compare to X?", "What is the pricing?", ...]`;
             [{ role: 'user', content: finalPrompt }],
             config,
             model,
-            { ...options, enforceSearch: true } // <-- Enforce Search for Sprout
+            options
         );
         // console.log('[Sprout Debug] Raw AI response:', response);
 
