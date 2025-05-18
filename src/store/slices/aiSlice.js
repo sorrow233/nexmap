@@ -214,7 +214,8 @@ Remember: Fresh, accurate information is more valuable than outdated knowledge. 
                         messages: fullMessages,
                         model,
                         temperature: undefined,
-                        config // Pass config explicitly
+                        config, // Pass config explicitly
+                        options: { enforceSearch: true } // <-- Enforce Search for Main Chat
                     },
                     tags: [`card:${cardId}`], // Cancel any previous generation for this card
                     onProgress: (chunk) => {

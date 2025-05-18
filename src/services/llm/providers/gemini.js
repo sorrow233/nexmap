@@ -43,6 +43,7 @@ export class GeminiProvider extends LLMProvider {
         return { contents, systemInstruction };
     }
 
+
     async chat(messages, model, options = {}) {
         const { apiKey, baseUrl } = this.config;
         const modelToUse = model || this.config.model;
@@ -65,6 +66,9 @@ export class GeminiProvider extends LLMProvider {
         }
 
         let retries = 3;
+        // Increase retries if we are enforcing search to allow for "no-search" failures and retries
+        if (options.enforceSearch) retries = 5;
+
         while (retries >= 0) {
             try {
                 const response = await fetch('/api/gmi-proxy', {
@@ -81,6 +85,24 @@ export class GeminiProvider extends LLMProvider {
 
                 if (response.ok) {
                     const data = await response.json();
+
+                    // Enforce Search Check
+                    if (options.enforceSearch) {
+                        const candidate = data.candidates?.[0];
+                        const groundingMetadata = candidate?.groundingMetadata;
+                        // specific check for search entry point or chunks, but existence of object is usually enough
+                        if (!groundingMetadata) {
+                            console.warn(`[Gemini] Enforce Search: No grounding metadata found. Retrying... (${retries} retries left)`);
+                            if (retries > 0) {
+                                await new Promise(r => setTimeout(r, 1000));
+                                retries--;
+                                continue;
+                            } else {
+                                throw new Error("Search execution failed: AI did not perform the required search.");
+                            }
+                        }
+                    }
+
                     return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
                 }
 
@@ -92,7 +114,12 @@ export class GeminiProvider extends LLMProvider {
                 const err = await response.json().catch(() => ({}));
                 throw new Error(err.error?.message || response.statusText);
             } catch (e) {
-                if (retries > 0) { retries--; await new Promise(r => setTimeout(r, 2000)); continue; }
+                if (retries > 0) {
+                    // If it was our forced error, we already decremented/handled logic, but let's just safety wait
+                    await new Promise(r => setTimeout(r, 2000));
+                    retries--;
+                    continue;
+                }
                 throw e;
             }
         }
@@ -120,11 +147,12 @@ export class GeminiProvider extends LLMProvider {
         }
 
         let retries = 3;
+        if (options.enforceSearch) retries = 5;
         let delay = 1000;
 
         while (retries >= 0) {
             try {
-                console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel}`);
+                console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel} (EnforceSearch: ${!!options.enforceSearch})`);
                 const response = await fetch('/api/gmi-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -158,6 +186,12 @@ export class GeminiProvider extends LLMProvider {
                 const decoder = new TextDecoder();
                 let lastFullText = ''; // Track cumulative text
                 let buffer = '';
+
+                // Enforce Search State
+                let hasSeenGrounding = false;
+                let characterCount = 0;
+                let isSearchingEnforced = options.enforceSearch || false;
+                const CHECK_THRESHOLD = 50; // Check after 50 chars
 
                 try {
                     console.log('[Gemini] Stream response OK, processing chunks...');
@@ -196,29 +230,47 @@ export class GeminiProvider extends LLMProvider {
                                     throw new Error(data.error.message || JSON.stringify(data.error));
                                 }
 
+                                const candidate = data.candidates?.[0];
+
+                                // Check grounding
+                                if (candidate?.groundingMetadata) {
+                                    hasSeenGrounding = true;
+                                    // console.log("[Gemini] Grounding metadata detected.");
+                                }
+
                                 // Gemini stream format: candidate content parts
-                                const currentText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                                const currentText = candidate?.content?.parts?.[0]?.text;
 
                                 if (currentText) {
                                     // Robust Delta Calculation
-                                    // Some providers return CUMULATIVE text in chunks, others return INCREMENTAL.
-                                    // We check if currentText starts with lastFullText.
                                     let delta = '';
                                     if (currentText.startsWith(lastFullText)) {
-                                        // Cumulative mode
                                         delta = currentText.substring(lastFullText.length);
                                         lastFullText = currentText;
                                     } else {
-                                        // Incremental mode
                                         delta = currentText;
                                         lastFullText += currentText;
                                     }
 
                                     if (delta) {
+                                        characterCount += delta.length;
+
+                                        // INTERRUPT logic
+                                        if (isSearchingEnforced && !hasSeenGrounding && characterCount > CHECK_THRESHOLD) {
+                                            // We generated > 50 chars without any grounding.
+                                            // This implies no search was used (or it's extremely late).
+                                            // User requested immediate interrupt.
+                                            console.warn("[Gemini] STRICT MODE: Text generated without search. Interrupting...");
+                                            throw new Error("RETRY_NEEDED_NO_SEARCH");
+                                        }
+
                                         onToken(delta);
                                     }
                                 }
                             } catch (jsonErr) {
+                                if (jsonErr.message === "RETRY_NEEDED_NO_SEARCH") {
+                                    throw jsonErr; // Propagate up
+                                }
                                 // If parsing fails or we threw an error above, re-throw if it's our error
                                 if (jsonErr.message && !jsonErr.message.includes('JSON')) {
                                     throw jsonErr;
@@ -233,24 +285,27 @@ export class GeminiProvider extends LLMProvider {
                     if (buffer.trim()) {
                         try {
                             let cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
-
-                            // Clean up Python byte string artifacts
                             if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
                                 cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
                             }
-
                             const data = JSON.parse(cleanLine);
+                            if (data.error) throw new Error(data.error.message);
 
-                            if (data.error) {
-                                throw new Error(data.error.message || JSON.stringify(data.error));
-                            }
+                            if (data.candidates?.[0]?.groundingMetadata) hasSeenGrounding = true;
 
                             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                             if (text) {
                                 const delta = text.startsWith(lastFullText) ? text.substring(lastFullText.length) : text;
-                                if (delta) onToken(delta);
+                                if (delta) {
+                                    characterCount += delta.length;
+                                    if (isSearchingEnforced && !hasSeenGrounding && characterCount > CHECK_THRESHOLD) {
+                                        throw new Error("RETRY_NEEDED_NO_SEARCH");
+                                    }
+                                    onToken(delta);
+                                }
                             }
                         } catch (e) {
+                            if (e.message === "RETRY_NEEDED_NO_SEARCH") throw e;
                             if (e.message && !e.message.includes('JSON')) throw e;
                         }
                     }
@@ -268,6 +323,20 @@ export class GeminiProvider extends LLMProvider {
                     throw e;
                 }
 
+                // Handle our custom retry signal
+                if (e.message === "RETRY_NEEDED_NO_SEARCH") {
+                    console.warn(`[Gemini] Enforce Search failed (no metadata). Retrying stream... (${retries} left)`);
+                    if (retries > 0) {
+                        // Reset for next try
+                        await new Promise(r => setTimeout(r, 500)); // Quick backoff
+                        retries--;
+                        // We do NOT modify delay here, this is a logic retry
+                        continue;
+                    } else {
+                        throw new Error("Failed to enforce search: AI refused to search after multiple attempts.");
+                    }
+                }
+
                 if (retries > 0) {
                     console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay}ms...`);
                     await new Promise(r => setTimeout(r, delay));
@@ -279,6 +348,7 @@ export class GeminiProvider extends LLMProvider {
             }
         }
     }
+
 
     /**
      * Generate Image using GMI Cloud Async API
