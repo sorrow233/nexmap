@@ -12,14 +12,28 @@ const LandingModule = () => {
     // --- Global Scroll Listener & Body Overflow Override ---
     useEffect(() => {
         // Enable native scrolling for Landing Page
-        // We must also target #root because index.css forces it to height: 100% & overflow: hidden
-        document.documentElement.style.overflowY = 'auto';
-        document.body.style.overflowY = 'auto';
+        // CRITICAL: We must reset HEIGHT as well as OVERFLOW.
+        // The global index.css forces height: 100% on html/body/#root, which locks the viewport.
 
+        const doc = document.documentElement;
+        const body = document.body;
         const rootEl = document.getElementById('root');
+
+        // 1. Force the document to be scrollable
+        doc.style.height = 'auto';
+        doc.style.overflowY = 'auto';
+        doc.style.overflowX = 'hidden'; // Prevent horizontal scroll globally
+
+        // 2. Allow body to grow
+        body.style.height = 'auto';
+        body.style.overflowY = 'visible'; // Let html handle the scrollbar
+        body.style.overflowX = 'hidden';
+
+        // 3. Unlock root
         if (rootEl) {
-            rootEl.style.overflowY = 'visible';
             rootEl.style.height = 'auto';
+            rootEl.style.overflowY = 'visible';
+            rootEl.style.overflowX = 'hidden';
         }
 
         const handleScroll = () => {
@@ -35,13 +49,20 @@ const LandingModule = () => {
 
         return () => {
             window.removeEventListener('scroll', handleScroll);
-            // Revert to app-mode (no scroll) when leaving landing page
-            document.documentElement.style.overflowY = '';
-            document.body.style.overflowY = '';
+
+            // Revert EVERYTHING to CSS defaults (empty string removes inline style)
+            doc.style.height = '';
+            doc.style.overflowY = '';
+            doc.style.overflowX = '';
+
+            body.style.height = '';
+            body.style.overflowY = '';
+            body.style.overflowX = '';
 
             if (rootEl) {
-                rootEl.style.overflowY = '';
                 rootEl.style.height = '';
+                rootEl.style.overflowY = '';
+                rootEl.style.overflowX = '';
             }
         };
     }, []);
