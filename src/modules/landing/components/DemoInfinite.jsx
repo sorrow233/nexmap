@@ -13,38 +13,36 @@ const DemoInfinite = () => {
             const viewportHeight = window.innerHeight;
             const elementHeight = rect.height;
 
-            // Calculate progress:
-            // 0 -> Top of element enters bottom of viewport
-            // 1 -> Bottom of element enters bottom of viewport (fully visible if h=viewport)
-            // But we want a "scrollytelling" feel.
-            // Let's assume the container is tall (e.g. 200vh) or we standard mapping.
+            // Simplified Progress Logic for "Bottom of Page" scenario:
+            // We want the animation to complete when the element is significantly visible.
+            // Old logic: p = (viewportHeight - rect.top) / (viewportHeight + elementHeight)
+            // This requires the element to scroll *past* the viewport.
+            // If it's the last element, we might not be able to scroll past it if the footer isn't huge.
 
-            // Mapping:
-            // Start animation when top of element hits top of viewport (0)
-            // Finish animation when bottom of element hits bottom of viewport?
-            // Actually, let's just map "element center" or similar.
-
-            // Simpler: Map scroll relative to the element's top position.
-            // We want the effect to play as we scroll *through* it.
-            // If we make the parent sticky, we can use that.
-            // For now, let's just say:
-            // Progress 0: Element top is at viewport bottom.
-            // Progress 1: Element bottom is at viewport top.
-
-            // Refined for "Embrace Chaos":
-            // We want it to be fully "Chaos" (0) when it enters.
-            // And become "Order" (1) as we center it.
+            // New logic:
+            // 0 -> Top of element enters viewport
+            // 1 -> Top of element hits top of viewport (or slightly before/after)
 
             const totalDistance = viewportHeight + elementHeight;
             const distanceTravelled = viewportHeight - rect.top;
-            let p = distanceTravelled / totalDistance;
+
+            // Accelerate progress. 
+            // Let's make it complete when the element is mostly centered or fully in view.
+            // If rect.top <= 0, it means the top is at or above viewport top.
+            // If rect.top <= viewportHeight * 0.2, it's 80% up the screen.
+
+            // Let's calculate a "visible percentage" or simpler linear map.
+            // Map:
+            // 0% -> Element Top enters bottom (rect.top = vh)
+            // 100% -> Element Top reaches 20% from top (rect.top = vh * 0.2)
+
+            const startPoint = viewportHeight; // Progress 0
+            const endPoint = viewportHeight * 0.2; // Progress 1
+
+            let p = (startPoint - rect.top) / (startPoint - endPoint);
 
             // Clamp to 0-1
             p = Math.min(1, Math.max(0, p));
-
-            // Adjust curve so the main action happens while it's in view
-            // Let's focus the transition (0.2 to 0.8) to when the element is largely visible.
-            // We'll expand the input range slightly so it completes.
             setLocalProgress(p);
         };
 
@@ -55,8 +53,8 @@ const DemoInfinite = () => {
 
     // Animation Phases:
     // 0.0 - 0.2: Fade In (Chaos state)
-    // 0.2 - 0.8: Sorting (Move from random positions to grid)
-    // 0.8 - 1.0: Organized state fully stable + Zoom out slightly
+    // 0.2 - 0.9: Sorting (Move from random positions to grid)
+    // 0.9 - 1.0: Organized state fully stable
 
     // Generate random positions (seeded-ish by index) to avoid re-calc on every render
     const ITEMS = useMemo(() => Array.from({ length: 12 }).map((_, i) => ({
@@ -72,8 +70,9 @@ const DemoInfinite = () => {
         color: ['bg-rose-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-500'][i % 4]
     })), []);
 
-    // Normalize progress for the specific "Sort" phase (approx middle 50% of scroll)
-    const effectiveProgress = Math.max(0, localProgress - 0.2) * 1.5; // Starts at 0.2, ends at 0.86
+    // Normalize progress for the specific "Sort" phase
+    // We want sorting to finish well before the end of the scroll if possible
+    const effectiveProgress = Math.max(0, localProgress - 0.2) * 1.25;
     const sortProgress = Math.min(1, Math.max(0, effectiveProgress));
 
     // Ease in-out
