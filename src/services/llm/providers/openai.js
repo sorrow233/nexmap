@@ -60,7 +60,7 @@ export class OpenAIProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
-        let retries = 3;
+        let retries = 0; // No retries, fail fast
         let delay = 1000;
 
         while (retries >= 0) {

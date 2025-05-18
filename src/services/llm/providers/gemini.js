@@ -73,7 +73,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 3;
+        let retries = 0; // No retries, fail fast
 
         while (retries >= 0) {
             try {
@@ -141,7 +141,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 3;
+        let retries = 0; // No retries, fail fast
         let delay = 1000;
 
         while (retries >= 0) {
