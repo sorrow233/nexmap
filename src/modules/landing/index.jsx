@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import HeroSection from './components/HeroSection';
-import GraphSection from './components/GraphSection';
-import SproutSection from './components/SproutSection';
-import ConcurrencySection from './components/ConcurrencySection';
 import SpatialSection from './components/SpatialSection';
+import ConcurrencySection from './components/ConcurrencySection';
+import SproutSection from './components/SproutSection';
+import GraphSection from './components/GraphSection';
 import FooterSection from './components/FooterSection';
 
 // The New Landing Orchestrator
@@ -73,24 +73,24 @@ const LandingModule = () => {
             {/* 1. HERO */}
             <HeroSection onStart={handleStart} />
 
-            {/* 2. GRAPH CONTEXT WALKING */}
+            {/* 2. SPATIAL ORGANIZATION */}
             <div className="relative z-10 border-t border-white/5">
-                <GraphSection />
+                <SpatialSection />
             </div>
 
-            {/* 3. RECURSIVE SPROUT */}
-            <div className="relative z-10 border-t border-white/5">
-                <SproutSection />
-            </div>
-
-            {/* 4. UNLIMITED CONCURRENCY */}
+            {/* 3. UNLIMITED CONCURRENCY */}
             <div className="relative z-10 border-t border-white/5">
                 <ConcurrencySection />
             </div>
 
-            {/* 5. SPATIAL ORGANIZATION */}
+            {/* 4. RECURSIVE SPROUT */}
             <div className="relative z-10 border-t border-white/5">
-                <SpatialSection />
+                <SproutSection />
+            </div>
+
+            {/* 5. GRAPH CONTEXT WALKING */}
+            <div className="relative z-10 border-t border-white/5">
+                <GraphSection />
             </div>
 
             {/* FOOTER / FINAL CTA */}
@@ -101,4 +101,3 @@ const LandingModule = () => {
 };
 
 export default LandingModule;
-
