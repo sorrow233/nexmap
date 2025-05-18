@@ -57,7 +57,7 @@ export class GeminiProvider extends LLMProvider {
             tools: [
                 {
                     google_search: {},
-                    code_execution: {}
+                    // code_execution: {} // Confilct with google_search
                 }
             ],
             generationConfig: {
@@ -139,7 +139,7 @@ export class GeminiProvider extends LLMProvider {
             tools: [
                 {
                     google_search: {},
-                    code_execution: {}
+                    // code_execution: {} // Confilct with google_search
                 }
             ],
             generationConfig: {
