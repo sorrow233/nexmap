@@ -63,7 +63,7 @@ export class GeminiProvider extends LLMProvider {
                 temperature: options.temperature !== undefined ? options.temperature : 1.0,
                 maxOutputTokens: 65536,
                 thinkingConfig: {
-                    thinkingLevel: options.thinkingLevel || "high"
+                    thinkingLevel: options.thinkingLevel || "HIGH"
                 },
                 mediaResolution: options.mediaResolution || "media_resolution_high"
             }
@@ -131,7 +131,7 @@ export class GeminiProvider extends LLMProvider {
                 temperature: options.temperature !== undefined ? options.temperature : 1.0,
                 maxOutputTokens: 65536,
                 thinkingConfig: {
-                    thinkingLevel: options.thinkingLevel || "high"
+                    thinkingLevel: options.thinkingLevel || "HIGH"
                 },
                 mediaResolution: options.mediaResolution || "media_resolution_high"
             }
