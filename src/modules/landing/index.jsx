@@ -1,20 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import VisualHero from './components/VisualHero';
-import DemoInfinite from './components/DemoInfinite';
-import DemoAI from './components/DemoAI';
-import FeatureBento from './components/FeatureBento';
+import React, { useState, useEffect } from 'react';
+import HeroSection from './components/HeroSection';
+import GraphSection from './components/GraphSection';
+import SproutSection from './components/SproutSection';
+import ConcurrencySection from './components/ConcurrencySection';
+import SpatialSection from './components/SpatialSection';
 
-// The Orchestrator
+// The New Landing Orchestrator
 const LandingModule = () => {
-    const [scrollProgress, setScrollProgress] = useState(0);
-
-    // --- Global Scroll Listener ---
-    // --- Global Scroll Listener & Body Overflow Override ---
+    // --- Global Scroll Fix ---
+    // This ensures that the landing page overrides the app's default "hidden" overflow 
+    // which is used for the infinite canvas, allowing the user to scroll normally here.
     useEffect(() => {
-        // Enable native scrolling for Landing Page
-        // CRITICAL: We must reset HEIGHT as well as OVERFLOW.
-        // The global index.css forces height: 100% on html/body/#root, which locks the viewport.
-
         const doc = document.documentElement;
         const body = document.body;
         const rootEl = document.getElementById('root');
@@ -22,11 +18,11 @@ const LandingModule = () => {
         // 1. Force the document to be scrollable
         doc.style.height = 'auto';
         doc.style.overflowY = 'auto';
-        doc.style.overflowX = 'hidden'; // Prevent horizontal scroll globally
+        doc.style.overflowX = 'hidden';
 
         // 2. Allow body to grow
         body.style.height = 'auto';
-        body.style.overflowY = 'visible'; // Let html handle the scrollbar
+        body.style.overflowY = 'visible';
         body.style.overflowX = 'hidden';
 
         // 3. Unlock root
@@ -36,21 +32,8 @@ const LandingModule = () => {
             rootEl.style.overflowX = 'hidden';
         }
 
-        const handleScroll = () => {
-            const scrTop = window.scrollY;
-            const innerH = window.innerHeight;
-            const progress = scrTop / innerH;
-            setScrollProgress(progress);
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        // Initial call
-        handleScroll();
-
         return () => {
-            window.removeEventListener('scroll', handleScroll);
-
-            // Revert EVERYTHING to CSS defaults (empty string removes inline style)
+            // Revert to CSS defaults (empty string removes inline style)
             doc.style.height = '';
             doc.style.overflowY = '';
             doc.style.overflowX = '';
@@ -67,81 +50,67 @@ const LandingModule = () => {
         };
     }, []);
 
-    const handleAutoStart = () => {
-        window.scrollTo({ top: window.innerHeight * 1.2, behavior: 'smooth' });
+    const handleStart = () => {
+        const nextSection = window.innerHeight;
+        window.scrollTo({ top: nextSection, behavior: 'smooth' });
     };
 
     return (
-        <div
-            className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-500/30 overflow-x-hidden"
-        >
+        <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');
                 ::-webkit-scrollbar { width: 0px; background: transparent; }
                 .font-inter-tight { font-family: 'Inter Tight', sans-serif; }
                 
-                @keyframes float-slow {
-                    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-                    33% { transform: translate(10px, -10px) rotate(2deg); }
-                    66% { transform: translate(-5px, 15px) rotate(-1deg); }
+                @keyframes fade-in-up {
+                    0% { opacity: 0; transform: translateY(20px); }
+                    100% { opacity: 1; transform: translateY(0); }
                 }
-                .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
-                
-                @keyframes float-medium {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-15px); }
-                }
-                .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
+                .animate-fade-in-up { animation: fade-in-up 0.8s ease-out forwards; }
             `}</style>
 
-            {/* Global Ambient Background */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vh] bg-blue-500/10 blur-[150px] rounded-full mix-blend-screen animate-float-slow" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vh] bg-purple-500/10 blur-[150px] rounded-full mix-blend-screen animate-float-slow" style={{ animationDelay: '-5s' }} />
-                <div
-                    className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] brightness-100 contrast-150"
-                    style={{ backgroundRepeat: 'repeat' }}
-                />
+            {/* 1. HERO */}
+            <HeroSection onStart={handleStart} />
+
+            {/* 2. GRAPH CONTEXT WALKING */}
+            <div className="relative z-10 border-t border-white/5">
+                <GraphSection />
             </div>
 
-            {/* sticky-stacking context */}
-            <div className="relative z-10">
-                {/* 1. HERO - Sticky until 1.5, now just self-contained mostly */}
-                <div className="h-[200vh] relative">
-                    <div className="sticky top-0 h-screen overflow-hidden">
-                        <VisualHero scrollProgress={scrollProgress} onStart={handleAutoStart} />
-                    </div>
-                </div>
-
-                {/* 2. FEATURES BENTO - Moved here as requested (Pro Page) */}
-                <div className="relative bg-[#050505] z-30">
-                    {/* Added z-index to sit on top if needed, though normal flow is fine */}
-                    <FeatureBento />
-                </div>
-
-                {/* 3. INFINITE / CHAOS */}
-                <DemoInfinite />
-
-                {/* 4. AI MAGIC */}
-                <DemoAI />
+            {/* 3. RECURSIVE SPROUT */}
+            <div className="relative z-10 border-t border-white/5">
+                <SproutSection />
             </div>
 
-            {/* Persistent CTA Bottom Bar */}
-            <div
-                className={`fixed bottom-8 left-0 right-0 z-[60] flex justify-center pointer-events-none transition-all duration-700 transform ${scrollProgress > 0.1 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}
-            >
-                <div className="pointer-events-auto bg-white/10 backdrop-blur-md p-1.5 pl-2 pr-2 rounded-full shadow-2xl border border-white/10 flex items-center gap-2">
-                    <span className="text-white/60 text-xs font-medium px-2 hidden md:block">Ready to think unlimited?</span>
-                    <button
-                        onClick={() => window.location.href = '/gallery'}
-                        className="px-6 py-2.5 bg-white text-black rounded-full text-sm font-bold hover:scale-105 transition-transform hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
-                    >
-                        Launch Beta
-                    </button>
+            {/* 4. UNLIMITED CONCURRENCY */}
+            <div className="relative z-10 border-t border-white/5">
+                <ConcurrencySection />
+            </div>
+
+            {/* 5. SPATIAL ORGANIZATION */}
+            <div className="relative z-10 border-t border-white/5">
+                <SpatialSection />
+            </div>
+
+            {/* FOOTER / FINAL CTA */}
+            <div className="py-24 bg-black border-t border-white/10 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-blue-900/5 blur-3xl pointer-events-none" />
+
+                <h2 className="text-4xl md:text-5xl font-bold mb-8 relative z-10">Start Thinking in <span className="text-blue-500">Connections</span>.</h2>
+                <button
+                    onClick={() => window.location.href = '/gallery'}
+                    className="px-12 py-4 bg-white text-black rounded-full text-lg font-bold hover:scale-105 transition-transform hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] relative z-10"
+                >
+                    Launch Alpha
+                </button>
+                <div className="mt-12 text-white/20 text-sm">
+                    &copy; 2024 Mixboard. All rights reserved.
                 </div>
             </div>
+
         </div>
     );
 };
 
 export default LandingModule;
+
