@@ -56,13 +56,10 @@ export class GeminiProvider extends LLMProvider {
             contents,
             tools: [
                 {
-                    google_search_retrieval: {
-                        dynamic_retrieval_config: {
-                            mode: "MODE_DYNAMIC",
-                            dynamic_threshold: 0.6
-                        }
-                    }
-                },
+                    google_search: {},
+                    // code_execution: {} // Confilct with google_search
+                }
+
                 // code_execution: {} // Confilct with google_search
             ],
             generationConfig: {
@@ -146,13 +143,10 @@ export class GeminiProvider extends LLMProvider {
             contents,
             tools: [
                 {
-                    google_search_retrieval: {
-                        dynamic_retrieval_config: {
-                            mode: "MODE_DYNAMIC",
-                            dynamic_threshold: 0.6
-                        }
-                    }
-                },
+                    google_search: {},
+                    // code_execution: {} // Confilct with google_search
+                }
+
                 // code_execution: {} // Confilct with google_search
             ],
             generationConfig: {
