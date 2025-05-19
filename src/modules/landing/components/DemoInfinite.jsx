@@ -13,31 +13,22 @@ const DemoInfinite = () => {
             const viewportHeight = window.innerHeight;
             const elementHeight = rect.height;
 
-            // Simplified Progress Logic for "Bottom of Page" scenario:
-            // We want the animation to complete when the element is significantly visible.
-            // Old logic: p = (viewportHeight - rect.top) / (viewportHeight + elementHeight)
-            // This requires the element to scroll *past* the viewport.
-            // If it's the last element, we might not be able to scroll past it if the footer isn't huge.
+            // Simplified Progress Logic
+            // Since we are now in the middle of the page, we can use a smoother, longer transition.
 
-            // New logic:
-            // 0 -> Top of element enters viewport
-            // 1 -> Top of element hits top of viewport (or slightly before/after)
-
-            const totalDistance = viewportHeight + elementHeight;
-            const distanceTravelled = viewportHeight - rect.top;
-
-            // Accelerate progress. 
-            // Let's make it complete when the element is mostly centered or fully in view.
-            // If rect.top <= 0, it means the top is at or above viewport top.
-            // If rect.top <= viewportHeight * 0.2, it's 80% up the screen.
-
-            // Let's calculate a "visible percentage" or simpler linear map.
             // Map:
-            // 0% -> Element Top enters bottom (rect.top = vh)
-            // 100% -> Element Top reaches 20% from top (rect.top = vh * 0.2)
+            // 0% -> Top of element enters bottom of viewport (rect.top = vh)
+            // 100% -> Bottom of element enters top of viewport? Or center?
 
-            const startPoint = viewportHeight; // Progress 0
-            const endPoint = viewportHeight * 0.2; // Progress 1
+            // To make it "slower", we effectively increase the distance required to complete the animation (0->1).
+            // Let's map it from [Enters Viewport] (0) to [Leaves Viewport] (1).
+            // This gives the maximum scroll distance to play the animation.
+
+            const startPoint = viewportHeight; // Top enters bottom
+            const endPoint = -elementHeight * 0.5; // Top moves up past top. Let's say when it's halfway out the top.
+
+            // This range is (viewportHeight + 0.5 * elementHeight).
+            // The previous logic was (viewportHeight * 0.8), which was very short/fast.
 
             let p = (startPoint - rect.top) / (startPoint - endPoint);
 
