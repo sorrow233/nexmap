@@ -111,9 +111,10 @@ export const createAISlice = (set, get) => {
 
                 let contextMessages = [];
 
-                // Add current time in Japan timezone
+                // Unified Time Injection (Absolute Truth Reference)
                 const now = new Date();
-                const japanTime = new Intl.DateTimeFormat('ja-JP', {
+                const isoTime = now.toISOString();
+                const localTime = new Intl.DateTimeFormat('zh-CN', {
                     timeZone: 'Asia/Tokyo',
                     year: 'numeric',
                     month: '2-digit',
@@ -121,13 +122,17 @@ export const createAISlice = (set, get) => {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
+                    hour12: false,
                     weekday: 'long'
                 }).format(now);
 
-                contextMessages.push({
+                const timeSystemMsg = {
                     role: 'system',
-                    content: `[System] Current time in Japan (JST/UTC+9): ${japanTime}`
-                });
+                    content: `[Current Time Reference]
+ISO 8601: ${isoTime}
+Local Time: ${localTime} (Japan Standard Time, UTC+9)
+Always treat this time as the absolute current reference for all time-based information.`
+                };
 
                 if (neighborIds.length > 0) {
                     const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
@@ -146,25 +151,6 @@ export const createAISlice = (set, get) => {
                         contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText}` });
                     }
                 }
-
-                // Explicitly inject time and basic system context
-                const currentTime = new Date().toLocaleString('zh-CN', {
-                    timeZone: 'Asia/Tokyo',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false,
-                    weekday: 'long'
-                });
-
-                const timeSystemMsg = {
-                    role: 'system',
-                    content: `Current Time: ${currentTime} (Japan Standard Time, UTC+9)
-Always use this "Current Time" as the reference for any time-based questions.`
-                };
 
                 const fullMessages = [timeSystemMsg, ...contextMessages, ...messages];
                 const card = cards.find(c => c.id === cardId);
