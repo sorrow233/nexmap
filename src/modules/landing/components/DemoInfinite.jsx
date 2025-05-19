@@ -24,18 +24,13 @@ const DemoInfinite = () => {
             // Let's map it from [Enters Viewport] (0) to [Leaves Viewport] (1).
             // This gives the maximum scroll distance to play the animation.
 
-            const startPoint = viewportHeight; // Top enters bottom
-            // Map:
-            // 0% -> Top of element enters bottom of viewport (rect.top = vh)
-            // 100% -> Bottom of element enters top of viewport? Or center?
+            // Tuning for "Perfect Timing":
+            // 1. Don't start immediately when it peeks in (User is still on SpatialSection).
+            // 2. Start when it receives focus (e.g., top is at 75% of viewport height).
+            // 3. Finish when it's fully established (e.g., top is near 0 or slightly negative).
 
-            // To make it faster (by ~20%), we reduce the distance required to complete.
-            // Previous: endPoint = -elementHeight * 0.5;
-            // New: endPoint = -elementHeight * 0.1; 
-            // This means it finishes when the top is just 10% past the top of viewport, 
-            // instead of 50% past the top.
-
-            const endPoint = -elementHeight * 0.1; // Finishes earlier -> Faster animation
+            const startPoint = viewportHeight * 0.75; // Delayed Start: Must be 25% up the screen to begin.
+            const endPoint = -elementHeight * 0.05; // Finish when top is just past the top edge.
 
             let p = (startPoint - rect.top) / (startPoint - endPoint);
 
