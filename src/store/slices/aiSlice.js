@@ -163,8 +163,7 @@ export const createAISlice = (set, get) => {
                 const timeSystemMsg = {
                     role: 'system',
                     content: `Current Time: ${currentTime} (Japan Standard Time, UTC+9)
-Always use this "Current Time" as the reference for any time-based questions.
-IMPORTANT: You MUST use the 'google_search' tool to verify information before answering. Do not guess.`
+Always use this "Current Time" as the reference for any time-based questions.`
                 };
 
                 const fullMessages = [timeSystemMsg, ...contextMessages, ...messages];
