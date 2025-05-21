@@ -56,73 +56,6 @@ const MessageImage = ({ img }) => {
 
 import { Share2, Star } from 'lucide-react';
 
-/**
- * Custom hook to smoothly drip characters for a "water-like" streaming effect.
- * @param {string} targetContent - The full content received so far.
- * @param {boolean} isStreaming - Whether the message is still being generated.
- * @param {number} dripSpeed - Speed in chars per update (default: 1).
- */
-const useSmoothDrip = (targetContent, isStreaming, dripSpeed = 1) => {
-    // Initialize: If streaming, start empty. If loading history, show full.
-    const [displayedContent, setDisplayedContent] = React.useState(() => {
-        return isStreaming ? '' : targetContent;
-    });
-
-    // Track if this hook specifically has been part of a live stream session
-    // This prevents history loads from animating, but ensures live chats animate fully
-    const isLiveRef = React.useRef(isStreaming);
-
-    React.useEffect(() => {
-        if (isStreaming) {
-            isLiveRef.current = true;
-        }
-    }, [isStreaming]);
-
-    React.useEffect(() => {
-        // If this is a static message (history load) and was never live, just sync.
-        if (!isStreaming && !isLiveRef.current) {
-            setDisplayedContent(targetContent);
-            return;
-        }
-
-        const intervalId = setInterval(() => {
-            setDisplayedContent(current => {
-                // If we've caught up, stop updating
-                if (current.length >= targetContent.length) {
-                    return targetContent;
-                }
-
-                // If target shrunk (e.g. error/retry), sync immediately
-                if (current.length > targetContent.length) {
-                    return targetContent;
-                }
-
-                const remaining = targetContent.length - current.length;
-
-                // smooth acceleration
-                // Base speed is dripSpeed.
-                // If we fall behind, accelerate to catch up, but keep it "flowy".
-                let step = dripSpeed;
-
-                if (remaining > 200) step = 15;      // Way behind
-                else if (remaining > 100) step = 8;  // Medium behind
-                else if (remaining > 50) step = 5;   // Little behind
-                else if (remaining > 20) step = 3;   // Close
-                else step = 2;                       // Finishing touches (standard flow)
-
-                // If the stream is effectively done (targetContent is stable/final), 
-                // we still use the step logic to "finish" the typing gracefully.
-
-                return targetContent.substring(0, current.length + step);
-            });
-        }, 20); // 50fps update rate for smoothness
-
-        return () => clearInterval(intervalId);
-    }, [targetContent, isStreaming, dripSpeed]);
-
-    return displayedContent;
-};
-
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
     const { cards, focusOnCard } = useStore();
@@ -139,13 +72,9 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         textContent = message.content || "";
     }
 
-    // Apply smooth drip for assistant messages while streaming
-    const smoothText = useSmoothDrip(textContent, !isUser && isStreaming);
-    const finalDisplayContent = (!isUser && isStreaming) ? smoothText : textContent;
-
-    const { thoughts, content } = (isUser || !finalDisplayContent)
-        ? { thoughts: null, content: finalDisplayContent }
-        : parseModelOutput(finalDisplayContent);
+    const { thoughts, content } = (isUser || !textContent)
+        ? { thoughts: null, content: textContent }
+        : parseModelOutput(textContent);
 
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
