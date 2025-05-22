@@ -86,8 +86,8 @@ const useFluidTypewriter = (targetContent, isStreaming) => {
             const currentLen = currentLength.current;
             const diff = targetLen - currentLen;
 
+            // Updated physics for "Flash" speed and liquid feel
             if (diff <= 0.5) {
-                // Almost there, snap to finish if very close
                 if (currentLen !== targetLen) {
                     currentLength.current = targetLen;
                     setDisplayedContent(targetContent);
@@ -96,14 +96,11 @@ const useFluidTypewriter = (targetContent, isStreaming) => {
                 return;
             }
 
-            // Physics: Velocity depends on distance.
-            // Factor 0.15 = "Spring tension". Higher = snappier, Lower = more laggy/flowy.
-            // + 0.5 ensures minimum speed so it doesn't stall indefinitely at the end.
-            const velocity = (diff * 0.15) + 0.5;
+            // High tension (0.8) for fast response, higher base (1.5) for constant flow
+            const velocity = (diff * 0.8) + 1.5;
 
             currentLength.current += velocity;
 
-            // Limit to target
             if (currentLength.current > targetLen) currentLength.current = targetLen;
 
             setDisplayedContent(targetContent.substring(0, Math.floor(currentLength.current)));
@@ -137,9 +134,35 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     }
 
     // Apply fluid typewriter effect for assistant messages while streaming
-    // User messages (history or self) are instant.
-    const fluidText = useFluidTypewriter(textContent, !isUser && isStreaming);
-    const finalDisplayContent = (!isUser && isStreaming) ? fluidText : textContent;
+    const rawFluidText = useFluidTypewriter(textContent, !isUser && isStreaming);
+
+    // "Gray Tail" Effect Logic
+    const finalDisplayContent = React.useMemo(() => {
+        if (isUser || !isStreaming || !rawFluidText) return rawFluidText || textContent;
+        if (rawFluidText === textContent) return rawFluidText; // Finished streaming
+
+        const tailLength = 5; // Number of characters to fade
+        if (rawFluidText.length <= tailLength) return rawFluidText;
+
+        // Safety checks to avoid breaking Markdown/Code blocks
+        const backtickCount = (rawFluidText.match(/`/g) || []).length;
+        const isInsideCodeBlock = backtickCount % 2 !== 0; // Odd number of backticks means we are inside one
+
+        // Also avoid breaking partial HTML tags or complex markdown if near the end
+        // Simple heuristic: don't apply if near `<`, `[`, or `(`
+        const lastChar = rawFluidText.slice(-1);
+        const unsafeChars = ['<', '>', '`', '[', ']', '(', ')', '*', '_', '#'];
+
+        if (isInsideCodeBlock || unsafeChars.includes(lastChar)) {
+            return rawFluidText;
+        }
+
+        const mainPart = rawFluidText.slice(0, -tailLength);
+        const tailPart = rawFluidText.slice(-tailLength);
+
+        // We wrap the tail in a transparent-to-opaque span illusion
+        return `${mainPart}<span class="text-slate-400 dark:text-slate-500 opacity-70">${tailPart}</span>`;
+    }, [rawFluidText, isUser, isStreaming, textContent]);
 
     const { thoughts, content } = (isUser || !finalDisplayContent)
         ? { thoughts: null, content: finalDisplayContent }
