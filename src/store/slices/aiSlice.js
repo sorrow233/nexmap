@@ -222,7 +222,7 @@ export const createAISlice = (set, get) => {
                             return c;
                         })
                     }));
-                }, 100); // 100ms throttle = 10fps max updates
+                }, 20); // 20ms throttle for high-frequency fluid updates
             }
         },
 
