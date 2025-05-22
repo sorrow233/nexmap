@@ -1,164 +1,185 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { FileText, Image as ImageIcon, Link, File } from 'lucide-react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
+import { useSprings, animated, to } from '@react-spring/web';
+import { FileText, Image as ImageIcon, Link, Database, BrainCircuit, Globe, LayoutGrid } from 'lucide-react';
+
+const CARD_COUNT = 16;
 
 const DemoInfinite = () => {
     const containerRef = useRef(null);
-    const [localProgress, setLocalProgress] = useState(0);
+    const [progress, setProgress] = useState(0);
 
-    // --- Self-contained Scroll Logic ---
+    // --- SCROLL LOGIC ---
     useEffect(() => {
         const handleScroll = () => {
             if (!containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const elementHeight = rect.height;
+            const vh = window.innerHeight;
 
-            // Simplified Progress Logic
-            // Since we are now in the middle of the page, we can use a smoother, longer transition.
+            // We want a long scroll interaction. 
+            // Start: Top of element is at 80% viewport (enters focus)
+            // End: Top of element is at -20% viewport (leaves upwards)
+            const start = vh * 0.8;
+            const end = -rect.height * 0.2;
 
-            // Map:
-            // 0% -> Top of element enters bottom of viewport (rect.top = vh)
-            // 100% -> Bottom of element enters top of viewport? Or center?
-
-            // To make it "slower", we effectively increase the distance required to complete the animation (0->1).
-            // Let's map it from [Enters Viewport] (0) to [Leaves Viewport] (1).
-            // This gives the maximum scroll distance to play the animation.
-
-            // Tuning for "Perfect Timing":
-            // 1. Don't start immediately when it peeks in (User is still on SpatialSection).
-            // 2. Start when it receives focus (e.g., top is at 75% of viewport height).
-            // 3. Finish when it's fully established (e.g., top is near 0 or slightly negative).
-
-            const startPoint = viewportHeight * 0.75; // Delayed Start: Must be 25% up the screen to begin.
-            const endPoint = -elementHeight * 0.05; // Finish when top is just past the top edge.
-
-            let p = (startPoint - rect.top) / (startPoint - endPoint);
-
-            // Clamp to 0-1
+            let p = (start - rect.top) / (start - end);
             p = Math.min(1, Math.max(0, p));
-            setLocalProgress(p);
+            setProgress(p);
         };
-
-        window.addEventListener('scroll', handleScroll);
-        handleScroll(); // Initial check
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Animation Phases:
-    // 0.0 - 0.2: Fade In (Chaos state)
-    // 0.2 - 0.9: Sorting (Move from random positions to grid)
-    // 0.9 - 1.0: Organized state fully stable
+    // --- DATA GENERATION ---
+    const items = useMemo(() => {
+        return Array.from({ length: CARD_COUNT }).map((_, i) => {
+            // Chaos/Random Positions (Spread widely in 3D space)
+            const x = (Math.random() - 0.5) * 1200; // Wide horizontal spread
+            const y = (Math.random() - 0.5) * 800;  // Vertical spread
+            const z = (Math.random() - 0.5) * 500;  // Depth spread
+            const rotC = (Math.random() - 0.5) * 120; // Chaos rotation
 
-    // Generate random positions (seeded-ish by index) to avoid re-calc on every render
-    const ITEMS = useMemo(() => Array.from({ length: 12 }).map((_, i) => ({
-        id: i,
-        // Random start positions (spread out)
-        x: (i % 2 === 0 ? 1 : -1) * (200 + Math.random() * 600),
-        y: (i % 3 === 0 ? 1 : -1) * (100 + Math.random() * 400),
-        rotate: (Math.random() - 0.5) * 60,
-        // Target grid positions (centered)
-        targetX: ((i % 4) - 1.5) * 220, // 4 columns
-        targetY: (Math.floor(i / 4) - 1) * 280, // 3 rows
-        type: i % 4 === 0 ? 'image' : i % 3 === 0 ? 'link' : 'note',
-        color: ['bg-rose-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-500'][i % 4]
-    })), []);
+            // Order/Grid Positions
+            const col = i % 4;
+            const row = Math.floor(i / 4);
+            const gx = (col - 1.5) * 220;
+            const gy = (row - 1.5) * 140;
 
-    // Normalize progress for the specific "Sort" phase
-    // We want sorting to finish well before the end of the scroll if possible
-    const effectiveProgress = Math.max(0, localProgress - 0.2) * 1.25;
-    const sortProgress = Math.min(1, Math.max(0, effectiveProgress));
+            // Type & Colors
+            const types = ['note', 'image', 'link', 'data'];
+            const type = types[i % 4];
+            const colors = [
+                'from-rose-500/20 to-rose-900/40 border-rose-500/30',
+                'from-blue-500/20 to-blue-900/40 border-blue-500/30',
+                'from-emerald-500/20 to-emerald-900/40 border-emerald-500/30',
+                'from-amber-500/20 to-amber-900/40 border-amber-500/30'
+            ];
 
-    // Ease in-out
-    const easedSort = sortProgress < 0.5 ? 2 * sortProgress * sortProgress : -1 + (4 - 2 * sortProgress) * sortProgress;
+            return { id: i, chaos: { x, y, z, rot: rotC }, order: { x: gx, y: gy, z: 0, rot: 0 }, type, colorClass: colors[i % 4] };
+        });
+    }, []);
 
-    const scale = localProgress > 0.8 ? 1 - (localProgress - 0.8) * 0.5 : 1;
-    const opacity = 1; // Always visible if mounted, fade handled by parents if needed
+    // --- ANIMATION SPRINGS ---
+    // We map 'progress' (0-1) to spring values.
+    // React-spring handles the interpolation, but we update the destination based on progress.
+    // Phase 1 (0.0 - 0.3): Chaos drifting (handled by random noise or just initial state)
+    // Phase 2 (0.3 - 0.8): The "Snap" to order.
+
+    // Smooth step function for the transition
+    const smoothProgress = Math.min(1, Math.max(0, (progress - 0.2) / 0.6)); // Active between 0.2 and 0.8
+    // Easing: easeInOutCubic
+    const t = smoothProgress < .5 ? 4 * smoothProgress * smoothProgress * smoothProgress : 1 - Math.pow(-2 * smoothProgress + 2, 3) / 2;
+
+    const [springs] = useSprings(CARD_COUNT, (i) => {
+        const item = items[i];
+        return {
+            x: item.chaos.x + (item.order.x - item.chaos.x) * t,
+            y: item.chaos.y + (item.order.y - item.chaos.y) * t,
+            z: item.chaos.z + (item.order.z - item.chaos.z) * t,
+            rot: item.chaos.rot + (item.order.rot - item.chaos.rot) * t,
+            opacity: 1, // Always visible
+            scale: 1,
+            immediate: false, // animate
+            config: { mass: 1, tension: 120, friction: 20 } // Physics feel
+        };
+    }, [t]); // Update when t changes
 
     return (
-        <div
-            ref={containerRef}
-            className="w-full min-h-[150vh] flex items-center justify-center relative perspective-[1000px] overflow-hidden bg-[#050505]"
-        >
-            <div className="fixed inset-0 pointer-events-none">
-                {/* Optional: Add debug or background if specific to this module */}
-            </div>
+        <div ref={containerRef} className="relative w-full h-[250vh] bg-[#050505]">
 
-            {/* Sticky Content Wrapper: Stays centered while we scroll through the 150vh container */}
-            <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
+            {/* STICKY STAGE */}
+            <div className="sticky top-0 w-full h-screen flex flex-col items-center justify-center overflow-hidden perspective-[1200px]">
 
-                {/* Title */}
-                <div
-                    className="absolute top-24 left-0 right-0 text-center z-40 transition-all duration-500"
-                    style={{
-                        opacity: localProgress > 0.1 ? 1 : 0,
-                        transform: `translateY(${localProgress < 0.5 ? 0 : -50}px)`
-                    }}
-                >
-                    <div className="inline-block px-3 py-1 bg-white/5 rounded-full border border-white/10 text-white/60 text-sm mb-4">
-                        Infinite Canvas
-                    </div>
-                    <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tighter">
-                        {sortProgress < 0.5 ? "Embrace the Chaos." : "Find the Order."}
+                {/* BACKGROUND FIELD */}
+                <div className={`absolute inset-0 transition-opacity duration-1000 ${t > 0.5 ? 'opacity-30' : 'opacity-0'}`}>
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent" />
+                </div>
+
+                {/* TEXT LAYER */}
+                <div className="absolute top-24 z-50 text-center mix-blend-screen pointer-events-none">
+                    <h2
+                        className="text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 transition-all duration-700"
+                        style={{
+                            transform: `translateY(${t < 0.5 ? 0 : -100}px) scale(${1 - t * 0.2})`,
+                            opacity: 1 - t * 0.5
+                        }}
+                    >
+                        Chaos.
+                    </h2>
+                    <h2
+                        className="absolute top-0 left-0 right-0 text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-blue-400 to-purple-400 transition-all duration-700"
+                        style={{
+                            transform: `translateY(${t < 0.5 ? 100 : 0}px) scale(${1 + t * 0.1})`,
+                            filter: `blur(${(1 - t) * 20}px)`,
+                            opacity: t
+                        }}
+                    >
+                        Clarity.
                     </h2>
                 </div>
 
-                {/* The Container for Cards */}
-                <div
-                    className="relative w-full h-full flex items-center justify-center will-change-transform"
-                    style={{ transform: `scale(${0.8 * scale})` }}
-                >
-                    {ITEMS.map((item) => {
-                        const currentX = item.x + (item.targetX - item.x) * easedSort;
-                        const currentY = item.y + (item.targetY - item.y) * easedSort;
-                        const currentRot = item.rotate * (1 - easedSort); // Rotate to 0
-
+                {/* 3D SCENE */}
+                <div className="relative w-[1000px] h-[800px] [transform-style:preserve-3d]">
+                    {springs.map(({ x, y, z, rot, scale, opacity }, i) => {
+                        const item = items[i];
                         return (
-                            <div
-                                key={item.id}
-                                className={`absolute w-48 h-64 bg-[#111] border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-3 transition-shadow duration-300
-                                    ${sortProgress > 0.9 ? 'shadow-[0_0_30px_rgba(255,255,255,0.05)] border-white/20' : ''}`}
+                            <animated.div
+                                key={i}
+                                className={`absolute w-[200px] h-[120px] rounded-xl border backdrop-blur-md shadow-2xl bg-gradient-to-br ${item.colorClass} flex flex-col p-4 overflow-hidden`}
                                 style={{
-                                    transform: `translate(${currentX}px, ${currentY}px) rotate(${currentRot}deg)`,
+                                    transform: to([x, y, z, rot, scale], (x, y, z, r, s) =>
+                                        `translate3d(${x}px,${y}px,${z}px) rotateX(${r * 0.5}deg) rotateY(${r * 0.5}deg) rotateZ(${r}deg) scale(${s})`
+                                    ),
+                                    opacity
                                 }}
                             >
-                                {/* Card Content Skeleton */}
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className={`w-8 h-8 rounded-full ${item.color} flex items-center justify-center text-white`}>
-                                        {item.type === 'image' && <ImageIcon size={14} />}
-                                        {item.type === 'link' && <Link size={14} />}
-                                        {item.type === 'note' && <FileText size={14} />}
+                                {/* CARD CONTENT SKELETON */}
+                                <div className="flex items-center gap-3 mb-3 border-b border-white/10 pb-2">
+                                    <div className="p-1.5 rounded-md bg-white/10">
+                                        {item.type === 'note' && <FileText size={14} className="text-rose-300" />}
+                                        {item.type === 'image' && <ImageIcon size={14} className="text-blue-300" />}
+                                        {item.type === 'link' && <Link size={14} className="text-emerald-300" />}
+                                        {item.type === 'data' && <Database size={14} className="text-amber-300" />}
                                     </div>
-                                    <div className="h-2 w-8 bg-white/10 rounded-full" />
+                                    <div className="h-2 w-16 bg-white/20 rounded-full" />
                                 </div>
-
-                                <div className="h-4 w-3/4 bg-white/20 rounded mb-2" />
-                                <div className="space-y-2 opacity-50 flex-1">
-                                    <div className="h-2 w-full bg-white/10 rounded" />
-                                    <div className="h-2 w-full bg-white/10 rounded" />
-                                    <div className="h-2 w-2/3 bg-white/10 rounded" />
+                                <div className="space-y-2 flex-1">
+                                    <div className="h-2 w-full bg-white/10 rounded-full" />
+                                    <div className="h-2 w-3/4 bg-white/10 rounded-full" />
+                                    {item.type === 'image' && (
+                                        <div className="mt-2 h-10 w-full bg-black/20 rounded-md border border-white/5" />
+                                    )}
                                 </div>
-
-                                {/* Image Placeholder */}
-                                {item.type === 'image' && (
-                                    <div className="mt-auto h-24 w-full bg-white/5 rounded-lg border border-white/5 overflow-hidden relative">
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent to-white/10" />
-                                    </div>
-                                )}
-                            </div>
+                            </animated.div>
                         );
                     })}
 
-
-                    {/* Connection Lines (Fade in only when organized) */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
-                        style={{ opacity: easedSort > 0.8 ? (easedSort - 0.8) * 5 : 0 }}
-                    >
-                        <path d="M calc(50% - 220px) calc(50% - 280px) L calc(50%) calc(50%)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeDasharray="5 5" />
-                        <path d="M calc(50% + 220px) calc(50%) L calc(50%) calc(50%)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeDasharray="5 5" />
-                        <path d="M calc(50% - 220px) calc(50% + 280px) L calc(50%) calc(50% + 280px)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeDasharray="5 5" />
+                    {/* CONNECTION LINES (SVG) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-[-1]">
+                        {/* Only show lines when ordered (t > 0.8) */}
+                        <g style={{ opacity: Math.max(0, (t - 0.7) * 3), transition: 'opacity 0.5s ease' }}>
+                            {items.map((item, i) => {
+                                // Draw lines to center or neighbors
+                                if (i % 4 === 0) return null; // Skip some to form clusters
+                                const startX = item.order.x + 100 + 500; // Center offset
+                                const startY = item.order.y + 60 + 400;
+                                const endX = items[i - 1].order.x + 100 + 500;
+                                const endY = items[i - 1].order.y + 60 + 400;
+                                return (
+                                    <path
+                                        key={`line-${i}`}
+                                        d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                                        stroke="rgba(255,255,255,0.15)"
+                                        strokeWidth="2"
+                                        strokeDasharray="4 4"
+                                    />
+                                );
+                            })}
+                        </g>
                     </svg>
 
                 </div>
+
             </div>
         </div>
     );
