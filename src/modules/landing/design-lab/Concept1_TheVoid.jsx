@@ -1,111 +1,163 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-const Concept1_TheVoid = () => {
+const Concept1_Genesis = () => {
     const canvasRef = useRef(null);
+    const [phase, setPhase] = useState(0); // 0: spark, 1: branch, 2: connections
+
+    useEffect(() => {
+        const timeline = [
+            { phase: 0, delay: 500 },
+            { phase: 1, delay: 2000 },
+            { phase: 2, delay: 3500 }
+        ];
+
+        timeline.forEach(({ phase: p, delay }) => {
+            setTimeout(() => setPhase(p), delay);
+        });
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-
         const ctx = canvas.getContext('2d');
-        let animationFrameId;
-
-        // Settings
-        const starCount = 400;
-        const speed = 0.5;
-        let stars = [];
+        let frame;
 
         const resize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            initStars();
         };
+        resize();
+        window.addEventListener('resize', resize);
 
-        const initStars = () => {
-            stars = [];
-            for (let i = 0; i < starCount; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    z: Math.random() * 2, // Depth
-                    size: Math.random() * 1.5,
-                    opacity: Math.random(),
-                    speed: (Math.random() * 0.5 + 0.1) * speed
+        // Nodes
+        const nodes = [
+            { x: canvas.width / 2, y: canvas.height / 2, radius: 0, targetRadius: 20, label: 'Idea', born: 0, color: '#3b82f6' }
+        ];
+
+        const connections = [];
+
+        // Spawn child nodes when phase 1
+        let branched = false;
+        let connected = false;
+
+        const animate = (time) => {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Phase 1: Branch
+            if (phase >= 1 && !branched) {
+                branched = true;
+                const angles = [-45, 0, 45];
+                angles.forEach((angle, i) => {
+                    const rad = (angle * Math.PI) / 180;
+                    const distance = 200;
+                    nodes.push({
+                        x: nodes[0].x + Math.cos(rad) * distance,
+                        y: nodes[0].y + Math.sin(rad) * distance,
+                        radius: 0,
+                        targetRadius: 15,
+                        label: ['Context', 'Insight', 'Action'][i],
+                        born: time,
+                        color: ['#8b5cf6', '#10b981', '#f59e0b'][i]
+                    });
                 });
             }
-        };
 
-        const draw = () => {
-            ctx.fillStyle = '#000000'; // Deep void black
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            stars.forEach(star => {
-                // Update
-                star.y -= star.speed * (star.z + 1); // Parallax speed based on depth
-
-                // Reset if off screen
-                if (star.y < 0) {
-                    star.y = canvas.height;
-                    star.x = Math.random() * canvas.width;
+            // Phase 2: Connect
+            if (phase >= 2 && !connected && nodes.length > 1) {
+                connected = true;
+                for (let i = 1; i < nodes.length; i++) {
+                    connections.push({ from: 0, to: i, progress: 0 });
+                    if (i > 1) connections.push({ from: i - 1, to: i, progress: 0 });
                 }
+            }
 
-                // Draw
-                const depthScale = (star.z + 1) / 3;
-                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity * depthScale})`;
+            // Draw connections
+            connections.forEach(conn => {
+                conn.progress = Math.min(1, conn.progress + 0.02);
+                const from = nodes[conn.from];
+                const to = nodes[conn.to];
+                const x = from.x + (to.x - from.x) * conn.progress;
+                const y = from.y + (to.y - from.y) * conn.progress;
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size * depthScale, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(from.x, from.y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                //  Pulse on line
+                if (conn.progress === 1) {
+                    const pulseX = from.x + (to.x - from.x) * ((time / 1000) % 1);
+                    const pulseY = from.y + (to.y - from.y) * ((time / 1000) % 1);
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.6)';
+                    ctx.beginPath();
+                    ctx.arc(pulseX, pulseY, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             });
 
-            // Add a central glow/nebula effect
-            const gradient = ctx.createRadialGradient(
-                canvas.width / 2, canvas.height / 2, 0,
-                canvas.width / 2, canvas.height / 2, canvas.width * 0.8
-            );
-            gradient.addColorStop(0, 'rgba(20, 30, 60, 0.2)');
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Draw nodes
+            nodes.forEach((node, i) => {
+                // Grow
+                if (node.radius < node.targetRadius) {
+                    node.radius += 0.5;
+                }
 
+                // Glow
+                const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius * 2);
+                gradient.addColorStop(0, node.color + '80');
+                gradient.addColorStop(1, node.color + '00');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius * 2, 0, Math.PI * 2);
+                ctx.fill();
 
-            animationFrameId = requestAnimationFrame(draw);
+                // Core
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Label
+                if (node.radius >= node.targetRadius * 0.8) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 14px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(node.label, node.x, node.y + node.radius + 25);
+                }
+            });
+
+            frame = requestAnimationFrame(animate);
         };
 
-        window.addEventListener('resize', resize);
-        resize();
-        draw();
+        animate(0);
 
         return () => {
+            cancelAnimationFrame(frame);
             window.removeEventListener('resize', resize);
-            cancelAnimationFrame(animationFrameId);
         };
-    }, []);
+    }, [phase]);
 
     return (
-        <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center">
-            <canvas ref={canvasRef} className="absolute inset-0 z-0" />
+        <div className="relative w-full h-full bg-[#050505] overflow-hidden">
+            <canvas ref={canvasRef} className="absolute inset-0" />
 
-            <div className="relative z-10 text-center px-4 mix-blend-screen">
-                <div className="inline-block mb-4 px-3 py-1 border border-white/20 rounded-full text-xs uppercase tracking-[0.3em] text-white/60 animate-fade-in-up">
-                    Experience The Infinite
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                <div className={`text-center transition-all duration-1000 ${phase >= 1 ? 'opacity-0 -translate-y-10' : 'opacity-100'}`}>
+                    <h1 className="text-6xl font-bold text-white mb-4">The Spark</h1>
+                    <p className="text-white/60 text-xl">It starts with one thought...</p>
                 </div>
-                <h1 className="text-7xl md:text-9xl font-bold tracking-tighter text-white mb-6 animate-float-slow filter blur-[0.5px]">
-                    VOID
-                </h1>
-                <p className="max-w-md mx-auto text-white/50 text-lg md:text-xl font-light leading-relaxed mb-10">
-                    Step into a workspace that has no boundaries. Where your ideas float freely and connect instantly.
-                </p>
 
-                <button className="group relative px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-none transition-all duration-500 overflow-hidden">
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></div>
-                    <span className="relative z-10 text-sm tracking-[0.2em] font-medium text-white group-hover:text-white">ENTER SYSTEM</span>
-                </button>
+                {phase >= 2 && (
+                    <div className="absolute bottom-20 text-center animate-fade-in">
+                        <p className="text-white/80 text-2xl font-light">...and grows into a universe of ideas.</p>
+                    </div>
+                )}
             </div>
-
-            {/* Overlay Vignette */}
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,black_100%)] opacity-80 z-20"></div>
         </div>
     );
 };
 
-export default Concept1_TheVoid;
+export default Concept1_Genesis;

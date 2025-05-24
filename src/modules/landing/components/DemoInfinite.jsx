@@ -1,194 +1,252 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { FileText, Image as ImageIcon, Link, Database, Tag, Zap } from 'lucide-react';
+import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code } from 'lucide-react';
 
 const DemoInfinite = () => {
     const containerRef = useRef(null);
-    const [progress, setProgress] = useState(0);
+    const [scrollProgress, setScrollProgress] = useState(0);
 
-    // Scroll tracking
     useEffect(() => {
         const handleScroll = () => {
             if (!containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
-            const vh = window.innerHeight;
+            const windowHeight = window.innerHeight;
 
-            // Start when element is 60% into view, end when it's centered
-            const start = vh * 0.6;
+            // Start animation when section is 70% visible
+            const triggerPoint = windowHeight * 0.7;
+            const start = triggerPoint;
             const end = -rect.height * 0.3;
 
-            let p = (start - rect.top) / (start - end);
-            p = Math.min(1, Math.max(0, p));
-            setProgress(p);
+            const progress = Math.max(0, Math.min(1, (start - rect.top) / (start - end)));
+            setScrollProgress(progress);
         };
+
         window.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll();
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Card data - organized into semantic groups
+    // Animation phases
+    const phase1 = Math.min(1, scrollProgress * 2); // 0-0.5: Cards appear
+    const phase2 = Math.max(0, Math.min(1, (scrollProgress - 0.3) * 2)); // 0.3-0.8: Organization
+    const phase3 = Math.max(0, Math.min(1, (scrollProgress - 0.6) * 2.5)); // 0.6-1: Connections
+
+    // Card data with realistic content
     const cards = [
-        // Work Group (Blue)
-        { id: 1, type: 'note', title: 'Q4 Goals', group: 'work', color: 'blue', chaosX: -200, chaosY: -50, orderX: -400, orderY: -150 },
-        { id: 2, type: 'link', title: 'Team Doc', group: 'work', color: 'blue', chaosX: 150, chaosY: -80, orderX: -250, orderY: -150 },
-        { id: 3, type: 'image', title: 'Mockup', group: 'work', color: 'blue', chaosX: -50, chaosY: 100, orderX: -325, orderY: -50 },
-
-        // Research Group (Purple)
-        { id: 4, type: 'note', title: 'AI Paper', group: 'research', color: 'purple', chaosX: 200, chaosY: -150, orderX: 0, orderY: -150 },
-        { id: 5, type: 'data', title: 'Dataset', group: 'research', color: 'purple', chaosX: -100, chaosY: -20, orderX: 150, orderY: -150 },
-        { id: 6, type: 'link', title: 'GitHub', group: 'research', color: 'purple', chaosX: 100, chaosY: 80, orderX: 75, orderY: -50 },
-
-        // Ideas Group (Emerald)
-        { id: 7, type: 'note', title: 'Brainstorm', group: 'ideas', color: 'emerald', chaosX: -150, chaosY: 120, orderX: -400, orderY: 100 },
-        { id: 8, type: 'image', title: 'Sketch', group: 'ideas', color: 'emerald', chaosX: 250, chaosY: 50, orderX: -250, orderY: 100 },
-        { id: 9, type: 'note', title: 'Concepts', group: 'ideas', color: 'emerald', chaosX: 50, chaosY: -100, orderX: -325, orderY: 200 },
-
-        // Personal Group (Amber)
-        { id: 10, type: 'note', title: 'Todo', group: 'personal', color: 'amber', chaosX: -250, chaosY: 0, orderX: 0, orderY: 100 },
-        { id: 11, type: 'link', title: 'Recipe', group: 'personal', color: 'amber', chaosX: 180, chaosY: 120, orderX: 150, orderY: 100 },
-        { id: 12, type: 'image', title: 'Photos', group: 'personal', color: 'amber', chaosX: 20, chaosY: 30, orderX: 75, orderY: 200 },
+        {
+            id: 1,
+            type: 'note',
+            icon: FileText,
+            title: 'Project Roadmap',
+            preview: 'Q4 objectives and milestones...',
+            color: 'blue',
+            startPos: { x: -150, y: -200, rotate: -15 },
+            endPos: { x: -280, y: -120, rotate: 0 }
+        },
+        {
+            id: 2,
+            type: 'image',
+            icon: ImageIcon,
+            title: 'UI Mockups',
+            preview: 'Design explorations',
+            color: 'purple',
+            startPos: { x: 200, y: -180, rotate: 20 },
+            endPos: { x: -280, y: 20, rotate: 0 }
+        },
+        {
+            id: 3,
+            type: 'link',
+            icon: Link,
+            title: 'Research Paper',
+            preview: 'arxiv.org/ai-organization',
+            color: 'emerald',
+            startPos: { x: -180, y: 150, rotate: -25 },
+            endPos: { x: -280, y: 160, rotate: 0 }
+        },
+        {
+            id: 4,
+            type: 'note',
+            icon: Lightbulb,
+            title: 'Ideas Backlog',
+            preview: 'Feature requests and thoughts...',
+            color: 'amber',
+            startPos: { x: 180, y: 120, rotate: 18 },
+            endPos: { x: 40, y: -120, rotate: 0 }
+        },
+        {
+            id: 5,
+            type: 'note',
+            icon: Code,
+            title: 'Code Snippets',
+            preview: 'Useful utilities and helpers...',
+            color: 'rose',
+            startPos: { x: 50, y: -100, rotate: -8 },
+            endPos: { x: 40, y: 20, rotate: 0 }
+        },
+        {
+            id: 6,
+            type: 'note',
+            icon: Calendar,
+            title: 'Meeting Notes',
+            preview: 'Team sync - action items',
+            color: 'cyan',
+            startPos: { x: -80, y: 80, rotate: 12 },
+            endPos: { x: 40, y: 160, rotate: 0 }
+        }
     ];
 
-    const groups = {
-        work: { x: -325, y: -100, color: 'blue' },
-        research: { x: 75, y: -100, color: 'purple' },
-        ideas: { x: -325, y: 150, color: 'emerald' },
-        personal: { x: 75, y: 150, color: 'amber' }
-    };
-
-    // Smooth easing function
-    const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    // Different phase progressions
-    const pulseProgress = Math.max(0, Math.min(1, (progress - 0.2) / 0.2)); // 0.2-0.4
-    const organizeProgress = easeInOutCubic(Math.max(0, Math.min(1, (progress - 0.4) / 0.3))); // 0.4-0.7
-    const connectProgress = Math.max(0, Math.min(1, (progress - 0.7) / 0.2)); // 0.7-0.9
-
-    const getCardStyle = (card, index) => {
-        const x = card.chaosX + (card.orderX - card.chaosX) * organizeProgress;
-        const y = card.chaosY + (card.orderY - card.chaosY) * organizeProgress;
-        const rotation = (1 - organizeProgress) * (Math.random() - 0.5) * 30;
-        const delay = index * 0.05;
-
-        return {
-            transform: `translate(${x}px, ${y}px) rotate(${rotation}deg)`,
-            transitionDelay: `${delay}s`,
-            opacity: 0.3 + organizeProgress * 0.7,
-            zIndex: Math.floor(organizeProgress * 10)
-        };
-    };
-
-    const colorMap = {
-        blue: 'from-blue-500/20 to-blue-600/30 border-blue-400/40',
-        purple: 'from-purple-500/20 to-purple-600/30 border-purple-400/40',
-        emerald: 'from-emerald-500/20 to-emerald-600/30 border-emerald-400/40',
-        amber: 'from-amber-500/20 to-amber-600/30 border-amber-400/40'
-    };
-
-    const groupLabelColor = {
-        blue: 'text-blue-300 bg-blue-500/10 border-blue-400/30',
-        purple: 'text-purple-300 bg-purple-500/10 border-purple-400/30',
-        emerald: 'text-emerald-300 bg-emerald-500/10 border-emerald-400/30',
-        amber: 'text-amber-300 bg-amber-500/10 border-amber-400/30'
+    const colorSchemes = {
+        blue: 'from-blue-500/10 to-blue-600/20 border-blue-400/30 text-blue-100',
+        purple: 'from-purple-500/10 to-purple-600/20 border-purple-400/30 text-purple-100',
+        emerald: 'from-emerald-500/10 to-emerald-600/20 border-emerald-400/30 text-emerald-100',
+        amber: 'from-amber-500/10 to-amber-600/20 border-amber-400/30 text-amber-100',
+        rose: 'from-rose-500/10 to-rose-600/20 border-rose-400/30 text-rose-100',
+        cyan: 'from-cyan-500/10 to-cyan-600/20 border-cyan-400/30 text-cyan-100'
     };
 
     return (
-        <div ref={containerRef} className="relative w-full h-[200vh] bg-[#050505]">
-            {/* Sticky container */}
-            <div className="sticky top-0 w-full h-screen flex items-center justify-center overflow-hidden">
+        <div
+            ref={containerRef}
+            className="relative w-full bg-gradient-to-b from-[#050505] via-[#0a0a0f] to-[#050505]"
+            style={{ minHeight: '180vh' }}
+        >
+            {/* Sticky viewport */}
+            <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
 
-                {/* Title */}
-                <div className="absolute top-20 z-50 text-center">
-                    <h2 className="text-7xl font-bold text-white mb-4 tracking-tight">
-                        {organizeProgress < 0.5 ? 'Chaos' : 'Clarity'}
-                        <span className="text-blue-400">.</span>
-                    </h2>
-                    <p className="text-white/60 text-xl" style={{ opacity: connectProgress }}>
-                        AI-powered organization in seconds
-                    </p>
-                </div>
-
-                {/* Pulse effect */}
+                {/* Background grid - fades in during organization */}
                 <div
-                    className="absolute inset-0 pointer-events-none"
+                    className="absolute inset-0 opacity-0 transition-opacity duration-1000"
                     style={{
-                        opacity: pulseProgress * (1 - pulseProgress) * 4,
-                        background: 'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
-                        transform: `scale(${1 + pulseProgress * 2})`
+                        opacity: phase2 * 0.15,
+                        backgroundImage: 'linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)',
+                        backgroundSize: '100px 100px'
                     }}
                 />
 
-                {/* Cards container */}
-                <div className="relative w-[1000px] h-[600px]">
-                    {/* Group labels */}
-                    {Object.entries(groups).map(([name, group]) => (
-                        <div
-                            key={name}
-                            className={`absolute px-3 py-1 rounded-full text-sm font-medium border backdrop-blur-sm transition-all duration-700 ${groupLabelColor[group.color]}`}
-                            style={{
-                                left: `calc(50% + ${group.x - 80}px)`,
-                                top: `calc(50% + ${group.y - 40}px)`,
-                                opacity: connectProgress,
-                                transform: `translateY(${(1 - connectProgress) * 20}px)`
-                            }}
-                        >
-                            {name.charAt(0).toUpperCase() + name.slice(1)}
-                        </div>
-                    ))}
-
-                    {/* Cards */}
-                    {cards.map((card, i) => (
-                        <div
-                            key={card.id}
-                            className={`absolute w-[140px] h-[100px] rounded-xl bg-gradient-to-br ${colorMap[card.color]} border backdrop-blur-md shadow-xl p-3 transition-all duration-700 ease-out hover:scale-105`}
-                            style={{
-                                left: 'calc(50% - 70px)',
-                                top: 'calc(50% - 50px)',
-                                ...getCardStyle(card, i)
-                            }}
-                        >
-                            {/* Card icon */}
-                            <div className="flex items-center gap-2 mb-2 border-b border-white/10 pb-2">
-                                {card.type === 'note' && <FileText size={14} className="text-white/70" />}
-                                {card.type === 'image' && <ImageIcon size={14} className="text-white/70" />}
-                                {card.type === 'link' && <Link size={14} className="text-white/70" />}
-                                {card.type === 'data' && <Database size={14} className="text-white/70" />}
-                                <div className="h-2 w-16 bg-white/20 rounded-full" />
-                            </div>
-                            {/* Card content */}
-                            <div className="space-y-1">
-                                <div className="h-1.5 w-full bg-white/15 rounded-full" />
-                                <div className="h-1.5 w-3/4 bg-white/10 rounded-full" />
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Connection lines */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: connectProgress }}>
-                        {cards.map((card, i) => {
-                            if (i === 0 || card.group !== cards[i - 1].group) return null;
-                            const prev = cards[i - 1];
-                            return (
-                                <line
-                                    key={`line-${i}`}
-                                    x1={`calc(50% + ${card.orderX}px)`}
-                                    y1={`calc(50% + ${card.orderY}px)`}
-                                    x2={`calc(50% + ${prev.orderX}px)`}
-                                    y2={`calc(50% + ${prev.orderY}px)`}
-                                    stroke="rgba(255,255,255,0.2)"
-                                    strokeWidth="1.5"
-                                    strokeDasharray="4 4"
-                                />
-                            );
-                        })}
-                    </svg>
-
-                    {/* AI indicator */}
+                {/* Title */}
+                <div className="absolute top-32 text-center z-50">
                     <div
-                        className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 border border-blue-400/30 rounded-full backdrop-blur-sm"
-                        style={{ opacity: pulseProgress }}
+                        className="text-sm tracking-wider text-white/40 mb-3 uppercase font-medium"
+                        style={{
+                            opacity: phase1,
+                            transform: `translateY(${(1 - phase1) * 20}px)`
+                        }}
                     >
-                        <Zap size={14} className="text-blue-300" />
-                        <span className="text-blue-300 text-sm font-medium">AI Organizing...</span>
+                        Watch the Magic
+                    </div>
+                    <h2
+                        className="text-7xl md:text-8xl font-bold mb-4 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent tracking-tight"
+                        style={{
+                            opacity: phase1,
+                            transform: `translateY(${(1 - phase1) * 30}px)`
+                        }}
+                    >
+                        Infinite Canvas
+                    </h2>
+                    <p
+                        className="text-white/50 text-lg"
+                        style={{
+                            opacity: phase3,
+                            transform: `translateY(${(1 - phase3) * 20}px)`
+                        }}
+                    >
+                        From chaos to clarity, automatically
+                    </p>
+                </div>
+
+                {/* Cards container */}
+                <div className="relative w-full max-w-5xl h-[500px]">
+                    {cards.map((card, index) => {
+                        const Icon = card.icon;
+                        const delay = index * 0.1;
+
+                        // Calculate current position
+                        const currentX = card.startPos.x + (card.endPos.x - card.startPos.x) * phase2;
+                        const currentY = card.startPos.y + (card.endPos.y - card.startPos.y) * phase2;
+                        const currentRotate = card.startPos.rotate * (1 - phase2);
+
+                        return (
+                            <div
+                                key={card.id}
+                                className={`absolute left-1/2 top-1/2 w-64 h-40 rounded-2xl bg-gradient-to-br ${colorSchemes[card.color]} border backdrop-blur-xl shadow-2xl p-4 transition-all duration-700 ease-out`}
+                                style={{
+                                    transform: `translate(calc(-50% + ${currentX}px), calc(-50% + ${currentY}px)) rotate(${currentRotate}deg)`,
+                                    opacity: phase1,
+                                    transitionDelay: `${delay}s`,
+                                    boxShadow: phase2 > 0.5 ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 30px -5px rgba(0, 0, 0, 0.3)'
+                                }}
+                            >
+                                {/* Card header */}
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
+                                    <div className="p-1.5 rounded-lg bg-white/10">
+                                        <Icon size={16} className="text-white/80" />
+                                    </div>
+                                    <span className="text-sm font-medium text-white/90">{card.title}</span>
+                                </div>
+
+                                {/* Card content */}
+                                <p className="text-sm text-white/60 mb-3">{card.preview}</p>
+
+                                {/* Card footer with tags */}
+                                <div className="flex gap-1.5 mt-auto">
+                                    <div className="px-2 py-0.5 rounded-full bg-white/10 text-xs text-white/60">
+                                        {card.type}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Connection lines - appear in phase 3 */}
+                    <svg
+                        className="absolute inset-0 w-full h-full pointer-events-none"
+                        style={{ opacity: phase3 }}
+                    >
+                        <defs>
+                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="rgba(59, 130, 246, 0)" />
+                                <stop offset="50%" stopColor="rgba(59, 130, 246, 0.4)" />
+                                <stop offset="100%" stopColor="rgba(59, 130, 246, 0)" />
+                            </linearGradient>
+                        </defs>
+
+                        {/* Draw connections between cards in organized state */}
+                        <line
+                            x1="50%" y1="calc(50% - 120px)"
+                            x2="50%" y2="calc(50% + 20px)"
+                            stroke="url(#lineGradient)"
+                            strokeWidth="2"
+                            strokeDasharray="5,5"
+                        />
+                        <line
+                            x1="50%" y1="calc(50% + 20px)"
+                            x2="50%" y2="calc(50% + 160px)"
+                            stroke="url(#lineGradient)"
+                            strokeWidth="2"
+                            strokeDasharray="5,5"
+                        />
+                        <line
+                            x1="calc(50% - 280px)" y1="calc(50% - 120px)"
+                            x2="calc(50% - 280px)" y2="calc(50% + 20px)"
+                            stroke="url(#lineGradient)"
+                            strokeWidth="2"
+                            strokeDasharray="5,5"
+                        />
+                    </svg>
+                </div>
+
+                {/* Status indicator */}
+                <div
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 backdrop-blur-sm"
+                    style={{
+                        opacity: phase1 * (1 - phase3),
+                        transform: `translateX(-50%) translateY(${(1 - phase1) * 30}px)`
+                    }}
+                >
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                        <span className="text-sm text-blue-200 font-medium">
+                            {phase2 < 0.3 ? 'Analyzing content...' : phase2 < 0.7 ? 'Organizing...' : 'Complete'}
+                        </span>
                     </div>
                 </div>
             </div>
