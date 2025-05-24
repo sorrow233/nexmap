@@ -1,236 +1,222 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code } from 'lucide-react';
+import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code, Sparkles } from 'lucide-react';
 
 const DemoInfinite = () => {
     const [isVisible, setIsVisible] = useState(false);
-    const [animationProgress, setAnimationProgress] = useState(0);
+    const [scanProgress, setScanProgress] = useState(0);
     const sectionRef = useRef(null);
 
-    // Detect when section enters viewport
+    // Auto-play trigger
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting && !isVisible) {
                     setIsVisible(true);
-                    // Start animation sequence
-                    let progress = 0;
-                    const interval = setInterval(() => {
-                        progress += 0.01;
-                        if (progress >= 1) {
-                            progress = 1;
-                            clearInterval(interval);
-                        }
-                        setAnimationProgress(progress);
-                    }, 20); // 2 seconds total animation
 
-                    return () => clearInterval(interval);
+                    // Start scanning sequence after a short delay
+                    setTimeout(() => {
+                        let progress = 0;
+                        const interval = setInterval(() => {
+                            progress += 0.015; // Speed of scan
+                            if (progress >= 1.2) { // Go slightly past to clear screen
+                                progress = 1.2;
+                                clearInterval(interval);
+                            }
+                            setScanProgress(progress);
+                        }, 16);
+                    }, 500);
                 }
             },
-            { threshold: 0.3 }
+            { threshold: 0.4 }
         );
 
-        if (sectionRef.current) {
-            observer.observe(sectionRef.current);
-        }
-
+        if (sectionRef.current) observer.observe(sectionRef.current);
         return () => observer.disconnect();
     }, [isVisible]);
 
-    // Easing function
-    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-    const progress = easeOutCubic(animationProgress);
-
-    // Cards data
+    // Card Configuration
     const cards = [
         {
-            id: 1,
-            type: 'note',
-            icon: FileText,
-            title: 'Project Roadmap',
-            preview: 'Q4 objectives and milestones...',
-            color: 'blue',
-            startPos: { x: -150, y: -200, rotate: -15 },
-            endPos: { x: -280, y: -120, rotate: 0 }
+            id: 1, icon: FileText, title: 'Roadmap', tag: 'Planning', color: 'blue',
+            chaos: { x: -30, y: -40, r: -12 },
+            order: { x: 0, y: 0 }
         },
         {
-            id: 2,
-            type: 'image',
-            icon: ImageIcon,
-            title: 'UI Mockups',
-            preview: 'Design explorations',
-            color: 'purple',
-            startPos: { x: 200, y: -180, rotate: 20 },
-            endPos: { x: -280, y: 20, rotate: 0 }
+            id: 2, icon: ImageIcon, title: 'Assets', tag: 'Design', color: 'purple',
+            chaos: { x: 40, y: -20, r: 8 },
+            order: { x: 1, y: 0 }
         },
         {
-            id: 3,
-            type: 'link',
-            icon: Link,
-            title: 'Research Paper',
-            preview: 'arxiv.org/ai-organization',
-            color: 'emerald',
-            startPos: { x: -180, y: 150, rotate: -25 },
-            endPos: { x: -280, y: 160, rotate: 0 }
+            id: 3, icon: Code, title: 'Schema', tag: 'Dev', color: 'emerald',
+            chaos: { x: -20, y: 30, r: -5 },
+            order: { x: 2, y: 0 }
         },
         {
-            id: 4,
-            type: 'note',
-            icon: Lightbulb,
-            title: 'Ideas Backlog',
-            preview: 'Feature requests and thoughts...',
-            color: 'amber',
-            startPos: { x: 180, y: 120, rotate: 18 },
-            endPos: { x: 40, y: -120, rotate: 0 }
+            id: 4, icon: Lightbulb, title: 'Ideas', tag: 'Brainstorm', color: 'amber',
+            chaos: { x: 25, y: 35, r: 15 },
+            order: { x: 0, y: 1 }
         },
         {
-            id: 5,
-            type: 'note',
-            icon: Code,
-            title: 'Code Snippets',
-            preview: 'Useful utilities and helpers...',
-            color: 'rose',
-            startPos: { x: 50, y: -100, rotate: -8 },
-            endPos: { x: 40, y: 20, rotate: 0 }
+            id: 5, icon: Link, title: 'Sources', tag: 'Research', color: 'rose',
+            chaos: { x: -40, y: 10, r: -8 },
+            order: { x: 1, y: 1 }
         },
         {
-            id: 6,
-            type: 'note',
-            icon: Calendar,
-            title: 'Meeting Notes',
-            preview: 'Team sync - action items',
-            color: 'cyan',
-            startPos: { x: -80, y: 80, rotate: 12 },
-            endPos: { x: 40, y: 160, rotate: 0 }
-        }
+            id: 6, icon: Calendar, title: 'Sprints', tag: 'Agile', color: 'cyan',
+            chaos: { x: 30, y: -50, r: 10 },
+            order: { x: 2, y: 1 }
+        },
     ];
 
-    const colorSchemes = {
-        blue: 'from-blue-500/10 to-blue-600/20 border-blue-400/30 text-blue-100',
-        purple: 'from-purple-500/10 to-purple-600/20 border-purple-400/30 text-purple-100',
-        emerald: 'from-emerald-500/10 to-emerald-600/20 border-emerald-400/30 text-emerald-100',
-        amber: 'from-amber-500/10 to-amber-600/20 border-amber-400/30 text-amber-100',
-        rose: 'from-rose-500/10 to-rose-600/20 border-rose-400/30 text-rose-100',
-        cyan: 'from-cyan-500/10 to-cyan-600/20 border-cyan-400/30 text-cyan-100'
-    };
+    const cardWidth = 160;
+    const cardHeight = 110;
+    const gap = 20;
 
     return (
-        <div
-            ref={sectionRef}
-            className="relative w-full min-h-screen bg-gradient-to-b from-[#050505] via-[#0a0a0f] to-[#050505] py-20 flex items-center justify-center"
-        >
-            <div className="max-w-7xl mx-auto px-4">
-                {/* Title */}
-                <div className="text-center mb-16">
-                    <div className="text-sm tracking-wider text-white/40 mb-3 uppercase font-medium">
-                        Watch the Magic
-                    </div>
-                    <h2 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent tracking-tight">
-                        Infinite Canvas
+        <div ref={sectionRef} className="relative w-full min-h-screen flex flex-col items-center justify-center bg-[#050505] overflow-hidden py-20">
+
+            {/* Ambient Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 blur-[120px] rounded-full animate-pulse delay-700" />
+            </div>
+
+            {/* Content Container */}
+            <div className="relative z-10 max-w-5xl w-full flex flex-col items-center">
+
+                {/* Header Text */}
+                <div className="text-center mb-24 transition-all duration-1000"
+                    style={{
+                        opacity: isVisible ? 1 : 0,
+                        transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                    }}>
+                    <h2 className="text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 mb-6">
+                        Intelligent Order.
                     </h2>
-                    <p className="text-white/50 text-lg">
-                        From chaos to clarity, automatically
+                    <p className="text-lg text-white/50 max-w-xl mx-auto">
+                        Watch AI scan your scattered thoughts and instantly structure them into actionable workflows.
                     </p>
                 </div>
 
-                {/* Animation Container */}
-                <div className="relative w-full max-w-5xl mx-auto h-[500px]">
-                    {/* Background grid */}
+                {/* Animation Stage */}
+                <div className="relative w-[600px] h-[300px]">
+
+                    {/* Scanner Beam */}
                     <div
-                        className="absolute inset-0 opacity-0 transition-opacity duration-1000"
+                        className="absolute top-[-50px] bottom-[-50px] w-2 z-50 pointer-events-none"
                         style={{
-                            opacity: progress > 0.5 ? 0.15 : 0,
-                            backgroundImage: 'linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)',
-                            backgroundSize: '100px 100px'
+                            left: '0%',
+                            transform: `translateX(${scanProgress * 600}px)`,
+                            opacity: scanProgress > 0 && scanProgress < 1.1 ? 1 : 0,
+                            background: 'linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.8), transparent)',
+                            boxShadow: '0 0 40px 5px rgba(59, 130, 246, 0.5)'
                         }}
-                    />
+                    >
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[1px] bg-blue-500/30 rotate-90" />
+                    </div>
 
                     {/* Cards */}
-                    {cards.map((card, index) => {
-                        const Icon = card.icon;
-                        const delay = index * 0.1;
-                        const cardProgress = Math.max(0, Math.min(1, (progress - delay) / 0.7));
+                    {cards.map((card, i) => {
+                        // Calculate Grid Position
+                        const orderX = (card.order.x - 1) * (cardWidth + gap);
+                        const orderY = (card.order.y - 0.5) * (cardHeight + gap);
 
-                        const currentX = card.startPos.x + (card.endPos.x - card.startPos.x) * cardProgress;
-                        const currentY = card.startPos.y + (card.endPos.y - card.startPos.y) * cardProgress;
-                        const currentRotate = card.startPos.rotate * (1 - cardProgress);
+                        // Calculate Chaos Percentage for this specific card based on scan progress
+                        // Map card X center to scan progress (0 to 1)
+                        const cardCenterXNormalized = (orderX + 300) / 600; // 0 to 1 approximate
+                        const isScanned = scanProgress > cardCenterXNormalized;
+
+                        // Position Logic
+                        const x = isScanned ? orderX : card.chaos.x * 4;
+                        const y = isScanned ? orderY : card.chaos.y * 3;
+                        const r = isScanned ? 0 : card.chaos.r;
+                        const scale = isScanned ? 1 : 0.9;
+                        const opacity = isScanned ? 1 : 0.6;
+                        const glow = isScanned ? 'shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)]' : '';
+
+                        // Colors
+                        const colors = {
+                            blue: 'from-blue-500/20 to-blue-900/40 border-blue-500/30 text-blue-200',
+                            purple: 'from-purple-500/20 to-purple-900/40 border-purple-500/30 text-purple-200',
+                            emerald: 'from-emerald-500/20 to-emerald-900/40 border-emerald-500/30 text-emerald-200',
+                            amber: 'from-amber-500/20 to-amber-900/40 border-amber-500/30 text-amber-200',
+                            rose: 'from-rose-500/20 to-rose-900/40 border-rose-500/30 text-rose-200',
+                            cyan: 'from-cyan-500/20 to-cyan-900/40 border-cyan-500/30 text-cyan-200',
+                        };
 
                         return (
                             <div
                                 key={card.id}
-                                className={`absolute left-1/2 top-1/2 w-64 h-40 rounded-2xl bg-gradient-to-br ${colorSchemes[card.color]} border backdrop-blur-xl shadow-2xl p-4 transition-all duration-700 ease-out`}
+                                className={`absolute top-1/2 left-1/2 w-[${cardWidth}px] h-[${cardHeight}px] rounded-xl border backdrop-blur-md bg-gradient-to-br ${colors[card.color]} transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${glow} flex flex-col p-4`}
                                 style={{
-                                    transform: `translate(calc(-50% + ${currentX}px), calc(-50% + ${currentY}px)) rotate(${currentRotate}deg)`,
-                                    opacity: cardProgress,
-                                    boxShadow: cardProgress > 0.5 ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 30px -5px rgba(0, 0, 0, 0.3)'
+                                    width: cardWidth,
+                                    height: cardHeight,
+                                    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${r}deg) scale(${scale})`,
+                                    opacity: opacity,
+                                    zIndex: isScanned ? 10 : 1
                                 }}
                             >
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
-                                    <div className="p-1.5 rounded-lg bg-white/10">
-                                        <Icon size={16} className="text-white/80" />
-                                    </div>
-                                    <span className="text-sm font-medium text-white/90">{card.title}</span>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <card.icon size={16} className="opacity-80" />
+                                    <span className="text-xs font-bold uppercase tracking-wider opacity-60">{card.tag}</span>
                                 </div>
-
-                                <p className="text-sm text-white/60 mb-3">{card.preview}</p>
-
-                                <div className="flex gap-1.5 mt-auto">
-                                    <div className="px-2 py-0.5 rounded-full bg-white/10 text-xs text-white/60">
-                                        {card.type}
-                                    </div>
-                                </div>
+                                <div className="font-semibold text-lg leading-tight mb-1">{card.title}</div>
+                                <div className="h-1 w-12 bg-white/20 rounded-full mt-auto" />
                             </div>
                         );
                     })}
 
-                    {/* Connection lines */}
-                    <svg
-                        className="absolute inset-0 w-full h-full pointer-events-none"
-                        style={{ opacity: progress > 0.7 ? progress : 0 }}
-                    >
-                        <defs>
-                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="rgba(59, 130, 246, 0)" />
-                                <stop offset="50%" stopColor="rgba(59, 130, 246, 0.4)" />
-                                <stop offset="100%" stopColor="rgba(59, 130, 246, 0)" />
-                            </linearGradient>
-                        </defs>
+                    {/* Dynamic Connections (Only appear when scanned) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                        {cards.map((card, i) => {
+                            // Simple logic: connect to previous if scanned
+                            if (i === 0) return null;
+                            const prev = cards[i - 1];
+                            const currX = (card.order.x - 1) * (cardWidth + gap) + 300;
+                            const currY = (card.order.y - 0.5) * (cardHeight + gap) + 150;
+                            const prevX = (prev.order.x - 1) * (cardWidth + gap) + 300;
+                            const prevY = (prev.order.y - 0.5) * (cardHeight + gap) + 150;
 
-                        <line
-                            x1="50%" y1="calc(50% - 120px)"
-                            x2="50%" y2="calc(50% + 20px)"
-                            stroke="url(#lineGradient)"
-                            strokeWidth="2"
-                            strokeDasharray="5,5"
-                        />
-                        <line
-                            x1="50%" y1="calc(50% + 20px)"
-                            x2="50%" y2="calc(50% + 160px)"
-                            stroke="url(#lineGradient)"
-                            strokeWidth="2"
-                            strokeDasharray="5,5"
-                        />
-                        <line
-                            x1="calc(50% - 280px)" y1="calc(50% - 120px)"
-                            x2="calc(50% - 280px)" y2="calc(50% + 20px)"
-                            stroke="url(#lineGradient)"
-                            strokeWidth="2"
-                            strokeDasharray="5,5"
-                        />
+                            const cardCenterXNormalized = ((card.order.x - 1) * (cardWidth + gap) + 300) / 600;
+                            const isScanned = scanProgress > cardCenterXNormalized;
+
+                            if (!isScanned) return null;
+
+                            // Only draw some lines
+                            if (card.order.y !== prev.order.y && card.order.x !== prev.order.x) return null;
+
+                            return (
+                                <line
+                                    key={i}
+                                    x1={currX} y1={currY}
+                                    x2={prevX} y2={prevY}
+                                    stroke="rgba(255,255,255,0.1)"
+                                    strokeWidth="2"
+                                    strokeDasharray="4 4"
+                                />
+                            );
+                        })}
                     </svg>
+
                 </div>
 
-                {/* Status indicator */}
-                <div
-                    className="mt-12 text-center"
-                    style={{ opacity: progress < 0.9 ? 1 : 0 }}
-                >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 backdrop-blur-sm">
-                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                        <span className="text-sm text-blue-200 font-medium">
-                            {progress < 0.3 ? 'Analyzing content...' : progress < 0.7 ? 'Organizing...' : 'Complete!'}
-                        </span>
+                {/* Status Pill */}
+                <div className="mt-16 transition-all duration-500" style={{ opacity: scanProgress > 0 ? 1 : 0, transform: `scale(${scanProgress > 0 ? 1 : 0.8})` }}>
+                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                        {scanProgress < 1.1 ? (
+                            <>
+                                <Sparkles size={16} className="text-blue-400 animate-spin-slow" />
+                                <span className="text-sm font-medium text-white/80">AI Organizing... {Math.round(scanProgress * 100)}%</span>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+                                <span className="text-sm font-medium text-white/80">Structure Complete</span>
+                            </>
+                        )}
                     </div>
                 </div>
+
             </div>
         </div>
     );
