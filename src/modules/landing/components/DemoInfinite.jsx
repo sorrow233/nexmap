@@ -1,36 +1,46 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Image as ImageIcon, Link, Lightbulb, Calendar, Code } from 'lucide-react';
 
 const DemoInfinite = () => {
-    const containerRef = useRef(null);
-    const [scrollProgress, setScrollProgress] = useState(0);
+    const [isVisible, setIsVisible] = useState(false);
+    const [animationProgress, setAnimationProgress] = useState(0);
+    const sectionRef = useRef(null);
 
+    // Detect when section enters viewport
     useEffect(() => {
-        const handleScroll = () => {
-            if (!containerRef.current) return;
-            const rect = containerRef.current.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && !isVisible) {
+                    setIsVisible(true);
+                    // Start animation sequence
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 0.01;
+                        if (progress >= 1) {
+                            progress = 1;
+                            clearInterval(interval);
+                        }
+                        setAnimationProgress(progress);
+                    }, 20); // 2 seconds total animation
 
-            // Start animation when section is 70% visible
-            const triggerPoint = windowHeight * 0.7;
-            const start = triggerPoint;
-            const end = -rect.height * 0.3;
+                    return () => clearInterval(interval);
+                }
+            },
+            { threshold: 0.3 }
+        );
 
-            const progress = Math.max(0, Math.min(1, (start - rect.top) / (start - end)));
-            setScrollProgress(progress);
-        };
+        if (sectionRef.current) {
+            observer.observe(sectionRef.current);
+        }
 
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+        return () => observer.disconnect();
+    }, [isVisible]);
 
-    // Animation phases
-    const phase1 = Math.min(1, scrollProgress * 2); // 0-0.5: Cards appear
-    const phase2 = Math.max(0, Math.min(1, (scrollProgress - 0.3) * 2)); // 0.3-0.8: Organization
-    const phase3 = Math.max(0, Math.min(1, (scrollProgress - 0.6) * 2.5)); // 0.6-1: Connections
+    // Easing function
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+    const progress = easeOutCubic(animationProgress);
 
-    // Card data with realistic content
+    // Cards data
     const cards = [
         {
             id: 1,
@@ -105,64 +115,44 @@ const DemoInfinite = () => {
 
     return (
         <div
-            ref={containerRef}
-            className="relative w-full bg-gradient-to-b from-[#050505] via-[#0a0a0f] to-[#050505]"
-            style={{ minHeight: '180vh' }}
+            ref={sectionRef}
+            className="relative w-full min-h-screen bg-gradient-to-b from-[#050505] via-[#0a0a0f] to-[#050505] py-20 flex items-center justify-center"
         >
-            {/* Sticky viewport */}
-            <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
-
-                {/* Background grid - fades in during organization */}
-                <div
-                    className="absolute inset-0 opacity-0 transition-opacity duration-1000"
-                    style={{
-                        opacity: phase2 * 0.15,
-                        backgroundImage: 'linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)',
-                        backgroundSize: '100px 100px'
-                    }}
-                />
-
+            <div className="max-w-7xl mx-auto px-4">
                 {/* Title */}
-                <div className="absolute top-32 text-center z-50">
-                    <div
-                        className="text-sm tracking-wider text-white/40 mb-3 uppercase font-medium"
-                        style={{
-                            opacity: phase1,
-                            transform: `translateY(${(1 - phase1) * 20}px)`
-                        }}
-                    >
+                <div className="text-center mb-16">
+                    <div className="text-sm tracking-wider text-white/40 mb-3 uppercase font-medium">
                         Watch the Magic
                     </div>
-                    <h2
-                        className="text-7xl md:text-8xl font-bold mb-4 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent tracking-tight"
-                        style={{
-                            opacity: phase1,
-                            transform: `translateY(${(1 - phase1) * 30}px)`
-                        }}
-                    >
+                    <h2 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent tracking-tight">
                         Infinite Canvas
                     </h2>
-                    <p
-                        className="text-white/50 text-lg"
-                        style={{
-                            opacity: phase3,
-                            transform: `translateY(${(1 - phase3) * 20}px)`
-                        }}
-                    >
+                    <p className="text-white/50 text-lg">
                         From chaos to clarity, automatically
                     </p>
                 </div>
 
-                {/* Cards container */}
-                <div className="relative w-full max-w-5xl h-[500px]">
+                {/* Animation Container */}
+                <div className="relative w-full max-w-5xl mx-auto h-[500px]">
+                    {/* Background grid */}
+                    <div
+                        className="absolute inset-0 opacity-0 transition-opacity duration-1000"
+                        style={{
+                            opacity: progress > 0.5 ? 0.15 : 0,
+                            backgroundImage: 'linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)',
+                            backgroundSize: '100px 100px'
+                        }}
+                    />
+
+                    {/* Cards */}
                     {cards.map((card, index) => {
                         const Icon = card.icon;
                         const delay = index * 0.1;
+                        const cardProgress = Math.max(0, Math.min(1, (progress - delay) / 0.7));
 
-                        // Calculate current position
-                        const currentX = card.startPos.x + (card.endPos.x - card.startPos.x) * phase2;
-                        const currentY = card.startPos.y + (card.endPos.y - card.startPos.y) * phase2;
-                        const currentRotate = card.startPos.rotate * (1 - phase2);
+                        const currentX = card.startPos.x + (card.endPos.x - card.startPos.x) * cardProgress;
+                        const currentY = card.startPos.y + (card.endPos.y - card.startPos.y) * cardProgress;
+                        const currentRotate = card.startPos.rotate * (1 - cardProgress);
 
                         return (
                             <div
@@ -170,12 +160,10 @@ const DemoInfinite = () => {
                                 className={`absolute left-1/2 top-1/2 w-64 h-40 rounded-2xl bg-gradient-to-br ${colorSchemes[card.color]} border backdrop-blur-xl shadow-2xl p-4 transition-all duration-700 ease-out`}
                                 style={{
                                     transform: `translate(calc(-50% + ${currentX}px), calc(-50% + ${currentY}px)) rotate(${currentRotate}deg)`,
-                                    opacity: phase1,
-                                    transitionDelay: `${delay}s`,
-                                    boxShadow: phase2 > 0.5 ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 30px -5px rgba(0, 0, 0, 0.3)'
+                                    opacity: cardProgress,
+                                    boxShadow: cardProgress > 0.5 ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 30px -5px rgba(0, 0, 0, 0.3)'
                                 }}
                             >
-                                {/* Card header */}
                                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
                                     <div className="p-1.5 rounded-lg bg-white/10">
                                         <Icon size={16} className="text-white/80" />
@@ -183,10 +171,8 @@ const DemoInfinite = () => {
                                     <span className="text-sm font-medium text-white/90">{card.title}</span>
                                 </div>
 
-                                {/* Card content */}
                                 <p className="text-sm text-white/60 mb-3">{card.preview}</p>
 
-                                {/* Card footer with tags */}
                                 <div className="flex gap-1.5 mt-auto">
                                     <div className="px-2 py-0.5 rounded-full bg-white/10 text-xs text-white/60">
                                         {card.type}
@@ -196,10 +182,10 @@ const DemoInfinite = () => {
                         );
                     })}
 
-                    {/* Connection lines - appear in phase 3 */}
+                    {/* Connection lines */}
                     <svg
                         className="absolute inset-0 w-full h-full pointer-events-none"
-                        style={{ opacity: phase3 }}
+                        style={{ opacity: progress > 0.7 ? progress : 0 }}
                     >
                         <defs>
                             <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -209,7 +195,6 @@ const DemoInfinite = () => {
                             </linearGradient>
                         </defs>
 
-                        {/* Draw connections between cards in organized state */}
                         <line
                             x1="50%" y1="calc(50% - 120px)"
                             x2="50%" y2="calc(50% + 20px)"
@@ -236,16 +221,13 @@ const DemoInfinite = () => {
 
                 {/* Status indicator */}
                 <div
-                    className="absolute bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 backdrop-blur-sm"
-                    style={{
-                        opacity: phase1 * (1 - phase3),
-                        transform: `translateX(-50%) translateY(${(1 - phase1) * 30}px)`
-                    }}
+                    className="mt-12 text-center"
+                    style={{ opacity: progress < 0.9 ? 1 : 0 }}
                 >
-                    <div className="flex items-center gap-2">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 backdrop-blur-sm">
                         <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                         <span className="text-sm text-blue-200 font-medium">
-                            {phase2 < 0.3 ? 'Analyzing content...' : phase2 < 0.7 ? 'Organizing...' : 'Complete'}
+                            {progress < 0.3 ? 'Analyzing content...' : progress < 0.7 ? 'Organizing...' : 'Complete!'}
                         </span>
                     </div>
                 </div>
