@@ -134,6 +134,43 @@ export class OpenAIProvider extends LLMProvider {
     async generateImage(prompt, model, options = {}) {
         const { apiKey, baseUrl } = this.config;
         const modelToUse = model || this.config.model || 'gpt-4o';
+
+        // Check if this model/provider uses the unified chat completion endpoint for images
+        const isUnifiedImageModel = modelToUse.includes('gemini') && modelToUse.includes('image');
+
+        if (isUnifiedImageModel) {
+            console.log(`[OpenAI] Redirecting image generation for ${modelToUse} to chat endpoint`);
+            const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelToUse,
+                    messages: [{ role: 'user', content: prompt }],
+                    extra_body: {
+                        size: options.size || "1024x1024"
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error?.message || response.statusText);
+            }
+
+            const data = await response.json();
+            const content = data.choices[0].message.content;
+
+            // Typically returned as a plain URL string or markdown image in the content
+            const urlMatch = content.match(/https?:\/\/[^\s\)]+/);
+            return urlMatch ? urlMatch[0] : content;
+        }
+
+        // Standard OpenAI DALL-E endpoint
         const endpoint = `${baseUrl.replace(/\/$/, '')}/images/generations`;
 
         const response = await fetch(endpoint, {
