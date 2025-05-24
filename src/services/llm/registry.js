@@ -5,7 +5,12 @@ export const DEFAULT_PROVIDERS = {
         baseUrl: 'https://api.gmi-serving.com/v1',
         apiKey: '',
         model: 'google/gemini-3-pro-preview',
-        protocol: 'gemini'
+        protocol: 'gemini',
+        roles: {
+            chat: 'google/gemini-3-pro-preview',
+            analysis: 'google/gemini-3-flash-preview',
+            image: 'gemini-3-pro-image-preview'
+        }
     }
 };
 
