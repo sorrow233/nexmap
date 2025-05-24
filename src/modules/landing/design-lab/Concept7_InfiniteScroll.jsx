@@ -1,79 +1,87 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const Concept7_InfiniteScroll = () => {
+const Concept7_Multiverse = () => {
+    const [selected, setSelected] = useState(0);
+
+    const boards = [
+        { name: 'AI Research', color: 'blue', desc: '127 cards' },
+        { name: 'Personal', color: 'emerald', desc: '43 cards' },
+        { name: 'Work Q4', color: 'purple', desc: '89 cards' },
+        { name: 'Learning', color: 'amber', desc: '201 cards' },
+        { name: 'Ideas', color: 'pink', desc: '64 cards' }
+    ];
+
     return (
-        <div className="w-full h-full bg-[#111] overflow-hidden flex flex-col justify-between">
-            {/* Header */}
-            <div className="p-8 border-b border-white/10 flex justify-between items-center bg-[#111] z-20">
-                <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                </div>
-                <div className="font-mono text-zinc-500 text-xs">STREAMING_DATA_V1.0</div>
+        <div className="relative w-full h-full bg-gradient-to-br from-zinc-950 via-black to-zinc-900 overflow-hidden" style={{ perspective: '1200px' }}>
+            {/* Starfield */}
+            <div className="absolute inset-0">
+                {[...Array(100)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="absolute w-1 h-1 bg-white/30 rounded-full"
+                        style={{
+                            top: `${Math.random() * 100}%`,
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 3}s`
+                        }}
+                    />
+                ))}
             </div>
 
-            {/* Marquee Streams */}
-            <div className="flex-1 flex flex-col justify-center gap-8 -rotate-6 scale-110">
-                {/* Stream 1 */}
-                <div className="w-full bg-zinc-900 border-y border-white/5 py-8 overflow-hidden">
-                    <div className="animate-scroll-left flex gap-12 whitespace-nowrap">
-                        {[...Array(10)].map((_, i) => (
-                            <span key={i} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-zinc-500 to-zinc-700">
-                                DATA STREAMING
-                            </span>
-                        ))}
-                    </div>
-                </div>
+            {/* Boards in 3D space */}
+            <div className="absolute inset-0 flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
+                {boards.map((board, i) => {
+                    const angle = (i / boards.length) * Math.PI * 2;
+                    const radius = 400;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+                    const isSelected = i === selected;
 
-                {/* Stream 2 (Reversed) */}
-                <div className="w-full bg-blue-900/10 border-y border-blue-500/20 py-8 overflow-hidden">
-                    <div className="animate-scroll-right flex gap-12 whitespace-nowrap">
-                        {[...Array(10)].map((_, i) => (
-                            <span key={i} className="text-4xl font-bold text-blue-500">
-                                REAL TIME COLLABORATION
-                            </span>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Stream 3 */}
-                <div className="w-full bg-zinc-900 border-y border-white/5 py-8 overflow-hidden">
-                    <div className="animate-scroll-left flex gap-12 whitespace-nowrap">
-                        {[...Array(10)].map((_, i) => (
-                            <div key={i} className="flex items-center gap-4">
-                                <span className="w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-2/3"></div>
-                                </span>
-                                <span className="font-mono text-zinc-500">PROCESS_{i}</span>
+                    return (
+                        <div
+                            key={i}
+                            onClick={() => setSelected(i)}
+                            className={`absolute w-80 h-96 bg-zinc-800/50 backdrop-blur-sm border-2 rounded-2xl p-6 cursor-pointer transition-all duration-700 ${isSelected ? 'border-white/40 scale-110' : 'border-white/10 hover:border-white/30'
+                                }`}
+                            style={{
+                                transform: `translateX(${x}px) translateZ(${z}px) rotateY(${-angle}rad)`,
+                                transformStyle: 'preserve-3d'
+                            }}
+                        >
+                            <div className={`w-12 h-12 rounded-full bg-${board.color}-500/20 mb-4 flex items-center justify-center`}>
+                                <div className={`w-2 h-2 rounded-full bg-${board.color}-400`} />
                             </div>
-                        ))}
-                    </div>
-                </div>
+                            <h3 className="text-2xl font-bold text-white mb-2">{board.name}</h3>
+                            <p className="text-white/50 text-sm">{board.desc}</p>
+
+                            {/* Mini cards preview */}
+                            <div className="mt-6 grid grid-cols-3 gap-2">
+                                {[...Array(6)].map((_, j) => (
+                                    <div key={j} className="h-12 bg-white/5 rounded border border-white/10" />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
-            {/* Center Focus */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <div className="bg-[#111]/80 backdrop-blur-sm p-12 border border-white/10 rounded-2xl text-center">
-                    <h1 className="text-6xl font-black text-white mb-4">FLOW</h1>
-                    <p className="text-zinc-400">Don't stop the movement.</p>
-                </div>
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center z-10">
+                <h1 className="text-6xl font-bold text-white mb-2">Multiverse</h1>
+                <p className="text-white/70 text-xl">All your projects, one universe</p>
             </div>
 
-            <style>{`
-                @keyframes scroll-left {
-                    0% { transform: translateX(0); }
-                    100% { transform: translateX(-50%); }
-                }
-                @keyframes scroll-right {
-                    0% { transform: translateX(-50%); }
-                    100% { transform: translateX(0); }
-                }
-                .animate-scroll-left { animation: scroll-left 20s linear infinite; }
-                .animate-scroll-right { animation: scroll-right 20s linear infinite; }
-            `}</style>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                {boards.map((_, i) => (
+                    <div
+                        key={i}
+                        onClick={() => setSelected(i)}
+                        className={`w-3 h-3 rounded-full cursor-pointer transition-all ${i === selected ? 'bg-blue-400 scale-125' : 'bg-white/30'
+                            }`}
+                    />
+                ))}
+            </div>
         </div>
     );
 };
 
-export default Concept7_InfiniteScroll;
+export default Concept7_Multiverse;

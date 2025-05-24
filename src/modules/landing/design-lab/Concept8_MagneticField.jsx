@@ -1,78 +1,105 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
-const Concept8_MagneticField = () => {
-    // A simplified version of magnetic effect using React state for a few dots
-    // For a real production version we'd use canvas, but for rapid prototyping DOM nodes works well for "feel"
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+const Concept8_Fluidity = () => {
+    const [cards, setCards] = useState([
+        { id: 1, x: 300, y: 200, vx: 0, vy: 0 },
+        { id: 2, x: 600, y: 300, vx: 0, vy: 0 },
+        { id: 3, x: 450, y: 400, vx: 0, vy: 0 }
+    ]);
+    const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
-    const handleMouseMove = (e) => {
-        setMousePos({ x: e.clientX, y: e.clientY });
-    };
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            setMouse({ x: e.clientX, y: e.clientY });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
-    const gridSize = 10;
-    const dots = [];
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCards(prevCards => prevCards.map(card => {
+                // Physics: attract to mouse with spring
+                const dx = mouse.x - card.x;
+                const dy = mouse.y - card.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const force = Math.min(dist / 100, 5);
 
-    // We'll generate a grid of dots in the center area
-    // Just a placeholder grid to avoid perf issues with too many DOM elements
-    for (let i = 0; i < 100; i++) {
-        dots.push(i);
-    }
+                let ax = 0, ay = 0;
+                if (dist > 150 && dist < 400) {
+                    ax = (dx / dist) * force * 0.1;
+                    ay = (dy / dist) * force * 0.1;
+                }
+
+                // Damping
+                const vx = (card.vx + ax) * 0.95;
+                const vy = (card.vy + ay) * 0.95;
+
+                return {
+                    ...card,
+                    x: card.x + vx,
+                    y: card.y + vy,
+                    vx,
+                    vy
+                };
+            }));
+        }, 1000 / 60);
+
+        return () => clearInterval(interval);
+    }, [mouse]);
 
     return (
-        <div onMouseMove={handleMouseMove} className="w-full h-full bg-black flex flex-wrap items-center justify-center content-center gap-8 overflow-hidden relative">
-            <div className="absolute inset-0 opacity-20 pointer-events-none"
+        <div className="relative w-full h-full bg-gradient-to-br from-zinc-900 to-black overflow-hidden">
+            {/* Cursor glow */}
+            <div
+                className="absolute w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none transition-all duration-150"
                 style={{
-                    background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(29, 78, 216, 0.15), transparent 40%)`
+                    left: mouse.x - 128,
+                    top: mouse.y - 128
                 }}
-            ></div>
+            />
 
-            <div className="max-w-4xl grid grid-cols-10 gap-4">
-                {dots.map(i => (
-                    <MagneticDot key={i} mousePos={mousePos} />
-                ))}
+            {/* Cards */}
+            {cards.map(card => (
+                <div
+                    key={card.id}
+                    className="absolute w-48 h-32 bg-zinc-800/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl p-4 transition-transform duration-75"
+                    style={{
+                        left: card.x - 96,
+                        top: card.y - 64,
+                        transform: `rotate(${card.vx * 2}deg)`
+                    }}
+                >
+                    <div className="space-y-2">
+                        <div className="h-3 w-3/4 bg-white/20 rounded" />
+                        <div className="h-2 w-1/2 bg-white/15 rounded" />
+                        <div className="h-2 w-2/3 bg-white/15 rounded" />
+                    </div>
+                    {/* Pulse ring */}
+                    <div className="absolute inset-0 rounded-xl border-2 border-blue-500/30 animate-pulse-ring" />
+                </div>
+            ))}
+
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center z-10 pointer-events-none">
+                <h1 className="text-6xl font-bold text-white mb-2">Fluidity</h1>
+                <p className="text-white/70 text-xl">Software that feels alive</p>
             </div>
 
-            <div className="absolute bottom-20 text-center pointer-events-none">
-                <h1 className="text-4xl text-white font-light tracking-[1em] mb-4">MAGNETIC</h1>
-                <p className="text-zinc-600 text-sm">Interaction defines structure.</p>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/50 text-sm pointer-events-none">
+                Move your mouse to interact
             </div>
+
+            <style>{`
+                @keyframes pulse-ring {
+                    0%, 100% { transform: scale(1); opacity: 0.3; }
+                    50% { transform: scale(1.05); opacity: 0.5; }
+                }
+                .animate-pulse-ring {
+                    animation: pulse-ring 2s ease-in-out infinite;
+                }
+            `}</style>
         </div>
     );
 };
 
-const MagneticDot = ({ mousePos }) => {
-    const ref = useRef(null);
-    const [pos, setPos] = useState({ x: 0, y: 0 });
-
-    React.useEffect(() => {
-        if (!ref.current) return;
-        const rect = ref.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        const dx = mousePos.x - centerX;
-        const dy = mousePos.y - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        const maxDist = 200;
-
-        if (dist < maxDist) {
-            const force = (maxDist - dist) / maxDist;
-            const moveX = (dx / dist) * force * 20; // Repel
-            const moveY = (dy / dist) * force * 20;
-            setPos({ x: -moveX, y: -moveY });
-        } else {
-            setPos({ x: 0, y: 0 });
-        }
-    }, [mousePos]);
-
-    return (
-        <div
-            ref={ref}
-            className="w-3 h-3 bg-white/30 rounded-full transition-transform duration-75 ease-out"
-            style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}
-        ></div>
-    );
-};
-
-export default Concept8_MagneticField;
+export default Concept8_Fluidity;
