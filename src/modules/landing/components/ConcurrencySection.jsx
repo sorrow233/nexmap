@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const ConcurrencySection = () => {
+    const { t } = useLanguage();
     // We simulate "streams" being either in "thinking" state or "streaming" state
     const [streams, setStreams] = useState(Array(15).fill({ status: 'idle', progress: 0 }));
 
@@ -31,25 +33,21 @@ const ConcurrencySection = () => {
             <div className="relative z-10 text-center mb-16 max-w-4xl px-6">
                 <div className="inline-flex items-center gap-2 mb-4 bg-orange-500/10 px-4 py-1.5 rounded-full border border-orange-500/20">
                     <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                    <span className="text-orange-400 text-xs font-bold uppercase tracking-wider">Non-Blocking Architecture</span>
+                    <span className="text-orange-400 text-xs font-bold uppercase tracking-wider">{t.concurrency.badge}</span>
                 </div>
 
                 <h2 className="text-5xl md:text-7xl font-bold text-white mb-6">
-                    Unlimited <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-200">
-                        Concurrency.
-                    </span>
+                    {t.concurrency.title} <br />
                 </h2>
                 <p className="text-xl text-gray-400">
-                    No "Thinking..." blockers. Fire off <span className="text-white font-semibold">50 streams simultaneous</span>. <br />
-                    Our non-blocking AIManager handles the load.
+                    {t.concurrency.text}
                 </p>
             </div>
 
             {/* The Concurrency Visual */}
             <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full max-w-6xl px-4">
                 {streams.map((stream, i) => (
-                    <StreamCard key={i} index={i} status={stream.status} progress={stream.progress} />
+                    <StreamCard key={i} index={i} status={stream.status} progress={stream.progress} t={t} />
                 ))}
             </div>
 
@@ -57,7 +55,7 @@ const ConcurrencySection = () => {
     );
 };
 
-const StreamCard = ({ index, status, progress }) => {
+const StreamCard = ({ index, status, progress, t }) => {
     return (
         <div className="bg-[#111] border border-white/5 rounded-lg p-3 h-32 flex flex-col relative overflow-hidden group hover:border-white/10 transition-colors">
             {/* Header */}
@@ -69,7 +67,7 @@ const StreamCard = ({ index, status, progress }) => {
             {/* Content Area */}
             <div className="flex-1 font-mono text-[10px] leading-tight text-emerald-500/80 overflow-hidden break-all">
                 {status === 'idle' ? (
-                    <span className="text-white/20">Idle...</span>
+                    <span className="text-white/20">{t.concurrency.idle}</span>
                 ) : (
                     <div className="animate-pulse">
                         {/* Simulated Text Gen */}

@@ -3,6 +3,8 @@ import { Network, GitBranch, Cpu, Zap, Brain, Sparkles, Workflow, Bot, Database,
 import { useLanguage } from '../../../contexts/LanguageContext';
 
 const FeatureBento = () => {
+    const { t } = useLanguage();
+
     return (
         <div className="w-full relative z-20 py-32 px-4 md:px-12 flex justify-center bg-[#050505]">
             <div className="w-full max-w-7xl flex flex-col justify-center">
@@ -11,10 +13,10 @@ const FeatureBento = () => {
                 <div className="text-center mb-24 relative">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
                     <h2 className="relative text-5xl md:text-8xl font-bold text-white mb-8 tracking-tighter">
-                        For <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">Professional</span> LLM Users.
+                        {t.bento.headline.pre} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">{t.bento.headline.highlight}</span> {t.bento.headline.post}
                     </h2>
                     <p className="relative text-xl text-gray-400 max-w-4xl mx-auto font-light leading-relaxed">
-                        To build the ultimate engine, we uncapped concurrency for <span className="text-white">massive parallel workloads</span>, engineered a <span className="text-white">recursive graph-walker</span> for deep context, and implemented <span className="text-white">spatial zoning</span> for city-scale architecture.
+                        {t.bento.subtext}
                     </p>
                 </div>
 
@@ -27,23 +29,23 @@ const FeatureBento = () => {
                             <div className="w-full max-w-lg">
                                 <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
                                     <Network className="w-3 h-3" />
-                                    <span>Graph Context Walking</span>
+                                    <span>{t.bento.graph.badge}</span>
                                 </div>
-                                <h3 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">It reads the <br />connections.</h3>
+                                <h3 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">{t.bento.graph.title}</h3>
                                 <p className="text-gray-400 text-lg leading-relaxed">
-                                    Traditional chat UIs are oblivious to structure. Our engine traverses the <span className="text-gray-200">semantic graph</span> of your canvas, pruning irrelevant nodes and injecting precise neighbor context into every generation.
+                                    {t.bento.graph.text}
                                 </p>
                             </div>
 
                             <div className="flex gap-4 mt-8">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-3xl font-mono text-white font-bold">128k</span>
-                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Token Window</span>
+                                    <span className="text-xs text-gray-500 uppercase tracking-wider">{t.bento.graph.stat1}</span>
                                 </div>
                                 <div className="w-px h-12 bg-white/10" />
                                 <div className="flex flex-col gap-1">
                                     <span className="text-3xl font-mono text-white font-bold">∞</span>
-                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Depth</span>
+                                    <span className="text-xs text-gray-500 uppercase tracking-wider">{t.bento.graph.stat2}</span>
                                 </div>
                             </div>
                         </div>
@@ -63,8 +65,8 @@ const FeatureBento = () => {
                                 <GitBranch className="w-7 h-7 text-emerald-400" />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Recursive "Sprout"</h3>
-                                <p className="text-gray-400 text-sm leading-relaxed">Active ideation. Click "Sprout" to have the AI recursively branch one thought into five divergent execution paths.</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">{t.bento.sprout.title}</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed">{t.bento.sprout.text}</p>
                             </div>
                         </div>
                         {/* Recursive Branching Visual */}
@@ -87,8 +89,8 @@ const FeatureBento = () => {
                                 <Cpu className="w-7 h-7 text-pink-400" />
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Unlimited Concurrency</h3>
-                                <p className="text-gray-400 text-sm leading-relaxed">No "Thinking..." blockers. Fire off 50 streams simultaneous. Our non-blocking <span className="font-mono text-pink-400">AIManager</span> handles the load.</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">{t.bento.concurrency.title}</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed">{t.bento.concurrency.text}</p>
                             </div>
                         </div>
                         {/* Concurrency lines */}
@@ -108,11 +110,11 @@ const FeatureBento = () => {
                             <div className="flex-1 min-w-0">
                                 <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-white/5 text-purple-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
                                     <Database className="w-3 h-3" />
-                                    <span>Spatial Organization</span>
+                                    <span>{t.bento.spatial.badge}</span>
                                 </div>
-                                <h3 className="text-3xl font-bold text-white mb-3">Semantic Zoning.</h3>
+                                <h3 className="text-3xl font-bold text-white mb-3">{t.bento.spatial.title}</h3>
                                 <p className="text-gray-400 max-w-xl leading-relaxed">
-                                    Don't just organize—build cities. Group related thoughts into dynamic <span className="text-white">Zones</span> that auto-adjust their bounding boxes. Like "Cities: Skylines" for your neural architecture.
+                                    {t.bento.spatial.text}
                                 </p>
                             </div>
 
@@ -121,7 +123,7 @@ const FeatureBento = () => {
                                 {/* Zone Container */}
                                 <div className="absolute inset-4 border border-dashed border-purple-500/30 rounded-3xl bg-purple-500/5 backdrop-blur-sm animate-pulse-slow flex items-center justify-center">
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-[10px] font-bold text-purple-300 uppercase tracking-widest">
-                                        Zone: Architecture
+                                        {t.bento.spatial.zoneExample}
                                     </div>
 
                                     {/* Nodes inside Zone */}
@@ -141,7 +143,7 @@ const FeatureBento = () => {
                                 {/* Floating "Add to Zone" cursor/action */}
                                 <div className="absolute -right-4 bottom-0 bg-white text-black p-2 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 group-hover:-translate-y-4 transition-all duration-300 pointer-events-none font-bold text-xs flex gap-2 items-center">
                                     <PlusIcon className="w-3 h-3" />
-                                    <span>Auto-Expand</span>
+                                    <span>{t.bento.spatial.autoExpand}</span>
                                 </div>
                             </div>
                         </div>

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { BoxSelect, LayoutGrid } from 'lucide-react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const SpatialSection = () => {
     const [organized, setOrganized] = useState(false);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -23,26 +25,26 @@ const SpatialSection = () => {
                 <div className="relative w-full h-full">
                     {/* Zone 1: Architecture */}
                     <ZoneBox
-                        label="Zone: Architecture"
+                        label={t.spatial.zones.arch}
                         color="blue"
                         x={10} y={10} w={40} h={40}
                         organized={organized}
                         cards={[
-                            { id: 1, title: 'Floor Plans' },
-                            { id: 2, title: 'Elevations' },
-                            { id: 3, title: 'Materials' }
+                            { id: 1, title: t.spatial.cards.floorPlans },
+                            { id: 2, title: t.spatial.cards.elevations },
+                            { id: 3, title: t.spatial.cards.materials }
                         ]}
                     />
 
                     {/* Zone 2: Engineers */}
                     <ZoneBox
-                        label="Zone: Engineering"
+                        label={t.spatial.zones.eng}
                         color="amber"
                         x={60} y={50} w={30} h={35}
                         organized={organized}
                         cards={[
-                            { id: 4, title: 'Structures' },
-                            { id: 5, title: 'Electrical' }
+                            { id: 4, title: t.spatial.cards.structures },
+                            { id: 5, title: t.spatial.cards.electrical }
                         ]}
                     />
                 </div>
@@ -57,9 +59,9 @@ const SpatialSection = () => {
                 </div>
 
                 <h2 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-                    Spatial <br />
+                    {t.spatial.title1} <br />
                     <span className="text-blue-500 relative">
-                        Organization.
+                        {t.spatial.title2}
                         {/* Underline decoration */}
                         <svg className="absolute w-full h-3 -bottom-2 left-0 text-blue-500/50" viewBox="0 0 100 10" preserveAspectRatio="none">
                             <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -67,17 +69,15 @@ const SpatialSection = () => {
                     </span>
                 </h2>
                 <p className="text-gray-400 text-xl leading-relaxed max-w-md mb-8">
-                    Semantic Zoning. Don't just organize—<span className="text-white">build cities</span>.
-                    Group related thoughts into dynamic Zones that auto-adjust their bounding boxes.
-                    Like "Cities: Skylines" for your neural architecture.
+                    {t.spatial.text}
                 </p>
 
                 <div className="flex items-center gap-4 text-sm text-gray-500 font-mono">
                     <div className={`px-3 py-1 rounded border ${organized ? 'bg-blue-500/20 border-blue-500/50 text-blue-300' : 'bg-transparent border-white/10'}`}>
-                        STATE: ORGANIZED
+                        {t.spatial.stateOrganized}
                     </div>
                     <div className={`px-3 py-1 rounded border ${!organized ? 'bg-red-500/20 border-red-500/50 text-red-300' : 'bg-transparent border-white/10'}`}>
-                        STATE: CHAOS
+                        {t.spatial.stateChaos}
                     </div>
                 </div>
             </div>

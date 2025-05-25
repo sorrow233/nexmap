@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { GitBranch, Zap, Layers } from 'lucide-react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const SproutSection = () => {
     const [depth, setDepth] = useState(0);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -32,18 +34,18 @@ const SproutSection = () => {
             {/* Content */}
             <div className="w-full md:w-1/2 z-10 mb-12 md:mb-0 pl-10">
                 <div className="flex gap-4 mb-6">
-                    <Badge label="128k Token Window" icon={Layers} color="blue" />
-                    <Badge label="∞ Depth" icon={Zap} color="purple" />
+                    <Badge label={t.sprout.badge1} icon={Layers} color="blue" />
+                    <Badge label={t.sprout.badge2} icon={Zap} color="purple" />
                 </div>
 
                 <h2 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-                    Recursive <br />
+                    {t.sprout.title1} <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">
-                        "Sprout"
+                        {t.sprout.title2}
                     </span>
                 </h2>
                 <p className="text-gray-400 text-xl leading-relaxed max-w-md">
-                    Active ideation. Click <span className="text-white font-bold">"Sprout"</span> to have the AI recursively branch one thought into five divergent execution paths.
+                    {t.sprout.text}
                 </p>
             </div>
         </div>
