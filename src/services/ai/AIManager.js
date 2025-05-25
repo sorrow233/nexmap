@@ -1,6 +1,5 @@
-
 import { uuid } from '../../utils/uuid.js';
-
+import { getSystemPrompt } from './promptUtils.js';
 
 /**
  * Task Priorities
@@ -199,10 +198,12 @@ class AIManager {
             let fullText = '';
 
             // Original: Inject time awareness and search mandate into ALL chat requests (REMOVED)
+            const timeSystemMsg = getSystemPrompt();
+            const enhancedMessages = [timeSystemMsg, ...messages];
 
             // Wrapped streamChatCompletion that respects AbortSignal
             await streamChatCompletion(
-                messages,
+                enhancedMessages,
                 config, // Pass config explicitly
                 (chunk) => {
                     if (signal.aborted) return;
