@@ -56,9 +56,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     useEffect(() => {
         if (currentBoardId) {
             const board = boardsList.find(b => b.id === currentBoardId);
-            document.title = board ? `${board.name} | Neural Canvas` : 'Neural Canvas';
+            document.title = board ? `${board.name} | NexMap` : 'NexMap';
         }
-        return () => { document.title = 'Neural Canvas'; };
+        return () => { document.title = 'NexMap'; };
     }, [currentBoardId, boardsList]);
 
     // Autosave Logic

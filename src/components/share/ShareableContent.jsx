@@ -76,7 +76,7 @@ const ShareableContent = React.forwardRef(({ content, theme, showWatermark }, re
                                 <Sparkles size={12} className="text-white" />
                             </div>
                             <span className={isBusiness ? 'text-slate-900' : 'text-slate-200'}>
-                                Neural Canvas
+                                NexMap
                             </span>
                         </div>
                         <div className="flex items-center gap-4">
