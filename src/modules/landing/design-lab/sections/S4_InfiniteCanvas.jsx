@@ -1,48 +1,80 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 
-const S4_InfiniteCanvas = () => {
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const containerRef = useRef(null);
+const S4_NeuralLace = () => {
+    const canvasRef = useRef(null);
 
     useEffect(() => {
-        const handleScroll = () => {
-            if (!containerRef.current) return;
-            const scrollY = window.scrollY;
-            setOffset({ x: scrollY * 0.2, y: scrollY * 0.1 });
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let time = 0;
+
+        const resize = () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
         };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        resize();
+        window.addEventListener('resize', resize);
+
+        const animate = () => {
+            time += 0.01;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
+
+            const cols = 20;
+            const rows = 15;
+            const cellW = width / cols;
+            const cellH = height / rows;
+
+            for (let i = 0; i <= cols; i++) {
+                for (let j = 0; j <= rows; j++) {
+                    const x = i * cellW;
+                    const y = j * cellH;
+
+                    // Wave distortion
+                    const distortX = Math.sin(time + y * 0.01 + x * 0.005) * 20;
+                    const distortY = Math.cos(time + x * 0.01 + y * 0.005) * 20;
+
+                    const finalX = x + distortX;
+                    const finalY = y + distortY;
+
+                    // Draw points
+                    ctx.fillStyle = `rgba(100, 200, 255, ${Math.abs(Math.sin(time + x))})`;
+                    ctx.beginPath();
+                    ctx.arc(finalX, finalY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Connect grid (horizontal)
+                    if (i < cols) {
+                        ctx.beginPath();
+                        ctx.moveTo(finalX, finalY);
+                        const nextDistortX = Math.sin(time + y * 0.01 + ((i + 1) * cellW) * 0.005) * 20;
+                        const nextX = (i + 1) * cellW + nextDistortX;
+                        ctx.lineTo(nextX, finalY); // Simplified connection for performance
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        };
+        animate();
+        return () => window.removeEventListener('resize', resize);
     }, []);
 
     return (
-        <section ref={containerRef} className="h-screen w-full bg-[#111] overflow-hidden relative cursor-grab active:cursor-grabbing">
-            <div className="absolute inset-[-100%]" style={{
-                transform: `translate(${offset.x % 100}px, ${offset.y % 100}px)`,
-                backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
-                backgroundSize: '100px 100px', width: '300%', height: '300%', opacity: 0.2
-            }} />
-            <div className="absolute inset-0 pointer-events-none">
-                {[...Array(8)].map((_, i) => (
-                    <div key={i} className="absolute bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 flex flex-col gap-2"
-                        style={{
-                            left: `${20 + (i * 15) + (Math.sin(i) * 10)}%`, top: `${20 + (i * 10) + (Math.cos(i) * 20)}%`,
-                            width: '200px', height: '140px',
-                            transform: `translate(${offset.x * (0.5 + i * 0.1)}px, ${offset.y * (0.5 + i * 0.1)}px)`
-                        }}
-                    >
-                        <div className="w-8 h-8 rounded-full bg-white/10 mb-2" />
-                        <div className="w-3/4 h-3 bg-white/20 rounded" />
-                        <div className="w-1/2 h-3 bg-white/10 rounded" />
-                    </div>
-                ))}
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="bg-black/50 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center">
-                    <h2 className="text-6xl font-bold text-white mb-2">Infinite Canvas</h2>
-                    <p className="text-xl text-gray-400">No boundaries. Just space.</p>
-                </div>
+        <section className="h-screen w-full bg-black relative flex items-center justify-center">
+            <canvas ref={canvasRef} className="absolute inset-0" />
+            <div className="relative z-10 pointer-events-none mix-blend-screen text-center">
+                <h2 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 animate-pulse">
+                    NEURAL LACE
+                </h2>
             </div>
         </section>
     );
 };
-export default S4_InfiniteCanvas;
+export default S4_NeuralLace;

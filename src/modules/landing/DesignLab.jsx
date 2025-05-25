@@ -14,9 +14,13 @@ import S10_CTA from './design-lab/sections/S10_CTA';
 const DesignLab = () => {
     return (
         <div
-            className="bg-black text-white w-full h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory"
-            style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+            className="bg-black text-white w-full h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory scrollbar-hide"
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, scrollBehavior: 'smooth' }}
         >
+            <style>{`
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
             <S1_Hero />
             <S2_Problem />
             <S3_Explosion />

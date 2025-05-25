@@ -1,20 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
+import { useSpring, animated } from '@react-spring/web';
 
-const S7_Recursive = () => {
-    const [depth, setDepth] = useState(0);
-    useEffect(() => { const interval = setInterval(() => { setDepth(prev => (prev + 1) % 5); }, 1500); return () => clearInterval(interval); }, []);
+const S7_DeepDive = () => {
     return (
-        <section className="h-screen w-full bg-black flex items-center justify-center overflow-hidden relative">
-            <div className="text-center absolute top-20 z-10"><h2 className="text-5xl font-bold text-white mb-2">Infinite Depth</h2><p className="text-white/60">Worlds within worlds.</p></div>
-            <div className="relative w-[600px] h-[400px] transition-transform duration-[1500ms] ease-in-out" style={{ transform: `scale(${Math.pow(1.5, depth)})` }}>
-                {[0, 1, 2, 3, 4, 5].map((lvl) => (
-                    <div key={lvl} className="absolute bg-zinc-900 border border-white/20 rounded-xl shadow-2xl flex items-center justify-center"
-                        style={{ width: '100%', height: '100%', top: '50%', left: '50%', transform: `translate(-50%, -50%) scale(${Math.pow(0.4, lvl)})` }}>
-                        <div className="text-white font-mono text-sm opacity-50 absolute top-4 left-4">Level {lvl}</div>
-                    </div>
-                ))}
+        <section className="h-screen w-full bg-[#0a0a0a] flex items-center justify-center overflow-hidden perspective-[1000px]">
+            {/* Recursive frames */}
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="absolute border-[20px] border-[#222] animate-tunnel"
+                    style={{
+                        width: '100vw',
+                        height: '100vh',
+                        animationDelay: `${i * 2}s`,
+                        animationDuration: '10s'
+                    }}
+                >
+                    <div className="absolute top-4 left-4 text-[#333] font-mono text-xl">LAYER_{i}</div>
+                </div>
+            ))}
+
+            <div className="relative z-10 text-center bg-black/80 backdrop-blur-xl p-12 border border-white/10 rounded-3xl">
+                <h2 className="text-6xl font-black text-white mb-2">INFINITE DEPTH</h2>
+                <p className="text-gray-500 tracking-widest uppercase text-sm">Zoom forever</p>
             </div>
+
+            <style>{`
+                @keyframes tunnel {
+                    0% { transform: translateZ(-2000px) rotate(0deg); opacity: 0; }
+                    20% { opacity: 1; }
+                    100% { transform: translateZ(1000px) rotate(10deg); opacity: 0; }
+                }
+                .animate-tunnel {
+                    animation: tunnel 10s linear infinite;
+                    box-shadow: 0 0 100px rgba(0,0,0,0.8);
+                }
+             `}</style>
         </section>
     );
 };
-export default S7_Recursive;
+export default S7_DeepDive;

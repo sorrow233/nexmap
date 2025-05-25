@@ -1,20 +1,30 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const S10_CTA = () => {
+const S10_Ascension = () => {
     const navigate = useNavigate();
+
     return (
         <section className="h-screen w-full bg-black flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-black to-black animate-pulse" />
-            <div className="relative z-10 text-center space-y-8">
-                <h2 className="text-6xl md:text-8xl font-bold text-white mb-8 tracking-tighter">Ready to <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Think Deep?</span></h2>
-                <button onClick={() => navigate('/gallery')} className="group relative px-12 py-6 bg-white text-black font-bold text-xl rounded-full overflow-hidden transition-transform hover:scale-105">
-                    <span className="relative z-10 flex items-center gap-3">Launch NexMap <span className="group-hover:translate-x-1 transition-transform">→</span></span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Light Source */}
+            <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent to-blue-900/20 pointer-events-none" />
+            <div className="w-[1px] h-screen bg-gradient-to-b from-transparent via-white to-transparent absolute left-1/2" />
+
+            <div className="relative z-10 text-center">
+                <h2 className="text-white text-sm tracking-[1em] mb-12 uppercase opacity-60">System Ready</h2>
+
+                <button
+                    onClick={() => navigate('/gallery')}
+                    className="group relative px-20 py-8 bg-white hover:bg-black hover:text-white transition-colors duration-500 text-black font-black text-3xl tracking-widest uppercase border border-white"
+                >
+                    ENTER
                 </button>
-                <p className="text-gray-500 text-sm mt-8">Free for early adopters. No credit card required.</p>
+            </div>
+
+            <div className="absolute bottom-12 w-full text-center text-white/20 font-mono text-xs">
+                NEURAL CANVAS // SYSTEM V.1.0
             </div>
         </section>
     );
 };
-export default S10_CTA;
+export default S10_Ascension;
