@@ -10,9 +10,13 @@ import S8_Performance from './design-lab/sections/S8_Performance';
 import S9_Flow from './design-lab/sections/S9_Flow';
 import S10_CTA from './design-lab/sections/S10_CTA';
 
+// Force override global overflow hidden from index.css
 const DesignLab = () => {
     return (
-        <div className="bg-black text-white w-full overflow-x-hidden">
+        <div
+            className="bg-black text-white w-full h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory"
+            style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+        >
             <S1_Hero />
             <S2_Problem />
             <S3_Explosion />
