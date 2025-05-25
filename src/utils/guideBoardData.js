@@ -12,7 +12,7 @@ export const getGuideBoardData = () => {
                 w: 500,
                 h: 300,
                 data: {
-                    content: `# 欢迎来到 Neural Canvas！🚀
+                    content: `# 欢迎来到 NexMap！🚀
 
 **这是一个无限的 AI 思维空间**
 

@@ -1,6 +1,6 @@
 
 export const ONBOARDING_DATA = {
-    name: "Neural Canvas 使用指南 🚀",
+    name: "NexMap 使用指南 🚀",
     cards: [
         {
             id: "guide-1",
@@ -8,7 +8,7 @@ export const ONBOARDING_DATA = {
             y: 100,
             type: "standard",
             data: {
-                title: "欢迎来到 Neural Canvas",
+                title: "欢迎来到 NexMap",
                 messages: [{
                     role: "assistant",
                     content: "这是一个基于 **Graph OS** 理念的非线性思维工具。\n\n你可以通过双击画布创建卡片，或者在下方输入框直接开始对话。所有的思考都将以节点的形式呈现，帮助你构建知识图谱。"
