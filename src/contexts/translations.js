@@ -1,7 +1,7 @@
 const translations = {
     en: {
         hero: {
-            brand: "NexMap",
+            brand: "Mixboard 2.0",
             title1: "Infinite",
             title2: "Canvas.",
             sub1: "Stop thinking in files and folders.",
@@ -52,22 +52,21 @@ const translations = {
             idle: "Idle..."
         },
         spatial: {
-            badge: "Spatial Organization",
             title1: "Spatial",
             title2: "Organization.",
             text: "Semantic Zoning. Don't just organize—build cities. Group related thoughts into dynamic Zones that auto-adjust their bounding boxes. Like \"Cities: Skylines\" for your neural architecture.",
             stateOrganized: "STATE: ORGANIZED",
             stateChaos: "STATE: CHAOS",
+            zones: {
+                arch: "Zone: Architecture",
+                eng: "Zone: Engineering"
+            },
             cards: {
                 floorPlans: "Floor Plans",
                 elevations: "Elevations",
                 materials: "Materials",
                 structures: "Structures",
                 electrical: "Electrical"
-            },
-            zones: {
-                arch: "Zone: Architecture",
-                eng: "Zone: Engineering"
             }
         },
         sprout: {
@@ -84,8 +83,8 @@ const translations = {
             text: "It reads the connections. Traditional chat UIs are oblivious to structure. Our engine traverses the semantic graph of your canvas, pruning irrelevant nodes and injecting precise neighbor context into every generation."
         },
         demoInfinite: {
-            title: "Intelligent Order.",
-            text: "Watch AI scan your scattered thoughts and instantly structure them into actionable workflows.",
+            title: "Continuous Order.",
+            text: "The engine that never stops refining your workspace.",
             organizing: "AI Organizing...",
             complete: "Structure Complete",
             cards: {
@@ -106,207 +105,205 @@ const translations = {
         footer: {
             title: "Start Thinking in Connections.",
             cta: "Launch Alpha",
-            rights: "© 2024 NexMap. All rights reserved."
+            rights: "© 2024 Mixboard. All rights reserved."
         }
     },
     zh: {
         hero: {
-            brand: "NexMap",
+            brand: "Mixboard 2.0",
             title1: "无限",
             title2: "画布。",
-            sub1: "停止以文件和文件夹思考。",
-            sub2: "开始以连接思考。",
-            ctaPrimary: "免费开始思考",
-            ctaSecondary: "见证魔法",
+            sub1: "忘掉文件，打破层级。",
+            sub2: "让一切在「连接」中重生。",
+            ctaPrimary: "开启无限思维",
+            ctaSecondary: "见证奇迹",
             cards: {
-                alpha: "项目 Alpha",
-                ideas: "创意",
+                alpha: "Project Alpha",
+                ideas: "灵感库",
                 tags: "标签流",
-                explore: "探索"
+                explore: "探索边界"
             }
         },
         bento: {
             headline: {
-                pre: "为",
-                highlight: "专业",
-                post: "LLM 用户打造。"
+                pre: "专为",
+                highlight: "职业级",
+                post: "AI 玩家打造。"
             },
-            subtext: "为了构建终极引擎，我们解锁了无上限并发以支持海量并行任务，通过递归图遍历器深度解析上下文，并实现了城市级的空间分区架构。",
+            subtext: "为了打造终极思考引擎，我们解除了并发限制以应对海量负载，构建了递归图谱遍历器以深度理解语境，并引入了空间特区概念，让你的知识库如城市般生长。",
             graph: {
-                badge: "图上下文遍历",
-                title: "它能读懂所有的连接。",
-                text: "传统的聊天界面由于线性的逻辑，完全忽视了结构。我们的引擎遍历你画布的语义图谱，修剪无关节点，并将精确的邻域上下文注入到每一次生成中。",
-                stat1: "令牌窗口",
-                stat2: "深度"
+                badge: "语境图谱游走",
+                title: "洞察每一条脉络。",
+                text: "传统对话是线性的，而思维是网状的。Mixboard 能够遍历你画布上的语义网络，修剪无关枝节，让每一次生成都精准切中上下文要害。",
+                stat1: "超长窗口",
+                stat2: "深度无限"
             },
             sprout: {
-                title: "递归 \"萌芽\"",
-                text: "主动构思。点击“萌芽”，让AI将一个想法递归地分支成五条不同的执行路径。"
+                title: "思维裂变 \"Sprout\"",
+                text: "拒绝单线程。点击“Sprout”，让一个念头瞬间衍生出五条并行的思考路径，灵感从此指数级爆发。"
             },
             concurrency: {
                 title: "无限并发",
-                text: "没有“思考中…”的阻塞。同时启动50个流。我们的非阻塞AI管理器轻松应对负载。"
+                text: "告别“正在思考”的等待。50+ 线程同时迸发，非阻塞架构让你的灵感无需排队，火力全开。"
             },
             spatial: {
-                badge: "空间组织",
-                title: "语义分区。",
-                text: "不仅仅是组织——而是建造城市。将相关的想法分组到动态的区域中，这些区域会自动调整边界框。就像你的神经架构的“城市：天际线”。",
-                zoneExample: "区域：建筑",
-                autoExpand: "自动扩展"
+                badge: "空间组织架构",
+                title: "思维特区。",
+                text: "不仅仅是整理，而是在规划你的思维城市。创建动态调整的“特区 (Zones)”，让混乱的想法自动归位，井然有序。",
+                zoneExample: "特区: 架构设计",
+                autoExpand: "自动扩张"
             }
         },
         concurrency: {
-            badge: "非阻塞架构",
+            badge: "非阻塞式架构",
             title: "无限并发。",
-            text: "没有“思考中…”的阻塞。同时启动50个流。我们的非阻塞AI管理器轻松应对负载。",
-            idle: "空闲..."
+            text: "告别“正在思考”的等待。50+ 线程同时迸发，非阻塞架构让你的灵感无需排队，火力全开。",
+            idle: "待机中..."
         },
         spatial: {
-            badge: "空间组织",
-            title1: "空间",
-            title2: "组织。",
-            text: "语义分区。不仅仅是组织——而是建造城市。将相关的想法分组到动态的区域中，这些区域会自动调整边界框。就像你的神经架构的“城市：天际线”。",
-            stateOrganized: "状态：有序",
-            stateChaos: "状态：混乱",
+            title1: "空间化",
+            title2: "组织架构。",
+            text: "思维特区。不仅仅是整理，而是在规划你的思维城市。创建动态调整的“特区 (Zones)”，让混乱的想法自动归位，井然有序。",
+            stateOrganized: "状态: 有序",
+            stateChaos: "状态: 混沌",
+            zones: {
+                arch: "特区: 架构设计",
+                eng: "特区: 工程实现"
+            },
             cards: {
                 floorPlans: "平面图",
                 elevations: "立面图",
-                materials: "材料",
-                structures: "结构",
-                electrical: "电气"
-            },
-            zones: {
-                arch: "区域：建筑",
-                eng: "区域：工程"
+                materials: "材质库",
+                structures: "结构分析",
+                electrical: "电气系统"
             }
         },
         sprout: {
-            badge1: "128k 令牌窗口",
-            badge2: "∞ 深度",
-            title1: "递归",
-            title2: "\"萌芽\"",
-            text: "主动构思。点击“萌芽”，让AI将一个想法递归地分支成五条不同的执行路径。"
+            badge1: "128k 上下文窗口",
+            badge2: "∞ 探索深度",
+            title1: "递归式",
+            title2: "“思维裂变”",
+            text: "拒绝单线程。点击“Sprout”，让一个念头瞬间衍生出五条并行的思考路径，灵感从此指数级爆发。"
         },
         graph: {
             badge: "引擎核心 v2.1",
-            title1: "图上下文",
-            title2: "遍历。",
-            text: "它能读懂连接。传统的聊天界面忽视了结构。我们的引擎遍历你画布的语义图谱，修剪无关节点，并将精确的邻域上下文注入到每一次生成中。"
+            title1: "图谱语境",
+            title2: "深度游走。",
+            text: "洞察每一条脉络。传统对话是线性的，而思维是网状的。Mixboard 能够遍历你画布上的语义网络，修剪无关枝节，让每一次生成都精准切中上下文要害。"
         },
         demoInfinite: {
-            title: "智能秩序。",
-            text: "观看AI扫描你零散的想法，并立即将其构建为可执行的工作流。",
-            organizing: "AI 正在组织...",
-            complete: "结构完成",
+            title: "秩序之美。",
+            text: "永不停歇的思考引擎，只为重塑你的工作流。",
+            organizing: "AI 正在重构...",
+            complete: "结构构建完成",
             cards: {
                 roadmap: "路线图",
-                planning: "规划",
-                assets: "资产",
-                design: "设计",
-                schema: "架构",
-                dev: "开发",
-                ideas: "创意",
+                planning: "全盘规划",
+                assets: "核心资产",
+                design: "设计规范",
+                schema: "数据模型",
+                dev: "开发文档",
+                ideas: "灵感碎片",
                 brainstorm: "头脑风暴",
-                sources: "来源",
-                research: "研究",
-                sprints: "冲刺",
-                agile: "敏捷"
+                sources: "数据源",
+                research: "深度调研",
+                sprints: "冲刺计划",
+                agile: "敏捷迭代"
             }
         },
         footer: {
-            title: "开始以连接思考。",
-            cta: "启动 Alpha",
-            rights: "© 2024 NexMap. 保留所有权利。"
+            title: "开始用「连接」思考。",
+            cta: "启动 Alpha 版",
+            rights: "© 2024 Mixboard. 保留所有权利。"
         }
     },
     ja: {
         hero: {
-            brand: "NexMap",
+            brand: "Mixboard 2.0",
             title1: "無限の",
             title2: "キャンバス。",
-            sub1: "ファイルやフォルダで考えるのはやめましょう。",
-            sub2: "つながりで考え始めましょう。",
-            ctaPrimary: "無料で思考を開始",
-            ctaSecondary: "魔法を見る",
+            sub1: "ファイルも、フォルダも、過去のもの。",
+            sub2: "「繋がり」こそが、思考の翼になる。",
+            ctaPrimary: "思考を解き放つ",
+            ctaSecondary: "魔法を目撃する",
             cards: {
                 alpha: "Project Alpha",
-                ideas: "アイデア",
+                ideas: "アイデア源",
                 tags: "タグフロー",
                 explore: "探索"
             }
         },
         bento: {
             headline: {
-                pre: "",
+                pre: "すべての",
                 highlight: "プロフェッショナル",
-                post: "LLMユーザーのために。"
+                post: "へ。"
             },
-            subtext: "究極のエンジンを構築するために、大規模な並列ワークロード向けの同時実行制限を解除し、深いコンテキストのための再帰的グラフウォーカーを設計し、都市規模のアーキテクチャのための空間ゾーニングを実装しました。",
+            subtext: "究極のエンジンを構築するために。並列処理の制限を撤廃し、文脈を深く理解する再帰的グラフウォーカーを設計。都市規模の知識を支える「ゾーニング」技術を実装しました。",
             graph: {
-                badge: "グラフコンテキストウォーキング",
-                title: "つながりを読む。",
-                text: "従来のチャットUIは構造を無視しています。私たちのエンジンはキャンバスの意味グラフを横断し、無関係なノードを削除し、正確な近隣コンテキストをすべての生成に注入します。",
-                stat1: "トークンウィンドウ",
-                stat2: "深度"
+                badge: "グラフ・コンテキスト・ウォーキング",
+                title: "文脈を、旅する。",
+                text: "チャットUIはもう古い。Mixboardはキャンバス上の意味論的グラフを横断し、無関係なノイズを排除。最適なコンテキストだけを、瞬時に抽出します。",
+                stat1: "トークン・ウィンドウ",
+                stat2: "探索深度"
             },
             sprout: {
-                title: "再帰的 \"スプラウト\"",
-                text: "能動的なアイデア出し。「スプラウト」をクリックすると、AIが1つの思考を5つの異なる実行パスに再帰的に分岐させます。"
+                title: "思考の連鎖爆発 \"Sprout\"",
+                text: "単一の回答では物足りない。「Sprout（発芽）」させれば、一つのアイデアが五つの並行世界へと分岐。思考は、指数関数的に加速します。"
             },
             concurrency: {
-                title: "無制限の同時実行",
-                text: "「考え中...」のブロッキングはありません。50のストリームを同時に開始します。非ブロッキングAIManagerが負荷を処理します。"
+                title: "完全並列思考",
+                text: "「考え中...」で待たされることはありません。50以上のストリームを同時展開。ノンブロッキング構造が、あなたの思考スピードに追いつきます。"
             },
             spatial: {
-                badge: "空間的組織",
-                title: "セマンティックゾーニング。",
-                text: "ただ整理するのではなく、都市を建設しましょう。関連する思考を、バウンディングボックスを自動調整する動的なゾーンにグループ化します。神経アーキテクチャのための「Cities: Skylines」のようなものです。",
-                zoneExample: "ゾーン: 建築",
+                badge: "空間的オーガナイゼーション",
+                title: "セマンティック・シティ。",
+                text: "整理整頓のその先へ。思考を「ゾーン」で都市計画のように構築。関連するアイデアは自動的に集約され、あなたの脳内地図は動的に進化します。",
+                zoneExample: "Zone: Architecture",
                 autoExpand: "自動拡張"
             }
         },
         concurrency: {
-            badge: "非ブロッキングアーキテクチャ",
-            title: "無制限の同時実行。",
-            text: "「考え中...」のブロッキングはありません。50のストリームを同時に開始します。非ブロッキングAIManagerが負荷を処理します。",
-            idle: "アイドル..."
+            badge: "ノンブロッキング・アーキテクチャ",
+            title: "完全並列思考。",
+            text: "「考え中...」で待たされることはありません。50以上のストリームを同時展開。ノンブロッキング構造が、あなたの思考スピードに追いつきます。",
+            idle: "待機中..."
         },
         spatial: {
-            badge: "空間的組織",
             title1: "空間的",
-            title2: "組織。",
-            text: "セマンティックゾーニング。ただ整理するのではなく、都市を建設しましょう。関連する思考を、バウンディングボックスを自動調整する動的なゾーンにグループ化します。神経アーキテクチャのための「Cities: Skylines」のようなものです。",
-            stateOrganized: "状態: 整理済",
-            stateChaos: "状態: 混沌",
+            title2: "オーガナイゼーション。",
+            text: "セマンティック・シティ。整理整頓のその先へ。思考を「ゾーン」で都市計画のように構築。関連するアイデアは自動的に集約され、あなたの脳内地図は動的に進化します。",
+            stateOrganized: "STATE: ORGANIZED",
+            stateChaos: "STATE: CHAOS",
+            zones: {
+                arch: "Zone: Architecture",
+                eng: "Zone: Engineering"
+            },
             cards: {
                 floorPlans: "平面図",
                 elevations: "立面図",
-                materials: "材料",
-                structures: "構造",
-                electrical: "電気"
-            },
-            zones: {
-                arch: "ゾーン: 建築",
-                eng: "ゾーン: 工学"
+                materials: "マテリアル",
+                structures: "構造解析",
+                electrical: "電気系統"
             }
         },
         sprout: {
-            badge1: "128k トークンウィンドウ",
+            badge1: "128k トークン",
             badge2: "∞ 深度",
             title1: "再帰的",
-            title2: "\"スプラウト\"",
-            text: "能動的なアイデア出し。「スプラウト」をクリックすると、AIが1つの思考を5つの異なる実行パスに再帰的に分岐させます。"
+            title2: "「スプラウト」",
+            text: "単一の回答では物足りない。「Sprout（発芽）」させれば、一つのアイデアが五つの並行世界へと分岐。思考は、指数関数的に加速します。"
         },
         graph: {
-            badge: "エンジンコア v2.1",
-            title1: "グラフコンテキスト",
+            badge: "Engine Core v2.1",
+            title1: "グラフ・コンテキスト",
             title2: "ウォーキング。",
-            text: "つながりを読みます。従来のチャットUIは構造を無視しています。私たちのエンジンはキャンバスの意味グラフを横断し、無関係なノードを削除し、正確な近隣コンテキストをすべての生成に注入します。"
+            text: "文脈を、旅する。チャットUIはもう古い。Mixboardはキャンバス上の意味論的グラフを横断し、無関係なノイズを排除。最適なコンテキストだけを、瞬時に抽出します。"
         },
         demoInfinite: {
-            title: "インテリジェントな秩序。",
-            text: "AIがあなたの散らばった思考をスキャンし、即座に実行可能なワークフローに構築するのを見てください。",
-            organizing: "AIが整理中...",
+            title: "秩序ある、カオス。",
+            text: "散らばった思考を、美しいワークフローへ。",
+            organizing: "AIが再構築中...",
             complete: "構造化完了",
             cards: {
                 roadmap: "ロードマップ",
@@ -318,15 +315,15 @@ const translations = {
                 ideas: "アイデア",
                 brainstorm: "ブレスト",
                 sources: "ソース",
-                research: "研究",
+                research: "リサーチ",
                 sprints: "スプリント",
                 agile: "アジャイル"
             }
         },
         footer: {
-            title: "つながりで考え始めましょう。",
-            cta: "Alphaを起動",
-            rights: "© 2024 NexMap. All rights reserved."
+            title: "思考の「繋がり」を始めよう。",
+            cta: "Alpha版を起動",
+            rights: "© 2024 Mixboard. All rights reserved."
         }
     }
 };
