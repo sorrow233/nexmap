@@ -84,7 +84,7 @@ const translations = {
         },
         demoInfinite: {
             title: "Continuous Order.",
-            text: "The engine that never stops refining your workspace.",
+            text: "Watch AI scan your scattered thoughts and instantly arrange them into a neat, organized structure.",
             organizing: "AI Organizing...",
             complete: "Structure Complete",
             cards: {
@@ -193,7 +193,7 @@ const translations = {
         },
         demoInfinite: {
             title: "秩序之美。",
-            text: "永不停歇的思考引擎，只为重塑你的工作流。",
+            text: "观看 AI 扫描你零散的想法，并将它们瞬间整理得井井有条。",
             organizing: "AI 正在重构...",
             complete: "结构构建完成",
             cards: {
@@ -302,7 +302,7 @@ const translations = {
         },
         demoInfinite: {
             title: "秩序ある、カオス。",
-            text: "散らばった思考を、美しいワークフローへ。",
+            text: "AIが散らばった思考をスキャンし、瞬時に整然と整理する様子をご覧ください。",
             organizing: "AIが再構築中...",
             complete: "構造化完了",
             cards: {
