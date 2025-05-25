@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Network, GitBranch, Cpu, Zap, Brain, Sparkles, Workflow, Bot, Database, Shield, Radio } from 'lucide-react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const FeatureBento = () => {
     return (
