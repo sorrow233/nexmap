@@ -55,6 +55,11 @@ export function useAppInit() {
             setUser(u);
             debugLog.auth(u ? `User logged in: ${u.email}` : 'User logged out');
 
+            // On logout, clear board list state
+            if (!u) {
+                setBoardsList([]);
+            }
+
             if (unsubDb) {
                 debugLog.sync('Cleaning up previous cloud listener');
                 unsubDb();

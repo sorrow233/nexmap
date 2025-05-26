@@ -217,4 +217,12 @@ export const createCardSlice = (set, get) => ({
         debugLog.ui(`Card move end: ${id}`, { newX, newY });
         get().handleCardMove(id, newX, newY, moveWithConnections);
     },
+
+    // Reset card state on logout
+    resetCardState: () => set({
+        cards: [],
+        expandedCardId: null,
+        lastSavedAt: 0
+    })
 });
+

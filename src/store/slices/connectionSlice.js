@@ -45,4 +45,12 @@ export const createConnectionSlice = (set, get) => ({
         const { connections } = get();
         return Array.from(getConnectedGraph(startId, connections));
     },
+
+    // Reset connection state on logout
+    resetConnectionState: () => set({
+        connections: [],
+        isConnecting: false,
+        connectionStartId: null
+    })
 });
+
