@@ -10,6 +10,8 @@ import { createSelectionSlice } from './slices/selectionSlice';
 import { createAISlice } from './slices/aiSlice';
 import { createSettingsSlice } from './slices/settingsSlice';
 import { createShareSlice } from './slices/shareSlice';
+import { createCreditsSlice } from './slices/creditsSlice';
+
 
 // --- Global Store with Temporal Middleware ---
 
@@ -23,7 +25,8 @@ const useStoreBase = create(
             ...createSelectionSlice(set, get),
             ...createAISlice(set, get),
             ...createSettingsSlice(set, get),
-            ...createShareSlice(set, get)
+            ...createShareSlice(set, get),
+            ...createCreditsSlice(set, get)
         }),
         {
             limit: 50,
