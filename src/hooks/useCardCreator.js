@@ -235,11 +235,27 @@ export function useCardCreator() {
             targetY = optimalPos.y;
         }
 
-        // 3. Context Construction
+        // 3. Context Construction - Include actual card content for better AI understanding
         let contextPrefix = "";
         const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         if (contextCards.length > 0) {
-            contextPrefix = `${contextCards.map(c => `Card "${c.data.title}" [${c.id}]`).join('\n')}\n\n---\n\n`;
+            contextPrefix = contextCards.map(c => {
+                // Build context from card's conversation history
+                const title = c.data?.title || 'Untitled';
+                const messages = c.data?.messages || [];
+                // Get last 3 messages for context (to avoid token overflow)
+                const recentMessages = messages.slice(-3).map(m => {
+                    const contentStr = typeof m.content === 'string'
+                        ? m.content
+                        : (Array.isArray(m.content)
+                            ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
+                            : '');
+                    // Truncate very long messages
+                    const truncated = contentStr.length > 500 ? contentStr.substring(0, 500) + '...' : contentStr;
+                    return `${m.role}: ${truncated}`;
+                }).join('\n');
+                return `--- Card: "${title}" ---\n${recentMessages}`;
+            }).join('\n\n') + '\n\n---\n\nBased on the above context, please respond to:\n\n';
         }
 
         await _generateAICard(text, targetX, targetY, images, contextPrefix);
@@ -315,11 +331,12 @@ export function useCardCreator() {
     /**
      * Create a card with initial text/images - used by App.jsx when creating a board from homepage
      * This wraps handleCreateCard with simplified parameters for the homepage use case
+     * Note: boardId is passed for logging/debugging but actual board context comes from useParams
      */
-    const createCardWithText = async (text, boardId, images = []) => {
+    const createCardWithText = async (text, images = []) => {
         if (!text?.trim() && images.length === 0) return;
 
-        debugLog.ai('createCardWithText called', { text, boardId, imageCount: images.length });
+        debugLog.ai('createCardWithText called', { text, currentBoardId, imageCount: images.length });
 
         // Use handleCreateCard which handles all the AI generation logic
         await handleCreateCard(text, images);

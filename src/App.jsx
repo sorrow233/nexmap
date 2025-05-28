@@ -82,7 +82,7 @@ function AppContent() {
         navigate(`/board/${newBoard.id}`);
 
         if (initialPrompt || initialImages.length > 0) {
-            setTimeout(() => createCardWithText(initialPrompt, newBoard.id, initialImages), 100);
+            setTimeout(() => createCardWithText(initialPrompt, initialImages), 100);
         }
     };
 

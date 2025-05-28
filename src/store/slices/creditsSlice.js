@@ -48,14 +48,15 @@ export const createCreditsSlice = (set, get) => ({
             );
 
             const data = await Promise.race([fetchCredits(), timeoutPromise]);
+            const credits = data?.credits ?? 0;
             set({
-                systemCredits: data.credits,
+                systemCredits: credits,
                 systemCreditsLoading: false,
                 systemCreditsError: null,
                 isSystemCreditsUser: true
             });
-            console.log(`[Credits] Loaded: ${data.credits.toFixed(2)} credits`);
-            return data.credits;
+            console.log(`[Credits] Loaded: ${credits.toFixed(2)} credits`);
+            return credits;
         } catch (error) {
             console.error('[Credits] Failed to load:', error);
             set({

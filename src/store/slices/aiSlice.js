@@ -153,7 +153,16 @@ export const createAISlice = (set, get) => {
                 // Resolve config
                 const state = get();
                 // If card has a providerId, use it, otherwise use active config
-                const config = providerId && state.providers && state.providers[providerId] ? state.providers[providerId] : state.getActiveConfig();
+                let config;
+                if (providerId && state.providers && state.providers[providerId]) {
+                    config = state.providers[providerId];
+                } else {
+                    config = state.getActiveConfig();
+                    // Warn if card had a provider that no longer exists
+                    if (providerId && (!state.providers || !state.providers[providerId])) {
+                        console.warn(`[AI] Card ${cardId} references deleted provider ${providerId}, using active config instead`);
+                    }
+                }
 
                 // Use AIManager for centralized scheduling and cancellation
                 // AWAIT the promise returned by requestTask!
@@ -268,7 +277,8 @@ export const createAISlice = (set, get) => {
                     }
                     return c;
                 }),
-                generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
+                // Create new Set properly: spread existing Set, then add each selectedId
+                generatingCardIds: new Set([...Array.from(state.generatingCardIds), ...selectedIds])
             }));
 
             // Use handleChatGenerate which now uses AIManager
