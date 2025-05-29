@@ -55,7 +55,7 @@ export const createCreditsSlice = (set, get) => ({
                 systemCreditsError: null,
                 isSystemCreditsUser: true
             });
-            console.log(`[Credits] Loaded: ${credits.toFixed(2)} credits`);
+            console.log(`[Credits] Loaded: ${typeof credits === 'number' ? credits.toFixed(2) : credits} credits`);
             return credits;
         } catch (error) {
             console.error('[Credits] Failed to load:', error);
@@ -74,8 +74,9 @@ export const createCreditsSlice = (set, get) => ({
      */
     updateCreditsFromResponse: (creditsInfo) => {
         if (creditsInfo?.remaining !== undefined) {
-            set({ systemCredits: creditsInfo.remaining });
-            console.log(`[Credits] Updated: ${creditsInfo.remaining.toFixed(2)} remaining`);
+            const remaining = Number(creditsInfo.remaining);
+            set({ systemCredits: remaining });
+            console.log(`[Credits] Updated: ${typeof remaining === 'number' ? remaining.toFixed(2) : remaining} remaining`);
         }
     },
 

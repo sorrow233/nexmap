@@ -278,7 +278,7 @@ export const createAISlice = (set, get) => {
                     return c;
                 }),
                 // Create new Set properly: spread existing Set, then add each selectedId
-                generatingCardIds: new Set([...Array.from(state.generatingCardIds), ...selectedIds])
+                generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
             }));
 
             // Use handleChatGenerate which now uses AIManager

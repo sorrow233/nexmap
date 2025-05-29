@@ -33,6 +33,8 @@ export function useCardCreator() {
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
         const newId = uuid();
+        // Get latest selectedIds from state to avoid closure issues
+        const currentSelectedIds = state.selectedIds || [];
 
         debugLog.ai('Starting AI card generation', { text, x, y, model: chatModel });
 
@@ -43,7 +45,7 @@ export function useCardCreator() {
                 x, y,
                 images,
                 contextPrefix,
-                autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
+                autoConnections: currentSelectedIds.map(sid => ({ from: sid, to: newId })),
                 model: chatModel,
                 providerId: activeConfig.id
             });
