@@ -1,7 +1,7 @@
 const translations = {
     en: {
         hero: {
-            brand: "Mixboard 2.0",
+            brand: "NexMap 2.0",
             title1: "Infinite",
             title2: "Canvas.",
             sub1: "Stop thinking in files and folders.",
@@ -105,12 +105,12 @@ const translations = {
         footer: {
             title: "Start Thinking in Connections.",
             cta: "Launch Alpha",
-            rights: "© 2024 Mixboard. All rights reserved."
+            rights: "© 2024 NexMap. All rights reserved."
         }
     },
     zh: {
         hero: {
-            brand: "Mixboard 2.0",
+            brand: "NexMap 2.0",
             title1: "无限",
             title2: "画布。",
             sub1: "忘掉文件，打破层级。",
@@ -214,12 +214,12 @@ const translations = {
         footer: {
             title: "开始用「连接」思考。",
             cta: "启动 Alpha 版",
-            rights: "© 2024 Mixboard. 保留所有权利。"
+            rights: "© 2024 NexMap. 保留所有权利。"
         }
     },
     ja: {
         hero: {
-            brand: "Mixboard 2.0",
+            brand: "NexMap 2.0",
             title1: "無限の",
             title2: "キャンバス。",
             sub1: "ファイルも、フォルダも、過去のもの。",
@@ -243,7 +243,7 @@ const translations = {
             graph: {
                 badge: "グラフ・コンテキスト・ウォーキング",
                 title: "文脈を、旅する。",
-                text: "チャットUIはもう古い。Mixboardはキャンバス上の意味論的グラフを横断し、無関係なノイズを排除。最適なコンテキストだけを、瞬時に抽出します。",
+                text: "チャットUIはもう古い。NexMapはキャンバス上の意味論的グラフを横断し、無関係なノイズを排除。最適なコンテキストだけを、瞬時に抽出します。",
                 stat1: "トークン・ウィンドウ",
                 stat2: "探索深度"
             },
@@ -298,7 +298,7 @@ const translations = {
             badge: "Engine Core v2.1",
             title1: "グラフ・コンテキスト",
             title2: "ウォーキング。",
-            text: "文脈を、旅する。チャットUIはもう古い。Mixboardはキャンバス上の意味論的グラフを横断し、無関係なノイズを排除。最適なコンテキストだけを、瞬時に抽出します。"
+            text: "文脈を、旅する。チャットUIはもう古い。NexMapはキャンバス上の意味論的グラフを横断し、無関係なノイズを排除。最適なコンテキストだけを、瞬時に抽出します。"
         },
         demoInfinite: {
             title: "秩序ある、カオス。",
@@ -323,7 +323,7 @@ const translations = {
         footer: {
             title: "思考の「繋がり」を始めよう。",
             cta: "Alpha版を起動",
-            rights: "© 2024 Mixboard. All rights reserved."
+            rights: "© 2024 NexMap. All rights reserved."
         }
     }
 };
