@@ -7,6 +7,8 @@ import { useAppInit } from './hooks/useAppInit';
 import { useStore } from './store/useStore';
 import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
+import { ToastProvider } from './components/Toast';
+import { ContextMenuProvider } from './components/ContextMenu';
 
 // Lazy Load Pages
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
@@ -33,9 +35,13 @@ import {
 
 export default function App() {
     return (
-        <ErrorBoundary>
-            <AppContent />
-        </ErrorBoundary>
+        <ToastProvider>
+            <ContextMenuProvider>
+                <ErrorBoundary>
+                    <AppContent />
+                </ErrorBoundary>
+            </ContextMenuProvider>
+        </ToastProvider>
     );
 }
 

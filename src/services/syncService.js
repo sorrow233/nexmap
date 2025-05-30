@@ -1,7 +1,7 @@
 import { db } from './firebase';
 import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { idbGet } from './db/indexedDB';
-import { saveBoard } from './boardService';
+import { saveBoard, getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
 
 const BOARD_PREFIX = 'mixboard_board_';
@@ -175,11 +175,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     }
 };
 
-// Internal helper to get ALL boards (Active + Trash)
-const getRawBoardsList = () => {
-    const list = localStorage.getItem(BOARDS_LIST_KEY);
-    return list ? JSON.parse(list) : [];
-};
+// getRawBoardsList is now imported from boardService
 
 export const saveBoardToCloud = async (userId, boardId, boardContent) => {
     if (!db || !userId) return;
@@ -213,7 +209,7 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
                 ...card,
                 data: {
                     ...card.data,
-                    messages: (card.data.messages || []).map(msg => {
+                    messages: (card.data?.messages || []).map(msg => {
                         if (Array.isArray(msg.content)) {
                             return {
                                 ...msg,
