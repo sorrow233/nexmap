@@ -41,8 +41,12 @@ export const createSettingsSlice = (set, get) => ({
                 [providerId]: { ...state.providers[providerId], ...updates }
             };
             const newState = { providers: newProviders };
-            // Persist
-            localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
+            // Persist with error handling
+            try {
+                localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
+            } catch (e) {
+                console.error('[Settings] Failed to persist config:', e);
+            }
             return newState;
         });
     },
@@ -50,7 +54,11 @@ export const createSettingsSlice = (set, get) => ({
     setActiveProvider: (id) => {
         set(state => {
             const newState = { activeId: id };
-            localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
+            try {
+                localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
+            } catch (e) {
+                console.error('[Settings] Failed to persist activeId:', e);
+            }
             return newState;
         });
     },
@@ -63,7 +71,11 @@ export const createSettingsSlice = (set, get) => ({
             providers: config.providers || DEFAULT_PROVIDERS,
             activeId: config.activeId || 'google'
         };
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(newState));
+        try {
+            localStorage.setItem(CONFIG_KEY, JSON.stringify(newState));
+        } catch (e) {
+            console.error('[Settings] Failed to persist full config:', e);
+        }
         set(newState);
     },
 

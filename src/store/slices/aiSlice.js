@@ -253,7 +253,11 @@ export const createAISlice = (set, get) => {
             set(state => {
                 const next = new Set(state.generatingCardIds);
                 if (isGenerating) next.add(id);
-                else next.delete(id);
+                else {
+                    next.delete(id);
+                    // Clean up buffer when generation stops (success or failure)
+                    contentBuffer.delete(id);
+                }
                 return { generatingCardIds: next };
             });
         },

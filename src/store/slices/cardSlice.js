@@ -36,7 +36,14 @@ export const createCardSlice = (set, get) => ({
     updateCard: (id, updater) => {
         debugLog.store(`Updating card data: ${id}`, updater);
         set((state) => ({
-            cards: state.cards.map(c => c.id === id ? (typeof updater === 'function' ? updater(c.data) : { ...c, data: { ...c.data, ...updater } }) : c)
+            cards: state.cards.map(c => {
+                if (c.id !== id) return c;
+                // Handle both function and object updaters consistently
+                const updatedData = typeof updater === 'function'
+                    ? updater(c.data)
+                    : updater;
+                return { ...c, data: { ...c.data, ...updatedData } };
+            })
         }));
     },
 

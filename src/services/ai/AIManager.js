@@ -48,17 +48,13 @@ class AIManager {
      */
     requestTask({ type, priority = PRIORITY.LOW, payload, tags = [], onProgress }) {
         // 1. Deduplication: Check if an identical task is already active or queued
+        // Use tags + type for matching instead of expensive JSON.stringify
+        const tagsKey = tags.sort().join('|');
         const identicalTask = [...this.activeTasks.values(), ...this.queue].find(item => {
             const t = item.task || item;
-            // Simple shallow comparison of tags and payload references or key props
-            // For chat, we compare the last user message content?
-            // Let's rely on tags + payload equality (JSON stringify for safety?) -> expensive.
-            // Let's assume if tags match and it's the same type, we check strict equality of payload.
-            // Or just check if tags match completely.
-            return t.type === type &&
-                t.tags.length === tags.length &&
-                t.tags.every((tag, i) => tag === tags[i]) &&
-                JSON.stringify(t.payload) === JSON.stringify(payload);
+            if (t.type !== type) return false;
+            const existingTagsKey = (t.tags || []).sort().join('|');
+            return existingTagsKey === tagsKey;
         });
 
         if (identicalTask) {

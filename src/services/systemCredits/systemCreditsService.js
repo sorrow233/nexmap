@@ -109,6 +109,7 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
     const decoder = new TextDecoder();
     let lastFullText = '';
     let buffer = '';
+    let fullText = ''; // Track complete response
 
     try {
         while (true) {
@@ -149,11 +150,12 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
                         }
 
                         if (delta) {
+                            fullText += delta;
                             onToken(delta);
                         }
                     }
                 } catch (jsonErr) {
-                    if (jsonErr.message && !jsonErr.message.includes('JSON')) {
+                    if (jsonErr.message && jsonErr.message.indexOf('JSON') === -1) {
                         throw jsonErr;
                     }
                 }
@@ -172,12 +174,17 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
                     const delta = text.startsWith(lastFullText)
                         ? text.substring(lastFullText.length)
                         : text;
-                    if (delta) onToken(delta);
+                    if (delta) {
+                        fullText += delta;
+                        onToken(delta);
+                    }
                 }
             } catch (e) {
                 // Ignore parse errors for incomplete data
             }
         }
+
+        return fullText; // Return complete response for consistency
     } finally {
         reader.releaseLock();
     }
