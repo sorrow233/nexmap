@@ -42,8 +42,8 @@ export const createBoard = async (name) => {
     const list = getRawBoardsList();
     const newList = [newBoard, ...list];
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
-    // Init empty board in IDB
-    await saveBoard(newBoard.id, { cards: [], connections: [] });
+    // Init empty board in IDB with groups field
+    await saveBoard(newBoard.id, { cards: [], connections: [], groups: [] });
     return newBoard;
 };
 

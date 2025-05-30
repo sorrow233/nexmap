@@ -33,7 +33,7 @@ export function useAppInit() {
             // Onboarding check
             if (location.pathname === '/' && list.length === 0) {
                 const newBoard = await createBoard(ONBOARDING_DATA.name);
-                await saveBoard(newBoard.id, { cards: ONBOARDING_DATA.cards, connections: ONBOARDING_DATA.connections });
+                await saveBoard(newBoard.id, { cards: ONBOARDING_DATA.cards, connections: ONBOARDING_DATA.connections, groups: ONBOARDING_DATA.groups || [] });
                 setBoardsList([newBoard]);
                 // Note: Navigation to the new board happens in the component if needed, 
                 // but here we just ensure the data is ready.
