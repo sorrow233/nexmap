@@ -244,6 +244,7 @@ export default function Canvas({ onCreateNote, ...props }) {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
