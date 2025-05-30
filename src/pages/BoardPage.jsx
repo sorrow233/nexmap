@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import NotePage from './NotePage';
 import { LayoutGrid, Sparkles, RefreshCw, Trash2, Undo2, Redo2 } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
-import ChatModal from '../components/ChatModal';
 import ErrorBoundary from '../components/ErrorBoundary';
+import Loading from '../components/Loading';
+
+const NotePage = lazy(() => import('./NotePage'));
+const ChatModal = lazy(() => import('../components/ChatModal'));
 import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
@@ -272,7 +274,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
             {noteId && (
                 <div className="fixed inset-0 z-[200]">
-                    <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                    <Suspense fallback={<Loading message="Loading note..." />}>
+                        <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                    </Suspense>
                 </div>
             )}
 
@@ -378,17 +382,19 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             )}
 
             {expandedCardId && (
-                <ChatModal
-                    card={cards.find(c => c.id === expandedCardId)}
-                    isOpen={!!expandedCardId}
-                    onClose={() => setExpandedCardId(null)}
-                    onUpdate={updateCardFull}
-                    onGenerateResponse={handleChatModalGenerate}
-                    isGenerating={generatingCardIds.has(expandedCardId)}
-                    onCreateNote={handleCreateNote}
-                    onSprout={handleSprout}
-                    onToggleFavorite={toggleFavorite}
-                />
+                <Suspense fallback={null}>
+                    <ChatModal
+                        card={cards.find(c => c.id === expandedCardId)}
+                        isOpen={!!expandedCardId}
+                        onClose={() => setExpandedCardId(null)}
+                        onUpdate={updateCardFull}
+                        onGenerateResponse={handleChatModalGenerate}
+                        isGenerating={generatingCardIds.has(expandedCardId)}
+                        onCreateNote={handleCreateNote}
+                        onSprout={handleSprout}
+                        onToggleFavorite={toggleFavorite}
+                    />
+                </Suspense>
             )}
         </React.Fragment>
     );
