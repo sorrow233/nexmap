@@ -33,6 +33,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 await saveBoard(boardData.id, {
                                     cards: boardData.cards || [],
                                     connections: boardData.connections || [],
+                                    groups: boardData.groups || [], // CRITICAL: Sync zones from cloud
                                     updatedAt: boardData.updatedAt
                                 });
                                 return;
@@ -88,6 +89,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             await saveBoard(boardData.id, {
                                 cards: [...mergedCards, ...localOnlyCards],
                                 connections: boardData.connections || localData.connections || [],
+                                groups: boardData.groups || localData.groups || [], // CRITICAL: Sync zones from cloud
                                 updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
@@ -190,7 +192,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
                     })
                 }
             })),
-            connections: boardContent.connections || []
+            connections: boardContent.connections || [],
+            groups: boardContent.groups || [] // CRITICAL: Sync zones to cloud
         };
 
         // Combine meta (which includes deletedAt) with content
