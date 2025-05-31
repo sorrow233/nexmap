@@ -26,12 +26,13 @@ export default function GalleryPage({
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash'
 
-    // Determine if we should show welcome: user is logged in AND hasn't seen it
-    const showWelcome = user && hasSeenWelcome === false;
+    // Determine if we should show welcome: hasn't seen it (regardless of login status)
+    const showWelcome = hasSeenWelcome === false;
 
     const handleDismissWelcome = async () => {
         // 1. Update local state immediately
         setHasSeenWelcome(true);
+        localStorage.setItem('hasVisitedBefore', 'true');
 
         // 2. Sync to Firebase
         if (user) {
@@ -186,7 +187,15 @@ export default function GalleryPage({
                 <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-premium rounded-full text-slate-400 hover:text-orange-400 hover:rotate-90 hover:scale-110 transition-all border border-white/60 dark:border-white/10"><Settings size={24} /></button>
             </div>
 
-            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} />
+            <SettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                user={user}
+                onShowWelcome={() => {
+                    setIsSettingsOpen(false);
+                    setHasSeenWelcome(false);
+                }}
+            />
         </div>
     );
 }

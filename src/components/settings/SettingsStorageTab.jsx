@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
+export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowWelcome }) {
     return (
         <div className="space-y-6 animate-slide-up">
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">
@@ -80,6 +80,23 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     </div>
                 </div>
             )}
+
+            {/* Application Settings */}
+            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">Application Settings</h3>
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5">
+                    <div>
+                        <p className="font-bold text-slate-700 dark:text-slate-300">Show Welcome Screen</p>
+                        <p className="text-xs text-slate-500">View the introduction and guide again</p>
+                    </div>
+                    <button
+                        onClick={onShowWelcome}
+                        className="px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
+                    >
+                        Show Welcome
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
