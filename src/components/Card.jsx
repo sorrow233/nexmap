@@ -5,6 +5,7 @@ import { marked } from 'marked';
 import { isSafari, isIOS } from '../utils/browser';
 
 import { useStore } from '../store/useStore';
+import { useDraggable } from '../hooks/useDraggable';
 
 const Card = React.memo(function Card({
 
@@ -19,213 +20,39 @@ const Card = React.memo(function Card({
     onDragEnd,
     onDelete
 }) {
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const cardRef = useRef(null);
+    const {
+        isDragging,
+        handleMouseDown,
+        handleTouchStart
+    } = useDraggable({
+        id: data.id,
+        x: data.x,
+        y: data.y,
+        isSelected,
+        onSelect,
+        onMove,
+        onDragEnd,
+        disabled: false // Can add more logic here if needed
+    });
 
-    // Refs to hold latest values for event handlers to avoid re-binding
-    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd, isSelected, onSelect });
-    useEffect(() => {
-        stateRef.current = { data, onMove, dragOffset, onDragEnd, isSelected, onSelect };
-    }, [data, onMove, dragOffset, onDragEnd, isSelected, onSelect]);
-
-    // Track if we should possibly deselect other cards on mouse up (if it was a click, not a drag)
-    const pendingDeselectRef = useRef(false);
-    const hasDraggedRef = useRef(false);
-    const cmdKeyPressedRef = useRef(false); // Track Cmd/Ctrl key state during drag
-
-    const handleMouseDown = (e) => {
-        if (e.target.closest('button') || e.target.closest('.no-drag')) return;
-
-        // CRITICAL: Prevent event from bubbling to Canvas (which would deselect all)
-        e.stopPropagation();
-
-        // Track Cmd/Ctrl key for drag mode (联动拖动)
-        cmdKeyPressedRef.current = e.metaKey || e.ctrlKey;
-
-        const isAdditive = e.shiftKey || e.metaKey || e.ctrlKey;
-
-        // Selection Logic Refined:
-        // 1. Additive (Shift/Ctrl/Meta): Toggle or Add. We let onSelect handle the toggle logic immediately.
-        // 2. Not Additive + Not Selected: Select immediately (clearing others).
-        // 3. Not Additive + Already Selected: Do NOTHING yet. Defer deselect to MouseUp.
-        //    This prevents losing the multi-selection when starting to drag a group.
-
-        if (isAdditive) {
-            onSelect(data.id, e);
-            pendingDeselectRef.current = false;
-        } else if (!isSelected) {
-            onSelect(data.id, e);
-            pendingDeselectRef.current = false;
-        } else {
-            // Already selected, no modifiers. 
-            // We MIGHT be clicking to select just this one (deselect others), OR starting a drag.
-            // Assume drag first. Defer deselect to mouse up.
-            pendingDeselectRef.current = true;
-        }
-
-        // Initial setup for drag
-        const initialDragOffset = {
-            startX: e.clientX,
-            startY: e.clientY,
-            origX: data.x,
-            origY: data.y
-        };
-
-        setIsDragging(true);
-        setDragOffset(initialDragOffset);
-        hasDraggedRef.current = false;
-
-        // Update ref immediately for the listener that will start
-        stateRef.current.dragOffset = initialDragOffset;
-    };
-
-    // Prevent native drag (ghost image) on images or text
     const handleDragStart = (e) => {
         e.preventDefault();
         e.stopPropagation();
     };
 
     const lastTouchTimeRef = useRef(0);
-
-    // Touch event handler
-    const handleTouchStart = (e) => {
-        if (e.target.closest('button') || e.target.closest('.no-drag')) return;
-
-        // Double-tap detection for touch devices
+    const handleTouchStartWithDoubleTap = (e) => {
         const now = Date.now();
         if (now - lastTouchTimeRef.current < 300) {
-            e.preventDefault(); // Prevent default zoom/scroll
+            e.preventDefault();
             e.stopPropagation();
             onExpand(data.id);
             lastTouchTimeRef.current = 0;
             return;
         }
         lastTouchTimeRef.current = now;
-
-        const touch = e.touches[0];
-        handleMouseDown({
-            ...e,
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            stopPropagation: () => e.stopPropagation(),
-            preventDefault: () => e.preventDefault(),
-            target: e.target,
-            shiftKey: e.shiftKey,
-            metaKey: e.metaKey,
-            ctrlKey: e.ctrlKey
-        });
+        handleTouchStart(e);
     };
-
-    useEffect(() => {
-        if (!isDragging) return;
-
-        const handleMouseMove = (e) => {
-            const { dragOffset, data, onMove } = stateRef.current;
-
-            // Calculate delta
-            const currentScale = useStore.getState().scale || 1;
-            const dx = (e.clientX - dragOffset.startX) / currentScale;
-            const dy = (e.clientY - dragOffset.startY) / currentScale;
-
-            // Check if actually moved (threshold > 3px)
-            // We use hasDraggedRef to latch the state. Once verified as drag, it stays verified.
-            if (!hasDraggedRef.current && (Math.abs(e.clientX - dragOffset.startX) > 3 || Math.abs(e.clientY - dragOffset.startY) > 3)) {
-                hasDraggedRef.current = true;
-                pendingDeselectRef.current = false; // We are definitively dragging. Cancel any pending deselect.
-            }
-
-            // Move only if verified as a drag or if we want responsive micro-movement (but risks deselect issue)
-            // Safer to wait for threshold validation.
-            if (hasDraggedRef.current && onMove) {
-                onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy, cmdKeyPressedRef.current);
-            }
-        };
-
-        const handleMouseUp = (e) => {
-            setIsDragging(false);
-
-            // Handle deferred deselect
-            // Condition: We wanted to deselect (click on selected), BUT we didn't drag.
-            if (pendingDeselectRef.current && !hasDraggedRef.current) {
-                const { onSelect, data } = stateRef.current;
-                // Force "clean" selection (no modifiers) to trigger exclusive select
-                onSelect(data.id, { ...e, shiftKey: false, metaKey: false, ctrlKey: false });
-            }
-
-            pendingDeselectRef.current = false;
-
-            // Finalize drag
-            const { dragOffset, data, onDragEnd } = stateRef.current;
-
-            if (hasDraggedRef.current && onDragEnd) {
-                const currentScale = useStore.getState().scale || 1;
-                const dx = (e.clientX - dragOffset.startX) / currentScale;
-                const dy = (e.clientY - dragOffset.startY) / currentScale;
-                const finalX = dragOffset.origX + dx;
-                const finalY = dragOffset.origY + dy;
-                onDragEnd(data.id, finalX, finalY, cmdKeyPressedRef.current);
-            }
-        };
-
-        const handleTouchMove = (e) => {
-            if (e.cancelable) e.preventDefault();
-            const touch = e.touches[0];
-            handleMouseMove({
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-        };
-
-        // Simplified TouchEnd
-        const handleTouchEnd = (e) => {
-            setIsDragging(false);
-
-            if (cardRef.current) {
-                // If we used transform logic (which we aren't, we are using onMove store updates directly),
-                // we would need cleanup. But here we just finalize.
-                // Since we don't have clientX/Y in touchend easily without tracking, 
-                // and we've been updating the store onMove, the last onMove was correct.
-                // We just need to trigger onDragEnd with the *current* data coordinates.
-                // BUT data coordinates in props might be stale compared to store if React didn't re-render fast enough?
-                // Actually, onMove updates store -> triggers re-render -> new data props.
-                // So stateRef.current.data should be reasonably fresh.
-
-                // However, to be precise, we should track last known coordinates in ref.
-                // For now, using the last calculated delta from dragOffset works best.
-                // But touchEnd has no coordinates. We rely on the movement having happened.
-            }
-
-            // Handle deferred deselect for touch
-            if (pendingDeselectRef.current && !hasDraggedRef.current) {
-                const { onSelect, data } = stateRef.current;
-                onSelect(data.id, { shiftKey: false, ctrlKey: false, metaKey: false });
-            }
-
-            if (hasDraggedRef.current && stateRef.current.onDragEnd) {
-                // We can't calc new delta easily without last touch. 
-                // Assuming the last onMove was handled, the state is updated.
-                // onDragEnd is mostly for "saving" logic (undo/redo checkpoint).
-                // passing current x/y is fine.
-                const { x, y } = stateRef.current.data;
-                stateRef.current.onDragEnd(stateRef.current.data.id, x, y, cmdKeyPressedRef.current);
-            }
-
-            pendingDeselectRef.current = false;
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-        window.addEventListener('touchmove', handleTouchMove, { passive: false });
-        window.addEventListener('touchend', handleTouchEnd);
-
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('touchmove', handleTouchMove);
-            window.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [isDragging]); // Only re-run if isDragging changes state
 
     // Safety access
     const cardContent = data.data || {};
@@ -303,7 +130,7 @@ const Card = React.memo(function Card({
             onPrivateKey={() => { }} // Placeholder if needed
             onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
+            onTouchStart={handleTouchStartWithDoubleTap}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
         >
             {/* Top Bar - Model + Buttons */}

@@ -3,6 +3,7 @@ import { X, Image as ImageIcon, Trash2, Link, ListOrdered } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 
 import { useStore } from '../store/useStore';
+import { useDraggable } from '../hooks/useDraggable';
 
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -22,125 +23,42 @@ const StickyNote = React.memo(function StickyNote({
     onCreateNote,
     onCardFullScreen // NEW Prop
 }) { // Line 22
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [isEditing, setIsEditing] = useState(false); // NEW: Edit mode state
-    const [isExpanded, setIsExpanded] = useState(false); // NEW: Expand/collapse state
-    const hasDraggedRef = useRef(false); // Track if drag happened
-    const pendingDeselectRef = useRef(false);
+    const {
+        isDragging,
+        handleMouseDown,
+        handleTouchStart
+    } = useDraggable({
+        id: data.id,
+        x: data.x,
+        y: data.y,
+        isSelected,
+        onSelect,
+        onMove,
+        onDragEnd: () => onDragEnd && onDragEnd(data.id),
+        onClick: () => {
+            if (clickTimeoutRef.current) {
+                // Double Click Detected
+                clearTimeout(clickTimeoutRef.current);
+                clickTimeoutRef.current = null;
+                if (onCardFullScreen) onCardFullScreen(data.id);
+            } else {
+                // Single Click - wait for potential double click
+                clickTimeoutRef.current = setTimeout(() => {
+                    setIsExpanded(prev => !prev);
+                    clickTimeoutRef.current = null;
+                }, 250);
+            }
+        },
+        disabled: isEditing
+    });
+
+    const [isEditing, setIsEditing] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const cardRef = useRef(null);
-    const contentRef = useRef(null); // Ref for scrollable content
-    const clickTimeoutRef = useRef(null); // Ref for double click detection
-
-    // Refs to hold latest values for event handlers to avoid re-binding
-    const stateRef = useRef({ data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen });
-    useEffect(() => {
-        stateRef.current = { data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen };
-    }, [data, onMove, dragOffset, onDragEnd, isSelected, onSelect, onExpand, onCardFullScreen]);
-
-    const handleMouseDown = (e) => {
-        if (isEditing) return; // Allow text selection in edit mode
-        if (e.target.closest('button') || e.target.closest('.no-drag') || e.target.closest('.custom-scrollbar')) return;
-
-        e.stopPropagation();
-        onSelect(data.id, e);
-        hasDraggedRef.current = false; // Initialize drag tracking
-        pendingDeselectRef.current = !isSelected && !(e.shiftKey || e.metaKey || e.ctrlKey); // Rough guess for pending deselect if needed, but StickyNote selection is simpler usually.
-        // Actually StickyNote selection doesn't use pendingDeselect yet in the original.
-        // Let's just track drag movement.
-
-        const initialDragOffset = {
-            startX: e.clientX,
-            startY: e.clientY,
-            origX: data.x,
-            origY: data.y
-        };
-
-        setIsDragging(true);
-        setDragOffset(initialDragOffset);
-        stateRef.current.dragOffset = initialDragOffset;
-    };
-
-    // ... (keep touch handlers same) ...
-    const handleTouchStart = (e) => {
-        if (isEditing) return;
-        if (e.target.closest('button') || e.target.closest('.no-drag')) return;
-
-        const touch = e.touches[0];
-        handleMouseDown({
-            ...e,
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            stopPropagation: () => e.stopPropagation()
-        });
-    };
-
-    useEffect(() => {
-        if (!isDragging) return;
-
-        const handleMouseMove = (e) => {
-            const { onMove, data, dragOffset } = stateRef.current;
-            const currentScale = useStore.getState().scale || 1;
-            const dx = (e.clientX - dragOffset.startX) / currentScale;
-            const dy = (e.clientY - dragOffset.startY) / currentScale;
-
-            if (!hasDraggedRef.current && (Math.abs(e.clientX - dragOffset.startX) > 3 || Math.abs(e.clientY - dragOffset.startY) > 3)) {
-                hasDraggedRef.current = true;
-            }
-
-            onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
-        };
-
-        const handleMouseUp = (e) => {
-            setIsDragging(false);
-            const { onDragEnd, data, onCardFullScreen } = stateRef.current;
-
-            if (onDragEnd) {
-                onDragEnd(data.id);
-            }
-
-            // Click Logic (Single vs Double)
-            if (!hasDraggedRef.current) {
-                if (clickTimeoutRef.current) {
-                    // Double Click Detected
-                    clearTimeout(clickTimeoutRef.current);
-                    clickTimeoutRef.current = null;
-                    if (onCardFullScreen) onCardFullScreen(data.id);
-                } else {
-                    // Single Click - wait for potential double click
-                    clickTimeoutRef.current = setTimeout(() => {
-                        setIsExpanded(prev => !prev);
-                        clickTimeoutRef.current = null;
-                    }, 250);
-                }
-            }
-        };
-
-        const handleTouchMove = (e) => {
-            if (e.cancelable) e.preventDefault();
-            const touch = e.touches[0];
-            handleMouseMove({
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-        };
-
-        const handleTouchEnd = () => handleMouseUp();
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-        window.addEventListener('touchmove', handleTouchMove, { passive: false });
-        window.addEventListener('touchend', handleTouchEnd);
-
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('touchmove', handleTouchMove);
-            window.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [isDragging]);
+    const contentRef = useRef(null);
+    const clickTimeoutRef = useRef(null);
 
     const handleContentChange = (e) => {
         onUpdate(data.id, { ...data.data, content: e.target.value });

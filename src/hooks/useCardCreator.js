@@ -1,78 +1,11 @@
-// import { imageGeneration } from '../services/llm'; // Removed in favor of AIManager
 import { useStore } from '../store/useStore';
 import { saveBoard, saveImageToIDB } from '../services/storage';
 import { useParams } from 'react-router-dom';
 import { uuid } from '../utils/uuid';
 import { createPerformanceMonitor } from '../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
-
-// Smart position finder for new cards
-const findOptimalPosition = (cards, offset, scale, selectedIds) => {
-    const CARD_WIDTH = 320;
-    const CARD_HEIGHT = 200;
-    const MARGIN = 50;
-
-    // Calculate viewport range
-    const viewportLeft = -offset.x / scale;
-    const viewportTop = -offset.y / scale;
-    const viewportCenterX = viewportLeft + (window.innerWidth / 2) / scale;
-    const viewportCenterY = viewportTop + (window.innerHeight / 2) / scale;
-
-    // If there are selected cards, find position near them
-    const selectedCards = cards.filter(c => selectedIds?.includes(c.id));
-
-    if (selectedCards.length > 0) {
-        // Strategy 1: Find space to the right of selected cards
-        const rightMost = Math.max(...selectedCards.map(c => c.x));
-        const avgY = selectedCards.reduce((sum, c) => sum + c.y, 0) / selectedCards.length;
-
-        let candidateX = rightMost + CARD_WIDTH + MARGIN;
-        let candidateY = avgY;
-
-        // Check for overlap and shift down if needed
-        let attempts = 0;
-        while (attempts < 10) {
-            const hasOverlap = cards.some(c =>
-                Math.abs(c.x - candidateX) < CARD_WIDTH &&
-                Math.abs(c.y - candidateY) < CARD_HEIGHT
-            );
-
-            if (!hasOverlap) {
-                return { x: candidateX, y: candidateY };
-            }
-
-            candidateY += CARD_HEIGHT + MARGIN;
-            attempts++;
-        }
-    }
-
-    // Strategy 2: Spiral search around viewport center
-    const gridSize = CARD_WIDTH + MARGIN;
-    const searchRadius = 3;
-
-    for (let ring = 0; ring < searchRadius; ring++) {
-        for (let angle = 0; angle < 360; angle += 45) {
-            const rad = (angle * Math.PI) / 180;
-            const testX = viewportCenterX + Math.cos(rad) * ring * gridSize;
-            const testY = viewportCenterY + Math.sin(rad) * ring * gridSize;
-
-            const hasOverlap = cards.some(c =>
-                Math.abs(c.x - testX) < CARD_WIDTH &&
-                Math.abs(c.y - testY) < CARD_HEIGHT
-            );
-
-            if (!hasOverlap) {
-                return { x: testX - CARD_WIDTH / 2, y: testY - CARD_HEIGHT / 2 };
-            }
-        }
-    }
-
-    // Strategy 3: Fallback to random offset near center
-    return {
-        x: viewportCenterX - CARD_WIDTH / 2 + (Math.random() * 100 - 50),
-        y: viewportCenterY - CARD_HEIGHT / 2 + (Math.random() * 100 - 50)
-    };
-};
+import { findOptimalPosition } from '../utils/geometry';
+import { useAISprouting } from './useAISprouting';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -89,16 +22,15 @@ export function useCardCreator() {
         addCard
     } = useStore();
 
-    // Internal helper for AI generation
-    const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
-        console.log('[DEBUG _generateAICard] Starting generation for text:', text.substring(0, 20));
+    const { handleExpandTopics, handleSprout } = useAISprouting();
 
-        // REFACTOR: Get config and roles from store
+    /**
+     * Internal helper for AI generation
+     */
+    const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat'); // Respects user role setting
-
-        console.log('[DEBUG _generateAICard] Active config:', activeConfig, 'Model:', chatModel);
+        const chatModel = state.getRoleModel('chat');
         const newId = uuid();
 
         try {
@@ -109,10 +41,9 @@ export function useCardCreator() {
                 images,
                 contextPrefix,
                 autoConnections: selectedIds.map(sid => ({ from: sid, to: newId })),
-                model: chatModel, // Use role model
+                model: chatModel,
                 providerId: activeConfig.id
             });
-            console.log('[DEBUG _generateAICard] Card created in store:', newId);
 
             // Construct content for AI
             let messageContent;
@@ -133,32 +64,24 @@ export function useCardCreator() {
                 messageContent = contextPrefix + text;
             }
 
-
             // Queue the streaming task
             try {
-                console.log('[DEBUG _generateAICard] Starting streamChatCompletion for:', newId);
-
-                // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
                     cardId: newId,
                     model: chatModel,
                     providerId: activeConfig.id,
                     messages: [{ role: 'user', content: messageContent }],
-                    temperature: undefined,
                     stream: true
                 });
 
                 let firstToken = true;
-                // Use AIManager for centralized scheduling
-                // AWAIT the promise returned by requestTask!
                 await aiManager.requestTask({
                     type: 'chat',
-                    priority: PRIORITY.HIGH, // Card creation is high priority
+                    priority: PRIORITY.HIGH,
                     payload: {
                         messages: [{ role: 'user', content: messageContent }],
                         model: chatModel,
-                        temperature: undefined,
-                        config: activeConfig // Pass config
+                        config: activeConfig
                     },
                     tags: [`card:${newId}`],
                     onProgress: (chunk) => {
@@ -167,13 +90,11 @@ export function useCardCreator() {
                             firstToken = false;
                         }
                         perfMonitor.onChunk(chunk);
-                        console.log('[DEBUG _generateAICard] Received chunk for:', newId);
                         updateCardContent(newId, chunk);
                     }
                 });
 
                 perfMonitor.onComplete();
-                console.log('[DEBUG _generateAICard] Streaming completed for:', newId);
             } catch (innerError) {
                 console.error("Streaming failed for card", newId, innerError);
                 updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
@@ -187,104 +108,73 @@ export function useCardCreator() {
         return newId;
     };
 
-    const createCardWithText = async (text, boardId, images = [], position = null) => {
-        if (!text.trim() && images.length === 0) return;
-
-        let targetX, targetY;
-        if (position) {
-            targetX = position.x;
-            targetY = position.y;
-        } else {
-            // Use smart positioning
-            const optimalPos = findOptimalPosition(cards, offset, scale, selectedIds);
-            targetX = optimalPos.x;
-            targetY = optimalPos.y;
-        }
-
-        await _generateAICard(text, targetX, targetY, images);
-    };
-
+    /**
+     * Batch chat with selected cards
+     */
     const handleBatchChat = async (text, images = []) => {
-        console.log('[DEBUG handleBatchChat] Called with:', { text, imagesCount: images.length, selectedIds });
         if (!text.trim() && images.length === 0) return;
 
-        // If we have selected cards that are chat-capable, send the message to them instead of creating a new card.
         const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
-        console.log('[DEBUG handleBatchChat] Target cards:', targetCards.length);
+        if (targetCards.length === 0) return false;
 
-        if (targetCards.length > 0) {
-            // Needed to access handleChatGenerate from store
-            const { handleChatGenerate } = useStore.getState();
+        const { handleChatGenerate } = useStore.getState();
 
-            // Prepare the new user message
-            let userContentParts = [];
-            if (text.trim()) {
-                userContentParts.push({ type: 'text', text });
-            }
+        // Prepare context
+        let userContentParts = [];
+        if (text.trim()) userContentParts.push({ type: 'text', text });
 
-            if (images.length > 0) {
-                // Save images to IDB once and reuse the reference for all cards
-                const processedImages = await Promise.all(images.map(async (img, idx) => {
-                    const imageId = `batch_img_${uuid()}_${idx}`;
-                    await saveImageToIDB(imageId, img.base64);
-                    return {
-                        type: 'image',
-                        source: { type: 'idb', id: imageId, media_type: img.mimeType }
-                    };
-                }));
-                userContentParts = [...userContentParts, ...processedImages];
-            }
-
-            if (userContentParts.length === 0) return;
-
-            const userMsg = {
-                role: 'user',
-                content: userContentParts.length === 1 && userContentParts[0].type === 'text'
-                    ? userContentParts[0].text
-                    : userContentParts
-            };
-
-            const assistantMsg = { role: 'assistant', content: '' };
-
-            // Optimistic UI Update: Append messages to ALL targets immediately
-            setCards(prev => prev.map(c => {
-                if (selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages)) {
-                    return {
-                        ...c,
-                        data: {
-                            ...c.data,
-                            messages: [...c.data.messages, userMsg, assistantMsg]
-                        }
-                    };
-                }
-                return c;
+        if (images.length > 0) {
+            const processedImages = await Promise.all(images.map(async (img, idx) => {
+                const imageId = `batch_img_${uuid()}_${idx}`;
+                await saveImageToIDB(imageId, img.base64);
+                return {
+                    type: 'image',
+                    source: { type: 'idb', id: imageId, media_type: img.mimeType }
+                };
             }));
-
-            // Trigger AI for each card concurrently with proper error handling
-            await Promise.all(targetCards.map(async (card) => {
-                try {
-                    console.log('[DEBUG handleBatchChat] Starting AI for card:', card.id);
-                    const history = [...card.data.messages, userMsg];
-                    // handleChatGenerate adds context internally
-                    await handleChatGenerate(card.id, history, (chunk) => {
-                        console.log('[DEBUG handleBatchChat] Received chunk for card:', card.id);
-                        updateCardContent(card.id, chunk);
-                    });
-                } catch (e) {
-                    console.error(`Batch chat failed for card ${card.id}`, e);
-                    updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
-                }
-            }));
-            console.log('[DEBUG handleBatchChat] Batch chat completed successfully');
-            return true; // Indicate handled
+            userContentParts = [...userContentParts, ...processedImages];
         }
-        console.log('[DEBUG handleBatchChat] No target cards, returning false');
-        return false; // Not handled
+
+        const userMsg = {
+            role: 'user',
+            content: userContentParts.length === 1 && userContentParts[0].type === 'text'
+                ? userContentParts[0].text
+                : userContentParts
+        };
+
+        const assistantMsg = { role: 'assistant', content: '' };
+
+        // Optimistic UI Update
+        setCards(prev => prev.map(c => {
+            if (selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages)) {
+                return {
+                    ...c,
+                    data: { ...c.data, messages: [...c.data.messages, userMsg, assistantMsg] }
+                };
+            }
+            return c;
+        }));
+
+        // Execute concurrent AI requests
+        await Promise.all(targetCards.map(async (card) => {
+            try {
+                const history = [...card.data.messages, userMsg];
+                await handleChatGenerate(card.id, history, (chunk) => updateCardContent(card.id, chunk));
+            } catch (e) {
+                console.error(`Batch chat failed for card ${card.id}`, e);
+                updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
+            }
+        }));
+        return true;
     };
 
+    /**
+     * General purpose card creation (Text/AI/Image)
+     */
     const handleCreateCard = async (text, images = [], position = null) => {
         if (!text.trim() && images.length === 0) return;
 
+        // 1. Image Generation Command Detection
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
             const promptText = text.replace(/^\/(draw|image)\s+/, '');
             const newId = uuid();
@@ -296,47 +186,44 @@ export function useCardCreator() {
             }]);
 
             try {
-                // REFACTOR: Use store config for image generation
                 const state = useStore.getState();
                 const activeConfig = state.getActiveConfig();
-                // const imageModel = state.getRoleModel('image'); // Respects user role setting (handled in AIManager/Config now?)
-                // Ideally passing just config and letting AIManager/LLM resolve model if not explicit
-
-                // Use AIManager for Image Generation task
                 const imageUrl = await aiManager.requestTask({
                     type: 'image',
                     priority: PRIORITY.HIGH,
-                    payload: {
-                        prompt: promptText,
-                        config: activeConfig
-                    },
+                    payload: { prompt: promptText, config: activeConfig },
                     tags: [`card:${newId}`]
                 });
 
-                setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) } } : c));
+                setCards(prev => prev.map(c => c.id === newId ? {
+                    ...c,
+                    data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) }
+                } : c));
+                return;
             } catch (e) {
                 console.error(e);
-                setCards(prev => prev.map(c => c.id === newId ? { ...c, data: { ...c.data, error: e.message, loading: false, title: 'Failed' } } : c));
+                setCards(prev => prev.map(c => c.id === newId ? {
+                    ...c,
+                    data: { ...c.data, error: e.message, loading: false, title: 'Failed' }
+                } : c));
+                return;
             }
         }
 
-        // 2. Intelligent positioning
+        // 2. Position Calculation
         let targetX, targetY;
-        const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
-
         if (position) {
-            // Use provided position directly
             targetX = position.x;
             targetY = position.y;
         } else {
-            // Use smart positioning
             const optimalPos = findOptimalPosition(cards, offset, scale, selectedIds);
             targetX = optimalPos.x;
             targetY = optimalPos.y;
         }
 
-        // 4. Context Construction
+        // 3. Context Construction
         let contextPrefix = "";
+        const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
         if (contextCards.length > 0) {
             contextPrefix = `[System Context: You are referencing multiple linked cards. IMPORTANT: When you want to refer to a specific card's content, ALWAYS use its ID in brackets like [cd14af...]. The system will automatically convert these IDs into clickable titles for the user. Do NOT write the titles yourself in the reference, just the ID.]\n\n${contextCards.map(c => `- Card "${c.data.title}" -> ID: [${c.id}]`).join('\n')}\n\n---\n\n`;
         }
@@ -344,57 +231,41 @@ export function useCardCreator() {
         await _generateAICard(text, targetX, targetY, images, contextPrefix);
     };
 
+    /**
+     * Neural Notepad (Sticky Note) handling
+     */
     const handleCreateNote = (text = '', isMaster = false) => {
         const safeText = (typeof text === 'string' ? text : '').trim();
-        if (!safeText && isMaster) return; // Don't append empty text to master
+        if (!safeText && isMaster) return;
 
-        // Find existing note - prioritize one marked as 'notepad' or just the first note
         const existingNote = cards.find(c => c.type === 'note');
 
         if (existingNote) {
             const currentContent = existingNote.data.content || '';
-
-            // Strict parsing of "XX. " format
             const lines = currentContent.split('\n').filter(l => l.trim());
             let nextNum = 1;
 
             if (lines.length > 0) {
-                // Find the highest existing number to ensure sequential ordering
-                // This avoids issues where multi-line notes cause the counter to jump based on line count
                 const numbers = lines
                     .map(line => {
                         const match = line.match(/^(\d+)\./);
                         return match ? parseInt(match[1], 10) : null;
                     })
                     .filter(n => n !== null);
-
-                if (numbers.length > 0) {
-                    nextNum = Math.max(...numbers) + 1;
-                } else {
-                    // Fallback: Check if there are lines but no numbers (e.g. user manually wrote text)
-                    // We start at 1, or maybe lines.length + 1 if we wanted to be safe, 
-                    // but starting at 1 makes a new list which is usually desired.
-                    // User complained about lines.length jumping, so let's stick to 1 if no numbers found,
-                    // BUT if there is text, maybe we shouldn't overwrite? 
-                    // Actually, if no numbers, appending "01." is a good start.
-                    nextNum = 1;
-                }
+                if (numbers.length > 0) nextNum = Math.max(...numbers) + 1;
             }
 
             const nextNumberStr = String(nextNum).padStart(2, '0');
             const newEntry = `${nextNumberStr}. ${safeText}`;
-
-            // Build updated content with proper spacing
             const separator = currentContent.trim() ? '\n\n' : '';
             const updatedContent = currentContent + separator + newEntry;
 
             updateCard(existingNote.id, {
                 ...existingNote.data,
                 content: updatedContent,
-                isNotepad: true // Mark as notepad
+                isNotepad: true
             });
         } else {
-            // Create the one and only note card
             addCard({
                 id: uuid(),
                 type: 'note',
@@ -409,9 +280,8 @@ export function useCardCreator() {
             });
         }
 
-        // Trigger immediate persistence to avoid sync conflicts
+        // Trigger persistence
         if (currentBoardId) {
-            // We use a small timeout to let the store update settle
             setTimeout(() => {
                 const latestState = useStore.getState();
                 saveBoard(currentBoardId, {
@@ -422,116 +292,7 @@ export function useCardCreator() {
         }
     };
 
-    const handleExpandTopics = async (sourceId) => {
-        const source = cards.find(c => c.id === sourceId);
-        if (!source || !source.data.marks) return;
-
-        // REFACTOR: Use store config
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat'); // Respects user role setting
-
-        source.data.marks.map(async (mark, index) => {
-            try {
-                const newY = source.y + (index * 320) - ((source.data.marks.length * 320) / 2) + 150;
-                const generatedId = uuid();
-
-                const newId = await createAICard({
-                    id: generatedId,
-                    text: mark,
-                    x: source.x + 400,
-                    y: newY,
-                    autoConnections: [{ from: sourceId, to: generatedId }],
-                    model: chatModel,
-                    providerId: activeConfig.id
-                });
-
-                try {
-                    // Use AIManager for ExpandTopics too
-                    await aiManager.requestTask({
-                        type: 'chat',
-                        priority: PRIORITY.HIGH,
-                        payload: {
-                            messages: [{ role: 'user', content: mark }],
-                            model: chatModel,
-                            config: activeConfig
-                        },
-                        tags: [`card:${generatedId}`],
-                        onProgress: (chunk) => updateCardContent(newId, chunk)
-                    });
-                } catch (innerError) {
-                    console.error("Expand topic failed", innerError);
-                    updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
-                } finally {
-                    setCardGenerating(newId, false);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        });
-    };
-
-    const handleSprout = async (sourceId, topics) => {
-        const source = cards.find(c => c.id === sourceId);
-        if (!source || !topics.length) return;
-
-        // REFACTOR: Use store config
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat'); // Respects user role setting
-
-        const CARD_HEIGHT = 400;
-        const totalHeight = topics.length * CARD_HEIGHT;
-        const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
-
-        // Fire and forget - no concurrency limit, all topics generate simultaneously
-        topics.forEach((question, index) => {
-            (async () => {
-                try {
-                    const newY = startY + (index * CARD_HEIGHT);
-                    const newId = uuid();
-
-                    await createAICard({
-                        id: newId,
-                        text: question,
-                        x: source.x + 450,
-                        y: newY,
-                        autoConnections: [{ from: sourceId, to: newId }],
-                        model: chatModel,
-                        providerId: activeConfig.id
-                    });
-
-                    try {
-                        // Use AIManager for Sprout
-                        await aiManager.requestTask({
-                            type: 'chat',
-                            priority: PRIORITY.HIGH,
-                            payload: {
-                                messages: [{
-                                    role: 'user',
-                                    content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
-                                }],
-                                model: chatModel,
-                                config: activeConfig
-                            },
-                            tags: [`card:${newId}`],
-                            onProgress: (chunk) => updateCardContent(newId, chunk)
-                        });
-                    } catch (innerError) {
-                        console.error("Sprout generation failed", innerError);
-                        updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
-                    } finally {
-                        setCardGenerating(newId, false);
-                    }
-                } catch (e) {
-                    console.error("Sprout creation failed", e);
-                }
-            })();
-        });
-    };
-
     return {
-        createCardWithText,
         handleCreateCard,
         handleCreateNote,
         handleExpandTopics,
