@@ -9,7 +9,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
-import { saveBoard, saveBoardToCloud } from '../services/storage';
+import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/storage';
 import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
 
@@ -89,11 +89,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         }
     }, [cards, connections, groups, currentBoardId, user]); // Watch groups
 
-    // Persist canvas state
+    // Persist canvas state per board
     useEffect(() => {
-        localStorage.setItem('canvas_offset', JSON.stringify(offset));
-        localStorage.setItem('canvas_scale', scale.toString());
-    }, [offset, scale]);
+        if (currentBoardId && !isBoardLoading) {
+            saveViewportState(currentBoardId, { offset, scale });
+        }
+    }, [offset, scale, currentBoardId, isBoardLoading]);
 
 
     // Hotkeys

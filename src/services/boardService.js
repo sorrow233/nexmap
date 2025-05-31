@@ -224,5 +224,31 @@ export const permanentlyDeleteBoard = async (id) => {
 
     await idbDel(BOARD_PREFIX + id);
     localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy
+    localStorage.removeItem(`mixboard_viewport_${id}`); // Cleanup viewport state
     console.log(`[Storage] Board ${id} permanently deleted.`);
+};
+
+// Viewport State Management
+const VIEWPORT_PREFIX = 'mixboard_viewport_';
+
+export const saveViewportState = (boardId, viewport) => {
+    if (!boardId) return;
+    try {
+        localStorage.setItem(VIEWPORT_PREFIX + boardId, JSON.stringify(viewport));
+    } catch (e) {
+        console.warn('[Storage] Failed to save viewport state:', e);
+    }
+};
+
+export const loadViewportState = (boardId) => {
+    if (!boardId) return { offset: { x: 0, y: 0 }, scale: 1 };
+    try {
+        const stored = localStorage.getItem(VIEWPORT_PREFIX + boardId);
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (e) {
+        console.warn('[Storage] Failed to load viewport state:', e);
+    }
+    return { offset: { x: 0, y: 0 }, scale: 1 };
 };
