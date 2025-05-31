@@ -1,3 +1,5 @@
+import { debugLog } from '../../utils/debugLogger';
+
 export const createCanvasSlice = (set, get) => ({
     offset: { x: 0, y: 0 },
     scale: 1,
@@ -8,49 +10,62 @@ export const createCanvasSlice = (set, get) => ({
     connectionStartId: null,
     backgroundImage: null, // New field for board-specific background
 
-    setOffset: (valOrUpdater) => set((state) => ({
-        offset: typeof valOrUpdater === 'function' ? valOrUpdater(state.offset) : valOrUpdater
-    })),
-    setScale: (valOrUpdater) => set((state) => ({
-        scale: typeof valOrUpdater === 'function' ? valOrUpdater(state.scale) : valOrUpdater
-    })),
-    setSelectedIds: (valOrUpdater) => set((state) => ({
-        selectedIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectedIds) : valOrUpdater
-    })),
-    setInteractionMode: (valOrUpdater) => set((state) => ({
-        interactionMode: typeof valOrUpdater === 'function' ? valOrUpdater(state.interactionMode) : valOrUpdater
-    })),
+    setOffset: (valOrUpdater) => {
+        const nextOffset = typeof valOrUpdater === 'function' ? valOrUpdater(get().offset) : valOrUpdater;
+        // debugLog.ui('Canvas offset change', nextOffset); // Too frequent during pan
+        set({ offset: nextOffset });
+    },
+    setScale: (valOrUpdater) => {
+        const nextScale = typeof valOrUpdater === 'function' ? valOrUpdater(get().scale) : valOrUpdater;
+        debugLog.ui('Canvas zoom change', { scale: nextScale });
+        set({ scale: nextScale });
+    },
+    setSelectedIds: (valOrUpdater) => {
+        const nextIds = typeof valOrUpdater === 'function' ? valOrUpdater(get().selectedIds) : valOrUpdater;
+        debugLog.ui('Selection change', { count: nextIds.length, ids: nextIds });
+        set({ selectedIds: nextIds });
+    },
+    setInteractionMode: (valOrUpdater) => {
+        const nextMode = typeof valOrUpdater === 'function' ? valOrUpdater(get().interactionMode) : valOrUpdater;
+        debugLog.ui('Interaction mode change', { mode: nextMode });
+        set({ interactionMode: nextMode });
+    },
     setSelectionRect: (valOrUpdater) => set((state) => ({
         selectionRect: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectionRect) : valOrUpdater
     })),
-    setIsConnecting: (val) => set({ isConnecting: val }),
+    setIsConnecting: (val) => {
+        debugLog.ui(`Connection state: ${val}`);
+        set({ isConnecting: val });
+    },
     setConnectionStartId: (val) => set({ connectionStartId: val }),
 
     moveOffset: (dx, dy) => set((state) => ({
         offset: { x: state.offset.x + dx, y: state.offset.y + dy }
     })),
 
-    restoreViewport: (viewport) => set({
-        offset: viewport.offset || { x: 0, y: 0 },
-        scale: viewport.scale || 1
-    }),
+    restoreViewport: (viewport) => {
+        debugLog.storage('Restoring viewport from saved state', viewport);
+        set({
+            offset: viewport.offset || { x: 0, y: 0 },
+            scale: viewport.scale || 1
+        });
+    },
 
     isBoardLoading: false, // New field to track board loading state
-    setIsBoardLoading: (val) => set({ isBoardLoading: val }),
+    setIsBoardLoading: (val) => {
+        debugLog.ui(`Board loading state: ${val}`);
+        set({ isBoardLoading: val });
+    },
 
     // Smoothly focus/zoom on a specific card
     focusOnCard: (cardId) => {
-        console.log('[DEBUG] focusOnCard called for ID:', cardId);
+        debugLog.ui(`focusOnCard animate start for ID: ${cardId}`);
         const { cards, offset, scale, setOffset, setScale } = get();
         const card = cards.find(c => c.id === cardId);
         if (!card) {
-            console.warn('[DEBUG] focusOnCard: Card NOT found in state!', cardId);
+            debugLog.error(`focusOnCard: Card NOT found in state! ID: ${cardId}`);
             return;
         }
-
-        console.log('[DEBUG] focusOnCard: Target card title:', card.data?.title);
-        console.log('[DEBUG] focusOnCard: Current viewport - offset:', offset, 'scale:', scale);
-        console.log('[DEBUG] focusOnCard: Card location:', card.x, card.y);
 
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
@@ -83,6 +98,8 @@ export const createCanvasSlice = (set, get) => ({
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
+            } else {
+                debugLog.ui('focusOnCard animation complete');
             }
         }
 

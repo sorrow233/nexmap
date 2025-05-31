@@ -6,6 +6,7 @@ import { createPerformanceMonitor } from '../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
 import { findOptimalPosition } from '../utils/geometry';
 import { useAISprouting } from './useAISprouting';
+import { debugLog } from '../utils/debugLogger';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -32,6 +33,8 @@ export function useCardCreator() {
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
         const newId = uuid();
+
+        debugLog.ai('Starting AI card generation', { text, x, y, model: chatModel });
 
         try {
             await createAICard({
@@ -74,6 +77,8 @@ export function useCardCreator() {
                     stream: true
                 });
 
+                debugLog.ai(`Queueing AI task for card ${newId}`);
+
                 let firstToken = true;
                 await aiManager.requestTask({
                     type: 'chat',
@@ -87,6 +92,7 @@ export function useCardCreator() {
                     onProgress: (chunk) => {
                         if (firstToken) {
                             perfMonitor.onFirstToken();
+                            debugLog.ai(`Received first token for card ${newId}`);
                             firstToken = false;
                         }
                         perfMonitor.onChunk(chunk);
@@ -94,15 +100,16 @@ export function useCardCreator() {
                     }
                 });
 
+                debugLog.ai(`AI task completed for card ${newId}`);
                 perfMonitor.onComplete();
             } catch (innerError) {
-                console.error("Streaming failed for card", newId, innerError);
+                debugLog.error(`Streaming failed for card ${newId}`, innerError);
                 updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
             } finally {
                 setCardGenerating(newId, false);
             }
         } catch (e) {
-            console.error(e);
+            debugLog.error(`Card generation failed for ${newId}`, e);
             setCardGenerating(newId, false);
         }
         return newId;
@@ -116,6 +123,8 @@ export function useCardCreator() {
 
         const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
         if (targetCards.length === 0) return false;
+
+        debugLog.ai('Starting batch chat', { text, targetCount: targetCards.length });
 
         const { handleChatGenerate } = useStore.getState();
 
@@ -160,8 +169,9 @@ export function useCardCreator() {
             try {
                 const history = [...card.data.messages, userMsg];
                 await handleChatGenerate(card.id, history, (chunk) => updateCardContent(card.id, chunk));
+                debugLog.ai(`Batch response complete for card ${card.id}`);
             } catch (e) {
-                console.error(`Batch chat failed for card ${card.id}`, e);
+                debugLog.error(`Batch chat failed for card ${card.id}`, e);
                 updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
             }
         }));
@@ -178,6 +188,8 @@ export function useCardCreator() {
         if (text.startsWith('/draw ') || text.startsWith('/image ')) {
             const promptText = text.replace(/^\/(draw|image)\s+/, '');
             const newId = uuid();
+            debugLog.ai('Starting image generation', { prompt: promptText });
+
             setCards(prev => [...prev, {
                 id: newId, type: 'image_gen',
                 x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
@@ -195,13 +207,15 @@ export function useCardCreator() {
                     tags: [`card:${newId}`]
                 });
 
+                debugLog.ai(`Image generation success for ${newId}`, { imageUrl });
+
                 setCards(prev => prev.map(c => c.id === newId ? {
                     ...c,
                     data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) }
                 } : c));
                 return;
             } catch (e) {
-                console.error(e);
+                debugLog.error(`Image generation failed for ${newId}`, e);
                 setCards(prev => prev.map(c => c.id === newId ? {
                     ...c,
                     data: { ...c.data, error: e.message, loading: false, title: 'Failed' }
@@ -238,6 +252,8 @@ export function useCardCreator() {
         const safeText = (typeof text === 'string' ? text : '').trim();
         if (!safeText && isMaster) return;
 
+        debugLog.ui('Note creation triggered', { text: safeText, isMaster });
+
         const existingNote = cards.find(c => c.type === 'note');
 
         if (existingNote) {
@@ -265,9 +281,11 @@ export function useCardCreator() {
                 content: updatedContent,
                 isNotepad: true
             });
+            debugLog.ui(`Appended to existing note: ${existingNote.id}`);
         } else {
+            const newId = uuid();
             addCard({
-                id: uuid(),
+                id: newId,
                 type: 'note',
                 x: Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160),
                 y: Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 250),
@@ -278,6 +296,7 @@ export function useCardCreator() {
                     title: 'Neural Notepad'
                 }
             });
+            debugLog.ui(`Created new master note: ${newId}`);
         }
 
         // Trigger persistence

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { debugLog } from '../utils/debugLogger';
 
 /**
  * A shared hook for handling standardized drag-and-drop behavior 
@@ -37,6 +38,8 @@ export function useDraggable({
         if (e.target.closest('button') || e.target.closest('.no-drag') || e.target.closest('.custom-scrollbar')) return;
 
         e.stopPropagation();
+
+        debugLog.ui(`Drag start: ${id}`, { clientX, clientY, isSelected });
 
         // Track Cmd/Ctrl key for drag mode
         cmdKeyPressedRef.current = e.metaKey || e.ctrlKey;
@@ -98,11 +101,15 @@ export function useDraggable({
             const dx = (clientX - startX) / currentScale;
             const dy = (clientY - startY) / currentScale;
 
-            if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+            if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+                debugLog.error(`NaN detected in dragMove for ${id}`, { dx, dy, scale: currentScale });
+                return;
+            }
 
             if (!hasDraggedRef.current && (Math.abs(clientX - startX) > dragThreshold || Math.abs(clientY - startY) > dragThreshold)) {
                 hasDraggedRef.current = true;
                 pendingDeselectRef.current = false;
+                debugLog.ui(`Drag threshold exceeded for ${id}`);
             }
 
             if (hasDraggedRef.current && onMove) {
@@ -117,6 +124,8 @@ export function useDraggable({
         const handleEnd = (e) => {
             setIsDragging(false);
             const dragHappened = hasDraggedRef.current;
+
+            debugLog.ui(`Drag end: ${id}`, { dragHappened });
 
             // Handle pure click
             if (!dragHappened && onClick) {

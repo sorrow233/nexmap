@@ -1,6 +1,7 @@
 import { uuid } from '../utils/uuid';
 import { useStore } from '../store/useStore';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
+import { debugLog } from '../utils/debugLogger';
 
 /**
  * Hook to handle AI branching operations like "sprouting" new ideas 
@@ -18,6 +19,8 @@ export function useAISprouting() {
         const source = cards.find(c => c.id === sourceId);
         if (!source || !source.data.marks) return;
 
+        debugLog.ai(`Expanding topics for card: ${sourceId}`, { count: source.data.marks.length });
+
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
@@ -26,6 +29,8 @@ export function useAISprouting() {
             try {
                 const newY = source.y + (index * 320) - ((source.data.marks.length * 320) / 2) + 150;
                 const generatedId = uuid();
+
+                debugLog.ai(`Creating expanded topic card: ${generatedId}`, { topic: mark });
 
                 const newId = await createAICard({
                     id: generatedId,
@@ -49,14 +54,15 @@ export function useAISprouting() {
                         tags: [`card:${generatedId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
                     });
+                    debugLog.ai(`Topic expansion complete for: ${generatedId}`);
                 } catch (innerError) {
-                    console.error("Expand topic failed", innerError);
+                    debugLog.error(`Expand topic failed for ${generatedId}`, innerError);
                     updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
                 } finally {
                     setCardGenerating(newId, false);
                 }
             } catch (e) {
-                console.error(e);
+                debugLog.error(`Expand topic creation failed`, e);
             }
         });
     };
@@ -64,6 +70,8 @@ export function useAISprouting() {
     const handleSprout = async (sourceId, topics) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source || !topics.length) return;
+
+        debugLog.ai(`Sprouting ideas for card: ${sourceId}`, { topicsCount: topics.length });
 
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
@@ -78,6 +86,8 @@ export function useAISprouting() {
                 try {
                     const newY = startY + (index * CARD_HEIGHT);
                     const newId = uuid();
+
+                    debugLog.ai(`Creating sprouted card: ${newId}`, { question });
 
                     await createAICard({
                         id: newId,
@@ -104,14 +114,15 @@ export function useAISprouting() {
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)
                         });
+                        debugLog.ai(`Sprout generation complete for: ${newId}`);
                     } catch (innerError) {
-                        console.error("Sprout generation failed", innerError);
+                        debugLog.error(`Sprout generation failed for ${newId}`, innerError);
                         updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
                     } finally {
                         setCardGenerating(newId, false);
                     }
                 } catch (e) {
-                    console.error("Sprout creation failed", e);
+                    debugLog.error(`Sprout creation failed`, e);
                 }
             })();
         });

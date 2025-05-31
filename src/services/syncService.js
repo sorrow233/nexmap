@@ -2,6 +2,7 @@ import { db } from './firebase';
 import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { idbGet } from './db/indexedDB';
 import { saveBoard } from './boardService';
+import { debugLog } from '../utils/debugLogger';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -10,10 +11,13 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     if (!db || !userId) return () => { };
 
     try {
+        debugLog.sync('Initializing Firestore listener for user boards');
         const boardsRef = collection(db, 'users', userId, 'boards');
         return onSnapshot(boardsRef, async (snapshot) => {
             const promises = [];
             let hasChanges = false;
+
+            debugLog.sync(`Firestore snapshot received: ${snapshot.size} docs, ${snapshot.docChanges().length} changes`);
 
             for (const change of snapshot.docChanges()) {
                 const boardData = change.doc.data();
@@ -25,15 +29,17 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             const localData = await idbGet(BOARD_PREFIX + boardData.id);
 
                             if (localData && boardData.updatedAt && localData.updatedAt >= boardData.updatedAt) {
+                                debugLog.sync(`Skipping cloud update for ${boardData.id}: local version is up-to-date`);
                                 return;
                             }
 
+                            debugLog.sync(`Merging cloud updates for board: ${boardData.id}`, { type: change.type });
                             hasChanges = true;
                             if (!localData || !localData.cards) {
                                 await saveBoard(boardData.id, {
                                     cards: boardData.cards || [],
                                     connections: boardData.connections || [],
-                                    groups: boardData.groups || [], // CRITICAL: Sync zones from cloud
+                                    groups: boardData.groups || [],
                                     updatedAt: boardData.updatedAt
                                 });
                                 return;
@@ -89,20 +95,21 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             await saveBoard(boardData.id, {
                                 cards: [...mergedCards, ...localOnlyCards],
                                 connections: boardData.connections || localData.connections || [],
-                                // CRITICAL: Only use cloud groups if it exists (not undefined), otherwise keep local
                                 groups: boardData.groups !== undefined ? boardData.groups : (localData.groups || []),
                                 updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
-                            console.error("[Firebase Sync] Merge failed", e);
+                            debugLog.error(`[Firebase Sync] Merge failed for board ${boardData.id}`, e);
                         }
                     })());
+                } else if (change.type === 'removed') {
+                    debugLog.sync(`Board removed in cloud: ${boardData.id}`);
                 }
             }
 
             if (promises.length > 0) {
                 await Promise.all(promises);
-                if (hasChanges) console.log(`[Firebase Sync] Hydrated ${promises.length} board(s)`);
+                if (hasChanges) debugLog.sync(`Hydration complete for ${promises.length} board(s)`);
             }
 
             // Sync Metadata List
@@ -114,24 +121,22 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 updatedAt: b.updatedAt || Date.now(),
                 lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
                 cardCount: b.cards?.length || 0,
-                deletedAt: b.deletedAt, // Sync deleted status!
-                backgroundImage: b.backgroundImage // Sync background image!
+                deletedAt: b.deletedAt,
+                backgroundImage: b.backgroundImage
             })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
-
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
         }, (error) => {
-            console.error("Firestore sync error:", error);
+            debugLog.error("Firestore sync error:", error);
         });
     } catch (err) {
-        console.error("listenForBoardUpdates fatal error:", err);
+        debugLog.error("listenForBoardUpdates fatal error:", err);
         return () => { };
     }
 };
 
-// Internal helper to get ALL boards (Active + Trash) - duplicated from boardService because it's not exported for use here easily without circular dep risk if we import everything.
-// Actually we can just read localStorage directly here since it's simple.
+// Internal helper to get ALL boards (Active + Trash)
 const getRawBoardsList = () => {
     const list = localStorage.getItem(BOARDS_LIST_KEY);
     return list ? JSON.parse(list) : [];
@@ -140,10 +145,14 @@ const getRawBoardsList = () => {
 export const saveBoardToCloud = async (userId, boardId, boardContent) => {
     if (!db || !userId) return;
     try {
-        const list = getRawBoardsList(); // Get FULL list to find metadata even if deleted
+        debugLog.sync(`Saving board ${boardId} to cloud...`);
+        const list = getRawBoardsList();
         const meta = list.find(b => b.id === boardId);
 
-        if (!meta) return;
+        if (!meta) {
+            debugLog.error(`Metadata not found for board ${boardId}, cloud save aborted.`);
+            return;
+        }
 
         const removeUndefined = (obj) => {
             if (Array.isArray(obj)) {
@@ -194,10 +203,9 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
                 }
             })),
             connections: boardContent.connections || [],
-            groups: boardContent.groups || [] // CRITICAL: Sync zones to cloud
+            groups: boardContent.groups || []
         };
 
-        // Combine meta (which includes deletedAt) with content
         const fullBoard = removeUndefined({
             ...meta,
             ...cleanedContent,
@@ -206,50 +214,56 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
 
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await setDoc(boardRef, fullBoard);
+        debugLog.sync(`Board ${boardId} cloud save successful`);
     } catch (e) {
-        console.error("Cloud save failed", e);
+        debugLog.error(`Cloud save failed for board ${boardId}`, e);
     }
 };
 
-// Update metadata only (for soft deletion sync)
 export const updateBoardMetadataInCloud = async (userId, boardId, metadata) => {
     if (!db || !userId) return;
     try {
+        debugLog.sync(`Updating cloud metadata for board ${boardId}`, metadata);
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await setDoc(boardRef, metadata, { merge: true });
     } catch (e) {
-        console.error("Cloud metadata update failed", e);
+        debugLog.error(`Cloud metadata update failed for board ${boardId}`, e);
     }
 };
 
 export const deleteBoardFromCloud = async (userId, boardId) => {
     if (!db || !userId) return;
     try {
+        debugLog.sync(`Deleting board ${boardId} from cloud`);
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await deleteDoc(boardRef);
     } catch (e) {
-        console.error("Cloud delete failed", e);
+        debugLog.error(`Cloud delete failed for board ${boardId}`, e);
     }
 };
 
 export const saveUserSettings = async (userId, settings) => {
     if (!db || !userId) return;
     try {
+        debugLog.auth('Saving user settings to cloud...', settings);
         const configRef = doc(db, 'users', userId, 'settings', 'config');
         await setDoc(configRef, settings, { merge: true });
     } catch (e) {
-        console.error("Save settings failed", e);
+        debugLog.error("Save settings failed", e);
     }
 };
 
 export const loadUserSettings = async (userId) => {
     if (!db || !userId) return null;
     try {
+        debugLog.auth('Loading user settings from cloud');
         const configRef = doc(db, 'users', userId, 'settings', 'config');
         const docSnap = await getDoc(configRef);
-        return docSnap.exists() ? docSnap.data() : null;
+        const data = docSnap.exists() ? docSnap.data() : null;
+        debugLog.auth(data ? 'Settings loaded' : 'No cloud settings found');
+        return data;
     } catch (e) {
-        console.error("Load settings failed", e);
+        debugLog.error("Load settings failed", e);
         return null;
     }
 };
