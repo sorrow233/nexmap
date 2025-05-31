@@ -177,13 +177,14 @@ export function ContextMenuProvider({ children }) {
         ];
     }, []);
 
-    const value = {
+    // Use useMemo for stable context value
+    const value = React.useMemo(() => ({
         showContextMenu,
         hideContextMenu,
         getCardMenuItems,
         getCanvasMenuItems,
         getConnectionMenuItems
-    };
+    }), [showContextMenu, hideContextMenu, getCardMenuItems, getCanvasMenuItems, getConnectionMenuItems]);
 
     return (
         <ContextMenuContext.Provider value={value}>
