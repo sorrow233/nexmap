@@ -196,6 +196,8 @@ export default function Canvas({ onCreateNote, ...props }) {
         };
 
         return cards.filter(card => {
+            // Guard: Always show cards with invalid coordinates (they need to be visible for debugging/fixing)
+            if (!Number.isFinite(card.x) || !Number.isFinite(card.y)) return true;
             if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;
             if (generatingCardIds && generatingCardIds.has(card.id)) return true;
             return isRectIntersect(viewportRect, getCardRect(card));

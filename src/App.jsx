@@ -49,7 +49,7 @@ export default function App() {
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
+    const { user, boardsList, setBoardsList, isInitialized, hasSeenWelcome, setHasSeenWelcome } = useAppInit();
     const { setCards, setConnections, setGroups } = useStore();
     const { createCardWithText } = useCardCreator();
 
@@ -255,6 +255,8 @@ function AppContent() {
                             user={user}
                             onLogin={handleLogin}
                             onLogout={handleLogout}
+                            hasSeenWelcome={hasSeenWelcome}
+                            setHasSeenWelcome={setHasSeenWelcome}
                         />
                     } />
                     <Route path="/board/:id" element={
