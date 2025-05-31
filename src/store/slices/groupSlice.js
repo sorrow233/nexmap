@@ -29,51 +29,41 @@ export const createGroupSlice = (set, get) => ({
         groups: state.groups.filter(g => g.id !== id)
     })),
 
-    // Check if a card position is inside a group's bounding box
-    isCardInGroup: (cardX, cardY, groupId) => {
-        const { cards, groups } = get();
-        const group = groups.find(g => g.id === groupId);
-        if (!group || !group.cardIds || group.cardIds.length === 0) return false;
-
-        const groupCards = cards.filter(c => group.cardIds.includes(c.id));
-        if (groupCards.length === 0) return false;
-
-        // Calculate group bounds (same logic as Zone.jsx)
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-        groupCards.forEach(c => {
-            const width = c.type === 'note' ? 280 : 320;
-            const height = c.type === 'note' ? 280 : 400;
-            minX = Math.min(minX, c.x);
-            minY = Math.min(minY, c.y);
-            maxX = Math.max(maxX, c.x + width);
-            maxY = Math.max(maxY, c.y + height);
-        });
-
-        const PADDING = 80;
-        minX -= PADDING;
-        minY -= PADDING;
-        maxX += PADDING;
-        maxY += PADDING;
-
-        // Check if card position is inside bounds
-        return cardX >= minX && cardX <= maxX && cardY >= minY && cardY <= maxY;
-    },
-
-    // Auto-add card to zone if it's created inside one
-    autoAddCardToZone: (cardId, cardX, cardY) => {
+    // Add connected cards to zones based on connection relationships
+    // When a connection is made, if one card is in a zone, add the other
+    addConnectedCardsToZone: (cardId1, cardId2) => {
         const { groups, updateGroup } = get();
 
-        for (const group of groups) {
-            if (get().isCardInGroup(cardX, cardY, group.id)) {
-                // Add card to this group's cardIds if not already there
-                if (!group.cardIds.includes(cardId)) {
-                    updateGroup(group.id, {
-                        cardIds: [...group.cardIds, cardId]
-                    });
-                }
-                break; // Only add to first matching group
+        // Find which zones contain each card
+        const zone1 = groups.find(g => g.cardIds.includes(cardId1));
+        const zone2 = groups.find(g => g.cardIds.includes(cardId2));
+
+        // Case 1: One card in zone, other not - add the other to the zone
+        if (zone1 && !zone2) {
+            if (!zone1.cardIds.includes(cardId2)) {
+                updateGroup(zone1.id, {
+                    cardIds: [...zone1.cardIds, cardId2]
+                });
+            }
+        } else if (zone2 && !zone1) {
+            if (!zone2.cardIds.includes(cardId1)) {
+                updateGroup(zone2.id, {
+                    cardIds: [...zone2.cardIds, cardId1]
+                });
             }
         }
+        // Case 2: Both in different zones - add card2 to zone1 (prioritize first zone)
+        else if (zone1 && zone2 && zone1.id !== zone2.id) {
+            if (!zone1.cardIds.includes(cardId2)) {
+                updateGroup(zone1.id, {
+                    cardIds: [...zone1.cardIds, cardId2]
+                });
+            }
+            // Remove from zone2
+            updateGroup(zone2.id, {
+                cardIds: zone2.cardIds.filter(id => id !== cardId2)
+            });
+        }
+        // Case 3: Both in same zone or both not in zones - no action needed
     },
 });

@@ -24,6 +24,12 @@ export const createConnectionSlice = (set, get) => ({
                         isConnecting: false,
                         connectionStartId: null
                     }));
+
+                    // Trigger zone update based on connection
+                    setTimeout(() => {
+                        get().addConnectedCardsToZone?.(connectionStartId, targetId);
+                    }, 50);
+
                     localStorage.setItem('hasUsedConnections', 'true');
                     return;
                 }

@@ -108,7 +108,7 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            // REMOVED google_search tool as it may cause issues with some providers/models
+            tools: [{ google_search: {} }],
             generationConfig: {
                 temperature: options.temperature !== undefined ? options.temperature : 0.7,
                 maxOutputTokens: 65536
