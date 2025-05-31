@@ -89,7 +89,8 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             await saveBoard(boardData.id, {
                                 cards: [...mergedCards, ...localOnlyCards],
                                 connections: boardData.connections || localData.connections || [],
-                                groups: boardData.groups || localData.groups || [], // CRITICAL: Sync zones from cloud
+                                // CRITICAL: Only use cloud groups if it exists (not undefined), otherwise keep local
+                                groups: boardData.groups !== undefined ? boardData.groups : (localData.groups || []),
                                 updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
