@@ -93,6 +93,11 @@ export const createAISlice = (set, get) => {
                 generatingCardIds: new Set(state.generatingCardIds).add(newId)
             }));
 
+            // Auto-add to zone if card is inside one
+            setTimeout(() => {
+                get().autoAddCardToZone?.(newId, x, y);
+            }, 50);
+
             return newId;
         },
 
