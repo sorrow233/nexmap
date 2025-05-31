@@ -32,12 +32,16 @@ const Card = React.memo(function Card({
     // Track if we should possibly deselect other cards on mouse up (if it was a click, not a drag)
     const pendingDeselectRef = useRef(false);
     const hasDraggedRef = useRef(false);
+    const cmdKeyPressedRef = useRef(false); // Track Cmd/Ctrl key state during drag
 
     const handleMouseDown = (e) => {
         if (e.target.closest('button') || e.target.closest('.no-drag')) return;
 
         // CRITICAL: Prevent event from bubbling to Canvas (which would deselect all)
         e.stopPropagation();
+
+        // Track Cmd/Ctrl key for drag mode (联动拖动)
+        cmdKeyPressedRef.current = e.metaKey || e.ctrlKey;
 
         const isAdditive = e.shiftKey || e.metaKey || e.ctrlKey;
 
@@ -134,7 +138,7 @@ const Card = React.memo(function Card({
             // Move only if verified as a drag or if we want responsive micro-movement (but risks deselect issue)
             // Safer to wait for threshold validation.
             if (hasDraggedRef.current && onMove) {
-                onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy);
+                onMove(data.id, dragOffset.origX + dx, dragOffset.origY + dy, cmdKeyPressedRef.current);
             }
         };
 
@@ -160,7 +164,7 @@ const Card = React.memo(function Card({
                 const dy = (e.clientY - dragOffset.startY) / currentScale;
                 const finalX = dragOffset.origX + dx;
                 const finalY = dragOffset.origY + dy;
-                onDragEnd(data.id, finalX, finalY);
+                onDragEnd(data.id, finalX, finalY, cmdKeyPressedRef.current);
             }
         };
 
@@ -204,7 +208,7 @@ const Card = React.memo(function Card({
                 // onDragEnd is mostly for "saving" logic (undo/redo checkpoint).
                 // passing current x/y is fine.
                 const { x, y } = stateRef.current.data;
-                stateRef.current.onDragEnd(stateRef.current.data.id, x, y);
+                stateRef.current.onDragEnd(stateRef.current.data.id, x, y, cmdKeyPressedRef.current);
             }
 
             pendingDeselectRef.current = false;
