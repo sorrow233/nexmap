@@ -27,7 +27,7 @@ const initialState = loadInitialSettings();
 export const createSettingsSlice = (set, get) => ({
     // UI State
     isSettingsOpen: false,
-    setIsSettingsOpen: (val) => set({ isSettingsOpen: typeof val === 'function' ? val() : val }),
+    setIsSettingsOpen: (val) => set((state) => ({ isSettingsOpen: typeof val === 'function' ? val(state.isSettingsOpen) : val })),
 
     // Data State
     providers: initialState.providers,

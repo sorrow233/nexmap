@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import NotePage from './NotePage';
 import { LayoutGrid, Sparkles, RefreshCw, Trash2, Undo2, Redo2 } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
-import ChatModal from '../components/ChatModal';
 import ErrorBoundary from '../components/ErrorBoundary';
+import Loading from '../components/Loading';
+import StatusBar from '../components/StatusBar';
+
+const NotePage = lazy(() => import('./NotePage'));
+const ChatModal = lazy(() => import('../components/ChatModal'));
 import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
@@ -13,6 +16,7 @@ import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/stor
 import { debugLog } from '../utils/debugLogger';
 import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
+import { useToast } from '../components/Toast';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -51,6 +55,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleSprout
     } = useCardCreator();
 
+    const toast = useToast();
+    const [cloudSyncStatus, setCloudSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
     const [globalImages, setGlobalImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -91,14 +97,23 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
                 } catch (e) {
                     console.error("[BoardPage] Autosave failed", e);
+                    toast.error('保存失败，请检查存储空间');
                 }
             }, 1000); // Slightly longer delay for local debounce
 
             let cloudTimeout;
             if (user) {
-                cloudTimeout = setTimeout(() => {
-                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
-                    debugLog.sync(`Cloud autosave triggered for board: ${currentBoardId}`);
+                cloudTimeout = setTimeout(async () => {
+                    setCloudSyncStatus('syncing');
+                    try {
+                        await saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
+                        setCloudSyncStatus('synced');
+                        debugLog.sync(`Cloud autosave complete for board: ${currentBoardId}`);
+                    } catch (e) {
+                        setCloudSyncStatus('error');
+                        console.error('[BoardPage] Cloud sync failed:', e);
+                        toast.error('云同步失败');
+                    }
                 }, 3000); // Longer delay for cloud to avoid hammering
             }
 
@@ -272,7 +287,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
             {noteId && (
                 <div className="fixed inset-0 z-[200]">
-                    <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                    <Suspense fallback={<Loading message="Loading note..." />}>
+                        <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                    </Suspense>
                 </div>
             )}
 
@@ -378,18 +395,26 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             )}
 
             {expandedCardId && (
-                <ChatModal
-                    card={cards.find(c => c.id === expandedCardId)}
-                    isOpen={!!expandedCardId}
-                    onClose={() => setExpandedCardId(null)}
-                    onUpdate={updateCardFull}
-                    onGenerateResponse={handleChatModalGenerate}
-                    isGenerating={generatingCardIds.has(expandedCardId)}
-                    onCreateNote={handleCreateNote}
-                    onSprout={handleSprout}
-                    onToggleFavorite={toggleFavorite}
-                />
+                <Suspense fallback={null}>
+                    <ChatModal
+                        card={cards.find(c => c.id === expandedCardId)}
+                        isOpen={!!expandedCardId}
+                        onClose={() => setExpandedCardId(null)}
+                        onUpdate={updateCardFull}
+                        onGenerateResponse={handleChatModalGenerate}
+                        isGenerating={generatingCardIds.has(expandedCardId)}
+                        onCreateNote={handleCreateNote}
+                        onSprout={handleSprout}
+                        onToggleFavorite={toggleFavorite}
+                    />
+                </Suspense>
             )}
+
+            {/* Status Bar */}
+            <StatusBar
+                boardName={boardsList.find(b => b.id === currentBoardId)?.name}
+                syncStatus={cloudSyncStatus}
+            />
         </React.Fragment>
     );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -6,9 +6,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useAppInit } from './hooks/useAppInit';
 import { useStore } from './store/useStore';
 import { useCardCreator } from './hooks/useCardCreator';
-import GalleryPage from './pages/GalleryPage';
-import BoardPage from './pages/BoardPage';
-import LandingPage from './modules/landing';
+import Loading from './components/Loading';
+import { ToastProvider } from './components/Toast';
+import { ContextMenuProvider } from './components/ContextMenu';
+
+// Lazy Load Pages
+const GalleryPage = lazy(() => import('./pages/GalleryPage'));
+const BoardPage = lazy(() => import('./pages/BoardPage'));
+const LandingPage = lazy(() => import('./modules/landing'));
 
 
 import ModernDialog from './components/ModernDialog';
@@ -30,9 +35,13 @@ import {
 
 export default function App() {
     return (
-        <ErrorBoundary>
-            <AppContent />
-        </ErrorBoundary>
+        <ToastProvider>
+            <ContextMenuProvider>
+                <ErrorBoundary>
+                    <AppContent />
+                </ErrorBoundary>
+            </ContextMenuProvider>
+        </ToastProvider>
     );
 }
 
@@ -205,43 +214,43 @@ function AppContent() {
 
     return (
         <>
-            <Routes>
-                <Route path="/" element={<LandingPage />} />
+            <Suspense fallback={<Loading message="Initializing MixBoard..." />}>
+                <Routes>
+                    <Route path="/" element={<LandingPage />} />
 
-
-
-                <Route path="/gallery" element={
-                    <GalleryPage
-                        boardsList={boardsList}
-                        onCreateBoard={handleCreateBoard}
-                        onSelectBoard={handleSelectBoard}
-                        onDeleteBoard={handleSoftDeleteBoard} // Default "delete" action is soft
-                        onRestoreBoard={handleRestoreBoard}
-                        onPermanentlyDeleteBoard={handlePermanentDeleteBoard}
-                        onUpdateBoardMetadata={handleUpdateBoardMetadata}
-                        user={user}
-                        onLogin={handleLogin}
-                        onLogout={handleLogout}
-                    />
-                } />
-                <Route path="/board/:id" element={
-                    <BoardPage
-                        user={user}
-                        boardsList={boardsList}
-                        onUpdateBoardTitle={handleUpdateBoardTitle}
-                        onBack={handleBackToGallery}
-                    />
-                } />
-                <Route path="/board/:id/note/:noteId" element={
-                    <BoardPage
-                        user={user}
-                        boardsList={boardsList}
-                        onUpdateBoardTitle={handleUpdateBoardTitle}
-                        onBack={handleBackToGallery}
-                    />
-                } />
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                    <Route path="/gallery" element={
+                        <GalleryPage
+                            boardsList={boardsList}
+                            onCreateBoard={handleCreateBoard}
+                            onSelectBoard={handleSelectBoard}
+                            onDeleteBoard={handleSoftDeleteBoard} // Default "delete" action is soft
+                            onRestoreBoard={handleRestoreBoard}
+                            onPermanentlyDeleteBoard={handlePermanentDeleteBoard}
+                            onUpdateBoardMetadata={handleUpdateBoardMetadata}
+                            user={user}
+                            onLogin={handleLogin}
+                            onLogout={handleLogout}
+                        />
+                    } />
+                    <Route path="/board/:id" element={
+                        <BoardPage
+                            user={user}
+                            boardsList={boardsList}
+                            onUpdateBoardTitle={handleUpdateBoardTitle}
+                            onBack={handleBackToGallery}
+                        />
+                    } />
+                    <Route path="/board/:id/note/:noteId" element={
+                        <BoardPage
+                            user={user}
+                            boardsList={boardsList}
+                            onUpdateBoardTitle={handleUpdateBoardTitle}
+                            onBack={handleBackToGallery}
+                        />
+                    } />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </Suspense>
 
             <ModernDialog
                 isOpen={dialog.isOpen}

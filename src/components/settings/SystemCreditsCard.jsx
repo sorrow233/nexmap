@@ -37,6 +37,14 @@ export default function SystemCreditsCard({ currentProvider }) {
     const isLow = percentage < 20;
     const isExhausted = systemCredits !== null && systemCredits <= 0;
 
+    // If system credits feature is not available (503 / not configured), silently hide
+    // This allows beta/preview environments without the feature to work normally
+    const isFeatureUnavailable = systemCreditsError?.includes('系统配置错误') ||
+        systemCreditsError?.includes('Service unavailable');
+    if (isFeatureUnavailable) {
+        return null; // Silently hide - user can still use their own API key
+    }
+
     // Error state
     if (systemCreditsError && !systemCreditsLoading) {
         return (
