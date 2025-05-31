@@ -27,7 +27,9 @@ export function useDraggable({
         startX: 0,
         startY: 0,
         origX: 0,
-        origY: 0
+        origY: 0,
+        lastX: 0,
+        lastY: 0
     });
 
     const handleStart = (e, clientX, clientY) => {
@@ -57,7 +59,9 @@ export function useDraggable({
             startX: clientX,
             startY: clientY,
             origX: x,
-            origY: y
+            origY: y,
+            lastX: clientX,
+            lastY: clientY
         };
 
         setIsDragging(true);
@@ -75,9 +79,17 @@ export function useDraggable({
         if (!isDragging) return;
 
         const handleMove = (e) => {
-            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            let clientX, clientY;
+            if (e.type === 'touchmove') {
+                if (!e.touches || e.touches.length === 0) return;
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
 
+            if (clientX === undefined || clientY === undefined) return;
             if (e.type === 'touchmove' && e.cancelable) e.preventDefault();
 
             const { startX, startY, origX, origY } = dragDataRef.current;
@@ -85,6 +97,8 @@ export function useDraggable({
 
             const dx = (clientX - startX) / currentScale;
             const dy = (clientY - startY) / currentScale;
+
+            if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
 
             if (!hasDraggedRef.current && (Math.abs(clientX - startX) > dragThreshold || Math.abs(clientY - startY) > dragThreshold)) {
                 hasDraggedRef.current = true;
@@ -94,6 +108,10 @@ export function useDraggable({
             if (hasDraggedRef.current && onMove) {
                 onMove(id, origX + dx, origY + dy, cmdKeyPressedRef.current);
             }
+
+            // Track last known good coordinates
+            dragDataRef.current.lastX = clientX;
+            dragDataRef.current.lastY = clientY;
         };
 
         const handleEnd = (e) => {
@@ -112,18 +130,32 @@ export function useDraggable({
             }
 
             if (dragHappened && onDragEnd) {
-                // For touch end, coordinates might be tricky.
-                // We'll try to get them from changedTouches if available.
-                const clientX = (e.type === 'touchend' || e.type === 'touchcancel') ? (e.changedTouches ? e.changedTouches[0].clientX : 0) : e.clientX;
-                const clientY = (e.type === 'touchend' || e.type === 'touchcancel') ? (e.changedTouches ? e.changedTouches[0].clientY : 0) : e.clientY;
+                let clientX, clientY;
+                if (e.type === 'touchend' || e.type === 'touchcancel') {
+                    if (e.changedTouches && e.changedTouches.length > 0) {
+                        clientX = e.changedTouches[0].clientX;
+                        clientY = e.changedTouches[0].clientY;
+                    } else {
+                        // Fallback to last known drag data
+                        clientX = dragDataRef.current.lastX;
+                        clientY = dragDataRef.current.lastY;
+                    }
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
 
-                const { startX, startY, origX, origY } = dragDataRef.current;
-                const currentScale = useStore.getState().scale || 1;
+                if (clientX !== undefined && clientY !== undefined) {
+                    const { startX, startY, origX, origY } = dragDataRef.current;
+                    const currentScale = useStore.getState().scale || 1;
 
-                const dx = (clientX - startX) / currentScale;
-                const dy = (clientY - startY) / currentScale;
+                    const dx = (clientX - startX) / currentScale;
+                    const dy = (clientY - startY) / currentScale;
 
-                onDragEnd(id, origX + dx, origY + dy, cmdKeyPressedRef.current);
+                    if (Number.isFinite(dx) && Number.isFinite(dy)) {
+                        onDragEnd(id, origX + dx, origY + dy, cmdKeyPressedRef.current);
+                    }
+                }
             }
 
             pendingDeselectRef.current = false;

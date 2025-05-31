@@ -200,7 +200,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         // Combine meta (which includes deletedAt) with content
         const fullBoard = removeUndefined({
             ...meta,
-            ...cleanedContent
+            ...cleanedContent,
+            updatedAt: Date.now()
         });
 
         const boardRef = doc(db, 'users', userId, 'boards', boardId);

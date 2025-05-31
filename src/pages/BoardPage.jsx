@@ -67,19 +67,27 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     useEffect(() => {
         if (isBoardLoading) return; // SKIP SAVE IF LOADING
         if (currentBoardId && cards.length > 0) {
-            const currentState = JSON.stringify({ cards, connections, groups }); // Include groups
+            // Use a normalized state for comparison to avoid loops caused by field order or undefined
+            const currentStateObj = {
+                cards: cards.map(c => ({ ...c, data: { ...c.data } })),
+                connections: connections || [],
+                groups: groups || []
+            };
+            const currentState = JSON.stringify(currentStateObj);
+
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
-                saveBoard(currentBoardId, { cards, connections, groups }); // Save groups
+                saveBoard(currentBoardId, { cards, connections, groups });
                 lastSavedState.current = currentState;
-            }, 500);
+            }, 1000); // Slightly longer delay for local debounce
 
             let cloudTimeout;
             if (user) {
                 cloudTimeout = setTimeout(() => {
-                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups }); // Save groups to cloud
-                }, 2000);
+                    // When saving to cloud, we update the timestamp in the service
+                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
+                }, 3000); // Longer delay for cloud to avoid hammering
             }
 
             return () => {
@@ -87,7 +95,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, groups, currentBoardId, user]); // Watch groups
+    }, [cards, connections, groups, currentBoardId, user, isBoardLoading]);
 
     // Persist canvas state per board
     useEffect(() => {
