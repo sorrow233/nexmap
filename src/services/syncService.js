@@ -3,6 +3,7 @@ import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc } from 'firebase
 import { idbGet } from './db/indexedDB';
 import { saveBoard, getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
+import { reconcileCards, removeUndefined } from './syncUtils';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -58,81 +59,15 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             }
 
                             // Robust Merge with Deletion Reconciliation
-                            const cloudCards = boardData.cards || [];
-
-                            // 1. Reconcile Cloud Cards (Keep unless locally deleted)
-                            const mergedCards = cloudCards.map(cloudCard => {
-                                const localCard = localCards.find(c => c.id === cloudCard.id);
-                                if (!localCard) {
-                                    // RECONCILIATION: Is this a remote addition or a local deletion?
-                                    if (cloudCard.createdAt && cloudCard.createdAt > localUpdatedAt) {
-                                        return cloudCard; // Remote addition
-                                    }
-                                    return null; // Likely local deletion
-                                }
-
-                                // Robust content merging for 'note' type cards
-                                if (cloudCard.type === 'note' && localCard.type === 'note') {
-                                    const cloudContent = cloudCard.data?.content || '';
-                                    const localContent = localCard.data?.content || '';
-                                    if (cloudContent !== localContent) {
-                                        const cloudCount = (cloudContent.match(/^\d+\./gm) || []).length;
-                                        const localCount = (localContent.match(/^\d+\./gm) || []).length;
-                                        if (localCount > cloudCount) {
-                                            cloudCard.data.content = localContent;
-                                        }
-                                    }
-                                }
-
-                                const mergedMessages = (cloudCard.data?.messages || []).map((cloudMsg, msgIdx) => {
-                                    const localMsg = localCard.data?.messages?.[msgIdx];
-                                    if (!localMsg || !Array.isArray(cloudMsg.content) || !Array.isArray(localMsg.content)) return cloudMsg;
-
-                                    const mergedContent = cloudMsg.content.map((cloudPart, partIdx) => {
-                                        const localPart = localMsg.content[partIdx];
-                                        if (cloudPart.type === 'image' && localPart?.type === 'image') {
-                                            return {
-                                                ...cloudPart,
-                                                source: {
-                                                    ...cloudPart.source,
-                                                    ...(localPart.source?.type === 'base64' ? {
-                                                        type: 'base64',
-                                                        data: localPart.source.data
-                                                    } : {}),
-                                                    ...(cloudPart.source?.url ? { s3Url: cloudPart.source.url } : {})
-                                                }
-                                            };
-                                        }
-                                        return cloudPart;
-                                    });
-                                    return { ...cloudMsg, content: mergedContent };
-                                });
-
-                                return {
-                                    ...cloudCard,
-                                    data: {
-                                        ...cloudCard.data,
-                                        ...localCard.data,
-                                        messages: mergedMessages,
-                                        content: cloudCard.data.content
-                                    }
-                                };
-                            }).filter(Boolean);
-
-                            // 2. Reconcile Local Cards (Keep new local additions)
-                            const localOnlyCards = localCards.filter(lc => {
-                                const inCloud = cloudCards.find(cc => cc.id === lc.id);
-                                if (inCloud) return false;
-
-                                // RECONCILIATION: Is this a new local card or a remote deletion?
-                                if (lc.createdAt && lc.createdAt > (boardData.updatedAt || 0)) {
-                                    return true; // New local addition
-                                }
-                                return false; // Likely remote deletion
-                            });
+                            const finalCards = reconcileCards(
+                                boardData.cards || [],
+                                localCards,
+                                localUpdatedAt,
+                                boardData.updatedAt || 0
+                            );
 
                             await saveBoard(boardData.id, {
-                                cards: [...mergedCards, ...localOnlyCards],
+                                cards: finalCards,
                                 connections: boardData.connections || localConnections || [],
                                 groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
                                 updatedAt: boardData.updatedAt
@@ -189,20 +124,7 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             return;
         }
 
-        const removeUndefined = (obj) => {
-            if (Array.isArray(obj)) {
-                return obj.map(removeUndefined).filter(item => item !== undefined);
-            }
-            if (obj !== null && typeof obj === 'object') {
-                return Object.entries(obj).reduce((acc, [key, value]) => {
-                    if (value !== undefined) {
-                        acc[key] = removeUndefined(value);
-                    }
-                    return acc;
-                }, {});
-            }
-            return obj;
-        };
+
 
         const cleanedContent = {
             cards: (boardContent.cards || []).map(card => ({
