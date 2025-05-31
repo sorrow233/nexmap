@@ -64,6 +64,7 @@ export const createAISlice = (set, get) => {
 
             const newCard = {
                 id: newId, x, y,
+                createdAt: Date.now(),
                 data: {
                     title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
                     messages: [

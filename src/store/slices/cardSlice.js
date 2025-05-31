@@ -5,6 +5,9 @@ import { debugLog } from '../../utils/debugLogger';
 export const createCardSlice = (set, get) => ({
     cards: [],
     expandedCardId: null,
+    lastSavedAt: 0,
+
+    setLastSavedAt: (val) => set({ lastSavedAt: val }),
 
     setCards: (cardsOrUpdater) => {
         const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
@@ -18,14 +21,18 @@ export const createCardSlice = (set, get) => ({
     },
 
     addCard: (card) => {
-        debugLog.store(`Adding new card: ${card.id}`, card);
+        const newCard = {
+            ...card,
+            createdAt: card.createdAt || Date.now()
+        };
+        debugLog.store(`Adding new card: ${newCard.id}`, newCard);
         set((state) => ({
-            cards: [...state.cards, card]
+            cards: [...state.cards, newCard]
         }));
 
         // Auto-add to zone if inside one
         setTimeout(() => {
-            get().autoAddCardToZone?.(card.id, card.x, card.y);
+            get().autoAddCardToZone?.(newCard.id, newCard.x, newCard.y);
         }, 50);
     },
 
