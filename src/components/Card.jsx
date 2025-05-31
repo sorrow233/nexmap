@@ -8,7 +8,6 @@ import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
 
 const Card = React.memo(function Card({
-
     data, // Now contains id, x, y, and actual data
     isSelected,
     isTarget, // NEW: Luminous Guide prop
@@ -18,8 +17,12 @@ const Card = React.memo(function Card({
     isConnectionStart,
     isConnecting,
     onDragEnd,
-    onDelete
+    onDelete,
+    onConnect,
+    onUpdate,
+    onCreateNote
 }) {
+    const cardRef = useRef(null);
     const {
         isDragging,
         handleMouseDown,
