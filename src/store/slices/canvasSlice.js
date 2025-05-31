@@ -40,9 +40,17 @@ export const createCanvasSlice = (set, get) => ({
 
     // Smoothly focus/zoom on a specific card
     focusOnCard: (cardId) => {
+        console.log('[DEBUG] focusOnCard called for ID:', cardId);
         const { cards, offset, scale, setOffset, setScale } = get();
         const card = cards.find(c => c.id === cardId);
-        if (!card) return;
+        if (!card) {
+            console.warn('[DEBUG] focusOnCard: Card NOT found in state!', cardId);
+            return;
+        }
+
+        console.log('[DEBUG] focusOnCard: Target card title:', card.data?.title);
+        console.log('[DEBUG] focusOnCard: Current viewport - offset:', offset, 'scale:', scale);
+        console.log('[DEBUG] focusOnCard: Card location:', card.x, card.y);
 
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
