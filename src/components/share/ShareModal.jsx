@@ -52,9 +52,9 @@ const LAYOUTS = [
 
 // Resolution options
 const RESOLUTIONS = [
-    { id: 1, label: '1x', desc: 'Standard' },
-    { id: 2, label: '2x', desc: 'Retina' },
-    { id: 3, label: '3x', desc: 'Ultra HD' },
+    { id: 1, label: 'Standard', desc: '1080p Base' },
+    { id: 1.25, label: 'High', desc: '+25% Details' },
+    { id: 1.5, label: 'Ultra', desc: '+50% Details' },
 ];
 
 // Format options
@@ -80,8 +80,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const [theme, setTheme] = useState('business');
     const [layout, setLayout] = useState('card');
     const [showWatermark, setShowWatermark] = useState(true);
-    const [resolution, setResolution] = useState(2);
-    const [format, setFormat] = useState('png');
+    const [resolution, setResolution] = useState(1);
+    const [format, setFormat] = useState('webp');
     const [quality, setQuality] = useState(0.92);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
@@ -211,8 +211,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                             key={t.id}
                                             onClick={() => setTheme(t.id)}
                                             className={`group relative p-1 rounded-xl border-2 transition-all duration-200 ${theme === t.id
-                                                    ? 'border-indigo-500 shadow-lg shadow-indigo-500/20'
-                                                    : 'border-transparent hover:border-zinc-300 dark:hover:border-zinc-600'
+                                                ? 'border-indigo-500 shadow-lg shadow-indigo-500/20'
+                                                : 'border-transparent hover:border-zinc-300 dark:hover:border-zinc-600'
                                                 }`}
                                             title={t.label}
                                         >
@@ -248,8 +248,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                         key={l.id}
                                         onClick={() => setLayout(l.id)}
                                         className={`p-2.5 rounded-xl border transition-all duration-200 ${layout === l.id
-                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                            : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                                             }`}
                                     >
                                         <div className="text-[10px] font-bold">{l.label}</div>
@@ -274,8 +274,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                             key={r.id}
                                             onClick={() => setResolution(r.id)}
                                             className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${resolution === r.id
-                                                    ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
-                                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                                ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                                                 }`}
                                         >
                                             {r.label}
@@ -293,8 +293,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                             key={f.id}
                                             onClick={() => setFormat(f.id)}
                                             className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${format === f.id
-                                                    ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
-                                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                                ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                                                 }`}
                                         >
                                             {f.label}
@@ -331,8 +331,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                             <button
                                 onClick={() => setShowWatermark(!showWatermark)}
                                 className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all ${showWatermark
-                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
-                                        : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
+                                    : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                                     }`}
                             >
                                 <span className={`text-sm font-medium ${showWatermark ? 'text-indigo-700 dark:text-indigo-400' : 'text-zinc-600 dark:text-zinc-400'}`}>
@@ -350,8 +350,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                 onClick={handleCopyToClipboard}
                                 disabled={isCopying}
                                 className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${copySuccess
-                                        ? 'bg-emerald-500 text-white'
-                                        : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600'
                                     } disabled:opacity-60`}
                             >
                                 {isCopying ? (
