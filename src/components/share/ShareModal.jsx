@@ -50,12 +50,12 @@ const LAYOUTS = [
     { id: 'slide', label: 'Slide', desc: 'Wide' },
 ];
 
-// Resolution options (Base: 1179px = iPhone 14 Pro standard)
-// Each step adds 25% more pixels for higher clarity
+// Resolution options (Clarity Scale, NOT width)
+// Base: scale=5 (5x the old 1x clarity), each step adds 25%
 const RESOLUTIONS = [
-    { id: 1, label: '1x', desc: '📱 Mobile', outputWidth: 1179 },
-    { id: 1.25, label: '2x', desc: '💻 Desktop', outputWidth: 1474 },
-    { id: 1.5, label: '3x', desc: '🖼️ Print', outputWidth: 1769 },
+    { id: 5, label: '1x', desc: '📱 Mobile', outputWidth: 5895 },
+    { id: 6.25, label: '2x', desc: '💻 Desktop', outputWidth: 7369 },
+    { id: 7.5, label: '3x', desc: '🖼️ Print', outputWidth: 8843 },
 ];
 
 // Format options
@@ -81,7 +81,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const [theme, setTheme] = useState('business');
     const [layout, setLayout] = useState('card');
     const [showWatermark, setShowWatermark] = useState(true);
-    const [resolution, setResolution] = useState(1);
+    const [resolution, setResolution] = useState(5); // 5x clarity = new 1x
     const [format, setFormat] = useState('webp');
     const [quality, setQuality] = useState(0.92);
     const [isGenerating, setIsGenerating] = useState(false);
