@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, ChevronRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw } from 'lucide-react';
+import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw } from 'lucide-react';
 
 export default function BoardCard({
     board,
@@ -24,8 +24,8 @@ export default function BoardCard({
             onClick={() => !isTrashView && onSelect(board.id)}
             style={{ animationDelay: `${index * 50}ms` }}
             className={`
-                group relative glass-card rounded-[2.5rem] p-8 transition-all duration-500 flex flex-col min-h-[280px] animate-slide-up overflow-hidden
-                ${isTrashView ? 'cursor-default border-dashed border-slate-300 dark:border-white/10 opacity-90' : 'cursor-pointer hover:glass-card-hover'}
+                group relative glass-card-premium rounded-[2rem] p-8 transition-all duration-500 flex flex-col min-h-[280px] animate-fade-in-up overflow-hidden
+                ${isTrashView ? 'cursor-default border-dashed border-slate-300 dark:border-white/10 opacity-70' : 'cursor-pointer hover:shadow-premium-hover hover:-translate-y-2'}
             `}
         >
             {/* Background Image or Abstract Glow */}
@@ -120,23 +120,23 @@ export default function BoardCard({
                     </div>
                 </div>
 
-                <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-200/30 dark:border-white/5">
+                <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-200/20 dark:border-white/5">
                     <div className="flex flex-col">
                         {isTrashView ? (
                             <>
                                 <span className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none mb-1">Expires In</span>
-                                <span className="text-[12px] font-bold text-red-500">{getDaysRemaining(board.deletedAt)} Days</span>
+                                <span className="text-[13px] font-bold text-red-500">{getDaysRemaining(board.deletedAt)} Days</span>
                             </>
                         ) : (
                             <>
-                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Last Update</span>
-                                <span className="text-[12px] font-bold text-slate-600 dark:text-slate-400">{new Date(board.updatedAt || Date.now()).toLocaleDateString()}</span>
+                                <span className="text-[10px] font-bold text-slate-400/80 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Last Update</span>
+                                <span className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{new Date(board.updatedAt || Date.now()).toLocaleDateString()}</span>
                             </>
                         )}
                     </div>
                     {!isTrashView && (
-                        <div className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-slate-900 transition-all duration-500 rotate-0 group-hover:-rotate-45 shadow-sm backdrop-blur-sm">
-                            <ChevronRight size={20} />
+                        <div className="w-10 h-10 rounded-full bg-white/40 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-slate-900 transition-all duration-500 -rotate-45 group-hover:rotate-0 shadow-sm backdrop-blur-sm">
+                            <ArrowRight size={18} strokeWidth={2.5} />
                         </div>
                     )}
                 </div>
