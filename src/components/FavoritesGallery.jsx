@@ -102,7 +102,17 @@ export default function FavoritesGallery() {
                                     </div>
                                 </div>
                                 <div
-                                    className="prose prose-sm dark:prose-invert max-w-none font-lxgw text-slate-700 dark:text-slate-300 leading-relaxed max-h-[300px] overflow-hidden relative"
+                                    className="prose prose-sm dark:prose-invert max-w-none 
+                                    prose-headings:font-bold prose-headings:tracking-tight
+                                    prose-h1:text-lg prose-h1:mb-2 
+                                    prose-h2:text-base prose-h2:mb-2 prose-h2:border-b prose-h2:border-slate-200 dark:prose-h2:border-white/10 prose-h2:pb-1
+                                    prose-p:text-sm prose-p:leading-relaxed prose-p:mb-2 prose-p:text-slate-700 dark:prose-p:text-slate-300
+                                    prose-strong:text-slate-900 dark:prose-strong:text-white
+                                    prose-ul:list-disc prose-ul:pl-4 prose-ul:my-2
+                                    prose-li:text-sm prose-li:my-0.5
+                                    prose-blockquote:border-l-2 prose-blockquote:border-brand-500 prose-blockquote:pl-2 prose-blockquote:italic prose-blockquote:text-xs
+                                    prose-code:text-xs prose-code:bg-slate-100 dark:prose-code:bg-white/10 prose-code:px-1 prose-code:rounded
+                                    font-lxgw text-slate-700 dark:text-slate-300 leading-relaxed max-h-[300px] overflow-hidden relative"
                                     dangerouslySetInnerHTML={{ __html: renderMarkdown(item.content) }}
                                 />
                                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 dark:from-slate-900 dark:via-slate-900/80 to-transparent pointer-events-none" />
@@ -163,7 +173,20 @@ export default function FavoritesGallery() {
                         <div className="flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar">
                             <div className="reader-width">
                                 <div
-                                    className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem] font-sans"
+                                    className="prose prose-slate dark:prose-invert max-w-none 
+                                    prose-headings:font-bold prose-headings:tracking-tight
+                                    prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-2
+                                    prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-6 prose-h2:border-b prose-h2:border-slate-200 dark:prose-h2:border-white/10 prose-h2:pb-2
+                                    prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
+                                    prose-p:leading-relaxed prose-p:text-base prose-p:mb-4 prose-p:text-slate-700 dark:prose-p:text-slate-300
+                                    prose-strong:text-slate-900 dark:prose-strong:text-white prose-strong:font-bold
+                                    prose-ul:my-4 prose-ul:list-disc prose-ul:pl-6
+                                    prose-ol:my-4 prose-ol:list-decimal prose-ol:pl-6
+                                    prose-li:my-1 prose-li:text-slate-700 dark:prose-li:text-slate-300
+                                    prose-blockquote:border-l-4 prose-blockquote:border-brand-500 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-white/5 prose-blockquote:py-2 prose-blockquote:my-4 prose-blockquote:rounded-r-lg
+                                    prose-code:font-mono prose-code:text-sm prose-code:bg-slate-100 dark:prose-code:bg-white/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-brand-600 dark:prose-code:text-brand-400
+                                    prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:p-4 prose-pre:rounded-xl prose-pre:overflow-x-auto prose-pre:my-4
+                                    "
                                     dangerouslySetInnerHTML={{ __html: renderMarkdown(expandedFav.content) }}
                                 />
                             </div>

@@ -10,7 +10,8 @@ export default function BoardCard({
     onRestore,
     onRequestPermanentDelete,
     onGenerateBackground,
-    generatingBoardId
+    generatingBoardId,
+    variant = 'overlay' // 'overlay' | 'stacked'
 }) {
     const getDaysRemaining = (deletedAt) => {
         if (!deletedAt) return 30;
@@ -19,6 +20,80 @@ export default function BoardCard({
         return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
     };
 
+    // Variant: Stacked (Zen Style)
+    if (variant === 'stacked') {
+        return (
+            <div
+                onClick={() => !isTrashView && onSelect(board.id)}
+                className={`
+                    group relative flex flex-col gap-4 cursor-pointer transition-all duration-500 animate-fade-in-up
+                    ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
+                `}
+            >
+                {/* Image Container - Aspect Ratio 4:3 */}
+                <div className="relative w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 overflow-hidden transition-transform duration-700 ease-out group-hover:shadow-2xl rounded-2xl">
+                    {board.backgroundImage ? (
+                        <div
+                            className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105 saturate-[0.85] group-hover:saturate-100"
+                            style={{ backgroundImage: `url(${board.backgroundImage})` }}
+                        />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-white/5 text-slate-200 dark:text-slate-700">
+                            <div className="w-16 h-16 border border-current opacity-20 rotate-45" />
+                        </div>
+                    )}
+
+                    {/* Minimal Overlay for Actions */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
+                        {!isTrashView ? (
+                            <>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete(board.id);
+                                    }}
+                                    className="w-10 h-10 bg-white text-slate-900 flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors rounded-full"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onGenerateBackground(board.id);
+                                    }}
+                                    disabled={generatingBoardId === board.id}
+                                    className="w-10 h-10 bg-white text-slate-900 flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors rounded-full"
+                                >
+                                    {generatingBoardId === board.id ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
+                                </button>
+                            </>
+                        ) : (
+                            <div className="flex gap-2">
+                                <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} className="px-4 py-2 bg-white text-black text-xs font-bold tracking-widest uppercase">Restore</button>
+                                <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} className="px-4 py-2 bg-red-600 text-white text-xs font-bold tracking-widest uppercase">Delete</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Typography Content */}
+                <div className="flex flex-col gap-1 items-start px-1">
+                    <h3 className="font-editorial text-xl text-slate-900 dark:text-white leading-tight group-hover:underline decoration-1 underline-offset-4 decoration-slate-300 dark:decoration-slate-600">
+                        {board.name}
+                    </h3>
+
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+                        <span>{new Date(board.updatedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span>{board.cardCount || 0} ITEMS</span>
+                        {isTrashView && <span className="text-red-400 ml-auto flex items-center gap-1"><Clock size={10} /> {getDaysRemaining(board.deletedAt)} DAYS LEFT</span>}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Variant: Overlay (Premium Glass Style)
     return (
         <div
             onClick={() => !isTrashView && onSelect(board.id)}
