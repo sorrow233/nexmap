@@ -1,185 +1,356 @@
 import React from 'react';
 import { marked } from 'marked';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Zap, Star, Gem, Flame } from 'lucide-react';
 
-// Theme styles configuration
-const THEME_STYLES = {
+/**
+ * 5 个高端主题设计 - 独立于页面暗/亮模式
+ * 使用内联样式确保导出颜色一致
+ */
+const THEME_CONFIGS = {
+    // 1. Executive - 顶级商务白金风格
     business: {
-        container: 'bg-slate-50 text-slate-800',
-        card: 'bg-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] rounded-xl border border-slate-100',
-        header: 'bg-gradient-to-r from-brand-500 to-purple-500',
-        content: 'prose-slate',
-        footer: 'border-slate-100 text-slate-400',
-        brandText: 'text-slate-900',
-        background: (
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-            />
+        name: 'Executive',
+        icon: Star,
+        // 使用纯色和微妙渐变，避免 Tailwind 类受暗模式影响
+        containerBg: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
+        containerColor: '#0f172a',
+        cardBg: '#ffffff',
+        cardShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08), 0 12px 24px -8px rgba(0, 0, 0, 0.04)',
+        cardBorder: '1px solid rgba(226, 232, 240, 0.8)',
+        cardRadius: '24px',
+        headerGradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+        headerHeight: '6px',
+        contentBg: 'transparent',
+        proseColor: '#1e293b',
+        proseHeadingColor: '#0f172a',
+        footerBg: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
+        footerBorder: '1px solid #e2e8f0',
+        footerColor: '#64748b',
+        brandColor: '#0f172a',
+        accentGradient: 'linear-gradient(135deg, #0f172a 0%, #475569 100%)',
+        backgroundDecor: (
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.03) 1px, transparent 0)',
+                backgroundSize: '32px 32px',
+                pointerEvents: 'none'
+            }} />
         ),
     },
+
+    // 2. Midnight - 深邃科技夜空
     tech: {
-        container: 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white',
-        card: 'bg-[#0B1120] border border-white/10 shadow-2xl',
-        header: 'bg-gradient-to-r from-brand-500 to-purple-500',
-        content: 'prose-invert',
-        footer: 'border-white/10 text-slate-500',
-        brandText: 'text-slate-200',
-        background: (
+        name: 'Midnight',
+        icon: Zap,
+        containerBg: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)',
+        containerColor: '#f8fafc',
+        cardBg: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 0.95) 100%)',
+        cardShadow: '0 32px 64px -16px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+        cardBorder: '1px solid rgba(148, 163, 184, 0.1)',
+        cardRadius: '28px',
+        headerGradient: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 35%, #a855f7 65%, #ec4899 100%)',
+        headerHeight: '4px',
+        contentBg: 'transparent',
+        proseColor: '#e2e8f0',
+        proseHeadingColor: '#f8fafc',
+        footerBg: 'transparent',
+        footerBorder: '1px solid rgba(148, 163, 184, 0.1)',
+        footerColor: '#94a3b8',
+        brandColor: '#f8fafc',
+        accentGradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+        backgroundDecor: (
             <>
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-500/10 blur-[120px] rounded-full pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
+                <div style={{
+                    position: 'absolute',
+                    top: '-20%',
+                    right: '-10%',
+                    width: '600px',
+                    height: '600px',
+                    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+                    filter: 'blur(80px)',
+                    pointerEvents: 'none'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    bottom: '-10%',
+                    left: '-10%',
+                    width: '400px',
+                    height: '400px',
+                    background: 'radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 70%)',
+                    filter: 'blur(60px)',
+                    pointerEvents: 'none'
+                }} />
             </>
         ),
     },
+
+    // 3. Paper - 纯净极简印刷风
     minimal: {
-        container: 'bg-white text-slate-800',
-        card: 'bg-white shadow-none border-0',
-        header: 'bg-slate-200',
-        content: 'prose-slate',
-        footer: 'border-slate-100 text-slate-400',
-        brandText: 'text-slate-700',
-        background: null,
+        name: 'Paper',
+        icon: Gem,
+        containerBg: '#ffffff',
+        containerColor: '#18181b',
+        cardBg: '#ffffff',
+        cardShadow: 'none',
+        cardBorder: 'none',
+        cardRadius: '0',
+        headerGradient: 'linear-gradient(90deg, #18181b 0%, #3f3f46 100%)',
+        headerHeight: '2px',
+        contentBg: 'transparent',
+        proseColor: '#27272a',
+        proseHeadingColor: '#09090b',
+        footerBg: 'transparent',
+        footerBorder: '1px solid #e4e4e7',
+        footerColor: '#71717a',
+        brandColor: '#18181b',
+        accentGradient: 'linear-gradient(135deg, #18181b 0%, #52525b 100%)',
+        backgroundDecor: null,
     },
+
+    // 4. Obsidian - 深黑奢华
     darkpro: {
-        container: 'bg-black text-white',
-        card: 'bg-gradient-to-br from-slate-900/80 to-black border border-white/5 shadow-2xl',
-        header: 'bg-gradient-to-r from-brand-400 via-purple-500 to-pink-500',
-        content: 'prose-invert',
-        footer: 'border-white/5 text-slate-600',
-        brandText: 'text-white',
-        background: (
+        name: 'Obsidian',
+        icon: Flame,
+        containerBg: 'linear-gradient(180deg, #09090b 0%, #18181b 100%)',
+        containerColor: '#fafafa',
+        cardBg: 'linear-gradient(180deg, #18181b 0%, #0f0f10 100%)',
+        cardShadow: '0 40px 80px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.03)',
+        cardBorder: '1px solid rgba(255, 255, 255, 0.06)',
+        cardRadius: '32px',
+        headerGradient: 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 30%, #ea580c 70%, #dc2626 100%)',
+        headerHeight: '3px',
+        contentBg: 'transparent',
+        proseColor: '#d4d4d8',
+        proseHeadingColor: '#fafafa',
+        footerBg: 'transparent',
+        footerBorder: '1px solid rgba(255, 255, 255, 0.05)',
+        footerColor: '#71717a',
+        brandColor: '#fafafa',
+        accentGradient: 'linear-gradient(135deg, #fbbf24 0%, #ea580c 100%)',
+        backgroundDecor: (
             <>
-                <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-purple-600/5 blur-[150px] rounded-full pointer-events-none" />
-                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-brand-500/5 blur-[120px] rounded-full pointer-events-none" />
+                <div style={{
+                    position: 'absolute',
+                    top: '10%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '800px',
+                    height: '400px',
+                    background: 'radial-gradient(ellipse, rgba(251, 191, 36, 0.06) 0%, transparent 60%)',
+                    filter: 'blur(60px)',
+                    pointerEvents: 'none'
+                }} />
             </>
         ),
     },
+
+    // 5. Aurora - 极光渐变
     colorful: {
-        container: 'bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900 text-white',
-        card: 'bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl',
-        header: 'bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600',
-        content: 'prose-invert',
-        footer: 'border-white/10 text-white/50',
-        brandText: 'text-white',
-        background: (
+        name: 'Aurora',
+        icon: Sparkles,
+        containerBg: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #4c1d95 50%, #581c87 75%, #701a75 100%)',
+        containerColor: '#faf5ff',
+        cardBg: 'linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+        cardShadow: '0 32px 64px -16px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)',
+        cardBorder: '1px solid rgba(255, 255, 255, 0.15)',
+        cardRadius: '32px',
+        headerGradient: 'linear-gradient(90deg, #22d3ee 0%, #818cf8 25%, #c084fc 50%, #f472b6 75%, #fb923c 100%)',
+        headerHeight: '4px',
+        contentBg: 'transparent',
+        proseColor: '#e9d5ff',
+        proseHeadingColor: '#faf5ff',
+        footerBg: 'transparent',
+        footerBorder: '1px solid rgba(255, 255, 255, 0.1)',
+        footerColor: 'rgba(250, 245, 255, 0.6)',
+        brandColor: '#faf5ff',
+        accentGradient: 'linear-gradient(135deg, #22d3ee 0%, #c084fc 50%, #fb923c 100%)',
+        backgroundDecor: (
             <>
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-pink-500/20 via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent pointer-events-none" />
+                <div style={{
+                    position: 'absolute',
+                    top: '-30%',
+                    left: '20%',
+                    width: '600px',
+                    height: '600px',
+                    background: 'radial-gradient(circle, rgba(34, 211, 238, 0.2) 0%, transparent 50%)',
+                    filter: 'blur(100px)',
+                    pointerEvents: 'none'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    bottom: '-20%',
+                    right: '10%',
+                    width: '500px',
+                    height: '500px',
+                    background: 'radial-gradient(circle, rgba(244, 114, 182, 0.2) 0%, transparent 50%)',
+                    filter: 'blur(80px)',
+                    pointerEvents: 'none'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    top: '40%',
+                    right: '30%',
+                    width: '300px',
+                    height: '300px',
+                    background: 'radial-gradient(circle, rgba(251, 146, 60, 0.15) 0%, transparent 50%)',
+                    filter: 'blur(60px)',
+                    pointerEvents: 'none'
+                }} />
             </>
         ),
     },
 };
 
 // Layout configurations
-const LAYOUT_STYLES = {
-    card: {
-        width: 800,
-        padding: 'p-16',
-        cardClass: 'rounded-xl',
-        headerClass: 'rounded-t-xl',
-        aspectRatio: null,
-    },
-    full: {
-        width: 800,
-        padding: 'p-8',
-        cardClass: 'rounded-none',
-        headerClass: 'rounded-none',
-        aspectRatio: null,
-    },
-    social: {
-        width: 800,
-        padding: 'p-12',
-        cardClass: 'rounded-2xl',
-        headerClass: 'rounded-t-2xl',
-        aspectRatio: 1,
-    },
-    slide: {
-        width: 1280,
-        padding: 'p-16',
-        cardClass: 'rounded-2xl',
-        headerClass: 'rounded-t-2xl',
-        aspectRatio: 16 / 9,
-    },
+const LAYOUT_CONFIGS = {
+    card: { width: 800, aspectRatio: null, padding: 64 },
+    full: { width: 800, aspectRatio: null, padding: 32 },
+    social: { width: 800, aspectRatio: 1, padding: 48 },
+    slide: { width: 1280, aspectRatio: 16 / 9, padding: 64 },
 };
 
 const ShareableContent = React.forwardRef(({ content, theme = 'business', layout = 'card', showWatermark }, ref) => {
-    const themeStyle = THEME_STYLES[theme] || THEME_STYLES.business;
-    const layoutStyle = LAYOUT_STYLES[layout] || LAYOUT_STYLES.card;
+    const themeConfig = THEME_CONFIGS[theme] || THEME_CONFIGS.business;
+    const layoutConfig = LAYOUT_CONFIGS[layout] || LAYOUT_CONFIGS.card;
+    const IconComponent = themeConfig.icon;
 
     const currentDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).replace(/\//g, '.');
+        month: 'long',
+        day: 'numeric'
+    });
 
     // Parse markdown content
     const htmlContent = marked.parse(content || '');
 
     // Calculate container dimensions
-    const containerStyle = {
-        width: `${layoutStyle.width}px`,
-        fontFamily: '"Inter", sans-serif',
-    };
-
-    if (layoutStyle.aspectRatio) {
-        containerStyle.height = `${layoutStyle.width / layoutStyle.aspectRatio}px`;
-    } else {
-        containerStyle.minHeight = '400px';
-    }
+    const containerWidth = layoutConfig.width;
+    const containerHeight = layoutConfig.aspectRatio
+        ? containerWidth / layoutConfig.aspectRatio
+        : 'auto';
+    const minHeight = layoutConfig.aspectRatio ? undefined : 500;
 
     return (
         <div
             ref={ref}
-            className={`
-                flex flex-col ${layoutStyle.padding} relative overflow-hidden
-                ${themeStyle.container}
-            `}
-            style={containerStyle}
+            style={{
+                width: `${containerWidth}px`,
+                height: containerHeight !== 'auto' ? `${containerHeight}px` : 'auto',
+                minHeight: minHeight ? `${minHeight}px` : undefined,
+                background: themeConfig.containerBg,
+                color: themeConfig.containerColor,
+                padding: `${layoutConfig.padding}px`,
+                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                // 确保不受外部样式影响
+                isolation: 'isolate',
+            }}
         >
-            {/* Background Effects */}
-            {themeStyle.background}
+            {/* Background Decorations */}
+            {themeConfig.backgroundDecor}
 
-            {/* Main Card Container */}
-            <div className={`
-                flex-grow relative z-10 flex flex-col
-                ${themeStyle.card}
-                ${layoutStyle.cardClass}
-            `}>
-                {/* Header Decoration */}
-                <div className={`h-2 w-full ${themeStyle.header} ${layoutStyle.headerClass}`} />
+            {/* Main Card */}
+            <div
+                style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: themeConfig.cardBg,
+                    boxShadow: themeConfig.cardShadow,
+                    border: themeConfig.cardBorder,
+                    borderRadius: themeConfig.cardRadius,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    zIndex: 10,
+                }}
+            >
+                {/* Header Bar */}
+                <div
+                    style={{
+                        width: '100%',
+                        height: themeConfig.headerHeight,
+                        background: themeConfig.headerGradient,
+                    }}
+                />
 
-                {/* Content */}
-                <div className="p-12 flex-grow overflow-hidden">
+                {/* Content Area */}
+                <div
+                    style={{
+                        flex: 1,
+                        padding: '48px',
+                        overflow: 'hidden',
+                    }}
+                >
                     <div
-                        className={`
-                            prose max-w-none leading-loose
-                            ${themeStyle.content}
-                            prose-headings:font-bold prose-headings:tracking-tight
-                            prose-p:leading-9 prose-p:text-lg prose-p:mb-6
-                            prose-pre:bg-slate-900 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-pre:shadow-xl
-                            prose-code:font-mono
-                        `}
-                        dangerouslySetInnerHTML={{ __html: htmlContent }}
+                        style={{
+                            color: themeConfig.proseColor,
+                            fontSize: '18px',
+                            lineHeight: '1.8',
+                            letterSpacing: '-0.01em',
+                        }}
+                        dangerouslySetInnerHTML={{
+                            __html: htmlContent.replace(
+                                /<h([1-6])/g,
+                                `<h$1 style="color: ${themeConfig.proseHeadingColor}; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px;"`
+                            ).replace(
+                                /<p>/g,
+                                `<p style="margin-bottom: 20px; line-height: 1.9;">`
+                            ).replace(
+                                /<strong>/g,
+                                `<strong style="color: ${themeConfig.proseHeadingColor}; font-weight: 600;">`
+                            ).replace(
+                                /<code>/g,
+                                `<code style="font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.9em; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.1);">`
+                            ).replace(
+                                /<pre>/g,
+                                `<pre style="background: #0f172a; color: #e2e8f0; padding: 20px; border-radius: 12px; overflow-x: auto; font-size: 14px;">`
+                            )
+                        }}
                     />
                 </div>
 
                 {/* Footer / Watermark */}
                 {showWatermark && (
-                    <div className={`
-                        mt-auto px-12 py-6 border-t flex justify-between items-center text-xs tracking-widest uppercase font-bold
-                        ${themeStyle.footer}
-                    `}>
-                        <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center">
-                                <Sparkles size={12} className="text-white" />
+                    <div
+                        style={{
+                            padding: '20px 48px',
+                            borderTop: themeConfig.footerBorder,
+                            background: themeConfig.footerBg,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase',
+                            color: themeConfig.footerColor,
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div
+                                style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '8px',
+                                    background: themeConfig.accentGradient,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <IconComponent size={14} color="#ffffff" />
                             </div>
-                            <span className={themeStyle.brandText}>
+                            <span style={{ color: themeConfig.brandColor, fontWeight: '700' }}>
                                 NexMap
                             </span>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <span>Generated with AI Insight</span>
-                            <span className="opacity-50">|</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <span>AI Insight</span>
+                            <span style={{ opacity: 0.4 }}>·</span>
                             <span>{currentDate}</span>
                         </div>
                     </div>
