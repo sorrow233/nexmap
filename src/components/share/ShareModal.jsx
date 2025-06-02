@@ -53,9 +53,9 @@ const LAYOUTS = [
 // Resolution options (Clarity Scale for html2canvas)
 // Safe range: 2-3x to prevent WebP encoding failures on large canvases
 const RESOLUTIONS = [
-    { id: 2, label: '1x', desc: '📱 Mobile', outputWidth: 2358 },      // 1179 * 2
-    { id: 2.5, label: '2x', desc: '💻 Desktop', outputWidth: 2948 },   // 1179 * 2.5
-    { id: 3, label: '3x', desc: '🖼️ Print', outputWidth: 3537 },       // 1179 * 3
+    { id: 2, label: '1x', desc: 'Mobile', outputWidth: 2358 },      // 1179 * 2
+    { id: 2.5, label: '2x', desc: 'Desktop', outputWidth: 2948 },   // 1179 * 2.5
+    { id: 3, label: '3x', desc: 'Print', outputWidth: 3537 },       // 1179 * 3
 ];
 
 // Format options
@@ -280,13 +280,12 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                         <button
                                             key={r.id}
                                             onClick={() => setResolution(r.id)}
-                                            className={`flex-1 py-2.5 px-2 rounded-xl text-center transition-all ${resolution === r.id
+                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${resolution === r.id
                                                 ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
                                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                                                 }`}
                                         >
-                                            <div className="text-[11px] font-bold">{r.desc}</div>
-                                            <div className="text-[9px] opacity-60 mt-0.5">{r.label}</div>
+                                            {r.desc}
                                         </button>
                                     ))}
                                 </div>
