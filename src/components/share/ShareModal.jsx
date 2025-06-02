@@ -60,9 +60,8 @@ const RESOLUTIONS = [
 
 // Format options
 const FORMATS = [
-    { id: 'png', label: 'PNG', mime: 'image/png', ext: 'png' },
-    { id: 'jpeg', label: 'JPEG', mime: 'image/jpeg', ext: 'jpg' },
     { id: 'webp', label: 'WebP', mime: 'image/webp', ext: 'webp' },
+    { id: 'png', label: 'PNG', mime: 'image/png', ext: 'png' },
 ];
 
 // Get background color for html2canvas based on theme
@@ -84,7 +83,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const [showWatermark, setShowWatermark] = useState(true);
     const [resolution, setResolution] = useState(2); // 2x scale = safe 1x for Retina
     const [format, setFormat] = useState('webp');
-    const [quality, setQuality] = useState(0.92);
+    const [quality, setQuality] = useState(0.8);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
@@ -313,23 +312,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
                             </div>
 
                             {/* Quality */}
-                            {format !== 'png' && (
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-zinc-500 dark:text-zinc-400">Quality</span>
-                                        <span className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100">{Math.round(quality * 100)}%</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="0.5"
-                                        max="1"
-                                        step="0.01"
-                                        value={quality}
-                                        onChange={(e) => setQuality(parseFloat(e.target.value))}
-                                        className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full appearance-none cursor-pointer accent-indigo-500"
-                                    />
-                                </div>
-                            )}
+
                         </div>
 
                         {/* Watermark Toggle */}
