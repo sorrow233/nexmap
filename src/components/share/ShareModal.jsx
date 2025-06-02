@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { X, Check, Download, Copy, Palette, Image as ImageIcon, Loader2, Layout, Settings, Maximize2, Star, Zap, Gem, Flame, Sparkles } from 'lucide-react';
+import { X, Check, Download, Copy, Palette, Image as ImageIcon, Loader2, Layout, Settings, Maximize2, Star, Zap, Gem, Flame, Sparkles, MessageSquare, FileText, Instagram, Monitor } from 'lucide-react';
 import ShareableContent from './ShareableContent';
 
 // Theme configurations with premium previews
@@ -44,10 +44,10 @@ const THEMES = [
 
 // Layout configurations
 const LAYOUTS = [
-    { id: 'card', label: 'Message', desc: 'Auto Fit' },
-    { id: 'full', label: 'Document', desc: 'Compact' },
-    { id: 'social', label: 'Social', desc: 'Square' },
-    { id: 'slide', label: 'Presentation', desc: '16:9' },
+    { id: 'card', label: 'Message', desc: 'Auto Fit', icon: MessageSquare },
+    { id: 'full', label: 'Document', desc: 'Compact', icon: FileText },
+    { id: 'social', label: 'Social', desc: 'Square', icon: Instagram },
+    { id: 'slide', label: 'Presentation', desc: '16:9', icon: Monitor },
 ];
 
 // Resolution options (Clarity Scale for html2canvas)
@@ -250,19 +250,22 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                 <Layout size={12} /> Layout
                             </label>
                             <div className="grid grid-cols-4 gap-2">
-                                {LAYOUTS.map(l => (
-                                    <button
-                                        key={l.id}
-                                        onClick={() => setLayout(l.id)}
-                                        className={`p-2.5 rounded-xl border transition-all duration-200 ${layout === l.id
-                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                            : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                                            }`}
-                                    >
-                                        <div className="text-[10px] font-bold">{l.label}</div>
-                                        <div className="text-[9px] opacity-60 mt-0.5">{l.desc}</div>
-                                    </button>
-                                ))}
+                                {LAYOUTS.map(l => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <button
+                                            key={l.id}
+                                            onClick={() => setLayout(l.id)}
+                                            title={`${l.label} - ${l.desc}`}
+                                            className={`h-12 flex items-center justify-center rounded-xl border transition-all duration-200 ${layout === l.id
+                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                                }`}
+                                        >
+                                            <Icon size={20} />
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
