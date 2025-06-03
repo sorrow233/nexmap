@@ -15,27 +15,6 @@ const THEMES = [
         accent: 'bg-[#8B0000]',
     },
     {
-        id: 'terminal',
-        label: 'Terminal',
-        icon: Zap,
-        preview: 'bg-[#0D1117] border-gray-700',
-        accent: 'bg-[#58A6FF]',
-    },
-    {
-        id: 'modern',
-        label: 'Modern',
-        icon: Gem,
-        preview: 'bg-white border-zinc-200',
-        accent: 'bg-[#2EAADC]',
-    },
-    {
-        id: 'swiss',
-        label: 'Swiss',
-        icon: Flame,
-        preview: 'bg-[#F4F4F4] border-zinc-300',
-        accent: 'bg-[#D01111]',
-    },
-    {
         id: 'handwritten',
         label: 'Cozy',
         icon: Sparkles,
@@ -79,7 +58,7 @@ const getThemeBackground = (themeId) => {
 };
 
 export default function ShareModal({ isOpen, onClose, content }) {
-    const [theme, setTheme] = useState('modern');
+    const [theme, setTheme] = useState('editorial');
     const [layout, setLayout] = useState('card');
     const [showWatermark, setShowWatermark] = useState(true);
     const [resolution, setResolution] = useState(3);
