@@ -453,8 +453,8 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: currentThemeId === 'swiss' ? themeConfig.bg : '#fff',
                             fontSize: '14px', fontWeight: 'bold'
-                        }}>M</div>
-                        <span style={{ fontWeight: 'bold', letterSpacing: '-0.02em', fontSize: '1.1em' }}>MixBoard</span>
+                        }}>N</div>
+                        <span style={{ fontWeight: 'bold', letterSpacing: '-0.02em', fontSize: '1.1em' }}>NexMap</span>
                     </div>
                 </div>
             )}
