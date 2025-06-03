@@ -10,7 +10,7 @@ import {
 
 import {
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
-    saveUserSettings, loadUserSettings, updateBoardMetadataInCloud
+    saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings
 } from './syncService';
 
 import { saveImageToIDB, getImageFromIDB } from './imageStore';
@@ -21,7 +21,7 @@ export {
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
     saveViewportState, loadViewportState,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
-    saveUserSettings, loadUserSettings, updateBoardMetadataInCloud,
+    saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings,
     saveImageToIDB, getImageFromIDB
 };
 
@@ -31,7 +31,8 @@ const StorageService = {
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     saveViewportState, loadViewportState,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
-    saveUserSettings, loadUserSettings,
+    listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
+    saveUserSettings, loadUserSettings, updateUserSettings,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash, updateBoardMetadataInCloud,
     saveImageToIDB, getImageFromIDB
 };
