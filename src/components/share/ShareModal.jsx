@@ -44,9 +44,9 @@ const THEMES = [
 
 // Layout configurations
 const LAYOUTS = [
-    { id: 'card', label: 'Message', desc: 'Auto Fit', icon: MessageSquare },
-    { id: 'full', label: 'Document', desc: 'Compact', icon: FileText },
-    { id: 'social', label: 'Social', desc: 'Square', icon: Instagram },
+    { id: 'card', label: 'Message', desc: 'Auto', icon: MessageSquare },
+    { id: 'full', label: 'Document', desc: 'Doc', icon: FileText },
+    { id: 'social', label: 'Social', desc: '1:1', icon: Instagram },
     { id: 'slide', label: 'Presentation', desc: '16:9', icon: Monitor },
 ];
 
@@ -256,13 +256,13 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                         <button
                                             key={l.id}
                                             onClick={() => setLayout(l.id)}
-                                            title={`${l.label} - ${l.desc}`}
-                                            className={`h-12 flex items-center justify-center rounded-xl border transition-all duration-200 ${layout === l.id
+                                            className={`h-16 flex flex-col items-center justify-center gap-1.5 rounded-xl border transition-all duration-200 ${layout === l.id
                                                 ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                                                 }`}
                                         >
-                                            <Icon size={20} />
+                                            <Icon size={18} />
+                                            <span className="text-[10px] font-bold opacity-80">{l.desc}</span>
                                         </button>
                                     );
                                 })}
