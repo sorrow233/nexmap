@@ -108,7 +108,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
             setTestStatus('success');
             setTestMessage('Connection Successful!');
         } catch (error) {
-            console.error(error);
+            // console.error(error);
             setTestStatus('error');
             setTestMessage(error.message || 'Connection Failed');
         }
@@ -132,9 +132,9 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     activeId,
                     s3Config
                 });
-                console.log("[Sync] User settings pushed to cloud");
+                // console.log("[Sync] User settings pushed to cloud");
             } catch (e) {
-                console.error("[Sync] Failed to push settings to cloud", e);
+                // console.error("[Sync] Failed to push settings to cloud", e);
             }
         }
 
