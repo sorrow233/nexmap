@@ -83,7 +83,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const [showWatermark, setShowWatermark] = useState(true);
     const [resolution, setResolution] = useState(3); // Default to Mobile (3x)
     const [format, setFormat] = useState('webp');
-    const [quality, setQuality] = useState(0.86);
+    const [quality, setQuality] = useState(0.88);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
@@ -283,12 +283,13 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                         <button
                                             key={r.id}
                                             onClick={() => setResolution(r.id)}
-                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${resolution === r.id
+                                            className={`flex-1 py-2 px-2 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${resolution === r.id
                                                 ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
                                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                                                 }`}
                                         >
-                                            {r.desc}
+                                            <span className="text-[11px] font-bold">{r.desc}</span>
+                                            <span className="text-[9px] opacity-60 font-mono">{r.label}</span>
                                         </button>
                                     ))}
                                 </div>
