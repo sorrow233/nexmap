@@ -158,6 +158,299 @@ const THEME_CONFIGS = {
             '--highlight-bg': `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 100 L0 20 Q 20 0, 40 20 T 80 20 T 100 20 L 100 100 Z' fill='rgba(255, 200, 100, 0.4)' /%3E%3C/svg%3E")`,
         }
     },
+
+    // 6. Neon - 赛博朋克 (Cyberpunk)
+    neon: {
+        id: 'neon',
+        name: 'Neon',
+        fonts: ['Orbitron', 'Inter'],
+        bg: '#050a14',
+        text: '#E0E0E0',
+        accent: '#00F0FF', // Cyan
+        padding: 60,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Orbitron", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '900',
+            '--h2-size': '2em',
+            '--line-height': '1.7',
+            '--block-margin': '1.5em',
+            '--quote-style': 'italic',
+            '--quote-border': '2px solid #FF00eb', // Magenta
+            '--quote-bg': 'rgba(255, 0, 235, 0.05)',
+            '--quote-color': '#FF00eb',
+            '--code-bg': '#0a1020',
+            '--code-color': '#00F0FF',
+            '--bold-color': '#FF00eb', // Neon Pink
+        }
+    },
+
+    // 7. Brutal - 粗野主义 (Brutalist)
+    brutal: {
+        id: 'brutal',
+        name: 'Brutal',
+        fonts: ['Archivo Black', 'Space Mono'],
+        bg: '#FFFFFF',
+        text: '#000000',
+        accent: '#000000',
+        padding: 50,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Archivo Black", sans-serif',
+            '--font-body': '"Space Mono", monospace',
+            '--font-code': '"Space Mono", monospace',
+            '--h1-size': '3.5em',
+            '--h1-weight': '900',
+            '--h1-line-height': '1',
+            '--h2-size': '2.2em',
+            '--line-height': '1.5',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': '8px solid black',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#000',
+            '--code-bg': '#E0E0E0',
+            '--code-color': '#000',
+            '--border-color': '#000',
+        }
+    },
+
+    // 8. Garden - 植物系 (Botanical)
+    garden: {
+        id: 'garden',
+        name: 'Garden',
+        fonts: ['Cormorant Garamond', 'Inter'],
+        bg: '#F0F4EF', // Pale Sage
+        text: '#2D3A30', // Deep Green
+        accent: '#4A6741', // Sage Green
+        padding: 70,
+        radius: 12,
+        settings: {
+            '--font-heading': '"Cormorant Garamond", serif',
+            '--font-body': '"Cormorant Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--base-size': '20px',
+            '--h1-size': '3.2em',
+            '--h1-weight': '700',
+            '--h2-size': '2.2em',
+            '--h1-line-height': '1.1',
+            '--line-height': '1.8',
+            '--block-margin': '1.8em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': '#E6EBE6',
+            '--quote-color': '#4A6741',
+            '--code-bg': '#E6EBE6',
+            '--code-color': '#2D3A30',
+        }
+    },
+
+    // 9. Retro - 蒸汽波 (Vaporwave)
+    retro: {
+        id: 'retro',
+        name: 'Retro',
+        fonts: ['Press Start 2P', 'Inter'],
+        bg: '#2B213A', // Dark Purple
+        text: '#FFD1F9', // Pinkish White
+        accent: '#FF71CE', // Vapor Pink
+        padding: 60,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Press Start 2P", cursive',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.0em', // Pixel fonts run large
+            '--h1-weight': '400',
+            '--h2-size': '1.4em',
+            '--line-height': '1.8',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px dashed #01CDFE', // Cyan
+            '--quote-bg': 'rgba(1, 205, 254, 0.1)',
+            '--quote-color': '#01CDFE',
+            '--code-bg': '#241B33',
+            '--code-color': '#05FFA1', // Green
+        }
+    },
+
+    // 10. Blueprint - 建筑图纸 (Architectural)
+    blueprint: {
+        id: 'blueprint',
+        name: 'Blueprint',
+        fonts: ['Share Tech Mono'],
+        bg: '#003366', // Blueprint Blue
+        text: '#FFFFFF',
+        accent: '#FFCC00', // Yellow measure lines
+        padding: 70,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Share Tech Mono", monospace',
+            '--font-body': '"Share Tech Mono", monospace',
+            '--font-code': '"Share Tech Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '400',
+            '--h2-size': '1.8em',
+            '--line-height': '1.6',
+            '--block-margin': '1.8em',
+            '--quote-style': 'normal',
+            '--quote-border': '1px solid #FFFFFF',
+            '--quote-bg': 'rgba(255,255,255,0.05)',
+            '--quote-color': '#E0E0E0',
+            '--code-bg': 'rgba(0,0,0,0.2)',
+            '--code-color': '#FFCC00',
+            '--bold-color': '#FFCC00',
+        }
+    },
+
+    // 11. Gazette - 旧报纸 (Vintage)
+    gazette: {
+        id: 'gazette',
+        name: 'Gazette',
+        fonts: ['UnifrakturMaguntia', 'Merriweather'],
+        bg: '#F4ECD8', // Aged Paper
+        text: '#211808',
+        accent: '#8B0000',
+        padding: 60,
+        radius: 1,
+        settings: {
+            '--font-heading': '"UnifrakturMaguntia", serif',
+            '--font-body': '"Merriweather", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4em',
+            '--h1-weight': '400',
+            '--h2-size': '2em',
+            '--line-height': '1.7',
+            '--block-margin': '1.5em',
+            '--quote-style': 'italic',
+            '--quote-border': 'double 4px #8B0000',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#4A3B2A',
+            '--code-bg': '#EBE3CE',
+            '--code-color': '#211808',
+        }
+    },
+
+    // 12. Library - 深色学院 (Dark Academia)
+    library: {
+        id: 'library',
+        name: 'Library',
+        fonts: ['Crimson Text', 'Playfair Display'],
+        bg: '#1E1B18', // Very Dark Brown/Black
+        text: '#D4C5B0', // Parchment text
+        accent: '#C6A87C', // Gold
+        padding: 80,
+        radius: 4,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Crimson Text", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '700',
+            '--h1-line-height': '1.2',
+            '--h2-size': '2.0em',
+            '--line-height': '1.9',
+            '--block-margin': '2em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(198, 168, 124, 0.08)',
+            '--quote-color': '#C6A87C',
+            '--code-bg': '#141210',
+            '--code-color': '#C6A87C',
+        }
+    },
+
+    // 13. Zen - 极简 (Minimal)
+    zen: {
+        id: 'zen',
+        name: 'Zen',
+        fonts: ['Quicksand', 'Inter'],
+        bg: '#F8F9FA', // Off white
+        text: '#495057', // Grey 700
+        accent: '#ADB5BD', // Grey 500
+        padding: 100, // Maximum whitespace
+        radius: 20,
+        settings: {
+            '--font-heading': '"Quicksand", sans-serif',
+            '--font-body': '"Quicksand", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.6em',
+            '--h1-weight': '300', // Light weight
+            '--h2-size': '1.8em',
+            '--line-height': '2.0', // Super airy
+            '--block-margin': '2.5em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#F1F3F5',
+            '--quote-color': '#868E96',
+            '--code-bg': '#F1F3F5',
+            '--code-color': '#495057',
+        }
+    },
+
+    // 14. Comic - 波普艺术 (Pop Art)
+    comic: {
+        id: 'comic',
+        name: 'Comic',
+        fonts: ['Bangers', 'Comic Neue'],
+        bg: '#FFFFFF',
+        text: '#000000',
+        accent: '#FFEA00', // Yellow
+        padding: 50,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Bangers", cursive',
+            '--font-body': '"Comic Neue", cursive',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--base-size': '22px', // Comic Neue is small
+            '--h1-size': '3.5em',
+            '--h1-weight': '400',
+            '--h1-line-height': '1.1',
+            '--h1-shadow': '3px 3px 0px #000',
+            '--h2-size': '2.2em',
+            '--line-height': '1.5',
+            '--block-margin': '1.5em',
+            '--quote-style': 'normal',
+            '--quote-border': '3px solid black',
+            '--quote-bg': '#FFEA00', // Yellow
+            '--quote-color': '#000000',
+            '--quote-shadow': '5px 5px 0px #000',
+            '--code-bg': '#000',
+            '--code-color': '#FFF',
+            '--border-color': '#000',
+        }
+    },
+
+    // 15. Bauhaus - 包豪斯 (Geometric)
+    bauhaus: {
+        id: 'bauhaus',
+        name: 'Bauhaus',
+        fonts: ['Jost'],
+        bg: '#F0F0F0',
+        text: '#111111',
+        accent: '#D02121', // Red
+        padding: 80,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Jost", sans-serif',
+            '--font-body': '"Jost", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4em',
+            '--h1-weight': '900',
+            '--h2-size': '2em',
+            '--line-height': '1.6',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#FFFFFF',
+            '--quote-color': '#111',
+            '--code-bg': '#2B4FA1', // Blue
+            '--code-color': '#FFFFFF',
+            '--bold-color': '#D02121', // Red
+        }
+    },
 };
 
 // Layout configs (Base 1179px)
@@ -188,7 +481,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         if (!document.getElementById(linkId)) {
             const link = document.createElement('link');
             link.id = linkId;
-            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Archivo+Black&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Press+Start+2P&family=Share+Tech+Mono&family=UnifrakturMaguntia&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Quicksand:wght@300;400;500;700&family=Bangers&family=Comic+Neue:wght@400;700&family=Jost:wght@300;400;500;700&display=swap';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
         }
@@ -220,6 +513,8 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 margin-bottom: 0.6em;
             }
             ${currentThemeId === 'terminal' ? `.markdown-body h1::before { content: "${s['--h1-prefix']}"; display: inline-block; margin-right: 0.3em; opacity: 0.5; }` : ''}
+            ${currentThemeId === 'comic' ? `.markdown-body h1 { text-shadow: 3px 3px 0px #000; -webkit-text-stroke: 1px black; }` : ''}
+            ${currentThemeId === 'neon' ? `.markdown-body h1 { text-shadow: 0 0 10px ${themeConfig.accent}, 0 0 20px ${themeConfig.accent}; }` : ''}
 
             .markdown-body h2 {
                 font-family: ${s['--font-heading']};
@@ -370,6 +665,20 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 opacity: 0.6;
             }` : ''}
 
+            /* Brutal Borders */
+            ${currentThemeId === 'brutal' ? `
+            .markdown-body img {
+                border: 4px solid black;
+                box-shadow: 8px 8px 0px black;
+            }` : ''}
+
+            /* Comic Borders */
+            ${currentThemeId === 'comic' ? `
+            .markdown-body img {
+                border: 3px solid black;
+                box-shadow: 6px 6px 0px black;
+            }` : ''}
+
             /* Link override (if any) */
             .markdown-body a { color: ${themeConfig.accent}; text-decoration: none; border-bottom: 1px solid ${themeConfig.accent}; }
         `;
@@ -424,6 +733,57 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                     inset: 0,
                     opacity: 0.03,
                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Blueprint Grid */}
+            {currentThemeId === 'blueprint' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
+                    backgroundSize: '40px 40px',
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Comic Halftone */}
+            {currentThemeId === 'comic' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `radial-gradient(#e5e5e5 1px, transparent 1px)`,
+                    backgroundSize: '10px 10px',
+                    opacity: 0.5,
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Retro Sun Gradient */}
+            {currentThemeId === 'retro' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: `linear-gradient(180deg, rgba(43,33,58,0) 70%, rgba(255,113,206,0.1) 100%)`,
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Bauhaus Shapes */}
+            {currentThemeId === 'bauhaus' && (
+                <>
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '150px', height: '150px', background: '#D02121', opacity: 0.1, borderRadius: '0 0 100% 0' }} />
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: '200px', height: '200px', background: '#2B4FA1', opacity: 0.1, clipPath: 'polygon(100% 100%, 0% 100%, 100% 0%)' }} />
+                </>
+            )}
+
+            {/* Neon Glow */}
+            {currentThemeId === 'neon' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: `radial-gradient(circle at 50% 0%, rgba(0,240,255,0.1), transparent 70%)`,
                     pointerEvents: 'none'
                 }} />
             )}

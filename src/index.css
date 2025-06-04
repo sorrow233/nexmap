@@ -592,4 +592,10 @@ body,
     .animate-scale-in {
         animation: scale-in 0.15s ease-out;
     }
+
+    @keyframes shimmer {
+        100% {
+            transform: translateX(100%);
+        }
+    }
 }
