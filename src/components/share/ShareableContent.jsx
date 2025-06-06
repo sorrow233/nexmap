@@ -161,288 +161,285 @@ const THEME_CONFIGS = {
 
 
 
-    // --- New Artistic Themes (10) ---
+    // --- New Japanese Aesthetic Themes (10) ---
 
-    // 6. Library - 深棕色与胡桃木 (Dark Walnut)
-    library: {
-        id: 'library',
-        name: 'Library',
-        fonts: ['Cormorant Garamond', 'serif'],
-        bg: '#2C241B', // 深胡桃木色
-        text: '#E6DCC8', // 旧纸张白
-        accent: '#D4AF37', // 金色
-        padding: 80,
-        radius: 4,
-        settings: {
-            '--font-heading': '"Cormorant Garamond", serif',
-            '--font-body': '"Cormorant Garamond", serif',
-            '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '3.2em',
-            '--h1-weight': '700',
-            '--h2-size': '2.0em',
-            '--line-height': '1.8', // 宽松行距
-            '--block-margin': '1.8em',
-            '--quote-style': 'italic',
-            '--quote-border': 'none', // Remove default border
-            '--quote-bg': 'rgba(0,0,0,0.2)',
-            '--quote-color': '#D4AF37', // Gold text for quotes
-            '--code-bg': '#1F1A13',
-            '--code-color': '#E6DCC8',
-        }
-    },
-
-    // 7. Parchment - 羊皮纸与褪色墨水 (Aged Paper)
-    parchment: {
-        id: 'parchment',
-        name: 'Parchment',
-        fonts: ['Crimson Text', 'serif'],
-        bg: '#F2E8C9', // 羊皮纸黄
-        text: '#4A3B2A', // 褪色棕墨
-        accent: '#8B4513', // 鞍褐色
-        padding: 70,
-        radius: 2, // 近乎直角
-        settings: {
-            '--font-heading': '"Crimson Text", serif',
-            '--font-body': '"Crimson Text", serif',
-            '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '3.0em',
-            '--h1-weight': '600',
-            '--h2-size': '1.9em',
-            '--line-height': '1.75',
-            '--block-margin': '1.6em',
-            '--quote-style': 'normal',
-            '--quote-border': '4px double #8B4513', // 古典双线
-            '--quote-bg': 'transparent',
-            '--quote-color': '#2F251B',
-            '--code-bg': 'rgba(139, 69, 19, 0.08)',
-            '--code-color': '#8B4513',
-        }
-    },
-
-    // 8. Coffee - 咖啡渍与暖阳 (Espresso)
-    coffee: {
-        id: 'coffee',
-        name: 'Coffee',
-        fonts: ['Lora', 'serif'],
-        bg: '#EBE5CE', // 拿铁沫色
-        text: '#3E2723', // 深咖啡豆色
-        accent: '#795548', // 可可色
-        padding: 75,
+    // 6. Sakura - 樱花 (Sakura)
+    sakura: {
+        id: 'sakura',
+        name: 'Sakura',
+        fonts: ['Kiwi Maru', 'Inter'],
+        bg: '#FFF0F5', // Lavender Blush
+        text: '#5D3A3A',
+        accent: '#FFB7B2', // Pastel Pink
+        padding: 60,
         radius: 12,
         settings: {
-            '--font-heading': '"Lora", serif',
-            '--font-body': '"Lora", serif',
+            '--font-heading': '"Kiwi Maru", serif',
+            '--font-body': '"Kiwi Maru", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3em',
+            '--h1-weight': '500',
+            '--h2-size': '2em',
+            '--line-height': '1.8',
+            '--block-margin': '1.8em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255, 183, 178, 0.2)',
+            '--quote-color': '#D65A5A',
+            '--code-bg': '#FFF5F7',
+            '--code-color': '#D65A5A',
+        }
+    },
+
+    // 7. Matcha - 抹茶 (Matcha)
+    matcha: {
+        id: 'matcha',
+        name: 'Matcha',
+        fonts: ['Zen Maru Gothic', 'Inter'],
+        bg: '#F2F7F2', // Very pale green
+        text: '#3E4E3E', // Dark olive
+        accent: '#8AA387', // Sage
+        padding: 70,
+        radius: 8,
+        settings: {
+            '--font-heading': '"Zen Maru Gothic", sans-serif',
+            '--font-body': '"Zen Maru Gothic", sans-serif',
             '--font-code': '"JetBrains Mono", monospace',
             '--h1-size': '2.8em',
             '--h1-weight': '700',
             '--h2-size': '1.8em',
             '--line-height': '1.9',
-            '--block-margin': '1.8em',
-            '--quote-style': 'italic',
-            '--quote-border': 'none',
-            '--quote-bg': '#D7CCC8', // 浅咖背景
-            '--quote-color': '#3E2723',
-            '--code-bg': '#D7CCC8',
-            '--code-color': '#3E2723',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px solid #8AA387',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#5D705D',
+            '--code-bg': '#E9F0E9',
+            '--code-color': '#3E4E3E',
         }
     },
 
-    // 9. Rainy - 阴雨天与湿润空气 (Moody)
-    rainy: {
-        id: 'rainy',
-        name: 'Rainy',
-        fonts: ['Playfair Display', 'Inter'],
-        bg: '#CFD8DC', // 蓝灰
-        text: '#263238', // 深蓝灰
-        accent: '#455A64', // 石板灰
-        padding: 90,
-        radius: 16,
+    // 8. Manga - 漫画 (Manga)
+    manga: {
+        id: 'manga',
+        name: 'Manga',
+        fonts: ['Dela Gothic One', 'Inter'],
+        bg: '#FFFFFF',
+        text: '#000000',
+        accent: '#000000',
+        padding: 50,
+        radius: 0,
         settings: {
-            '--font-heading': '"Playfair Display", serif',
+            '--font-heading': '"Dela Gothic One", cursive',
             '--font-body': '"Inter", sans-serif',
             '--font-code': '"JetBrains Mono", monospace',
             '--h1-size': '3.2em',
-            '--h1-weight': '900',
-            '--h2-size': '2.0em',
-            '--line-height': '2.0', // Airier
-            '--block-margin': '2.2em',
-            '--quote-style': 'italic',
-            '--quote-border': 'none', // Left border
-            '--quote-bg': 'linear-gradient(to right, rgba(255,255,255,0.4), transparent)',
-            '--quote-color': '#37474F',
-            '--code-bg': '#B0BEC5',
-            '--code-color': '#263238',
-        }
-    },
-
-    // 10. Academia - 常春藤与墨绿 (Ivy League)
-    academia: {
-        id: 'academia',
-        name: 'Academia',
-        fonts: ['EB Garamond', 'serif'],
-        bg: '#F5F5F0', // 象牙白
-        text: '#1B4D3E', // 学院绿
-        accent: '#C5A059', // 做旧金
-        padding: 85,
-        radius: 6,
-        settings: {
-            '--font-heading': '"EB Garamond", serif',
-            '--font-body': '"EB Garamond", serif',
-            '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '3.4em',
-            '--h1-weight': '800',
-            '--h2-size': '2.1em',
-            '--line-height': '1.7',
-            '--block-margin': '1.7em',
-            '--quote-style': 'normal',
-            '--quote-border': '1px solid #C5A059', // 金色细框
-            '--quote-bg': '#FFFFFF',
-            '--quote-color': '#1B4D3E',
-            '--code-bg': '#E8F5E9',
-            '--code-color': '#1B4D3E',
-        }
-    },
-
-    // 11. Poetry - 诗歌与留白 (Elegance)
-    poetry: {
-        id: 'poetry',
-        name: 'Poetry',
-        fonts: ['Cinzel', 'Quicksand'],
-        bg: '#FFFBF0', // 奶油白
-        text: '#5D4037', // 暖褐
-        accent: '#D84315', // 焦橙
-        padding: 110, // 极度留白
-        radius: 0,
-        settings: {
-            '--font-heading': '"Cinzel", serif',
-            '--font-body': '"Quicksand", sans-serif',
-            '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '2.5em',
-            '--h1-weight': '400', // Lighter elegant heading
-            '--h1-spacing': '0.1em', // Spaced out
-            '--h2-size': '1.6em',
-            '--line-height': '2.2', // Very loose
-            '--block-margin': '2.5em',
-            '--quote-style': 'italic',
-            '--quote-border': 'none',
-            '--quote-bg': 'transparent',
-            '--quote-color': '#D84315', // Accent color quote
-            '--code-bg': '#FFF3E0',
-            '--code-color': '#BF360C',
-        }
-    },
-
-    // 12. Vintage - 皮革与黄铜 (Antique)
-    vintage: {
-        id: 'vintage',
-        name: 'Vintage',
-        fonts: ['Playfair Display', 'serif'],
-        bg: '#3E2723', // 深皮革
-        text: '#D7CCC8', // 浅褐
-        accent: '#FFB74D', // 黄铜色
-        padding: 80,
-        radius: 8,
-        settings: {
-            '--font-heading': '"Playfair Display", serif',
-            '--font-body': '"Playfair Display", serif',
-            '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '3.0em',
-            '--h1-weight': '700',
-            '--h2-size': '2.0em',
-            '--line-height': '1.8',
-            '--block-margin': '2.0em',
-            '--quote-style': 'italic',
-            '--quote-border': 'none',
-            '--quote-bg': 'rgba(255,255,255,0.05)', // Subtle highlight
-            '--quote-color': '#FFB74D',
-            '--code-bg': 'rgba(0,0,0,0.3)',
-            '--code-color': '#D7CCC8',
-            '--border-color': '#5D4037', // For leather texture lines
-        }
-    },
-
-    // 13. Classic - 经典黑白 (Bodoni)
-    classic: {
-        id: 'classic',
-        name: 'Classic',
-        fonts: ['Playfair Display', 'Inter'],
-        bg: '#FFFFFF', // 纯白
-        text: '#000000', // 纯黑
-        accent: '#000000', // 纯黑强调
-        padding: 90,
-        radius: 0,
-        settings: {
-            '--font-heading': '"Playfair Display", serif',
-            '--font-body': '"Inter", sans-serif',
-            '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '4.5em', // Huge
-            '--h1-weight': '900',
-            '--h2-size': '2.5em',
+            '--h1-weight': '400',
+            '--h2-size': '2em',
             '--line-height': '1.6',
-            '--block-margin': '2.0em',
+            '--block-margin': '1.5em',
             '--quote-style': 'normal',
-            '--quote-border': '4px solid #000', // Strong black line
+            '--quote-border': '4px solid black',
             '--quote-bg': 'transparent',
             '--quote-color': '#000',
-            '--code-bg': '#F5F5F5',
+            '--code-bg': '#F0F0F0',
             '--code-color': '#000',
         }
     },
 
-    // 14. Etching - 铜版画与棕褐 (Sepia)
-    etching: {
-        id: 'etching',
-        name: 'Etching',
-        fonts: ['Cormorant Garamond', 'serif'],
-        bg: '#EADBC8', // 浅米黄
-        text: '#4E342E', // 赭石
-        accent: '#8D6E63', // 浅褐
-        padding: 65,
-        radius: 4,
+    // 9. Sky - 天空 (Sky)
+    sky: {
+        id: 'sky',
+        name: 'Sky',
+        fonts: ['M PLUS Rounded 1c', 'Inter'],
+        bg: '#E0F7FA', // Light Cyan
+        text: '#01579B', // Dark Blue
+        accent: '#4FC3F7', // Light Blue
+        padding: 80,
+        radius: 16,
         settings: {
-            '--font-heading': '"Cormorant Garamond", serif',
-            '--font-body': '"Cormorant Garamond", serif',
+            '--font-heading': '"M PLUS Rounded 1c", sans-serif',
+            '--font-body': '"M PLUS Rounded 1c", sans-serif',
             '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '2.8em',
-            '--h1-weight': '600',
-            '--h1-style': 'italic', // Italic headings
-            '--h2-size': '1.8em',
-            '--line-height': '1.7',
-            '--block-margin': '1.5em',
-            '--quote-style': 'italic',
-            '--quote-border': '1px solid #8D6E63',
-            '--quote-bg': 'transparent',
-            '--quote-color': '#5D4037',
-            '--code-bg': 'rgba(141, 110, 99, 0.1)',
-            '--code-color': '#4E342E',
+            '--h1-size': '3em',
+            '--h1-weight': '800',
+            '--h2-size': '2em',
+            '--line-height': '1.8',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255, 255, 255, 0.6)',
+            '--quote-color': '#0277BD',
+            '--code-bg': 'rgba(255, 255, 255, 0.4)',
+            '--code-color': '#01579B',
         }
     },
 
-    // 15. Midnight - 深夜与银河 (Deep Night)
-    midnight: {
-        id: 'midnight',
-        name: 'Midnight',
-        fonts: ['Cinzel', 'Inter'],
-        bg: '#0D1B2A', // 深夜蓝
-        text: '#E0E1DD', // 银白
-        accent: '#778DA9', // 钢蓝
-        padding: 85,
-        radius: 12,
+    // 10. Citypop - 都市 (Citypop)
+    citypop: {
+        id: 'citypop',
+        name: 'Citypop',
+        fonts: ['DotGothic16', 'Inter'],
+        bg: '#210046', // Deep Purple
+        text: '#FF00FF', // Magenta
+        accent: '#00FFFF', // Cyan
+        padding: 60,
+        radius: 0,
         settings: {
-            '--font-heading': '"Cinzel", serif',
+            '--font-heading': '"DotGothic16", sans-serif',
             '--font-body': '"Inter", sans-serif',
+            '--font-code': '"DotGothic16", sans-serif',
+            '--h1-size': '2.5em',
+            '--h1-weight': '400',
+            '--h2-size': '1.8em',
+            '--line-height': '1.7',
+            '--block-margin': '1.8em',
+            '--quote-style': 'italic',
+            '--quote-border': '2px solid #00FFFF',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#00FFFF',
+            '--code-bg': '#110022',
+            '--code-color': '#FF00FF',
+        }
+    },
+
+    // 11. Ghibli - 森系 (Ghibli)
+    ghibli: {
+        id: 'ghibli',
+        name: 'Ghibli',
+        fonts: ['Yomogi', 'Inter'],
+        bg: '#F5F5DC', // Beige
+        text: '#4B5320', // Army Green
+        accent: '#8F9779', // Sage
+        padding: 80,
+        radius: 6,
+        settings: {
+            '--font-heading': '"Yomogi", cursive',
+            '--font-body': '"Yomogi", cursive',
             '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '3.0em',
-            '--h1-weight': '700',
-            '--h2-size': '2.0em',
-            '--line-height': '1.8',
-            '--block-margin': '2.0em',
+            '--h1-size': '3.2em',
+            '--h1-weight': '400',
+            '--h2-size': '2.2em',
+            '--line-height': '1.9',
+            '--block-margin': '2em',
             '--quote-style': 'normal',
             '--quote-border': 'none',
-            '--quote-bg': 'rgba(255,255,255,0.05)',
-            '--quote-color': '#E0E1DD',
-            '--code-bg': '#1B263B',
-            '--code-color': '#A9D6E5',
+            '--quote-bg': 'rgba(143, 151, 121, 0.2)',
+            '--quote-color': '#4B5320',
+            '--code-bg': '#E8E8D0',
+            '--code-color': '#333300',
+        }
+    },
+
+    // 12. Peach - 蜜桃 (Peach)
+    peach: {
+        id: 'peach',
+        name: 'Peach',
+        fonts: ['M PLUS Rounded 1c'],
+        bg: '#FFF5F5',
+        text: '#D66D75',
+        accent: '#E29587',
+        padding: 70,
+        radius: 20,
+        settings: {
+            '--font-heading': '"M PLUS Rounded 1c", sans-serif',
+            '--font-body': '"M PLUS Rounded 1c", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3em',
+            '--h1-weight': '700',
+            '--h2-size': '2em',
+            '--line-height': '1.8',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#FFE0E0',
+            '--quote-color': '#D66D75',
+            '--code-bg': '#FFE0E0',
+            '--code-color': '#C44D58',
+        }
+    },
+
+    // 13. Lavender - 薰衣草 (Lavender)
+    lavender: {
+        id: 'lavender',
+        name: 'Lavender',
+        fonts: ['Zen Maru Gothic'],
+        bg: '#F3E5F5', // Pale Purple
+        text: '#4A148C', // Dark Purple
+        accent: '#CE93D8', // Light Purple
+        padding: 80,
+        radius: 12,
+        settings: {
+            '--font-heading': '"Zen Maru Gothic", sans-serif',
+            '--font-body': '"Zen Maru Gothic", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '700',
+            '--h2-size': '1.8em',
+            '--line-height': '2.0',
+            '--block-margin': '2em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': '#FFFFFF',
+            '--quote-color': '#7B1FA2',
+            '--code-bg': '#FFFFFF',
+            '--code-color': '#4A148C',
+        }
+    },
+
+    // 14. Sunset - 黄昏 (Sunset)
+    sunset: {
+        id: 'sunset',
+        name: 'Sunset',
+        fonts: ['Kiwi Maru'],
+        bg: '#FFF3E0', // Orange Lighter
+        text: '#5D4037', // Brown
+        accent: '#FFAB91', // Deep Orange
+        padding: 60,
+        radius: 4,
+        settings: {
+            '--font-heading': '"Kiwi Maru", serif',
+            '--font-body': '"Kiwi Maru", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '500',
+            '--h2-size': '2em',
+            '--line-height': '1.8',
+            '--block-margin': '1.8em',
+            '--quote-style': 'normal',
+            '--quote-border': '1px solid #FFAB91',
+            '--quote-bg': 'rgba(255, 171, 145, 0.1)',
+            '--quote-color': '#BF360C',
+            '--code-bg': '#FFE0B2',
+            '--code-color': '#3E2723',
+        }
+    },
+
+    // 15. Ocean - 海洋 (Ocean)
+    ocean: {
+        id: 'ocean',
+        name: 'Ocean',
+        fonts: ['M PLUS 1p'],
+        bg: '#E0F2F1', // Teal Light
+        text: '#004D40', // Teal Dark
+        accent: '#26A69A', // Teal
+        padding: 90,
+        radius: 0,
+        settings: {
+            '--font-heading': '"M PLUS 1p", sans-serif',
+            '--font-body': '"M PLUS 1p", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3em',
+            '--h1-weight': '700',
+            '--h2-size': '2em',
+            '--line-height': '1.8',
+            '--block-margin': '2.2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(38, 166, 154, 0.1)',
+            '--quote-color': '#00695C',
+            '--code-bg': '#B2DFDB',
+            '--code-color': '#004D40',
         }
     },
 
@@ -797,7 +794,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             const link = document.createElement('link');
             link.id = linkId;
             // Added: Cormorant Garamond, EB Garamond, Cinzel, Lora, Crimson Text
-            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Quicksand:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,600;0,800;1,400&family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Quicksand:wght@300;400;500;700&family=Kiwi+Maru:wght@300;400;500&family=Zen+Maru+Gothic:wght@300;400;500;700&family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@300;400;500;700;800&family=DotGothic16&family=Yomogi&family=M+PLUS+1p:wght@300;400;500;700&display=swap';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
         }
@@ -1026,6 +1023,17 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 }} />
             )}
 
+            {/* Swiss Grid (New) */}
+            {(currentThemeId === 'swiss_grid') && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `linear-gradient(${themeConfig.accent}15 1px, transparent 1px), linear-gradient(90deg, ${themeConfig.accent}15 1px, transparent 1px)`,
+                    backgroundSize: '20px 20px',
+                    pointerEvents: 'none'
+                }} />
+            )}
+
             {/* Cozy Noise (Theme 5) */}
             {currentThemeId === 'handwritten' && (
                 <div style={{
@@ -1037,47 +1045,61 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 }} />
             )}
 
-            {/* Library / Vintage dark texture overlay */}
-            {(currentThemeId === 'library' || currentThemeId === 'vintage') && (
+            {/* Sakura Petals */}
+            {currentThemeId === 'sakura' && (
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    opacity: 0.05,
-                    backgroundImage: `linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)`,
-                    backgroundSize: '4px 4px', // Subtle grain
+                    backgroundImage: `radial-gradient(#FFB7B2 2px, transparent 2px)`,
+                    backgroundSize: '30px 30px',
+                    opacity: 0.3,
                     pointerEvents: 'none'
                 }} />
             )}
 
-            {/* Parchment / Etching paper grain */}
-            {(currentThemeId === 'parchment' || currentThemeId === 'etching') && (
+            {/* Manga Halftone */}
+            {currentThemeId === 'manga' && (
                 <div style={{
                     position: 'absolute',
                     inset: 0,
+                    backgroundImage: `radial-gradient(#000000 1px, transparent 1px)`,
+                    backgroundSize: '4px 4px',
                     opacity: 0.1,
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23f2e8c9' surfaceScale='2'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)'/%3E%3C/svg%3E")`,
-                    mixBlendMode: 'multiply',
                     pointerEvents: 'none'
                 }} />
             )}
 
-            {/* Rainy gradient overlay */}
-            {currentThemeId === 'rainy' && (
+            {/* Sky Gradient */}
+            {currentThemeId === 'sky' && (
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.2), transparent, rgba(0,0,0,0.05))',
+                    background: `linear-gradient(180deg, #E0F7FA 0%, #FFFFFF 100%)`,
                     pointerEvents: 'none'
                 }} />
             )}
 
-            {/* Academia Border */}
-            {currentThemeId === 'academia' && (
+            {/* Citypop Gradient */}
+            {currentThemeId === 'citypop' && (
                 <div style={{
                     position: 'absolute',
-                    inset: '20px',
-                    border: '1px solid rgba(27, 77, 62, 0.2)',
+                    inset: 0,
+                    background: `linear-gradient(45deg, #210046 0%, #300060 100%)`,
                     pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Ocean Waves Effect */}
+            {currentThemeId === 'ocean' && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '20%',
+                    background: `linear-gradient(0deg, #B2DFDB 0%, transparent 100%)`,
+                    pointerEvents: 'none',
+                    opacity: 0.5
                 }} />
             )}
 
