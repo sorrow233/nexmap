@@ -205,6 +205,19 @@ const getThemeBackground = (themeId) => {
         handwritten: '#FFFCF5',
 
         zen: '#F8F9FA',
+
+        // Swiss
+        swiss_classic: '#FFFFFF',
+        swiss_grid: '#F0F0F0',
+        swiss_dark: '#050505',
+        swiss_braun: '#EBEBEB',
+        swiss_intl: '#FDFDFD',
+        swiss_arch: '#D6D6D6',
+        swiss_type: '#FFFFFF',
+        swiss_poster: '#F25042',
+        swiss_mono: '#F5F7FA',
+        swiss_clean: '#FFFFFF',
+
         sakura: '#FFF0F5',
         matcha: '#F2F7F2',
         manga: '#FFFFFF',
