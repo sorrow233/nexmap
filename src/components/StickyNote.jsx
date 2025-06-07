@@ -72,15 +72,16 @@ const StickyNote = React.memo(function StickyNote({
 
         // logic:
         // 1. Split by newlines
-        // 2. Identify lines that act as headers (e.g. "01. Title")
-        // 3. Re-assign sequential numbers
+        // 2. Identify lines that act as TOP-LEVEL items (e.g. "01. Title" without indent)
+        // 3. Re-assign sequential numbers only to those top-level items
 
         const lines = content.split('\n');
         let counter = 1;
         const newLines = lines.map(line => {
-            const match = line.match(/^\d+\.\s+(.*)/);
+            // ONLY match lines starting directly with a number (no spaces before)
+            const match = line.match(/^(\d+)\.\s+(.*)/);
             if (match) {
-                const text = match[1];
+                const text = match[2];
                 const newNum = String(counter++).padStart(2, '0');
                 return `${newNum}. ${text}`;
             }
