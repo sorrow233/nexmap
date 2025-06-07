@@ -9,16 +9,13 @@ import ShareControls from './ShareControls';
 // Theme categories for the UI
 const THEME_CATEGORIES = [
     {
-        name: 'Selected Favorites',
+        name: 'Premium Themes',
         themes: [
             { id: 'editorial', label: 'Editorial', icon: Star, preview: 'bg-[#FDFBF7] border-slate-200', accent: 'bg-[#8B0000]' },
             { id: 'zen', label: 'Zen', icon: Feather, preview: 'bg-[#F8F9FA] border-gray-100', accent: 'bg-[#ADB5BD]' },
-            { id: 'swiss_grid', label: 'Grid Theory', icon: Grid, preview: 'bg-[#F0F0F0] border-blue-500', accent: 'bg-[#0055FF]' },
-            { id: 'rainy', label: 'Rainy', icon: Cloud, preview: 'bg-[#CFD8DC] border-[#455A64]', accent: 'bg-[#455A64]' },
             { id: 'academia', label: 'Academia', icon: School, preview: 'bg-[#F5F5F0] border-[#C5A059]', accent: 'bg-[#C5A059]' },
-            { id: 'coffee', label: 'Coffee', icon: Coffee, preview: 'bg-[#EBE5CE] border-[#795548]', accent: 'bg-[#795548]' },
             { id: 'ghibli', label: 'Ghibli', icon: Mountain, preview: 'bg-[#F5F5DC] border-[#8F9779]', accent: 'bg-[#8F9779]' },
-            { id: 'sunset', label: 'Sunset', icon: Sun, preview: 'bg-[#FFF3E0] border-[#FFAB91]', accent: 'bg-[#FFAB91]' },
+            { id: 'rainy', label: 'Rainy', icon: Cloud, preview: 'bg-[#CFD8DC] border-[#455A64]', accent: 'bg-[#455A64]' },
         ]
     }
 ];
@@ -53,12 +50,9 @@ const getThemeBackground = (themeId) => {
     const bgColors = {
         editorial: '#FDFBF7',
         zen: '#F8F9FA',
-        swiss_grid: '#F0F0F0',
-        rainy: '#CFD8DC',
         academia: '#F5F5F0',
-        coffee: '#EBE5CE',
         ghibli: '#F5F5DC',
-        sunset: '#FFF3E0',
+        rainy: '#CFD8DC',
     };
     return bgColors[themeId] || '#ffffff';
 };
