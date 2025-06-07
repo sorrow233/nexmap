@@ -61,40 +61,77 @@ const ShareControls = ({
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-8 custom-scrollbar relative z-10">
 
                 {/* Theme Selection */}
-                <ControlSection title="Theme">
-                    <div className="grid grid-cols-2 gap-3">
-                        {themes.map(t => {
-                            const Icon = t.icon;
-                            const isActive = currentTheme === t.id;
-                            return (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setTheme(t.id)}
-                                    className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
-                                        ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
-                                        : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
-                                        }`}
-                                >
-                                    {/* Theme preview dot */}
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
-                                        <Icon size={14} />
-                                    </div>
+                <div className="space-y-8">
+                    {themes.categories ? (
+                        themes.categories.map((category, catIdx) => (
+                            <ControlSection key={catIdx} title={category.name}>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {category.themes.map(t => {
+                                        const Icon = t.icon;
+                                        const isActive = currentTheme === t.id;
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                onClick={() => setTheme(t.id)}
+                                                className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
+                                                    ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
+                                                    : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
+                                                    }`}
+                                            >
+                                                {/* Theme preview dot */}
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                    <Icon size={14} />
+                                                </div>
 
-                                    <div className="flex flex-col items-start z-10">
-                                        <span className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
-                                            {t.label}
-                                        </span>
-                                    </div>
+                                                <div className="flex flex-col items-start z-10">
+                                                    <span className={`text-[11px] font-bold leading-tight transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
+                                                        {t.label}
+                                                    </span>
+                                                </div>
 
-                                    {/* Active Indicator */}
-                                    {isActive && (
-                                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </ControlSection>
+                                                {/* Active Indicator */}
+                                                {isActive && (
+                                                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </ControlSection>
+                        ))
+                    ) : (
+                        <ControlSection title="Theme">
+                            <div className="grid grid-cols-2 gap-3">
+                                {themes.map(t => {
+                                    const Icon = t.icon;
+                                    const isActive = currentTheme === t.id;
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => setTheme(t.id)}
+                                            className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
+                                                ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
+                                                : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
+                                                }`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                <Icon size={14} />
+                                            </div>
+                                            <div className="flex flex-col items-start z-10">
+                                                <span className={`text-[11px] font-bold leading-tight transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
+                                                    {t.label}
+                                                </span>
+                                            </div>
+                                            {isActive && (
+                                                <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </ControlSection>
+                    )}
+                </div>
 
                 {/* Layout Selection */}
                 <ControlSection title="Layout">
