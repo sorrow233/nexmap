@@ -211,7 +211,7 @@ class AIManager {
                     providerId: config.id,
                     signal, // Need to pass signal to lower layer!
                     temperature,
-                    ...task.payload.options // Pass other options like enforceSearch
+                    ...task.payload.options // Pass other options
                 }
             );
             return fullText;

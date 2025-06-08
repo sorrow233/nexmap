@@ -106,7 +106,7 @@ export function useAISprouting() {
                             payload: {
                                 messages: [{
                                     role: 'user',
-                                    content: `[System: You are an expert brainstorming partner. Be direct, conversational, and avoid AI-isms. Do not use phrases like "Here are some ideas" or bullet points unless necessary. Write like a knowledgeable human.]\n\n${question}`
+                                    content: question
                                 }],
                                 model: chatModel,
                                 config: activeConfig
