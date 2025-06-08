@@ -263,12 +263,17 @@ export const createAISlice = (set, get) => {
         },
 
         handleRegenerate: async () => {
-            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate } = get();
+            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate, getActiveConfig, activeProviderId } = get();
             // Filter out cards that don't have messages (like sticky notes)
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
 
-            // Reset assistant messages first
+            // Get current active config to use for regeneration
+            const activeConfig = getActiveConfig();
+            const currentModel = activeConfig?.model;
+            const currentProviderId = activeProviderId;
+
+            // Reset assistant messages first AND update to current model
             set(state => ({
                 cards: state.cards.map(c => {
                     if (selectedIds.indexOf(c.id) !== -1) {
@@ -277,7 +282,16 @@ export const createAISlice = (set, get) => {
                             newMsgs.pop();
                         }
                         newMsgs.push({ role: 'assistant', content: '' });
-                        return { ...c, data: { ...c.data, messages: newMsgs } };
+                        // Update card to use current active model and provider
+                        return {
+                            ...c,
+                            data: {
+                                ...c.data,
+                                messages: newMsgs,
+                                model: currentModel,       // Use current active model
+                                providerId: currentProviderId  // Use current active provider
+                            }
+                        };
                     }
                     return c;
                 }),
