@@ -1208,23 +1208,18 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 font-weight: bold;
             }
              .markdown-body ol {
-                counter-reset: item;
-                list-style: none;
+                list-style: decimal;
+                padding-left: 1.5em;
             }
             .markdown-body ol li {
                 position: relative;
-                padding-left: 0.5em;
+                padding-left: 0.3em;
                 margin-bottom: 0.5em;
             }
-            .markdown-body ol li::before {
-                content: counter(item) ".";
-                counter-increment: item;
-                position: absolute;
-                left: -1.2em;
+            .markdown-body ol li::marker {
                 color: ${themeConfig.accent};
                 font-weight: bold;
                 font-family: ${s['--font-code']};
-                font-variant-numeric: tabular-nums;
             }
 
             /* Bold & Highlights */
