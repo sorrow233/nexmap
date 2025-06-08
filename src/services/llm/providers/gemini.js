@@ -166,7 +166,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 0; // No retries, fail fast
+        let retries = 2; // Retry up to 2 times for transient errors
         let delay = 1000;
 
         while (retries >= 0) {
@@ -240,7 +240,9 @@ export class GeminiProvider extends LLMProvider {
 
                                 // CRITICAL: Check for API errors that might be returned as JSON (even with 200 OK)
                                 if (data.error) {
-                                    throw new Error(data.error.message || JSON.stringify(data.error));
+                                    const errorMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+                                    console.error('[Gemini] Stream API Error:', errorMsg);
+                                    throw new Error(errorMsg);
                                 }
 
                                 const candidate = data.candidates?.[0];
