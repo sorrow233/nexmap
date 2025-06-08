@@ -66,6 +66,16 @@ body,
         background-color: rgba(148, 163, 184, 0.4);
     }
 
+    /* iPad/iOS Touch Optimizations */
+    .ios-scroll-fix {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    .touch-pan-y {
+        touch-action: pan-y !important;
+    }
+
     /* Dark mode specific scrollbar override for better visibility */
     .dark .custom-scrollbar::-webkit-scrollbar-thumb {
         background-color: rgba(255, 255, 255, 0.15);
