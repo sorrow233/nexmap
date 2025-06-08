@@ -195,12 +195,9 @@ export const createAISlice = (set, get) => {
                     updateCardContent(cardId, `\n\n⚠️ **免费试用积分已用完**\n\n您的100积分免费额度已使用完毕。要继续使用AI功能，请在设置中配置您自己的API Key。\n\n👉 点击右上角设置按钮，添加您的GMI API Key。`);
                     // Reload credits state
                     get().loadSystemCredits?.();
-                } else if (e.message && e.message.includes('Upstream service unavailable')) {
-                    // Upstream service temporarily unavailable
-                    updateCardContent(cardId, `\n\n⚠️ **服务暂时不可用**\n\nAI服务暂时无法响应，这通常是临时性问题。\n\n💡 **建议**: \n- 请稍等片刻后重试\n- 如果问题持续，请检查您的网络连接\n- 或尝试切换到其他AI模型`);
                 } else {
                     // Append error message to the card content so user sees it
-                    updateCardContent(cardId, `\n\n⚠️ **生成失败**\n\n错误信息: ${e.message || '未知错误'}\n\n💡 如果问题持续出现，请检查您的API配置或稍后重试。`);
+                    updateCardContent(cardId, `\n\n[System Error: ${e.message || 'Generation failed'}]`);
                 }
             } finally {
                 setCardGenerating(cardId, false);
