@@ -74,7 +74,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 0; // No retries, fail fast
+        let retries = 1; // Retry once if needed
 
         while (retries >= 0) {
             try {
@@ -92,7 +92,20 @@ export class GeminiProvider extends LLMProvider {
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    const candidate = data.candidates?.[0];
+                    const content = candidate?.content?.parts?.[0]?.text || "";
+
+                    // Simple logic: If no search used (groundingMetadata missing) and it's the first attempt,
+                    // retry silently once. If second attempt also no search, just return it.
+                    const hasSearch = !!candidate?.groundingMetadata;
+                    if (!hasSearch && retries > 0) {
+                        console.warn('[Gemini] Response missing search grounding. Retrying once in background...');
+                        await new Promise(r => setTimeout(r, 1000));
+                        retries--;
+                        continue;
+                    }
+
+                    return content;
                 }
 
                 if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
