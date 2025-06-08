@@ -66,25 +66,19 @@ export async function generateFollowUpTopics(messages, config, model = null, opt
 
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `Based on the conversation history below, predict exactly 5 questions that a real user would naturally ask next as they explore this topic further.
-
-CONVERSATION HISTORY:
+        // Create a focused system prompt that forces search
+        const finalPrompt = `CONTEXT:
 ${contextText}
 
-INSTRUCTIONS:
-1. **Language**: Generate questions in the SAME LANGUAGE as the conversation above (Chinese/English/etc).
-2. **Think like a curious user**: What would YOU personally want to know next if you were having this conversation?
-3. **Natural progression**: Questions should feel like the natural next step in the conversation, not random tangents.
-4. **Variety**: Mix different types of natural questions:
-   - Asking for clarification on something just mentioned
-   - Requesting practical examples or how-to advice
-   - Digging deeper into an interesting point
-   - Asking "what if" or hypothetical scenarios
-   - Seeking personal experience or opinions
-5. **Conversational tone**: Sound like a real person chatting, not an academic interviewer.
+TASK: Based on the conversation history above, predict exactly 5 follow-up questions a user would naturally ask next.
 
+CRITICAL INSTRUCTION:
+You MUST FIRST use the 'google_search' tool to find the most recent updates, trends, or related discussions about the topics mentioned in the conversation.
+Do NOT just hallucinate questions. Base the questions on REAL, CURRENT trends or deeper technical details found via search.
+
+OUTPUT FORMAT:
 Return ONLY a valid JSON array with exactly 5 question strings.
-Example format: ["具体怎么做？", "有没有例子？", "如果...会怎样？", "你觉得呢？", "还有其他方法吗？"]`;
+Example: ["How does this compare to X?", "What is the pricing?", ...]`;
 
         // console.log('[Sprout Debug] Sending prompt length:', finalPrompt.length);
 
@@ -92,7 +86,7 @@ Example format: ["具体怎么做？", "有没有例子？", "如果...会怎样
             [{ role: 'user', content: finalPrompt }],
             config,
             model,
-            options
+            { ...options, enforceSearch: true } // <-- Enforce Search for Sprout
         );
         // console.log('[Sprout Debug] Raw AI response:', response);
 
