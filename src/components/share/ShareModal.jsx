@@ -4,8 +4,8 @@ import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather, C
 import ShareableContent from './ShareableContent';
 import SharePreview from './SharePreview';
 import ShareControls from './ShareControls';
+import { getThemeBackground } from './themeConfigs';
 
-// Theme configurations
 // Theme categories for the UI
 const THEME_CATEGORIES = [
     {
@@ -45,17 +45,8 @@ const FORMATS = [
     { id: 'png', label: 'PNG', mime: 'image/png', ext: 'png' },
 ];
 
-// Get background color for html2canvas based on theme
-const getThemeBackground = (themeId) => {
-    const bgColors = {
-        editorial: '#FDFBF7',
-        zen: '#F8F9FA',
-        academia: '#F5F5F0',
-        ghibli: '#F5F5DC',
-        rainy: '#CFD8DC',
-    };
-    return bgColors[themeId] || '#ffffff';
-};
+// getThemeBackground is now imported from themeConfigs.js
+
 
 export default function ShareModal({ isOpen, onClose, content }) {
     const [theme, setTheme] = useState('editorial');
