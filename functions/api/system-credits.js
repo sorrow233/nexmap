@@ -10,13 +10,14 @@
  */
 
 // Constants
-const SYSTEM_MODEL = 'gemini-3-flash-preview';
+const SYSTEM_MODEL = 'deepseek-ai/DeepSeek-V3.2';
 const SYSTEM_BASE_URL = 'https://api.gmi-serving.com/v1';
 
 // Pricing (per million tokens, in credits where 100 credits = $1)
+// DeepSeek-V3.2 pricing: 60% of original Gemini Flash pricing
 const PRICING = {
-    INPUT_PER_MILLION: 0.40,   // $0.40/M = 0.40 credits/M
-    OUTPUT_PER_MILLION: 2.40,  // $2.40/M = 2.40 credits/M
+    INPUT_PER_MILLION: 0.24,   // 60% of $0.40/M = 0.24 credits/M
+    OUTPUT_PER_MILLION: 1.44,  // 60% of $2.40/M = 1.44 credits/M
 };
 
 const INITIAL_CREDITS = 100; // New users get 100 credits ($1 worth)
