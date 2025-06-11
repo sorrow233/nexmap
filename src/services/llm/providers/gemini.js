@@ -70,6 +70,9 @@ export class GeminiProvider extends LLMProvider {
             }
         };
 
+        console.log('[Gemini] Generation Config:', JSON.stringify(requestBody.generationConfig, null, 2));
+
+
         if (systemInstruction) {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
@@ -151,6 +154,9 @@ export class GeminiProvider extends LLMProvider {
                 mediaResolution: options.mediaResolution || "media_resolution_high"
             }
         };
+
+        console.log('[Gemini] Stream Config:', JSON.stringify(requestBody.generationConfig, null, 2));
+
 
         if (systemInstruction) {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
