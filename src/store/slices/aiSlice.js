@@ -147,8 +147,26 @@ export const createAISlice = (set, get) => {
                     }
                 }
 
+                // Explicitly inject time and basic system context
+                const currentTime = new Date().toLocaleString('zh-CN', {
+                    timeZone: 'Asia/Tokyo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                    weekday: 'long'
+                });
 
-                const fullMessages = [...contextMessages, ...messages];
+                const timeSystemMsg = {
+                    role: 'system',
+                    content: `Current Time: ${currentTime} (Japan Standard Time, UTC+9)
+Always use this "Current Time" as the reference for any time-based questions (like "now", "today", "yesterday").`
+                };
+
+                const fullMessages = [timeSystemMsg, ...contextMessages, ...messages];
                 const card = cards.find(c => c.id === cardId);
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
