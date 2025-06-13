@@ -116,7 +116,9 @@ function AppContent() {
         navigate(`/board/${newBoard.id}`);
 
         if (initialPrompt || initialImages.length > 0) {
-            setTimeout(() => createCardWithText(initialPrompt, initialImages), 100);
+            // Wait for navigation to complete and board to load before creating card
+            // The board loading effect runs async after navigation, so we need to wait longer
+            setTimeout(() => createCardWithText(initialPrompt, initialImages), 600);
         }
     };
 
