@@ -243,6 +243,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         const userMsg = { role: 'user', content: userContent };
         const assistantMsg = { role: 'assistant', content: '' };
 
+        // Calculate target message index BEFORE adding new messages
+        // The new assistant message will be at index: currentLength + 1 (after userMsg)
+        const currentMessagesLength = card.data.messages?.length || 0;
+        const targetMessageIndex = currentMessagesLength + 1; // +1 because userMsg is added first
+
         // Optimistically update the card's messages
         updateCardFull(cardId, (currentData) => ({
             ...currentData,
@@ -253,17 +258,17 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         const history = [...(card.data.messages || []), userMsg];
 
         // Call handleChatGenerate with the proper signature
-        console.log('[DEBUG handleChatModalGenerate] Calling handleChatGenerate with history length:', history.length);
+        console.log('[DEBUG handleChatModalGenerate] Calling handleChatGenerate with history length:', history.length, 'targetIndex:', targetMessageIndex);
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
-                console.log('[DEBUG handleChatModalGenerate] Received chunk:', chunk.substring(0, 20));
-                updateCardContent(cardId, chunk);
+                // Pass the target message index to precisely target the correct assistant message
+                updateCardContent(cardId, chunk, targetMessageIndex);
             });
             console.log('[DEBUG handleChatModalGenerate] Generation completed');
         } catch (error) {
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
             // Optionally update card with error if handleChatGenerate re-throws (which it doesn't currently, but good for safety)
-            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`);
+            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, targetMessageIndex);
         }
     };
 
