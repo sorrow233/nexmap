@@ -216,11 +216,11 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                     onClick={handleMessageClick}
                 >
                     {isUser ? (
-                        <div className="font-sans">
+                        <div className="font-sans break-words" style={{ overflowWrap: 'anywhere' }}>
                             {/* 用户消息折叠功能 */}
                             {textContent.length > USER_MSG_MAX_LENGTH ? (
                                 <>
-                                    <div className="whitespace-pre-wrap">
+                                    <div className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
                                         {isExpanded ? textContent : textContent.slice(0, USER_MSG_MAX_LENGTH) + '...'}
                                     </div>
                                     <button
@@ -244,13 +244,14 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                                     </button>
                                 </>
                             ) : (
-                                <div className="whitespace-pre-wrap">{textContent}</div>
+                                <div className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{textContent}</div>
                             )}
                         </div>
                     ) : (
                         <div
                             dangerouslySetInnerHTML={{ __html: renderedHtml }}
-                            className="font-sans"
+                            className="font-sans break-words"
+                            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                         />
                     )}
                 </div>

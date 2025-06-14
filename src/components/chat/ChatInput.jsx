@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Send, Image as ImageIcon } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Square } from 'lucide-react';
 
 export default function ChatInput({
     input,
@@ -11,6 +11,7 @@ export default function ChatInput({
     removeImage,
     fileInputRef,
     isStreaming,
+    onStop,
     placeholder
 }) {
     return (
@@ -56,13 +57,23 @@ export default function ChatInput({
                         >
                             <ImageIcon size={22} />
                         </button>
-                        <button
-                            onClick={handleSend}
-                            disabled={isStreaming || (!input.trim() && images.length === 0)}
-                            className="w-14 h-14 bg-brand-600 text-white rounded-2xl shadow-xl shadow-brand-500/20 hover:bg-brand-500 hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-30 disabled:scale-100 transition-all flex items-center justify-center shrink-0"
-                        >
-                            <Send size={24} />
-                        </button>
+                        {isStreaming ? (
+                            <button
+                                onClick={onStop}
+                                className="w-14 h-14 bg-red-500 text-white rounded-2xl shadow-xl shadow-red-500/20 hover:bg-red-400 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0 animate-pulse"
+                                title="停止生成"
+                            >
+                                <Square size={20} fill="currentColor" />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSend}
+                                disabled={!input.trim() && images.length === 0}
+                                className="w-14 h-14 bg-brand-600 text-white rounded-2xl shadow-xl shadow-brand-500/20 hover:bg-brand-500 hover:scale-105 active:scale-95 disabled:grayscale disabled:opacity-30 disabled:scale-100 transition-all flex items-center justify-center shrink-0"
+                            >
+                                <Send size={24} />
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
