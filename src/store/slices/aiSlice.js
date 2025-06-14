@@ -4,7 +4,6 @@ import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import favoritesService from '../../services/favoritesService';
-import { getSystemPrompt, getSearchReinforcement } from '../../services/ai/promptUtils';
 
 export const createAISlice = (set, get) => {
     // Throttling buffer for AI streaming
@@ -110,11 +109,8 @@ export const createAISlice = (set, get) => {
                 const visited = getConnectedGraph(cardId, connections || []);
                 const neighborIds = Array.from(visited).filter(id => id !== cardId);
 
-                let contextMessages = [];
-
-                // Unified Time Injection (Absolute Truth Reference)
-                const timeSystemMsg = getSystemPrompt();
-
+                // Context Walking: Add neighbor context if any
+                const contextMessages = [];
                 if (neighborIds.length > 0) {
                     const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
                     const contextText = neighbors.map(c =>
@@ -133,30 +129,9 @@ export const createAISlice = (set, get) => {
                     }
                 }
 
-                const rawMessages = [timeSystemMsg, ...contextMessages, ...messages];
-
-                // Reinforce search mandate in the last user message
-                const fullMessages = rawMessages.map((msg, idx) => {
-                    if (idx === rawMessages.length - 1 && msg.role === 'user') {
-                        const reinforcement = getSearchReinforcement();
-                        if (typeof msg.content === 'string') {
-                            return { ...msg, content: msg.content + reinforcement };
-                        } else if (Array.isArray(msg.content)) {
-                            const newContent = [...msg.content];
-                            const textPartIdx = newContent.findIndex(p => p.type === 'text');
-                            if (textPartIdx !== -1) {
-                                newContent[textPartIdx] = {
-                                    ...newContent[textPartIdx],
-                                    text: newContent[textPartIdx].text + reinforcement
-                                };
-                            } else {
-                                newContent.push({ type: 'text', text: reinforcement });
-                            }
-                            return { ...msg, content: newContent };
-                        }
-                    }
-                    return msg;
-                });
+                // Messages are now [contextMessages, ...messages]
+                // Time injection will be handled by AIManager globally
+                const fullMessages = [...contextMessages, ...messages];
                 const card = cards.find(c => c.id === cardId);
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
