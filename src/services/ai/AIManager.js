@@ -47,25 +47,26 @@ class AIManager {
      * @returns {PromiseString} A promise that resolves with the full generated text/result
      */
     requestTask({ type, priority = PRIORITY.LOW, payload, tags = [], onProgress }) {
-        // 1. Deduplication: Check if an identical task is already active or queued
-        // Use tags + type for matching instead of expensive JSON.stringify
-        const tagsKey = tags.sort().join('|');
-        const identicalTask = [...this.activeTasks.values(), ...this.queue].find(item => {
-            const t = item.task || item;
-            if (t.type !== type) return false;
-            const existingTagsKey = (t.tags || []).sort().join('|');
-            return existingTagsKey === tagsKey;
-        });
+        // 1. Deduplication: SKIP for 'chat' type
+        // Chat messages should NEVER be deduplicated - each message is a unique continuation
+        // Only deduplicate for non-chat types (e.g., image generation)
+        if (type !== 'chat') {
+            const tagsKey = tags.sort().join('|');
+            const identicalTask = [...this.activeTasks.values(), ...this.queue].find(item => {
+                const t = item.task || item;
+                if (t.type !== type) return false;
+                const existingTagsKey = (t.tags || []).sort().join('|');
+                return existingTagsKey === tagsKey;
+            });
 
-        if (identicalTask) {
-            console.log(`[AIManager] Deduplicated task request (Tags: ${tags})`);
-            const t = identicalTask.task || identicalTask;
-            // If the task already has a promise attached, return it.
-            if (t.promise) {
-                return t.promise;
+            if (identicalTask) {
+                console.log(`[AIManager] Deduplicated task request (Tags: ${tags})`);
+                const t = identicalTask.task || identicalTask;
+                if (t.promise) {
+                    return t.promise;
+                }
+                return Promise.resolve(null);
             }
-            // Fallback (shouldn't happen if we attach promise properly)
-            return Promise.resolve(null);
         }
 
         // 2. Conflict Handling (No longer aggressive cancellation)
