@@ -60,50 +60,64 @@ import { Share2, Star } from 'lucide-react';
  * Custom hook to smoothly drip characters for a "water-like" streaming effect.
  * @param {string} targetContent - The full content received so far.
  * @param {boolean} isStreaming - Whether the message is still being generated.
- * @param {number} dripSpeed - Speed in chars per update (default: 2-3).
+ * @param {number} dripSpeed - Speed in chars per update (default: 1).
  */
-const useSmoothDrip = (targetContent, isStreaming, dripSpeed = 2) => {
-    const [displayedContent, setDisplayedContent] = React.useState('');
-    const lastContentRef = React.useRef('');
-    const timerRef = React.useRef(null);
+const useSmoothDrip = (targetContent, isStreaming, dripSpeed = 1) => {
+    // Initialize: If streaming, start empty. If loading history, show full.
+    const [displayedContent, setDisplayedContent] = React.useState(() => {
+        return isStreaming ? '' : targetContent;
+    });
+
+    // Track if this hook specifically has been part of a live stream session
+    // This prevents history loads from animating, but ensures live chats animate fully
+    const isLiveRef = React.useRef(isStreaming);
 
     React.useEffect(() => {
-        // If not streaming anymore, we can just catch up quickly or instantly
-        if (!isStreaming) {
+        if (isStreaming) {
+            isLiveRef.current = true;
+        }
+    }, [isStreaming]);
+
+    React.useEffect(() => {
+        // If this is a static message (history load) and was never live, just sync.
+        if (!isStreaming && !isLiveRef.current) {
             setDisplayedContent(targetContent);
-            lastContentRef.current = targetContent;
-            if (timerRef.current) clearInterval(timerRef.current);
             return;
         }
 
-        // Avoid unnecessary restarts if targetContent hasn't changed
-        // but we still need the timer running if displayedContent < targetContent
-    }, [targetContent, isStreaming]);
-
-    React.useEffect(() => {
-        if (!isStreaming) return;
-
-        if (timerRef.current) clearInterval(timerRef.current);
-
-        timerRef.current = setInterval(() => {
-            setDisplayedContent(prev => {
-                if (prev.length >= targetContent.length) {
-                    clearInterval(timerRef.current);
-                    return prev;
+        const intervalId = setInterval(() => {
+            setDisplayedContent(current => {
+                // If we've caught up, stop updating
+                if (current.length >= targetContent.length) {
+                    return targetContent;
                 }
 
-                // Calculate dynamic speed: 
-                // If we are far behind, go faster. If close, go steady.
-                const remaining = targetContent.length - prev.length;
-                const incrementalSpeed = remaining > 100 ? Math.ceil(remaining / 20) : dripSpeed;
+                // If target shrunk (e.g. error/retry), sync immediately
+                if (current.length > targetContent.length) {
+                    return targetContent;
+                }
 
-                return targetContent.substring(0, prev.length + incrementalSpeed);
+                const remaining = targetContent.length - current.length;
+
+                // smooth acceleration
+                // Base speed is dripSpeed.
+                // If we fall behind, accelerate to catch up, but keep it "flowy".
+                let step = dripSpeed;
+
+                if (remaining > 200) step = 15;      // Way behind
+                else if (remaining > 100) step = 8;  // Medium behind
+                else if (remaining > 50) step = 5;   // Little behind
+                else if (remaining > 20) step = 3;   // Close
+                else step = 2;                       // Finishing touches (standard flow)
+
+                // If the stream is effectively done (targetContent is stable/final), 
+                // we still use the step logic to "finish" the typing gracefully.
+
+                return targetContent.substring(0, current.length + step);
             });
-        }, 16); // ~60fps dripping
+        }, 20); // 50fps update rate for smoothness
 
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
+        return () => clearInterval(intervalId);
     }, [targetContent, isStreaming, dripSpeed]);
 
     return displayedContent;
