@@ -56,6 +56,70 @@ const MessageImage = ({ img }) => {
 
 import { Share2, Star } from 'lucide-react';
 
+/**
+ * Physics-based "Fluid Typewriter" hook.
+ * Instead of linear increments, this uses a spring-like ease-out function:
+ * Speed is proportional to the distance left.
+ * This creates a "pushing" effect where large chunks accelerate the text,
+ * then it naturally slows down as it settles, feeling like water flowing.
+ */
+const useFluidTypewriter = (targetContent, isStreaming) => {
+    const [displayedContent, setDisplayedContent] = React.useState(() => {
+        return isStreaming ? '' : targetContent;
+    });
+
+    // Use a ref to track the float value of length for smoother math
+    // (We only render integer substrings, but math needs floats)
+    const currentLength = React.useRef(isStreaming ? 0 : targetContent.length);
+    const frameRef = React.useRef();
+
+    React.useEffect(() => {
+        if (!isStreaming) {
+            setDisplayedContent(targetContent);
+            currentLength.current = targetContent.length;
+            if (frameRef.current) cancelAnimationFrame(frameRef.current);
+            return;
+        }
+
+        const animate = () => {
+            const targetLen = targetContent.length;
+            const currentLen = currentLength.current;
+            const diff = targetLen - currentLen;
+
+            if (diff <= 0.5) {
+                // Almost there, snap to finish if very close
+                if (currentLen !== targetLen) {
+                    currentLength.current = targetLen;
+                    setDisplayedContent(targetContent);
+                }
+                frameRef.current = requestAnimationFrame(animate);
+                return;
+            }
+
+            // Physics: Velocity depends on distance.
+            // Factor 0.15 = "Spring tension". Higher = snappier, Lower = more laggy/flowy.
+            // + 0.5 ensures minimum speed so it doesn't stall indefinitely at the end.
+            const velocity = (diff * 0.15) + 0.5;
+
+            currentLength.current += velocity;
+
+            // Limit to target
+            if (currentLength.current > targetLen) currentLength.current = targetLen;
+
+            setDisplayedContent(targetContent.substring(0, Math.floor(currentLength.current)));
+            frameRef.current = requestAnimationFrame(animate);
+        };
+
+        frameRef.current = requestAnimationFrame(animate);
+
+        return () => {
+            if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        };
+    }, [targetContent, isStreaming]);
+
+    return displayedContent;
+};
+
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
     const { cards, focusOnCard } = useStore();
@@ -72,9 +136,14 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         textContent = message.content || "";
     }
 
-    const { thoughts, content } = (isUser || !textContent)
-        ? { thoughts: null, content: textContent }
-        : parseModelOutput(textContent);
+    // Apply fluid typewriter effect for assistant messages while streaming
+    // User messages (history or self) are instant.
+    const fluidText = useFluidTypewriter(textContent, !isUser && isStreaming);
+    const finalDisplayContent = (!isUser && isStreaming) ? fluidText : textContent;
+
+    const { thoughts, content } = (isUser || !finalDisplayContent)
+        ? { thoughts: null, content: finalDisplayContent }
+        : parseModelOutput(finalDisplayContent);
 
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
