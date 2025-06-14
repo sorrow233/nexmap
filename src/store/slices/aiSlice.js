@@ -247,7 +247,7 @@ export const createAISlice = (set, get) => {
                             return c;
                         })
                     }));
-                }, 100); // 100ms throttle = 10fps max updates
+                }, 32); // ~30fps throttle for smoother dripping updates
             }
         },
 

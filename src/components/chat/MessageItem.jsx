@@ -56,6 +56,59 @@ const MessageImage = ({ img }) => {
 
 import { Share2, Star } from 'lucide-react';
 
+/**
+ * Custom hook to smoothly drip characters for a "water-like" streaming effect.
+ * @param {string} targetContent - The full content received so far.
+ * @param {boolean} isStreaming - Whether the message is still being generated.
+ * @param {number} dripSpeed - Speed in chars per update (default: 2-3).
+ */
+const useSmoothDrip = (targetContent, isStreaming, dripSpeed = 2) => {
+    const [displayedContent, setDisplayedContent] = React.useState('');
+    const lastContentRef = React.useRef('');
+    const timerRef = React.useRef(null);
+
+    React.useEffect(() => {
+        // If not streaming anymore, we can just catch up quickly or instantly
+        if (!isStreaming) {
+            setDisplayedContent(targetContent);
+            lastContentRef.current = targetContent;
+            if (timerRef.current) clearInterval(timerRef.current);
+            return;
+        }
+
+        // Avoid unnecessary restarts if targetContent hasn't changed
+        // but we still need the timer running if displayedContent < targetContent
+    }, [targetContent, isStreaming]);
+
+    React.useEffect(() => {
+        if (!isStreaming) return;
+
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        timerRef.current = setInterval(() => {
+            setDisplayedContent(prev => {
+                if (prev.length >= targetContent.length) {
+                    clearInterval(timerRef.current);
+                    return prev;
+                }
+
+                // Calculate dynamic speed: 
+                // If we are far behind, go faster. If close, go steady.
+                const remaining = targetContent.length - prev.length;
+                const incrementalSpeed = remaining > 100 ? Math.ceil(remaining / 20) : dripSpeed;
+
+                return targetContent.substring(0, prev.length + incrementalSpeed);
+            });
+        }, 16); // ~60fps dripping
+
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [targetContent, isStreaming, dripSpeed]);
+
+    return displayedContent;
+};
+
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
     const { cards, focusOnCard } = useStore();
@@ -72,9 +125,13 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         textContent = message.content || "";
     }
 
-    const { thoughts, content } = (isUser || !textContent)
-        ? { thoughts: null, content: textContent }
-        : parseModelOutput(textContent);
+    // Apply smooth drip for assistant messages while streaming
+    const smoothText = useSmoothDrip(textContent, !isUser && isStreaming);
+    const finalDisplayContent = (!isUser && isStreaming) ? smoothText : textContent;
+
+    const { thoughts, content } = (isUser || !finalDisplayContent)
+        ? { thoughts: null, content: finalDisplayContent }
+        : parseModelOutput(finalDisplayContent);
 
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
