@@ -4,6 +4,7 @@ import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import favoritesService from '../../services/favoritesService';
+import { getSystemPrompt, getSearchReinforcement } from '../../services/ai/promptUtils';
 
 export const createAISlice = (set, get) => {
     // Throttling buffer for AI streaming
@@ -112,27 +113,7 @@ export const createAISlice = (set, get) => {
                 let contextMessages = [];
 
                 // Unified Time Injection (Absolute Truth Reference)
-                const now = new Date();
-                const isoTime = now.toISOString();
-                const localTime = new Intl.DateTimeFormat('zh-CN', {
-                    timeZone: 'Asia/Tokyo',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false,
-                    weekday: 'long'
-                }).format(now);
-
-                const timeSystemMsg = {
-                    role: 'system',
-                    content: `[Current Time Reference]
-ISO 8601: ${isoTime}
-Local Time: ${localTime} (Japan Standard Time, UTC+9)
-Always treat this time as the absolute current reference for all time-based information.`
-                };
+                const timeSystemMsg = getSystemPrompt();
 
                 if (neighborIds.length > 0) {
                     const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
@@ -152,7 +133,30 @@ Always treat this time as the absolute current reference for all time-based info
                     }
                 }
 
-                const fullMessages = [timeSystemMsg, ...contextMessages, ...messages];
+                const rawMessages = [timeSystemMsg, ...contextMessages, ...messages];
+
+                // Reinforce search mandate in the last user message
+                const fullMessages = rawMessages.map((msg, idx) => {
+                    if (idx === rawMessages.length - 1 && msg.role === 'user') {
+                        const reinforcement = getSearchReinforcement();
+                        if (typeof msg.content === 'string') {
+                            return { ...msg, content: msg.content + reinforcement };
+                        } else if (Array.isArray(msg.content)) {
+                            const newContent = [...msg.content];
+                            const textPartIdx = newContent.findIndex(p => p.type === 'text');
+                            if (textPartIdx !== -1) {
+                                newContent[textPartIdx] = {
+                                    ...newContent[textPartIdx],
+                                    text: newContent[textPartIdx].text + reinforcement
+                                };
+                            } else {
+                                newContent.push({ type: 'text', text: reinforcement });
+                            }
+                            return { ...msg, content: newContent };
+                        }
+                    }
+                    return msg;
+                });
                 const card = cards.find(c => c.id === cardId);
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
