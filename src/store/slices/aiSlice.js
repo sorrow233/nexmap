@@ -194,34 +194,38 @@ export const createAISlice = (set, get) => {
             // 2. Schedule flush if not already scheduled
             if (!contentFlushTimer) {
                 contentFlushTimer = setTimeout(() => {
-                    // Snapshot and clear buffer immediately
-                    const updates = new Map(contentBuffer);
-                    contentBuffer.clear();
-                    contentFlushTimer = null;
+                    try {
+                        // Snapshot and clear buffer immediately
+                        const updates = new Map(contentBuffer);
+                        contentBuffer.clear();
+                        contentFlushTimer = null;
 
-                    // 3. Batch update
-                    set(state => ({
-                        cards: state.cards.map(c => {
-                            if (updates.has(c.id)) {
-                                const newContent = updates.get(c.id);
-                                const msgs = [...c.data.messages];
-                                const lastMsg = msgs[msgs.length - 1];
+                        // 3. Batch update
+                        set(state => ({
+                            cards: state.cards.map(c => {
+                                if (updates.has(c.id)) {
+                                    const newContent = updates.get(c.id);
+                                    const msgs = [...c.data.messages];
+                                    const lastMsg = msgs[msgs.length - 1];
 
-                                // Ensure last message exists and is assistant
-                                if (!lastMsg || lastMsg.role !== 'assistant') {
-                                    // If for some reason the structure is broken, try to recover
-                                    msgs.push({ role: 'assistant', content: newContent });
-                                } else {
-                                    msgs[msgs.length - 1] = {
-                                        ...lastMsg,
-                                        content: lastMsg.content + newContent
-                                    };
+                                    // Ensure last message exists and is assistant
+                                    if (!lastMsg || lastMsg.role !== 'assistant') {
+                                        // If for some reason the structure is broken, try to recover
+                                        msgs.push({ role: 'assistant', content: newContent });
+                                    } else {
+                                        msgs[msgs.length - 1] = {
+                                            ...lastMsg,
+                                            content: lastMsg.content + newContent
+                                        };
+                                    }
+                                    return { ...c, data: { ...c.data, messages: msgs } };
                                 }
-                                return { ...c, data: { ...c.data, messages: msgs } };
-                            }
-                            return c;
-                        })
-                    }));
+                                return c;
+                            })
+                        }));
+                    } catch (e) {
+                        console.error("[ContentSlice] Batched update failed", e);
+                    }
                 }, 20); // 20ms throttle for high-frequency fluid updates
             }
         },

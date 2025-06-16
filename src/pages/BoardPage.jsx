@@ -81,11 +81,17 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
-                const now = Date.now();
-                saveBoard(currentBoardId, { cards, connections, groups });
-                setLastSavedAt(now);
-                lastSavedState.current = currentState;
-                debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
+                try {
+                    const now = Date.now();
+                    saveBoard(currentBoardId, { cards, connections, groups });
+                    if (setLastSavedAt && typeof setLastSavedAt === 'function') {
+                        setLastSavedAt(now);
+                    }
+                    lastSavedState.current = currentState;
+                    debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
+                } catch (e) {
+                    console.error("[BoardPage] Autosave failed", e);
+                }
             }, 1000); // Slightly longer delay for local debounce
 
             let cloudTimeout;
