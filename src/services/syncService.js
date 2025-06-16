@@ -286,7 +286,7 @@ export const saveUserSettings = async (userId, settings) => {
     try {
         debugLog.auth('Saving user settings to cloud...', settings);
         const configRef = doc(db, 'users', userId, 'settings', 'config');
-        await setDoc(configRef, settings, { merge: true });
+        await setDoc(configRef, settings); // Overwrite cleanly to handle deletions
     } catch (e) {
         debugLog.error("Save settings failed", e);
     }

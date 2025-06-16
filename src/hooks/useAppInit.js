@@ -88,8 +88,7 @@ export function useAppInit() {
                         if (settings.providers) {
                             useStore.getState().setFullConfig({
                                 providers: settings.providers,
-                                activeId: settings.activeId || 'google',
-                                roles: settings.roles || { chat: '', analysis: '' }
+                                activeId: settings.activeId || 'google'
                             });
                         }
                         if (settings.s3Config) {
