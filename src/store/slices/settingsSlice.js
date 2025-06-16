@@ -1,4 +1,4 @@
-import { DEFAULT_PROVIDERS, DEFAULT_ROLES } from '../../services/llm/registry';
+import { DEFAULT_PROVIDERS } from '../../services/llm/registry';
 
 const CONFIG_KEY = 'mixboard_providers_v3';
 
@@ -11,7 +11,6 @@ const loadInitialSettings = () => {
             return {
                 providers: parsed.providers || DEFAULT_PROVIDERS,
                 activeId: parsed.activeId || 'google',
-                roles: parsed.roles || DEFAULT_ROLES
             };
         }
     } catch (e) {
@@ -20,7 +19,6 @@ const loadInitialSettings = () => {
     return {
         providers: DEFAULT_PROVIDERS,
         activeId: 'google',
-        roles: DEFAULT_ROLES
     };
 };
 
@@ -34,7 +32,6 @@ export const createSettingsSlice = (set, get) => ({
     // Data State
     providers: initialState.providers,
     activeId: initialState.activeId,
-    roles: initialState.roles,
 
     // Actions
     updateProviderConfig: (providerId, updates) => {
@@ -58,20 +55,13 @@ export const createSettingsSlice = (set, get) => ({
         });
     },
 
-    updateRoles: (newRoles) => {
-        set(state => {
-            const newState = { roles: newRoles };
-            localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
-            return newState;
-        });
-    },
+
 
     // Used by Cloud Sync
     setFullConfig: (config) => {
         const newState = {
             providers: config.providers || DEFAULT_PROVIDERS,
-            activeId: config.activeId || 'google',
-            roles: config.roles || DEFAULT_ROLES
+            activeId: config.activeId || 'google'
         };
         localStorage.setItem(CONFIG_KEY, JSON.stringify(newState));
         set(newState);
@@ -85,12 +75,13 @@ export const createSettingsSlice = (set, get) => ({
 
     getRoleModel: (role) => {
         const state = get();
-        // 1. Explicit role override
-        const explicit = state.roles?.[role];
-        if (explicit) return explicit;
-
-        // 2. Active provider default
         const activeConfig = state.providers[state.activeId];
-        return activeConfig?.model || DEFAULT_ROLES[role];
+
+        // 1. Check for specific role assignment in provider
+        const providerRole = activeConfig?.roles?.[role];
+        if (providerRole) return providerRole;
+
+        // 2. Fallback to main model for everything if not specified
+        return activeConfig?.model || 'google/gemini-3-pro-preview';
     }
 });

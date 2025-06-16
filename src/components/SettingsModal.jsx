@@ -17,7 +17,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     // LLM State
     const [providers, setProviders] = useState({});
     const [activeId, setActiveId] = useState('google');
-    const [roles, setRoles] = useState({ chat: '', analysis: '' });
 
     // Testing State
     const [testStatus, setTestStatus] = useState('idle');
@@ -44,7 +43,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         // Ensure we copy the state to local component state so editing doesn't affect store until saved
         setProviders(JSON.parse(JSON.stringify(state.providers))); // Deep copy to be safe
         setActiveId(state.activeId);
-        setRoles(state.roles ? { ...state.roles } : { chat: '', analysis: '' });
 
         const s3 = getS3Config();
         if (s3) setS3ConfigState(s3);
@@ -58,6 +56,38 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 [field]: value
             }
         }));
+    };
+
+    const handleAddProvider = () => {
+        const newId = `custom-${Date.now()}`;
+        setProviders(prev => ({
+            ...prev,
+            [newId]: {
+                id: newId,
+                name: 'New Provider',
+                baseUrl: 'https://api.openai.com/v1',
+                apiKey: '',
+                model: 'gpt-4o',
+                protocol: 'openai',
+                roles: { chat: '', analysis: '', image: '' }
+            }
+        }));
+        setActiveId(newId);
+    };
+
+    const handleRemoveProvider = (idToRemove) => {
+        const remainingIds = Object.keys(providers).filter(id => id !== idToRemove);
+        if (remainingIds.length === 0) return; // Prevent deleting last provider
+
+        if (activeId === idToRemove) {
+            setActiveId(remainingIds[0]);
+        }
+
+        setProviders(prev => {
+            const next = { ...prev };
+            delete next[idToRemove];
+            return next;
+        });
     };
 
     const handleTestConnection = async () => {
@@ -88,8 +118,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         // Save LLM Config to Store
         useStore.getState().setFullConfig({
             providers,
-            activeId,
-            roles
+            activeId
         });
 
         // Save S3 config
@@ -101,7 +130,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 await saveUserSettings(user.uid, {
                     providers,
                     activeId,
-                    roles,
                     s3Config
                 });
                 console.log("[Sync] User settings pushed to cloud");
@@ -178,8 +206,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     {/* LLM Tab */}
                     {activeTab === 'llm' && (
                         <SettingsLLMTab
+                            providers={providers}
+                            activeId={activeId}
+                            setActiveId={setActiveId}
                             currentProvider={currentProvider}
                             handleUpdateProvider={handleUpdateProvider}
+                            handleAddProvider={handleAddProvider}
+                            handleRemoveProvider={handleRemoveProvider}
                             handleTestConnection={handleTestConnection}
                             testStatus={testStatus}
                             testMessage={testMessage}
@@ -190,9 +223,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     {/* Model Roles Tab */}
                     {activeTab === 'roles' && (
                         <SettingsRolesTab
-                            roles={roles}
-                            setRoles={setRoles}
                             currentProvider={currentProvider}
+                            handleUpdateProvider={handleUpdateProvider}
                         />
                     )}
 

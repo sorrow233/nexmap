@@ -1,11 +1,22 @@
 import React from 'react';
+import { AlertCircle } from 'lucide-react';
 
-export default function SettingsRolesTab({ roles, setRoles, currentProvider }) {
+export default function SettingsRolesTab({ currentProvider, handleUpdateProvider }) {
+    const roles = currentProvider.roles || {};
+
+    const updateRole = (roleKey, value) => {
+        const newRoles = {
+            ...roles,
+            [roleKey]: value
+        };
+        handleUpdateProvider('roles', newRoles);
+    };
+
     return (
         <div className="space-y-6 animate-slide-up">
             <div className="p-4 bg-brand-50 dark:bg-brand-900/20 text-brand-800 dark:text-brand-200 rounded-xl text-sm border border-brand-100 dark:border-brand-900/30">
-                <p className="font-bold mb-1">🎯 Model Assignment</p>
-                <p>Assign specific models to different functions for optimal performance and cost.</p>
+                <p className="font-bold mb-1">🎯 Model Assignment for {currentProvider.name || 'this provider'}</p>
+                <p>Assign specific models to different functions. These settings are specific to <b>{currentProvider.name}</b>.</p>
             </div>
 
             <div className="space-y-4">
@@ -23,7 +34,7 @@ export default function SettingsRolesTab({ roles, setRoles, currentProvider }) {
                     <input
                         type="text"
                         value={roles.chat || ''}
-                        onChange={(e) => setRoles(prev => ({ ...prev, chat: e.target.value }))}
+                        onChange={(e) => updateRole('chat', e.target.value)}
                         placeholder={currentProvider.model || "google/gemini-3-pro-preview"}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                     />
@@ -43,7 +54,7 @@ export default function SettingsRolesTab({ roles, setRoles, currentProvider }) {
                     <input
                         type="text"
                         value={roles.analysis || ''}
-                        onChange={(e) => setRoles(prev => ({ ...prev, analysis: e.target.value }))}
+                        onChange={(e) => updateRole('analysis', e.target.value)}
                         placeholder={currentProvider.model || "google/gemini-3-flash-preview"}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                     />
@@ -63,7 +74,7 @@ export default function SettingsRolesTab({ roles, setRoles, currentProvider }) {
                     <input
                         type="text"
                         value={roles.image || ''}
-                        onChange={(e) => setRoles(prev => ({ ...prev, image: e.target.value }))}
+                        onChange={(e) => updateRole('image', e.target.value)}
                         placeholder={currentProvider.model || "google/gemini-3-pro-preview"}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                     />
@@ -71,8 +82,11 @@ export default function SettingsRolesTab({ roles, setRoles, currentProvider }) {
             </div>
 
             <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-slate-500">
-                <p className="font-bold mb-1">💡 Tip:</p>
-                <p>Use faster models (like flash) for chat, and smarter models (like pro) for analysis to balance cost and quality.</p>
+                <div className="flex gap-2 items-center mb-1 text-slate-600 dark:text-slate-300">
+                    <AlertCircle size={14} />
+                    <p className="font-bold">Important</p>
+                </div>
+                <p>These role assignments are saved <b>separately for each provider</b>. When you switch providers, the system will automatically switch to the roles configured for that provider.</p>
             </div>
         </div>
     );
