@@ -15,9 +15,51 @@ export const createAISlice = (set, get) => {
     return {
         generatingCardIds: new Set(),
 
+        // Persistent message queue: { cardId: [{ text, images }] }
+        // Survives ChatModal close, allowing messages to be sent after current stream completes
+        pendingMessages: {},
+
         setGeneratingCardIds: (valOrUpdater) => set((state) => ({
             generatingCardIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.generatingCardIds) : valOrUpdater
         })),
+
+        // Add a message to the pending queue for a card
+        addPendingMessage: (cardId, text, images = []) => set((state) => ({
+            pendingMessages: {
+                ...state.pendingMessages,
+                [cardId]: [...(state.pendingMessages[cardId] || []), { text, images }]
+            }
+        })),
+
+        // Get and remove the next pending message for a card
+        popPendingMessage: (cardId) => {
+            const state = get();
+            const queue = state.pendingMessages[cardId] || [];
+            if (queue.length === 0) return null;
+
+            const [next, ...rest] = queue;
+            set({
+                pendingMessages: {
+                    ...state.pendingMessages,
+                    [cardId]: rest
+                }
+            });
+            return next;
+        },
+
+        // Clear all pending messages for a card (e.g., when user clicks Stop)
+        clearPendingMessages: (cardId) => set((state) => ({
+            pendingMessages: {
+                ...state.pendingMessages,
+                [cardId]: []
+            }
+        })),
+
+        // Get pending message count for a card
+        getPendingCount: (cardId) => {
+            const state = get();
+            return (state.pendingMessages[cardId] || []).length;
+        },
 
         toggleFavorite: (cardId, messageIndex, messageContent) => {
             const { cards } = get();
