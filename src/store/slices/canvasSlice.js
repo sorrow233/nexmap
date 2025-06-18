@@ -106,6 +106,51 @@ export const createCanvasSlice = (set, get) => ({
         requestAnimationFrame(animate);
     },
 
+    // Find and focus on the nearest card to the current viewport center
+    focusOnNearestCard: () => {
+        const { cards, offset, scale, focusOnCard } = get();
+
+        if (!cards || cards.length === 0) {
+            debugLog.ui('focusOnNearestCard: No cards available');
+            return;
+        }
+
+        // Calculate current viewport center in canvas coordinates
+        const viewportCenterX = (window.innerWidth / 2 - offset.x) / scale;
+        const viewportCenterY = (window.innerHeight / 2 - offset.y) / scale;
+
+        debugLog.ui('focusOnNearestCard: viewport center', { viewportCenterX, viewportCenterY });
+
+        // Find the card closest to viewport center
+        let nearestCard = null;
+        let minDistance = Infinity;
+
+        const CARD_WIDTH = 320;
+        const CARD_HEIGHT = 300;
+
+        for (const card of cards) {
+            // Calculate card center
+            const cardCenterX = card.x + CARD_WIDTH / 2;
+            const cardCenterY = card.y + CARD_HEIGHT / 2;
+
+            // Calculate distance from viewport center to card center
+            const distance = Math.sqrt(
+                Math.pow(cardCenterX - viewportCenterX, 2) +
+                Math.pow(cardCenterY - viewportCenterY, 2)
+            );
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestCard = card;
+            }
+        }
+
+        if (nearestCard) {
+            debugLog.ui('focusOnNearestCard: Navigating to card', { id: nearestCard.id, distance: minDistance });
+            focusOnCard(nearestCard.id);
+        }
+    },
+
     toCanvasCoords: (viewX, viewY) => {
         const { offset, scale } = get();
         return {
