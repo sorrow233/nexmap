@@ -5,6 +5,7 @@ import { parseModelOutput } from '../../services/llm/parser';
 import { isSafari, isIOS } from '../../utils/browser';
 import { useStore } from '../../store/useStore';
 import useImageUpload from '../../hooks/useImageUpload';
+import { htmlToMarkdown } from '../../utils/htmlToMarkdown';
 
 import SproutModal from '../chat/SproutModal';
 import ChatInput from '../chat/ChatInput';
@@ -159,6 +160,7 @@ export default function ChatView({
                     if (container && container.contains(range.commonAncestorContainer)) {
                         setSelection({
                             text: sel.toString().trim(),
+                            html: range.cloneContents(), // Store fragment
                             rect: {
                                 top: rect.top,
                                 left: rect.left + rect.width / 2
@@ -217,19 +219,30 @@ export default function ChatView({
         if (!selection || !onCreateNote) return;
 
         const text = selection.text;
-        if (text) {
+
+        // Convert captured HTML to Markdown if available
+        let processedText = text;
+        if (selection.html) {
+            const div = document.createElement('div');
+            div.appendChild(selection.html.cloneNode(true));
+            const md = htmlToMarkdown(div);
+            if (md) processedText = md;
+        }
+
+        if (processedText) {
             // 1. Create the note (existing logic)
-            onCreateNote(text, true);
+            onCreateNote(processedText, true);
 
             // 2. Persist the highlight (New logic)
             onUpdate(card.id, (currentData) => {
                 if (!currentData) return currentData;
                 const currentNotes = currentData.capturedNotes || [];
-                // Avoid duplicates to keep array clean
+                // Avoid duplicates to keep array clean (check against raw text to allow repeated structure if content diff? 
+                // actually stick with text check for simplicitly or rely on id)
                 if (currentNotes.indexOf(text) === -1) {
                     return {
                         ...currentData,
-                        capturedNotes: [...currentNotes, text]
+                        capturedNotes: [...currentNotes, text] // Keep raw text for highlight matching?
                     };
                 }
                 return currentData;
