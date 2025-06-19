@@ -149,31 +149,46 @@ export default function useBoardBackground() {
 
             // 5. Check S3 Config & Upload
             let finalImageUrl = imageUrl;
+
+            // CLEANUP: The model often returns markdown like ![image](url). Extract just the URL.
+            const markdownMatch = finalImageUrl.match(/\!\[.*?\]\((.*?)\)/);
+            if (markdownMatch && markdownMatch[1]) {
+                finalImageUrl = markdownMatch[1].trim();
+                console.log('[Background Gen] Extracted clean URL from markdown:', finalImageUrl.substring(0, 50) + '...');
+            }
+
             const s3Config = getS3Config();
 
             if (s3Config && s3Config.enabled) {
                 try {
-                    console.log('[Background Gen] S3 is enabled, transferring image...');
+                    console.log('[Background Gen] S3 is enabled, processing image...');
+                    let blob;
 
-                    // Use proxy to bypass CORS restrictions from GMI storage
-                    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
-                    const response = await fetch(proxyUrl);
+                    // Handle Data URI directly (Skip Proxy)
+                    if (finalImageUrl.startsWith('data:')) {
+                        console.log('[Background Gen] Detected Data URI. Converting locally...');
+                        const response = await fetch(finalImageUrl);
+                        blob = await response.blob();
+                    } else {
+                        // Handle Remote URL (Use Proxy to bypass CORS)
+                        console.log('[Background Gen] Detected Remote URL. Using Proxy...');
+                        const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
+                        const response = await fetch(proxyUrl);
+                        if (!response.ok) throw new Error("Failed to download generated image via proxy");
+                        blob = await response.blob();
+                    }
 
-                    if (!response.ok) throw new Error("Failed to download generated image via proxy");
-
-                    const blob = await response.blob();
                     const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
-
                     finalImageUrl = await uploadImageToS3(file);
                     console.log('[Background Gen] Successfully uploaded to S3:', finalImageUrl);
 
                 } catch (uploadError) {
                     console.error('[Background Gen] S3 Upload Failed:', uploadError);
                     alert(`Background generated but S3 Upload failed: ${uploadError.message}. Using temporary URL.`);
-                    // We keep finalImageUrl as valid GMI url so user still gets a result
+                    // We keep finalImageUrl as valid GMI url so user still gets a result (if it's not a massive data uri causing issues elsewhere)
                 }
             } else {
-                console.log('[Background Gen] S3 not configured/enabled. Using GMI URL.');
+                console.log('[Background Gen] S3 not configured/enabled. Using raw URL.');
             }
 
             // 6. Save to board metadata via callback
