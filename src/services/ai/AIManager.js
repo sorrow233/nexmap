@@ -1,6 +1,6 @@
 
 import { uuid } from '../../utils/uuid.js';
-import { getSystemPrompt, getSearchReinforcement } from './promptUtils.js';
+
 
 /**
  * Task Priorities
@@ -198,35 +198,11 @@ class AIManager {
             const { messages, model, temperature } = task.payload;
             let fullText = '';
 
-            // CRITICAL: Inject time awareness and search mandate into ALL chat requests
-            const timeSystemMsg = getSystemPrompt();
-            const reinforcement = getSearchReinforcement();
-
-            // Prepend system message and append reinforcement to last user message
-            const enhancedMessages = [timeSystemMsg, ...messages].map((msg, idx, arr) => {
-                if (idx === arr.length - 1 && msg.role === 'user') {
-                    if (typeof msg.content === 'string') {
-                        return { ...msg, content: msg.content + reinforcement };
-                    } else if (Array.isArray(msg.content)) {
-                        const newContent = [...msg.content];
-                        const textPartIdx = newContent.findIndex(p => p.type === 'text');
-                        if (textPartIdx !== -1) {
-                            newContent[textPartIdx] = {
-                                ...newContent[textPartIdx],
-                                text: newContent[textPartIdx].text + reinforcement
-                            };
-                        } else {
-                            newContent.push({ type: 'text', text: reinforcement });
-                        }
-                        return { ...msg, content: newContent };
-                    }
-                }
-                return msg;
-            });
+            // Original: Inject time awareness and search mandate into ALL chat requests (REMOVED)
 
             // Wrapped streamChatCompletion that respects AbortSignal
             await streamChatCompletion(
-                enhancedMessages,
+                messages,
                 config, // Pass config explicitly
                 (chunk) => {
                     if (signal.aborted) return;

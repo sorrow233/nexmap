@@ -1,6 +1,6 @@
 import { ModelFactory } from './llm/factory';
 import { DEFAULT_ROLES } from './llm/registry';
-import { getSystemPrompt } from './ai/promptUtils';
+
 
 export { DEFAULT_ROLES };
 
@@ -71,7 +71,7 @@ export async function generateFollowUpTopics(messages, config, model = null, opt
         const finalPrompt = `CONTEXT:
 ${contextText}
 
-[System Info: ${getSystemPrompt().content}]
+
 
 TASK: Based on the conversation history above, predict exactly 5 follow-up questions a user would naturally ask next.
 
