@@ -164,11 +164,18 @@ export default function useBoardBackground() {
                     console.log('[Background Gen] S3 is enabled, processing image...');
                     let blob;
 
-                    // Handle Data URI directly (Skip Proxy)
+                    // Handle Data URI directly (Skip Proxy & Network Stack)
                     if (finalImageUrl.startsWith('data:')) {
-                        console.log('[Background Gen] Detected Data URI. Converting locally...');
-                        const response = await fetch(finalImageUrl);
-                        blob = await response.blob();
+                        console.log('[Background Gen] Detected Data URI. Converting locally via Byte extraction...');
+                        // Pure JS conversion to avoid fetch() blocking
+                        const byteString = atob(finalImageUrl.split(',')[1]);
+                        const mimeString = finalImageUrl.split(',')[0].split(':')[1].split(';')[0];
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) {
+                            ia[i] = byteString.charCodeAt(i);
+                        }
+                        blob = new Blob([ab], { type: mimeString });
                     } else {
                         // Handle Remote URL (Use Proxy to bypass CORS)
                         console.log('[Background Gen] Detected Remote URL. Using Proxy...');
