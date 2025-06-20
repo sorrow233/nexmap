@@ -27,17 +27,31 @@ export const createCreditsSlice = (set, get) => ({
     loadSystemCredits: async () => {
         const user = auth.currentUser;
         if (!user) {
-            set({ systemCredits: null, isSystemCreditsUser: false });
+            console.log('[Credits] No user logged in, skipping load');
+            set({ systemCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
+            return;
+        }
+
+        // Prevent duplicate loading
+        const { systemCreditsLoading } = get();
+        if (systemCreditsLoading) {
+            console.log('[Credits] Already loading, skipping');
             return;
         }
 
         set({ systemCreditsLoading: true, systemCreditsError: null });
 
         try {
-            const data = await fetchCredits();
+            // Add timeout to prevent infinite loading
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('请求超时，请检查网络连接')), 15000)
+            );
+
+            const data = await Promise.race([fetchCredits(), timeoutPromise]);
             set({
                 systemCredits: data.credits,
                 systemCreditsLoading: false,
+                systemCreditsError: null,
                 isSystemCreditsUser: true
             });
             console.log(`[Credits] Loaded: ${data.credits.toFixed(2)} credits`);
@@ -46,7 +60,9 @@ export const createCreditsSlice = (set, get) => ({
             console.error('[Credits] Failed to load:', error);
             set({
                 systemCreditsLoading: false,
-                systemCreditsError: error.message
+                systemCreditsError: error.message,
+                // Still mark as system credits user so UI shows error
+                isSystemCreditsUser: true
             });
             return null;
         }
