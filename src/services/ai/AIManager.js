@@ -101,7 +101,6 @@ class AIManager {
         // Attach promise and ID to task/promise for access
         task.promise = promise;
         promise.taskId = task.id;
-        promise.taskId = task.id;
 
         this.queue.push(task);
         this.queue.sort((a, b) => b.priority - a.priority || a.timestamp - b.timestamp);
