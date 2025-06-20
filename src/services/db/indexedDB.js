@@ -63,3 +63,22 @@ export const idbDel = async (key) => {
         transaction.onerror = () => reject(transaction.error);
     });
 };
+
+/**
+ * Clear all data from the IndexedDB store.
+ * Used during logout to ensure clean state.
+ */
+export const idbClear = async () => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(IDB_STORE, 'readwrite');
+        const store = transaction.objectStore(IDB_STORE);
+        const request = store.clear();
+
+        transaction.oncomplete = () => {
+            console.log('[IDB] Store cleared');
+            resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
+    });
+};

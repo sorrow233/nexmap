@@ -59,7 +59,13 @@ function AppContent() {
     };
 
     const handleLogout = async () => {
-        try { await signOut(auth); }
+        try {
+            // CRITICAL: Clear all local data before signing out
+            // This prevents data leakage between user accounts
+            const { clearAllUserData } = await import('./services/clearAllUserData');
+            await clearAllUserData();
+            await signOut(auth);
+        }
         catch (e) { console.error(e); }
     };
 

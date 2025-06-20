@@ -312,11 +312,25 @@ export function useCardCreator() {
         }
     };
 
+    /**
+     * Create a card with initial text/images - used by App.jsx when creating a board from homepage
+     * This wraps handleCreateCard with simplified parameters for the homepage use case
+     */
+    const createCardWithText = async (text, boardId, images = []) => {
+        if (!text?.trim() && images.length === 0) return;
+
+        debugLog.ai('createCardWithText called', { text, boardId, imageCount: images.length });
+
+        // Use handleCreateCard which handles all the AI generation logic
+        await handleCreateCard(text, images);
+    };
+
     return {
         handleCreateCard,
         handleCreateNote,
         handleExpandTopics,
         handleBatchChat,
-        handleSprout
+        handleSprout,
+        createCardWithText
     };
 }

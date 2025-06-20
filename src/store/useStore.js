@@ -26,7 +26,18 @@ const useStoreBase = create(
             ...createAISlice(set, get),
             ...createSettingsSlice(set, get),
             ...createShareSlice(set, get),
-            ...createCreditsSlice(set, get)
+            ...createCreditsSlice(set, get),
+
+            // Global reset for logout
+            resetAllState: () => {
+                console.log('[Store] Resetting all state...');
+                get().resetCardState?.();
+                get().resetConnectionState?.();
+                get().resetGroupState?.();
+                get().resetSettingsState?.();
+                get().resetCreditsState?.();
+                console.log('[Store] All state reset complete');
+            }
         }),
         {
             limit: 50,
@@ -39,6 +50,7 @@ const useStoreBase = create(
         }
     )
 );
+
 
 
 export const useStore = useStoreBase;

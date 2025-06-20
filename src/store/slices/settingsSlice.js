@@ -83,5 +83,18 @@ export const createSettingsSlice = (set, get) => ({
 
         // 2. Fallback to main model for everything if not specified
         return activeConfig?.model || 'google/gemini-3-pro-preview';
+    },
+
+    // Reset settings state on logout
+    resetSettingsState: () => {
+        const defaultState = {
+            providers: DEFAULT_PROVIDERS,
+            activeId: 'google',
+            isSettingsOpen: false
+        };
+        // Clear persisted settings
+        localStorage.removeItem(CONFIG_KEY);
+        set(defaultState);
     }
 });
+

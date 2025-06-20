@@ -66,4 +66,10 @@ export const createGroupSlice = (set, get) => ({
         }
         // Case 3: Both in same zone or both not in zones - no action needed
     },
+
+    // Reset group state on logout
+    resetGroupState: () => set({
+        groups: []
+    })
 });
+
