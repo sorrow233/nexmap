@@ -44,7 +44,9 @@ export default function BoardDropZone({ onCreateBoard }) {
     };
 
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        // Submit on Enter (plain or with Cmd/Ctrl)
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             handleSubmit();
         }
     };
