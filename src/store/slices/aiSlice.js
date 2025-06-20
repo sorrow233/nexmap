@@ -4,6 +4,8 @@ import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import favoritesService from '../../services/favoritesService';
+import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
+
 
 export const createAISlice = (set, get) => {
     // Throttling buffer for AI streaming
@@ -178,8 +180,16 @@ export const createAISlice = (set, get) => {
                 perfMonitor.onComplete();
             } catch (e) {
                 console.error(`Generation failed for card ${cardId}`, e);
-                // Append error message to the card content so user sees it
-                updateCardContent(cardId, `\n\n[System Error: ${e.message || 'Generation failed'}]`);
+
+                // Special handling for credits exhausted
+                if (e instanceof CreditsExhaustedError || e.name === 'CreditsExhaustedError') {
+                    updateCardContent(cardId, `\n\n⚠️ **免费试用积分已用完**\n\n您的100积分免费额度已使用完毕。要继续使用AI功能，请在设置中配置您自己的API Key。\n\n👉 点击右上角设置按钮，添加您的GMI API Key。`);
+                    // Reload credits state
+                    get().loadSystemCredits?.();
+                } else {
+                    // Append error message to the card content so user sees it
+                    updateCardContent(cardId, `\n\n[System Error: ${e.message || 'Generation failed'}]`);
+                }
             } finally {
                 setCardGenerating(cardId, false);
             }

@@ -94,6 +94,20 @@ export function useAppInit() {
                         if (settings.s3Config) {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
                         }
+
+                        // Load system credits if user has no API key configured
+                        const activeConfig = useStore.getState().getActiveConfig();
+                        if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                            debugLog.auth('No API key configured, loading system credits...');
+                            useStore.getState().loadSystemCredits?.();
+                        }
+                    } else {
+                        // No cloud settings - check if we should load credits
+                        const activeConfig = useStore.getState().getActiveConfig();
+                        if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                            debugLog.auth('New user, loading system credits...');
+                            useStore.getState().loadSystemCredits?.();
+                        }
                     }
                 });
             }

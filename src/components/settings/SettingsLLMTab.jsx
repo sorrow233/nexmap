@@ -1,5 +1,7 @@
 import React from 'react';
 import { Key, Globe, Box, Layers, Settings, CheckCircle2, AlertCircle, RefreshCw, Plus, Trash2, Server } from 'lucide-react';
+import SystemCreditsCard from './SystemCreditsCard';
+
 
 export default function SettingsLLMTab({
     providers,
@@ -38,8 +40,8 @@ export default function SettingsLLMTab({
                             key={p.id}
                             onClick={() => setActiveId(p.id)}
                             className={`w-full text-left p-3 rounded-xl border transition-all group relative ${activeId === p.id
-                                    ? 'bg-brand-50 dark:bg-brand-900/10 border-brand-200 dark:border-brand-500/30 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                ? 'bg-brand-50 dark:bg-brand-900/10 border-brand-200 dark:border-brand-500/30 shadow-sm'
+                                : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
                                 }`}
                         >
                             <div className={`font-bold text-sm mb-0.5 ${activeId === p.id ? 'text-brand-700 dark:text-brand-300' : 'text-slate-700 dark:text-slate-200'}`}>
@@ -70,6 +72,9 @@ export default function SettingsLLMTab({
 
             {/* Main Content: Configuration */}
             <div className="w-2/3 flex flex-col h-full overflow-y-auto pr-1 pb-4 custom-scrollbar">
+
+                {/* System Credits Card (for users without API key) */}
+                <SystemCreditsCard currentProvider={currentProvider} />
 
                 {/* Provider Name & Protocol Header */}
                 <div className="space-y-4 mb-6">
