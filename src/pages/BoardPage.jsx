@@ -15,6 +15,7 @@ import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/stor
 import { debugLog } from '../utils/debugLogger';
 import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
+import { useToast } from '../components/Toast';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -53,6 +54,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleSprout
     } = useCardCreator();
 
+    const toast = useToast();
+    const [cloudSyncStatus, setCloudSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
     const [globalImages, setGlobalImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -93,6 +96,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
                 } catch (e) {
                     console.error("[BoardPage] Autosave failed", e);
+                    toast.error('保存失败，请检查存储空间');
                 }
             }, 1000); // Slightly longer delay for local debounce
 

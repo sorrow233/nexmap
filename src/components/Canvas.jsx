@@ -11,6 +11,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
+import { useContextMenu } from './ContextMenu';
 
 export default function Canvas({ onCreateNote, ...props }) {
     const {
@@ -28,6 +29,7 @@ export default function Canvas({ onCreateNote, ...props }) {
         toggleFavorite, favoritesLastUpdate // For favorites
     } = useStore();
 
+    const { showContextMenu, getCanvasMenuItems } = useContextMenu();
     const canvasRef = useRef(null);
     const stateRef = useRef({ offset, scale });
 
@@ -39,6 +41,54 @@ export default function Canvas({ onCreateNote, ...props }) {
     // Extracted Logic
     useCanvasGestures(canvasRef, stateRef, setScale, setOffset);
     const { performSelectionCheck } = useSelection();
+
+    // Right-click context menu for canvas
+    const handleContextMenu = useCallback((e) => {
+        // Only show menu if clicking on canvas background
+        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+            e.preventDefault();
+            const canvasX = (e.clientX - offset.x) / scale;
+            const canvasY = (e.clientY - offset.y) / scale;
+
+            const menuItems = getCanvasMenuItems(
+                { x: canvasX, y: canvasY },
+                {
+                    onCreateCard: (pos) => {
+                        if (props.onCanvasDoubleClick) {
+                            props.onCanvasDoubleClick({
+                                screenX: e.clientX,
+                                screenY: e.clientY,
+                                canvasX: pos.x,
+                                canvasY: pos.y
+                            });
+                        }
+                    },
+                    onCreateNote: (pos) => {
+                        if (onCreateNote) {
+                            onCreateNote({ x: pos.x, y: pos.y });
+                        }
+                    },
+                    onPaste: () => {
+                        // Paste functionality - trigger paste event
+                        navigator.clipboard.readText().then(text => {
+                            if (text && props.onCanvasDoubleClick) {
+                                props.onCanvasDoubleClick({
+                                    screenX: e.clientX,
+                                    screenY: e.clientY,
+                                    canvasX,
+                                    canvasY,
+                                    pastedText: text
+                                });
+                            }
+                        }).catch(() => { });
+                    },
+                    canPaste: true // Assume paste is always available
+                }
+            );
+
+            showContextMenu(e.clientX, e.clientY, menuItems);
+        }
+    }, [offset, scale, showContextMenu, getCanvasMenuItems, onCreateNote, props]);
 
     const handleMouseDown = (e) => {
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
