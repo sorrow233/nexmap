@@ -107,8 +107,13 @@ export const loadBoard = async (id) => {
             if (legacy) {
                 debugLog.storage(`Found legacy data in localStorage for board: ${id}`);
                 const parsed = JSON.parse(legacy);
-                // Migrate to IDB in background
-                idbSet(BOARD_PREFIX + id, parsed).catch(e => debugLog.error("Migration save failed", e));
+                // Migrate to IDB in background with proper error handling
+                try {
+                    await idbSet(BOARD_PREFIX + id, parsed);
+                    debugLog.storage(`Migrated board ${id} from localStorage to IDB`);
+                } catch (migrationErr) {
+                    debugLog.error("Migration save failed", migrationErr);
+                }
                 stored = parsed;
             }
         } catch (e) {

@@ -188,7 +188,7 @@ export class GeminiProvider extends LLMProvider {
 
                 if (!response.ok) {
                     const errStatus = response.status;
-                    if ([429, 500, 502, 503, 504].includes(errStatus) && retries > 0) {
+                    if ([429, 500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
                         console.warn(`[Gemini] Request failed with ${errStatus}, retrying in ${delay}ms...`);
                         await new Promise(r => setTimeout(r, delay));
                         retries--;

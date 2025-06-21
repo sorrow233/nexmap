@@ -96,21 +96,38 @@ export class OpenAIProvider extends LLMProvider {
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
+                let buffer = '';
 
                 try {
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); // Keep incomplete line in buffer
+
                         for (const line of lines) {
-                            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
                                 try {
-                                    const json = JSON.parse(line.substring(6));
+                                    const json = JSON.parse(trimmedLine.substring(6));
                                     const content = json.choices[0]?.delta?.content;
                                     if (content) onToken(content);
                                 } catch (e) { }
                             }
+                        }
+                    }
+
+                    // Process remaining buffer
+                    if (buffer.trim()) {
+                        const trimmedLine = buffer.trim();
+                        if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
+                            try {
+                                const json = JSON.parse(trimmedLine.substring(6));
+                                const content = json.choices[0]?.delta?.content;
+                                if (content) onToken(content);
+                            } catch (e) { }
                         }
                     }
                     return; // Success
