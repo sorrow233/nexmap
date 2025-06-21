@@ -5,6 +5,7 @@ import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Loading from '../components/Loading';
+import StatusBar from '../components/StatusBar';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
@@ -102,9 +103,17 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
             let cloudTimeout;
             if (user) {
-                cloudTimeout = setTimeout(() => {
-                    saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
-                    debugLog.sync(`Cloud autosave triggered for board: ${currentBoardId}`);
+                cloudTimeout = setTimeout(async () => {
+                    setCloudSyncStatus('syncing');
+                    try {
+                        await saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
+                        setCloudSyncStatus('synced');
+                        debugLog.sync(`Cloud autosave complete for board: ${currentBoardId}`);
+                    } catch (e) {
+                        setCloudSyncStatus('error');
+                        console.error('[BoardPage] Cloud sync failed:', e);
+                        toast.error('云同步失败');
+                    }
                 }, 3000); // Longer delay for cloud to avoid hammering
             }
 
@@ -400,6 +409,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     />
                 </Suspense>
             )}
+
+            {/* Status Bar */}
+            <StatusBar
+                boardName={boardsList.find(b => b.id === currentBoardId)?.name}
+                syncStatus={cloudSyncStatus}
+            />
         </React.Fragment>
     );
 }
