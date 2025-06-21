@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu } from 'lucide-react';
+import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift } from 'lucide-react';
 // import { chatCompletion } from '../services/llm'; // Converted to dynamic import
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
 import { saveUserSettings } from '../services/storage';
 
+import SettingsCreditsTab from './settings/SettingsCreditsTab';
 import SettingsLLMTab from './settings/SettingsLLMTab';
 import SettingsRolesTab from './settings/SettingsRolesTab';
 import SettingsStorageTab from './settings/SettingsStorageTab';
@@ -12,7 +13,7 @@ import SettingsStorageTab from './settings/SettingsStorageTab';
 export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) {
     if (!isOpen) return null;
 
-    const [activeTab, setActiveTab] = useState('llm');
+    const [activeTab, setActiveTab] = useState('credits');
 
     // LLM State
     const [providers, setProviders] = useState({});
@@ -171,6 +172,15 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     {/* Tabs */}
                     <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
                         <button
+                            onClick={() => setActiveTab('credits')}
+                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'credits'
+                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                }`}
+                        >
+                            <Gift size={14} /> Credits
+                        </button>
+                        <button
                             onClick={() => setActiveTab('llm')}
                             className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'llm'
                                 ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
@@ -202,6 +212,11 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+
+                    {/* Credits Tab */}
+                    {activeTab === 'credits' && (
+                        <SettingsCreditsTab />
+                    )}
 
                     {/* LLM Tab */}
                     {activeTab === 'llm' && (
