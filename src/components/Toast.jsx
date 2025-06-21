@@ -125,15 +125,18 @@ export function ToastProvider({ children }) {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    // Convenience methods
-    const toast = useCallback((message, options) => addToast(message, options), [addToast]);
-    toast.success = useCallback((message, options) => addToast(message, { ...options, type: 'success' }), [addToast]);
-    toast.error = useCallback((message, options) => addToast(message, { ...options, type: 'error' }), [addToast]);
-    toast.warning = useCallback((message, options) => addToast(message, { ...options, type: 'warning' }), [addToast]);
-    toast.info = useCallback((message, options) => addToast(message, { ...options, type: 'info' }), [addToast]);
+    // Use useMemo to create stable context value with convenience methods
+    const contextValue = React.useMemo(() => {
+        const toast = (message, options) => addToast(message, options);
+        toast.success = (message, options) => addToast(message, { ...options, type: 'success' });
+        toast.error = (message, options) => addToast(message, { ...options, type: 'error' });
+        toast.warning = (message, options) => addToast(message, { ...options, type: 'warning' });
+        toast.info = (message, options) => addToast(message, { ...options, type: 'info' });
+        return toast;
+    }, [addToast]);
 
     return (
-        <ToastContext.Provider value={toast}>
+        <ToastContext.Provider value={contextValue}>
             {children}
             <ToastContainer toasts={toasts} removeToast={removeToast} />
         </ToastContext.Provider>
