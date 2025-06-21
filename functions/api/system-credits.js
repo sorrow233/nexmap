@@ -3,7 +3,7 @@
  * 
  * Provides free trial AI access for users without their own API key.
  * - API Key is stored securely in Cloudflare environment variables (NEVER exposed to frontend)
- * - Only supports Gemini Flash model for cost efficiency
+ * - Supports DeepSeek V3 via OpenAI-compatible API
  * - Deducts credits based on token usage
  * 
  * Security: Uses Firebase ID Token for user authentication
@@ -182,23 +182,28 @@ export async function onRequest(context) {
             });
         }
 
-        // 5. Build upstream request
-        const endpoint = stream
-            ? `/models/${SYSTEM_MODEL}:streamGenerateContent`
-            : `/models/${SYSTEM_MODEL}:generateContent`;
-
+        // 5. Build upstream request (OpenAI Protocol)
+        const endpoint = '/chat/completions';
         const url = `${SYSTEM_BASE_URL}${endpoint}`;
 
-        console.log(`[SystemCredits] User ${userId} (${userData.credits.toFixed(2)} credits) -> ${url}`);
+        console.log(`[SystemCredits] User ${userId} (${userData.credits.toFixed(2)} credits) -> ${url} [OpenAI]`);
 
-        // 6. Make request to GMI API
+        // Ensure request body matches OpenAI spec
+        const openaiBody = {
+            ...requestBody,
+            model: SYSTEM_MODEL, // Force correct model
+            stream: stream,
+            stream_options: stream ? { include_usage: true } : undefined // Request usage metrics in stream
+        };
+
+        // 6. Make request to GMI/OpenAI API
         const upstreamResponse = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${systemApiKey}`
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(openaiBody)
         });
 
         // 7. Handle errors
@@ -223,24 +228,50 @@ export async function onRequest(context) {
                 const writer = writable.getWriter();
                 let totalInputTokens = 0;
                 let totalOutputTokens = 0;
+                let buffer = '';
 
                 try {
+                    const decoder = new TextDecoder();
+
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
                         await writer.write(value);
 
-                        // Try to extract usage from chunks (Gemini includes it in last chunk)
-                        const text = new TextDecoder().decode(value);
-                        const usageMatch = text.match(/"usageMetadata":\s*{[^}]*"promptTokenCount":\s*(\d+)[^}]*"candidatesTokenCount":\s*(\d+)/);
-                        if (usageMatch) {
-                            totalInputTokens = parseInt(usageMatch[1]);
-                            totalOutputTokens = parseInt(usageMatch[2]);
+                        // Extract usage from OpenAI stream chunks
+                        // data: {"id":"...","object":"chat.completion.chunk","usage":{"prompt_tokens":10,"completion_tokens":5,...}}
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); // Keep incomplete line
+
+                        for (const line of lines) {
+                            if (line.trim().startsWith('data: ')) {
+                                const dataStr = line.trim().substring(6);
+                                if (dataStr === '[DONE]') continue;
+
+                                try {
+                                    const data = JSON.parse(dataStr);
+                                    if (data.usage) {
+                                        totalInputTokens = data.usage.prompt_tokens || totalInputTokens;
+                                        totalOutputTokens = data.usage.completion_tokens || totalOutputTokens;
+                                    }
+                                } catch (e) {
+                                    // Ignore parse errors on chunks
+                                }
+                            }
                         }
                     }
                 } finally {
                     writer.close();
+
+                    // If usage stats missing (some providers don't send stream usage), estimate it
+                    if (totalInputTokens === 0 && totalOutputTokens === 0) {
+                        // Very rough estimation fallback (1 char ~= 0.25 token? 1 word ~= 0.75 token?)
+                        // Better to err on free side or use a minimum if unknown.
+                        // For now we rely on provider sending usage.
+                        console.warn('[SystemCredits] No usage stats in stream');
+                    }
 
                     // Deduct credits after stream completes
                     if (totalInputTokens > 0 || totalOutputTokens > 0) {
@@ -269,9 +300,9 @@ export async function onRequest(context) {
         // 9. Handle non-streaming response
         const data = await upstreamResponse.json();
 
-        // Extract token usage
-        const inputTokens = data.usageMetadata?.promptTokenCount || 0;
-        const outputTokens = data.usageMetadata?.candidatesTokenCount || 0;
+        // Extract token usage (OpenAI format)
+        const inputTokens = data.usage?.prompt_tokens || 0;
+        const outputTokens = data.usage?.completion_tokens || 0;
 
         // Deduct credits
         const creditsUsed = calculateCreditsUsed(inputTokens, outputTokens);

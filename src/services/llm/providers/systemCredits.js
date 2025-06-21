@@ -2,7 +2,7 @@
  * System Credits Provider
  * 
  * LLM Provider that uses system credits for users without their own API key.
- * Uses DeepSeek-V3.2 model for cost efficiency.
+ * Uses DeepSeek-V3.2 model for cost efficiency via OpenAI Protocol.
  */
 
 import { LLMProvider } from './base';
@@ -21,44 +21,34 @@ export class SystemCreditsProvider extends LLMProvider {
     }
 
     /**
-     * Format messages to Gemini format
+     * Format messages to OpenAI format (standard)
      */
     formatMessages(messages) {
-        const contents = [];
-        let systemInstruction = "";
-
-        messages.forEach(msg => {
-            if (msg.role === 'system') {
-                systemInstruction += (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)) + "\n";
-                return;
+        // OpenAI format is straightforward: mapped directly
+        return messages.map(msg => {
+            // Handle image content for OpenAI (GPT-4 Vision style)
+            if (Array.isArray(msg.content)) {
+                return {
+                    role: msg.role,
+                    content: msg.content.map(part => {
+                        if (part.type === 'text') return { type: 'text', text: part.text };
+                        if (part.type === 'image') return {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${part.source.media_type};base64,${part.source.data}`
+                            }
+                        };
+                        return null;
+                    }).filter(Boolean)
+                };
             }
 
-            const role = msg.role === 'assistant' ? 'model' : 'user';
-            let parts = [];
-
-            if (typeof msg.content === 'string') {
-                parts = [{ text: msg.content }];
-            } else if (Array.isArray(msg.content)) {
-                parts = msg.content.map(part => {
-                    if (part.type === 'text') return { text: part.text };
-                    if (part.type === 'image') return {
-                        inline_data: {
-                            mime_type: part.source.media_type,
-                            data: part.source.data
-                        }
-                    };
-                    return null;
-                }).filter(Boolean);
-            }
-
-            if (contents.length > 0 && contents[contents.length - 1].role === role) {
-                contents[contents.length - 1].parts.push(...parts);
-            } else {
-                contents.push({ role, parts });
-            }
+            // Standard text content
+            return {
+                role: msg.role,
+                content: msg.content
+            };
         });
-
-        return { contents, systemInstruction };
     }
 
     /**
@@ -66,22 +56,17 @@ export class SystemCreditsProvider extends LLMProvider {
      */
     async chat(messages, model, options = {}) {
         const resolvedMessages = await resolveRemoteImages(messages);
-        const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
+
+        // Pass standard messages to backend
+        const formattedMessages = this.formatMessages(resolvedMessages);
 
         const requestBody = {
-            contents,
-            tools: [{ google_search: {} }],
-            generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0,
-                maxOutputTokens: 32768, // Lower limit for Flash
-            }
+            messages: formattedMessages,
+            temperature: options.temperature !== undefined ? options.temperature : 1.0,
+            max_tokens: 8192,
         };
 
-        if (systemInstruction) {
-            requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
-        }
-
-        console.log('[SystemCredits] Making chat request with system credits');
+        console.log('[SystemCredits] Making chat request with system credits (DeepSeek)');
 
         const response = await chatWithSystemCredits(requestBody);
 
@@ -90,7 +75,8 @@ export class SystemCreditsProvider extends LLMProvider {
             console.log(`[SystemCredits] Credits used: ${response._systemCredits.used.toFixed(4)}, Remaining: ${response._systemCredits.remaining.toFixed(2)}`);
         }
 
-        const content = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        // Parse OpenAI response format
+        const content = response.choices?.[0]?.message?.content || "";
         return content;
     }
 
@@ -99,22 +85,15 @@ export class SystemCreditsProvider extends LLMProvider {
      */
     async stream(messages, onToken, model, options = {}) {
         const resolvedMessages = await resolveRemoteImages(messages);
-        const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
+        const formattedMessages = this.formatMessages(resolvedMessages);
 
         const requestBody = {
-            contents,
-            tools: [{ google_search: {} }],
-            generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0,
-                maxOutputTokens: 32768,
-            }
+            messages: formattedMessages,
+            temperature: options.temperature !== undefined ? options.temperature : 1.0,
+            max_tokens: 8192,
         };
 
-        if (systemInstruction) {
-            requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
-        }
-
-        console.log('[SystemCredits] Starting stream with system credits');
+        console.log('[SystemCredits] Starting stream with system credits (DeepSeek)');
 
         await streamWithSystemCredits(requestBody, onToken, options);
     }

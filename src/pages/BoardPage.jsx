@@ -12,11 +12,12 @@ const ChatModal = lazy(() => import('../components/ChatModal'));
 import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
-import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/storage';
+import { saveBoard, saveBoardToCloud, saveViewportState, updateBoardMetadata } from '../services/storage';
 import { debugLog } from '../utils/debugLogger';
 import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
 import { useToast } from '../components/Toast';
+import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -56,11 +57,36 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     } = useCardCreator();
 
     const toast = useToast();
+    const { canvasRef: canvasContainerRef, captureThumbnail } = useThumbnailCapture();
     const [cloudSyncStatus, setCloudSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
     const [globalImages, setGlobalImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleJustSaved, setTitleJustSaved] = useState(false);
+
+    // Handle back with thumbnail capture
+    const handleBackWithThumbnail = async () => {
+        // Find current board to check if it already has a background
+        const currentBoard = boardsList.find(b => b.id === currentBoardId);
+
+        // Only capture thumbnail if no AI-generated background exists
+        if (currentBoard && !currentBoard.backgroundImage && canvasContainerRef.current) {
+            try {
+                const thumbnail = await captureThumbnail(canvasContainerRef.current);
+                if (thumbnail) {
+                    // Save thumbnail to board metadata
+                    updateBoardMetadata(currentBoardId, { thumbnail });
+                    debugLog.storage(`Thumbnail saved for board: ${currentBoardId}`);
+                }
+            } catch (error) {
+                // Non-blocking - don't prevent navigation if capture fails
+                console.warn('[Thumbnail] Capture failed on exit:', error);
+            }
+        }
+
+        // Call original onBack
+        onBack();
+    };
 
     // Initial setup for document title
     useEffect(() => {
@@ -283,11 +309,13 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     return (
         <React.Fragment>
             <ErrorBoundary level="canvas">
-                <Canvas
-                    onCreateNote={handleCreateNote}
-                    onCanvasDoubleClick={handleCanvasDoubleClick}
-                    onCardFullScreen={handleFullScreen}
-                />
+                <div ref={canvasContainerRef} className="absolute inset-0">
+                    <Canvas
+                        onCreateNote={handleCreateNote}
+                        onCanvasDoubleClick={handleCanvasDoubleClick}
+                        onCardFullScreen={handleFullScreen}
+                    />
+                </div>
             </ErrorBoundary>
 
             {noteId && (
@@ -309,7 +337,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             {/* Top Bar */}
             <div className="fixed top-6 left-6 z-50 animate-slide-down">
                 <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1.5 rounded-2xl shadow-xl">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all"><LayoutGrid size={18} /><span>Gallery</span></button>
+                    <button onClick={handleBackWithThumbnail} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all"><LayoutGrid size={18} /><span>Gallery</span></button>
                     <div className="h-6 w-[1px] bg-slate-200 mx-2" />
                     <div className="flex items-center gap-1">
                         <button
