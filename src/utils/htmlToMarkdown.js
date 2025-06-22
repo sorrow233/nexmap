@@ -75,8 +75,23 @@ function traverse(node, context = { depth: 0 }) {
                 const parentTag = node.parentElement?.tagName.toLowerCase();
 
                 if (parentTag === 'ol') {
-                    // We use "1." for simplicity, markdown parsers auto-increment
-                    return `${indent}1. ${content.trim()}\n`;
+                    // Use the index from the loop in the parent processing or calculate it
+                    // Since we are traversing recursively, we need to know our index among siblings.
+                    // The traverse function currently iterates children. We should pass the index down?
+                    // Actually, the previous implementation of traverse didn't pass index. 
+                    // Let's change the strategy: The traverse function iterates children. 
+                    // We can't easily change the recursive signature to pass index without changing all calls.
+                    // A better way for `li` is to look at its own position among previous element siblings.
+
+                    let index = 1;
+                    let sibling = node.previousElementSibling;
+                    while (sibling) {
+                        if (sibling.tagName.toLowerCase() === 'li') {
+                            index++;
+                        }
+                        sibling = sibling.previousElementSibling;
+                    }
+                    return `${indent}${index}. ${content.trim()}\n`;
                 }
                 return `${indent}- ${content.trim()}\n`;
 

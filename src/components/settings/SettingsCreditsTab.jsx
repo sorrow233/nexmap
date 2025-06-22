@@ -55,7 +55,7 @@ export default function SettingsCreditsTab() {
 
                     {/* Description */}
                     <p className="text-slate-400 text-sm leading-relaxed mb-1">
-                        使用 <span className="text-cyan-400 font-semibold">DeepSeek V3</span> 模型
+                        使用 <span className="text-cyan-400 font-semibold">DeepSeek V3.2</span> 模型
                     </p>
                     <p className="text-slate-300 text-lg">
                         约可进行 <span className="font-bold text-indigo-400">10 万+</span> 次对话
