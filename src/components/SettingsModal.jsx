@@ -261,6 +261,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     >
                         Cancel
                     </button>
+                    <div className="mr-auto text-[10px] text-slate-300 dark:text-slate-700 font-mono mt-2 ml-2">v0.0.35-credits</div>
                     <button
                         onClick={handleSave}
                         className="px-5 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95"
