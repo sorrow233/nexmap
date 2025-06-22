@@ -78,8 +78,19 @@ export const createAISlice = (set, get) => {
         createAICard: async (params) => {
             const {
                 id, text, x, y, images = [], contextPrefix = "",
-                autoConnections = [], model, providerId
+                autoConnections = [], model: requestedModel, providerId: requestedProviderId
             } = params;
+
+            const state = get();
+
+            // Force DeepSeek for system credits
+            let model = requestedModel;
+            let providerId = requestedProviderId;
+
+            if (state.isSystemCreditsUser) {
+                model = 'deepseek-ai/DeepSeek-V3.2';
+                providerId = 'system-credits';
+            }
 
             const newId = id || uuid();
 
