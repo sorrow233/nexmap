@@ -7,10 +7,9 @@ import { useStore } from '../store/useStore';
  * 显示当前画板名称、同步状态和 AI 额度
  */
 export default function StatusBar({ boardName, syncStatus = 'idle' }) {
-    const { systemCredits, isSystemCreditsUser } = useStore(state => ({
-        systemCredits: state.systemCredits,
-        isSystemCreditsUser: state.isSystemCreditsUser
-    }));
+    // Use individual selectors to avoid object reference issues
+    const systemCredits = useStore(state => state.systemCredits);
+    const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
 
     // Sync status config
     const syncConfig = {
