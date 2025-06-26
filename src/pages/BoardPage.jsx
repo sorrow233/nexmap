@@ -9,6 +9,7 @@ import StatusBar from '../components/StatusBar';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
+const SettingsModal = lazy(() => import('../components/SettingsModal'));
 import { useStore, useTemporalStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
@@ -70,6 +71,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const [clipboard, setClipboard] = useState(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleJustSaved, setTitleJustSaved] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Initial setup for document title
     useEffect(() => {
@@ -430,7 +432,17 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             <StatusBar
                 boardName={boardsList.find(b => b.id === currentBoardId)?.name}
                 syncStatus={cloudSyncStatus}
+                onOpenSettings={() => setIsSettingsOpen(true)}
             />
+
+            {/* Settings Modal */}
+            <Suspense fallback={null}>
+                <SettingsModal
+                    isOpen={isSettingsOpen}
+                    onClose={() => setIsSettingsOpen(false)}
+                    user={user}
+                />
+            </Suspense>
         </React.Fragment>
     );
 }
