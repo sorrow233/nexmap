@@ -47,6 +47,10 @@ export default function ChatView({
     const fileInputRef = useRef(null);
     const modalRef = useRef(null);
 
+    // 消息等待队列（解决AI回复时发送新消息的问题）
+    const pendingMessagesRef = useRef([]);
+    const [pendingCount, setPendingCount] = useState(0);
+
     // Sprout Feature State
     const [isSprouting, setIsSprouting] = useState(false);
     const [sproutTopics, setSproutTopics] = useState([]);
@@ -114,12 +118,10 @@ export default function ChatView({
 
 
     // --- Handlers Wrapper ---
-    const onSendClick = async () => {
-        if ((!input.trim() && images.length === 0)) return;
-        const currentInput = input;
-        const currentImages = [...images];
-        setInput(''); // Immediate UI clear
-        clearImages();
+    // 核心发送逻辑（内部使用）
+    const sendMessageInternal = async (textToSend, imagesToSend) => {
+        const currentInput = textToSend;
+        const currentImages = [...imagesToSend];
         setIsAtBottom(true);
         setIsStreaming(true);
         setTimeout(() => scrollToBottom(true), 10);
@@ -130,7 +132,36 @@ export default function ChatView({
             console.error('Failed to send message:', e);
         } finally {
             setIsStreaming(false);
+
+            // 处理队列中的下一条消息
+            if (pendingMessagesRef.current.length > 0) {
+                const nextMsg = pendingMessagesRef.current.shift();
+                setPendingCount(prev => prev - 1);
+                // 延迟一点调用，让UI有时间更新
+                setTimeout(() => {
+                    sendMessageInternal(nextMsg.input, nextMsg.images);
+                }, 100);
+            }
         }
+    };
+
+    const onSendClick = async () => {
+        if ((!input.trim() && images.length === 0)) return;
+
+        const currentInput = input;
+        const currentImages = [...images];
+        setInput(''); // Immediate UI clear
+        clearImages();
+
+        // 如果正在 streaming，将消息加入等待队列
+        if (isStreaming) {
+            pendingMessagesRef.current.push({ input: currentInput, images: currentImages });
+            setPendingCount(prev => prev + 1);
+            return;
+        }
+
+        // 否则立即发送
+        await sendMessageInternal(currentInput, currentImages);
     };
 
     const handleRetry = async () => {
@@ -365,6 +396,7 @@ export default function ChatView({
                 onUpdate={onUpdate}
                 onShare={(content) => setShareContent(content)}
                 onToggleFavorite={onToggleFavorite}
+                pendingCount={pendingCount}
             />
 
             {/* Premium Input Bar */}

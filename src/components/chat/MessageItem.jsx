@@ -1,14 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
-import { Share2, Star } from 'lucide-react';
+import { Share2, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
+
+// 用户消息折叠阈值
+const USER_MSG_MAX_LENGTH = 200;
 
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
     const { cards, focusOnCard } = useStore();
     const contentRef = React.useRef(null);
+
+    // 长文本折叠状态
+    const [isExpanded, setIsExpanded] = useState(false);
+
     let textContent = "";
     let msgImages = [];
 
@@ -209,7 +216,37 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                     onClick={handleMessageClick}
                 >
                     {isUser ? (
-                        <div className="whitespace-pre-wrap font-sans">{textContent}</div>
+                        <div className="font-sans">
+                            {/* 用户消息折叠功能 */}
+                            {textContent.length > USER_MSG_MAX_LENGTH ? (
+                                <>
+                                    <div className="whitespace-pre-wrap">
+                                        {isExpanded ? textContent : textContent.slice(0, USER_MSG_MAX_LENGTH) + '...'}
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsExpanded(!isExpanded);
+                                        }}
+                                        className="mt-2 flex items-center gap-1 text-xs text-slate-400 hover:text-brand-500 transition-colors"
+                                    >
+                                        {isExpanded ? (
+                                            <>
+                                                <ChevronUp size={14} />
+                                                <span>收起</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ChevronDown size={14} />
+                                                <span>展开全部 ({textContent.length} 字符)</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="whitespace-pre-wrap">{textContent}</div>
+                            )}
+                        </div>
                     ) : (
                         <div
                             dangerouslySetInnerHTML={{ __html: renderedHtml }}

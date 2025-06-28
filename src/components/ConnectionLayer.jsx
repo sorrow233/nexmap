@@ -103,7 +103,12 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
 
                     const { source, target } = getBestAnchorPair(fromCard, toCard);
                     const pathData = generateBezierPath(source, target);
-                    pathCache.set(key, new Path2D(pathData));
+                    // Store both the Path2D and connection info for viewport culling
+                    pathCache.set(key, {
+                        path: new Path2D(pathData),
+                        fromId: conn.from,
+                        toId: conn.to
+                    });
                     hasUpdates = true;
                 }
             }
@@ -203,7 +208,9 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     ctx.lineJoin = 'round';
 
                     // 4. Draw Paths from Cache
-                    for (const path of map.values()) {
+                    for (const entry of map.values()) {
+                        // Handle both old format (Path2D) and new format (object with path property)
+                        const path = entry.path || entry;
                         ctx.stroke(path);
                     }
 
