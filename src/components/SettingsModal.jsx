@@ -9,7 +9,7 @@ import SettingsLLMTab from './settings/SettingsLLMTab';
 import SettingsRolesTab from './settings/SettingsRolesTab';
 import SettingsStorageTab from './settings/SettingsStorageTab';
 
-export default function SettingsModal({ isOpen, onClose, user }) {
+export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) {
     if (!isOpen) return null;
 
     const [activeTab, setActiveTab] = useState('llm');
@@ -233,6 +233,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         <SettingsStorageTab
                             s3Config={s3Config}
                             setS3ConfigState={setS3ConfigState}
+                            onShowWelcome={onShowWelcome}
                         />
                     )}
                 </div>

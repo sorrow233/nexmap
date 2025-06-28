@@ -19,7 +19,14 @@ export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
     const [isInitialized, setIsInitialized] = useState(false);
-    const [hasSeenWelcome, setHasSeenWelcome] = useState(true); // Default true to avoid flash
+    // Initialize from localStorage first to handle guests
+    const [hasSeenWelcome, setHasSeenWelcome] = useState(() => {
+        try {
+            return localStorage.getItem('hasVisitedBefore') === 'true';
+        } catch (e) {
+            return true;
+        }
+    });
     const { setCards, setConnections, setGroups } = useStore();
     const location = useLocation();
 
@@ -102,8 +109,19 @@ export function useAppInit() {
                         }
 
                         // Check welcome page status from cloud
-                        setHasSeenWelcome(settings.hasSeenWelcome === true);
-                        debugLog.auth(`Welcome status from cloud: ${settings.hasSeenWelcome}`);
+                        if (settings.hasSeenWelcome !== undefined) {
+                            setHasSeenWelcome(settings.hasSeenWelcome === true);
+                            debugLog.auth(`Welcome status from cloud: ${settings.hasSeenWelcome}`);
+                        } else {
+                            // If cloud doesn't have it (migration), keep local state but likely sync it up later
+                            // actually, for consistency, if no cloud setting and local says NOT SEEN (new user),
+                            // we should probably trust local or default to NOT seen?
+                            // Actually, simpler: if undefined, treat as new user unless localstorage says otherwise.
+                            // But we already init from localstorage.
+                            // Let's defer to the "Not cloud settings" block logic if strictly empty?
+                            // No, settings object exists but field missing.
+                            // Let's treat undefined as "trust local state"
+                        }
 
                         // Load system credits if user has no API key configured
                         const activeConfig = useStore.getState().getActiveConfig();
@@ -112,7 +130,13 @@ export function useAppInit() {
                             useStore.getState().loadSystemCredits?.();
                         }
                     } else {
-                        // No cloud settings = new user, show welcome
+                        // No cloud settings = new user (or just created)
+                        // Trust local flag OR default to false if really fresh
+                        // But init already handled local flag.
+                        // If we are here, settings are null.
+                        // Force false only if strictly new?
+                        // Let's explicitly set to false if local is also false/missing (implicitly handled by init state)
+                        // But to be safe for cross-device:
                         setHasSeenWelcome(false);
                         debugLog.auth('New user detected, will show welcome page');
 
