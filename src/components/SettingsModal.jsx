@@ -14,7 +14,6 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     if (!isOpen) return null;
 
     const [activeTab, setActiveTab] = useState('credits');
-    const [showAdvanced, setShowAdvanced] = useState(false);
 
     // LLM State
     const [providers, setProviders] = useState({});
@@ -42,8 +41,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     // Load configuration on mount from Store
     useEffect(() => {
         const state = useStore.getState();
-        // Ensure we copy the state to local component state so editing doesn't affect store until saved
-        setProviders(JSON.parse(JSON.stringify(state.providers))); // Deep copy to be safe
+        setProviders(JSON.parse(JSON.stringify(state.providers)));
         setActiveId(state.activeId);
 
         const s3 = getS3Config();
@@ -79,7 +77,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
     const handleRemoveProvider = (idToRemove) => {
         const remainingIds = Object.keys(providers).filter(id => id !== idToRemove);
-        if (remainingIds.length === 0) return; // Prevent deleting last provider
+        if (remainingIds.length === 0) return;
 
         if (activeId === idToRemove) {
             setActiveId(remainingIds[0]);
@@ -99,7 +97,6 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
             const currentConfig = providers[activeId];
             if (!currentConfig.apiKey) throw new Error("API Key is missing");
 
-            // Updated signature: chatCompletion(messages, config, model, options)
             const { chatCompletion } = await import('../services/llm');
             await chatCompletion(
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
@@ -110,23 +107,19 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
             setTestStatus('success');
             setTestMessage('Connection Successful!');
         } catch (error) {
-            // console.error(error);
             setTestStatus('error');
             setTestMessage(error.message || 'Connection Failed');
         }
     };
 
     const handleSave = async () => {
-        // Save LLM Config to Store
         useStore.getState().setFullConfig({
             providers,
             activeId
         });
 
-        // Save S3 config
         saveS3Config(s3Config);
 
-        // Sync to cloud if logged in
         if (user && user.uid) {
             try {
                 await saveUserSettings(user.uid, {
@@ -134,9 +127,8 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     activeId,
                     s3Config
                 });
-                // console.log("[Sync] User settings pushed to cloud");
             } catch (e) {
-                // console.error("[Sync] Failed to push settings to cloud", e);
+                // console.error(e);
             }
         }
 
@@ -155,189 +147,175 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
     const currentProvider = providers[activeId] || {};
 
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center font-sans">
-            <div className="bg-white dark:bg-slate-900 w-[650px] h-[700px] rounded-3xl shadow-2xl animate-fade-in border border-slate-100 dark:border-white/10 flex flex-col overflow-hidden">
+    const TabButton = ({ id, icon: Icon, label, description }) => (
+        <button
+            onClick={() => setActiveTab(id)}
+            className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group flex items-center gap-3 ${activeTab === id
+                ? 'bg-brand-50 dark:bg-brand-900/20 shadow-sm border border-brand-200 dark:border-brand-500/30'
+                : 'hover:bg-slate-50 dark:hover:bg-white/5 border border-transparent'
+                }`}
+        >
+            <div className={`p-2 rounded-lg transition-colors ${activeTab === id
+                ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
+                }`}>
+                <Icon size={18} />
+            </div>
+            <div>
+                <div className={`text-sm font-bold ${activeTab === id
+                    ? 'text-brand-900 dark:text-brand-100'
+                    : 'text-slate-700 dark:text-slate-300'
+                    }`}>{label}</div>
+                {description && (
+                    <div className="text-[10px] text-slate-400 font-medium">{description}</div>
+                )}
+            </div>
+        </button>
+    );
 
-                {/* Header */}
-                <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-brand-50 dark:bg-brand-900/20 rounded-2xl text-brand-600 dark:text-brand-400">
-                            <Settings size={28} />
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 w-[950px] h-[650px] rounded-3xl shadow-2xl flex overflow-hidden border border-slate-200 dark:border-white/10">
+
+                {/* Sidebar */}
+                <div className="w-[280px] bg-slate-50/50 dark:bg-slate-900/50 border-r border-slate-100 dark:border-white/5 p-6 flex flex-col">
+                    <div className="flex items-center gap-3 mb-8 px-2">
+                        <div className="p-2.5 bg-brand-600 rounded-xl text-white shadow-lg shadow-brand-500/30">
+                            <Settings size={20} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Settings</h2>
-                            <p className="text-slate-500 text-sm">Configure AI Provider & Storage</p>
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Settings</h2>
+                            <p className="text-xs text-slate-500 font-medium">Configuration</p>
                         </div>
                     </div>
-                    {/* Tabs */}
-                    {/* Tabs */}
-                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
-                        <button
-                            onClick={() => setActiveTab('credits')}
-                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'credits'
-                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            <Gift size={14} /> Credits
-                        </button>
 
-                        {/* Advanced Settings Toggle */}
-                        <div className="flex bg-slate-200/50 dark:bg-slate-700/50 rounded-lg p-0.5 gap-0.5 transition-all">
-                            {!showAdvanced ? (
-                                <button
-                                    onClick={() => setShowAdvanced(true)}
-                                    className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5"
-                                >
-                                    <Settings size={14} /> Advanced
-                                </button>
-                            ) : (
-                                <>
-                                    <button
-                                        onClick={() => {
-                                            setShowAdvanced(false);
-                                            setActiveTab('credits');
-                                        }}
-                                        className="px-2 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                                        title="Hide Advanced"
-                                    >
-                                        <Settings size={14} />
-                                    </button>
+                    <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                        <div className="space-y-1">
+                            <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">General</div>
+                            <TabButton id="credits" icon={Gift} label="Credits" description="Manage usage & limits" />
+                        </div>
 
-                                    <div className="w-[1px] bg-slate-300 dark:bg-slate-600 my-1"></div>
+                        <div className="space-y-1">
+                            <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">AI Configuration</div>
+                            <TabButton id="llm" icon={Cpu} label="Provider" description="Models & API Keys" />
+                            <TabButton id="roles" icon={Layers} label="Model Roles" description="Assign specialized models" />
+                        </div>
 
-                                    <button
-                                        onClick={() => setActiveTab('llm')}
-                                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'llm'
-                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                            }`}
-                                    >
-                                        <Cpu size={14} /> Provider
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('roles')}
-                                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'roles'
-                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                            }`}
-                                    >
-                                        <Layers size={14} /> Roles
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('storage')}
-                                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'storage'
-                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                            }`}
-                                    >
-                                        <Database size={14} /> Storage
-                                    </button>
-                                </>
+                        <div className="space-y-1">
+                            <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data & Storage</div>
+                            <TabButton id="storage" icon={Database} label="Storage" description="S3 & Cloud settings" />
+                        </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/5 px-2">
+                        <div className="text-[10px] text-slate-400 text-center font-mono">
+                            v0.0.35-sidebar-ui
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 relative">
+                    {/* Content Header */}
+                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 sticky top-0">
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                            {activeTab === 'credits' && 'Credits & Usage'}
+                            {activeTab === 'llm' && 'Model Provider'}
+                            {activeTab === 'roles' && 'Model Roles'}
+                            {activeTab === 'storage' && 'Storage Settings'}
+                        </h2>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95 text-sm"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                        <div className="max-w-3xl mx-auto animate-fade-in-up">
+                            {activeTab === 'credits' && (
+                                <SettingsCreditsTab />
+                            )}
+
+                            {activeTab === 'llm' && (
+                                <SettingsLLMTab
+                                    providers={providers}
+                                    activeId={activeId}
+                                    setActiveId={setActiveId}
+                                    currentProvider={currentProvider}
+                                    handleUpdateProvider={handleUpdateProvider}
+                                    handleAddProvider={handleAddProvider}
+                                    handleRemoveProvider={handleRemoveProvider}
+                                    handleTestConnection={handleTestConnection}
+                                    testStatus={testStatus}
+                                    testMessage={testMessage}
+                                    handleReset={handleReset}
+                                />
+                            )}
+
+                            {activeTab === 'roles' && (
+                                <SettingsRolesTab
+                                    currentProvider={currentProvider}
+                                    handleUpdateProvider={handleUpdateProvider}
+                                />
+                            )}
+
+                            {activeTab === 'storage' && (
+                                <SettingsStorageTab
+                                    s3Config={s3Config}
+                                    setS3ConfigState={setS3ConfigState}
+                                    onShowWelcome={onShowWelcome}
+                                />
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-
-                    {/* Credits Tab */}
-                    {activeTab === 'credits' && (
-                        <SettingsCreditsTab />
-                    )}
-
-                    {/* LLM Tab */}
-                    {activeTab === 'llm' && (
-                        <SettingsLLMTab
-                            providers={providers}
-                            activeId={activeId}
-                            setActiveId={setActiveId}
-                            currentProvider={currentProvider}
-                            handleUpdateProvider={handleUpdateProvider}
-                            handleAddProvider={handleAddProvider}
-                            handleRemoveProvider={handleRemoveProvider}
-                            handleTestConnection={handleTestConnection}
-                            testStatus={testStatus}
-                            testMessage={testMessage}
-                            handleReset={handleReset}
-                        />
-                    )}
-
-                    {/* Model Roles Tab */}
-                    {activeTab === 'roles' && (
-                        <SettingsRolesTab
-                            currentProvider={currentProvider}
-                            handleUpdateProvider={handleUpdateProvider}
-                        />
-                    )}
-
-                    {/* Storage Tab */}
-                    {activeTab === 'storage' && (
-                        <SettingsStorageTab
-                            s3Config={s3Config}
-                            setS3ConfigState={setS3ConfigState}
-                            onShowWelcome={onShowWelcome}
-                        />
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div className="p-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-                    >
-                        Cancel
-                    </button>
-                    <div className="mr-auto text-[10px] text-slate-300 dark:text-slate-700 font-mono mt-2 ml-2">v0.0.35-advanced-ui</div>
-                    <button
-                        onClick={handleSave}
-                        className="px-5 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95"
-                    >
-                        Save Configuration
-                    </button>
-                </div>
-
-                {/* Success Toast */}
+                {/* Dialogs & Toasts */}
                 {saveSuccess && (
-                    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[200] animate-slide-down">
-                        <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[200] animate-slide-down">
+                        <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md bg-opacity-95">
                             <CheckCircle2 size={24} />
                             <div>
                                 <p className="font-bold">Settings Saved!</p>
-                                <p className="text-sm text-emerald-100">Reloading in a moment...</p>
+                                <p className="text-sm text-emerald-100">Applying changes...</p>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Reset Confirmation Dialog */}
                 {showResetConfirm && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center animate-fade-in">
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-md animate-scale-in border border-slate-200 dark:border-white/10">
-                            <div className="flex items-start gap-4 mb-4">
-                                <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl text-red-600 dark:text-red-400">
-                                    <AlertCircle size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-1">Reset to Defaults?</h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">This will clear all your LLM settings. This action cannot be undone.</p>
-                                </div>
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-sm animate-scale-in border border-slate-200 dark:border-white/10">
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mx-auto mb-4">
+                                <AlertCircle size={32} />
                             </div>
-                            <div className="flex gap-3 justify-end">
+                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-2 text-center">Reset Configuration?</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6 leading-relaxed">
+                                This will remove all custom providers and API keys. The app will return to its default state.
+                            </p>
+                            <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowResetConfirm(false)}
-                                    className="px-4 py-2 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                    className="flex-1 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={confirmReset}
-                                    className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500 transition-all shadow-lg"
+                                    className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500 transition-all shadow-lg shadow-red-500/20"
                                 >
-                                    Reset
+                                    Yes, Reset
                                 </button>
                             </div>
                         </div>

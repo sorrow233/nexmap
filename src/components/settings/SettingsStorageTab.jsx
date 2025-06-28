@@ -4,11 +4,7 @@ import { AlertCircle } from 'lucide-react';
 export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowWelcome }) {
     return (
         <div className="space-y-6 animate-slide-up">
-            {/* Advanced User Notice */}
-            <div className="p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg text-xs border border-amber-200 dark:border-amber-800/30 flex items-center gap-2">
-                <AlertCircle size={14} className="flex-shrink-0" />
-                <span>⚙️ <strong>高级设置</strong> - 此页面用于配置自定义云存储，普通用户无需修改。</span>
-            </div>
+
 
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">
                 <p className="font-bold mb-1">BYOK (Bring Your Own Key)</p>

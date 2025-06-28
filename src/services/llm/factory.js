@@ -25,6 +25,8 @@ export class ModelFactory {
                 return new GeminiProvider(config);
             case 'openai':
                 return new OpenAIProvider(config);
+            case 'system-credits':
+                return new SystemCreditsProvider();
             default:
                 console.warn(`[ModelFactory] Unknown protocol '${protocol}', falling back to OpenAI.`);
                 return new OpenAIProvider(config);

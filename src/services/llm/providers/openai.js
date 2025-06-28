@@ -28,7 +28,8 @@ export class OpenAIProvider extends LLMProvider {
     async chat(messages, model, options = {}) {
         const { apiKey, baseUrl } = this.config;
         const modelToUse = model || this.config.model;
-        const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+        const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
+        const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -58,7 +59,8 @@ export class OpenAIProvider extends LLMProvider {
     async stream(messages, onToken, model, options = {}) {
         const { apiKey, baseUrl } = this.config;
         const modelToUse = model || this.config.model;
-        const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+        const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
+        const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
 
         let retries = 1; // Retry once on network error
         let delay = 1000;
@@ -157,7 +159,8 @@ export class OpenAIProvider extends LLMProvider {
 
         if (isUnifiedImageModel) {
             console.log(`[OpenAI] Redirecting image generation for ${modelToUse} to chat endpoint`);
-            const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+            const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
+            const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -188,7 +191,8 @@ export class OpenAIProvider extends LLMProvider {
         }
 
         // Standard OpenAI DALL-E endpoint
-        const endpoint = `${baseUrl.replace(/\/$/, '')}/images/generations`;
+        const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
+        const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/images/generations`;
 
         const response = await fetch(endpoint, {
             method: 'POST',
