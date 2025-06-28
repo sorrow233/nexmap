@@ -4,7 +4,7 @@ import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import SettingsModal from '../components/SettingsModal';
 import { getGuideBoardData } from '../utils/guideBoardData';
-import { createBoard, saveBoard, getBoardsList } from '../services/storage';
+import { createBoard, saveBoard, getBoardsList, saveUserSettings, loadUserSettings } from '../services/storage';
 import { useNavigate } from 'react-router-dom';
 
 const WelcomeCanvas = React.lazy(() => import('../components/WelcomeCanvas'));
@@ -19,25 +19,36 @@ export default function GalleryPage({
     onUpdateBoardMetadata,    // New prop
     user,
     onLogin,
-    onLogout
+    onLogout,
+    hasSeenWelcome,           // New: from useAppInit (Firebase synced)
+    setHasSeenWelcome         // New: from useAppInit
 }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash'
-    const [showWelcome, setShowWelcome] = useState(false);
 
-    // Check if this is the user's first visit
-    useEffect(() => {
-        const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
-        if (!hasVisitedBefore) {
-            setShowWelcome(true);
-        }
-    }, []);
+    // Determine if we should show welcome: user is logged in AND hasn't seen it
+    const showWelcome = user && hasSeenWelcome === false;
 
     const handleDismissWelcome = async () => {
-        setShowWelcome(false);
-        localStorage.setItem('hasVisitedBefore', 'true');
+        // 1. Update local state immediately
+        setHasSeenWelcome(true);
 
-        // Auto-create guide board for new users
+        // 2. Sync to Firebase
+        if (user) {
+            try {
+                // Load existing settings first to preserve them
+                const existingSettings = await loadUserSettings(user.uid) || {};
+                await saveUserSettings(user.uid, {
+                    ...existingSettings,
+                    hasSeenWelcome: true
+                });
+                console.log('✅ Welcome status synced to cloud');
+            } catch (error) {
+                console.error('Failed to sync welcome status:', error);
+            }
+        }
+
+        // 3. Auto-create guide board for new users
         const guideTitle = "NexMap 使用指南 🚀";
         const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
 
@@ -46,7 +57,6 @@ export default function GalleryPage({
                 const newBoard = await createBoard(guideTitle);
                 const guideContent = getGuideBoardData();
                 await saveBoard(newBoard.id, guideContent);
-                // Don't navigate automatically, just create it in background
                 console.log('✅ Guide board created automatically');
             } catch (error) {
                 console.error('Failed to auto-create guide board:', error);

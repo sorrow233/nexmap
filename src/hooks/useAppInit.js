@@ -19,6 +19,7 @@ export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [hasSeenWelcome, setHasSeenWelcome] = useState(true); // Default true to avoid flash
     const { setCards, setConnections, setGroups } = useStore();
     const location = useLocation();
 
@@ -100,6 +101,10 @@ export function useAppInit() {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
                         }
 
+                        // Check welcome page status from cloud
+                        setHasSeenWelcome(settings.hasSeenWelcome === true);
+                        debugLog.auth(`Welcome status from cloud: ${settings.hasSeenWelcome}`);
+
                         // Load system credits if user has no API key configured
                         const activeConfig = useStore.getState().getActiveConfig();
                         if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
@@ -107,7 +112,11 @@ export function useAppInit() {
                             useStore.getState().loadSystemCredits?.();
                         }
                     } else {
-                        // No cloud settings - check if we should load credits
+                        // No cloud settings = new user, show welcome
+                        setHasSeenWelcome(false);
+                        debugLog.auth('New user detected, will show welcome page');
+
+                        // Check if we should load credits
                         const activeConfig = useStore.getState().getActiveConfig();
                         if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
                             debugLog.auth('New user, loading system credits...');
@@ -121,5 +130,5 @@ export function useAppInit() {
         return () => { unsubscribe(); if (unsubDb) unsubDb(); };
     }, []);
 
-    return { user, boardsList, setBoardsList, isInitialized };
+    return { user, boardsList, setBoardsList, isInitialized, hasSeenWelcome, setHasSeenWelcome };
 }
