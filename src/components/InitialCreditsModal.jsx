@@ -7,7 +7,7 @@ import { X, Sparkles, CheckCircle2 } from 'lucide-react';
  * A premium-styled modal to welcome users and inform them about their initial credits.
  * Dark theme with purple gradient design.
  */
-export default function InitialCreditsModal({ isOpen, onClose }) {
+const InitialCreditsModal = React.memo(({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
     return (
@@ -84,4 +84,6 @@ export default function InitialCreditsModal({ isOpen, onClose }) {
             </div>
         </div>
     );
-}
+});
+
+export default InitialCreditsModal;

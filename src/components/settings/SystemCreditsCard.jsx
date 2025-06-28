@@ -21,9 +21,13 @@ export default function SystemCreditsCard({ currentProvider }) {
     // Check if user should see credits (no API key configured)
     const hasApiKey = currentProvider?.apiKey && currentProvider.apiKey.trim() !== '';
 
+    const loadAttempted = React.useRef(false);
+
     useEffect(() => {
         // Load credits if not loaded and user should use system credits
-        if (!hasApiKey && systemCredits === null && !systemCreditsLoading && !systemCreditsError) {
+        // Use ref to prevent double-firing in strict mode or rapid re-renders
+        if (!hasApiKey && systemCredits === null && !systemCreditsLoading && !systemCreditsError && !loadAttempted.current) {
+            loadAttempted.current = true;
             loadSystemCredits();
         }
     }, [hasApiKey, systemCredits, systemCreditsLoading, systemCreditsError, loadSystemCredits]);
