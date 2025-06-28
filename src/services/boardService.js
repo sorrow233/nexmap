@@ -13,8 +13,8 @@ export const setCurrentBoardId = (id) => {
     else localStorage.removeItem(CURRENT_BOARD_ID_KEY);
 };
 
-// Internal helper to get ALL boards (Active + Trash)
-const getRawBoardsList = () => {
+// Shared helper to get ALL boards (Active + Trash)
+export const getRawBoardsList = () => {
     const list = localStorage.getItem(BOARDS_LIST_KEY);
     return list ? JSON.parse(list) : [];
 };

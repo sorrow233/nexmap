@@ -3,10 +3,11 @@ import { Plus, Settings, Star } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import SettingsModal from '../components/SettingsModal';
-import WelcomeCanvas from '../components/WelcomeCanvas';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, getBoardsList } from '../services/storage';
 import { useNavigate } from 'react-router-dom';
+
+const WelcomeCanvas = React.lazy(() => import('../components/WelcomeCanvas'));
 
 export default function GalleryPage({
     boardsList,
@@ -86,7 +87,11 @@ export default function GalleryPage({
 
     // Show welcome screen for first-time visitors
     if (showWelcome) {
-        return <WelcomeCanvas onDismiss={handleDismissWelcome} />;
+        return (
+            <React.Suspense fallback={<div className="fixed inset-0 bg-white"></div>}>
+                <WelcomeCanvas onDismiss={handleDismissWelcome} />
+            </React.Suspense>
+        );
     }
 
     return (

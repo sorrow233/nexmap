@@ -1,680 +1,401 @@
-# MixBoard Canvas - 未来开发路线图
+# MixBoard Canvas - 未来发展路线图
 
-> 🚀 本文档规划了 MixBoard Canvas 的未来发展方向，旨在使产品变得更加**专业**、**稳定**、**高效**。
+> � 本文档基于对代码库的深度分析，规划了使 MixBoard Canvas 更加专业、稳定、高效的发展方向。
 
 ---
 
 ## 目录
 
-1. [愿景与目标](#1-愿景与目标)
-2. [稳定性改进 (P0 - 最高优先级)](#2-稳定性改进-p0--最高优先级)
-3. [性能优化 (P1)](#3-性能优化-p1)
-4. [用户体验提升 (P2)](#4-用户体验提升-p2)
-5. [新功能规划 (P3)](#5-新功能规划-p3)
-6. [技术债务清理](#6-技术债务清理)
-7. [基础设施升级](#7-基础设施升级)
-8. [实施优先级矩阵](#8-实施优先级矩阵)
+1. [架构优化](#1-架构优化)
+2. [性能提升](#2-性能提升)
+3. [功能增强](#3-功能增强)
+4. [用户体验](#4-用户体验)
+5. [稳定性与监控](#5-稳定性与监控)
+6. [商业化准备](#6-商业化准备)
 
 ---
 
-## 1. 愿景与目标
+## 1. 架构优化
 
-### 1.1 产品愿景
-将 MixBoard Canvas 打造成**最直观的 AI 思维可视化工具**，帮助用户：
-- 以可视化方式组织与 AI 的对话
-- 构建个人/团队知识网络
-- 实现高效的头脑风暴和决策支持
+### 1.1 代码分割与懒加载 🔥 高优先
 
-### 1.2 核心目标
+**现状问题**: 
+- 主 bundle `index-*.js` 达 1.2MB，影响首屏加载
+- 所有模块静态导入，即使不使用也会加载
 
-| 目标 | 关键指标 |
-|------|---------|
-| **专业性** | 企业级功能、团队协作、数据导出 |
-| **稳定性** | 99.9% 可用性、零数据丢失、优雅降级 |
-| **高效性** | 首屏加载 < 2s、AI 响应 < 1s TTFB、流畅 60fps |
+**建议方案**:
+```javascript
+// 路由级别懒加载
+const BoardPage = lazy(() => import('./pages/BoardPage'));
+const GalleryPage = lazy(() => import('./pages/GalleryPage'));
+
+// 功能模块懒加载
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const ChatModal = lazy(() => import('./components/ChatModal'));
+```
+
+**预期收益**: 首屏加载时间减少 40-60%
 
 ---
 
-## 2. 稳定性改进 (P0 - 最高优先级)
+### 1.2 状态管理优化
 
-### 2.1 数据持久化增强
+**现状问题**:
+- 所有 slices 在 `useStore.js` 中耦合
+- 部分状态更新触发不必要的重渲染
 
-#### 🔧 问题现状
-- IndexedDB 和 Firestore 双写可能导致不一致
-- 网络中断时数据可能丢失
-- 大型画板 (100+ 卡片) 保存延迟
-
-#### ✅ 改进方案
-
-**2.1.1 实现乐观更新 + 确认机制**
-```
-位置: src/services/boardService.js, src/services/syncService.js
-
-改进:
-1. 本地优先写入，异步同步到云端
-2. 添加同步状态指示器 (synced/syncing/error)
-3. 实现操作队列，保证顺序执行
-4. 冲突检测和解决策略 (Last-Write-Wins → 可选合并)
-```
-
-**2.1.2 增量保存**
-```
-位置: src/store/slices/cardSlice.js
-
-改进:
-1. 仅保存变更的卡片，而非全量
-2. 使用 diff 算法检测变化
-3. 减少 IndexedDB 写入量
-```
-
-**2.1.3 离线模式**
-```
-新增: src/services/offlineQueue.js
-
-功能:
-1. 检测网络状态
-2. 离线时将操作加入队列
-3. 恢复在线时批量同步
-4. UI 提示离线状态
-```
-
-### 2.2 错误边界完善
-
-#### 🔧 问题现状
-- 某些组件崩溃会导致整个应用白屏
-- 错误信息对用户不友好
-
-#### ✅ 改进方案
-
-**2.2.1 细粒度 ErrorBoundary**
-```
-位置: src/components/
-
-需要包裹:
-- 每个 Card 组件
-- ChatModal
-- Canvas (已有)
-- SettingsModal
-
-每个 ErrorBoundary 提供:
-1. 友好的错误提示
-2. "重试" 按钮
-3. 自动上报错误日志
-```
-
-**2.2.2 全局错误追踪**
-```
-新增: src/services/errorReporting.js
-
-集成选项:
-- Sentry (推荐)
-- 自建日志服务
-
-捕获:
-- JavaScript 运行时错误
-- Promise rejection
-- AI API 错误
-- 网络错误
-```
-
-### 2.3 自动恢复机制
-
-**2.3.1 自动保存草稿**
-```
-位置: src/hooks/useAutoSave.js (新增)
-
-功能:
-1. 每 30 秒自动保存到 localStorage
-2. 检测异常退出，下次启动提示恢复
-3. 保留最近 5 个版本
-```
-
-**2.3.2 AI 生成中断恢复**
-```
-位置: src/store/slices/aiSlice.js
-
-改进:
-1. 保存生成中的状态
-2. 页面刷新后可继续生成
-3. 显示 "上次未完成的生成" 提示
-```
-
----
-
-## 3. 性能优化 (P1)
-
-### 3.1 渲染性能
-
-#### 🔧 问题现状
-- 大量卡片时滚动/缩放卡顿
-- 每次状态更新触发全量重渲染
-
-#### ✅ 改进方案
-
-**3.1.1 虚拟化渲染**
-```
-位置: src/components/Canvas.jsx
-
-方案:
-1. 只渲染视口内的卡片
-2. 使用 IntersectionObserver 或手动计算
-3. 视口外卡片使用占位符
-
-预期效果:
-- 支持 1000+ 卡片无卡顿
-- 内存占用降低 70%
-```
-
-**3.1.2 React.memo 优化**
-```
-位置: src/components/Card.jsx, StickyNote.jsx
-
-改进:
-1. 使用 React.memo 包裹
-2. 自定义比较函数，避免不必要重渲染
-3. 拆分大组件为更小的 memo 组件
-```
-
-**3.1.3 状态订阅优化**
-```
-位置: 所有组件
-
-改进:
-1. 使用 Zustand selector 精确订阅
-2. 避免订阅整个 state
-3. 使用 shallow 比较
-
-示例:
-// 之前
-const { cards, connections, offset } = useStore();
-
-// 之后
+**建议方案**:
+```javascript
+// 按需选择器 - 避免订阅整个 store
 const cards = useStore(state => state.cards);
-const offset = useStore(state => state.offset, shallow);
-```
+const cardById = useStore(useCallback(state => 
+  state.cards.find(c => c.id === id), [id]
+));
 
-### 3.2 加载性能
-
-**3.2.1 代码分割**
-```
-位置: src/App.jsx, vite.config.js
-
-改进:
-1. 路由级别 lazy loading
-2. 大型组件按需加载 (SettingsModal, ChatModal)
-3. 第三方库分包
-
-示例:
-const SettingsModal = React.lazy(() => import('./SettingsModal'));
-```
-
-**3.2.2 资源预加载**
-```
-位置: index.html
-
-改进:
-1. 预连接 API 域名
-2. 预加载关键字体
-3. 预取下一页资源
-```
-
-**3.2.3 图片优化**
-```
-位置: src/services/imageStore.js
-
-改进:
-1. 压缩上传图片 (最大 1MB)
-2. 生成缩略图用于卡片预览
-3. 懒加载图片
-4. 使用 WebP 格式
-```
-
-### 3.3 AI 响应优化
-
-**3.3.1 更细粒度的流式更新**
-```
-位置: src/store/slices/aiSlice.js
-
-当前: 20ms 节流
-目标: 根据设备性能动态调整
-
-改进:
-1. 检测设备性能
-2. 高性能设备: 10ms
-3. 低性能设备: 50ms
-4. 使用 requestIdleCallback
-```
-
-**3.3.2 预测性加载**
-```
-位置: src/hooks/useAISprouting.js
-
-改进:
-1. 用户停止输入时预测意图
-2. 预加载可能需要的模型响应
-3. 缓存常见问题的回答
+// 浅比较优化
+const { offset, scale } = useStore(
+  state => ({ offset: state.offset, scale: state.scale }),
+  shallow
+);
 ```
 
 ---
 
-## 4. 用户体验提升 (P2)
+### 1.3 Service Worker 离线支持
 
-### 4.1 交互优化
+**功能描述**: 支持离线使用画板，网络恢复后自动同步
 
-**4.1.1 快捷键系统增强**
-```
-位置: src/hooks/useGlobalHotkeys.js
+**实现要点**:
+- 缓存静态资源和 API 响应
+- IndexedDB 作为离线数据源
+- 后台同步队列处理未完成的操作
 
-新增快捷键:
-- Cmd/Ctrl + K: 快速搜索
-- Cmd/Ctrl + /: 快捷键提示
-- Cmd/Ctrl + D: 复制卡片
-- Cmd/Ctrl + E: 导出选中
-- Cmd/Ctrl + G: 创建分组
-- 1-9: 快速切换画板
-```
+---
 
-**4.1.2 右键菜单**
-```
-新增: src/components/ContextMenu.jsx
+## 2. 性能提升
 
-功能:
-- 卡片右键: 复制/删除/收藏/导出/AI扩展
-- 画布右键: 粘贴/新建卡片/新建便签
-- 连线右键: 删除连线
-```
+### 2.1 Canvas 虚拟化 🔥 高优先
 
-**4.1.3 拖放增强**
-```
-位置: src/hooks/useDraggable.js
+**现状问题**: 卡片数量超过 50 张时，渲染性能明显下降
 
-改进:
-1. 拖拽时显示目标位置预览
-2. 吸附到网格 (可选)
-3. 智能对齐辅助线
-4. 多选拖拽保持相对位置
+**建议方案**:
+```javascript
+// 仅渲染视口内的卡片
+const visibleCards = useMemo(() => {
+  const viewport = getViewportBounds(offset, scale, window);
+  return cards.filter(card => isCardInViewport(card, viewport));
+}, [cards, offset, scale]);
 ```
 
-### 4.2 视觉反馈
+**预期收益**: 支持 500+ 卡片流畅操作
 
-**4.2.1 加载状态优化**
-```
-位置: 全局
+---
 
-改进:
-1. 骨架屏替代 Spinner
-2. 进度条显示加载进度
-3. AI 生成时显示预估剩余时间
-```
+### 2.2 AI 流式响应优化
 
-**4.2.2 操作反馈**
-```
-新增: src/components/Toast.jsx
+**现状问题**: 
+- 内容缓冲区 throttle 固定 20ms
+- 高负载时可能卡顿
 
-功能:
-1. 保存成功/失败提示
-2. 复制成功提示
-3. 操作撤销提示 (带撤销按钮)
-```
-
-**4.2.3 状态指示器**
-```
-新增: src/components/StatusBar.jsx
-
-显示:
-- 当前画板名称
-- 同步状态
-- 在线/离线状态
-- AI 额度剩余
-- 快捷键提示
-```
-
-### 4.3 搜索与导航
-
-**4.3.1 全局搜索**
-```
-新增: src/components/SearchModal.jsx
-
-功能:
-1. 搜索所有画板的卡片内容
-2. 搜索结果高亮
-3. 点击跳转到对应卡片
-4. 支持正则表达式
-```
-
-**4.3.2 画板缩略图导航**
-```
-新增: src/components/MiniMap.jsx
-
-功能:
-1. 右下角小地图
-2. 显示所有卡片位置
-3. 点击快速跳转
-4. 显示当前视口范围
+**建议方案**:
+```javascript
+// 自适应节流 - 根据帧率动态调整
+const adaptiveThrottle = () => {
+  const fps = measureFPS();
+  return fps > 50 ? 16 : fps > 30 ? 33 : 50;
+};
 ```
 
 ---
 
-## 5. 新功能规划 (P3)
+### 2.3 图片处理优化
 
-### 5.1 协作功能 (重大功能)
+**功能描述**: 
+- 上传时自动压缩大图
+- 使用 WebP 格式减少存储
+- 实现渐进式图片加载
 
-**5.1.1 实时协作**
-```
-技术方案:
-- 使用 Firebase Realtime Database 或 Firestore 实时监听
-- 或使用 Yjs + WebRTC 实现 P2P 协作
-- 显示协作者光标和选择
-
-实施路径:
-1. Phase 1: 只读分享 (已有基础)
-2. Phase 2: 异步协作 (评论/标注)
-3. Phase 3: 实时同步编辑
-```
-
-**5.1.2 评论系统**
-```
-新增: src/components/Comments.jsx, src/store/slices/commentSlice.js
-
-功能:
-1. 在卡片上添加评论
-2. @提及用户
-3. 评论通知
-4. 评论解决/未解决状态
-```
-
-### 5.2 导出与集成
-
-**5.2.1 多格式导出**
-```
-新增: src/services/exportService.js
-
-支持格式:
-- Markdown (带图片)
-- PDF (保留布局)
-- PNG/SVG (画布截图)
-- JSON (备份/迁移)
-- Notion 格式
-- Obsidian 格式
-```
-
-**5.2.2 导入功能**
-```
-新增: src/services/importService.js
-
-支持导入:
-- Markdown 文件
-- JSON 备份
-- 图片 (批量)
-- URL 链接 (自动抓取内容)
-```
-
-**5.2.3 API 集成**
-```
-新增: functions/api/webhooks.js
-
-功能:
-1. Webhook 通知
-2. Zapier 集成
-3. Slack 通知
-4. 自定义 API 访问
-```
-
-### 5.3 AI 能力增强
-
-**5.3.1 多模型对比**
-```
-新增: src/components/ModelComparison.jsx
-
-功能:
-1. 同一问题发送到多个模型
-2. 并排显示结果
-3. 用户评分/选择最佳回答
-```
-
-**5.3.2 AI 记忆**
-```
-新增: src/services/memoryService.js
-
-功能:
-1. 长期记忆跨对话
-2. 用户偏好学习
-3. 自定义知识库 (RAG)
-4. 上传文档建立上下文
-```
-
-**5.3.3 AI Agent 模式**
-```
-新增: src/services/agentService.js
-
-功能:
-1. 定义任务目标
-2. AI 自动分解任务
-3. 执行多步骤操作
-4. 与外部服务交互 (搜索、计算等)
-```
-
-### 5.4 模板与工作流
-
-**5.4.1 画板模板**
-```
-新增: src/components/TemplateGallery.jsx
-
-预设模板:
-- 头脑风暴
-- SWOT 分析
-- 用户旅程图
-- 产品 PRD
-- 技术架构图
-- 会议记录
-```
-
-**5.4.2 自动化工作流**
-```
-新增: src/services/workflowService.js
-
-功能:
-1. 定义触发条件
-2. 自动执行操作
-3. 示例: 每周自动总结所有卡片
+**实现要点**:
+```javascript
+// 压缩配置
+const compressOptions = {
+  maxWidth: 2048,
+  maxHeight: 2048,
+  quality: 0.85,
+  mimeType: 'image/webp'
+};
 ```
 
 ---
 
-## 6. 技术债务清理
+## 3. 功能增强
 
-### 6.1 代码质量
+### 3.1 协作功能 🔥 高优先
 
-| 任务 | 位置 | 优先级 |
-|------|------|--------|
-| 添加 TypeScript | 全项目 | 中 |
-| 统一错误处理 | services/ | 高 |
-| 移除未使用代码 | 全项目 | 低 |
-| 完善 JSDoc 注释 | 关键函数 | 中 |
-| 单元测试覆盖 | store/, services/ | 高 |
+**功能描述**: 多人实时协作编辑画板
 
-### 6.2 依赖更新
+**技术选型**:
+- **方案A**: Firebase Realtime Database (简单,成本较高)
+- **方案B**: Yjs + WebRTC (P2P,复杂但免费)
+- **方案C**: Liveblocks (专业,付费)
 
-| 包 | 当前版本 | 建议操作 |
-|---|---------|---------|
-| react | 18.2.0 | 关注 React 19 |
-| zustand | 5.0.9 | 保持最新 |
-| firebase | 10.7.1 | 定期更新安全补丁 |
+**MVP 功能**:
+- [ ] 实时光标显示
+- [ ] 卡片锁定机制
+- [ ] 操作冲突解决
+- [ ] 在线用户列表
 
-### 6.3 测试覆盖
+---
 
-**目标覆盖率:**
-- 单元测试: 80%
-- 集成测试: 50%
-- E2E 测试: 关键用户路径
+### 3.2 AI 能力扩展
 
-**测试计划:**
+**3.2.1 多模型对比**
+```javascript
+// 同时向多个模型发送请求，对比回答
+const compareModels = async (prompt, models) => {
+  return Promise.all(models.map(model => 
+    generateResponse(prompt, model)
+  ));
+};
 ```
-1. 添加 Vitest 配置 (已在 package.json)
-2. 为所有 slices 编写测试
-3. 为核心 services 编写测试
-4. 使用 Playwright 进行 E2E 测试
+
+**3.2.2 RAG 知识库**
+- 支持上传 PDF/文档构建知识库
+- AI 回答时自动检索相关内容
+- 基于 embedding 的语义搜索
+
+**3.2.3 Agent 工作流**
+- 定义多步骤 AI 任务流程
+- 卡片间自动传递上下文
+- 支持条件分支和循环
+
+---
+
+### 3.3 模板系统
+
+**功能描述**: 预设画板模板，一键创建特定用途的画板
+
+**模板类型**:
+| 模板名称 | 描述 |
+|---------|------|
+| 头脑风暴 | 中心话题 + 发散卡片 |
+| 项目规划 | 时间线 + 任务卡片 |
+| 知识图谱 | 概念节点 + 关系连线 |
+| 会议记录 | 议题 + 决议 + 待办 |
+| 学习笔记 | 主题 + 问题卡 + 答案卡 |
+
+---
+
+### 3.4 高级连线功能
+
+**功能描述**: 
+- 连线添加标签/描述
+- 不同连线类型（箭头、虚线、双向）
+- 连线颜色和样式自定义
+
+---
+
+### 3.5 版本历史
+
+**功能描述**: 查看和恢复画板历史版本
+
+**实现要点**:
+- 基于时间戳的快照存储
+- 差异对比显示
+- 选择性恢复特定元素
+
+---
+
+## 4. 用户体验
+
+### 4.1 快捷键系统增强
+
+**新增快捷键**:
+| 快捷键 | 功能 |
+|--------|------|
+| `Cmd+K` | 全局命令面板 |
+| `Cmd+/` | 快速 AI 提问 |
+| `Cmd+Shift+F` | 全局搜索 |
+| `Tab` | 快速创建连接卡片 |
+| `Space` 拖动 | 画布平移 |
+
+---
+
+### 4.2 全局搜索 🔥 高优先
+
+**功能描述**: 搜索所有画板中的内容
+
+```javascript
+// 搜索架构
+const search = async (query) => {
+  const results = [];
+  for (const board of boards) {
+    const data = await loadBoard(board.id);
+    data.cards.forEach(card => {
+      if (matchContent(card, query)) {
+        results.push({ board, card, matches });
+      }
+    });
+  }
+  return results;
+};
 ```
 
 ---
 
-## 7. 基础设施升级
+### 4.3 深色主题优化
 
-### 7.1 监控与观测
+**现状问题**: 部分组件深色模式适配不完整
 
-**7.1.1 性能监控**
+**待优化组件**:
+- [ ] 设置面板
+- [ ] 收藏夹侧边栏
+- [ ] 分享对话框
+- [ ] 图片预览
+
+---
+
+### 4.4 移动端适配
+
+**阶段规划**:
+1. **Phase 1**: 响应式布局，触摸手势支持
+2. **Phase 2**: PWA 安装支持
+3. **Phase 3**: 原生 App (React Native/Flutter)
+
+---
+
+## 5. 稳定性与监控
+
+### 5.1 错误监控系统
+
+**建议工具**: Sentry / LogRocket
+
+```javascript
+// 错误边界增强
+class ErrorBoundary extends React.Component {
+  componentDidCatch(error, errorInfo) {
+    Sentry.captureException(error, { extra: errorInfo });
+    this.setState({ hasError: true });
+  }
+}
 ```
-集成: Web Vitals
 
-监控指标:
-- LCP (最大内容绘制)
-- FID (首次输入延迟)
-- CLS (累积布局偏移)
-- TTFB (首字节时间)
+---
+
+### 5.2 性能监控
+
+**监控指标**:
+- FCP (First Contentful Paint)
+- LCP (Largest Contentful Paint)
+- TTI (Time to Interactive)
+- AI 响应延迟
+- 流式渲染帧率
+
+---
+
+### 5.3 自动化测试
+
+**测试策略**:
+| 测试类型 | 工具 | 覆盖范围 |
+|---------|------|---------|
+| 单元测试 | Vitest | Store, Services |
+| 组件测试 | Testing Library | 关键 UI 组件 |
+| E2E 测试 | Playwright | 核心用户流程 |
+
+**优先覆盖**:
+- [ ] AI 生成流程
+- [ ] 画板 CRUD
+- [ ] 云同步逻辑
+- [ ] 积分扣费
+
+---
+
+### 5.4 API 健康检查
+
+```javascript
+// 定期检查 AI API 可用性
+const healthCheck = async () => {
+  const checks = [
+    checkGMIEndpoint(),
+    checkFirebaseAuth(),
+    checkCloudflareKV()
+  ];
+  return Promise.allSettled(checks);
+};
 ```
 
-**7.1.2 用户行为分析**
-```
-集成: Mixpanel 或 Amplitude
+---
 
-跟踪事件:
-- 卡片创建/删除
-- AI 生成请求
+## 6. 商业化准备
+
+### 6.1 付费订阅体系
+
+**套餐设计**:
+| 套餐 | 价格 | 功能 |
+|------|------|------|
+| Free | 免费 | 100 积分，3 画板 |
+| Pro | ¥29/月 | 无限积分，无限画板，高级模型 |
+| Team | ¥99/月 | Pro + 协作功能 + 管理后台 |
+
+---
+
+### 6.2 分析埋点
+
+**关键事件**:
+- 用户注册/登录
+- 画板创建/删除
+- AI 对话开始/完成
 - 功能使用频率
-- 错误发生率
-```
-
-### 7.2 CI/CD 改进
-
-**7.2.1 自动化流程**
-```
-新增: .github/workflows/
-
-流程:
-1. PR 时自动运行测试
-2. Lint 检查
-3. Type 检查 (如添加 TS)
-4. 自动部署预览环境
-```
-
-**7.2.2 分支策略**
-```
-建议:
-- main: 生产环境
-- beta: 测试环境
-- feature/*: 功能开发
-- hotfix/*: 紧急修复
-```
-
-### 7.3 安全增强
-
-**7.3.1 内容安全**
-```
-改进:
-1. XSS 防护 (已有 DOMPurify)
-2. CSP 策略配置
-3. 敏感数据加密存储
-```
-
-**7.3.2 访问控制**
-```
-改进:
-1. API Rate Limiting
-2. Token 刷新机制
-3. 异常登录检测
-```
+- 付费转化路径
 
 ---
 
-## 8. 实施优先级矩阵
+### 6.3 数据合规
 
-### 8.1 优先级评分
+**待完成项**:
+- [ ] 隐私政策页面
+- [ ] 用户数据导出功能
+- [ ] 账号删除流程
+- [ ] GDPR 合规检查
 
-| 功能 | 影响力 | 工作量 | 优先级 | 预计周期 |
-|------|--------|--------|--------|---------|
-| 离线模式 | 高 | 中 | **P0** | 2 周 |
-| 虚拟化渲染 | 高 | 高 | **P1** | 3 周 |
-| 全局搜索 | 中 | 低 | **P1** | 1 周 |
-| 右键菜单 | 中 | 低 | **P2** | 3 天 |
-| 多格式导出 | 中 | 中 | **P2** | 2 周 |
-| 实时协作 | 高 | 高 | **P3** | 6 周 |
-| AI 记忆 | 高 | 高 | **P3** | 4 周 |
-| TypeScript 迁移 | 中 | 高 | **P3** | 4 周 |
+---
 
-### 8.2 里程碑规划
+## 开发优先级建议
 
-#### 🏁 v1.1 - 稳定版 (4 周)
-- [ ] 离线模式
-- [ ] 细粒度 ErrorBoundary
-- [ ] 自动保存草稿
-- [ ] Toast 通知系统
-- [ ] 测试覆盖率 50%
+### Phase 1 (1-2 月) - 稳定性
+- [x] Bug 修复（已完成）
+- [ ] 代码分割与懒加载
+- [ ] Canvas 虚拟化
+- [ ] 错误监控集成
 
-#### 🏁 v1.2 - 性能版 (6 周)
-- [ ] 虚拟化渲染
-- [ ] 代码分割
-- [ ] 图片压缩
-- [ ] 状态订阅优化
-
-#### 🏁 v1.3 - 体验版 (4 周)
+### Phase 2 (2-3 月) - 体验
 - [ ] 全局搜索
-- [ ] 右键菜单
 - [ ] 快捷键增强
-- [ ] MiniMap
+- [ ] 深色主题完善
+- [ ] 移动端 Phase 1
 
-#### 🏁 v2.0 - 协作版 (8 周)
-- [ ] 实时协作
-- [ ] 评论系统
-- [ ] 多格式导出
-- [ ] API 集成
+### Phase 3 (3-4 月) - 功能
+- [ ] 模板系统
+- [ ] 版本历史
+- [ ] 高级连线
 
----
-
-## 附录：快速参考
-
-### A. 文件变更速查
-
-```
-新增文件:
-├── src/
-│   ├── services/
-│   │   ├── offlineQueue.js      # 离线队列
-│   │   ├── exportService.js     # 导出服务
-│   │   ├── importService.js     # 导入服务
-│   │   ├── errorReporting.js    # 错误上报
-│   │   └── memoryService.js     # AI 记忆
-│   │
-│   ├── components/
-│   │   ├── ContextMenu.jsx      # 右键菜单
-│   │   ├── Toast.jsx            # 通知
-│   │   ├── StatusBar.jsx        # 状态栏
-│   │   ├── SearchModal.jsx      # 搜索
-│   │   ├── MiniMap.jsx          # 小地图
-│   │   └── TemplateGallery.jsx  # 模板
-│   │
-│   └── hooks/
-│       └── useAutoSave.js       # 自动保存
-
-修改文件:
-├── src/services/boardService.js  # 增量保存
-├── src/services/syncService.js   # 离线支持
-├── src/components/Canvas.jsx     # 虚拟化
-├── src/components/Card.jsx       # memo 优化
-└── src/hooks/useGlobalHotkeys.js # 新快捷键
-```
-
-### B. 技术选型建议
-
-| 需求 | 推荐方案 | 备选 |
-|------|---------|------|
-| 实时协作 | Yjs + WebRTC | Firestore |
-| 错误追踪 | Sentry | LogRocket |
-| 虚拟化 | 自定义实现 | react-window |
-| 测试 | Vitest + Playwright | Jest + Cypress |
-| CI/CD | GitHub Actions | Cloudflare Pages CI |
+### Phase 4 (4-6 月) - 商业化
+- [ ] 付费订阅
+- [ ] 协作功能
+- [ ] 数据分析
 
 ---
 
-> 📅 **最后更新**: 2025-12-27  
-> 📝 **维护者**: AI Assistant  
-> 🔄 **下次评审**: 建议每季度更新一次路线图
+## 技术债务清单
+
+| 问题 | 位置 | 优先级 |
+|------|------|--------|
+| useStore 动态导入警告 | syncService.js | 中 |
+| Bundle 过大 | 全局 | 高 |
+| 测试覆盖率低 | 全局 | 中 |
+| console.log 清理 | 多处 | 低 |
+
+---
+
+*文档创建: 2024-12-27*  
+*最后更新: 2024-12-27*

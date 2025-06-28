@@ -134,7 +134,7 @@ export default function ChatView({
     };
 
     const handleRetry = async () => {
-        const lastUserMessage = card.data.messages?.filter(m => m.sender === 'user').pop();
+        const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
         if (!lastUserMessage) return;
 
         setIsStreaming(true);
