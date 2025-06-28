@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, lazy } from 'react';
+import React, { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -9,6 +9,7 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
+import SearchModal, { useSearchShortcut } from './components/SearchModal';
 
 // Lazy Load Pages
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
@@ -54,6 +55,30 @@ function AppContent() {
 
     // Dialog State
     const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => { } });
+
+    // Search Modal State
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [allBoardsData, setAllBoardsData] = useState({});
+
+    // Cmd+K shortcut for search
+    useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
+
+    // Load all boards data for search (lazy load when search opens)
+    useEffect(() => {
+        if (isSearchOpen && Object.keys(allBoardsData).length === 0) {
+            // Load data from localStorage for all boards
+            const loadedData = {};
+            boardsList.forEach(board => {
+                try {
+                    const data = localStorage.getItem(`board_${board.id}`);
+                    if (data) loadedData[board.id] = JSON.parse(data);
+                } catch (e) {
+                    console.warn('Failed to load board data for search:', board.id);
+                }
+            });
+            setAllBoardsData(loadedData);
+        }
+    }, [isSearchOpen, boardsList, allBoardsData]);
 
     const showDialog = (title, message, type = 'info', onConfirm = () => { }) => {
         setDialog({ isOpen: true, title, message, type, onConfirm });
@@ -259,6 +284,14 @@ function AppContent() {
                 title={dialog.title}
                 message={dialog.message}
                 type={dialog.type}
+            />
+
+            {/* Global Search Modal */}
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                boardsList={boardsList}
+                allBoardsData={allBoardsData}
             />
         </>
     );
