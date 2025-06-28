@@ -8,7 +8,7 @@ import { useStore } from '../../store/useStore';
  * A tab in Settings modal showing free trial credits info.
  * Designed to be user-friendly without exposing API configuration details.
  */
-export default function SettingsCreditsTab() {
+export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
 
     // Default to 100 if undefined, clamp between 0 and 100
@@ -79,7 +79,7 @@ export default function SettingsCreditsTab() {
             {/* Info Box */}
             <div className="text-center">
                 <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
-                    *如需使用您自己的 API Key (OpenAI, Google, Anthropic)，请前往 <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={() => document.querySelector('button[title="Hide Advanced"]')?.click() ?? console.log('Use side toggle')}>高级设置</span> 进行配置。
+                    *如需使用您自己的 API Key (OpenAI, Google, Anthropic)，请前往 <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={onOpenAdvanced}>高级设置</span> 进行配置。
                 </p>
             </div>
         </div>
