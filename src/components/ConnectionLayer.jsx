@@ -103,11 +103,13 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
 
                     const { source, target } = getBestAnchorPair(fromCard, toCard);
                     const pathData = generateBezierPath(source, target);
-                    // Store both the Path2D and connection info for viewport culling
+                    // Store the Path2D, connection info, and card color for colored connections
+                    const cardColor = fromCard.data?.cardColor || null;
                     pathCache.set(key, {
                         path: new Path2D(pathData),
                         fromId: conn.from,
-                        toId: conn.to
+                        toId: conn.to,
+                        cardColor: cardColor
                     });
                     hasUpdates = true;
                 }
@@ -196,22 +198,48 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     ctx.translate(cx, cy);
                     ctx.scale(cs, cs);
 
-                    // 3. Set Styles
+                    // 3. Set Base Styles
                     // Thin lines relative to zoom? Or constant screen width?
                     // "ctx.lineWidth = 3 / cs" makes line constant physical width on screen (gets thinner in world space as you zoom in)
                     // Usually we want constant SCREEN width for UI lines.
                     ctx.lineWidth = 3 / cs;
-
-                    // Theme detection
-                    ctx.strokeStyle = isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)';
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    // 4. Draw Paths from Cache
+                    // 4. Group paths by color for efficient batch drawing
+                    const colorGroups = {
+                        default: [],
+                        amber: [],
+                        emerald: [],
+                        violet: []
+                    };
+
                     for (const entry of map.values()) {
-                        // Handle both old format (Path2D) and new format (object with path property)
                         const path = entry.path || entry;
-                        ctx.stroke(path);
+                        const color = entry.cardColor || 'default';
+                        if (colorGroups[color]) {
+                            colorGroups[color].push(path);
+                        } else {
+                            colorGroups.default.push(path);
+                        }
+                    }
+
+                    // Color definitions for light/dark mode
+                    const colors = {
+                        default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
+                        amber: isDark ? 'rgba(251, 191, 36, 0.6)' : 'rgba(245, 158, 11, 0.6)',
+                        emerald: isDark ? 'rgba(52, 211, 153, 0.6)' : 'rgba(16, 185, 129, 0.6)',
+                        violet: isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'
+                    };
+
+                    // Draw each color group
+                    for (const [colorKey, paths] of Object.entries(colorGroups)) {
+                        if (paths.length > 0) {
+                            ctx.strokeStyle = colors[colorKey];
+                            for (const path of paths) {
+                                ctx.stroke(path);
+                            }
+                        }
                     }
 
                     ctx.restore();

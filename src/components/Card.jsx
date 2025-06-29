@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Maximize2, Link, ArrowRight, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
@@ -6,6 +6,7 @@ import { isSafari, isIOS } from '../utils/browser';
 
 import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
+import { useContextMenu } from './ContextMenu';
 
 const Card = React.memo(function Card({
     data, // Now contains id, x, y, and actual data
@@ -114,6 +115,37 @@ const Card = React.memo(function Card({
 
     const zIndex = isSelected ? 60 : (isTarget ? 55 : 1);
 
+    // Card color accent class
+    const cardColorClass = data.data?.cardColor ? `card-color-${data.data.cardColor}` : '';
+
+    // Context menu for card
+    const { showContextMenu, getCardMenuItems } = useContextMenu();
+
+    const handleContextMenu = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const menuItems = getCardMenuItems(data, {
+            onCopy: async () => {
+                const textToCopy = data.data?.messages?.[data.data.messages.length - 1]?.content || '';
+                const text = typeof textToCopy === 'string' ? textToCopy : '';
+                try { await navigator.clipboard.writeText(text); } catch (err) { console.error(err); }
+            },
+            onDelete: () => onDelete && onDelete(data.id),
+            onToggleFavorite: () => { /* TODO: implement if needed */ },
+            onExpand: () => onExpand && onExpand(data.id),
+            onConnect: () => onConnect && onConnect(data.id),
+            onSetColor: (color) => {
+                if (onUpdate) {
+                    onUpdate(data.id, { cardColor: color });
+                }
+            },
+            isFavorite: false
+        });
+
+        showContextMenu(e.clientX, e.clientY, menuItems);
+    }, [data, onDelete, onExpand, onConnect, onUpdate, showContextMenu, getCardMenuItems]);
+
     return (
         <div
             ref={cardRef}
@@ -123,18 +155,19 @@ const Card = React.memo(function Card({
                 ${isSelected ? 'card-sharp-selected' : 'hover:scale-[1.01] hover:border-brand-300 dark:hover:border-white/20'}
                 ${isTarget ? 'card-target-breathing' : ''}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
-                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
+                ${cardColorClass}`}
             style={{
                 left: data.x,
                 top: data.y,
                 zIndex: zIndex,
                 willChange: isDragging ? 'left, top' : 'auto' // Hint to browser
             }}
-            onPrivateKey={() => { }} // Placeholder if needed
             onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStartWithDoubleTap}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
+            onContextMenu={handleContextMenu}
         >
             {/* Top Bar - Model + Buttons */}
             <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5">

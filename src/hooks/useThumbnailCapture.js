@@ -10,11 +10,10 @@ import { updateBoardMetadata } from '../services/storage';
 function calculateCardsCenterView(cards) {
     if (!cards || cards.length === 0) return null;
 
-    // Filter valid cards
+    // Filter valid cards - cards store position as x, y directly (not position.x, position.y)
     const validCards = cards.filter(c =>
-        c.position &&
-        typeof c.position.x === 'number' &&
-        typeof c.position.y === 'number'
+        typeof c.x === 'number' &&
+        typeof c.y === 'number'
     );
 
     if (validCards.length === 0) return null;
@@ -27,10 +26,10 @@ function calculateCardsCenterView(cards) {
     let maxX = -Infinity, maxY = -Infinity;
 
     for (const card of validCards) {
-        minX = Math.min(minX, card.position.x);
-        minY = Math.min(minY, card.position.y);
-        maxX = Math.max(maxX, card.position.x + CARD_WIDTH);
-        maxY = Math.max(maxY, card.position.y + CARD_HEIGHT);
+        minX = Math.min(minX, card.x);
+        minY = Math.min(minY, card.y);
+        maxX = Math.max(maxX, card.x + CARD_WIDTH);
+        maxY = Math.max(maxY, card.y + CARD_HEIGHT);
     }
 
     return {

@@ -355,6 +355,38 @@ body,
         z-index: 55 !important;
     }
 
+    /* Card Color Accents - Modern colors for visual differentiation */
+    .card-color-amber {
+        border-left: 4px solid #f59e0b !important;
+        box-shadow: 0 8px 30px rgba(245, 158, 11, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-color-emerald {
+        border-left: 4px solid #10b981 !important;
+        box-shadow: 0 8px 30px rgba(16, 185, 129, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-color-violet {
+        border-left: 4px solid #8b5cf6 !important;
+        box-shadow: 0 8px 30px rgba(139, 92, 246, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Dark mode adjustments for card colors */
+    .dark .card-color-amber {
+        border-left-color: #fbbf24 !important;
+        box-shadow: 0 8px 30px rgba(251, 191, 36, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .dark .card-color-emerald {
+        border-left-color: #34d399 !important;
+        box-shadow: 0 8px 30px rgba(52, 211, 153, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .dark .card-color-violet {
+        border-left-color: #a78bfa !important;
+        box-shadow: 0 8px 30px rgba(167, 139, 250, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
     /* --- Animated Background --- Japanese Style */
     .bg-mesh-gradient {
         background-color: #FAF8F3;
