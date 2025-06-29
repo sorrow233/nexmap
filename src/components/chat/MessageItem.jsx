@@ -10,7 +10,8 @@ const USER_MSG_MAX_LENGTH = 200;
 
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
-    const { cards, focusOnCard } = useStore();
+    const cards = useStore(state => state.cards);
+    const focusOnCard = useStore(state => state.focusOnCard);
     const contentRef = React.useRef(null);
 
     // 长文本折叠状态
