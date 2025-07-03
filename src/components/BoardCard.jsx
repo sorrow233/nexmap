@@ -11,8 +11,19 @@ export default function BoardCard({
     onRequestPermanentDelete,
     onGenerateBackground,
     generatingBoardId,
-    variant = 'overlay' // 'overlay' | 'stacked'
+    variant = 'overlay', // 'overlay' | 'stacked'
+    isSystemCreditsUser = false, // 是否是免费用户（使用系统积分）
+    onFreeUserRestricted // 免费用户点击受限功能时的回调
 }) {
+    // 处理图片生成按钮点击
+    const handleImageButtonClick = (e, boardId) => {
+        e.stopPropagation();
+        if (isSystemCreditsUser && onFreeUserRestricted) {
+            onFreeUserRestricted();
+        } else {
+            onGenerateBackground(boardId);
+        }
+    };
     const getDaysRemaining = (deletedAt) => {
         if (!deletedAt) return 30;
         const expiryDate = deletedAt + (30 * 24 * 60 * 60 * 1000);
@@ -57,10 +68,7 @@ export default function BoardCard({
                                     <Trash2 size={16} />
                                 </button>
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onGenerateBackground(board.id);
-                                    }}
+                                    onClick={(e) => handleImageButtonClick(e, board.id)}
                                     disabled={generatingBoardId === board.id}
                                     className="w-10 h-10 bg-white text-slate-900 flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors rounded-full"
                                 >
@@ -140,10 +148,7 @@ export default function BoardCard({
 
                                 {/* Generate Background Button */}
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onGenerateBackground(board.id);
-                                    }}
+                                    onClick={(e) => handleImageButtonClick(e, board.id)}
                                     disabled={generatingBoardId === board.id}
                                     className={`p-3 rounded-2xl transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 shadow-sm
                                         ${generatingBoardId === board.id
