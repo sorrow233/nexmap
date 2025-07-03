@@ -69,7 +69,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                         <div className="relative group/carousel">
                             <div className="flex overflow-x-auto gap-6 pb-8 pt-2 px-2 custom-scrollbar snap-x snap-mandatory mask-gradient-right">
                                 {recentBoards.map((board, index) => (
-                                    <div key={`recent-${board.id}`} className="snap-start shrink-0 w-[280px] md:w-[320px]">
+                                    <div key={`recent-${board.id}`} className="snap-start shrink-0 w-[220px] md:w-[260px]">
                                         <BoardCard
                                             board={board}
                                             index={index}
