@@ -1,131 +1,150 @@
-import React, { useState, useRef } from 'react';
-import { LayoutGrid, Plus, Trash2, Clock, FileText, ChevronRight, Sparkles, X, ArrowRight, Image as ImageIcon, AlertCircle, RotateCcw, Ban, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { LayoutGrid, Clock, FileText, ChevronRight, Sparkles, Trash2, ArrowRight } from 'lucide-react';
 import ModernDialog from './ModernDialog';
-import useImageUpload from '../hooks/useImageUpload';
 import useBoardBackground from '../hooks/useBoardBackground';
-import { loadBoard, updateBoardMetadata } from '../services/storage';
 import BoardDropZone from './BoardDropZone';
 import BoardCard from './BoardCard';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const { generatingBoardId, generateBackground } = useBoardBackground();
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null });
+    const [greeting, setGreeting] = useState('Welcome back');
 
-    const getDaysRemaining = (deletedAt) => {
-        if (!deletedAt) return 30;
-        const expiryDate = deletedAt + (30 * 24 * 60 * 60 * 1000);
-        const diff = expiryDate - Date.now();
-        return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-    };
+    useEffect(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) setGreeting('Good morning');
+        else if (hour < 18) setGreeting('Good afternoon');
+        else setGreeting('Good evening');
+    }, []);
+
+    const recentBoards = [...boards]
+        .filter(b => b.lastAccessedAt)
+        .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
+        .slice(0, 5);
 
     return (
         <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
-            {/* Quick Start / Hero Input - Hidden in Trash View */}
-            {!isTrashView && <BoardDropZone onCreateBoard={onCreateBoard} />}
-
-            {/* Recently Accessed Section - Hidden in Trash View */}
-            {!isTrashView && boards.length > 0 && (
-                <div className="mb-20 animate-fade-in px-2">
-                    <div className="flex items-center gap-4 mb-8 pl-2">
-                        <div className="w-10 h-10 bg-white/50 dark:bg-white/10 rounded-2xl flex items-center justify-center text-orange-400 dark:text-orange-300 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-sm">
-                            <Clock size={20} />
-                        </div>
-                        <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Recently Visited</h2>
+            {/* Hero Section & Greeting */}
+            {!isTrashView && (
+                <div className="relative pt-12 pb-6 px-8 max-w-[1600px] mx-auto">
+                    <div className="text-center mb-10 animate-fade-in-up">
+                        <h1 className="text-5xl md:text-6xl font-black tracking-tighter mb-4 text-slate-900 dark:text-white">
+                            {greeting}, <span className="text-gradient-gold">Creator.</span>
+                        </h1>
+                        <p className="text-xl text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                            Ready to capture your next big idea?
+                        </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[...boards]
-                            .filter(b => b.lastAccessedAt)
-                            .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
-                            .slice(0, 4)
-                            .map((board, index) => (
-                                <div
-                                    key={`recent-${board.id}`}
-                                    onClick={() => onSelectBoard(board.id)}
-                                    className="group relative glass-card rounded-[2rem] p-6 cursor-pointer transition-all duration-300 hover:glass-card-hover"
-                                >
-                                    <div className="flex flex-col h-full justify-between gap-6">
-                                        <div className="relative">
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors mb-2">
-                                                {board.name}
-                                            </h3>
-                                            <p className="text-slate-400 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-orange-300/60"></span>
-                                                {new Date(board.lastAccessedAt).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <div className="px-3 py-1 bg-white/40 dark:bg-white/10 text-slate-500 dark:text-slate-300 text-[10px] font-black rounded-lg border border-white/20 backdrop-blur-sm">
-                                                {board.cardCount || 0} CARDS
-                                            </div>
-                                            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 shadow-lg">
-                                                <ChevronRight size={16} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                    <BoardDropZone onCreateBoard={onCreateBoard} />
+                </div>
+            )}
+
+            {/* Trash View Header */}
+            {isTrashView && (
+                <div className="pt-12 pb-6 px-8 max-w-[1600px] mx-auto text-center animate-fade-in-up">
+                    <h1 className="text-4xl font-black tracking-tighter mb-4 text-slate-900 dark:text-white">
+                        Recycle Bin
+                    </h1>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 text-red-500 font-bold text-sm">
+                        <Clock size={16} />
+                        <span>Items are permanently deleted after 30 days</span>
                     </div>
                 </div>
             )}
 
-            {/* Main Grid: All Boards (Active or Trash) */}
-            <div className="animate-fade-in px-2">
-                <div className="flex items-center gap-4 mb-8 pl-2">
-                    {!isTrashView && (
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm backdrop-blur-sm bg-white/50 dark:bg-white/10 text-orange-400 dark:text-orange-300 border-white/60 dark:border-white/10`}>
-                            <FileText size={20} />
-                        </div>
-                    )}
-                    <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-                        {isTrashView ? 'Recycle Bin' : 'All Boards'}
-                    </h2>
-                    {isTrashView && (
-                        <div className="ml-auto bg-red-50 dark:bg-red-500/10 px-3 py-1 rounded-lg border border-red-100 dark:border-red-500/20 text-xs font-bold text-red-500 flex items-center gap-2">
-                            <Clock size={12} />
-                            Items deleted over 30 days are permanently removed.
-                        </div>
-                    )}
-                </div>
+            {/* Content Container */}
+            <div className="max-w-[1600px] mx-auto px-4 md:px-8 space-y-16">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
-                    {boards.map((board, index) => (
-                        <BoardCard
-                            key={board.id}
-                            board={board}
-                            index={index}
-                            isTrashView={isTrashView}
-                            onSelect={onSelectBoard}
-                            onDelete={onDeleteBoard}
-                            onRestore={onRestoreBoard}
-                            onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id })}
-                            onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
-                            generatingBoardId={generatingBoardId}
-                        />
-                    ))}
-
-                    {boards.length === 0 && (
-                        <div className="col-span-full py-40 glass-panel rounded-[3.5rem] flex flex-col items-center justify-center text-slate-500 animate-fade-in shadow-inner border border-dashed border-slate-300/50 dark:border-white/10">
-                            <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-8 backdrop-blur-md ${isTrashView ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : 'bg-white/80 dark:bg-white/5 shadow-glow-blue text-orange-400'}`}>
-                                {isTrashView ? <Trash2 size={40} /> : <Sparkles size={40} className="animate-pulse-slow" />}
+                {/* Recently Visited - Horizontal Carousel */}
+                {!isTrashView && recentBoards.length > 0 && (
+                    <div className="animate-fade-in-up delay-100">
+                        <div className="flex items-center gap-3 mb-6 px-2">
+                            <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-500">
+                                <Clock size={16} strokeWidth={2.5} />
                             </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-3">
-                                {isTrashView ? 'Trash is empty' : 'No boards found'}
-                            </h2>
-                            <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xs text-center leading-relaxed">
-                                {isTrashView ? 'Everything appears to be clean here.' : "Let's create something extraordinary. Start by typing a prompt above."}
-                            </p>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Recently Visited</h2>
+                        </div>
+
+                        <div className="relative group/carousel">
+                            <div className="flex overflow-x-auto gap-6 pb-8 pt-2 px-2 custom-scrollbar snap-x snap-mandatory mask-gradient-right">
+                                {recentBoards.map((board, index) => (
+                                    <div key={`recent-${board.id}`} className="snap-start shrink-0 w-[280px] md:w-[320px]">
+                                        <BoardCard
+                                            board={board}
+                                            index={index}
+                                            isTrashView={false}
+                                            onSelect={onSelectBoard}
+                                            onDelete={onDeleteBoard}
+                                            onGenerateBackground={generateBackground}
+                                            generatingBoardId={generatingBoardId}
+                                        />
+                                    </div>
+                                ))}
+                                {/* Add a spacer at the end for better scrolling */}
+                                <div className="w-[20px] shrink-0"></div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* All Boards Grid */}
+                <div className="animate-fade-in-up delay-200">
+                    {!isTrashView && (
+                        <div className="flex items-center gap-3 mb-6 px-2">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                                <LayoutGrid size={16} strokeWidth={2.5} />
+                            </div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">All Boards</h2>
+                            <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md">
+                                {boards.length}
+                            </span>
                         </div>
                     )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
+                        {boards.map((board, index) => (
+                            <BoardCard
+                                key={board.id}
+                                board={board}
+                                index={index}
+                                isTrashView={isTrashView}
+                                onSelect={onSelectBoard}
+                                onDelete={onDeleteBoard}
+                                onRestore={onRestoreBoard}
+                                onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id })}
+                                onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
+                                generatingBoardId={generatingBoardId}
+                            />
+                        ))}
+
+                        {/* Empty State */}
+                        {boards.length === 0 && (
+                            <div className="col-span-full py-32 glass-panel rounded-[2.5rem] flex flex-col items-center justify-center text-center animate-fade-in border-dashed border-2 border-slate-200 dark:border-white/5">
+                                <div className={`w-28 h-28 rounded-[2.5rem] flex items-center justify-center mb-8 backdrop-blur-md transition-transform hover:scale-110 duration-500 ${isTrashView ? 'bg-red-50 dark:bg-red-900/10 text-red-300' : 'bg-gradient-to-br from-orange-100 to-rose-100 dark:from-white/5 dark:to-white/5 text-orange-400'}`}>
+                                    {isTrashView ? <Trash2 size={48} strokeWidth={1.5} /> : <Sparkles size={48} strokeWidth={1.5} className="animate-pulse" />}
+                                </div>
+                                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
+                                    {isTrashView ? 'Trash is empty' : 'A fresh start'}
+                                </h2>
+                                <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm leading-relaxed text-lg">
+                                    {isTrashView
+                                        ? 'Your deleted boards will appear here before they vanish forever.'
+                                        : "Your canvas is waiting. Type a thought above to begin your journey."}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-            {/* Delete Confirmation (Only for Permanent Delete) */}
+
+            {/* Delete Confirmation */}
             <ModernDialog
                 isOpen={deleteDialog.isOpen}
                 onClose={() => setDeleteDialog({ isOpen: false, boardId: null })}
                 onConfirm={() => onPermanentlyDeleteBoard(deleteDialog.boardId)}
                 title="Permanently Delete?"
-                message="This action cannot be undone. Are you sure you want to destroy this board?"
+                message="This action cannot be undone. Are you sure you wish to dissolve this board into the void?"
                 type="confirm"
             />
         </div>

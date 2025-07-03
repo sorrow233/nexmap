@@ -51,11 +51,11 @@ export default function BoardDropZone({ onCreateBoard }) {
 
     return (
         <div className="mb-24 relative group max-w-4xl mx-auto mt-8">
-            <div className={`absolute inset-0 bg-gradient-to-r from-orange-300/15 via-pink-300/15 to-orange-300/15 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-r from-orange-300/20 via-rose-300/20 to-orange-300/20 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}></div>
 
             <div
-                className={`relative glass-panel transition-all duration-500 p-3 rounded-[2.5rem] flex flex-col
-                    ${isDragging ? 'border-orange-300 ring-4 ring-orange-300/20 scale-[1.01]' : 'hover:border-orange-200/40 dark:hover:border-orange-200/20 hover:shadow-glow-blue'}
+                className={`relative glass-card-premium transition-all duration-500 p-4 rounded-[2.5rem] flex flex-col
+                    ${isDragging ? 'border-orange-300 ring-4 ring-orange-300/20 scale-[1.01]' : 'hover:border-white/60 dark:hover:border-white/20 hover:shadow-premium-hover'}
                 `}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -85,9 +85,9 @@ export default function BoardDropZone({ onCreateBoard }) {
                     </div>
                 )}
 
-                <div className="flex items-center gap-4 w-full">
-                    <div className="pl-6 text-orange-400/80 dark:text-orange-300 my-auto shrink-0">
-                        <Sparkles size={28} className="animate-pulse-slow drop-shadow-sm" />
+                <div className="flex items-center gap-4 w-full pl-2">
+                    <div className="pl-4 text-orange-400 dark:text-orange-300 my-auto shrink-0">
+                        <Sparkles size={24} className="animate-pulse-slow drop-shadow-sm" strokeWidth={2.5} />
                     </div>
 
                     <input
@@ -95,8 +95,8 @@ export default function BoardDropZone({ onCreateBoard }) {
                         value={quickPrompt}
                         onChange={e => setQuickPrompt(e.target.value)}
                         onKeyDown={handleKeyPress}
-                        placeholder="What's on your mind? Type to start..."
-                        className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium min-w-0"
+                        placeholder="What would you like to create?"
+                        className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 font-medium min-w-0 tracking-tight"
                     />
 
                     {/* Image Upload Button */}
@@ -110,16 +110,16 @@ export default function BoardDropZone({ onCreateBoard }) {
                     />
                     <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-4 text-slate-400 hover:text-orange-400 hover:bg-orange-50/50 dark:hover:bg-white/5 rounded-2xl transition-all mr-2 shrink-0 group-hover:scale-110"
+                        className="p-4 text-slate-400 hover:text-orange-400 hover:bg-orange-50/50 dark:hover:bg-white/5 rounded-2xl transition-all mr-1 shrink-0 group-hover:scale-105 active:scale-95"
                         title="Upload Image"
                     >
-                        <ImageIcon size={26} />
+                        <ImageIcon size={24} strokeWidth={2} />
                     </button>
 
                     <button
                         onClick={handleSubmit}
                         disabled={!quickPrompt.trim() && images.length === 0}
-                        className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 px-10 py-4 rounded-[1.75rem] font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-30 disabled:cursor-not-allowed shrink-0 mr-1"
+                        className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-[1.75rem] font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed shrink-0"
                     >
                         Start
                     </button>

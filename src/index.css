@@ -44,6 +44,11 @@ body,
         box-shadow: 0 12px 32px rgba(74, 74, 74, 0.06), 0 4px 16px rgba(255, 180, 162, 0.08);
     }
 
+    .mask-gradient-right {
+        mask-image: linear-gradient(to right, black 85%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    }
+
     .shadow-glow-blue {
         box-shadow: 0 0 24px rgba(255, 180, 162, 0.15), 0 0 48px rgba(255, 180, 162, 0.08);
     }
@@ -133,9 +138,40 @@ body,
         }
     }
 
+    /* Premium Deep Glass */
+    .glass-card-premium {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .glass-card-premium {
+            background: rgba(30, 30, 35, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+    }
+
     /* --- Text Gradients --- Japanese Warm Tones */
     .text-gradient {
         background: linear-gradient(135deg, #FF9D80 0%, #FFB4A2 50%, #FF8A73 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .text-gradient-gold {
+        background: linear-gradient(135deg, #FFD700 0%, #FDB931 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .text-gradient-night {
+        background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -506,6 +542,34 @@ body,
         stroke-dasharray: 100;
         stroke-dashoffset: 100;
         animation: draw 3s ease-in-out infinite;
+    }
+
+    @keyframes fade-in-up {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in-up {
+        animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .delay-100 {
+        animation-delay: 100ms;
+    }
+
+    .delay-200 {
+        animation-delay: 200ms;
+    }
+
+    .delay-300 {
+        animation-delay: 300ms;
     }
 
     .stroke-dasharray-100 {
