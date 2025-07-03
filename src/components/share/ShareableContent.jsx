@@ -202,12 +202,12 @@ const THEME_CONFIGS = {
     },
 };
 
-// Layout configurations
+// Layout configurations (Standardized to 1080px High-Res)
 const LAYOUT_CONFIGS = {
-    card: { width: 800, aspectRatio: null, padding: 64 },
-    full: { width: 800, aspectRatio: null, padding: 32 },
-    social: { width: 800, aspectRatio: 1, padding: 48 },
-    slide: { width: 1280, aspectRatio: 16 / 9, padding: 64 },
+    card: { width: 1080, aspectRatio: null, padding: 80 }, // Scaled from 64px
+    full: { width: 1080, aspectRatio: null, padding: 60 },
+    social: { width: 1080, aspectRatio: 1, padding: 80 },
+    slide: { width: 1920, aspectRatio: 16 / 9, padding: 120 },
 };
 
 const ShareableContent = React.forwardRef(({ content, theme = 'business', layout = 'card', showWatermark }, ref) => {
@@ -224,133 +224,206 @@ const ShareableContent = React.forwardRef(({ content, theme = 'business', layout
     // Parse markdown content
     const htmlContent = marked.parse(content || '');
 
-    // Calculate container dimensions
-    const containerWidth = layoutConfig.width;
-    const containerHeight = layoutConfig.aspectRatio
-        ? containerWidth / layoutConfig.aspectRatio
-        : 'auto';
-    const minHeight = layoutConfig.aspectRatio ? undefined : 500;
+    // Common Text Styles (Typography Scaled for 1080px)
+    // Base 17px -> 24px (approx 1.4x scale)
+    const baseTextStyle = {
+        fontFamily: themeConfig.fontFamily,
+        color: themeConfig.proseColor,
+        fontSize: '24px',
+        lineHeight: '1.85',
+        letterSpacing: theme === 'tech' ? '-0.02em' : '0.01em',
+    };
 
     return (
         <div
             ref={ref}
             style={{
-                width: `${containerWidth}px`,
-                height: containerHeight !== 'auto' ? `${containerHeight}px` : 'auto',
-                minHeight: minHeight ? `${minHeight}px` : undefined,
+                width: `${layoutConfig.width}px`,
+                // Auto height, but with aspect ratio constraint if needed
+                minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : '1000px',
                 background: themeConfig.containerBg,
-                color: themeConfig.containerColor,
                 padding: `${layoutConfig.padding}px`,
-                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 position: 'relative',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-                // 确保不受外部样式影响
-                isolation: 'isolate',
+                isolation: 'isolate', // Dark mode independence
+                justifyContent: layout === 'slide' || layout === 'social' ? 'center' : 'flex-start',
             }}
         >
             {/* Background Decorations */}
             {themeConfig.backgroundDecor}
 
-            {/* Main Card */}
+            {/* Main Content Card */}
             <div
                 style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: themeConfig.cardBg,
+                    backgroundColor: themeConfig.cardBg,
                     boxShadow: themeConfig.cardShadow,
                     border: themeConfig.cardBorder,
-                    borderRadius: themeConfig.cardRadius,
+                    borderRadius: '32px', // Scaled radius
                     overflow: 'hidden',
                     position: 'relative',
                     zIndex: 10,
+                    width: '100%',
+                    height: layout === 'full' ? '100%' : 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
                 }}
             >
-                {/* Header Bar */}
-                <div
-                    style={{
+                {/* Header Accent */}
+                {themeConfig.headerHeight !== '0' && (
+                    <div style={{
                         width: '100%',
-                        height: themeConfig.headerHeight,
+                        height: '12px', // Scaled Header Height
                         background: themeConfig.headerGradient,
-                    }}
-                />
+                    }} />
+                )}
 
-                {/* Content Area */}
-                <div
-                    style={{
-                        flex: 1,
-                        padding: '48px',
-                        overflow: 'hidden',
-                    }}
-                >
+                {/* Content Area - Typography Engine */}
+                <div style={{
+                    padding: '80px 96px', // Scaled padding (was 48px 56px)
+                    flex: 1,
+                }}>
                     <div
-                        style={{
-                            color: themeConfig.proseColor,
-                            fontSize: '18px',
-                            lineHeight: '1.8',
-                            letterSpacing: '-0.01em',
-                        }}
                         dangerouslySetInnerHTML={{
-                            __html: htmlContent.replace(
-                                /<h([1-6])/g,
-                                `<h$1 style="color: ${themeConfig.proseHeadingColor}; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px;"`
-                            ).replace(
-                                /<p>/g,
-                                `<p style="margin-bottom: 20px; line-height: 1.9;">`
-                            ).replace(
-                                /<strong>/g,
-                                `<strong style="color: ${themeConfig.proseHeadingColor}; font-weight: 600;">`
-                            ).replace(
-                                /<code>/g,
-                                `<code style="font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.9em; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.1);">`
-                            ).replace(
-                                /<pre>/g,
-                                `<pre style="background: #0f172a; color: #e2e8f0; padding: 20px; border-radius: 12px; overflow-x: auto; font-size: 14px;">`
-                            )
+                            __html: htmlContent
+                                // H1: Grand Title (Scaled)
+                                .replace(/<h1/g, `<h1 style="
+                                    font-size: 3.2em; /* ~76px */
+                                    line-height: 1.3;
+                                    font-weight: 800;
+                                    color: ${themeConfig.proseHeadingColor};
+                                    margin-bottom: 0.8em;
+                                    margin-top: 0;
+                                    letter-spacing: -0.03em;
+                                "`)
+                                // H2: Section Title (Scaled)
+                                .replace(/<h2/g, `<h2 style="
+                                    font-size: 2.4em; /* ~57px */
+                                    line-height: 1.4;
+                                    font-weight: 700;
+                                    color: ${themeConfig.proseHeadingColor};
+                                    margin-top: 1.5em;
+                                    margin-bottom: 0.6em;
+                                    letter-spacing: -0.02em;
+                                    border-bottom: 2px solid ${theme === 'tech' || theme === 'darkpro' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                                    padding-bottom: 0.3em;
+                                "`)
+                                // H3: Subsection (Scaled)
+                                .replace(/<h3/g, `<h3 style="
+                                    font-size: 1.8em; /* ~43px */
+                                    line-height: 1.5;
+                                    font-weight: 600;
+                                    color: ${themeConfig.proseHeadingColor};
+                                    margin-top: 1.2em;
+                                    margin-bottom: 0.4em;
+                                "`)
+                                // Paragraph: Readable Body
+                                .replace(/<p/g, `<p style="
+                                    ${Object.entries(baseTextStyle).map(([k, v]) => `${k.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}:${v}`).join(';')};
+                                    margin-bottom: 1.5em;
+                                "`)
+                                // List Items: Clean Indentation
+                                .replace(/<ul/g, `<ul style="margin-bottom: 1.5em; padding-left: 1.2em; list-style-type: none;">`)
+                                .replace(/<li/g, `<li style="
+                                    ${Object.entries(baseTextStyle).map(([k, v]) => `${k.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}:${v}`).join(';')};
+                                    margin-bottom: 0.5em;
+                                    position: relative;
+                                    padding-left: 1em;
+                                ">
+                                    <span style="
+                                        position: absolute;
+                                        left: -0.8em;
+                                        color: ${theme === 'colorful' ? themeConfig.brandColor : 'currentColor'};
+                                        opacity: 0.6;
+                                    ">•</span>
+                                `)
+                                // Blockquote: Editorial Style
+                                .replace(/<blockquote/g, `<blockquote style="
+                                    border-left: 6px solid ${themeConfig.brandColor}; /* Scaled border */
+                                    margin: 1.5em 0;
+                                    padding: 1em 1.5em; /* Scaled padding */
+                                    background: ${theme === 'darkpro' || theme === 'tech' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'};
+                                    border-radius: 0 12px 12px 0;
+                                    font-style: italic;
+                                "`)
+                                // Strong: Emphasis
+                                .replace(/<strong/g, `<strong style="
+                                    font-weight: 700;
+                                    color: ${themeConfig.proseHeadingColor};
+                                "`)
+                                // Code: Rounded & Clean
+                                .replace(/<code/g, `<code style="
+                                    font-family: 'JetBrains Mono', monospace;
+                                    font-size: 0.9em;
+                                    padding: 0.2em 0.4em;
+                                    border-radius: 6px;
+                                    background: ${theme === 'darkpro' || theme === 'tech' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
+                                    color: ${themeConfig.proseHeadingColor};
+                                "`)
                         }}
                     />
                 </div>
 
-                {/* Footer / Watermark */}
+                {/* Footer / Watermark (Re-designed & Scaled) */}
                 {showWatermark && (
-                    <div
-                        style={{
-                            padding: '20px 48px',
-                            borderTop: themeConfig.footerBorder,
-                            background: themeConfig.footerBg,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            letterSpacing: '0.1em',
-                            textTransform: 'uppercase',
-                            color: themeConfig.footerColor,
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div
-                                style={{
-                                    width: '28px',
-                                    height: '28px',
-                                    borderRadius: '8px',
-                                    background: themeConfig.accentGradient,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <IconComponent size={14} color="#ffffff" />
-                            </div>
-                            <span style={{ color: themeConfig.brandColor, fontWeight: '700' }}>
-                                NexMap
-                            </span>
-                        </div>
+                    <div style={{
+                        padding: '32px 96px', // Scaled padding
+                        background: themeConfig.footerBg,
+                        borderTop: themeConfig.footerBorder,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    }}>
+                        {/* Left: Brand Identity */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{
+                                width: '48px', // Scaled icon size
+                                height: '48px',
+                                borderRadius: '12px',
+                                background: themeConfig.accentGradient,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 12px -2px rgba(0,0,0,0.2)'
+                            }}>
+                                <IconComponent size={24} color="#ffffff" strokeWidth={2.5} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{
+                                    color: themeConfig.brandColor,
+                                    fontSize: '16px', // Scaled font
+                                    fontWeight: '800',
+                                    letterSpacing: '0.05em',
+                                    textTransform: 'uppercase',
+                                    lineHeight: '1.2'
+                                }}>NexMap</span>
+                                <span style={{
+                                    fontSize: '13px', // Scaled sub font
+                                    color: themeConfig.footerColor,
+                                    fontWeight: '500'
+                                }}>Visual Thinking</span>
+                            </div>
+                        </div>
+
+                        {/* Right: Meta Info */}
+                        <div style={{
+                            fontSize: '14px', // Scaled meta font
+                            color: themeConfig.footerColor,
+                            fontWeight: '600',
+                            letterSpacing: '0.05em',
+                            display: 'flex',
+                            gap: '24px',
+                            alignItems: 'center',
+                            textTransform: 'uppercase'
+                        }}>
                             <span>AI Insight</span>
-                            <span style={{ opacity: 0.4 }}>·</span>
+                            <span style={{
+                                width: '2px',
+                                height: '16px',
+                                background: 'currentColor',
+                                opacity: 0.2
+                            }} />
                             <span>{currentDate}</span>
                         </div>
                     </div>
