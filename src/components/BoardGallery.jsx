@@ -78,6 +78,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                             onDelete={onDeleteBoard}
                                             onGenerateBackground={generateBackground}
                                             generatingBoardId={generatingBoardId}
+                                            variant="overlay"
                                         />
                                     </div>
                                 ))}
@@ -115,6 +116,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id })}
                                 onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
                                 generatingBoardId={generatingBoardId}
+                                variant="stacked"
                             />
                         ))}
 
