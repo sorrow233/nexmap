@@ -44,17 +44,18 @@ const THEMES = [
 
 // Layout configurations
 const LAYOUTS = [
-    { id: 'card', label: 'Card', desc: '800px' },
-    { id: 'full', label: 'Full', desc: '800px compact' },
-    { id: 'social', label: 'Social', desc: '1:1' },
-    { id: 'slide', label: 'Slide', desc: '16:9' },
+    { id: 'card', label: 'Card', desc: 'Standard' },
+    { id: 'full', label: 'Full', desc: 'Compact' },
+    { id: 'social', label: 'Social', desc: 'Square' },
+    { id: 'slide', label: 'Slide', desc: 'Wide' },
 ];
 
-// Resolution options
+// Resolution options (Base: 1179px = iPhone 14 Pro standard)
+// Each step adds 25% more pixels for higher clarity
 const RESOLUTIONS = [
-    { id: 1, label: 'Standard', desc: '1080p Base' },
-    { id: 1.25, label: 'High', desc: '+25% Details' },
-    { id: 1.5, label: 'Ultra', desc: '+50% Details' },
+    { id: 1, label: '1x', desc: '📱 Mobile', outputWidth: 1179 },
+    { id: 1.25, label: '2x', desc: '💻 Desktop', outputWidth: 1474 },
+    { id: 1.5, label: '3x', desc: '🖼️ Print', outputWidth: 1769 },
 ];
 
 // Format options
@@ -265,20 +266,21 @@ export default function ShareModal({ isOpen, onClose, content }) {
                                 <Settings size={12} /> Export Options
                             </label>
 
-                            {/* Resolution */}
+                            {/* Resolution (Device-Centric) */}
                             <div className="space-y-2">
-                                <span className="text-xs text-zinc-500 dark:text-zinc-400">Resolution</span>
+                                <span className="text-xs text-zinc-500 dark:text-zinc-400">Best For</span>
                                 <div className="flex gap-2">
                                     {RESOLUTIONS.map(r => (
                                         <button
                                             key={r.id}
                                             onClick={() => setResolution(r.id)}
-                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${resolution === r.id
+                                            className={`flex-1 py-2.5 px-2 rounded-xl text-center transition-all ${resolution === r.id
                                                 ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
                                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                                                 }`}
                                         >
-                                            {r.label}
+                                            <div className="text-[11px] font-bold">{r.desc}</div>
+                                            <div className="text-[9px] opacity-60 mt-0.5">{r.label}</div>
                                         </button>
                                     ))}
                                 </div>

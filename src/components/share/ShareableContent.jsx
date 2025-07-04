@@ -202,12 +202,12 @@ const THEME_CONFIGS = {
     },
 };
 
-// Layout configurations (Standardized to 1080px High-Res)
+// Layout configurations (Base: 1179px = iPhone 14 Pro Retina Standard)
 const LAYOUT_CONFIGS = {
-    card: { width: 1080, aspectRatio: null, padding: 80 }, // Scaled from 64px
-    full: { width: 1080, aspectRatio: null, padding: 60 },
-    social: { width: 1080, aspectRatio: 1, padding: 80 },
-    slide: { width: 1920, aspectRatio: 16 / 9, padding: 120 },
+    card: { width: 1179, aspectRatio: null, padding: 88 },
+    full: { width: 1179, aspectRatio: null, padding: 64 },
+    social: { width: 1179, aspectRatio: 1, padding: 88 },
+    slide: { width: 2048, aspectRatio: 16 / 9, padding: 128 }, // 2K Slide
 };
 
 const ShareableContent = React.forwardRef(({ content, theme = 'business', layout = 'card', showWatermark }, ref) => {
