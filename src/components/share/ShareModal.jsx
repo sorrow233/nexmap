@@ -53,9 +53,9 @@ const LAYOUTS = [
 // Resolution options (Clarity Scale for html2canvas)
 // Safe range: 2-3x to prevent WebP encoding failures on large canvases
 const RESOLUTIONS = [
-    { id: 2, label: '1x', desc: 'Mobile', outputWidth: 2358 },      // 1179 * 2
-    { id: 2.5, label: '2x', desc: 'Desktop', outputWidth: 2948 },   // 1179 * 2.5
-    { id: 3, label: '3x', desc: 'Print', outputWidth: 3537 },       // 1179 * 3
+    { id: 3, label: '1x', desc: 'Mobile', outputWidth: 3537 },      // Base: 3.0
+    { id: 3.45, label: '2x', desc: 'Desktop', outputWidth: 4067 },  // +15%: 3.45
+    { id: 3.97, label: '3x', desc: 'Print', outputWidth: 4680 },    // +15%: 3.97
 ];
 
 // Format options
@@ -81,9 +81,9 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const [theme, setTheme] = useState('modern');
     const [layout, setLayout] = useState('card');
     const [showWatermark, setShowWatermark] = useState(true);
-    const [resolution, setResolution] = useState(2); // 2x scale = safe 1x for Retina
+    const [resolution, setResolution] = useState(3); // Default to Mobile (3x)
     const [format, setFormat] = useState('webp');
-    const [quality, setQuality] = useState(0.8);
+    const [quality, setQuality] = useState(0.86);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
