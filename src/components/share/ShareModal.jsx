@@ -6,39 +6,39 @@ import ShareableContent from './ShareableContent';
 // Theme configurations with premium previews
 const THEMES = [
     {
-        id: 'business',
-        label: 'Executive',
+        id: 'editorial',
+        label: 'Editorial',
         icon: Star,
-        preview: 'bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200',
-        accent: 'bg-slate-900',
+        preview: 'bg-[#FDFBF7] border-slate-200',
+        accent: 'bg-[#8B0000]',
     },
     {
-        id: 'tech',
-        label: 'Midnight',
+        id: 'terminal',
+        label: 'Terminal',
         icon: Zap,
-        preview: 'bg-gradient-to-br from-slate-950 to-indigo-950 border-indigo-900/50',
-        accent: 'bg-gradient-to-r from-indigo-500 to-purple-500',
+        preview: 'bg-[#0D1117] border-gray-700',
+        accent: 'bg-[#58A6FF]',
     },
     {
-        id: 'minimal',
-        label: 'Paper',
+        id: 'modern',
+        label: 'Modern',
         icon: Gem,
         preview: 'bg-white border-zinc-200',
-        accent: 'bg-zinc-900',
+        accent: 'bg-[#2EAADC]',
     },
     {
-        id: 'darkpro',
-        label: 'Obsidian',
+        id: 'swiss',
+        label: 'Swiss',
         icon: Flame,
-        preview: 'bg-gradient-to-br from-zinc-950 to-black border-zinc-800',
-        accent: 'bg-gradient-to-r from-amber-500 to-orange-500',
+        preview: 'bg-[#002FA7] border-blue-900',
+        accent: 'bg-[#FFD700]',
     },
     {
-        id: 'colorful',
-        label: 'Aurora',
+        id: 'handwritten',
+        label: 'Cozy',
         icon: Sparkles,
-        preview: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 border-purple-700/50',
-        accent: 'bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400',
+        preview: 'bg-[#F9F5F1] border-orange-100',
+        accent: 'bg-[#F1C40F]',
     },
 ];
 
@@ -67,18 +67,19 @@ const FORMATS = [
 
 // Get background color for html2canvas based on theme
 const getThemeBackground = (themeId) => {
+    // These must match the bg colors in ShareableContent
     const bgColors = {
-        business: '#f8fafc',
-        tech: '#020617',
-        minimal: '#ffffff',
-        darkpro: '#09090b',
-        colorful: '#1e1b4b',
+        editorial: '#FDFBF7',
+        terminal: '#0D1117',
+        modern: '#FFFFFF',
+        swiss: '#002FA7',
+        handwritten: '#F9F5F1',
     };
     return bgColors[themeId] || '#ffffff';
 };
 
 export default function ShareModal({ isOpen, onClose, content }) {
-    const [theme, setTheme] = useState('business');
+    const [theme, setTheme] = useState('modern');
     const [layout, setLayout] = useState('card');
     const [showWatermark, setShowWatermark] = useState(true);
     const [resolution, setResolution] = useState(2); // 2x scale = safe 1x for Retina
@@ -95,7 +96,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const generateCanvas = async () => {
         if (!captureRef.current) return null;
         await document.fonts.ready;
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         const canvas = await html2canvas(captureRef.current, {
             scale: resolution,

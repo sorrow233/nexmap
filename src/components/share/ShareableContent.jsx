@@ -1,438 +1,416 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { marked } from 'marked';
-import { Sparkles, Zap, Star, Gem, Flame } from 'lucide-react';
 
-/**
- * 5 个高端主题设计 - 独立于页面暗/亮模式
- * 使用内联样式确保导出颜色一致
- */
+// Advanced Theme Configurations
+// 每个主题都是一套完整的设计语言：字体、配色、Markdown渲染规则、装饰元素
 const THEME_CONFIGS = {
-    // 1. Executive - 顶级商务白金风格
-    business: {
-        name: 'Executive',
-        icon: Star,
-        // 使用纯色和微妙渐变，避免 Tailwind 类受暗模式影响
-        containerBg: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-        containerColor: '#0f172a',
-        cardBg: '#ffffff',
-        cardShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08), 0 12px 24px -8px rgba(0, 0, 0, 0.04)',
-        cardBorder: '1px solid rgba(226, 232, 240, 0.8)',
-        cardRadius: '24px',
-        headerGradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
-        headerHeight: '6px',
-        contentBg: 'transparent',
-        proseColor: '#1e293b',
-        proseHeadingColor: '#0f172a',
-        footerBg: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-        footerBorder: '1px solid #e2e8f0',
-        footerColor: '#64748b',
-        brandColor: '#0f172a',
-        accentGradient: 'linear-gradient(135deg, #0f172a 0%, #475569 100%)',
-        backgroundDecor: (
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.03) 1px, transparent 0)',
-                backgroundSize: '32px 32px',
-                pointerEvents: 'none'
-            }} />
-        ),
+    // 1. Editorial - 优雅杂志风 (New York Times style)
+    editorial: {
+        id: 'editorial',
+        name: 'Editorial',
+        fonts: ['Merriweather', 'Inter'],
+        bg: '#FDFBF7', // 羊皮纸色
+        text: '#333333',
+        accent: '#8B0000', // 深红
+        padding: 80, // 豪华留白
+        radius: 0,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Merriweather", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.5em',
+            '--h1-weight': '900',
+            '--h1-spacing': '-0.02em',
+            '--line-height': '1.8',
+            '--quote-style': 'italic',
+            '--quote-border': '4px solid #8B0000',
+            '--quote-bg': 'transparent',
+            '--code-bg': '#F5F5F5',
+            '--code-color': '#AB2222',
+        }
     },
 
-    // 2. Midnight - 深邃科技夜空
-    tech: {
-        name: 'Midnight',
-        icon: Zap,
-        containerBg: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)',
-        containerColor: '#f8fafc',
-        cardBg: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 0.95) 100%)',
-        cardShadow: '0 32px 64px -16px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
-        cardBorder: '1px solid rgba(148, 163, 184, 0.1)',
-        cardRadius: '28px',
-        headerGradient: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 35%, #a855f7 65%, #ec4899 100%)',
-        headerHeight: '4px',
-        contentBg: 'transparent',
-        proseColor: '#e2e8f0',
-        proseHeadingColor: '#f8fafc',
-        footerBg: 'transparent',
-        footerBorder: '1px solid rgba(148, 163, 184, 0.1)',
-        footerColor: '#94a3b8',
-        brandColor: '#f8fafc',
-        accentGradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-        backgroundDecor: (
-            <>
-                <div style={{
-                    position: 'absolute',
-                    top: '-20%',
-                    right: '-10%',
-                    width: '600px',
-                    height: '600px',
-                    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
-                    filter: 'blur(80px)',
-                    pointerEvents: 'none'
-                }} />
-                <div style={{
-                    position: 'absolute',
-                    bottom: '-10%',
-                    left: '-10%',
-                    width: '400px',
-                    height: '400px',
-                    background: 'radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 70%)',
-                    filter: 'blur(60px)',
-                    pointerEvents: 'none'
-                }} />
-            </>
-        ),
+    // 2. Terminal - 硬核极客风 (CRT/IDE style)
+    terminal: {
+        id: 'terminal',
+        name: 'Terminal',
+        fonts: ['JetBrains Mono'],
+        bg: '#0D1117', // GitHub Dark Dimmed
+        text: '#C9D1D9',
+        accent: '#58A6FF',
+        padding: 40, // 紧凑
+        radius: 12,
+        settings: {
+            '--font-heading': '"JetBrains Mono", monospace',
+            '--font-body': '"JetBrains Mono", monospace',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2em',
+            '--h1-weight': '700',
+            '--h1-prefix': '">_ "', // CSS pseudo-element content
+            '--line-height': '1.5',
+            '--quote-style': 'normal',
+            '--quote-border': '2px solid #30363D',
+            '--quote-bg': '#161B22',
+            '--code-bg': '#161B22',
+            '--code-color': '#FF7B72', // Pink/Red
+        }
     },
 
-    // 3. Paper - 纯净极简印刷风
-    minimal: {
-        name: 'Paper',
-        icon: Gem,
-        containerBg: '#ffffff',
-        containerColor: '#18181b',
-        cardBg: '#ffffff',
-        cardShadow: 'none',
-        cardBorder: 'none',
-        cardRadius: '0',
-        headerGradient: 'linear-gradient(90deg, #18181b 0%, #3f3f46 100%)',
-        headerHeight: '2px',
-        contentBg: 'transparent',
-        proseColor: '#27272a',
-        proseHeadingColor: '#09090b',
-        footerBg: 'transparent',
-        footerBorder: '1px solid #e4e4e7',
-        footerColor: '#71717a',
-        brandColor: '#18181b',
-        accentGradient: 'linear-gradient(135deg, #18181b 0%, #52525b 100%)',
-        backgroundDecor: null,
+    // 3. Modern - 现代生产力 (Notion style)
+    modern: {
+        id: 'modern',
+        name: 'Modern',
+        fonts: ['Inter'],
+        bg: '#FFFFFF',
+        text: '#37352F',
+        accent: '#2EAADC',
+        padding: 60,
+        radius: 16,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.5em',
+            '--h1-weight': '800',
+            '--line-height': '1.6',
+            '--quote-style': 'normal',
+            '--quote-border': '4px solid #F0F0F0', // Very subtle
+            '--quote-bg': 'transparent',
+            '--code-bg': 'rgba(235, 87, 87, 0.1)', // Notion sweet pink bg
+            '--code-color': '#EB5757',
+        }
     },
 
-    // 4. Obsidian - 深黑奢华
-    darkpro: {
-        name: 'Obsidian',
-        icon: Flame,
-        containerBg: 'linear-gradient(180deg, #09090b 0%, #18181b 100%)',
-        containerColor: '#fafafa',
-        cardBg: 'linear-gradient(180deg, #18181b 0%, #0f0f10 100%)',
-        cardShadow: '0 40px 80px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.03)',
-        cardBorder: '1px solid rgba(255, 255, 255, 0.06)',
-        cardRadius: '32px',
-        headerGradient: 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 30%, #ea580c 70%, #dc2626 100%)',
-        headerHeight: '3px',
-        contentBg: 'transparent',
-        proseColor: '#d4d4d8',
-        proseHeadingColor: '#fafafa',
-        footerBg: 'transparent',
-        footerBorder: '1px solid rgba(255, 255, 255, 0.05)',
-        footerColor: '#71717a',
-        brandColor: '#fafafa',
-        accentGradient: 'linear-gradient(135deg, #fbbf24 0%, #ea580c 100%)',
-        backgroundDecor: (
-            <>
-                <div style={{
-                    position: 'absolute',
-                    top: '10%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '800px',
-                    height: '400px',
-                    background: 'radial-gradient(ellipse, rgba(251, 191, 36, 0.06) 0%, transparent 60%)',
-                    filter: 'blur(60px)',
-                    pointerEvents: 'none'
-                }} />
-            </>
-        ),
+    // 4. Swiss - 瑞士平面风格 (Poster style)
+    swiss: {
+        id: 'swiss',
+        name: 'Swiss',
+        fonts: ['Inter'], // Using Inter Heavy as substitute for Helvetica
+        bg: '#002FA7', // Klein Blue
+        text: '#FFFFFF',
+        accent: '#FFD700', // Gold
+        padding: 80,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4em',
+            '--h1-weight': '900',
+            '--h1-spacing': '-0.05em', // TIGHT tracking
+            '--h1-line-height': '0.9', // TIGHT leading
+            '--line-height': '1.4',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255,255,255,0.1)',
+            '--code-bg': '#000000',
+            '--code-color': '#FFD700',
+            '--bold-color': '#FFD700', // Gold bold text
+        }
     },
 
-    // 5. Aurora - 极光渐变
-    colorful: {
-        name: 'Aurora',
-        icon: Sparkles,
-        containerBg: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #4c1d95 50%, #581c87 75%, #701a75 100%)',
-        containerColor: '#faf5ff',
-        cardBg: 'linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
-        cardShadow: '0 32px 64px -16px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)',
-        cardBorder: '1px solid rgba(255, 255, 255, 0.15)',
-        cardRadius: '32px',
-        headerGradient: 'linear-gradient(90deg, #22d3ee 0%, #818cf8 25%, #c084fc 50%, #f472b6 75%, #fb923c 100%)',
-        headerHeight: '4px',
-        contentBg: 'transparent',
-        proseColor: '#e9d5ff',
-        proseHeadingColor: '#faf5ff',
-        footerBg: 'transparent',
-        footerBorder: '1px solid rgba(255, 255, 255, 0.1)',
-        footerColor: 'rgba(250, 245, 255, 0.6)',
-        brandColor: '#faf5ff',
-        accentGradient: 'linear-gradient(135deg, #22d3ee 0%, #c084fc 50%, #fb923c 100%)',
-        backgroundDecor: (
-            <>
-                <div style={{
-                    position: 'absolute',
-                    top: '-30%',
-                    left: '20%',
-                    width: '600px',
-                    height: '600px',
-                    background: 'radial-gradient(circle, rgba(34, 211, 238, 0.2) 0%, transparent 50%)',
-                    filter: 'blur(100px)',
-                    pointerEvents: 'none'
-                }} />
-                <div style={{
-                    position: 'absolute',
-                    bottom: '-20%',
-                    right: '10%',
-                    width: '500px',
-                    height: '500px',
-                    background: 'radial-gradient(circle, rgba(244, 114, 182, 0.2) 0%, transparent 50%)',
-                    filter: 'blur(80px)',
-                    pointerEvents: 'none'
-                }} />
-                <div style={{
-                    position: 'absolute',
-                    top: '40%',
-                    right: '30%',
-                    width: '300px',
-                    height: '300px',
-                    background: 'radial-gradient(circle, rgba(251, 146, 60, 0.15) 0%, transparent 50%)',
-                    filter: 'blur(60px)',
-                    pointerEvents: 'none'
-                }} />
-            </>
-        ),
+    // 5. Handwritten - 手账温暖风 (GoodNotes style)
+    handwritten: {
+        id: 'handwritten',
+        name: 'Handwritten',
+        fonts: ['Patrick Hand'],
+        bg: '#F9F5F1', // Paper texture color
+        text: '#2C3E50', // Ink Blue
+        accent: '#F1C40F', // Highlighter Yellow
+        padding: 60,
+        radius: 2, // Slightly organic
+        settings: {
+            '--font-heading': '"Patrick Hand", cursive',
+            '--font-body': '"Patrick Hand", cursive',
+            '--font-code': '"Patrick Hand", cursive',
+            '--h1-size': '2.8em',
+            '--h1-weight': '400',
+            '--line-height': '1.7',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#FFF9C4', // Sticky note yellow
+            '--quote-shadow': '2px 2px 5px rgba(0,0,0,0.05)',
+            '--code-bg': '#E8F6F3',
+            '--code-color': '#16A085',
+            '--highlight-bg': 'linear-gradient(120deg, #f6d365 0%, #fda085 100%)', // Marker effect
+        }
     },
 };
 
-// Layout configurations (Base: 1179px = iPhone 14 Pro Retina Standard)
+// Layout configs (Base 1179px)
 const LAYOUT_CONFIGS = {
-    card: { width: 1179, aspectRatio: null, padding: 88 },
-    full: { width: 1179, aspectRatio: null, padding: 64 },
-    social: { width: 1179, aspectRatio: 1, padding: 88 },
-    slide: { width: 2048, aspectRatio: 16 / 9, padding: 128 }, // 2K Slide
+    card: { width: 1179, aspectRatio: null },
+    full: { width: 1179, aspectRatio: null },
+    social: { width: 1179, aspectRatio: 1 },
+    slide: { width: 1920, aspectRatio: 16 / 9 },
 };
 
-const ShareableContent = React.forwardRef(({ content, theme = 'business', layout = 'card', showWatermark }, ref) => {
-    const themeConfig = THEME_CONFIGS[theme] || THEME_CONFIGS.business;
+const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout = 'card', showWatermark }, ref) => {
+    // Determine Theme Config
+    // Fallback mapping for old theme names if they exist in state
+    const themeMap = {
+        'business': 'editorial',
+        'tech': 'terminal',
+        'minimal': 'modern',
+        'darkpro': 'swiss',
+        'colorful': 'handwritten'
+    };
+
+    // Accept either new ID or map old ID
+    const currentThemeId = THEME_CONFIGS[theme] ? theme : (themeMap[theme] || 'modern');
+    const themeConfig = THEME_CONFIGS[currentThemeId];
     const layoutConfig = LAYOUT_CONFIGS[layout] || LAYOUT_CONFIGS.card;
-    const IconComponent = themeConfig.icon;
 
-    const currentDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    // Load Fonts dynamically
+    useEffect(() => {
+        const linkId = 'mixboard-export-fonts';
+        if (!document.getElementById(linkId)) {
+            const link = document.createElement('link');
+            link.id = linkId;
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Patrick+Hand&family=Playfair+Display:wght@700;900&display=swap';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        }
+    }, []);
 
-    // Parse markdown content
-    const htmlContent = marked.parse(content || '');
+    // Generate HTML with marked
+    const htmlContent = marked(content || 'No content provided');
 
-    // Common Text Styles (Typography Scaled for 1080px)
-    // Base 17px -> 24px (approx 1.4x scale)
-    const baseTextStyle = {
-        fontFamily: themeConfig.fontFamily,
-        color: themeConfig.proseColor,
-        fontSize: '24px',
-        lineHeight: '1.85',
-        letterSpacing: theme === 'tech' ? '-0.02em' : '0.01em',
+    // Dynamic CSS Generation
+    const generateThemeStyles = () => {
+        const s = themeConfig.settings;
+
+        return `
+            .markdown-body {
+                font-family: ${s['--font-body']};
+                color: ${themeConfig.text};
+                line-height: ${s['--line-height']};
+            }
+
+            /* Headers */
+            .markdown-body h1 {
+                font-family: ${s['--font-heading']};
+                font-size: ${s['--h1-size']};
+                font-weight: ${s['--h1-weight']};
+                letter-spacing: ${s['--h1-spacing'] || 'normal'};
+                line-height: ${s['--h1-line-height'] || '1.2'};
+                margin-bottom: 0.6em;
+                margin-top: 0;
+            }
+            ${currentThemeId === 'terminal' ? `.markdown-body h1::before { content: "${s['--h1-prefix']}"; color: ${themeConfig.accent}; margin-right: 10px; }` : ''}
+
+            .markdown-body h2 {
+                font-family: ${s['--font-heading']};
+                font-size: 1.8em;
+                font-weight: 700;
+                margin-top: 1.5em;
+                margin-bottom: 0.5em;
+                ${currentThemeId === 'editorial' ? `border-bottom: 1px solid ${themeConfig.accent}; padding-bottom: 0.3em;` : ''}
+            }
+             ${currentThemeId === 'terminal' ? `.markdown-body h2::before { content: "## "; color: ${themeConfig.accent}; opacity: 0.7; }` : ''}
+
+
+            /* Blockquotes */
+            .markdown-body blockquote {
+                margin: 1.5em 0;
+                padding: 1em 1.5em;
+                font-style: ${s['--quote-style']};
+                border-left: ${s['--quote-border']};
+                background: ${s['--quote-bg']};
+                ${s['--quote-shadow'] ? `box-shadow: ${s['--quote-shadow']}; border-radius: 4px;` : ''}
+                ${currentThemeId === 'editorial' ? `position: relative; padding-left: 2.5em;` : ''}
+            }
+            ${currentThemeId === 'editorial' ? `
+            .markdown-body blockquote::before {
+                content: "“";
+                position: absolute;
+                left: 0.4em;
+                top: -0.1em;
+                font-size: 4em;
+                color: ${themeConfig.accent};
+                opacity: 0.3;
+                font-family: "Playfair Display", serif;
+            }` : ''}
+
+            /* Code */
+            .markdown-body code {
+                font-family: ${s['--font-code']};
+                background: ${s['--code-bg']};
+                color: ${s['--code-color']};
+                padding: 0.2em 0.4em;
+                border-radius: 4px;
+                font-size: 0.85em;
+            }
+            .markdown-body pre {
+                background: ${currentThemeId === 'swiss' ? '#000' : (currentThemeId === 'terminal' ? '#161B22' : '#F8F9FA')};
+                padding: 1.5em;
+                border-radius: 8px;
+                overflow-x: auto;
+                margin: 1.5em 0;
+            }
+            .markdown-body pre code {
+                background: transparent;
+                padding: 0;
+                color: inherit;
+            }
+
+            /* Lists */
+            .markdown-body ul li {
+                position: relative;
+                padding-left: 1.5em;
+                margin-bottom: 0.5em;
+                list-style: none; /* Reset standard bullets */
+            }
+            .markdown-body ul li::before {
+                content: "${currentThemeId === 'terminal' ? '>' : '•'}";
+                position: absolute;
+                left: 0;
+                color: ${themeConfig.accent};
+                font-weight: bold;
+            }
+             /* Ordered List Counter Color */
+            .markdown-body ol {
+                counter-reset: item;
+                list-style: none;
+                padding-left: 0;
+            }
+            .markdown-body ol li {
+                position: relative;
+                padding-left: 2em;
+                margin-bottom: 0.5em;
+            }
+            .markdown-body ol li::before {
+                content: counter(item) ".";
+                counter-increment: item;
+                position: absolute;
+                left: 0;
+                font-weight: bold;
+                color: ${themeConfig.accent};
+                font-family: ${s['--font-code']};
+            }
+
+            /* Bold & Highlight */
+            .markdown-body strong {
+                font-weight: 800;
+                ${s['--bold-color'] ? `color: ${s['--bold-color']};` : ''}
+                ${currentThemeId === 'editorial' || currentThemeId === 'handwritten' ? `
+                    background: linear-gradient(120deg, transparent 60%, ${currentThemeId === 'editorial' ? 'rgba(139, 0, 0, 0.1)' : 'rgba(241, 196, 15, 0.3)'} 60%);
+                ` : ''}
+            }
+
+            /* HR */
+            .markdown-body hr {
+                border: none;
+                margin: 2em 0;
+                text-align: center;
+                ${currentThemeId === 'editorial' ? `
+                    height: auto;
+                ` : `
+                    height: 2px;
+                    background: ${themeConfig.accent};
+                    opacity: 0.2;
+                `}
+            }
+            ${currentThemeId === 'editorial' ? `
+            .markdown-body hr::after {
+                content: "* * *";
+                font-family: "Playfair Display", serif;
+                font-size: 1.5em;
+                color: ${themeConfig.accent};
+                letter-spacing: 0.5em;
+            }
+            ` : ''}
+            
+            /* Swiss Style Specials */
+            ${currentThemeId === 'swiss' ? `
+            .markdown-body p { margin-bottom: 1.5em; text-align: justify; }
+            .markdown-body { font-weight: 500; }
+            ` : ''}
+        `;
     };
 
     return (
-        <div
-            ref={ref}
-            style={{
-                width: `${layoutConfig.width}px`,
-                // Auto height, but with aspect ratio constraint if needed
-                minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : '1000px',
-                background: themeConfig.containerBg,
-                padding: `${layoutConfig.padding}px`,
-                position: 'relative',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                isolation: 'isolate', // Dark mode independence
-                justifyContent: layout === 'slide' || layout === 'social' ? 'center' : 'flex-start',
-            }}
-        >
-            {/* Background Decorations */}
-            {themeConfig.backgroundDecor}
+        <div ref={ref} style={{
+            width: `${layoutConfig.width}px`,
+            minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : 'auto',
+            backgroundColor: themeConfig.bg,
+            color: themeConfig.text,
+            padding: `${themeConfig.padding}px`,
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            boxSizing: 'border-box',
+            fontFeatureSettings: '"kern" 1, "liga" 1',
+            textRendering: 'optimizeLegibility',
+        }}>
+            {/* Inject Theme Styles */}
+            <style>{generateThemeStyles()}</style>
 
-            {/* Main Content Card */}
-            <div
-                style={{
-                    backgroundColor: themeConfig.cardBg,
-                    boxShadow: themeConfig.cardShadow,
-                    border: themeConfig.cardBorder,
-                    borderRadius: '32px', // Scaled radius
-                    overflow: 'hidden',
-                    position: 'relative',
-                    zIndex: 10,
-                    width: '100%',
-                    height: layout === 'full' ? '100%' : 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}
-            >
-                {/* Header Accent */}
-                {themeConfig.headerHeight !== '0' && (
-                    <div style={{
-                        width: '100%',
-                        height: '12px', // Scaled Header Height
-                        background: themeConfig.headerGradient,
-                    }} />
-                )}
-
-                {/* Content Area - Typography Engine */}
+            {/* Swiss Grid Background */}
+            {currentThemeId === 'swiss' && (
                 <div style={{
-                    padding: '80px 96px', // Scaled padding (was 48px 56px)
-                    flex: 1,
-                }}>
-                    <div
-                        dangerouslySetInnerHTML={{
-                            __html: htmlContent
-                                // H1: Grand Title (Scaled)
-                                .replace(/<h1/g, `<h1 style="
-                                    font-size: 3.2em; /* ~76px */
-                                    line-height: 1.3;
-                                    font-weight: 800;
-                                    color: ${themeConfig.proseHeadingColor};
-                                    margin-bottom: 0.8em;
-                                    margin-top: 0;
-                                    letter-spacing: -0.03em;
-                                "`)
-                                // H2: Section Title (Scaled)
-                                .replace(/<h2/g, `<h2 style="
-                                    font-size: 2.4em; /* ~57px */
-                                    line-height: 1.4;
-                                    font-weight: 700;
-                                    color: ${themeConfig.proseHeadingColor};
-                                    margin-top: 1.5em;
-                                    margin-bottom: 0.6em;
-                                    letter-spacing: -0.02em;
-                                    border-bottom: 2px solid ${theme === 'tech' || theme === 'darkpro' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
-                                    padding-bottom: 0.3em;
-                                "`)
-                                // H3: Subsection (Scaled)
-                                .replace(/<h3/g, `<h3 style="
-                                    font-size: 1.8em; /* ~43px */
-                                    line-height: 1.5;
-                                    font-weight: 600;
-                                    color: ${themeConfig.proseHeadingColor};
-                                    margin-top: 1.2em;
-                                    margin-bottom: 0.4em;
-                                "`)
-                                // Paragraph: Readable Body
-                                .replace(/<p/g, `<p style="
-                                    ${Object.entries(baseTextStyle).map(([k, v]) => `${k.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}:${v}`).join(';')};
-                                    margin-bottom: 1.5em;
-                                "`)
-                                // List Items: Clean Indentation
-                                .replace(/<ul/g, `<ul style="margin-bottom: 1.5em; padding-left: 1.2em; list-style-type: none;">`)
-                                .replace(/<li/g, `<li style="
-                                    ${Object.entries(baseTextStyle).map(([k, v]) => `${k.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}:${v}`).join(';')};
-                                    margin-bottom: 0.5em;
-                                    position: relative;
-                                    padding-left: 1em;
-                                ">
-                                    <span style="
-                                        position: absolute;
-                                        left: -0.8em;
-                                        color: ${theme === 'colorful' ? themeConfig.brandColor : 'currentColor'};
-                                        opacity: 0.6;
-                                    ">•</span>
-                                `)
-                                // Blockquote: Editorial Style
-                                .replace(/<blockquote/g, `<blockquote style="
-                                    border-left: 6px solid ${themeConfig.brandColor}; /* Scaled border */
-                                    margin: 1.5em 0;
-                                    padding: 1em 1.5em; /* Scaled padding */
-                                    background: ${theme === 'darkpro' || theme === 'tech' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'};
-                                    border-radius: 0 12px 12px 0;
-                                    font-style: italic;
-                                "`)
-                                // Strong: Emphasis
-                                .replace(/<strong/g, `<strong style="
-                                    font-weight: 700;
-                                    color: ${themeConfig.proseHeadingColor};
-                                "`)
-                                // Code: Rounded & Clean
-                                .replace(/<code/g, `<code style="
-                                    font-family: 'JetBrains Mono', monospace;
-                                    font-size: 0.9em;
-                                    padding: 0.2em 0.4em;
-                                    border-radius: 6px;
-                                    background: ${theme === 'darkpro' || theme === 'tech' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
-                                    color: ${themeConfig.proseHeadingColor};
-                                "`)
-                        }}
-                    />
-                </div>
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `linear-gradient(${themeConfig.text} 1px, transparent 1px), linear-gradient(90deg, ${themeConfig.text} 1px, transparent 1px)`,
+                    backgroundSize: '100px 100px',
+                    opacity: 0.05,
+                    pointerEvents: 'none'
+                }} />
+            )}
 
-                {/* Footer / Watermark (Re-designed & Scaled) */}
-                {showWatermark && (
-                    <div style={{
-                        padding: '32px 96px', // Scaled padding
-                        background: themeConfig.footerBg,
-                        borderTop: themeConfig.footerBorder,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    }}>
-                        {/* Left: Brand Identity */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <div style={{
-                                width: '48px', // Scaled icon size
-                                height: '48px',
-                                borderRadius: '12px',
-                                background: themeConfig.accentGradient,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 4px 12px -2px rgba(0,0,0,0.2)'
-                            }}>
-                                <IconComponent size={24} color="#ffffff" strokeWidth={2.5} />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{
-                                    color: themeConfig.brandColor,
-                                    fontSize: '16px', // Scaled font
-                                    fontWeight: '800',
-                                    letterSpacing: '0.05em',
-                                    textTransform: 'uppercase',
-                                    lineHeight: '1.2'
-                                }}>NexMap</span>
-                                <span style={{
-                                    fontSize: '13px', // Scaled sub font
-                                    color: themeConfig.footerColor,
-                                    fontWeight: '500'
-                                }}>Visual Thinking</span>
-                            </div>
-                        </div>
+            {/* Handwritten Paper Texture */}
+            {currentThemeId === 'handwritten' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `radial-gradient(#000 1px, transparent 0)`,
+                    backgroundSize: '24px 24px',
+                    opacity: 0.05,
+                    pointerEvents: 'none'
+                }} />
+            )}
 
-                        {/* Right: Meta Info */}
-                        <div style={{
-                            fontSize: '14px', // Scaled meta font
-                            color: themeConfig.footerColor,
-                            fontWeight: '600',
-                            letterSpacing: '0.05em',
-                            display: 'flex',
-                            gap: '24px',
-                            alignItems: 'center',
-                            textTransform: 'uppercase'
-                        }}>
-                            <span>AI Insight</span>
-                            <span style={{
-                                width: '2px',
-                                height: '16px',
-                                background: 'currentColor',
-                                opacity: 0.2
-                            }} />
-                            <span>{currentDate}</span>
-                        </div>
-                    </div>
-                )}
+            {/* Content Container */}
+            <div className={`markdown-body flex-grow`} style={{
+                position: 'relative',
+                zIndex: 10
+            }}>
+                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
             </div>
+
+            {/* Footer */}
+            {showWatermark && (
+                <div style={{
+                    marginTop: '60px',
+                    paddingTop: '20px',
+                    borderTop: currentThemeId === 'swiss' ? `4px solid ${themeConfig.text}` : `1px solid ${themeConfig.text}30`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontFamily: themeConfig.settings['--font-heading'],
+                    opacity: 0.8
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                            width: '24px', height: '24px',
+                            background: themeConfig.accent,
+                            borderRadius: currentThemeId === 'terminal' ? '50%' : '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px',
+                            color: currentThemeId === 'swiss' || currentThemeId === 'terminal' ? themeConfig.bg : '#fff',
+                            fontWeight: 'bold'
+                        }}>
+                            M
+                        </div>
+                        <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>MixBoard</span>
+                    </div>
+                    <span style={{ fontSize: '0.9em', opacity: 0.7 }}>Created with AI</span>
+                </div>
+            )}
         </div>
     );
 });
-
-ShareableContent.displayName = 'ShareableContent';
 
 export default ShareableContent;
