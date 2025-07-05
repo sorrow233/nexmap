@@ -234,8 +234,13 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     const colors = {
                         default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
                         rose: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // rose-500/400
+                        amber: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // legacy mapping -> rose
+
                         teal: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // teal-500/400
-                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)' // blue-500/400
+                        emerald: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // legacy mapping -> teal
+
+                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)', // blue-500/400
+                        violet: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)' // legacy mapping -> blue
                     };
 
                     // Draw each color group

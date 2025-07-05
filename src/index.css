@@ -356,39 +356,45 @@ body,
     }
 
     /* Card Color Accents - Modern colors for visual differentiation */
-    /* Card Color Accents - Modern Pastel Colors */
-    .card-color-rose {
+    /* Card Color Accents - Modern Pastel Colors (with Legacy Compatibility) */
+    .card-color-rose,
+    .card-color-amber {
         border-left: 4px solid #fb7185 !important;
         /* rose-400 */
         box-shadow: 0 8px 30px rgba(251, 113, 133, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
-    .card-color-teal {
+    .card-color-teal,
+    .card-color-emerald {
         border-left: 4px solid #2dd4bf !important;
         /* teal-400 */
         box-shadow: 0 8px 30px rgba(45, 212, 191, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
-    .card-color-blue {
+    .card-color-blue,
+    .card-color-violet {
         border-left: 4px solid #60a5fa !important;
         /* blue-400 */
         box-shadow: 0 8px 30px rgba(96, 165, 250, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     /* Dark mode adjustments for card colors */
-    .dark .card-color-rose {
+    .dark .card-color-rose,
+    .dark .card-color-amber {
         border-left-color: #f43f5e !important;
         /* rose-500 */
         box-shadow: 0 8px 30px rgba(244, 63, 94, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    .dark .card-color-teal {
+    .dark .card-color-teal,
+    .dark .card-color-emerald {
         border-left-color: #14b8a6 !important;
         /* teal-500 */
         box-shadow: 0 8px 30px rgba(20, 184, 166, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    .dark .card-color-blue {
+    .dark .card-color-blue,
+    .dark .card-color-violet {
         border-left-color: #3b82f6 !important;
         /* blue-500 */
         box-shadow: 0 8px 30px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
