@@ -44,10 +44,10 @@ const THEMES = [
 
 // Layout configurations
 const LAYOUTS = [
-    { id: 'card', label: 'Card', desc: 'Standard' },
-    { id: 'full', label: 'Full', desc: 'Compact' },
+    { id: 'card', label: 'Message', desc: 'Auto Fit' },
+    { id: 'full', label: 'Document', desc: 'Compact' },
     { id: 'social', label: 'Social', desc: 'Square' },
-    { id: 'slide', label: 'Slide', desc: 'Wide' },
+    { id: 'slide', label: 'Presentation', desc: '16:9' },
 ];
 
 // Resolution options (Clarity Scale for html2canvas)
