@@ -53,10 +53,14 @@ function Separator() {
 
 // Color definitions for the color picker
 const CARD_COLORS = [
-    { id: null, label: '无', bgClass: 'bg-slate-200 dark:bg-slate-600' },
-    { id: 'rose', label: '玫瑰', bgClass: 'bg-rose-400' },
-    { id: 'teal', label: '青色', bgClass: 'bg-teal-400' },
-    { id: 'blue', label: '天空', bgClass: 'bg-blue-400' }
+    { id: null, label: 'Default', bgClass: 'bg-slate-200 dark:bg-slate-600' },
+    { id: 'red', label: 'Red', bgClass: 'bg-rose-400' },
+    { id: 'orange', label: 'Orange', bgClass: 'bg-orange-400' },
+    { id: 'amber', label: 'Amber', bgClass: 'bg-amber-400' },
+    { id: 'green', label: 'Green', bgClass: 'bg-emerald-400' },
+    { id: 'teal', label: 'Teal', bgClass: 'bg-teal-400' },
+    { id: 'blue', label: 'Blue', bgClass: 'bg-blue-400' },
+    { id: 'violet', label: 'Violet', bgClass: 'bg-violet-400' }
 ];
 
 // Color Picker Menu Item Component
@@ -65,9 +69,9 @@ function ColorPickerItem({ currentColor, onColorSelect, onClose }) {
         <div className="px-3 py-2">
             <div className="flex items-center gap-2 mb-2">
                 <Palette size={16} className="text-slate-500" />
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">卡片颜色</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Line Color</span>
             </div>
-            <div className="flex items-center gap-2 ml-6">
+            <div className="flex items-center gap-2 ml-6 flex-wrap">
                 {CARD_COLORS.map((color) => (
                     <button
                         key={color.id || 'none'}

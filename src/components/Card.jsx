@@ -115,37 +115,6 @@ const Card = React.memo(function Card({
 
     const zIndex = isSelected ? 60 : (isTarget ? 55 : 1);
 
-    // Card color accent class
-    const cardColorClass = data.data?.cardColor ? `card-color-${data.data.cardColor}` : '';
-
-    // Context menu for card
-    const { showContextMenu, getCardMenuItems } = useContextMenu();
-
-    const handleContextMenu = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const menuItems = getCardMenuItems(data, {
-            onCopy: async () => {
-                const textToCopy = data.data?.messages?.[data.data.messages.length - 1]?.content || '';
-                const text = typeof textToCopy === 'string' ? textToCopy : '';
-                try { await navigator.clipboard.writeText(text); } catch (err) { console.error(err); }
-            },
-            onDelete: () => onDelete && onDelete(data.id),
-            onToggleFavorite: () => { /* TODO: implement if needed */ },
-            onExpand: () => onExpand && onExpand(data.id),
-            onConnect: () => onConnect && onConnect(data.id),
-            onSetColor: (color) => {
-                if (onUpdate) {
-                    onUpdate(data.id, { cardColor: color });
-                }
-            },
-            isFavorite: false
-        });
-
-        showContextMenu(e.clientX, e.clientY, menuItems);
-    }, [data, onDelete, onExpand, onConnect, onUpdate, showContextMenu, getCardMenuItems]);
-
     return (
         <div
             ref={cardRef}
@@ -155,8 +124,7 @@ const Card = React.memo(function Card({
                 ${isSelected ? 'card-sharp-selected' : 'hover:scale-[1.01] hover:border-brand-300 dark:hover:border-white/20'}
                 ${isTarget ? 'card-target-breathing' : ''}
                 ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
-                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
-                ${cardColorClass}`}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
             style={{
                 left: data.x,
                 top: data.y,
@@ -170,7 +138,7 @@ const Card = React.memo(function Card({
             onContextMenu={handleContextMenu}
         >
             {/* Top Bar - Model + Buttons */}
-            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
+            < div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5" >
                 <div className="flex items-center gap-2 max-w-[60%]">
                     <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
                     <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={cardContent.title}>
@@ -200,7 +168,7 @@ const Card = React.memo(function Card({
                         <Maximize2 size={14} />
                     </button>
                 </div>
-            </div>
+            </div >
 
             <div className="p-4 h-48 overflow-hidden relative transition-colors">
                 <p
@@ -212,46 +180,48 @@ const Card = React.memo(function Card({
                 <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white via-white/40 dark:from-slate-900/90 dark:via-slate-900/40 to-transparent pointer-events-none"></div>
             </div>
 
-            {data.type === 'image_gen' && (
-                <div className="px-4 pb-4">
-                    <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 flex items-center justify-center relative group/image">
-                        {cardContent.loading ? (
-                            <div className="flex flex-col items-center gap-3">
-                                <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Generating...</span>
-                            </div>
-                        ) : cardContent.error ? (
-                            <div className="flex flex-col items-center gap-2 p-4 text-center">
-                                <AlertCircle className="w-8 h-8 text-red-500/50" />
-                                <span className="text-xs text-red-500/70 font-medium">{cardContent.error}</span>
-                            </div>
-                        ) : cardContent.imageUrl ? (
-                            <>
-                                <img
-                                    src={cardContent.imageUrl}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110"
-                                    alt={cardContent.prompt}
-                                    draggable="false"
-                                    onMouseDown={(e) => e.preventDefault()}
-                                />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); window.open(cardContent.imageUrl, '_blank'); }}
-                                        className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all transform hover:scale-110"
-                                    >
-                                        <Maximize2 size={16} />
-                                    </button>
+            {
+                data.type === 'image_gen' && (
+                    <div className="px-4 pb-4">
+                        <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 flex items-center justify-center relative group/image">
+                            {cardContent.loading ? (
+                                <div className="flex flex-col items-center gap-3">
+                                    <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Generating...</span>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="flex flex-col items-center gap-2 text-slate-400">
-                                <ImageIcon size={24} className="opacity-20" />
-                                <span className="text-[10px] uppercase font-bold tracking-tighter opacity-30">No Image</span>
-                            </div>
-                        )}
+                            ) : cardContent.error ? (
+                                <div className="flex flex-col items-center gap-2 p-4 text-center">
+                                    <AlertCircle className="w-8 h-8 text-red-500/50" />
+                                    <span className="text-xs text-red-500/70 font-medium">{cardContent.error}</span>
+                                </div>
+                            ) : cardContent.imageUrl ? (
+                                <>
+                                    <img
+                                        src={cardContent.imageUrl}
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110"
+                                        alt={cardContent.prompt}
+                                        draggable="false"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); window.open(cardContent.imageUrl, '_blank'); }}
+                                            className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all transform hover:scale-110"
+                                        >
+                                            <Maximize2 size={16} />
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 text-slate-400">
+                                    <ImageIcon size={24} className="opacity-20" />
+                                    <span className="text-[10px] uppercase font-bold tracking-tighter opacity-30">No Image</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <div className="px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center border-t border-white/5">
                 <span className="font-medium bg-white/5 px-2 py-0.5 rounded-full">{messages.length} messages</span>
@@ -260,7 +230,7 @@ const Card = React.memo(function Card({
                     {cardContent.model?.split('/').pop() || 'AI'}
                 </span>
             </div>
-        </div>
+        </div >
     );
 });
 

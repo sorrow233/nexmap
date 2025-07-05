@@ -212,36 +212,51 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    // 4. Group paths by color for efficient batch drawing
-                    const colorGroups = {
-                        default: [],
-                        rose: [],
-                        teal: [],
-                        blue: []
+                    // Color definitions for light/dark mode - 7 Modern Colors + Legacy Mappings
+                    const colors = {
+                        default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
+
+                        // Red / Rose
+                        red: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // rose-500/400
+                        rose: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // legacy
+
+                        // Orange
+                        orange: isDark ? 'rgba(251, 146, 60, 0.6)' : 'rgba(251, 146, 60, 0.6)', // orange-500/400
+
+                        // Amber
+                        amber: isDark ? 'rgba(245, 158, 11, 0.6)' : 'rgba(251, 191, 36, 0.6)', // amber-500/400
+
+                        // Green / Emerald
+                        green: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(52, 211, 153, 0.6)', // emerald-500/400
+                        emerald: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(52, 211, 153, 0.6)', // legacy
+
+                        // Teal
+                        teal: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // teal-500/400
+
+                        // Blue
+                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)', // blue-500/400
+
+                        // Violet
+                        violet: isDark ? 'rgba(124, 58, 237, 0.6)' : 'rgba(167, 139, 250, 0.6)', // violet-600/400
                     };
+
+                    // 4. Group paths by color for efficient batch drawing
+                    // Dynamically create groups based on defined colors
+                    const colorGroups = {};
+                    for (const key of Object.keys(colors)) {
+                        colorGroups[key] = [];
+                    }
 
                     for (const entry of map.values()) {
                         const path = entry.path || entry;
-                        const color = entry.cardColor || 'default';
-                        if (colorGroups[color]) {
+                        const color = entry.cardColor;
+
+                        if (color && colorGroups[color]) {
                             colorGroups[color].push(path);
                         } else {
                             colorGroups.default.push(path);
                         }
                     }
-
-                    // Color definitions for light/dark mode - Modern Pastels
-                    const colors = {
-                        default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
-                        rose: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // rose-500/400
-                        amber: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // legacy mapping -> rose
-
-                        teal: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // teal-500/400
-                        emerald: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // legacy mapping -> teal
-
-                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)', // blue-500/400
-                        violet: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)' // legacy mapping -> blue
-                    };
 
                     // Draw each color group
                     for (const [colorKey, paths] of Object.entries(colorGroups)) {
