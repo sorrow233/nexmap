@@ -50,12 +50,12 @@ const LAYOUTS = [
     { id: 'slide', label: 'Slide', desc: 'Wide' },
 ];
 
-// Resolution options (Clarity Scale, NOT width)
-// Base: scale=5 (5x the old 1x clarity), each step adds 25%
+// Resolution options (Clarity Scale for html2canvas)
+// Safe range: 2-3x to prevent WebP encoding failures on large canvases
 const RESOLUTIONS = [
-    { id: 5, label: '1x', desc: '📱 Mobile', outputWidth: 5895 },
-    { id: 6.25, label: '2x', desc: '💻 Desktop', outputWidth: 7369 },
-    { id: 7.5, label: '3x', desc: '🖼️ Print', outputWidth: 8843 },
+    { id: 2, label: '1x', desc: '📱 Mobile', outputWidth: 2358 },      // 1179 * 2
+    { id: 2.5, label: '2x', desc: '💻 Desktop', outputWidth: 2948 },   // 1179 * 2.5
+    { id: 3, label: '3x', desc: '🖼️ Print', outputWidth: 3537 },       // 1179 * 3
 ];
 
 // Format options
@@ -81,7 +81,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
     const [theme, setTheme] = useState('business');
     const [layout, setLayout] = useState('card');
     const [showWatermark, setShowWatermark] = useState(true);
-    const [resolution, setResolution] = useState(5); // 5x clarity = new 1x
+    const [resolution, setResolution] = useState(2); // 2x scale = safe 1x for Retina
     const [format, setFormat] = useState('webp');
     const [quality, setQuality] = useState(0.92);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -115,7 +115,13 @@ export default function ShareModal({ isOpen, onClose, content }) {
 
             const formatConfig = FORMATS.find(f => f.id === format);
             const needsQuality = format !== 'png';
-            const image = canvas.toDataURL(formatConfig.mime, needsQuality ? quality : undefined);
+            let image = canvas.toDataURL(formatConfig.mime, needsQuality ? quality : undefined);
+
+            // Fallback: If WebP fails (empty or too small), try PNG
+            if (format === 'webp' && (!image || image.length < 100)) {
+                console.warn('WebP export failed, falling back to PNG');
+                image = canvas.toDataURL('image/png');
+            }
 
             const link = document.createElement('a');
             link.href = image;
