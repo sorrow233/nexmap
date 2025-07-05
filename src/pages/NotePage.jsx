@@ -31,7 +31,9 @@ export default function NotePage({ onBack }) {
     // Wrapper to bridge ChatModal's signature with handleChatGenerate (Copied from BoardPage/ChatModal logic)
     // Ideally this should be a hook 'useChatController'
     const handleChatModalGenerate = async (cardId, text, images = []) => {
-        const card = cards.find(c => c.id === cardId);
+        // FIX: Gets fresh state to avoid stale closures in message queue
+        const freshCards = useStore.getState().cards;
+        const card = freshCards.find(c => c.id === cardId);
         if (!card) return;
 
         let userContent;
