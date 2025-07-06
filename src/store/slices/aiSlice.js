@@ -276,15 +276,13 @@ export const createAISlice = (set, get) => {
             }
         },
 
-        updateCardContent: (id, chunk, messageIndex = null) => {
-            // Use composite key when messageIndex is provided for precise targeting
-            const bufferKey = messageIndex !== null ? `${id}:${messageIndex}` : id;
+        updateCardContent: (id, chunk) => {
+            // Simple approach: always buffer by card ID only
+            // With sequential queue, last assistant message is always the correct target
+            const currentBuffer = contentBuffer.get(id) || "";
+            contentBuffer.set(id, currentBuffer + chunk);
 
-            // 1. Buffer the content
-            const currentBuffer = contentBuffer.get(bufferKey) || "";
-            contentBuffer.set(bufferKey, currentBuffer + chunk);
-
-            // 2. Schedule flush if not already scheduled
+            // Schedule flush if not already scheduled
             if (!contentFlushTimer) {
                 contentFlushTimer = setTimeout(() => {
                     try {
@@ -293,58 +291,22 @@ export const createAISlice = (set, get) => {
                         contentBuffer.clear();
                         contentFlushTimer = null;
 
-                        // 3. Batch update
+                        // Batch update - always target last assistant message
                         set(state => ({
                             cards: state.cards.map(c => {
-                                // Check for both cardId only and cardId:index patterns
-                                const directUpdate = updates.get(c.id);
-                                const indexedUpdates = [];
-                                updates.forEach((content, key) => {
-                                    if (key.startsWith(c.id + ':')) {
-                                        const idx = parseInt(key.split(':')[1], 10);
-                                        indexedUpdates.push({ index: idx, content });
-                                    }
-                                });
-
-                                if (!directUpdate && indexedUpdates.length === 0) return c;
+                                const update = updates.get(c.id);
+                                if (!update) return c;
 
                                 const msgs = [...c.data.messages];
+                                const lastMsg = msgs[msgs.length - 1];
 
-                                // Handle indexed updates first (precise targeting)
-                                indexedUpdates.forEach(({ index, content }) => {
-                                    if (msgs[index] && msgs[index].role === 'assistant') {
-                                        // Target index exists and is assistant - update it directly
-                                        msgs[index] = {
-                                            ...msgs[index],
-                                            content: msgs[index].content + content
-                                        };
-                                    } else {
-                                        // FALLBACK: Target index doesn't exist yet (race condition with optimistic update)
-                                        // Find the last assistant message and append there
-                                        // This prevents content loss during rapid message sending
-                                        for (let i = msgs.length - 1; i >= 0; i--) {
-                                            if (msgs[i].role === 'assistant') {
-                                                msgs[i] = {
-                                                    ...msgs[i],
-                                                    content: msgs[i].content + content
-                                                };
-                                                break;
-                                            }
-                                        }
-                                    }
-                                });
-
-                                // Handle direct/legacy update (last assistant message)
-                                if (directUpdate) {
-                                    const lastMsg = msgs[msgs.length - 1];
-                                    if (!lastMsg || lastMsg.role !== 'assistant') {
-                                        msgs.push({ role: 'assistant', content: directUpdate });
-                                    } else {
-                                        msgs[msgs.length - 1] = {
-                                            ...lastMsg,
-                                            content: lastMsg.content + directUpdate
-                                        };
-                                    }
+                                if (!lastMsg || lastMsg.role !== 'assistant') {
+                                    msgs.push({ role: 'assistant', content: update });
+                                } else {
+                                    msgs[msgs.length - 1] = {
+                                        ...lastMsg,
+                                        content: lastMsg.content + update
+                                    };
                                 }
 
                                 return { ...c, data: { ...c.data, messages: msgs } };
