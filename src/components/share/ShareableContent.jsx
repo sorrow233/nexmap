@@ -141,11 +141,12 @@ const THEME_CONFIGS = {
             '--font-heading': '"Kalam", cursive',
             '--font-body': '"Kalam", cursive',
             '--font-code': '"Kalam", cursive',
-            '--h1-size': '3em',
+            '--base-size': '22px', // 手写体字号补偿 (Kalam is small)
+            '--h1-size': '3.5em',
             '--h1-weight': '700',
-            '--h2-size': '2em',
+            '--h2-size': '2.4em',
             '--line-height': '1.8',
-            '--block-margin': '1.8em',
+            '--block-margin': '1.6em',
             '--quote-style': 'normal',
             '--quote-border': 'none',
             '--quote-bg': '#FFF3C4', // 便利贴黄
@@ -202,6 +203,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         return `
             .markdown-body {
                 font-family: ${s['--font-body']};
+                ${s['--base-size'] ? `font-size: ${s['--base-size']};` : ''}
                 color: ${themeConfig.text};
                 line-height: ${s['--line-height']};
                 font-feature-settings: "kern" 1, "liga" 1;
