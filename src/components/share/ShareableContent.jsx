@@ -1,96 +1,110 @@
 import React, { useEffect } from 'react';
 import { marked } from 'marked';
 
+// Configure marked options
+marked.setOptions({
+    breaks: true, // Enable line breaks
+    gfm: true,    // Enable GitHub Flavored Markdown
+});
+
 // Advanced Theme Configurations
-// 每个主题都是一套完整的设计语言：字体、配色、Markdown渲染规则、装饰元素
 const THEME_CONFIGS = {
-    // 1. Editorial - 优雅杂志风 (New York Times style)
+    // 1. Editorial - 纽约时报杂志风 (New York Editorial) - 原 Theme 4 "米色衬线" 拯救版
     editorial: {
         id: 'editorial',
         name: 'Editorial',
-        fonts: ['Merriweather', 'Inter'],
-        bg: '#FDFBF7', // 羊皮纸色
-        text: '#2c2c2c', // 更深的灰，提升对比度
-        accent: '#8B0000', // 深红
-        padding: 80,
+        fonts: ['Merriweather', 'Playfair Display', 'Inter'],
+        bg: '#FDFBF7', // 羊皮纸/暖白
+        text: '#333333',
+        accent: '#8B0000', // 深酒红
+        padding: 80, // 巨大的留白
         radius: 0,
         settings: {
             '--font-heading': '"Playfair Display", serif',
             '--font-body': '"Merriweather", serif',
             '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '3.2em',
+            '--h1-size': '3.5em', // 巨大标题
             '--h1-weight': '900',
-            '--h1-spacing': '-0.02em',
-            '--line-height': '1.9', // 更宽松的行高
+            '--h1-line-height': '1.1',
+            '--h2-size': '2em',
+            '--line-height': '1.9', // 呼吸感
+            '--block-margin': '2em',
             '--quote-style': 'italic',
-            '--quote-border': 'none', // 取消侧边栏
+            '--quote-border': 'none',
             '--quote-bg': 'transparent',
-            '--code-bg': '#F0EFE9',
+            '--quote-color': '#555',
+            '--code-bg': '#F5F5F0',
             '--code-color': '#8B0000',
         }
     },
 
-    // 2. Terminal - 硬核极客风 (CRT/IDE style)
+    // 2. Terminal - 硅谷极客风 (Silicon Valley) - 原 Theme 2 "深蓝格纹" 拯救版
     terminal: {
         id: 'terminal',
-        name: 'Terminal',
-        fonts: ['JetBrains Mono'],
-        bg: '#050505', // 接近纯黑
-        text: '#00ff00', // 经典 CRT 绿
-        accent: '#00ff00',
-        padding: 40,
-        radius: 0, // 终端没有圆角
+        name: 'Silicon',
+        fonts: ['JetBrains Mono', 'Inter'],
+        bg: '#0F1115', // 深灰/黑灰，不是蓝
+        text: '#E1E3E5', // 灰白，防刺眼
+        accent: '#58A6FF', // GitHub Blue
+        padding: 60,
+        radius: 8,
         settings: {
             '--font-heading': '"JetBrains Mono", monospace',
-            '--font-body': '"JetBrains Mono", monospace',
+            '--font-body': '"JetBrains Mono", monospace', // 全员等宽
             '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '2em',
+            '--h1-size': '2.2em',
             '--h1-weight': '700',
-            '--h1-prefix': 'root@mixboard:~# ', // 更硬核的前缀
-            '--line-height': '1.4', // 紧凑
+            '--h1-prefix': '~/ ',
+            '--h2-size': '1.6em',
+            '--line-height': '1.7',
+            '--block-margin': '1.5em',
             '--quote-style': 'normal',
-            '--quote-border': '2px solid #333',
-            '--quote-bg': '#111',
-            '--code-bg': '#111',
-            '--code-color': '#00ff00',
-            '--text-shadow': '0 0 2px rgba(0, 255, 0, 0.4)', // CRT 辉光
+            '--quote-border': '2px solid #30363D',
+            '--quote-bg': '#161B22',
+            '--quote-color': '#8B949E',
+            '--code-bg': '#161B22',
+            '--code-color': '#79C0FF',
+            '--border-color': 'rgba(255,255,255,0.1)',
         }
     },
 
-    // 3. Modern - 现代生产力 (Notion style)
+    // 3. Modern - Notion 现代风 - 原 Theme 3 "白底" 拯救版
     modern: {
         id: 'modern',
         name: 'Modern',
         fonts: ['Inter'],
         bg: '#FFFFFF',
-        text: '#37352F',
-        accent: '#EB5757', // Notion Red
+        text: '#37352F', // Notion Black
+        accent: '#E16259', // Notion Red (for strong)
         padding: 60,
         radius: 12,
         settings: {
             '--font-heading': '"Inter", sans-serif',
             '--font-body': '"Inter", sans-serif',
             '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '2.4em',
+            '--h1-size': '2.8em',
             '--h1-weight': '700',
+            '--h2-size': '1.8em',
             '--line-height': '1.7',
+            '--block-margin': '1em', // Notion is slightly compact but clear
             '--quote-style': 'normal',
-            '--quote-border': '3px solid #000', // 醒目的黑线
+            '--quote-border': '3px solid #D1D5DB', // 灰色竖线
             '--quote-bg': 'transparent',
-            '--code-bg': 'rgba(235, 87, 87, 0.1)',
+            '--quote-color': '#555',
+            '--code-bg': 'rgba(235, 87, 87, 0.08)', // 淡红背景
             '--code-color': '#EB5757',
         }
     },
 
-    // 4. Swiss - 瑞士平面风格 (Poster style)
+    // 4. Swiss - 瑞士平面风 (Swiss Poster) - 原 Theme 1/Swiss 优化
     swiss: {
         id: 'swiss',
         name: 'Swiss',
         fonts: ['Inter'],
-        bg: '#0044CC', // 更纯的国际克莱因蓝
+        bg: '#0033CC', // Klein Blue
         text: '#FFFFFF',
-        accent: '#F2C94C', // 警示黄
-        padding: 80,
+        accent: '#FFD700', // Gold
+        padding: 70,
         radius: 0,
         settings: {
             '--font-heading': '"Inter", sans-serif',
@@ -99,55 +113,62 @@ const THEME_CONFIGS = {
             '--h1-size': '4.5em',
             '--h1-weight': '900',
             '--h1-spacing': '-0.06em',
-            '--h1-line-height': '0.85', // 极致紧凑
-            '--line-height': '1.4',
+            '--h1-line-height': '0.9',
+            '--h2-size': '2.5em',
+            '--line-height': '1.5', // 瑞士风行距略紧，强调块面感
+            '--block-margin': '1.5em',
             '--quote-style': 'normal',
             '--quote-border': 'none',
-            '--quote-bg': 'rgba(255,255,255,0.1)',
+            '--quote-bg': 'rgba(255,255,255,0.15)',
+            '--quote-color': '#FFF',
             '--code-bg': '#000',
-            '--code-color': '#F2C94C',
-            '--bold-color': '#F2C94C',
+            '--code-color': '#FFD700',
+            '--bold-color': '#FFD700',
         }
     },
 
-    // 5. Handwritten - 手账温暖风 (GoodNotes style)
+    // 5. Handwritten - 手账温暖风 (Cozy) - 原 Theme 5 "横线纸" 拯救版
     handwritten: {
         id: 'handwritten',
-        name: 'Handwritten',
-        fonts: ['Kalam'], // 换成 Kalam，更有质感
+        name: 'Cozy',
+        fonts: ['Kalam', 'Patrick Hand'],
         bg: '#FFFCF5', // 暖白
         text: '#2C3E50',
-        accent: '#FF6B6B', // 暖红
-        padding: 50,
+        accent: '#FFAB76', // 暖橙荧光笔
+        padding: 60,
         radius: 4,
         settings: {
             '--font-heading': '"Kalam", cursive',
             '--font-body': '"Kalam", cursive',
             '--font-code': '"Kalam", cursive',
-            '--h1-size': '2.6em',
+            '--h1-size': '3em',
             '--h1-weight': '700',
+            '--h2-size': '2em',
             '--line-height': '1.8',
+            '--block-margin': '1.8em',
             '--quote-style': 'normal',
             '--quote-border': 'none',
-            '--quote-bg': '#FFF3C4', // 浅黄便利贴
-            '--quote-shadow': '3px 3px 0px rgba(0,0,0,0.05)', // 硬阴影
+            '--quote-bg': '#FFF3C4', // 便利贴黄
+            '--quote-color': '#2C3E50',
+            '--quote-shadow': '3px 3px 0px rgba(0,0,0,0.05)',
             '--code-bg': '#E8F6F3',
             '--code-color': '#16A085',
-            '--highlight-bg': 'linear-gradient(120deg, rgba(255, 235, 59, 0.6) 0%, rgba(255, 235, 59, 0.2) 100%)', // 真实荧光笔
+            // 荧光笔效果，边缘不规则
+            '--highlight-bg': `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 100 L0 20 Q 20 0, 40 20 T 80 20 T 100 20 L 100 100 Z' fill='rgba(255, 200, 100, 0.4)' /%3E%3C/svg%3E")`,
         }
     },
 };
 
 // Layout configs (Base 1179px)
 const LAYOUT_CONFIGS = {
-    card: { width: 1179, aspectRatio: null },
-    full: { width: 1179, aspectRatio: null },
-    social: { width: 1179, aspectRatio: 1 },
-    slide: { width: 1920, aspectRatio: 16 / 9 },
+    card: { width: 1179, aspectRatio: null, paddingScale: 1, centered: false },
+    full: { width: 1179, aspectRatio: null, paddingOverride: 40, centered: false }, // Compact: reduced padding
+    social: { width: 1179, aspectRatio: 1, paddingScale: 1, centered: true },      // Social: Square + Centered
+    slide: { width: 1920, aspectRatio: 16 / 9, paddingScale: 1.5, centered: true }, // Slide: Wide + Centered
 };
 
 const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout = 'card', showWatermark }, ref) => {
-    // Determine Theme Config
+    // Map theme IDs
     const themeMap = {
         'business': 'editorial',
         'tech': 'terminal',
@@ -156,28 +177,25 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         'colorful': 'handwritten'
     };
 
-    // Accept either new ID or map old ID
     const currentThemeId = THEME_CONFIGS[theme] ? theme : (themeMap[theme] || 'modern');
     const themeConfig = THEME_CONFIGS[currentThemeId];
     const layoutConfig = LAYOUT_CONFIGS[layout] || LAYOUT_CONFIGS.card;
 
-    // Load Fonts dynamically
+    // Load Fonts logic
     useEffect(() => {
         const linkId = 'mixboard-export-fonts';
         if (!document.getElementById(linkId)) {
             const link = document.createElement('link');
             link.id = linkId;
-            // Removed Patrick Hand, Added Kalam
-            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&display=swap';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
         }
     }, []);
 
-    // Generate HTML with marked
     const htmlContent = marked(content || 'No content provided');
 
-    // Dynamic CSS Generation
+    // CSS Generator
     const generateThemeStyles = () => {
         const s = themeConfig.settings;
 
@@ -186,168 +204,172 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 font-family: ${s['--font-body']};
                 color: ${themeConfig.text};
                 line-height: ${s['--line-height']};
-                ${s['--text-shadow'] ? `text-shadow: ${s['--text-shadow']};` : ''}
-                ${currentThemeId === 'editorial' ? 'text-align: justify;' : ''}
+                font-feature-settings: "kern" 1, "liga" 1;
             }
 
-            /* Headers */
+            /* --- Typography Hierarchy --- */
             .markdown-body h1 {
                 font-family: ${s['--font-heading']};
                 font-size: ${s['--h1-size']};
                 font-weight: ${s['--h1-weight']};
+                line-height: ${s['--h1-line-height'] || '1.2'};
                 letter-spacing: ${s['--h1-spacing'] || 'normal'};
-                line-height: ${s['--h1-line-height'] || '1.1'};
-                margin-bottom: 0.6em;
                 margin-top: 0;
+                margin-bottom: 0.6em;
             }
-            ${currentThemeId === 'terminal' ? `.markdown-body h1::before { content: "${s['--h1-prefix']}"; color: ${themeConfig.accent}; margin-right: 0.2em; opacity: 0.8; }` : ''}
+            ${currentThemeId === 'terminal' ? `.markdown-body h1::before { content: "${s['--h1-prefix']}"; display: inline-block; margin-right: 0.3em; opacity: 0.5; }` : ''}
 
             .markdown-body h2 {
                 font-family: ${s['--font-heading']};
-                font-size: 1.8em;
+                font-size: ${s['--h2-size']};
                 font-weight: 700;
-                margin-top: 1.5em;
+                margin-top: 1.5em; /* Breathing room */
                 margin-bottom: 0.6em;
-                ${currentThemeId === 'editorial' ? `border-top: 1px solid ${themeConfig.text}; padding-top: 1em; margin-top: 2em;` : ''}
+                ${currentThemeId === 'editorial' ? `border-bottom: 1px solid ${themeConfig.accent}40; padding-bottom: 0.3em; display: inline-block;` : ''}
             }
-            ${currentThemeId === 'terminal' ? `.markdown-body h2::before { content: "// "; color: #666; }` : ''}
-            ${currentThemeId === 'handwritten' ? `.markdown-body h2 { color: ${themeConfig.accent}; transform: rotate(-1deg); display: inline-block; }` : ''}
 
+            .markdown-body p {
+                margin-bottom: ${s['--block-margin']};
+                ${currentThemeId === 'editorial' ? 'text-align: justify;' : ''}
+            }
 
+            /* --- Components --- */
+            
             /* Blockquotes */
             .markdown-body blockquote {
-                margin: 1.5em 0;
-                padding: 1em 1.5em;
+                margin: 2em 0;
+                padding: 1.2em 1.5em;
                 font-style: ${s['--quote-style']};
                 border-left: ${s['--quote-border']};
                 background: ${s['--quote-bg']};
-                ${s['--quote-shadow'] ? `box-shadow: ${s['--quote-shadow']};` : ''}
+                color: ${s['--quote-color']};
+                ${s['--quote-shadow'] ? `box-shadow: ${s['--quote-shadow']}; border-radius: 6px;` : ''}
                 ${currentThemeId === 'editorial' ? `
-                    position: relative; 
-                    padding: 1.5em 2em;
-                    text-align: center;
-                    font-size: 1.1em;
-                    border: 1px solid rgba(0,0,0,0.1);
+                    position: relative;
+                    padding-left: 3em; 
+                    padding-right: 1em;
+                    border: none;
                 ` : ''}
-                ${currentThemeId === 'handwritten' ? `transform: rotate(0.5deg);` : ''}
             }
+            /* Editorial Quote Mark */
             ${currentThemeId === 'editorial' ? `
             .markdown-body blockquote::before {
                 content: "“";
-                display: block;
+                position: absolute;
+                left: 0.4em;
+                top: -0.2em;
                 font-family: "Playfair Display", serif;
-                font-size: 3em;
-                line-height: 0.5;
-                margin-bottom: 0.2em;
+                font-size: 4em;
                 color: ${themeConfig.accent};
+                opacity: 0.2;
+                line-height: 1;
             }` : ''}
 
-            /* Code */
+            /* Code Blocks */
+            .markdown-body pre {
+                background: ${s['--code-bg']};
+                padding: 1.5em;
+                border-radius: ${currentThemeId === 'handwritten' ? '8px' : '6px'};
+                overflow-x: auto;
+                margin: 1.5em 0;
+                ${currentThemeId === 'terminal' || currentThemeId === 'editorial' ? `border: 1px solid rgba(0,0,0,0.08);` : ''}
+            }
+            .markdown-body pre code {
+                font-family: ${s['--font-code']};
+                background: transparent;
+                padding: 0;
+                color: ${s['--code-color']};
+                font-size: 0.9em;
+            }
+
+            /* Inline Code */
             .markdown-body code {
                 font-family: ${s['--font-code']};
                 background: ${s['--code-bg']};
                 color: ${s['--code-color']};
                 padding: 0.2em 0.4em;
+                margin: 0 0.1em;
                 border-radius: 4px;
                 font-size: 0.85em;
-                ${currentThemeId === 'editorial' ? `border: 1px solid rgba(0,0,0,0.05);` : ''}
-            }
-            .markdown-body pre {
-                background: ${currentThemeId === 'swiss' ? '#000' : (currentThemeId === 'terminal' ? '#111' : '#F8F9FA')};
-                padding: 1.5em;
-                border-radius: ${currentThemeId === 'handwritten' ? '8px' : '0'};
-                overflow-x: auto;
-                margin: 1.5em 0;
-                ${currentThemeId === 'handwritten' ? `border: 2px dashed ${themeConfig.accent}; background: #fff;` : ''}
-                ${currentThemeId === 'terminal' ? `border: 1px solid #333;` : ''}
-            }
-            .markdown-body pre code {
-                background: transparent;
-                padding: 0;
-                border: none;
-                color: inherit;
+                ${currentThemeId === 'editorial' ? 'border: 1px solid rgba(0,0,0,0.05);' : ''}
             }
 
             /* Lists */
             .markdown-body ul, .markdown-body ol {
-                padding-left: 1em;
+                padding-left: 1.2em;
+                margin-bottom: ${s['--block-margin']};
             }
             .markdown-body ul li {
+                list-style: none; /* Custom bullets */
                 position: relative;
-                padding-left: 1em;
+                padding-left: 0.5em; 
                 margin-bottom: 0.5em;
-                list-style: none; /* Reset standard bullets */
             }
             .markdown-body ul li::before {
-                content: "${currentThemeId === 'terminal' ? '>' : (currentThemeId === 'handwritten' ? '-' : '•')}";
+                content: "${currentThemeId === 'terminal' ? '>' : (currentThemeId === 'modern' ? '◦' : '•')}";
                 position: absolute;
-                left: -0.5em;
+                left: -1em;
                 color: ${themeConfig.accent};
                 font-weight: bold;
             }
-             /* Ordered List Counter Color */
-            .markdown-body ol {
+             .markdown-body ol {
                 counter-reset: item;
                 list-style: none;
             }
             .markdown-body ol li {
                 position: relative;
-                padding-left: 1em;
+                padding-left: 0.5em;
                 margin-bottom: 0.5em;
             }
             .markdown-body ol li::before {
                 content: counter(item) ".";
                 counter-increment: item;
                 position: absolute;
-                left: -0.8em;
-                font-weight: bold;
+                left: -1.2em;
                 color: ${themeConfig.accent};
+                font-weight: bold;
                 font-family: ${s['--font-code']};
+                font-variant-numeric: tabular-nums;
             }
 
-            /* Bold & Highlight */
+            /* Bold & Highlights */
             .markdown-body strong {
                 font-weight: 800;
                 ${s['--bold-color'] ? `color: ${s['--bold-color']};` : ''}
                 ${currentThemeId === 'handwritten' ? `
-                    background: ${themeConfig.settings['--highlight-bg']};
+                    background: linear-gradient(100deg, rgba(255,171,118,0) 10%, rgba(255,171,118,0.3) 15%, rgba(255,171,118,0.3) 85%, rgba(255,171,118,0) 90%);
                     padding: 0 0.2em;
-                    box-decoration-break: clone;
+                    border-radius: 4px;
                 ` : ''}
                  ${currentThemeId === 'editorial' ? `
-                    color: ${themeConfig.accent};
+                    background: linear-gradient(120deg, transparent 65%, ${themeConfig.accent}15 65%);
+                    color: inherit;
                 ` : ''}
             }
 
             /* HR */
             .markdown-body hr {
                 border: none;
-                margin: 2.5em 0;
+                margin: 3em 0;
                 text-align: center;
                 ${currentThemeId === 'editorial' ? `height: auto;` : `
-                    height: ${currentThemeId === 'swiss' ? '4px' : '1px'};
-                    background: ${currentThemeId === 'swiss' ? themeConfig.accent : themeConfig.text};
-                    opacity: ${currentThemeId === 'terminal' ? '1' : '0.1'};
+                    height: 1px;
+                    background: ${currentThemeId === 'swiss' ? 'transparent' : themeConfig.text};
+                    opacity: 0.1;
                 `}
-                ${currentThemeId === 'handwritten' ? `
-                     background: none;
-                     border-top: 2px dashed ${themeConfig.accent};
-                     opacity: 1;
-                ` : ''}
             }
+            /* Editorial HR */
             ${currentThemeId === 'editorial' ? `
             .markdown-body hr::after {
                 content: "✻ ✻ ✻";
                 font-size: 1.2em;
                 color: ${themeConfig.accent};
                 letter-spacing: 0.8em;
-            }
-            ` : ''}
-            
-            /* Swiss Style Specials */
-            ${currentThemeId === 'swiss' ? `
-            .markdown-body strong { color: ${themeConfig.accent}; text-transform: uppercase; }
-            ` : ''}
+                opacity: 0.6;
+            }` : ''}
+
+            /* Link override (if any) */
+            .markdown-body a { color: ${themeConfig.accent}; text-decoration: none; border-bottom: 1px solid ${themeConfig.accent}; }
         `;
     };
 
@@ -357,45 +379,56 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : 'auto',
             backgroundColor: themeConfig.bg,
             color: themeConfig.text,
-            padding: `${themeConfig.padding}px`,
+            padding: `${layoutConfig.paddingOverride || (themeConfig.padding * (layoutConfig.paddingScale || 1))}px`,
             display: 'flex',
             flexDirection: 'column',
+            justifyContent: layoutConfig.centered ? 'center' : 'flex-start',
             position: 'relative',
             boxSizing: 'border-box',
             fontFeatureSettings: '"kern" 1, "liga" 1',
             textRendering: 'optimizeLegibility',
         }}>
-            {/* Inject Theme Styles */}
             <style>{generateThemeStyles()}</style>
 
-            {/* Swiss Grid Background */}
+            {/* --- Background Effects --- */}
+
+            {/* Silicon Grid (Theme 2) */}
+            {currentThemeId === 'terminal' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `linear-gradient(${themeConfig.settings['--border-color']} 1px, transparent 1px), linear-gradient(90deg, ${themeConfig.settings['--border-color']} 1px, transparent 1px)`,
+                    backgroundSize: '40px 40px',
+                    opacity: 0.3,
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Swiss Grid (Theme 4) - Very Subtle */}
             {currentThemeId === 'swiss' && (
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-                    backgroundSize: '80px 80px',
+                    backgroundImage: `linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)`,
+                    backgroundSize: '100px 100px',
                     pointerEvents: 'none'
                 }} />
             )}
 
-            {/* Handwritten Paper Texture */}
+            {/* Cozy Noise (Theme 5) */}
             {currentThemeId === 'handwritten' && (
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    opacity: 0.4,
-                    backgroundImage: `linear-gradient(#E5E7EB 1px, transparent 1px)`,
-                    backgroundSize: '100% 2em',
+                    opacity: 0.03,
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
                     pointerEvents: 'none'
                 }} />
             )}
 
-            {/* Content Container */}
-            <div className={`markdown-body flex-grow`} style={{
-                position: 'relative',
-                zIndex: 10
-            }}>
+
+            {/* Content Content content */}
+            <div className={`markdown-body flex-grow`} style={{ position: 'relative', zIndex: 10 }}>
                 <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
             </div>
 
@@ -403,35 +436,26 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             {showWatermark && (
                 <div style={{
                     marginTop: '80px',
-                    paddingTop: '30px',
-                    borderTop: currentThemeId === 'swiss' ? `6px solid ${themeConfig.accent}` : `1px solid ${themeConfig.text}20`,
+                    paddingTop: '20px',
+                    borderTop: currentThemeId === 'swiss' ? `4px solid ${themeConfig.accent}` : `1px solid ${themeConfig.text}15`,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     fontFamily: themeConfig.settings['--font-heading'],
-                    opacity: 0.9
+                    opacity: 0.7
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Logo Mark */}
                         <div style={{
-                            width: '32px', height: '32px',
+                            width: '24px', height: '24px',
                             background: themeConfig.accent,
-                            borderRadius: currentThemeId === 'terminal' || currentThemeId === 'swiss' ? '0' : '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '18px',
-                            color: currentThemeId === 'swiss' || currentThemeId === 'terminal' || currentThemeId === 'handwritten' ? themeConfig.bg : '#fff',
-                            fontWeight: 'bold'
-                        }}>
-                            M
-                        </div>
-                        <span style={{ fontWeight: 'bold', fontSize: '1.4em', letterSpacing: '-0.02em' }}>MixBoard</span>
+                            borderRadius: '4px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: currentThemeId === 'swiss' ? themeConfig.bg : '#fff',
+                            fontSize: '14px', fontWeight: 'bold'
+                        }}>M</div>
+                        <span style={{ fontWeight: 'bold', letterSpacing: '-0.02em', fontSize: '1.1em' }}>MixBoard</span>
                     </div>
-                    {currentThemeId === 'editorial' ? (
-                        <span style={{ fontSize: '1em', fontFamily: '"Merriweather", serif', fontStyle: 'italic' }}>From the desk of AI</span>
-                    ) : (
-                        <span style={{ fontSize: '1em', opacity: 0.7, fontFamily: themeConfig.settings['--font-code'] }}>Created with AI</span>
-                    )}
                 </div>
             )}
         </div>
