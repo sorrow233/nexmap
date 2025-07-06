@@ -50,7 +50,7 @@ export default function useBoardBackground() {
                 .filter(text => text && text.trim().length > 0)
                 .join('\n');
 
-            console.log('[Background Gen] Extracted context length:', boardContext.length);
+            // console.log('[Background Gen] Extracted context length:', boardContext.length);
 
             if (!boardContext.trim()) {
                 alert("No text found on board. Add some text first!");
@@ -87,7 +87,7 @@ export default function useBoardBackground() {
             Describe ONLY the flat illustration character(s) with normal proportions, their action, and simple background.
             NO chibi/big-head style, NO anime style, NO photorealistic elements.`;
 
-            console.log('[Background Gen] Stage 1: Analyzing context...');
+            // console.log('[Background Gen] Stage 1: Analyzing context...');
             const { chatCompletion, imageGeneration } = await import('../services/llm');
             const visualConcept = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
@@ -95,7 +95,7 @@ export default function useBoardBackground() {
                 getModelForRole('analysis')
             );
 
-            console.log('[Background Gen] Visual Concept:', visualConcept);
+            // console.log('[Background Gen] Visual Concept:', visualConcept);
 
             if (!visualConcept) throw new Error("Failed to analyze context");
 
@@ -125,14 +125,14 @@ export default function useBoardBackground() {
             
             **FINAL PROMPT**:`;
 
-            console.log('[Background Gen] Stage 2: Drafting final prompt...');
+            // console.log('[Background Gen] Stage 2: Drafting final prompt...');
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: promptGenPrompt }],
                 config,
                 getModelForRole('analysis') // Or use 'chat' if preferred, but Flash is fine for this
             );
 
-            console.log('[Background Gen] Final Generated Prompt:', imagePrompt);
+            // console.log('[Background Gen] Final Generated Prompt:', imagePrompt);
 
             if (!imagePrompt) throw new Error("Failed to generate final prompt");
 
@@ -145,7 +145,7 @@ export default function useBoardBackground() {
 
             if (!imageUrl) throw new Error("Failed to generate image");
 
-            console.log('[Background Gen] Image URL:', imageUrl);
+            // console.log('[Background Gen] Image URL:', imageUrl);
 
             // 5. Check S3 Config & Upload
             let finalImageUrl = imageUrl;
@@ -153,20 +153,19 @@ export default function useBoardBackground() {
             // CLEANUP: The model often returns markdown like ![image](url). Extract just the URL.
             const markdownMatch = finalImageUrl.match(/\!\[.*?\]\((.*?)\)/);
             if (markdownMatch && markdownMatch[1]) {
-                finalImageUrl = markdownMatch[1].trim();
-                console.log('[Background Gen] Extracted clean URL from markdown:', finalImageUrl.substring(0, 50) + '...');
+                // console.log('[Background Gen] Extracted clean URL from markdown:', finalImageUrl.substring(0, 50) + '...');
             }
 
             const s3Config = getS3Config();
 
             if (s3Config && s3Config.enabled) {
                 try {
-                    console.log('[Background Gen] S3 is enabled, processing image...');
+                    // console.log('[Background Gen] S3 is enabled, processing image...');
                     let blob;
 
                     // Handle Data URI directly (Skip Proxy & Network Stack)
                     if (finalImageUrl.startsWith('data:')) {
-                        console.log('[Background Gen] Detected Data URI. Converting locally via Byte extraction...');
+                        // console.log('[Background Gen] Detected Data URI. Converting locally via Byte extraction...');
                         // Pure JS conversion to avoid fetch() blocking
                         const byteString = atob(finalImageUrl.split(',')[1]);
                         const mimeString = finalImageUrl.split(',')[0].split(':')[1].split(';')[0];
@@ -178,7 +177,7 @@ export default function useBoardBackground() {
                         blob = new Blob([ab], { type: mimeString });
                     } else {
                         // Handle Remote URL (Use Proxy to bypass CORS)
-                        console.log('[Background Gen] Detected Remote URL. Using Proxy...');
+                        // console.log('[Background Gen] Detected Remote URL. Using Proxy...');
                         const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
                         const response = await fetch(proxyUrl);
                         if (!response.ok) throw new Error("Failed to download generated image via proxy");
@@ -187,15 +186,15 @@ export default function useBoardBackground() {
 
                     const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
                     finalImageUrl = await uploadImageToS3(file);
-                    console.log('[Background Gen] Successfully uploaded to S3:', finalImageUrl);
+                    // console.log('[Background Gen] Successfully uploaded to S3:', finalImageUrl);
 
                 } catch (uploadError) {
-                    console.error('[Background Gen] S3 Upload Failed:', uploadError);
+                    // console.error('[Background Gen] S3 Upload Failed:', uploadError);
                     alert(`Background generated but S3 Upload failed: ${uploadError.message}. Using temporary URL.`);
                     // We keep finalImageUrl as valid GMI url so user still gets a result (if it's not a massive data uri causing issues elsewhere)
                 }
             } else {
-                console.log('[Background Gen] S3 not configured/enabled. Using raw URL.');
+                // console.log('[Background Gen] S3 not configured/enabled. Using raw URL.');
             }
 
             // 6. Save to board metadata via callback
@@ -204,7 +203,7 @@ export default function useBoardBackground() {
             }
 
         } catch (error) {
-            console.error("Background generation failed:", error);
+            // console.error("Background generation failed:", error);
             alert("Failed to generate background. Check your 'Image Generation' settings or try again.");
         } finally {
             setGeneratingBoardId(null);

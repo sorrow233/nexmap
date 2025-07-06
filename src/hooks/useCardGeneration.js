@@ -1,0 +1,176 @@
+import { useStore } from '../store/useStore';
+import { uuid } from '../utils/uuid';
+import { createPerformanceMonitor } from '../utils/performanceMonitor';
+import { aiManager, PRIORITY } from '../services/ai/AIManager';
+import { saveImageToIDB } from '../services/storage';
+import { debugLog } from '../utils/debugLogger';
+
+export function useCardGeneration() {
+    const {
+        setCards,
+        createAICard,
+        updateCardContent,
+        setCardGenerating,
+        selectedIds,
+        cards
+    } = useStore();
+
+    /**
+     * Internal helper for AI generation
+     */
+    const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const chatModel = state.getRoleModel('chat');
+        const newId = uuid();
+        const currentSelectedIds = state.selectedIds || [];
+
+        debugLog.ai('Starting AI card generation', { text, x, y, model: chatModel });
+
+        try {
+            await createAICard({
+                id: newId,
+                text,
+                x, y,
+                images,
+                contextPrefix,
+                autoConnections: currentSelectedIds.map(sid => ({ from: sid, to: newId })),
+                model: chatModel,
+                providerId: activeConfig.id
+            });
+
+            // Construct content for AI
+            let messageContent;
+            if (images.length > 0) {
+                const imageParts = images.map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }));
+                messageContent = [
+                    { type: 'text', text: contextPrefix + text },
+                    ...imageParts
+                ];
+            } else {
+                messageContent = contextPrefix + text;
+            }
+
+            // Queue the streaming task
+            try {
+                const perfMonitor = createPerformanceMonitor({
+                    cardId: newId,
+                    model: chatModel,
+                    providerId: activeConfig.id,
+                    messages: [{ role: 'user', content: messageContent }],
+                    stream: true
+                });
+
+                debugLog.ai(`Queueing AI task for card ${newId}`);
+
+                let firstToken = true;
+                await aiManager.requestTask({
+                    type: 'chat',
+                    priority: PRIORITY.HIGH,
+                    payload: {
+                        messages: [{ role: 'user', content: messageContent }],
+                        model: chatModel,
+                        config: activeConfig
+                    },
+                    tags: [`card:${newId}`],
+                    onProgress: (chunk) => {
+                        if (firstToken) {
+                            perfMonitor.onFirstToken();
+                            debugLog.ai(`Received first token for card ${newId}`);
+                            firstToken = false;
+                        }
+                        perfMonitor.onChunk(chunk);
+                        updateCardContent(newId, chunk);
+                    }
+                });
+
+                debugLog.ai(`AI task completed for card ${newId}`);
+                perfMonitor.onComplete();
+            } catch (innerError) {
+                debugLog.error(`Streaming failed for card ${newId}`, innerError);
+                updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+            } finally {
+                setCardGenerating(newId, false);
+            }
+        } catch (e) {
+            debugLog.error(`Card generation failed for ${newId}`, e);
+            setCardGenerating(newId, false);
+        }
+        return newId;
+    };
+
+    /**
+     * Batch chat with selected cards
+     */
+    const handleBatchChat = async (text, images = []) => {
+        if (!text.trim() && images.length === 0) return;
+
+        const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
+        if (targetCards.length === 0) return false;
+
+        debugLog.ai('Starting batch chat', { text, targetCount: targetCards.length });
+
+        const { handleChatGenerate } = useStore.getState();
+
+        // Prepare context
+        let userContentParts = [];
+        if (text.trim()) userContentParts.push({ type: 'text', text });
+
+        if (images.length > 0) {
+            const processedImages = await Promise.all(images.map(async (img, idx) => {
+                const imageId = `batch_img_${uuid()}_${idx}`;
+                await saveImageToIDB(imageId, img.base64);
+                return {
+                    type: 'image',
+                    source: { type: 'idb', id: imageId, media_type: img.mimeType }
+                };
+            }));
+            userContentParts = [...userContentParts, ...processedImages];
+        }
+
+        const userMsg = {
+            role: 'user',
+            content: userContentParts.length === 1 && userContentParts[0].type === 'text'
+                ? userContentParts[0].text
+                : userContentParts
+        };
+
+        const assistantMsg = { role: 'assistant', content: '' };
+
+        // Optimistic UI Update
+        setCards(prev => prev.map(c => {
+            if (selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages)) {
+                return {
+                    ...c,
+                    data: { ...c.data, messages: [...c.data.messages, userMsg, assistantMsg] }
+                };
+            }
+            return c;
+        }));
+
+        // Execute concurrent AI requests
+        await Promise.all(targetCards.map(async (card) => {
+            try {
+                const history = [...card.data.messages, userMsg];
+                await handleChatGenerate(card.id, history, (chunk) => updateCardContent(card.id, chunk));
+                debugLog.ai(`Batch response complete for card ${card.id}`);
+            } catch (e) {
+                debugLog.error(`Batch chat failed for card ${card.id}`, e);
+                updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
+            }
+        }));
+        return true;
+    };
+
+    return {
+        _generateAICard,
+        handleBatchChat
+    };
+}

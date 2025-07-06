@@ -14,20 +14,31 @@ import favoritesService from '../services/favoritesService';
 import { useContextMenu } from './ContextMenu';
 
 export default function Canvas({ onCreateNote, ...props }) {
-    const {
-        cards, connections, groups, // NEW: groups
-        offset, scale, setOffset, setScale,
-        selectedIds, setSelectedIds,
-        interactionMode, setInteractionMode,
-        selectionRect, setSelectionRect,
-        generatingCardIds, setExpandedCardId,
-        isConnecting,
-        connectionStartId,
-        handleCardMove, handleCardMoveEnd,
-        handleConnect, deleteCard, updateCardFull,
-        toCanvasCoords, // Now from store
-        toggleFavorite, favoritesLastUpdate // For favorites
-    } = useStore();
+    // Granular selectors to prevent unnecessary re-renders
+    const cards = useStore(state => state.cards);
+    const connections = useStore(state => state.connections);
+    const groups = useStore(state => state.groups);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
+    const selectedIds = useStore(state => state.selectedIds);
+    const interactionMode = useStore(state => state.interactionMode);
+    const selectionRect = useStore(state => state.selectionRect);
+    const generatingCardIds = useStore(state => state.generatingCardIds);
+    const isConnecting = useStore(state => state.isConnecting);
+    const connectionStartId = useStore(state => state.connectionStartId);
+
+    // Actions - stable references, but good to be explicit
+    const setOffset = useStore(state => state.setOffset);
+    const setScale = useStore(state => state.setScale);
+    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const setInteractionMode = useStore(state => state.setInteractionMode);
+    const setSelectionRect = useStore(state => state.setSelectionRect);
+    const setExpandedCardId = useStore(state => state.setExpandedCardId);
+    const handleCardMove = useStore(state => state.handleCardMove);
+    const handleCardMoveEnd = useStore(state => state.handleCardMoveEnd);
+    const handleConnect = useStore(state => state.handleConnect);
+    const deleteCard = useStore(state => state.deleteCard);
+    const updateCardFull = useStore(state => state.updateCardFull);
 
     const { showContextMenu, getCanvasMenuItems } = useContextMenu();
     const canvasRef = useRef(null);
