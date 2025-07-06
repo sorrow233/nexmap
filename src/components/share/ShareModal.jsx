@@ -30,8 +30,8 @@ const THEMES = [
         id: 'swiss',
         label: 'Swiss',
         icon: Flame,
-        preview: 'bg-[#002FA7] border-blue-900',
-        accent: 'bg-[#FFD700]',
+        preview: 'bg-[#F4F4F4] border-zinc-300',
+        accent: 'bg-[#D01111]',
     },
     {
         id: 'handwritten',
@@ -71,7 +71,7 @@ const getThemeBackground = (themeId) => {
         editorial: '#FDFBF7',
         terminal: '#0D1117',
         modern: '#FFFFFF',
-        swiss: '#002FA7',
+        swiss: '#F4F4F4',
         handwritten: '#F9F5F1',
     };
     return bgColors[themeId] || '#ffffff';

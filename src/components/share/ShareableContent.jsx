@@ -96,34 +96,34 @@ const THEME_CONFIGS = {
         }
     },
 
-    // 4. Swiss - 瑞士平面风 (Swiss Poster) - 原 Theme 1/Swiss 优化
+    // 4. Swiss - 瑞士平面风 (International Style)
     swiss: {
         id: 'swiss',
         name: 'Swiss',
-        fonts: ['Inter'],
-        bg: '#0033CC', // Klein Blue
-        text: '#FFFFFF',
-        accent: '#FFD700', // Gold
-        padding: 70,
+        fonts: ['Inter', 'Helvetica Neue', 'Arial'],
+        bg: '#F4F4F4', // 国际主义灰
+        text: '#111111', // 纯黑
+        accent: '#D01111', // 瑞士红 (Swiss Red)
+        padding: 90, // 极大的留白
         radius: 0,
         settings: {
-            '--font-heading': '"Inter", sans-serif',
-            '--font-body': '"Inter", sans-serif',
+            '--font-heading': '"Inter", "Helvetica Neue", Arial, sans-serif',
+            '--font-body': '"Inter", "Helvetica Neue", Arial, sans-serif',
             '--font-code': '"JetBrains Mono", monospace',
-            '--h1-size': '4.5em',
-            '--h1-weight': '900',
-            '--h1-spacing': '-0.06em',
-            '--h1-line-height': '0.9',
-            '--h2-size': '2.5em',
-            '--line-height': '1.5', // 瑞士风行距略紧，强调块面感
-            '--block-margin': '1.5em',
+            '--h1-size': '4.2em', // 巨大标题
+            '--h1-weight': '900', // Heavy weight
+            '--h1-spacing': '-0.04em', // Tight tracking
+            '--h1-line-height': '0.95',
+            '--h2-size': '2.2em',
+            '--line-height': '1.6',
+            '--block-margin': '2em',
             '--quote-style': 'normal',
             '--quote-border': 'none',
-            '--quote-bg': 'rgba(255,255,255,0.15)',
-            '--quote-color': '#FFF',
-            '--code-bg': '#000',
-            '--code-color': '#FFD700',
-            '--bold-color': '#FFD700',
+            '--quote-bg': '#FFFFFF', // 白盒
+            '--quote-color': '#000',
+            '--code-bg': '#E0E0E0',
+            '--code-color': '#D01111',
+            '--bold-color': '#D01111', // 红色强调
         }
     },
 
