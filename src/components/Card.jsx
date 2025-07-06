@@ -115,6 +115,34 @@ const Card = React.memo(function Card({
 
     const zIndex = isSelected ? 60 : (isTarget ? 55 : 1);
 
+    // Context menu for card
+    const { showContextMenu, getCardMenuItems } = useContextMenu();
+
+    const handleContextMenu = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const menuItems = getCardMenuItems(data, {
+            onCopy: async () => {
+                const textToCopy = data.data?.messages?.[data.data.messages.length - 1]?.content || '';
+                const text = typeof textToCopy === 'string' ? textToCopy : '';
+                try { await navigator.clipboard.writeText(text); } catch (err) { console.error(err); }
+            },
+            onDelete: () => onDelete && onDelete(data.id),
+            onToggleFavorite: () => { /* TODO: implement if needed */ },
+            onExpand: () => onExpand && onExpand(data.id),
+            onConnect: () => onConnect && onConnect(data.id),
+            onSetColor: (color) => {
+                if (onUpdate) {
+                    onUpdate(data.id, { cardColor: color });
+                }
+            },
+            isFavorite: false
+        });
+
+        showContextMenu(e.clientX, e.clientY, menuItems);
+    }, [data, onDelete, onExpand, onConnect, onUpdate, showContextMenu, getCardMenuItems]);
+
     return (
         <div
             ref={cardRef}
