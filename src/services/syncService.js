@@ -210,6 +210,17 @@ export const saveUserSettings = async (userId, settings) => {
     }
 };
 
+export const updateUserSettings = async (userId, updates) => {
+    if (!db || !userId) return;
+    try {
+        debugLog.auth('Updating user settings in cloud...', updates);
+        const configRef = doc(db, 'users', userId, 'settings', 'config');
+        await setDoc(configRef, updates, { merge: true });
+    } catch (e) {
+        debugLog.error("Update settings failed", e);
+    }
+};
+
 export const loadUserSettings = async (userId) => {
     if (!db || !userId) return null;
     try {
