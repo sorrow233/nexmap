@@ -276,11 +276,12 @@ export const createAISlice = (set, get) => {
             }
         },
 
-        updateCardContent: (id, chunk) => {
-            // Simple approach: always buffer by card ID only
-            // With sequential queue, last assistant message is always the correct target
-            const currentBuffer = contentBuffer.get(id) || "";
-            contentBuffer.set(id, currentBuffer + chunk);
+        updateCardContent: (id, chunk, messageId = null) => {
+            // Buffer key depends on whether we have a specific message ID
+            const bufferKey = messageId ? `${id}:${messageId}` : id;
+
+            const currentBuffer = contentBuffer.get(bufferKey) || "";
+            contentBuffer.set(bufferKey, currentBuffer + chunk);
 
             // Schedule flush if not already scheduled
             if (!contentFlushTimer) {
@@ -291,22 +292,58 @@ export const createAISlice = (set, get) => {
                         contentBuffer.clear();
                         contentFlushTimer = null;
 
-                        // Batch update - always target last assistant message
+                        // Batch update
                         set(state => ({
                             cards: state.cards.map(c => {
-                                const update = updates.get(c.id);
-                                if (!update) return c;
+                                // We need to process all updates relevant to this card
+                                // 1. Direct updates (key === c.id) -> legacy fallback to last assistant
+                                // 2. ID-based updates (key === c.id:msgId) -> targeted update
+
+                                const directUpdate = updates.get(c.id);
+                                const idUpdates = [];
+
+                                updates.forEach((content, key) => {
+                                    if (key.startsWith(c.id + ':')) {
+                                        const msgId = key.split(':')[1];
+                                        idUpdates.push({ msgId, content });
+                                    }
+                                });
+
+                                if (!directUpdate && idUpdates.length === 0) return c;
 
                                 const msgs = [...c.data.messages];
-                                const lastMsg = msgs[msgs.length - 1];
 
-                                if (!lastMsg || lastMsg.role !== 'assistant') {
-                                    msgs.push({ role: 'assistant', content: update });
-                                } else {
-                                    msgs[msgs.length - 1] = {
-                                        ...lastMsg,
-                                        content: lastMsg.content + update
-                                    };
+                                // Handle ID-based precise updates first
+                                idUpdates.forEach(({ msgId, content }) => {
+                                    const msgIndex = msgs.findIndex(m => m.id === msgId);
+                                    if (msgIndex !== -1) {
+                                        msgs[msgIndex] = {
+                                            ...msgs[msgIndex],
+                                            content: msgs[msgIndex].content + content
+                                        };
+                                    } else {
+                                        // Critical Fallback: If ID not found, should we create it? 
+                                        // For now, if ID not found, it implies optimistic update failed or race condition.
+                                        // We could append, but without knowing position it's risky.
+                                        // Let's fallback to appending to last assistant as last sort resort?
+                                        // No, for concurrent safety, we stick to ID. If not found, we wait for next flush?
+                                        // Actually, let's look for a message with NO content and assistant role? 
+                                        // Or just log error.
+                                        console.warn(`[AI Store] Message ID ${msgId} not found in card ${c.id}`);
+                                    }
+                                });
+
+                                // Handle legacy direct updates (fallback)
+                                if (directUpdate) {
+                                    const lastMsg = msgs[msgs.length - 1];
+                                    if (!lastMsg || lastMsg.role !== 'assistant') {
+                                        msgs.push({ role: 'assistant', content: directUpdate });
+                                    } else {
+                                        msgs[msgs.length - 1] = {
+                                            ...lastMsg,
+                                            content: lastMsg.content + directUpdate
+                                        };
+                                    }
                                 }
 
                                 return { ...c, data: { ...c.data, messages: msgs } };
@@ -315,7 +352,7 @@ export const createAISlice = (set, get) => {
                     } catch (e) {
                         console.error("[ContentSlice] Batched update failed", e);
                     }
-                }, 20); // 20ms throttle for high-frequency fluid updates
+                }, 20); // 20ms throttle
             }
         },
 

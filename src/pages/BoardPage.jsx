@@ -259,7 +259,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         }
 
         const userMsg = { role: 'user', content: userContent };
-        const assistantMsg = { role: 'assistant', content: '' };
+        // FIX: Generate unique ID for assistant message to handle concurrency
+        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
 
         // Optimistically update the card's messages
         updateCardFull(cardId, (currentData) => ({
@@ -274,13 +276,13 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         console.log('[DEBUG handleChatModalGenerate] Calling handleChatGenerate with history length:', history.length);
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
-                // Simple: always update the current card's last assistant message
-                updateCardContent(cardId, chunk);
+                // FIX: Update specific message by ID
+                updateCardContent(cardId, chunk, assistantMsgId);
             });
             console.log('[DEBUG handleChatModalGenerate] Generation completed');
         } catch (error) {
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
-            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`);
+            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);
         }
     };
 

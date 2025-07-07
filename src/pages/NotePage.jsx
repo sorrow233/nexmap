@@ -52,7 +52,9 @@ export default function NotePage({ onBack }) {
         }
 
         const userMsg = { role: 'user', content: userContent };
-        const assistantMsg = { role: 'assistant', content: '' };
+        // FIX: Generate unique ID for assistant message to handle concurrency
+        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
 
         updateCardFull(cardId, (currentData) => ({
             ...currentData,
@@ -63,10 +65,11 @@ export default function NotePage({ onBack }) {
 
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
-                updateCardContent(cardId, chunk);
+                // FIX: Update specific message by ID
+                updateCardContent(cardId, chunk, assistantMsgId);
             });
         } catch (error) {
-            updateCardContent(cardId, `\n\n[System Error: ${error.message}]`);
+            updateCardContent(cardId, `\n\n[System Error: ${error.message}]`, assistantMsgId);
         }
     };
 
