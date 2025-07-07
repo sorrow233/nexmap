@@ -58,13 +58,13 @@ function Separator() {
 // Color definitions for the color picker
 const CARD_COLORS = [
     { id: null, label: 'Default', bgClass: 'bg-slate-200 dark:bg-slate-600' },
-    { id: 'red', label: 'Red', bgClass: 'bg-rose-400' },
-    { id: 'orange', label: 'Orange', bgClass: 'bg-orange-400' },
+    { id: 'red', label: 'Red', bgClass: 'bg-rose-500' },
+    { id: 'orange', label: 'Orange', bgClass: 'bg-orange-500' },
     { id: 'amber', label: 'Amber', bgClass: 'bg-amber-400' },
-    { id: 'green', label: 'Green', bgClass: 'bg-emerald-400' },
-    { id: 'teal', label: 'Teal', bgClass: 'bg-teal-400' },
-    { id: 'blue', label: 'Blue', bgClass: 'bg-blue-400' },
-    { id: 'violet', label: 'Violet', bgClass: 'bg-violet-400' }
+    { id: 'green', label: 'Green', bgClass: 'bg-green-500' },
+    { id: 'teal', label: 'Teal', bgClass: 'bg-cyan-400' },
+    { id: 'blue', label: 'Blue', bgClass: 'bg-blue-500' },
+    { id: 'violet', label: 'Violet', bgClass: 'bg-violet-500' }
 ];
 
 // Color Picker Menu Item Component

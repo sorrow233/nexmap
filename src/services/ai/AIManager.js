@@ -69,13 +69,14 @@ class AIManager {
             }
         }
 
-        // 2. Conflict Handling (No longer aggressive cancellation)
-        // We ONLY cancel if explicitly requested or if we implement a 'replace' strategy.
-        // For now, we simply enqueue the new task. The concurrencyLimit=1 will ensure it waits.
-        // We will remove the queued tasks that are obsolete?
-        // e.g. User types "A", "B", "C". We want to process "C". "A" is running. "B" is queued. "B" should be cancelled?
-        // Yes, queued tasks with conflict tags should probably be replaced.
-        this._cancelConflictingQueuedTasks(tags);
+        // 2. Conflict Handling (Replace Obsolete)
+        // For chat tasks, we want to ensure only the LATEST request for a specific card is running.
+        // We cancel both queued and ACTIVE tasks that match the tags.
+        if (type === 'chat' && tags.length > 0) {
+            this.cancelByTags(tags);
+        } else {
+            this._cancelConflictingQueuedTasks(tags);
+        }
 
         // 3. Create Task
         const task = {

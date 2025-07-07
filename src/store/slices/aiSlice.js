@@ -125,7 +125,7 @@ export const createAISlice = (set, get) => {
                     title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
                     messages: [
                         { role: 'user', content: contextPrefix + (typeof content === 'string' ? content : "") },
-                        { role: 'assistant', content: '' }
+                        { id: uuid(), role: 'assistant', content: '' }
                     ],
                     model,
                     providerId
@@ -254,7 +254,11 @@ export const createAISlice = (set, get) => {
                             firstToken = false;
                         }
                         perfMonitor.onChunk(chunk);
-                        onToken(chunk);
+
+                        // Find the assistant message ID to ensure isolated buffering
+                        const freshCard = get().cards.find(c => c.id === cardId);
+                        const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                        onToken(chunk, assistantMsg?.id);
                     }
                 });
 
@@ -333,11 +337,11 @@ export const createAISlice = (set, get) => {
                                     }
                                 });
 
-                                // Handle legacy direct updates (fallback)
-                                if (directUpdate) {
+                                // Handle legacy direct updates (fallback - ONLY if no ID updates for this card)
+                                if (directUpdate && idUpdates.length === 0) {
                                     const lastMsg = msgs[msgs.length - 1];
                                     if (!lastMsg || lastMsg.role !== 'assistant') {
-                                        msgs.push({ role: 'assistant', content: directUpdate });
+                                        msgs.push({ id: uuid(), role: 'assistant', content: directUpdate });
                                     } else {
                                         msgs[msgs.length - 1] = {
                                             ...lastMsg,
@@ -393,10 +397,11 @@ export const createAISlice = (set, get) => {
                 cards: state.cards.map(c => {
                     if (selectedIds.indexOf(c.id) !== -1) {
                         const newMsgs = [...(c.data.messages || [])];
+                        const assistantId = uuid();
                         if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
                             newMsgs.pop();
                         }
-                        newMsgs.push({ role: 'assistant', content: '' });
+                        newMsgs.push({ id: assistantId, role: 'assistant', content: '' });
                         // Update card to use current active model and provider
                         return {
                             ...c,
@@ -418,12 +423,13 @@ export const createAISlice = (set, get) => {
             try {
                 await Promise.all(targets.map(async (card) => {
                     const currentMsgs = [...(card.data.messages || [])];
-                    if (currentMsgs.length > 0 && currentMsgs[currentMsgs.length - 1].role === 'assistant') {
-                        currentMsgs.pop();
-                    }
+                    // Find the precise assistant message we just added
+                    const freshCard = get().cards.find(c => c.id === card.id);
+                    const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                    const messageId = assistantMsg?.id;
 
                     // handleChatGenerate handles config resolution and AIManager enqueuing
-                    return handleChatGenerate(card.id, currentMsgs, (chunk) => updateCardContent(card.id, chunk));
+                    return handleChatGenerate(card.id, currentMsgs, (chunk, msgId) => updateCardContent(card.id, chunk, msgId || messageId));
                 }));
             } catch (e) {
                 console.error("Regeneration failed", e);
