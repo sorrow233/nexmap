@@ -8,10 +8,23 @@ export const createSelectionSlice = (set, get) => ({
     // However, if we want to move handleBatchDelete here, we can.
 
     arrangeSelectionGrid: () => {
-        const { cards, selectedIds } = get();
+        const { cards, selectedIds, connections } = get();
         if (!selectedIds || selectedIds.length === 0) return;
 
-        const selectedCards = cards.filter(c => selectedIds.includes(c.id));
+        // 1. Identify all card IDs that are part of any connection
+        const connectedCardIds = new Set();
+        if (connections) {
+            connections.forEach(conn => {
+                connectedCardIds.add(conn.from);
+                connectedCardIds.add(conn.to);
+            });
+        }
+
+        // 2. Filter selected cards to exclude those with connections
+        const selectedCards = cards.filter(c =>
+            selectedIds.includes(c.id) && !connectedCardIds.has(c.id)
+        );
+
         if (selectedCards.length === 0) return;
 
         // Calculate bounding box start (top-left) to anchor the grid
