@@ -61,7 +61,6 @@ class AIManager {
             });
 
             if (identicalTask) {
-                console.log(`[AIManager] Deduplicated task request (Tags: ${tags})`);
                 const t = identicalTask.task || identicalTask;
                 if (t.promise) {
                     return t.promise;
@@ -104,8 +103,6 @@ class AIManager {
         this.queue.push(task);
         this.queue.sort((a, b) => b.priority - a.priority || a.timestamp - b.timestamp);
 
-        console.log(`[AIManager] Task enqueued: ${task.id} (${type}) Priority: ${priority}. Queue size: ${this.queue.length}`);
-
         this._processQueue();
 
         return promise;
@@ -121,7 +118,6 @@ class AIManager {
         this.queue = this.queue.filter(t => {
             const hasConflict = t.tags.some(tag => tags.includes(tag));
             if (hasConflict) {
-                console.log(`[AIManager] Replacing queued task ${t.id} with newer request (Tags: ${tags})`);
                 t.reject(new Error('Cancelled by newer task'));
                 return false;
             }
@@ -136,11 +132,10 @@ class AIManager {
     cancelTask(taskId) {
         // Cancel queued task
         const queuedIndex = this.queue.findIndex(t => t.id === taskId);
-        if (queuedIndex !== -1) {
+        if (queuedIndex === -1) {
             const task = this.queue[queuedIndex];
             this.queue.splice(queuedIndex, 1);
             task.reject(new Error('Cancelled by user'));
-            console.log(`[AIManager] Cancelled queued task: ${taskId}`);
             return true;
         }
 
@@ -148,7 +143,6 @@ class AIManager {
         const activeEntry = this.activeTasks.get(taskId);
         if (activeEntry) {
             activeEntry.controller.abort();
-            console.log(`[AIManager] Aborted active task: ${taskId}`);
             return true;
         }
 
@@ -167,7 +161,6 @@ class AIManager {
             const hasMatch = t.tags.some(tag => tags.includes(tag));
             if (hasMatch) {
                 t.reject(new Error('Cancelled by user'));
-                console.log(`[AIManager] Cancelled queued task by tags: ${t.id}`);
                 return false;
             }
             return true;
@@ -178,7 +171,6 @@ class AIManager {
             const hasMatch = entry.task.tags.some(tag => tags.includes(tag));
             if (hasMatch) {
                 entry.controller.abort();
-                console.log(`[AIManager] Aborted active task by tags: ${taskId}`);
             }
         }
     }
@@ -194,7 +186,6 @@ class AIManager {
         // Abort all active tasks
         for (const [taskId, entry] of this.activeTasks) {
             entry.controller.abort();
-            console.log(`[AIManager] Aborted all - task: ${taskId}`);
         }
     }
 
@@ -222,7 +213,6 @@ class AIManager {
 
     async _runTask(task, controller) {
         try {
-            console.log(`[AIManager] Starting task ${task.id} (${task.type})`);
             task.status = STATUS.RUNNING;
 
             const result = await this._executeTask(task, controller.signal);
@@ -230,12 +220,10 @@ class AIManager {
             task.status = STATUS.COMPLETED;
             this.results.set(task.id, result);
             task.resolve(result);
-            console.log(`[AIManager] Task completed: ${task.id}`);
 
         } catch (error) {
             if (error.name === 'AbortError' || controller.signal.aborted) {
                 task.status = STATUS.CANCELLED;
-                console.log(`[AIManager] Task ${task.id} cancelled`);
                 task.reject(new Error('Task cancelled'));
             } else {
                 task.status = STATUS.FAILED;
