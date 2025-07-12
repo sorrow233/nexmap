@@ -5,6 +5,7 @@ export const createCanvasSlice = (set, get) => ({
     scale: 1,
     selectedIds: [],
     interactionMode: 'none',
+    canvasMode: 'select', // 'select' or 'pan' - Modern canvas tool mode
     selectionRect: null,
     isConnecting: false,
     connectionStartId: null,
@@ -38,6 +39,17 @@ export const createCanvasSlice = (set, get) => ({
         set({ isConnecting: val });
     },
     setConnectionStartId: (val) => set({ connectionStartId: val }),
+
+    setCanvasMode: (mode) => {
+        debugLog.ui('Canvas mode change', { mode });
+        set({ canvasMode: mode });
+    },
+    toggleCanvasMode: () => {
+        const currentMode = get().canvasMode;
+        const nextMode = currentMode === 'select' ? 'pan' : 'select';
+        debugLog.ui('Canvas mode toggled', { from: currentMode, to: nextMode });
+        set({ canvasMode: nextMode });
+    },
 
     moveOffset: (dx, dy) => set((state) => ({
         offset: { x: state.offset.x + dx, y: state.offset.y + dy }

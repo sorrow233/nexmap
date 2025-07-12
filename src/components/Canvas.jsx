@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles, Crosshair } from 'lucide-react';
+import { Sparkles, Crosshair, Hand, MousePointer2 } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
 import Zone from './Zone'; // NEW: Zone Component
@@ -22,6 +22,7 @@ export default function Canvas({ onCreateNote, ...props }) {
     const scale = useStore(state => state.scale);
     const selectedIds = useStore(state => state.selectedIds);
     const interactionMode = useStore(state => state.interactionMode);
+    const canvasMode = useStore(state => state.canvasMode);
     const selectionRect = useStore(state => state.selectionRect);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const isConnecting = useStore(state => state.isConnecting);
@@ -39,6 +40,7 @@ export default function Canvas({ onCreateNote, ...props }) {
     const handleConnect = useStore(state => state.handleConnect);
     const deleteCard = useStore(state => state.deleteCard);
     const updateCardFull = useStore(state => state.updateCardFull);
+    const toggleCanvasMode = useStore(state => state.toggleCanvasMode);
 
     const { showContextMenu, getCanvasMenuItems } = useContextMenu();
     const canvasRef = useRef(null);
@@ -103,7 +105,8 @@ export default function Canvas({ onCreateNote, ...props }) {
 
     const handleMouseDown = (e) => {
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
-            const isPan = e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
+            // In pan mode, left click also pans
+            const isPan = canvasMode === 'pan' || e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
 
             if (isPan) {
                 setInteractionMode('panning');
@@ -248,10 +251,30 @@ export default function Canvas({ onCreateNote, ...props }) {
         }
     };
 
+    // Keyboard shortcut: V key to toggle canvas mode (Figma-style)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Only trigger if not typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+                return;
+            }
+
+            if (e.key === 'v' || e.key === 'V') {
+                toggleCanvasMode();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [toggleCanvasMode]);
+
     return (
         <div
             ref={canvasRef}
-            className="w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative cursor-grab active:cursor-grabbing canvas-bg transition-colors duration-500"
+            className={`w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 ${canvasMode === 'pan'
+                    ? 'cursor-grab active:cursor-grabbing'
+                    : 'cursor-default'
+                }`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -323,6 +346,24 @@ export default function Canvas({ onCreateNote, ...props }) {
 
             {/* Status Indicator */}
             <div className="absolute bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
+                {/* Canvas Mode Toggle - Modern canvas standard */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCanvasMode();
+                    }}
+                    className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group ${canvasMode === 'pan'
+                        ? 'bg-brand-500 border-brand-600 text-white hover:bg-brand-600'
+                        : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-brand-500 hover:scale-110'
+                        } active:scale-95`}
+                    title={canvasMode === 'pan' ? '拖动模式 (V) - 点击切换到选择' : '选择模式 (V) - 点击切换到拖动'}
+                >
+                    {canvasMode === 'pan' ? (
+                        <Hand size={16} className="group-hover:animate-pulse" />
+                    ) : (
+                        <MousePointer2 size={16} className="group-hover:animate-pulse" />
+                    )}
+                </button>
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
