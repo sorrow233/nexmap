@@ -61,8 +61,14 @@ export default function useImageUpload() {
     };
 
     const clearImages = () => {
-        images.forEach(img => URL.revokeObjectURL(img.previewUrl));
-        setImages([]);
+        setImages(prev => {
+            prev.forEach(img => {
+                if (img.previewUrl) {
+                    URL.revokeObjectURL(img.previewUrl);
+                }
+            });
+            return [];
+        });
     };
 
     // Cleanup URLs on unmount
