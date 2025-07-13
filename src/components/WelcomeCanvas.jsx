@@ -27,7 +27,7 @@ export default function WelcomeCanvas({ onDismiss }) {
             </button>
 
             {/* Main Content - Scrollable Flow */}
-            <div className="relative min-h-full flex flex-col items-center pt-24 pb-20 px-6 md:px-12">
+            <div className="relative min-h-full flex flex-col items-center pt-16 md:pt-24 pb-16 md:pb-20 px-4 md:px-12">
 
                 {/* Hero Section */}
                 <div className="text-center mb-16 max-w-3xl animate-slide-down">
@@ -36,11 +36,11 @@ export default function WelcomeCanvas({ onDismiss }) {
                         <span className="text-xs font-bold tracking-wide text-blue-600 dark:text-blue-400 uppercase">New Way to Think</span>
                     </div>
 
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight leading-[1.1]">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black text-slate-900 dark:text-white mb-4 md:mb-6 tracking-tight leading-[1.15] md:leading-[1.1]">
                         无限画布 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">×</span> AI 思维协作
                     </h1>
 
-                    <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
+                    <p className="text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto px-2">
                         打破传统线性对话，在广阔的二维空间中自由挥洒灵感。
                         <br className="hidden md:block" />
                         随时召唤 Gemini 3.0 Pro & Flash，让每个节点都充满智慧。
@@ -48,7 +48,7 @@ export default function WelcomeCanvas({ onDismiss }) {
                 </div>
 
                 {/* Feature Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl w-full mb-16">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-6xl w-full mb-12 md:mb-16">
 
                     <FeatureCard
                         icon={<Sparkles className="w-5 h-5" />}

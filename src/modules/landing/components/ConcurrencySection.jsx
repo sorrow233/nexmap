@@ -36,7 +36,7 @@ const ConcurrencySection = () => {
                     <span className="text-orange-400 text-xs font-bold uppercase tracking-wider">{t.concurrency.badge}</span>
                 </div>
 
-                <h2 className="text-5xl md:text-7xl font-bold text-white mb-6">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 md:mb-6">
                     {t.concurrency.title} <br />
                 </h2>
                 <p className="text-xl text-gray-400">

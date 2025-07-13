@@ -6,32 +6,31 @@ const FeatureBento = () => {
     const { t } = useLanguage();
 
     return (
-        <div className="w-full relative z-20 py-32 px-4 md:px-12 flex justify-center bg-[#050505]">
+        <div className="w-full relative z-20 py-16 md:py-32 px-4 md:px-12 flex justify-center bg-[#050505]">
             <div className="w-full max-w-7xl flex flex-col justify-center">
 
                 {/* HEADLINE */}
                 <div className="text-center mb-24 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
-                    <h2 className="relative text-5xl md:text-8xl font-bold text-white mb-8 tracking-tighter">
+                    <h2 className="relative text-3xl sm:text-4xl md:text-6xl lg:text-8xl font-bold text-white mb-4 md:mb-8 tracking-tighter">
                         {t.bento.headline.pre} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 animate-gradient-fast background-animate">{t.bento.headline.highlight}</span> {t.bento.headline.post}
                     </h2>
-                    <p className="relative text-xl text-gray-400 max-w-4xl mx-auto font-light leading-relaxed">
+                    <p className="relative text-base md:text-xl text-gray-400 max-w-4xl mx-auto font-light leading-relaxed px-2">
                         {t.bento.subtext}
                     </p>
                 </div>
 
                 {/* BENTO GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-3 grid-rows-4 md:grid-rows-2 gap-6 h-auto md:h-[900px]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 h-auto md:h-[900px]">
 
                     {/* 1. KEY Differentiator: GRAPH CONTEXT (2x2) */}
-                    <SpotlightCard className="md:col-span-2 md:row-span-2 bg-[#080808] border-white/5 group overflow-hidden">
-                        <div className="relative z-20 p-10 h-full flex flex-col items-start justify-between pointer-events-none">
+                    <SpotlightCard className="md:col-span-2 md:row-span-2 bg-[#080808] border-white/5 group overflow-hidden min-h-[300px] md:min-h-0">
+                        <div className="relative z-20 p-6 md:p-10 h-full flex flex-col items-start justify-between pointer-events-none">
                             <div className="w-full max-w-lg">
                                 <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
                                     <Network className="w-3 h-3" />
                                     <span>{t.bento.graph.badge}</span>
                                 </div>
-                                <h3 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">{t.bento.graph.title}</h3>
+                                <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">{t.bento.graph.title}</h3>
                                 <p className="text-gray-400 text-lg leading-relaxed">
                                     {t.bento.graph.text}
                                 </p>
@@ -59,8 +58,8 @@ const FeatureBento = () => {
                     </SpotlightCard>
 
                     {/* 2. RECURSIVE IDEATION (1x1) */}
-                    <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden">
-                        <div className="relative z-20 p-8 h-full flex flex-col justify-between">
+                    <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden min-h-[200px] md:min-h-0">
+                        <div className="relative z-20 p-6 md:p-8 h-full flex flex-col justify-between">
                             <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500">
                                 <GitBranch className="w-7 h-7 text-emerald-400" />
                             </div>
@@ -83,8 +82,8 @@ const FeatureBento = () => {
                     </SpotlightCard>
 
                     {/* 3. UNLIMITED CONCURRENCY (1x1) */}
-                    <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden">
-                        <div className="relative z-20 p-8 h-full flex flex-col justify-between">
+                    <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden min-h-[200px] md:min-h-0">
+                        <div className="relative z-20 p-6 md:p-8 h-full flex flex-col justify-between">
                             <div className="w-14 h-14 bg-gradient-to-br from-pink-500/20 to-red-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:rotate-180 transition-transform duration-700 ease-out">
                                 <Cpu className="w-7 h-7 text-pink-400" />
                             </div>
@@ -106,7 +105,7 @@ const FeatureBento = () => {
                     <SpotlightCard className="md:col-span-3 bg-[#080808] border-white/5 group overflow-hidden">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                        <div className="relative z-20 p-8 flex flex-col md:flex-row h-full items-center gap-12">
+                        <div className="relative z-20 p-6 md:p-8 flex flex-col md:flex-row h-full items-center gap-6 md:gap-12">
                             <div className="flex-1 min-w-0">
                                 <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-white/5 text-purple-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
                                     <Database className="w-3 h-3" />
