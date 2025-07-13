@@ -319,10 +319,13 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             />
 
             {/* Top Bar */}
-            <div className="fixed top-6 left-6 z-50 animate-slide-down">
-                <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1.5 rounded-2xl shadow-xl">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all"><LayoutGrid size={18} /><span>Gallery</span></button>
-                    <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+            <div className="fixed top-3 md:top-6 left-3 md:left-6 z-50 animate-slide-down">
+                <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1 md:p-1.5 rounded-xl md:rounded-2xl shadow-xl">
+                    <button onClick={onBack} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all">
+                        <LayoutGrid size={16} className="md:w-[18px] md:h-[18px]" />
+                        <span className="hidden sm:inline text-sm">Gallery</span>
+                    </button>
+                    <div className="h-5 md:h-6 w-[1px] bg-slate-200 mx-1 md:mx-2" />
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => undo()}
@@ -341,8 +344,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                             <Redo2 size={18} />
                         </button>
                     </div>
-                    <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-                    <div className="relative flex items-center group">
+                    <div className="hidden sm:block h-5 md:h-6 w-[1px] bg-slate-200 mx-1 md:mx-2" />
+                    <div className="hidden sm:block relative flex items-center group">
                         <input
                             type="text"
                             key={currentBoardId}
@@ -396,18 +399,24 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             />
 
             {selectedIds.length > 0 && (
-                <div className="fixed top-6 inset-x-0 mx-auto w-fit glass-panel px-6 py-3 rounded-full flex items-center gap-4 z-50 animate-slide-up shadow-2xl">
-                    <span className="text-sm font-semibold text-slate-300">{selectedIds.length} items</span>
+                <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit glass-panel px-3 md:px-6 py-2 md:py-3 rounded-full flex items-center gap-2 md:gap-4 z-50 animate-slide-up shadow-2xl">
+                    <span className="text-xs md:text-sm font-semibold text-slate-300">{selectedIds.length} <span className="hidden sm:inline">items</span></span>
                     {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
                         <>
                             <div className="h-4 w-px bg-slate-300"></div>
                             <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
                         </>
                     )}
-                    <div className="h-4 w-px bg-slate-300"></div>
-                    <button onClick={handleRegenerate} className="flex items-center gap-2 text-blue-600 px-3 py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95"><RefreshCw size={16} /><span className="text-sm font-medium">Retry</span></button>
-                    <div className="h-4 w-px bg-slate-300"></div>
-                    <button onClick={handleBatchDelete} className="flex items-center gap-2 text-red-500 px-3 py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"><Trash2 size={16} /><span className="text-sm font-medium">Delete</span></button>
+                    <div className="h-3 md:h-4 w-px bg-slate-300"></div>
+                    <button onClick={handleRegenerate} className="flex items-center gap-1 md:gap-2 text-blue-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95">
+                        <RefreshCw size={14} className="md:w-4 md:h-4" />
+                        <span className="hidden sm:inline text-sm font-medium">Retry</span>
+                    </button>
+                    <div className="h-3 md:h-4 w-px bg-slate-300"></div>
+                    <button onClick={handleBatchDelete} className="flex items-center gap-1 md:gap-2 text-red-500 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95">
+                        <Trash2 size={14} className="md:w-4 md:h-4" />
+                        <span className="hidden sm:inline text-sm font-medium">Delete</span>
+                    </button>
                 </div>
             )}
 

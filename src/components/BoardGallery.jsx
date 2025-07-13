@@ -29,12 +29,12 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
             {/* Hero Section & Greeting */}
             {!isTrashView && (
-                <div className="relative pt-12 pb-6 px-8 max-w-[1600px] mx-auto">
-                    <div className="text-center mb-10 animate-fade-in-up">
-                        <h1 className="text-5xl md:text-6xl font-black tracking-tighter mb-4 text-slate-900 dark:text-white">
+                <div className="relative pt-6 md:pt-12 pb-4 md:pb-6 px-4 md:px-8 max-w-[1600px] mx-auto">
+                    <div className="text-center mb-6 md:mb-10 animate-fade-in-up">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter mb-2 md:mb-4 text-slate-900 dark:text-white">
                             {greeting}, <span className="text-gradient-gold">Creator.</span>
                         </h1>
-                        <p className="text-xl text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                        <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-tight px-2">
                             Ready to capture your next big idea?
                         </p>
                     </div>
@@ -57,7 +57,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             )}
 
             {/* Content Container */}
-            <div className="max-w-[1600px] mx-auto px-4 md:px-8 space-y-16">
+            <div className="max-w-[1600px] mx-auto px-2 md:px-8 space-y-8 md:space-y-16">
 
                 {/* Recently Visited - Horizontal Carousel */}
                 {!isTrashView && recentBoards.length > 0 && (
@@ -108,7 +108,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 px-2">
                         {boards.map((board, index) => (
                             <BoardCard
                                 key={board.id}
