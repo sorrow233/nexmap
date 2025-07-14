@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /board/
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://nexmap.catzz.work/sitemap.xml
