@@ -6,10 +6,34 @@ export default defineConfig({
     plugins: [react()],
     build: {
         chunkSizeWarningLimit: 1000,
+        cssCodeSplit: true,
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom']
+                manualChunks(id) {
+                    // Core React
+                    if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+                        return 'vendor-react';
+                    }
+                    // Router
+                    if (id.includes('node_modules/react-router')) {
+                        return 'vendor-router';
+                    }
+                    // State management
+                    if (id.includes('node_modules/zustand') || id.includes('node_modules/zundo')) {
+                        return 'vendor-state';
+                    }
+                    // Animation
+                    if (id.includes('node_modules/react-spring') || id.includes('node_modules/@react-spring')) {
+                        return 'vendor-animation';
+                    }
+                    // Firebase - use specific subpackages
+                    if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
+                        return 'vendor-firebase';
+                    }
+                    // Heavy utilities
+                    if (id.includes('node_modules/html2canvas') || id.includes('node_modules/html-to-image')) {
+                        return 'vendor-canvas';
+                    }
                 }
             }
         }
