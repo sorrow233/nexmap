@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, CheckCircle2, Gift, Zap, Infinity } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 /**
  * SettingsCreditsTab
@@ -10,6 +11,7 @@ import { useStore } from '../../store/useStore';
  */
 export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
+    const { t } = useLanguage();
 
     // Default to 100 if undefined, clamp between 0 and 100
     const creditsValue = typeof systemCredits === 'number' ? systemCredits : 100;
@@ -31,15 +33,15 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         <CheckCircle2 size={32} className="text-white" />
                     </div>
 
-                    <h2 className="text-3xl font-bold mb-4">无需配置，直接使用</h2>
+                    <h2 className="text-3xl font-bold mb-4">{t.credits.noConfigNeeded}</h2>
                     <p className="text-indigo-100 text-lg max-w-md mx-auto mb-8 leading-relaxed">
-                        我们已经为您预置了最佳 AI 模型。您现在的免费额度足够支持约 <strong className="text-white border-b-2 border-white/30">10 万次</strong> 对话交互。
+                        {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{t.credits.interactions}</strong> {t.credits.conversations}
                     </p>
 
                     {/* Usage Stats (Simplified) */}
                     <div className="w-full max-w-sm bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                         <div className="flex justify-between items-end mb-2">
-                            <span className="text-indigo-200 text-sm font-medium">剩余额度</span>
+                            <span className="text-indigo-200 text-sm font-medium">{t.credits.remainingCredits}</span>
                             <span className="text-2xl font-bold font-mono">{creditsValue.toFixed(1)}</span>
                         </div>
                         <div className="h-3 bg-black/20 rounded-full overflow-hidden">
@@ -61,8 +63,8 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         <Zap size={20} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200">极速响应</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">DeepSeek V3 高性能模型</p>
+                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{t.credits.fastResponse}</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.credits.fastResponseDesc}</p>
                     </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-white/5 flex items-center gap-4">
@@ -70,8 +72,8 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         <Infinity size={20} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200">持久续航</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">无需担心额度耗尽</p>
+                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{t.credits.longLasting}</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.credits.longLastingDesc}</p>
                     </div>
                 </div>
             </div>
@@ -79,9 +81,9 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
             {/* Info Box */}
             <div className="text-center">
                 <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
-                    *如需使用您自己的 API Key (OpenAI, Google, Anthropic)，请前往 <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={onOpenAdvanced}>高级设置</span> 进行配置。
+                    {t.credits.advancedNote} <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={onOpenAdvanced}>{t.credits.advancedLink}</span> {t.credits.toConfig}
                 </p>
             </div>
-        </div>
+        </div >
     );
 }

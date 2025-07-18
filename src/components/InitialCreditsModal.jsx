@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /**
  * InitialCreditsModal
@@ -8,6 +9,8 @@ import { X, Sparkles, CheckCircle2 } from 'lucide-react';
  * Dark theme with purple gradient design.
  */
 const InitialCreditsModal = React.memo(({ isOpen, onClose }) => {
+    const { t } = useLanguage();
+
     if (!isOpen) return null;
 
     return (
@@ -48,7 +51,7 @@ const InitialCreditsModal = React.memo(({ isOpen, onClose }) => {
 
                         {/* Title */}
                         <h2 className="text-2xl font-bold text-white mb-2">
-                            无需配置，即刻出发
+                            {t.credits.welcomeTitle}
                         </h2>
 
                         {/* Divider */}
@@ -57,11 +60,11 @@ const InitialCreditsModal = React.memo(({ isOpen, onClose }) => {
                         {/* Main Content */}
                         <div className="space-y-4 mb-8">
                             <p className="text-slate-300 leading-relaxed text-lg">
-                                初始额度可进行约 <span className="font-bold text-indigo-400">10 万+</span> 次对话
+                                {t.credits.initialCredits} <span className="font-bold text-indigo-400">{t.credits.interactions}{t.credits.plus}</span> {t.credits.conversations}
                             </p>
                             <p className="text-slate-500 text-sm leading-relaxed">
-                                你无需配置一切，我已为你想好一切。<br />
-                                请立即开始你的卡片之旅。
+                                {t.credits.noConfigDesc}<br />
+                                {t.credits.startJourney}
                             </p>
                         </div>
 
@@ -71,7 +74,7 @@ const InitialCreditsModal = React.memo(({ isOpen, onClose }) => {
                             className="group relative w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:via-purple-500 hover:to-indigo-500 text-white font-semibold shadow-xl shadow-purple-500/20 transition-all duration-200 hover:shadow-purple-500/30 hover:-translate-y-0.5 active:translate-y-0 text-base"
                         >
                             <span className="flex items-center justify-center gap-2">
-                                开始探索
+                                {t.credits.startExploring}
                                 <CheckCircle2 size={18} className="opacity-80 group-hover:scale-110 transition-transform" />
                             </span>
                         </button>

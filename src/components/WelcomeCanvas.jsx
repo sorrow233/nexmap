@@ -1,7 +1,10 @@
 import React from 'react';
 import { X, Sparkles, Zap, Network, Wand2, Users, Cloud, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function WelcomeCanvas({ onDismiss }) {
+    const { t } = useLanguage();
+
     return (
         <div className="fixed inset-0 z-[100] bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md overflow-y-auto custom-scrollbar">
             {/* Background Gradients - Softer & More Ambient */}
@@ -33,17 +36,17 @@ export default function WelcomeCanvas({ onDismiss }) {
                 <div className="text-center mb-16 max-w-3xl animate-slide-down">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50/80 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 mb-6">
                         <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                        <span className="text-xs font-bold tracking-wide text-blue-600 dark:text-blue-400 uppercase">New Way to Think</span>
+                        <span className="text-xs font-bold tracking-wide text-blue-600 dark:text-blue-400 uppercase">{t.welcome.badge}</span>
                     </div>
 
                     <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black text-slate-900 dark:text-white mb-4 md:mb-6 tracking-tight leading-[1.15] md:leading-[1.1]">
-                        无限画布 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">×</span> AI 思维协作
+                        {t.welcome.title}
                     </h1>
 
                     <p className="text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto px-2">
-                        打破传统线性对话，在广阔的二维空间中自由挥洒灵感。
+                        {t.welcome.subtitle1}
                         <br className="hidden md:block" />
-                        随时召唤 Gemini 3.0 Pro & Flash，让每个节点都充满智慧。
+                        {t.welcome.subtitle2}
                     </p>
                 </div>
 
@@ -53,8 +56,8 @@ export default function WelcomeCanvas({ onDismiss }) {
                     <FeatureCard
                         icon={<Sparkles className="w-5 h-5" />}
                         color="blue"
-                        title="AI 智能对话"
-                        description="集成 Gemini 3.0 Pro & Flash，联网搜索、视觉识别、极速响应，一切尽在掌握。"
+                        title={t.welcome.aiChat}
+                        description={t.welcome.aiChatDesc}
                         delay="0s"
                     >
                         <MockChat />
@@ -63,8 +66,8 @@ export default function WelcomeCanvas({ onDismiss }) {
                     <FeatureCard
                         icon={<Network className="w-5 h-5" />}
                         color="purple"
-                        title="无限画布"
-                        description="双指随意缩放、无限拖拽平移。你的思维有多大，这片画布就有多大。"
+                        title={t.welcome.infiniteCanvas}
+                        description={t.welcome.infiniteCanvasDesc}
                         delay="0.1s"
                     >
                         <MockCanvas />
@@ -73,8 +76,8 @@ export default function WelcomeCanvas({ onDismiss }) {
                     <FeatureCard
                         icon={<Zap className="w-5 h-5" />}
                         color="amber"
-                        title="智能连线"
-                        description="点击连接，AI 瞬间理解上下文。免去繁琐说明，让逻辑自然流淌。"
+                        title={t.welcome.smartConnections}
+                        description={t.welcome.smartConnectionsDesc}
                         delay="0.2s"
                     >
                         <MockConnection />
@@ -83,8 +86,8 @@ export default function WelcomeCanvas({ onDismiss }) {
                     <FeatureCard
                         icon={<Wand2 className="w-5 h-5" />}
                         color="emerald"
-                        title="一键自动布局"
-                        description="乱了？一键整理。思维导图算法，瞬间还原清晰树状结构。"
+                        title={t.welcome.autoLayout}
+                        description={t.welcome.autoLayoutDesc}
                         delay="0.3s"
                     >
                         <MockLayout />
@@ -93,8 +96,8 @@ export default function WelcomeCanvas({ onDismiss }) {
                     <FeatureCard
                         icon={<Users className="w-5 h-5" />}
                         color="rose"
-                        title="批量操作"
-                        description="框选多张卡片，批量重写、删除或建立连接。效率提升不止十倍。"
+                        title={t.welcome.batchOperations}
+                        description={t.welcome.batchOperationsDesc}
                         delay="0.4s"
                     >
                         <MockBatch />
@@ -103,8 +106,8 @@ export default function WelcomeCanvas({ onDismiss }) {
                     <FeatureCard
                         icon={<Cloud className="w-5 h-5" />}
                         color="indigo"
-                        title="云端同步"
-                        description="基于 Firebase 实时同步。手机上的灵感，电脑上瞬间可见。"
+                        title={t.welcome.cloudSync}
+                        description={t.welcome.cloudSyncDesc}
                         delay="0.5s"
                     >
                         <MockCloud />
@@ -119,13 +122,13 @@ export default function WelcomeCanvas({ onDismiss }) {
                         onClick={onDismiss}
                         className="relative px-8 py-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-3"
                     >
-                        <span>开始创作</span>
+                        <span>{t.welcome.startCreating}</span>
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
                 </div>
 
                 <p className="mt-8 text-sm font-medium text-slate-400 dark:text-slate-500 animate-fade-in text-center">
-                    💡 仅首次访问显示 · 点击按钮进入画布
+                    {t.welcome.firstVisitOnly}
                 </p>
             </div>
         </div>

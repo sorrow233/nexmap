@@ -6,6 +6,7 @@ import SettingsModal from '../components/SettingsModal';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, getBoardsList, saveUserSettings, loadUserSettings, updateUserSettings } from '../services/storage';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 import InitialCreditsModal from '../components/InitialCreditsModal';
 
@@ -25,6 +26,7 @@ export default function GalleryPage({
 }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash'
+    const { t } = useLanguage();
 
     // Determine if we should show welcome: hasn't seen it (regardless of login status)
     const showWelcome = hasSeenWelcome === false;
@@ -119,20 +121,20 @@ export default function GalleryPage({
                                 onClick={() => setViewMode('active')}
                                 className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'active' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
-                                Gallery
+                                {t.gallery.gallery}
                             </button>
                             <button
                                 onClick={() => setViewMode('favorites')}
                                 className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${viewMode === 'favorites' ? 'bg-white dark:bg-slate-700 shadow-sm text-orange-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 <Star size={14} fill={viewMode === 'favorites' ? "currentColor" : "none"} />
-                                <span className="hidden sm:inline">Favorites</span>
+                                <span className="hidden sm:inline">{t.gallery.favorites}</span>
                             </button>
                             <button
                                 onClick={() => setViewMode('trash')}
                                 className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${viewMode === 'trash' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
-                                <span className="hidden sm:inline">Trash</span>
+                                <span className="hidden sm:inline">{t.gallery.trash}</span>
                                 <span className="sm:hidden">🗑️</span>
                             </button>
                         </div>
@@ -146,7 +148,7 @@ export default function GalleryPage({
                                     onClick={handleCreateGuide}
                                     className="hidden md:flex px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-200 dark:border-indigo-800/50 font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all shadow-sm"
                                 >
-                                    💡 Usage Guide
+                                    {t.gallery.usageGuide}
                                 </button>
                                 <button onClick={() => onCreateBoard("New Board")} className="p-2 md:p-2.5 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/60 dark:border-white/10 shadow-sm hover:scale-110 hover:shadow-glow-blue transition-all group">
                                     <Plus size={18} className="md:w-5 md:h-5 text-slate-700 dark:text-slate-200 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
@@ -159,11 +161,11 @@ export default function GalleryPage({
                                 {user.photoURL && <img src={user.photoURL} className="w-7 h-7 md:w-8 md:h-8 rounded-xl shadow-sm border border-white dark:border-white/10" alt="User" />}
                                 <div className="flex flex-col">
                                     <span className="hidden sm:block text-sm font-bold leading-none text-slate-800 dark:text-slate-200">{user.displayName}</span>
-                                    <button onClick={onLogout} className="text-[10px] text-slate-500 hover:text-red-500 font-bold uppercase mt-0 sm:mt-1 text-left transition-colors">Sign Out</button>
+                                    <button onClick={onLogout} className="text-[10px] text-slate-500 hover:text-red-500 font-bold uppercase mt-0 sm:mt-1 text-left transition-colors">{t.gallery.signOut}</button>
                                 </div>
                             </div>
                         ) : (
-                            <button onClick={onLogin} className="px-4 md:px-6 py-2 md:py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm md:text-base">Sign In</button>
+                            <button onClick={onLogin} className="px-4 md:px-6 py-2 md:py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm md:text-base">{t.gallery.signIn}</button>
                         )}
                     </div>
                 </div>

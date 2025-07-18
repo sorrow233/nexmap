@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, X, FileText, ArrowRight, Command } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /**
  * SearchModal - 全局搜索弹窗
@@ -13,6 +14,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef(null);
     const navigate = useNavigate();
+    const { t } = useLanguage();
 
     // Focus input when modal opens
     useEffect(() => {
@@ -69,7 +71,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                     boardId: board.id,
                     boardName: board.name,
                     title: board.name,
-                    snippet: `画板 · ${board.cards?.length || 0} 卡片`
+                    snippet: `${t.search.board} · ${board.cards?.length || 0} ${t.search.cards}`
                 });
             }
         });
@@ -153,7 +155,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="搜索卡片、画板..."
+                        placeholder={t.search.placeholder}
                         className="flex-1 bg-transparent text-lg outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
                     />
                     <div className="flex items-center gap-1 text-xs text-slate-400">
@@ -165,18 +167,18 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                 <div className="max-h-[50vh] overflow-y-auto">
                     {results.length === 0 && query && (
                         <div className="px-4 py-8 text-center text-slate-400">
-                            没有找到匹配结果
+                            {t.search.noResults}
                         </div>
                     )}
 
                     {results.length === 0 && !query && (
                         <div className="px-4 py-8 text-center text-slate-400">
-                            <p>输入关键词搜索所有画板</p>
+                            <p>{t.search.enterKeywords}</p>
                             <div className="flex items-center justify-center gap-2 mt-3 text-xs">
                                 <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 flex items-center gap-1">
                                     <Command size={12} /> K
                                 </kbd>
-                                <span>打开搜索</span>
+                                <span>{t.search.openSearch}</span>
                             </div>
                         </div>
                     )}
@@ -208,7 +210,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                                 </div>
                                 <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
                                     {result.type === 'card' && (
-                                        <span className="text-slate-400">in {result.boardName} · </span>
+                                        <span className="text-slate-400">{t.search.inBoard} {result.boardName} · </span>
                                     )}
                                     {result.snippet}
                                 </div>
@@ -221,12 +223,12 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                 {/* Footer */}
                 {results.length > 0 && (
                     <div className="px-4 py-2 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-400 flex items-center gap-4">
-                        <span><kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">↑↓</kbd> 导航</span>
-                        <span><kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">Enter</kbd> 打开</span>
+                        <span><kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">↑↓</kbd> {t.search.navigate}</span>
+                        <span><kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">Enter</kbd> {t.search.open}</span>
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
 

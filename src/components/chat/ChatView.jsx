@@ -7,6 +7,7 @@ import { useStore } from '../../store/useStore';
 import useImageUpload from '../../hooks/useImageUpload';
 import { htmlToMarkdown } from '../../utils/htmlToMarkdown';
 import { aiManager } from '../../services/ai/AIManager';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 import SproutModal from '../chat/SproutModal';
 import ChatInput from '../chat/ChatInput';
@@ -65,6 +66,7 @@ export default function ChatView({
     const [selectedTopics, setSelectedTopics] = useState([]);
     // Text Selection State
     const [selection, setSelection] = useState(null);
+    const { t } = useLanguage();
 
     const handleSproutClick = async () => {
         if (isSprouting) return;
@@ -325,14 +327,14 @@ export default function ChatView({
                         className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-105 active:scale-95"
                     >
                         <StickyNote size={14} className="text-brand-500" />
-                        Capture as Note
+                        {t.chat.captureAsNote}
                     </button>
                     <button
                         onClick={addMarkTopic}
                         className="bg-brand-600 text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 hover:bg-brand-500 transition-all hover:scale-105 active:scale-95 border border-white/10"
                     >
                         <Sparkles size={14} />
-                        Mark Topic
+                        {t.chat.markTopic}
                     </button>
                 </div>
             )}
@@ -345,14 +347,14 @@ export default function ChatView({
                     </div>
                     <div className="flex-grow min-w-0">
                         <h3 className="font-bold text-slate-800 dark:text-slate-100 text-2xl tracking-tight leading-tight truncate font-sans">
-                            {card.data.title || (card.type === 'note' ? 'Insight Archive' : 'Conversation')}
+                            {card.data.title || (card.type === 'note' ? t.chat.insightArchive : t.chat.conversation)}
                         </h3>
                         <div className="flex items-center gap-4 mt-1">
                             <span className="text-[10px] uppercase tracking-[0.2em] font-black text-brand-600 dark:text-brand-400">
-                                {card.type === 'note' ? 'Neural Notepad' : 'Neural Reader'}
+                                {card.type === 'note' ? t.chat.neuralNotepad : t.chat.neuralReader}
                             </span>
                             {card.type === 'note' && (
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Captured Insight</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.chat.capturedInsight}</span>
                             )}
                         </div>
                     </div>
@@ -425,7 +427,7 @@ export default function ChatView({
                 fileInputRef={fileInputRef}
                 isStreaming={isStreaming}
                 onStop={handleStop}
-                placeholder={card.type === 'note' ? "Ask AI to refine this note..." : "Refine this thought..."}
+                placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
             />
 
             {/* Share Modal */}
