@@ -256,7 +256,7 @@ function AppContent() {
         <>
             <Suspense fallback={<Loading message="Initializing MixBoard..." />}>
                 <Routes>
-                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/" element={user ? <Navigate to="/gallery" replace /> : <LandingPage />} />
                     <Route path="/free-trial" element={<FreeTrialPage />} />
 
                     <Route path="/gallery" element={

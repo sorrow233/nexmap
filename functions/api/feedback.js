@@ -15,10 +15,11 @@ const corsHeaders = {
     'Content-Type': 'application/json'
 };
 
-// Email validation: only Gmail and QQ allowed
+// Email validation: only major email providers allowed
+// Gmail, QQ, Outlook/Hotmail, 163/126, iCloud
 function isValidEmail(email) {
     if (!email || typeof email !== 'string') return false;
-    const validEmailRegex = /^[^@\s]+@(gmail\.com|qq\.com)$/i;
+    const validEmailRegex = /^[^@\s]+@(gmail\.com|qq\.com|outlook\.com|hotmail\.com|live\.com|163\.com|126\.com|icloud\.com)$/i;
     return validEmailRegex.test(email.trim());
 }
 
@@ -108,8 +109,9 @@ async function handleGet(request, firestoreBase) {
             return {
                 id,
                 email: maskEmail(fields.email?.stringValue),
-                title: fields.title?.stringValue || '',
-                description: fields.description?.stringValue || '',
+                displayName: fields.displayName?.stringValue || null,
+                photoURL: fields.photoURL?.stringValue || null,
+                content: fields.content?.stringValue || fields.title?.stringValue || '',
                 status: fields.status?.stringValue || 'pending',
                 votes,
                 comments: parseInt(fields.comments?.integerValue || '0'),
@@ -141,12 +143,13 @@ async function handleGet(request, firestoreBase) {
 // POST: Submit new feedback
 async function handlePost(request, firestoreBase) {
     const body = await request.json();
-    const { email, title, description } = body;
+    const { email, content, displayName, photoURL, uid } = body;
 
-    // Validate email
-    if (!isValidEmail(email)) {
+    // If user is logged in (has uid), use their info directly
+    // Otherwise, validate email
+    if (!uid && !isValidEmail(email)) {
         return new Response(JSON.stringify({
-            error: 'Invalid email. Only Gmail (@gmail.com) or QQ (@qq.com) emails are allowed.',
+            error: 'Invalid email. Only major email providers (Gmail, QQ, Outlook, 163, iCloud) are allowed.',
             code: 'INVALID_EMAIL'
         }), {
             status: 400,
@@ -154,11 +157,11 @@ async function handlePost(request, firestoreBase) {
         });
     }
 
-    // Validate title
-    if (!title || title.trim().length < 3) {
+    // Validate content (at least 1 character)
+    if (!content || content.trim().length < 1) {
         return new Response(JSON.stringify({
-            error: 'Title is required and must be at least 3 characters.',
-            code: 'INVALID_TITLE'
+            error: 'Content is required.',
+            code: 'INVALID_CONTENT'
         }), {
             status: 400,
             headers: corsHeaders
@@ -168,17 +171,20 @@ async function handlePost(request, firestoreBase) {
     // Create feedback document
     const feedbackId = `fb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
+    const userEmail = uid ? (email || `user_${uid}`) : email.trim().toLowerCase();
 
     const firestoreDoc = {
         fields: {
-            email: { stringValue: email.trim().toLowerCase() },
-            title: { stringValue: title.trim() },
-            description: { stringValue: (description || '').trim() },
+            email: { stringValue: userEmail },
+            content: { stringValue: content.trim() },
+            displayName: { stringValue: displayName || '' },
+            photoURL: { stringValue: photoURL || '' },
+            uid: { stringValue: uid || '' },
             status: { stringValue: 'pending' },
             votes: { integerValue: '1' }, // Start with 1 vote (self-vote)
             voterEmails: {
                 arrayValue: {
-                    values: [{ stringValue: email.trim().toLowerCase() }]
+                    values: [{ stringValue: userEmail }]
                 }
             },
             comments: { integerValue: '0' },
