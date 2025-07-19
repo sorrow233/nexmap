@@ -53,12 +53,15 @@ export async function onRequest(context) {
         const projectId = 'amecatzz';
         const firestoreBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
 
+        // Extract Authorization header to forward to Firestore
+        const authHeader = request.headers.get('Authorization');
+
         if (request.method === 'GET') {
-            return handleGet(request, firestoreBase);
+            return handleGet(request, firestoreBase, authHeader);
         } else if (request.method === 'POST') {
-            return handlePost(request, firestoreBase);
+            return handlePost(request, firestoreBase, authHeader);
         } else if (request.method === 'PUT') {
-            return handlePut(request, firestoreBase);
+            return handlePut(request, firestoreBase, authHeader);
         }
 
         return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -74,15 +77,24 @@ export async function onRequest(context) {
     }
 }
 
+// Helper to add auth header
+function getFirestoreHeaders(authHeader) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (authHeader) {
+        headers['Authorization'] = authHeader;
+    }
+    return headers;
+}
+
 // GET: Fetch all feedback
-async function handleGet(request, firestoreBase) {
+async function handleGet(request, firestoreBase, authHeader) {
     const url = new URL(request.url);
     const sort = url.searchParams.get('sort') || 'hot'; // hot, top, recent
 
     try {
         // Fetch all feedback documents
         const response = await fetch(`${firestoreBase}/feedback`, {
-            headers: { 'Content-Type': 'application/json' }
+            headers: getFirestoreHeaders(authHeader)
         });
 
         if (!response.ok) {
@@ -92,7 +104,16 @@ async function handleGet(request, firestoreBase) {
                     headers: corsHeaders
                 });
             }
-            throw new Error(`Firestore error: ${response.status}`);
+            // If permission denied on GET, it might be because public read is also disabled.
+            // We can return empty list or throw. Returning empty list is safer for UI.
+            if (response.status === 403) {
+                console.warn('Firestore GET 403: Permission denied (User not logged in?)');
+                // For GET, maybe we want to allow public read? If not, return empty.
+                // But better to throw so we know.
+                // Actually, if we want to show feedback to everyone, RULES must allow read.
+                // If rules require auth, then only logged in users see feedback.
+            }
+            throw new Error(`Firestore error: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -141,7 +162,7 @@ async function handleGet(request, firestoreBase) {
 }
 
 // POST: Submit new feedback
-async function handlePost(request, firestoreBase) {
+async function handlePost(request, firestoreBase, authHeader) {
     const body = await request.json();
     const { email, content, displayName, photoURL, uid } = body;
 
@@ -195,7 +216,7 @@ async function handlePost(request, firestoreBase) {
     try {
         const response = await fetch(`${firestoreBase}/feedback?documentId=${feedbackId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getFirestoreHeaders(authHeader),
             body: JSON.stringify(firestoreDoc)
         });
 
@@ -222,7 +243,7 @@ async function handlePost(request, firestoreBase) {
 }
 
 // PUT: Vote on feedback
-async function handlePut(request, firestoreBase) {
+async function handlePut(request, firestoreBase, authHeader) {
     const body = await request.json();
     const { feedbackId, email, action } = body; // action: 'upvote' or 'downvote'
 
@@ -239,7 +260,7 @@ async function handlePut(request, firestoreBase) {
     try {
         // Fetch the current feedback document
         const getResponse = await fetch(`${firestoreBase}/feedback/${feedbackId}`, {
-            headers: { 'Content-Type': 'application/json' }
+            headers: getFirestoreHeaders(authHeader)
         });
 
         if (!getResponse.ok) {
@@ -296,7 +317,7 @@ async function handlePut(request, firestoreBase) {
 
         const updateResponse = await fetch(`${firestoreBase}/feedback/${feedbackId}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getFirestoreHeaders(authHeader),
             body: JSON.stringify(updateDoc)
         });
 
