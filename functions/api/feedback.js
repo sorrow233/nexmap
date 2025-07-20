@@ -255,7 +255,7 @@ async function handlePost(request, firestoreBase, authHeader) {
 // PUT: Vote on feedback
 async function handlePut(request, firestoreBase, authHeader) {
     const body = await request.json();
-    const { feedbackId, email, action } = body; // action: 'upvote' or 'downvote'
+    const { feedbackId, action, uid } = body; // action: 'upvote' or 'downvote', uid required
 
     if (!feedbackId) {
         return new Response(JSON.stringify({ error: 'Feedback ID is required' }), {
@@ -264,8 +264,16 @@ async function handlePut(request, firestoreBase, authHeader) {
         });
     }
 
-    // Email is optional for voting (can use localStorage on client)
-    const voterIdentifier = email ? email.trim().toLowerCase() : null;
+    // Require user to be logged in (uid must be provided)
+    if (!uid) {
+        return new Response(JSON.stringify({ error: 'Login required to vote' }), {
+            status: 401,
+            headers: corsHeaders
+        });
+    }
+
+    // Use UID as voter identifier for consistency
+    const voterIdentifier = uid;
 
     try {
         // Fetch the current feedback document
@@ -283,32 +291,37 @@ async function handlePut(request, firestoreBase, authHeader) {
         const docData = await getResponse.json();
         const fields = docData.fields || {};
 
-        // Get current votes and voter list
+        // Get current votes and voter list (now using UIDs)
         let currentVotes = parseInt(fields.votes?.integerValue || '0');
-        let voterEmails = (fields.voterEmails?.arrayValue?.values || [])
+        let voterUids = (fields.voterUids?.arrayValue?.values || [])
             .map(v => v.stringValue)
             .filter(Boolean);
 
-        // Check if this email already voted
-        const hasVoted = voterIdentifier && voterEmails.includes(voterIdentifier);
+        // Legacy support: also check voterEmails if voterUids doesn't exist
+        if (voterUids.length === 0) {
+            voterUids = (fields.voterEmails?.arrayValue?.values || [])
+                .map(v => v.stringValue)
+                .filter(Boolean);
+        }
+
+        // Check if this user already voted on this feedback
+        const hasVoted = voterUids.includes(voterIdentifier);
 
         if (action === 'upvote') {
             if (hasVoted) {
                 // Already voted - remove vote (toggle off)
                 currentVotes = Math.max(0, currentVotes - 1);
-                voterEmails = voterEmails.filter(e => e !== voterIdentifier);
+                voterUids = voterUids.filter(e => e !== voterIdentifier);
             } else {
                 // Add vote
                 currentVotes += 1;
-                if (voterIdentifier) {
-                    voterEmails.push(voterIdentifier);
-                }
+                voterUids.push(voterIdentifier);
             }
         } else if (action === 'downvote') {
             if (hasVoted) {
                 // Remove vote
                 currentVotes = Math.max(0, currentVotes - 1);
-                voterEmails = voterEmails.filter(e => e !== voterIdentifier);
+                voterUids = voterUids.filter(e => e !== voterIdentifier);
             }
         }
 
@@ -317,9 +330,9 @@ async function handlePut(request, firestoreBase, authHeader) {
             fields: {
                 ...fields,
                 votes: { integerValue: String(currentVotes) },
-                voterEmails: {
+                voterUids: {
                     arrayValue: {
-                        values: voterEmails.map(e => ({ stringValue: e }))
+                        values: voterUids.map(e => ({ stringValue: e }))
                     }
                 }
             }
@@ -331,6 +344,13 @@ async function handlePut(request, firestoreBase, authHeader) {
             body: JSON.stringify(updateDoc)
         });
 
+        if (!updateResponse.ok) {
+            throw new Error('Failed to update feedback');
+        }
+
+        return new Response(JSON.stringify({ success: true, votes: currentVotes }), {
+            headers: corsHeaders
+        });
 
     } catch (error) {
         console.error('PUT feedback error:', error);

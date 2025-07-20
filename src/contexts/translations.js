@@ -267,7 +267,12 @@ const translations = {
             done: "Done",
             pending: "Pending",
             votes: "votes",
-            comments: "comments"
+            comments: "comments",
+            loginToVote: "Sign in to vote",
+            voteLimitReached: "Vote limit reached (10)",
+            votesRemaining: "Votes remaining",
+            upvote: "Upvote",
+            removeVote: "Remove vote"
         },
         footer: {
             title: "Start Thinking in Connections.",
@@ -543,7 +548,12 @@ const translations = {
             done: "已完成",
             pending: "待处理",
             votes: "票",
-            comments: "评论"
+            comments: "评论",
+            loginToVote: "登录后可投票",
+            voteLimitReached: "已达投票上限 (10)",
+            votesRemaining: "剩余投票数",
+            upvote: "点赞",
+            removeVote: "取消点赞"
         },
         footer: {
             title: "开始用「连接」思考。",
@@ -819,7 +829,12 @@ const translations = {
             done: "完了",
             pending: "保留中",
             votes: "票",
-            comments: "コメント"
+            comments: "コメント",
+            loginToVote: "投票するにはサインインしてください",
+            voteLimitReached: "投票上限に達しました (10)",
+            votesRemaining: "残り投票数",
+            upvote: "いいね",
+            removeVote: "投票を取り消す"
         },
         footer: {
             title: "思考の「繋がり」を始めよう。",
