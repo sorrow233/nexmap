@@ -331,14 +331,14 @@ async function handlePut(request, firestoreBase, authHeader) {
             body: JSON.stringify(updateDoc)
         });
 
-    });
-} catch (error) {
-    console.error('PUT feedback error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: corsHeaders
-    });
-}
+
+    } catch (error) {
+        console.error('PUT feedback error:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: corsHeaders
+        });
+    }
 }
 
 // GET: Fetch comments for a feedback
