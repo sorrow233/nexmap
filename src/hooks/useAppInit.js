@@ -137,8 +137,8 @@ export function useAppInit() {
                         // Force false only if strictly new?
                         // Let's explicitly set to false if local is also false/missing (implicitly handled by init state)
                         // But to be safe for cross-device:
-                        setHasSeenWelcome(false);
-                        debugLog.auth('New user detected, will show welcome page');
+                        // setHasSeenWelcome(false); // REMOVED: Do not overwrite local state if cloud is empty/fails
+                        debugLog.auth('No cloud settings found, keeping local state for welcome page');
 
                         // Check if we should load credits
                         const activeConfig = useStore.getState().getActiveConfig();
