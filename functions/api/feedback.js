@@ -57,8 +57,18 @@ export async function onRequest(context) {
         const authHeader = request.headers.get('Authorization');
 
         if (request.method === 'GET') {
+            const url = new URL(request.url);
+            // Check if it's a comments request
+            if (url.searchParams.has('feedbackId')) {
+                return handleGetComments(request, firestoreBase, authHeader);
+            }
             return handleGet(request, firestoreBase, authHeader);
         } else if (request.method === 'POST') {
+            const url = new URL(request.url);
+            // Check if it's a comment submission
+            if (url.searchParams.has('feedbackId')) {
+                return handlePostComment(request, firestoreBase, authHeader);
+            }
             return handlePost(request, firestoreBase, authHeader);
         } else if (request.method === 'PUT') {
             return handlePut(request, firestoreBase, authHeader);
@@ -321,22 +331,112 @@ async function handlePut(request, firestoreBase, authHeader) {
             body: JSON.stringify(updateDoc)
         });
 
-        if (!updateResponse.ok) {
-            throw new Error('Failed to update vote');
+    });
+} catch (error) {
+    console.error('PUT feedback error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: corsHeaders
+    });
+}
+}
+
+// GET: Fetch comments for a feedback
+async function handleGetComments(request, firestoreBase, authHeader) {
+    const url = new URL(request.url);
+    const feedbackId = url.searchParams.get('feedbackId');
+
+    try {
+        const response = await fetch(`${firestoreBase}/feedback/${feedbackId}/comments`, {
+            headers: getFirestoreHeaders(authHeader)
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                return new Response(JSON.stringify({ comments: [] }), { headers: corsHeaders });
+            }
+            throw new Error(`Firestore error: ${response.status}`);
         }
 
-        return new Response(JSON.stringify({
-            success: true,
-            votes: currentVotes,
-            hasVoted: !hasVoted // Toggle state
-        }), {
-            headers: corsHeaders
-        });
+        const data = await response.json();
+        const comments = (data.documents || []).map(doc => {
+            const fields = doc.fields || {};
+            return {
+                id: doc.name.split('/').pop(),
+                email: maskEmail(fields.email?.stringValue),
+                displayName: fields.displayName?.stringValue || null,
+                photoURL: fields.photoURL?.stringValue || null,
+                content: fields.content?.stringValue || '',
+                createdAt: fields.createdAt?.timestampValue ? new Date(fields.createdAt.timestampValue).getTime() : Date.now()
+            };
+        }).sort((a, b) => a.createdAt - b.createdAt);
+
+        return new Response(JSON.stringify({ comments }), { headers: corsHeaders });
     } catch (error) {
-        console.error('PUT feedback error:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 500,
-            headers: corsHeaders
+        return new Response(JSON.stringify({ comments: [], error: error.message }), { headers: corsHeaders });
+    }
+}
+
+// POST: Submit a comment
+async function handlePostComment(request, firestoreBase, authHeader) {
+    const url = new URL(request.url);
+    const feedbackId = url.searchParams.get('feedbackId');
+    const body = await request.json();
+    const { email, content, displayName, photoURL, uid } = body;
+
+    // Validate email if no uid (guest)
+    if (!uid && !isValidEmail(email)) {
+        return new Response(JSON.stringify({ error: 'Invalid email' }), { status: 400, headers: corsHeaders });
+    }
+
+    if (!content || !content.trim()) {
+        return new Response(JSON.stringify({ error: 'Content required' }), { status: 400, headers: corsHeaders });
+    }
+
+    const commentId = `cm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
+    const userEmail = uid ? (email || `user_${uid}`) : email.trim().toLowerCase();
+
+    const firestoreDoc = {
+        fields: {
+            email: { stringValue: userEmail },
+            content: { stringValue: content.trim() },
+            displayName: { stringValue: displayName || '' },
+            photoURL: { stringValue: photoURL || '' },
+            uid: { stringValue: uid || '' },
+            createdAt: { timestampValue: now }
+        }
+    };
+
+    try {
+        // 1. Create comment
+        const response = await fetch(`${firestoreBase}/feedback/${feedbackId}/comments?documentId=${commentId}`, {
+            method: 'POST',
+            headers: getFirestoreHeaders(authHeader),
+            body: JSON.stringify(firestoreDoc)
         });
+
+        if (!response.ok) throw new Error('Failed to create comment');
+
+        // 2. Increment comment count on feedback doc (Simple GET-UPDATE flow)
+        const getFbResponse = await fetch(`${firestoreBase}/feedback/${feedbackId}`, {
+            headers: getFirestoreHeaders(authHeader)
+        });
+        if (getFbResponse.ok) {
+            const fbData = await getFbResponse.json();
+            const currentComments = parseInt(fbData.fields?.comments?.integerValue || '0');
+
+            await fetch(`${firestoreBase}/feedback/${feedbackId}`, {
+                method: 'PATCH',
+                headers: getFirestoreHeaders(authHeader),
+                body: JSON.stringify({
+                    fields: { comments: { integerValue: String(currentComments + 1) } }
+                })
+            });
+        }
+
+        return new Response(JSON.stringify({ success: true, id: commentId }), { status: 201, headers: corsHeaders });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
     }
 }
