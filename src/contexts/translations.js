@@ -269,7 +269,7 @@ const translations = {
             votes: "votes",
             comments: "comments",
             loginToVote: "Sign in to vote",
-            voteLimitReached: "Vote limit reached (10)",
+            voteLimitReached: "Vote limit reached (1)",
             votesRemaining: "Votes remaining",
             upvote: "Upvote",
             removeVote: "Remove vote"
@@ -550,7 +550,7 @@ const translations = {
             votes: "票",
             comments: "评论",
             loginToVote: "登录后可投票",
-            voteLimitReached: "已达投票上限 (10)",
+            voteLimitReached: "已达投票上限 (1)",
             votesRemaining: "剩余投票数",
             upvote: "点赞",
             removeVote: "取消点赞"
@@ -831,7 +831,7 @@ const translations = {
             votes: "票",
             comments: "コメント",
             loginToVote: "投票するにはサインインしてください",
-            voteLimitReached: "投票上限に達しました (10)",
+            voteLimitReached: "投票上限に達しました (1)",
             votesRemaining: "残り投票数",
             upvote: "いいね",
             removeVote: "投票を取り消す"

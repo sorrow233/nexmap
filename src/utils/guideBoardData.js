@@ -2,6 +2,8 @@
  * guideBoardData.js
  * NexMap 使用指南画布数据
  * 展示所有核心功能：AI 对话、Sprouting、26+ 导出主题、7 色线条等
+ * 
+ * 注意：连线颜色由 source card 的 data.cardColor 决定
  */
 
 export const getGuideBoardData = () => {
@@ -39,10 +41,10 @@ export const getGuideBoardData = () => {
             },
 
             // ═══════════════════════════════════════════════════════════════
-            // 第二层：三大核心功能
+            // 第二层：三大核心功能 (使用不同颜色展示 7 色线条功能)
             // ═══════════════════════════════════════════════════════════════
 
-            // AI 对话功能 (蓝色线条)
+            // AI 对话功能 (蓝色线条 - 从 Welcome 出发)
             {
                 id: 'guide-ai-chat',
                 x: centerX - 650,
@@ -65,7 +67,8 @@ export const getGuideBoardData = () => {
 
 **Pro 功能：**
 - 📷 上传图片进行 AI 分析
-- 🖼️ AI 图片生成`
+- 🖼️ AI 图片生成`,
+                    cardColor: 'blue' // 蓝色线条连接到下一层
                 },
                 color: '#ffffff',
                 type: 'note'
@@ -97,7 +100,8 @@ export const getGuideBoardData = () => {
   • 行业应用场景
   • 对就业的影响
   
-**连线自动创建，思维脉络一目了然！**`
+**连线自动创建，思维脉络一目了然！**`,
+                    cardColor: 'green' // 绿色线条连接到下一层
                 },
                 color: '#ffffff',
                 type: 'note'
@@ -129,7 +133,8 @@ export const getGuideBoardData = () => {
 • **Ghibli** 🌿 吉卜力森系
 
 **布局选择：**
-Card / Full / Social / Slide`
+Card / Full / Social / Slide`,
+                    cardColor: 'violet' // 紫色线条连接到下一层
                 },
                 color: '#ffffff',
                 type: 'note'
@@ -139,7 +144,7 @@ Card / Full / Social / Slide`
             // 第三层：演示卡片
             // ═══════════════════════════════════════════════════════════════
 
-            // AI 对话演示
+            // AI 对话演示 (红色线条)
             {
                 id: 'guide-ai-demo',
                 x: centerX - 650,
@@ -159,13 +164,14 @@ Card / Full / Social / Slide`
 | 状态管理 | Redux | Vuex/Pinia |
 | 模板语法 | JSX | 模板 |
 
-两者都是优秀框架，选择取决于团队经验和项目需求...`
+两者都是优秀框架，选择取决于团队经验和项目需求...`,
+                    cardColor: 'red' // 红色线条连接到下一层
                 },
                 color: '#ffffff',
                 type: 'note'
             },
 
-            // Sprouting 延伸示例 - 主题
+            // Sprouting 延伸示例 - 主题 (青色线条)
             {
                 id: 'guide-sprout-topic',
                 x: centerX - 100,
@@ -177,7 +183,8 @@ Card / Full / Social / Slide`
 
 **AI 时代的教育变革**
 
-*双击此卡片试试右键菜单*`
+*双击此卡片试试右键菜单*`,
+                    cardColor: 'teal' // 青色线条连接到延伸卡片
                 },
                 color: '#ffffff',
                 type: 'note'
@@ -260,7 +267,7 @@ Playfair Display / Inter / JetBrains Mono
             // 第四层：彩色线条与操作指南
             // ═══════════════════════════════════════════════════════════════
 
-            // 7 色线条演示
+            // 7 色线条演示 (黄色线条)
             {
                 id: 'guide-colors',
                 x: centerX - 450,
@@ -272,7 +279,7 @@ Playfair Display / Inter / JetBrains Mono
 
 **为思维关系赋予颜色**
 
-右键连线 → 选择颜色：
+右键卡片 → 线条颜色：
 
 🔴 **Red** - 重要/警告
 🟡 **Yellow** - 待定/思考中  
@@ -282,7 +289,8 @@ Playfair Display / Inter / JetBrains Mono
 🟣 **Violet** - 创意/灵感
 ⚪ **Default** - 普通关联
 
-*颜色让思维导图更有层次感！*`
+*颜色让思维导图更有层次感！*`,
+                    cardColor: 'yellow' // 黄色线条
                 },
                 color: '#ffffff',
                 type: 'note'
@@ -395,31 +403,32 @@ Playfair Display / Inter / JetBrains Mono
         ],
 
         // ═══════════════════════════════════════════════════════════════════
-        // 连线配置 - 使用不同颜色展示 7 色功能
+        // 连线配置
+        // 注意：连线颜色由 source card 的 data.cardColor 决定
         // ═══════════════════════════════════════════════════════════════════
         connections: [
-            // 第一层 → 第二层 (核心功能连接)
-            { from: 'guide-welcome', to: 'guide-ai-chat', id: 'c-welcome-ai', color: 'blue' },
-            { from: 'guide-welcome', to: 'guide-sprouting', id: 'c-welcome-sprout', color: 'green' },
-            { from: 'guide-welcome', to: 'guide-export', id: 'c-welcome-export', color: 'violet' },
+            // 第一层 → 第二层 (核心功能连接 - 颜色由 Welcome 卡片决定，无色)
+            { from: 'guide-welcome', to: 'guide-ai-chat', id: 'c-welcome-ai' },
+            { from: 'guide-welcome', to: 'guide-sprouting', id: 'c-welcome-sprout' },
+            { from: 'guide-welcome', to: 'guide-export', id: 'c-welcome-export' },
 
-            // 第二层 → 第三层 (功能演示连接)
-            { from: 'guide-ai-chat', to: 'guide-ai-demo', id: 'c-ai-demo', color: 'blue' },
-            { from: 'guide-sprouting', to: 'guide-sprout-topic', id: 'c-sprout-topic', color: 'green' },
-            { from: 'guide-export', to: 'guide-export-demo', id: 'c-export-demo', color: 'violet' },
+            // 第二层 → 第三层 (功能演示连接 - 各自的 cardColor)
+            { from: 'guide-ai-chat', to: 'guide-ai-demo', id: 'c-ai-demo' },       // 蓝色
+            { from: 'guide-sprouting', to: 'guide-sprout-topic', id: 'c-sprout-topic' }, // 绿色
+            { from: 'guide-export', to: 'guide-export-demo', id: 'c-export-demo' },     // 紫色
 
-            // Sprouting 延伸演示 (绿色线条)
-            { from: 'guide-sprout-topic', to: 'guide-sprout-1', id: 'c-sprout-1', color: 'teal' },
-            { from: 'guide-sprout-topic', to: 'guide-sprout-2', id: 'c-sprout-2', color: 'teal' },
-            { from: 'guide-sprout-topic', to: 'guide-sprout-3', id: 'c-sprout-3', color: 'teal' },
+            // Sprouting 延伸演示 (青色线条 - 来自 sprout-topic)
+            { from: 'guide-sprout-topic', to: 'guide-sprout-1', id: 'c-sprout-1' }, // 青色
+            { from: 'guide-sprout-topic', to: 'guide-sprout-2', id: 'c-sprout-2' }, // 青色
+            { from: 'guide-sprout-topic', to: 'guide-sprout-3', id: 'c-sprout-3' }, // 青色
 
-            // 第三层 → 第四层 (操作指南)
-            { from: 'guide-ai-demo', to: 'guide-colors', id: 'c-demo-colors', color: 'red' },
-            { from: 'guide-sprout-topic', to: 'guide-canvas', id: 'c-sprout-canvas', color: 'yellow' },
-            { from: 'guide-export-demo', to: 'guide-shortcuts', id: 'c-export-shortcuts', color: 'violet' },
+            // 第三层 → 第四层 (操作指南 - 红色/黄色)
+            { from: 'guide-ai-demo', to: 'guide-colors', id: 'c-demo-colors' },       // 红色
+            { from: 'guide-sprout-topic', to: 'guide-canvas', id: 'c-sprout-canvas' }, // 青色
+            { from: 'guide-export-demo', to: 'guide-shortcuts', id: 'c-export-shortcuts' },
 
-            // 第四层 → 第五层 (总结)
-            { from: 'guide-colors', to: 'guide-cloud', id: 'c-colors-cloud' },
+            // 第四层 → 第五层 (总结 - 黄色)
+            { from: 'guide-colors', to: 'guide-cloud', id: 'c-colors-cloud' },     // 黄色
             { from: 'guide-canvas', to: 'guide-cloud', id: 'c-canvas-cloud' },
             { from: 'guide-canvas', to: 'guide-start', id: 'c-canvas-start' },
             { from: 'guide-shortcuts', to: 'guide-start', id: 'c-shortcuts-start' }
