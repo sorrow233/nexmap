@@ -13,11 +13,14 @@
 const SYSTEM_MODEL = 'deepseek-ai/DeepSeek-V3.2';
 const SYSTEM_BASE_URL = 'https://api.gmi-serving.com/v1';
 
-// Pricing (per million tokens, in credits where 100 credits = $1)
-// DeepSeek-V3.2 pricing: 90% of original Gemini Flash pricing (60% × 1.5 = 90%)
+// Pricing (per million tokens, in credits)
+// Designed so 100 credits = 200 normal conversations (2000 input + 1000 output tokens each)
+// 1 conversation = 0.5 credits → (2000/1M × 150) + (1000/1M × 200) = 0.3 + 0.2 = 0.5 ✓
+// GMI DeepSeek-V3.2 actual cost: $0.224/M input, $0.32/M output
+// Our margin: ~6.5x (healthy for free trial sustainability)
 const PRICING = {
-    INPUT_PER_MILLION: 0.36,   // 0.24 × 1.5 = 0.36 credits/M
-    OUTPUT_PER_MILLION: 2.16,  // 1.44 × 1.5 = 2.16 credits/M
+    INPUT_PER_MILLION: 150,    // 150 credits per million input tokens
+    OUTPUT_PER_MILLION: 200,   // 200 credits per million output tokens
 };
 
 const INITIAL_CREDITS = 100; // New users get 100 credits ($1 worth)
