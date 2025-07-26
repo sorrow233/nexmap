@@ -71,10 +71,10 @@ function getCardColor(card) {
 }
 
 /**
- * Render cards as simplified thumbnail using Canvas 2D API.
+ * Render cards and connections as simplified thumbnail using Canvas 2D API.
  * Works on all platforms including mobile.
  */
-function renderCardsThumbnail(cards, targetWidth = 400, targetHeight = 300) {
+function renderCardsThumbnail(cards, connections = [], targetWidth = 400, targetHeight = 300) {
     const bbox = calculateCardsBoundingBox(cards);
     if (!bbox) return null;
 
@@ -116,6 +116,47 @@ function renderCardsThumbnail(cards, targetWidth = 400, targetHeight = 300) {
     // Default card dimensions
     const CARD_WIDTH = 320;
     const CARD_HEIGHT = 200;
+
+    // Create card lookup for connections
+    const cardMap = new Map();
+    for (const card of cards) {
+        if (typeof card.x === 'number' && typeof card.y === 'number') {
+            const w = card.width || CARD_WIDTH;
+            const h = card.height || CARD_HEIGHT;
+            cardMap.set(card.id, {
+                centerX: (card.x + w / 2) * scale + offsetX,
+                centerY: (card.y + h / 2) * scale + offsetY
+            });
+        }
+    }
+
+    // Draw connections first (behind cards)
+    if (connections && connections.length > 0) {
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+        ctx.lineWidth = 2 * scale;
+        ctx.lineCap = 'round';
+
+        for (const conn of connections) {
+            const fromCard = cardMap.get(conn.from);
+            const toCard = cardMap.get(conn.to);
+            if (fromCard && toCard) {
+                ctx.beginPath();
+                ctx.moveTo(fromCard.centerX, fromCard.centerY);
+
+                // Bezier curve for smooth connection
+                const midX = (fromCard.centerX + toCard.centerX) / 2;
+                const midY = (fromCard.centerY + toCard.centerY) / 2;
+                const ctrlOffset = Math.abs(toCard.centerY - fromCard.centerY) * 0.3;
+
+                ctx.bezierCurveTo(
+                    midX, fromCard.centerY + ctrlOffset,
+                    midX, toCard.centerY - ctrlOffset,
+                    toCard.centerX, toCard.centerY
+                );
+                ctx.stroke();
+            }
+        }
+    }
 
     // Draw each card
     for (const card of cards) {
@@ -185,7 +226,7 @@ function renderCardsThumbnail(cards, targetWidth = 400, targetHeight = 300) {
  * Hook for capturing canvas thumbnails using Canvas 2D API.
  * Cross-platform compatible - works on desktop and mobile.
  */
-export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
+export function useThumbnailCapture(cards, connections, currentBoardId, hasBackgroundImage) {
     const captureTimeoutRef = useRef(null);
     const lastCaptureRef = useRef(0);
     const canvasContainerRef = useRef(null); // Keep for API compatibility
@@ -212,7 +253,7 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
         }
 
         try {
-            const thumbnail = renderCardsThumbnail(cards);
+            const thumbnail = renderCardsThumbnail(cards, connections);
             if (thumbnail) {
                 lastCaptureRef.current = now;
             }
@@ -221,7 +262,7 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
             console.error('[Thumbnail] Capture failed:', error);
             return null;
         }
-    }, [cards, hasBackgroundImage]);
+    }, [cards, connections, hasBackgroundImage]);
 
     /**
      * Save thumbnail to board metadata.
@@ -273,7 +314,7 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden' && cards && cards.length > 0 && !hasBackgroundImage && currentBoardId) {
                 // Immediate capture when user leaves
-                const thumbnail = renderCardsThumbnail(cards);
+                const thumbnail = renderCardsThumbnail(cards, connections);
                 if (thumbnail) {
                     try {
                         updateBoardMetadata(currentBoardId, { thumbnail });
@@ -286,7 +327,7 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [cards, currentBoardId, hasBackgroundImage]);
+    }, [cards, connections, currentBoardId, hasBackgroundImage]);
 
     return {
         canvasContainerRef,

@@ -2,26 +2,39 @@
  * guideBoardData.js
  * NexMap 使用指南画布数据
  * 使用对话卡片 (standard) 展示所有核心功能
- * 用户可以点击卡片继续对话
  * 
- * 注意：连线颜色由 source card 的 data.cardColor 决定
+ * 布局参数（与 autoLayout.js 保持一致）：
+ * - CARD_WIDTH = 320
+ * - CARD_HEIGHT = 300
+ * - HORIZONTAL_GAP = 300 (水平间距)
+ * - VERTICAL_GAP = 60 (垂直间距)
+ * 
+ * 连线颜色由 source card 的 data.cardColor 决定
  */
 
 export const getGuideBoardData = () => {
-    const centerX = 0;
-    const centerY = 0;
+    // 布局常量 - 与 autoLayout.js 保持一致
+    const CARD_WIDTH = 320;
+    const CARD_HEIGHT = 300;
+    const H_GAP = 300; // 水平间距
+    const V_GAP = 60;  // 垂直间距
+    const COL_STEP = CARD_WIDTH + H_GAP; // 620
+    const ROW_STEP = CARD_HEIGHT + V_GAP; // 360
+
+    // 起始位置 - 让画布居中
+    const startX = -300;
+    const startY = 0;
 
     return {
         cards: [
             // ═══════════════════════════════════════════════════════════════
-            // 第一层：中心欢迎卡片
+            // 第 0 列 (X = startX): 根节点 - 欢迎卡片
             // ═══════════════════════════════════════════════════════════════
             {
                 id: 'guide-welcome',
-                x: centerX,
-                y: centerY - 500,
-                w: 550,
-                h: 380,
+                x: startX,
+                y: startY,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '🚀 欢迎来到 NexMap',
@@ -37,7 +50,7 @@ export const getGuideBoardData = () => {
 - ☁️ **云端同步** 跨设备无缝衔接
 - 🌐 **中/英/日** 三语支持
 
-👇 探索下方卡片，了解强大功能
+👇 探索右侧卡片，了解强大功能
 💬 点击任意卡片可以继续对话！`
                     }],
                     model: 'guide'
@@ -45,16 +58,16 @@ export const getGuideBoardData = () => {
             },
 
             // ═══════════════════════════════════════════════════════════════
-            // 第二层：三大核心功能 (使用不同颜色展示 7 色线条功能)
+            // 第 1 列 (X = startX + COL_STEP): 三大核心功能
+            // Y 分布: -ROW_STEP, 0, +ROW_STEP (垂直居中于根节点)
             // ═══════════════════════════════════════════════════════════════
 
             // AI 对话功能 (蓝色线条)
             {
                 id: 'guide-ai-chat',
-                x: centerX - 650,
-                y: centerY,
-                w: 420,
-                h: 380,
+                x: startX + COL_STEP,
+                y: startY - ROW_STEP,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '🤖 AI 智能对话',
@@ -72,10 +85,10 @@ export const getGuideBoardData = () => {
 - **DeepSeek V3** - 极速响应
 
 **Pro 功能：**
-- 📷 上传图片进行 AI 分析
-- 🖼️ AI 图片生成
+📷 上传图片进行 AI 分析
+🖼️ AI 图片生成
 
-💡 试试在这里输入问题，体验 AI 对话！`
+💡 试试在这里输入问题！`
                     }],
                     cardColor: 'blue',
                     model: 'guide'
@@ -85,10 +98,9 @@ export const getGuideBoardData = () => {
             // AI Sprouting 功能 (绿色线条)
             {
                 id: 'guide-sprouting',
-                x: centerX,
-                y: centerY,
-                w: 420,
-                h: 400,
+                x: startX + COL_STEP,
+                y: startY,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '🌱 AI Sprouting',
@@ -104,15 +116,11 @@ export const getGuideBoardData = () => {
 
 **实际效果：**
 → 写下 "人工智能的未来"
-→ 自动延伸出：
-  • 技术发展趋势
-  • 伦理与法规
-  • 行业应用场景
-  • 对就业的影响
+→ 自动延伸出多个相关话题
   
-**连线自动创建，思维脉络一目了然！**
+**连线自动创建！**
 
-🔮 右键这张卡片，试试 "延伸话题" 功能`
+🔮 右键试试 "延伸话题"`
                     }],
                     cardColor: 'green',
                     model: 'guide'
@@ -122,10 +130,9 @@ export const getGuideBoardData = () => {
             // 导出主题功能 (紫色线条)
             {
                 id: 'guide-export',
-                x: centerX + 650,
-                y: centerY,
-                w: 420,
-                h: 380,
+                x: startX + COL_STEP,
+                y: startY + ROW_STEP,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '🎨 精美导出主题',
@@ -141,15 +148,12 @@ export const getGuideBoardData = () => {
 • **Terminal** - 硅谷极客风
 
 **日系主题：**
-• **Sakura** 🌸 樱花
-• **Matcha** 🍵 抹茶
-• **Manga** 📖 漫画
-• **Ghibli** 🌿 吉卜力森系
+🌸 Sakura | 🍵 Matcha
+📖 Manga | 🌿 Ghibli
 
-**布局选择：**
-Card / Full / Social / Slide
+**布局：** Card / Full / Social / Slide
 
-🖼️ 右键这张卡片试试导出功能！`
+🖼️ 右键试试导出功能！`
                     }],
                     cardColor: 'violet',
                     model: 'guide'
@@ -157,16 +161,15 @@ Card / Full / Social / Slide
             },
 
             // ═══════════════════════════════════════════════════════════════
-            // 第三层：演示卡片
+            // 第 2 列 (X = startX + 2*COL_STEP): 功能演示
             // ═══════════════════════════════════════════════════════════════
 
-            // AI 对话演示 (红色线条)
+            // AI 对话演示 (红色线条) - 对应 guide-ai-chat
             {
                 id: 'guide-ai-demo',
-                x: centerX - 650,
-                y: centerY + 480,
-                w: 420,
-                h: 320,
+                x: startX + 2 * COL_STEP,
+                y: startY - ROW_STEP - ROW_STEP / 2,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '💬 对话示例',
@@ -181,10 +184,9 @@ Card / Full / Social / Slide
 |------|-------|-----|
 | 学习曲线 | 较陡 | 平缓 |
 | 虚拟DOM | ✓ | ✓ |
-| 状态管理 | Redux | Vuex/Pinia |
-| 模板语法 | JSX | 模板 |
+| 状态管理 | Redux | Vuex |
 
-两者都是优秀框架，选择取决于团队经验和项目需求...
+两者都是优秀框架，选择取决于团队经验...
 
 💬 继续问我任何问题！`
                         }
@@ -194,13 +196,41 @@ Card / Full / Social / Slide
                 }
             },
 
-            // Sprouting 延伸示例 - 主题 (青色线条)
+            // 7 色连线 (黄色) - 对应 guide-ai-chat
+            {
+                id: 'guide-colors',
+                x: startX + 2 * COL_STEP,
+                y: startY - ROW_STEP / 2,
+                w: CARD_WIDTH,
+                type: 'standard',
+                data: {
+                    title: '🌈 7 色智能连线',
+                    messages: [{
+                        role: 'assistant',
+                        content: `**为思维关系赋予颜色**
+
+右键卡片 → 线条颜色：
+
+🔴 Red - 重要/警告
+🟡 Yellow - 待定/思考中  
+🟢 Green - 已完成/确认
+🔵 Teal - 参考/引用
+🔷 Blue - 主线/核心
+🟣 Violet - 创意/灵感
+
+🎨 右键试试改变线条颜色`
+                    }],
+                    cardColor: 'yellow',
+                    model: 'guide'
+                }
+            },
+
+            // Sprouting 延伸示例 - 主题 (青色线条) - 对应 guide-sprouting
             {
                 id: 'guide-sprout-topic',
-                x: centerX - 100,
-                y: centerY + 480,
-                w: 240,
-                h: 160,
+                x: startX + 2 * COL_STEP,
+                y: startY + ROW_STEP / 2,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '💡 核心想法',
@@ -215,67 +245,12 @@ Card / Full / Social / Slide
                 }
             },
 
-            // Sprouting 延伸 1
-            {
-                id: 'guide-sprout-1',
-                x: centerX + 220,
-                y: centerY + 420,
-                w: 200,
-                h: 100,
-                type: 'standard',
-                data: {
-                    title: '个性化学习',
-                    messages: [{
-                        role: 'assistant',
-                        content: 'AI 根据学生能力定制学习路径'
-                    }],
-                    model: 'guide'
-                }
-            },
-
-            // Sprouting 延伸 2
-            {
-                id: 'guide-sprout-2',
-                x: centerX + 220,
-                y: centerY + 540,
-                w: 200,
-                h: 100,
-                type: 'standard',
-                data: {
-                    title: '教师角色转型',
-                    messages: [{
-                        role: 'assistant',
-                        content: '从知识传授者转变为学习引导者'
-                    }],
-                    model: 'guide'
-                }
-            },
-
-            // Sprouting 延伸 3
-            {
-                id: 'guide-sprout-3',
-                x: centerX + 220,
-                y: centerY + 660,
-                w: 200,
-                h: 100,
-                type: 'standard',
-                data: {
-                    title: '批判性思维',
-                    messages: [{
-                        role: 'assistant',
-                        content: 'AI 时代最重要的核心能力'
-                    }],
-                    model: 'guide'
-                }
-            },
-
-            // 导出预览演示
+            // 导出预览演示 - 对应 guide-export
             {
                 id: 'guide-export-demo',
-                x: centerX + 650,
-                y: centerY + 480,
-                w: 420,
-                h: 320,
+                x: startX + 2 * COL_STEP,
+                y: startY + ROW_STEP + ROW_STEP / 2,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '✨ 导出效果预览',
@@ -284,54 +259,71 @@ Card / Full / Social / Slide
                         content: `**多尺寸输出：** 1x / 2x / 3x
 
 **使用场景：**
-- 📱 社交媒体分享 (Social 1:1)
-- 📊 演示幻灯片 (Slide 16:9)
-- 📝 笔记卡片 (Card 自适应)
-- 📄 完整文档 (Full 全文)
+📱 社交媒体分享 (1:1)
+📊 演示幻灯片 (16:9)
+📝 笔记卡片 (自适应)
 
 **专业字体：**
-Playfair Display / Inter / JetBrains Mono
-日文字体：Kiwi Maru / Zen Maru Gothic
+Playfair Display / Inter
+日文: Kiwi Maru
 
-> 右键任意卡片 → 导出为图片 → 体验惊艳效果`
+> 右键卡片 → 导出为图片`
                     }],
                     model: 'guide'
                 }
             },
 
             // ═══════════════════════════════════════════════════════════════
-            // 第四层：彩色线条与操作指南
+            // 第 3 列 (X = startX + 3*COL_STEP): Sprouting 延伸效果 + 操作指南
             // ═══════════════════════════════════════════════════════════════
 
-            // 7 色线条演示 (黄色线条)
+            // Sprouting 延伸 1
             {
-                id: 'guide-colors',
-                x: centerX - 450,
-                y: centerY + 880,
-                w: 400,
-                h: 300,
+                id: 'guide-sprout-1',
+                x: startX + 3 * COL_STEP,
+                y: startY - ROW_STEP / 2 - 120,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
-                    title: '🌈 7 色智能连线',
+                    title: '🎓 个性化学习',
                     messages: [{
                         role: 'assistant',
-                        content: `**为思维关系赋予颜色**
-
-右键卡片 → 线条颜色：
-
-🔴 **Red** - 重要/警告
-🟡 **Yellow** - 待定/思考中  
-🟢 **Green** - 已完成/确认
-🔵 **Teal** - 参考/引用
-🔷 **Blue** - 主线/核心
-🟣 **Violet** - 创意/灵感
-⚪ **Default** - 普通关联
-
-颜色让思维导图更有层次感！
-
-🎨 右键这张卡片试试改变线条颜色`
+                        content: 'AI 根据学生能力定制学习路径，实现真正的因材施教'
                     }],
-                    cardColor: 'yellow',
+                    model: 'guide'
+                }
+            },
+
+            // Sprouting 延伸 2
+            {
+                id: 'guide-sprout-2',
+                x: startX + 3 * COL_STEP,
+                y: startY + 120,
+                w: CARD_WIDTH,
+                type: 'standard',
+                data: {
+                    title: '👨‍🏫 教师角色转型',
+                    messages: [{
+                        role: 'assistant',
+                        content: '从知识传授者转变为学习引导者和心灵导师'
+                    }],
+                    model: 'guide'
+                }
+            },
+
+            // Sprouting 延伸 3
+            {
+                id: 'guide-sprout-3',
+                x: startX + 3 * COL_STEP,
+                y: startY + ROW_STEP / 2 + 240,
+                w: CARD_WIDTH,
+                type: 'standard',
+                data: {
+                    title: '🧠 批判性思维',
+                    messages: [{
+                        role: 'assistant',
+                        content: 'AI 时代最重要的核心能力：独立思考与批判分析'
+                    }],
                     model: 'guide'
                 }
             },
@@ -339,103 +331,92 @@ Playfair Display / Inter / JetBrains Mono
             // 画布操作
             {
                 id: 'guide-canvas',
-                x: centerX + 50,
-                y: centerY + 880,
-                w: 400,
-                h: 300,
+                x: startX + 3 * COL_STEP,
+                y: startY + ROW_STEP + 240,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '🖱️ 画布操作',
                     messages: [{
                         role: 'assistant',
                         content: `**移动与缩放：**
-- 🖐️ **拖拽空白处** - 平移画布
-- 🔍 **滚轮 / 双指** - 缩放画布
-- ⌨️ **Space + 拖拽** - 快速平移
+🖐️ 拖拽空白处 - 平移
+🔍 滚轮/双指 - 缩放
+⌨️ Space+拖拽 - 快速平移
 
-**选择与编辑：**
-- 👆 **单击** - 选中卡片
-- ✏️ **双击** - 编辑内容
-- ⬜ **框选拖拽** - 批量选择
-- 📐 **边缘拖拽** - 调整大小
+**编辑：**
+👆 单击 - 选中
+✏️ 双击 - 编辑
+⬜ 框选 - 批量
 
-**批量操作：**
-选中多个卡片后可同时发送 AI 提问！
-
-🖱️ 现在就试试这些操作吧`
+🖱️ 试试这些操作`
                     }],
                     model: 'guide'
                 }
             },
 
-            // 快捷键汇总
+            // ═══════════════════════════════════════════════════════════════
+            // 第 4 列 (X = startX + 4*COL_STEP): 总结
+            // ═══════════════════════════════════════════════════════════════
+
+            // 快捷键
             {
                 id: 'guide-shortcuts',
-                x: centerX + 550,
-                y: centerY + 880,
-                w: 400,
-                h: 300,
+                x: startX + 4 * COL_STEP,
+                y: startY - ROW_STEP / 2,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '⌨️ 快捷键',
                     messages: [{
                         role: 'assistant',
                         content: `**基础操作：**
-| 快捷键 | 功能 |
-|--------|------|
-| \`Cmd/Ctrl + Z\` | 撤销 |
-| \`Cmd/Ctrl + Shift + Z\` | 重做 |
-| \`Backspace\` | 删除选中 |
-| \`Cmd/Ctrl + A\` | 全选 |
-| \`V\` | 切换选择/平移模式 |
+\`Cmd/Ctrl + Z\` 撤销
+\`Cmd/Ctrl + Shift + Z\` 重做
+\`Backspace\` 删除
+\`V\` 切换选择/平移模式
 
 **高级功能：**
-| 操作 | 功能 |
-|------|------|
-| 🪄 工具栏魔法棒 | 自动整理布局 |
-| 🔍 Cmd/Ctrl + F | 全局搜索 |
+🪄 工具栏魔法棒 - 自动布局
+🔍 Cmd/Ctrl + F - 全局搜索
 
-⌨️ 记住这些快捷键，效率翻倍！`
+⌨️ 记住快捷键，效率翻倍！`
                     }],
                     model: 'guide'
                 }
             },
 
-            // ═══════════════════════════════════════════════════════════════
-            // 第五层：云同步与开始创作
-            // ═══════════════════════════════════════════════════════════════
-
+            // 云同步多语言
             {
                 id: 'guide-cloud',
-                x: centerX - 220,
-                y: centerY + 1280,
-                w: 440,
-                h: 220,
+                x: startX + 4 * COL_STEP,
+                y: startY + ROW_STEP / 2,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '☁️ 云端同步 & 🌐 多语言',
                     messages: [{
                         role: 'assistant',
                         content: `**跨设备无缝衔接**
-登录账户后，所有画布数据自动同步到云端
-💻 电脑 → 📱 手机 → 🖥️ 平板 随时切换
+登录后，数据自动同步到云端
+💻 电脑 → 📱 手机 → 🖥️ 平板
 
 **三语支持**
 🇺🇸 English | 🇨🇳 中文 | 🇯🇵 日本語
-根据浏览器语言自动切换，也可手动切换
+自动检测浏览器语言
 
-☁️ 登录后体验云同步功能`
+☁️ 登录体验云同步`
                     }],
                     model: 'guide'
                 }
             },
 
+            // 开始创作
             {
                 id: 'guide-start',
-                x: centerX + 280,
-                y: centerY + 1280,
-                w: 440,
-                h: 220,
+                x: startX + 4 * COL_STEP,
+                y: startY + ROW_STEP + ROW_STEP / 2,
+                w: CARD_WIDTH,
                 type: 'standard',
                 data: {
                     title: '🎯 开始创作',
@@ -443,15 +424,15 @@ Playfair Display / Inter / JetBrains Mono
                         role: 'assistant',
                         content: `**现在就开始！**
 
-1. 🆕 **新建画布** - 点击左上角 + 号
-2. ✍️ **创建卡片** - 双击空白处或使用底部输入框
-3. 🤖 **召唤 AI** - 点击卡片右上角 ✨ 图标
-4. 🔗 **建立连接** - 拖拽卡片边缘的连接点
-5. 📤 **导出分享** - 右键卡片选择导出
+1. 🆕 点击左上角 + 新建画布
+2. ✍️ 双击空白处创建卡片
+3. 🤖 点击卡片的 ✨ 召唤 AI
+4. 🔗 拖拽边缘建立连接
+5. 📤 右键卡片导出分享
 
 **祝你创作愉快！** 🚀
 
-💬 有问题随时在这里问我！`
+💬 有问题随时问我！`
                     }],
                     model: 'guide'
                 }
@@ -460,34 +441,34 @@ Playfair Display / Inter / JetBrains Mono
 
         // ═══════════════════════════════════════════════════════════════════
         // 连线配置
-        // 注意：连线颜色由 source card 的 data.cardColor 决定
+        // 连线颜色由 source card 的 data.cardColor 决定
         // ═══════════════════════════════════════════════════════════════════
         connections: [
-            // 第一层 → 第二层 (核心功能连接)
+            // 根节点 → 第1列 (三大功能)
             { from: 'guide-welcome', to: 'guide-ai-chat', id: 'c-welcome-ai' },
             { from: 'guide-welcome', to: 'guide-sprouting', id: 'c-welcome-sprout' },
             { from: 'guide-welcome', to: 'guide-export', id: 'c-welcome-export' },
 
-            // 第二层 → 第三层 (功能演示连接 - 各自的 cardColor)
+            // 第1列 → 第2列 (功能演示)
             { from: 'guide-ai-chat', to: 'guide-ai-demo', id: 'c-ai-demo' },       // 蓝色
+            { from: 'guide-ai-chat', to: 'guide-colors', id: 'c-ai-colors' },      // 蓝色
             { from: 'guide-sprouting', to: 'guide-sprout-topic', id: 'c-sprout-topic' }, // 绿色
             { from: 'guide-export', to: 'guide-export-demo', id: 'c-export-demo' },     // 紫色
 
-            // Sprouting 延伸演示 (青色线条 - 来自 sprout-topic)
+            // 第2列 → 第3列 (Sprouting 延伸)
             { from: 'guide-sprout-topic', to: 'guide-sprout-1', id: 'c-sprout-1' }, // 青色
             { from: 'guide-sprout-topic', to: 'guide-sprout-2', id: 'c-sprout-2' }, // 青色
             { from: 'guide-sprout-topic', to: 'guide-sprout-3', id: 'c-sprout-3' }, // 青色
 
-            // 第三层 → 第四层 (操作指南)
-            { from: 'guide-ai-demo', to: 'guide-colors', id: 'c-demo-colors' },       // 红色
-            { from: 'guide-sprout-topic', to: 'guide-canvas', id: 'c-sprout-canvas' }, // 青色
-            { from: 'guide-export-demo', to: 'guide-shortcuts', id: 'c-export-shortcuts' },
+            // 第2列 → 第3列 (操作指南)
+            { from: 'guide-export-demo', to: 'guide-canvas', id: 'c-export-canvas' },
 
-            // 第四层 → 第五层 (总结)
-            { from: 'guide-colors', to: 'guide-cloud', id: 'c-colors-cloud' },     // 黄色
+            // 第2列/第3列 → 第4列 (总结)
+            { from: 'guide-colors', to: 'guide-shortcuts', id: 'c-colors-shortcuts' }, // 黄色
+            { from: 'guide-ai-demo', to: 'guide-shortcuts', id: 'c-demo-shortcuts' },  // 红色
+            { from: 'guide-sprout-3', to: 'guide-cloud', id: 'c-sprout-cloud' },
             { from: 'guide-canvas', to: 'guide-cloud', id: 'c-canvas-cloud' },
-            { from: 'guide-canvas', to: 'guide-start', id: 'c-canvas-start' },
-            { from: 'guide-shortcuts', to: 'guide-start', id: 'c-shortcuts-start' }
+            { from: 'guide-canvas', to: 'guide-start', id: 'c-canvas-start' }
         ]
     };
 };
