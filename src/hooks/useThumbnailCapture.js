@@ -89,12 +89,15 @@ function renderCardsThumbnail(cards, targetWidth = 400, targetHeight = 300) {
     const scaleY = targetHeight / bbox.height;
     const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 1x
 
-    // Background
-    ctx.fillStyle = '#0f172a'; // Dark slate background
+    // Background - soft warm gradient
+    const gradient = ctx.createLinearGradient(0, 0, targetWidth, targetHeight);
+    gradient.addColorStop(0, '#faf8f5'); // Warm cream
+    gradient.addColorStop(1, '#f1ede6'); // Soft beige
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
     // Draw dot grid pattern
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.12)';
     const dotSpacing = 12;
     for (let x = 0; x < targetWidth; x += dotSpacing) {
         for (let y = 0; y < targetHeight; y += dotSpacing) {
@@ -124,11 +127,11 @@ function renderCardsThumbnail(cards, targetWidth = 400, targetHeight = 300) {
         const cardH = (card.height || CARD_HEIGHT) * scale;
         const radius = 8 * scale;
 
-        // Card shadow
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 10 * scale;
+        // Card shadow (softer for light background)
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+        ctx.shadowBlur = 12 * scale;
         ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 4 * scale;
+        ctx.shadowOffsetY = 6 * scale;
 
         // Card background
         const cardColor = getCardColor(card);
