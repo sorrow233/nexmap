@@ -4,6 +4,7 @@ import { marked } from 'marked';
 import { Share2, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
+import DOMPurify from 'dompurify';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
@@ -253,7 +254,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                         </div>
                     ) : (
                         <div
-                            dangerouslySetInnerHTML={{ __html: renderedHtml }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderedHtml) }}
                             className="font-sans break-words"
                             style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                         />

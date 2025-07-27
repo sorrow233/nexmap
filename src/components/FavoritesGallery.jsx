@@ -41,7 +41,7 @@ export default function FavoritesGallery() {
     const renderMarkdown = (content) => {
         if (!content) return '';
         const html = marked.parse(content);
-        return html;
+        return DOMPurify.sanitize(html);
     };
 
     if (favorites.length === 0) {
