@@ -161,6 +161,293 @@ const THEME_CONFIGS = {
 
 
 
+    // --- New Artistic Themes (10) ---
+
+    // 6. Library - 深棕色与胡桃木 (Dark Walnut)
+    library: {
+        id: 'library',
+        name: 'Library',
+        fonts: ['Cormorant Garamond', 'serif'],
+        bg: '#2C241B', // 深胡桃木色
+        text: '#E6DCC8', // 旧纸张白
+        accent: '#D4AF37', // 金色
+        padding: 80,
+        radius: 4,
+        settings: {
+            '--font-heading': '"Cormorant Garamond", serif',
+            '--font-body': '"Cormorant Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '700',
+            '--h2-size': '2.0em',
+            '--line-height': '1.8',
+            '--block-margin': '1.8em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(0,0,0,0.2)',
+            '--quote-color': '#D4AF37',
+            '--code-bg': '#1F1A13',
+            '--code-color': '#E6DCC8',
+        }
+    },
+
+    // 7. Parchment - 羊皮纸与褪色墨水 (Aged Paper)
+    parchment: {
+        id: 'parchment',
+        name: 'Parchment',
+        fonts: ['Crimson Text', 'serif'],
+        bg: '#F2E8C9', // 羊皮纸黄
+        text: '#4A3B2A', // 褪色棕墨
+        accent: '#8B4513', // 鞍褐色
+        padding: 70,
+        radius: 2,
+        settings: {
+            '--font-heading': '"Crimson Text", serif',
+            '--font-body': '"Crimson Text", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '600',
+            '--h2-size': '1.9em',
+            '--line-height': '1.75',
+            '--block-margin': '1.6em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px double #8B4513',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#2F251B',
+            '--code-bg': 'rgba(139, 69, 19, 0.08)',
+            '--code-color': '#8B4513',
+        }
+    },
+
+    // 8. Coffee - 咖啡渍与暖阳 (Espresso)
+    coffee: {
+        id: 'coffee',
+        name: 'Coffee',
+        fonts: ['Lora', 'serif'],
+        bg: '#EBE5CE', // 拿铁沫色
+        text: '#3E2723', // 深咖啡豆色
+        accent: '#795548', // 可可色
+        padding: 75,
+        radius: 12,
+        settings: {
+            '--font-heading': '"Lora", serif',
+            '--font-body': '"Lora", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '700',
+            '--h2-size': '1.8em',
+            '--line-height': '1.9',
+            '--block-margin': '1.8em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': '#D7CCC8',
+            '--quote-color': '#3E2723',
+            '--code-bg': '#D7CCC8',
+            '--code-color': '#3E2723',
+        }
+    },
+
+    // 9. Rainy - 阴雨天与湿润空气 (Moody)
+    rainy: {
+        id: 'rainy',
+        name: 'Rainy',
+        fonts: ['Playfair Display', 'Inter'],
+        bg: '#CFD8DC', // 蓝灰
+        text: '#263238', // 深蓝灰
+        accent: '#455A64', // 石板灰
+        padding: 90,
+        radius: 16,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '900',
+            '--h2-size': '2.0em',
+            '--line-height': '2.0',
+            '--block-margin': '2.2em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'linear-gradient(to right, rgba(255,255,255,0.4), transparent)',
+            '--quote-color': '#37474F',
+            '--code-bg': '#B0BEC5',
+            '--code-color': '#263238',
+        }
+    },
+
+    // 10. Academia - 常春藤与墨绿 (Ivy League)
+    academia: {
+        id: 'academia',
+        name: 'Academia',
+        fonts: ['EB Garamond', 'serif'],
+        bg: '#F5F5F0', // 象牙白
+        text: '#1B4D3E', // 学院绿
+        accent: '#C5A059', // 做旧金
+        padding: 85,
+        radius: 6,
+        settings: {
+            '--font-heading': '"EB Garamond", serif',
+            '--font-body': '"EB Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.4em',
+            '--h1-weight': '800',
+            '--h2-size': '2.1em',
+            '--line-height': '1.7',
+            '--block-margin': '1.7em',
+            '--quote-style': 'normal',
+            '--quote-border': '1px solid #C5A059',
+            '--quote-bg': '#FFFFFF',
+            '--quote-color': '#1B4D3E',
+            '--code-bg': '#E8F5E9',
+            '--code-color': '#1B4D3E',
+        }
+    },
+
+    // 11. Poetry - 诗歌与留白 (Elegance)
+    poetry: {
+        id: 'poetry',
+        name: 'Poetry',
+        fonts: ['Cinzel', 'Quicksand'],
+        bg: '#FFFBF0', // 奶油白
+        text: '#5D4037', // 暖褐
+        accent: '#D84315', // 焦橙
+        padding: 110,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Cinzel", serif',
+            '--font-body': '"Quicksand", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.5em',
+            '--h1-weight': '400',
+            '--h1-spacing': '0.1em',
+            '--h2-size': '1.6em',
+            '--line-height': '2.2',
+            '--block-margin': '2.5em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#D84315',
+            '--code-bg': '#FFF3E0',
+            '--code-color': '#BF360C',
+        }
+    },
+
+    // 12. Vintage - 皮革与黄铜 (Antique)
+    vintage: {
+        id: 'vintage',
+        name: 'Vintage',
+        fonts: ['Playfair Display', 'serif'],
+        bg: '#3E2723', // 深皮革
+        text: '#D7CCC8', // 浅褐
+        accent: '#FFB74D', // 黄铜色
+        padding: 80,
+        radius: 8,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Playfair Display", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '700',
+            '--h2-size': '2.0em',
+            '--line-height': '1.8',
+            '--block-margin': '2.0em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255,255,255,0.05)',
+            '--quote-color': '#FFB74D',
+            '--code-bg': 'rgba(0,0,0,0.3)',
+            '--code-color': '#D7CCC8',
+            '--border-color': '#5D4037',
+        }
+    },
+
+    // 13. Classic - 经典黑白 (Bodoni)
+    classic: {
+        id: 'classic',
+        name: 'Classic',
+        fonts: ['Playfair Display', 'Inter'],
+        bg: '#FFFFFF',
+        text: '#000000',
+        accent: '#000000',
+        padding: 90,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4.5em',
+            '--h1-weight': '900',
+            '--h2-size': '2.5em',
+            '--line-height': '1.6',
+            '--block-margin': '2.0em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px solid #000',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#000',
+            '--code-bg': '#F5F5F5',
+            '--code-color': '#000',
+        }
+    },
+
+    // 14. Etching - 铜版画与棕褐 (Sepia)
+    etching: {
+        id: 'etching',
+        name: 'Etching',
+        fonts: ['Cormorant Garamond', 'serif'],
+        bg: '#EADBC8', // 浅米黄
+        text: '#4E342E', // 赭石
+        accent: '#8D6E63', // 浅褐
+        padding: 65,
+        radius: 4,
+        settings: {
+            '--font-heading': '"Cormorant Garamond", serif',
+            '--font-body': '"Cormorant Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '600',
+            '--h1-style': 'italic',
+            '--h2-size': '1.8em',
+            '--line-height': '1.7',
+            '--block-margin': '1.5em',
+            '--quote-style': 'italic',
+            '--quote-border': '1px solid #8D6E63',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#5D4037',
+            '--code-bg': 'rgba(141, 110, 99, 0.1)',
+            '--code-color': '#4E342E',
+        }
+    },
+
+    // 15. Midnight - 深夜与银河 (Deep Night)
+    midnight: {
+        id: 'midnight',
+        name: 'Midnight',
+        fonts: ['Cinzel', 'Inter'],
+        bg: '#0D1B2A', // 深夜蓝
+        text: '#E0E1DD', // 银白
+        accent: '#778DA9', // 钢蓝
+        padding: 85,
+        radius: 12,
+        settings: {
+            '--font-heading': '"Cinzel", serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '700',
+            '--h2-size': '2.0em',
+            '--line-height': '1.8',
+            '--block-margin': '2.0em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255,255,255,0.05)',
+            '--quote-color': '#E0E1DD',
+            '--code-bg': '#1B263B',
+            '--code-color': '#A9D6E5',
+        }
+    },
+
+
+
     // --- New Japanese Aesthetic Themes (10) ---
 
     // 6. Sakura - 樱花 (Sakura)
@@ -794,7 +1081,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             const link = document.createElement('link');
             link.id = linkId;
             // Added: Cormorant Garamond, EB Garamond, Cinzel, Lora, Crimson Text
-            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Quicksand:wght@300;400;500;700&family=Kiwi+Maru:wght@300;400;500&family=Zen+Maru+Gothic:wght@300;400;500;700&family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@300;400;500;700;800&family=DotGothic16&family=Yomogi&family=M+PLUS+1p:wght@300;400;500;700&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Quicksand:wght@300;400;500;700&family=Kiwi+Maru:wght@300;400;500&family=Zen+Maru+Gothic:wght@300;400;500;700&family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@300;400;500;700;800&family=DotGothic16&family=Yomogi&family=M+PLUS+1p:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:wght@400;700;800&family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
         }
