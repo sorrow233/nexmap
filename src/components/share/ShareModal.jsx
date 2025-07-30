@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather, Book, Scroll, Coffee, CloudRain, GraduationCap, PenTool, Watch, Type, Moon, Briefcase } from 'lucide-react';
+import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather, Coffee, Cloud, Music, Heart, Sun, Waves, Flower, Leaf, Mountain, Grid, Type, Box, Hash, AlignLeft, Maximize, Layout } from 'lucide-react';
 import ShareableContent from './ShareableContent';
 import SharePreview from './SharePreview';
 import ShareControls from './ShareControls';
@@ -28,76 +28,148 @@ const THEMES = [
         preview: 'bg-[#F8F9FA] border-gray-100',
         accent: 'bg-[#ADB5BD]',
     },
-    // New Artistic Themes
+
+    // --- Minimalist / Swiss Style Themes ---
     {
-        id: 'library',
-        label: 'Library',
-        icon: Book, // Need to import
-        preview: 'bg-[#2C241B] border-[#D4AF37]',
-        accent: 'bg-[#D4AF37]',
+        id: 'swiss_classic',
+        label: 'Swiss Classic',
+        icon: Type,
+        preview: 'bg-white border-red-500',
+        accent: 'bg-[#FF3B30]',
     },
     {
-        id: 'parchment',
-        label: 'Parchment',
-        icon: Scroll, // Need to import
-        preview: 'bg-[#F2E8C9] border-[#8B4513]',
-        accent: 'bg-[#8B4513]',
+        id: 'swiss_grid',
+        label: 'Grid Theory',
+        icon: Grid,
+        preview: 'bg-[#F0F0F0] border-blue-500',
+        accent: 'bg-[#0055FF]',
     },
     {
-        id: 'coffee',
-        label: 'Coffee',
-        icon: Coffee, // Need to import
-        preview: 'bg-[#EBE5CE] border-[#795548]',
-        accent: 'bg-[#795548]',
+        id: 'swiss_dark',
+        label: 'Dark Rational',
+        icon: Box,
+        preview: 'bg-[#050505] border-white',
+        accent: 'bg-[#D01111]',
     },
     {
-        id: 'rainy',
-        label: 'Rainy',
-        icon: CloudRain, // Need to import
-        preview: 'bg-[#CFD8DC] border-[#455A64]',
-        accent: 'bg-[#455A64]',
+        id: 'swiss_braun',
+        label: 'Braun',
+        icon: Monitor,
+        preview: 'bg-[#EBEBEB] border-orange-500',
+        accent: 'bg-[#E65100]',
     },
     {
-        id: 'academia',
-        label: 'Academia',
-        icon: GraduationCap, // Need to import
-        preview: 'bg-[#F5F5F0] border-[#1B4D3E]',
-        accent: 'bg-[#1B4D3E]',
-    },
-    {
-        id: 'poetry',
-        label: 'Poetry',
-        icon: Feather, // Reuse Feather or PenTool? Let's use PenTool for Poetry if Feather is Zen
-        preview: 'bg-[#FFFBF0] border-[#D84315]',
-        accent: 'bg-[#D84315]',
-    },
-    {
-        id: 'vintage',
-        label: 'Vintage',
-        icon: Briefcase, // Leather... Briefcase? Or Clock? Let's use Watch/Clock
-        preview: 'bg-[#3E2723] border-[#FFB74D]',
-        accent: 'bg-[#FFB74D]',
-    },
-    {
-        id: 'classic',
-        label: 'Classic',
-        icon: Type, // Need to import
-        preview: 'bg-[#FFFFFF] border-black',
+        id: 'swiss_intl',
+        label: 'International',
+        icon: Hash,
+        preview: 'bg-[#FDFDFD] border-black',
         accent: 'bg-black',
     },
     {
-        id: 'etching',
-        label: 'Etching',
-        icon: PenTool, // Need to import
-        preview: 'bg-[#EADBC8] border-[#8D6E63]',
-        accent: 'bg-[#8D6E63]',
+        id: 'swiss_arch',
+        label: 'Architect',
+        icon: Layout,
+        preview: 'bg-[#D6D6D6] border-black',
+        accent: 'bg-black',
     },
     {
-        id: 'midnight',
-        label: 'Midnight',
-        icon: Moon, // Need to import
-        preview: 'bg-[#0D1B2A] border-[#778DA9]',
-        accent: 'bg-[#778DA9]',
+        id: 'swiss_type',
+        label: 'Typographic',
+        icon: Type,
+        preview: 'bg-white border-black',
+        accent: 'bg-[#222]',
+    },
+    {
+        id: 'swiss_poster',
+        label: 'Poster',
+        icon: Maximize,
+        preview: 'bg-[#F25042] border-white',
+        accent: 'bg-white',
+    },
+    {
+        id: 'swiss_mono',
+        label: 'Mono Rational',
+        icon: AlignLeft,
+        preview: 'bg-[#F5F7FA] border-gray-500',
+        accent: 'bg-[#333]',
+    },
+    {
+        id: 'swiss_clean',
+        label: 'Clean State',
+        icon: Feather, // Light/Clean
+        preview: 'bg-white border-gray-200',
+        accent: 'bg-[#999]',
+    },
+    // New Japanese Aesthetic Themes
+    {
+        id: 'sakura',
+        label: 'Sakura',
+        icon: Flower,
+        preview: 'bg-[#FFF0F5] border-[#FFB7B2]',
+        accent: 'bg-[#FFB7B2]',
+    },
+    {
+        id: 'matcha',
+        label: 'Matcha',
+        icon: Leaf,
+        preview: 'bg-[#F2F7F2] border-[#8AA387]',
+        accent: 'bg-[#8AA387]',
+    },
+    {
+        id: 'manga',
+        label: 'Manga',
+        icon: MessageSquare,
+        preview: 'bg-white border-black border-2',
+        accent: 'bg-black',
+    },
+    {
+        id: 'sky',
+        label: 'Sky',
+        icon: Cloud,
+        preview: 'bg-[#E0F7FA] border-[#4FC3F7]',
+        accent: 'bg-[#4FC3F7]',
+    },
+    {
+        id: 'citypop',
+        label: 'Citypop',
+        icon: Music,
+        preview: 'bg-[#210046] border-[#00FFFF]',
+        accent: 'bg-[#FF00FF]',
+    },
+    {
+        id: 'ghibli',
+        label: 'Ghibli',
+        icon: Mountain, // Nature/Forest vibe
+        preview: 'bg-[#F5F5DC] border-[#8F9779]',
+        accent: 'bg-[#8F9779]',
+    },
+    {
+        id: 'peach',
+        label: 'Peach',
+        icon: Heart,
+        preview: 'bg-[#FFF5F5] border-[#E29587]',
+        accent: 'bg-[#E29587]',
+    },
+    {
+        id: 'lavender',
+        label: 'Lavender',
+        icon: Feather, // Soft/Airy
+        preview: 'bg-[#F3E5F5] border-[#CE93D8]',
+        accent: 'bg-[#CE93D8]',
+    },
+    {
+        id: 'sunset',
+        label: 'Sunset',
+        icon: Sun,
+        preview: 'bg-[#FFF3E0] border-[#FFAB91]',
+        accent: 'bg-[#FFAB91]',
+    },
+    {
+        id: 'ocean',
+        label: 'Ocean',
+        icon: Waves,
+        preview: 'bg-[#E0F2F1] border-[#26A69A]',
+        accent: 'bg-[#26A69A]',
     },
 ];
 
@@ -131,18 +203,18 @@ const getThemeBackground = (themeId) => {
         modern: '#FFFFFF',
         swiss: '#F4F4F4',
         handwritten: '#FFFCF5',
-        handwritten: '#FFFCF5',
+
         zen: '#F8F9FA',
-        library: '#2C241B',
-        parchment: '#F2E8C9',
-        coffee: '#EBE5CE',
-        rainy: '#CFD8DC',
-        academia: '#F5F5F0',
-        poetry: '#FFFBF0',
-        vintage: '#3E2723',
-        classic: '#FFFFFF',
-        etching: '#EADBC8',
-        midnight: '#0D1B2A',
+        sakura: '#FFF0F5',
+        matcha: '#F2F7F2',
+        manga: '#FFFFFF',
+        sky: '#E0F7FA',
+        citypop: '#210046',
+        ghibli: '#F5F5DC',
+        peach: '#FFF5F5',
+        lavender: '#F3E5F5',
+        sunset: '#FFF3E0',
+        ocean: '#E0F2F1',
     };
     return bgColors[themeId] || '#ffffff';
 };
