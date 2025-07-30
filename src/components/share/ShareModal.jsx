@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather } from 'lucide-react';
+import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather, Book, Scroll, Coffee, CloudRain, GraduationCap, PenTool, Watch, Type, Moon, Briefcase } from 'lucide-react';
 import ShareableContent from './ShareableContent';
 import SharePreview from './SharePreview';
 import ShareControls from './ShareControls';
@@ -27,6 +27,77 @@ const THEMES = [
         icon: Feather,
         preview: 'bg-[#F8F9FA] border-gray-100',
         accent: 'bg-[#ADB5BD]',
+    },
+    // New Artistic Themes
+    {
+        id: 'library',
+        label: 'Library',
+        icon: Book, // Need to import
+        preview: 'bg-[#2C241B] border-[#D4AF37]',
+        accent: 'bg-[#D4AF37]',
+    },
+    {
+        id: 'parchment',
+        label: 'Parchment',
+        icon: Scroll, // Need to import
+        preview: 'bg-[#F2E8C9] border-[#8B4513]',
+        accent: 'bg-[#8B4513]',
+    },
+    {
+        id: 'coffee',
+        label: 'Coffee',
+        icon: Coffee, // Need to import
+        preview: 'bg-[#EBE5CE] border-[#795548]',
+        accent: 'bg-[#795548]',
+    },
+    {
+        id: 'rainy',
+        label: 'Rainy',
+        icon: CloudRain, // Need to import
+        preview: 'bg-[#CFD8DC] border-[#455A64]',
+        accent: 'bg-[#455A64]',
+    },
+    {
+        id: 'academia',
+        label: 'Academia',
+        icon: GraduationCap, // Need to import
+        preview: 'bg-[#F5F5F0] border-[#1B4D3E]',
+        accent: 'bg-[#1B4D3E]',
+    },
+    {
+        id: 'poetry',
+        label: 'Poetry',
+        icon: Feather, // Reuse Feather or PenTool? Let's use PenTool for Poetry if Feather is Zen
+        preview: 'bg-[#FFFBF0] border-[#D84315]',
+        accent: 'bg-[#D84315]',
+    },
+    {
+        id: 'vintage',
+        label: 'Vintage',
+        icon: Briefcase, // Leather... Briefcase? Or Clock? Let's use Watch/Clock
+        preview: 'bg-[#3E2723] border-[#FFB74D]',
+        accent: 'bg-[#FFB74D]',
+    },
+    {
+        id: 'classic',
+        label: 'Classic',
+        icon: Type, // Need to import
+        preview: 'bg-[#FFFFFF] border-black',
+        accent: 'bg-black',
+    },
+    {
+        id: 'etching',
+        label: 'Etching',
+        icon: PenTool, // Need to import
+        preview: 'bg-[#EADBC8] border-[#8D6E63]',
+        accent: 'bg-[#8D6E63]',
+    },
+    {
+        id: 'midnight',
+        label: 'Midnight',
+        icon: Moon, // Need to import
+        preview: 'bg-[#0D1B2A] border-[#778DA9]',
+        accent: 'bg-[#778DA9]',
     },
 ];
 
@@ -60,7 +131,18 @@ const getThemeBackground = (themeId) => {
         modern: '#FFFFFF',
         swiss: '#F4F4F4',
         handwritten: '#FFFCF5',
+        handwritten: '#FFFCF5',
         zen: '#F8F9FA',
+        library: '#2C241B',
+        parchment: '#F2E8C9',
+        coffee: '#EBE5CE',
+        rainy: '#CFD8DC',
+        academia: '#F5F5F0',
+        poetry: '#FFFBF0',
+        vintage: '#3E2723',
+        classic: '#FFFFFF',
+        etching: '#EADBC8',
+        midnight: '#0D1B2A',
     };
     return bgColors[themeId] || '#ffffff';
 };

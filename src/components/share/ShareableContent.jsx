@@ -159,7 +159,294 @@ const THEME_CONFIGS = {
         }
     },
 
-    // 13. Zen - 极简 (Minimal)
+
+
+    // --- New Artistic Themes (10) ---
+
+    // 6. Library - 深棕色与胡桃木 (Dark Walnut)
+    library: {
+        id: 'library',
+        name: 'Library',
+        fonts: ['Cormorant Garamond', 'serif'],
+        bg: '#2C241B', // 深胡桃木色
+        text: '#E6DCC8', // 旧纸张白
+        accent: '#D4AF37', // 金色
+        padding: 80,
+        radius: 4,
+        settings: {
+            '--font-heading': '"Cormorant Garamond", serif',
+            '--font-body': '"Cormorant Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '700',
+            '--h2-size': '2.0em',
+            '--line-height': '1.8', // 宽松行距
+            '--block-margin': '1.8em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none', // Remove default border
+            '--quote-bg': 'rgba(0,0,0,0.2)',
+            '--quote-color': '#D4AF37', // Gold text for quotes
+            '--code-bg': '#1F1A13',
+            '--code-color': '#E6DCC8',
+        }
+    },
+
+    // 7. Parchment - 羊皮纸与褪色墨水 (Aged Paper)
+    parchment: {
+        id: 'parchment',
+        name: 'Parchment',
+        fonts: ['Crimson Text', 'serif'],
+        bg: '#F2E8C9', // 羊皮纸黄
+        text: '#4A3B2A', // 褪色棕墨
+        accent: '#8B4513', // 鞍褐色
+        padding: 70,
+        radius: 2, // 近乎直角
+        settings: {
+            '--font-heading': '"Crimson Text", serif',
+            '--font-body': '"Crimson Text", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '600',
+            '--h2-size': '1.9em',
+            '--line-height': '1.75',
+            '--block-margin': '1.6em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px double #8B4513', // 古典双线
+            '--quote-bg': 'transparent',
+            '--quote-color': '#2F251B',
+            '--code-bg': 'rgba(139, 69, 19, 0.08)',
+            '--code-color': '#8B4513',
+        }
+    },
+
+    // 8. Coffee - 咖啡渍与暖阳 (Espresso)
+    coffee: {
+        id: 'coffee',
+        name: 'Coffee',
+        fonts: ['Lora', 'serif'],
+        bg: '#EBE5CE', // 拿铁沫色
+        text: '#3E2723', // 深咖啡豆色
+        accent: '#795548', // 可可色
+        padding: 75,
+        radius: 12,
+        settings: {
+            '--font-heading': '"Lora", serif',
+            '--font-body': '"Lora", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '700',
+            '--h2-size': '1.8em',
+            '--line-height': '1.9',
+            '--block-margin': '1.8em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': '#D7CCC8', // 浅咖背景
+            '--quote-color': '#3E2723',
+            '--code-bg': '#D7CCC8',
+            '--code-color': '#3E2723',
+        }
+    },
+
+    // 9. Rainy - 阴雨天与湿润空气 (Moody)
+    rainy: {
+        id: 'rainy',
+        name: 'Rainy',
+        fonts: ['Playfair Display', 'Inter'],
+        bg: '#CFD8DC', // 蓝灰
+        text: '#263238', // 深蓝灰
+        accent: '#455A64', // 石板灰
+        padding: 90,
+        radius: 16,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '900',
+            '--h2-size': '2.0em',
+            '--line-height': '2.0', // Airier
+            '--block-margin': '2.2em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none', // Left border
+            '--quote-bg': 'linear-gradient(to right, rgba(255,255,255,0.4), transparent)',
+            '--quote-color': '#37474F',
+            '--code-bg': '#B0BEC5',
+            '--code-color': '#263238',
+        }
+    },
+
+    // 10. Academia - 常春藤与墨绿 (Ivy League)
+    academia: {
+        id: 'academia',
+        name: 'Academia',
+        fonts: ['EB Garamond', 'serif'],
+        bg: '#F5F5F0', // 象牙白
+        text: '#1B4D3E', // 学院绿
+        accent: '#C5A059', // 做旧金
+        padding: 85,
+        radius: 6,
+        settings: {
+            '--font-heading': '"EB Garamond", serif',
+            '--font-body': '"EB Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.4em',
+            '--h1-weight': '800',
+            '--h2-size': '2.1em',
+            '--line-height': '1.7',
+            '--block-margin': '1.7em',
+            '--quote-style': 'normal',
+            '--quote-border': '1px solid #C5A059', // 金色细框
+            '--quote-bg': '#FFFFFF',
+            '--quote-color': '#1B4D3E',
+            '--code-bg': '#E8F5E9',
+            '--code-color': '#1B4D3E',
+        }
+    },
+
+    // 11. Poetry - 诗歌与留白 (Elegance)
+    poetry: {
+        id: 'poetry',
+        name: 'Poetry',
+        fonts: ['Cinzel', 'Quicksand'],
+        bg: '#FFFBF0', // 奶油白
+        text: '#5D4037', // 暖褐
+        accent: '#D84315', // 焦橙
+        padding: 110, // 极度留白
+        radius: 0,
+        settings: {
+            '--font-heading': '"Cinzel", serif',
+            '--font-body': '"Quicksand", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.5em',
+            '--h1-weight': '400', // Lighter elegant heading
+            '--h1-spacing': '0.1em', // Spaced out
+            '--h2-size': '1.6em',
+            '--line-height': '2.2', // Very loose
+            '--block-margin': '2.5em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#D84315', // Accent color quote
+            '--code-bg': '#FFF3E0',
+            '--code-color': '#BF360C',
+        }
+    },
+
+    // 12. Vintage - 皮革与黄铜 (Antique)
+    vintage: {
+        id: 'vintage',
+        name: 'Vintage',
+        fonts: ['Playfair Display', 'serif'],
+        bg: '#3E2723', // 深皮革
+        text: '#D7CCC8', // 浅褐
+        accent: '#FFB74D', // 黄铜色
+        padding: 80,
+        radius: 8,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Playfair Display", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '700',
+            '--h2-size': '2.0em',
+            '--line-height': '1.8',
+            '--block-margin': '2.0em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255,255,255,0.05)', // Subtle highlight
+            '--quote-color': '#FFB74D',
+            '--code-bg': 'rgba(0,0,0,0.3)',
+            '--code-color': '#D7CCC8',
+            '--border-color': '#5D4037', // For leather texture lines
+        }
+    },
+
+    // 13. Classic - 经典黑白 (Bodoni)
+    classic: {
+        id: 'classic',
+        name: 'Classic',
+        fonts: ['Playfair Display', 'Inter'],
+        bg: '#FFFFFF', // 纯白
+        text: '#000000', // 纯黑
+        accent: '#000000', // 纯黑强调
+        padding: 90,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Playfair Display", serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4.5em', // Huge
+            '--h1-weight': '900',
+            '--h2-size': '2.5em',
+            '--line-height': '1.6',
+            '--block-margin': '2.0em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px solid #000', // Strong black line
+            '--quote-bg': 'transparent',
+            '--quote-color': '#000',
+            '--code-bg': '#F5F5F5',
+            '--code-color': '#000',
+        }
+    },
+
+    // 14. Etching - 铜版画与棕褐 (Sepia)
+    etching: {
+        id: 'etching',
+        name: 'Etching',
+        fonts: ['Cormorant Garamond', 'serif'],
+        bg: '#EADBC8', // 浅米黄
+        text: '#4E342E', // 赭石
+        accent: '#8D6E63', // 浅褐
+        padding: 65,
+        radius: 4,
+        settings: {
+            '--font-heading': '"Cormorant Garamond", serif',
+            '--font-body': '"Cormorant Garamond", serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '600',
+            '--h1-style': 'italic', // Italic headings
+            '--h2-size': '1.8em',
+            '--line-height': '1.7',
+            '--block-margin': '1.5em',
+            '--quote-style': 'italic',
+            '--quote-border': '1px solid #8D6E63',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#5D4037',
+            '--code-bg': 'rgba(141, 110, 99, 0.1)',
+            '--code-color': '#4E342E',
+        }
+    },
+
+    // 15. Midnight - 深夜与银河 (Deep Night)
+    midnight: {
+        id: 'midnight',
+        name: 'Midnight',
+        fonts: ['Cinzel', 'Inter'],
+        bg: '#0D1B2A', // 深夜蓝
+        text: '#E0E1DD', // 银白
+        accent: '#778DA9', // 钢蓝
+        padding: 85,
+        radius: 12,
+        settings: {
+            '--font-heading': '"Cinzel", serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.0em',
+            '--h1-weight': '700',
+            '--h2-size': '2.0em',
+            '--line-height': '1.8',
+            '--block-margin': '2.0em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'rgba(255,255,255,0.05)',
+            '--quote-color': '#E0E1DD',
+            '--code-bg': '#1B263B',
+            '--code-color': '#A9D6E5',
+        }
+    },
+
+    // 16. Zen - 极简 (Minimal)
     zen: {
         id: 'zen',
         name: 'Zen',
@@ -184,6 +471,299 @@ const THEME_CONFIGS = {
             '--quote-color': '#868E96',
             '--code-bg': '#F1F3F5',
             '--code-color': '#495057',
+        }
+    },
+
+    // --- Minimalist / Swiss Style Themes (10) ---
+
+    // 17. Swiss Classic - 经典瑞士 (Helvetica Hero)
+    swiss_classic: {
+        id: 'swiss_classic',
+        name: 'Swiss Classic',
+        fonts: ['Inter'], // Using Inter as Helvetica proxy for web reliability
+        bg: '#FFFFFF',
+        text: '#000000',
+        accent: '#FF3B30', // Vibrant functionality red
+        padding: 80,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", "Helvetica Neue", Arial, sans-serif',
+            '--font-body': '"Inter", "Helvetica Neue", Arial, sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '5em', // Hero scale
+            '--h1-weight': '900', // Heavy
+            '--h1-spacing': '-0.05em', // Tight
+            '--h1-line-height': '0.9',
+            '--h2-size': '2.5em',
+            '--line-height': '1.4',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#000',
+            // Specific: Big bold separation
+            '--border-color': '#000',
+            '--code-bg': '#F5F5F5',
+            '--code-color': '#000',
+        }
+    },
+
+    // 18. Grid Theory - 网格理论 (Ordered)
+    swiss_grid: {
+        id: 'swiss_grid',
+        name: 'Grid Theory',
+        fonts: ['Inter'],
+        bg: '#F0F0F0', // Neutral grey grid base
+        text: '#1A1A1A',
+        accent: '#0055FF', // Blueprint Blue
+        padding: 60,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3em',
+            '--h1-weight': '700',
+            '--h2-size': '2em',
+            '--line-height': '1.6',
+            '--block-margin': '2em',
+            '--quote-style': 'italic',
+            '--quote-border': '2px solid #0055FF',
+            '--quote-bg': '#FFFFFF',
+            '--quote-color': '#1A1A1A',
+            '--code-bg': '#FFFFFF',
+            '--code-color': '#0055FF',
+        }
+    },
+
+    // 19. Dark Rational - 理性黑 (Dark Swiss)
+    swiss_dark: {
+        id: 'swiss_dark',
+        name: 'Dark Rational',
+        fonts: ['Inter'],
+        bg: '#050505', // Almost black
+        text: '#F5F5F5',
+        accent: '#D01111', // Swiss Red
+        padding: 90,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4em',
+            '--h1-weight': '700',
+            '--h1-spacing': '-0.03em',
+            '--h2-size': '2.2em',
+            '--line-height': '1.5',
+            '--block-margin': '2.2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#1A1A1A',
+            '--quote-color': '#fff',
+            '--code-bg': '#1A1A1A',
+            '--code-color': '#D01111',
+            '--border-color': '#333',
+        }
+    },
+
+    // 20. Braun Aesthetics - 重工设计 (Functional)
+    swiss_braun: {
+        id: 'swiss_braun',
+        name: 'Braun',
+        fonts: ['Inter'],
+        bg: '#EBEBEB', // Matte mechanism grey
+        text: '#222222',
+        accent: '#E65100', // Industrial Orange
+        padding: 70,
+        radius: 4, // Slight industrial radius
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '600',
+            '--h2-size': '1.8em',
+            '--line-height': '1.5',
+            '--block-margin': '1.5em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#DCDCDC',
+            '--quote-color': '#444',
+            '--code-bg': '#222',
+            '--code-color': '#E65100', // Orange on Black
+        }
+    },
+
+    // 21. International - 国际主义 (Airport)
+    swiss_intl: {
+        id: 'swiss_intl',
+        name: 'International',
+        fonts: ['Inter'],
+        bg: '#FDFDFD',
+        text: '#111',
+        accent: '#000', // Stark Contrast
+        padding: 50,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3.2em',
+            '--h1-weight': '800', // Extra Bold
+            '--h2-size': '2em',
+            '--line-height': '1.3', // Tighter
+            '--block-margin': '1.2em', // Information Design
+            '--quote-style': 'normal',
+            '--quote-border': '4px solid #000',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#000',
+            '--code-bg': '#F1F1F1',
+            '--code-color': '#000',
+        }
+    },
+
+    // 22. Architect - 建筑师 (Brutalist)
+    swiss_arch: {
+        id: 'swiss_arch',
+        name: 'Architect',
+        fonts: ['JetBrains Mono', 'Inter'],
+        bg: '#D6D6D6', // Concrete
+        text: '#000',
+        accent: '#000',
+        padding: 100,
+        radius: 0,
+        settings: {
+            '--font-heading': '"JetBrains Mono", monospace', // Technical
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '4.5em',
+            '--h1-weight': '300', // Light
+            '--h1-spacing': '-0.05em',
+            '--h2-size': '2em',
+            '--line-height': '1.6',
+            '--block-margin': '3em',
+            '--quote-style': 'italic',
+            '--quote-border': 'none',
+            '--quote-bg': '#C0C0C0', // Darker Concrete
+            '--quote-color': '#000',
+            '--code-bg': '#000',
+            '--code-color': '#FFF',
+            '--border-color': '#000',
+        }
+    },
+
+    // 23. Typographic - 字体排印 (Scale)
+    swiss_type: {
+        id: 'swiss_type',
+        name: 'Typographic',
+        fonts: ['Playfair Display', 'Inter'],
+        bg: '#FFFFFF',
+        text: '#222',
+        accent: '#222',
+        padding: 80,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Playfair Display", serif', // Contrast serif header
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '6em', // Massive
+            '--h1-weight': '400',
+            '--h1-line-height': '0.8',
+            '--h2-size': '2em',
+            '--line-height': '1.8',
+            '--block-margin': '2em',
+            '--quote-style': 'italic',
+            '--quote-border': '1px solid #222',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#222',
+            '--code-bg': '#F9F9F9',
+            '--code-color': '#222',
+        }
+    },
+
+    // 24. Poster - 海报 (Graphic)
+    swiss_poster: {
+        id: 'swiss_poster',
+        name: 'Poster',
+        fonts: ['Inter'],
+        bg: '#F25042', // Bold Red Background
+        text: '#FFFFFF',
+        accent: '#FFFFFF',
+        padding: 80,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '5em',
+            '--h1-weight': '900',
+            '--h1-line-height': '0.85',
+            '--h2-size': '2.5em',
+            '--line-height': '1.5',
+            '--block-margin': '2em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': '#D13025', // Darker Red
+            '--quote-color': '#FFF',
+            '--code-bg': '#FFFFFF',
+            '--code-color': '#F25042', // Inverted
+            '--border-color': '#FFF',
+        }
+    },
+
+    // 25. Mono Rational - 等宽理性 (Technical)
+    swiss_mono: {
+        id: 'swiss_mono',
+        name: 'Mono Rational',
+        fonts: ['JetBrains Mono'],
+        bg: '#F5F7FA',
+        text: '#333',
+        accent: '#000',
+        padding: 60,
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"JetBrains Mono", monospace', // Mono body for code feel
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '3em',
+            '--h1-weight': '700',
+            '--h2-size': '1.8em',
+            '--line-height': '1.6',
+            '--block-margin': '1.8em',
+            '--quote-style': 'normal',
+            '--quote-border': '1px solid #333',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#333',
+            '--code-bg': '#E1E4E8',
+            '--code-color': '#000',
+        }
+    },
+
+    // 26. Clean State - 纯白 (Blank)
+    swiss_clean: {
+        id: 'swiss_clean',
+        name: 'Clean State',
+        fonts: ['Inter'],
+        bg: '#FFFFFF',
+        text: '#444',
+        accent: '#999',
+        padding: 120, // Extreme padding
+        radius: 0,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2em', // Restrained
+            '--h1-weight': '500', // Medium
+            '--h2-size': '1.5em',
+            '--line-height': '2.2', // Very loose
+            '--block-margin': '3em',
+            '--quote-style': 'normal',
+            '--quote-border': 'none',
+            '--quote-bg': 'transparent',
+            '--quote-color': '#888',
+            '--code-bg': '#FAFAFA',
+            '--code-color': '#666',
         }
     },
 };
@@ -216,7 +796,8 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         if (!document.getElementById(linkId)) {
             const link = document.createElement('link');
             link.id = linkId;
-            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Quicksand:wght@300;400;500;700&display=swap';
+            // Added: Cormorant Garamond, EB Garamond, Cinzel, Lora, Crimson Text
+            link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Kalam:wght@300;400;700&family=Playfair+Display:wght@700;900&family=Quicksand:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,600;0,800;1,400&family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
         }
@@ -452,6 +1033,50 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                     inset: 0,
                     opacity: 0.03,
                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Library / Vintage dark texture overlay */}
+            {(currentThemeId === 'library' || currentThemeId === 'vintage') && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0.05,
+                    backgroundImage: `linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)`,
+                    backgroundSize: '4px 4px', // Subtle grain
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Parchment / Etching paper grain */}
+            {(currentThemeId === 'parchment' || currentThemeId === 'etching') && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0.1,
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23f2e8c9' surfaceScale='2'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)'/%3E%3C/svg%3E")`,
+                    mixBlendMode: 'multiply',
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Rainy gradient overlay */}
+            {currentThemeId === 'rainy' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.2), transparent, rgba(0,0,0,0.05))',
+                    pointerEvents: 'none'
+                }} />
+            )}
+
+            {/* Academia Border */}
+            {currentThemeId === 'academia' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: '20px',
+                    border: '1px solid rgba(27, 77, 62, 0.2)',
                     pointerEvents: 'none'
                 }} />
             )}
