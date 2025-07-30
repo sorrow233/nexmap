@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { Star, Zap, Gem, Flame, Sparkles, MessageSquare, FileText, Instagram, Monitor, Box, Leaf, Sun, Ruler, Newspaper, Book, Feather, Smile, Hexagon } from 'lucide-react';
+import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather } from 'lucide-react';
 import ShareableContent from './ShareableContent';
 import SharePreview from './SharePreview';
 import ShareControls from './ShareControls';
@@ -22,74 +22,11 @@ const THEMES = [
         accent: 'bg-[#F1C40F]',
     },
     {
-        id: 'neon',
-        label: 'Neon',
-        icon: Zap,
-        preview: 'bg-[#050a14] border-cyan-900',
-        accent: 'bg-[#00F0FF]',
-    },
-    {
-        id: 'brutal',
-        label: 'Brutal',
-        icon: Box,
-        preview: 'bg-white border-black border-4',
-        accent: 'bg-black',
-    },
-    {
-        id: 'garden',
-        label: 'Garden',
-        icon: Leaf,
-        preview: 'bg-[#F0F4EF] border-green-800',
-        accent: 'bg-[#4A6741]',
-    },
-    {
-        id: 'retro',
-        label: 'Retro',
-        icon: Sun,
-        preview: 'bg-[#2B213A] border-pink-500',
-        accent: 'bg-[#FF71CE]',
-    },
-    {
-        id: 'blueprint',
-        label: 'Blueprint',
-        icon: Ruler,
-        preview: 'bg-[#003366] border-blue-400',
-        accent: 'bg-[#FFCC00]',
-    },
-    {
-        id: 'gazette',
-        label: 'Gazette',
-        icon: Newspaper,
-        preview: 'bg-[#F4ECD8] border-yellow-900',
-        accent: 'bg-[#8B0000]',
-    },
-    {
-        id: 'library',
-        label: 'Library',
-        icon: Book,
-        preview: 'bg-[#1E1B18] border-stone-800',
-        accent: 'bg-[#C6A87C]',
-    },
-    {
         id: 'zen',
         label: 'Zen',
         icon: Feather,
         preview: 'bg-[#F8F9FA] border-gray-100',
         accent: 'bg-[#ADB5BD]',
-    },
-    {
-        id: 'comic',
-        label: 'Comic',
-        icon: Smile,
-        preview: 'bg-white border-black border-2',
-        accent: 'bg-[#FFEA00]',
-    },
-    {
-        id: 'bauhaus',
-        label: 'Bauhaus',
-        icon: Hexagon,
-        preview: 'bg-[#F0F0F0] border-red-600',
-        accent: 'bg-[#D02121]',
     },
 ];
 
@@ -123,16 +60,7 @@ const getThemeBackground = (themeId) => {
         modern: '#FFFFFF',
         swiss: '#F4F4F4',
         handwritten: '#FFFCF5',
-        neon: '#050a14',
-        brutal: '#FFFFFF',
-        garden: '#F0F4EF',
-        retro: '#2B213A',
-        blueprint: '#003366',
-        gazette: '#F4ECD8',
-        library: '#1E1B18',
         zen: '#F8F9FA',
-        comic: '#FFFFFF',
-        bauhaus: '#F0F0F0',
     };
     return bgColors[themeId] || '#ffffff';
 };
