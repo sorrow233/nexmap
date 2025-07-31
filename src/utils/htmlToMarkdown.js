@@ -20,27 +20,17 @@ export function htmlToMarkdown(input) {
     return traverse(root, { isBlock: true }).trim();
 }
 
-function traverse(node, context = {}) {
+function traverse(node, context = { depth: 0 }) {
     if (!node) return '';
 
     // Handle Text Nodes
     if (node.nodeType === Node.TEXT_NODE) {
         let text = node.textContent;
 
-        // If we are inside a code block, preserve all whitespace strictly
         if (context.isPre) {
             return text;
         }
 
-        // Otherwise, collapse whitespace
-        // If it's pure whitespace and we are in a block context start/end, might want to trim
-        // But simple collapse is usually safer:
-        // text = text.replace(/\s+/g, ' ');
-
-        // ACTUALLY: For generic markdown, we want to collapse newlines/tabs to spaces, 
-        // unless it's pre.
-        // However, we must be careful not to glue words together if they were separated by a newline in HTML source
-        // but rendered as space.
         text = text.replace(/[\n\r\t]+/g, ' ');
         return text;
     }
@@ -50,14 +40,16 @@ function traverse(node, context = {}) {
         const tagName = node.tagName.toLowerCase();
         let content = '';
 
-        // Recursion
         const isPre = tagName === 'pre' || context.isPre;
-        // Don't traverse children for certain tags if we handle them specially (not needed here yet)
+        const isList = tagName === 'ul' || tagName === 'ol';
+
+        // Increase depth for nested lists
+        const newDepth = isList ? (context.depth + 1) : context.depth;
 
         let children = Array.from(node.childNodes);
 
         children.forEach(child => {
-            content += traverse(child, { ...context, isPre });
+            content += traverse(child, { ...context, isPre, depth: newDepth });
         });
 
         switch (tagName) {
@@ -71,21 +63,22 @@ function traverse(node, context = {}) {
 
             // Paragraphs and Breaks
             case 'p': return `\n${content.trim()}\n\n`;
-            case 'br': return '  \n'; // Markdown line break with 2 spaces
+            case 'br': return '  \n';
             case 'hr': return '\n---\n\n';
 
             // Lists
-            case 'ul': return `\n${content}\n`;
-            case 'ol': return `\n${content}\n`; // logic for numbers is hard to perfectly sync without index, simplified below
+            case 'ul':
+            case 'ol':
+                return `\n${content}\n`;
             case 'li':
-                // Check parent for type
+                const indent = '  '.repeat(Math.max(0, context.depth - 1));
                 const parentTag = node.parentElement?.tagName.toLowerCase();
+
                 if (parentTag === 'ol') {
-                    // Start of list item. 
-                    // To get exact number is costly, let's just use "1." for generic markdown parsers which auto-increment
-                    return `1. ${content.trim()}\n`;
+                    // We use "1." for simplicity, markdown parsers auto-increment
+                    return `${indent}1. ${content.trim()}\n`;
                 }
-                return `- ${content.trim()}\n`;
+                return `${indent}- ${content.trim()}\n`;
 
             // Formatting
             case 'strong':
@@ -95,12 +88,9 @@ function traverse(node, context = {}) {
             case 'i':
                 return content.trim() ? `*${content}*` : '';
             case 'code':
-                // content might have backticks
-                if (context.isPre) return content; // Handled by pre
+                if (context.isPre) return content;
                 return `\`${content}\``;
             case 'pre':
-                // Check if there's a code block class on the inner code
-                // Try to find language
                 return `\n\`\`\`\n${content}\n\`\`\`\n\n`;
 
             case 'blockquote':
@@ -115,7 +105,6 @@ function traverse(node, context = {}) {
                 const alt = node.getAttribute('alt') || '';
                 return src ? `![${alt}](${src})` : '';
 
-            // Layout / Structure - treat as transparent but ensure spacing if block
             case 'div':
             case 'section':
             case 'article':
@@ -128,3 +117,4 @@ function traverse(node, context = {}) {
 
     return '';
 }
+
