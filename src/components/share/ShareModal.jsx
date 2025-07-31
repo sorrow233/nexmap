@@ -9,58 +9,16 @@ import ShareControls from './ShareControls';
 // Theme categories for the UI
 const THEME_CATEGORIES = [
     {
-        name: 'Classic & Essential',
+        name: 'Selected Favorites',
         themes: [
             { id: 'editorial', label: 'Editorial', icon: Star, preview: 'bg-[#FDFBF7] border-slate-200', accent: 'bg-[#8B0000]' },
-            { id: 'modern', label: 'Modern', icon: LayoutTemplate, preview: 'bg-white border-slate-200', accent: 'bg-[#E16259]' },
-            { id: 'terminal', label: 'Silicon', icon: Hash, preview: 'bg-[#0F1115] border-slate-800', accent: 'bg-[#58A6FF]' },
-            { id: 'handwritten', label: 'Cozy', icon: Sparkles, preview: 'bg-[#F9F5F1] border-orange-100', accent: 'bg-[#F1C40F]' },
             { id: 'zen', label: 'Zen', icon: Feather, preview: 'bg-[#F8F9FA] border-gray-100', accent: 'bg-[#ADB5BD]' },
-        ]
-    },
-    {
-        name: 'Artistic & Literary',
-        themes: [
-            { id: 'library', label: 'Library', icon: Book, preview: 'bg-[#2C241B] border-[#D4AF37]', accent: 'bg-[#D4AF37]' },
-            { id: 'parchment', label: 'Parchment', icon: FileText, preview: 'bg-[#F2E8C9] border-[#8B4513]', accent: 'bg-[#8B4513]' },
-            { id: 'coffee', label: 'Coffee', icon: Coffee, preview: 'bg-[#EBE5CE] border-[#795548]', accent: 'bg-[#795548]' },
+            { id: 'swiss_grid', label: 'Grid Theory', icon: Grid, preview: 'bg-[#F0F0F0] border-blue-500', accent: 'bg-[#0055FF]' },
             { id: 'rainy', label: 'Rainy', icon: Cloud, preview: 'bg-[#CFD8DC] border-[#455A64]', accent: 'bg-[#455A64]' },
             { id: 'academia', label: 'Academia', icon: School, preview: 'bg-[#F5F5F0] border-[#C5A059]', accent: 'bg-[#C5A059]' },
-            { id: 'poetry', label: 'Poetry', icon: PenTool, preview: 'bg-[#FFFBF0] border-[#D84315]', accent: 'bg-[#D84315]' },
-            { id: 'vintage', label: 'Vintage', icon: Palette, preview: 'bg-[#3E2723] border-[#FFB74D]', accent: 'bg-[#FFB74D]' },
-            { id: 'classic', label: 'Classic', icon: Type, preview: 'bg-white border-black', accent: 'bg-black' },
-            { id: 'etching', label: 'Etching', icon: Feather, preview: 'bg-[#EADBC8] border-[#8D6E63]', accent: 'bg-[#8D6E63]' },
-            { id: 'midnight', label: 'Midnight', icon: Moon, preview: 'bg-[#0D1B2A] border-[#778DA9]', accent: 'bg-[#778DA9]' },
-        ]
-    },
-    {
-        name: 'Swiss Minimalist',
-        themes: [
-            { id: 'swiss_classic', label: 'Swiss Classic', icon: Type, preview: 'bg-white border-red-500', accent: 'bg-[#FF3B30]' },
-            { id: 'swiss_grid', label: 'Grid Theory', icon: Grid, preview: 'bg-[#F0F0F0] border-blue-500', accent: 'bg-[#0055FF]' },
-            { id: 'swiss_dark', label: 'Dark Rational', icon: Box, preview: 'bg-[#050505] border-white', accent: 'bg-[#D01111]' },
-            { id: 'swiss_braun', label: 'Braun', icon: Monitor, preview: 'bg-[#EBEBEB] border-orange-500', accent: 'bg-[#E65100]' },
-            { id: 'swiss_intl', label: 'International', icon: Hash, preview: 'bg-[#FDFDFD] border-black', accent: 'bg-black' },
-            { id: 'swiss_arch', label: 'Architect', icon: Layout, preview: 'bg-[#D6D6D6] border-black', accent: 'bg-black' },
-            { id: 'swiss_type', label: 'Typographic', icon: Type, preview: 'bg-white border-black', accent: 'bg-[#222]' },
-            { id: 'swiss_poster', label: 'Poster', icon: Maximize, preview: 'bg-[#F25042] border-white', accent: 'bg-white' },
-            { id: 'swiss_mono', label: 'Mono Rational', icon: AlignLeft, preview: 'bg-[#F5F7FA] border-gray-500', accent: 'bg-[#333]' },
-            { id: 'swiss_clean', label: 'Clean State', icon: Feather, preview: 'bg-white border-gray-200', accent: 'bg-[#999]' },
-        ]
-    },
-    {
-        name: 'Japanese Aesthetic',
-        themes: [
-            { id: 'sakura', label: 'Sakura', icon: Flower, preview: 'bg-[#FFF0F5] border-[#FFB7B2]', accent: 'bg-[#FFB7B2]' },
-            { id: 'matcha', label: 'Matcha', icon: Leaf, preview: 'bg-[#F2F7F2] border-[#8AA387]', accent: 'bg-[#8AA387]' },
-            { id: 'manga', label: 'Manga', icon: Ghost, preview: 'bg-white border-black border-2', accent: 'bg-black' },
-            { id: 'sky', label: 'Sky', icon: Cloud, preview: 'bg-[#E0F7FA] border-[#4FC3F7]', accent: 'bg-[#4FC3F7]' },
-            { id: 'citypop', label: 'Citypop', icon: Music, preview: 'bg-[#210046] border-[#00FFFF]', accent: 'bg-[#FF00FF]' },
+            { id: 'coffee', label: 'Coffee', icon: Coffee, preview: 'bg-[#EBE5CE] border-[#795548]', accent: 'bg-[#795548]' },
             { id: 'ghibli', label: 'Ghibli', icon: Mountain, preview: 'bg-[#F5F5DC] border-[#8F9779]', accent: 'bg-[#8F9779]' },
-            { id: 'peach', label: 'Peach', icon: Heart, preview: 'bg-[#FFF5F5] border-[#E29587]', accent: 'bg-[#E29587]' },
-            { id: 'lavender', label: 'Lavender', icon: Wind, preview: 'bg-[#F3E5F5] border-[#CE93D8]', accent: 'bg-[#CE93D8]' },
             { id: 'sunset', label: 'Sunset', icon: Sun, preview: 'bg-[#FFF3E0] border-[#FFAB91]', accent: 'bg-[#FFAB91]' },
-            { id: 'ocean', label: 'Ocean', icon: Waves, preview: 'bg-[#E0F2F1] border-[#26A69A]', accent: 'bg-[#26A69A]' },
         ]
     }
 ];
@@ -94,47 +52,13 @@ const FORMATS = [
 const getThemeBackground = (themeId) => {
     const bgColors = {
         editorial: '#FDFBF7',
-        terminal: '#0F1115',
-        modern: '#FFFFFF',
-        swiss: '#F4F4F4',
-        handwritten: '#FFFCF5',
-
         zen: '#F8F9FA',
-
-        // Artistic
-        library: '#2C241B',
-        parchment: '#F2E8C9',
-        coffee: '#EBE5CE',
+        swiss_grid: '#F0F0F0',
         rainy: '#CFD8DC',
         academia: '#F5F5F0',
-        poetry: '#FFFBF0',
-        vintage: '#3E2723',
-        classic: '#FFFFFF',
-        etching: '#EADBC8',
-        midnight: '#0D1B2A',
-
-        // Swiss
-        swiss_classic: '#FFFFFF',
-        swiss_grid: '#F0F0F0',
-        swiss_dark: '#050505',
-        swiss_braun: '#EBEBEB',
-        swiss_intl: '#FDFDFD',
-        swiss_arch: '#D6D6D6',
-        swiss_type: '#FFFFFF',
-        swiss_poster: '#F25042',
-        swiss_mono: '#F5F7FA',
-        swiss_clean: '#FFFFFF',
-
-        sakura: '#FFF0F5',
-        matcha: '#F2F7F2',
-        manga: '#FFFFFF',
-        sky: '#E0F7FA',
-        citypop: '#210046',
+        coffee: '#EBE5CE',
         ghibli: '#F5F5DC',
-        peach: '#FFF5F5',
-        lavender: '#F3E5F5',
         sunset: '#FFF3E0',
-        ocean: '#E0F2F1',
     };
     return bgColors[themeId] || '#ffffff';
 };
