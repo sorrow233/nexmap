@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw } from 'lucide-react';
+import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock } from 'lucide-react';
 
 export default function BoardCard({
     board,
