@@ -228,7 +228,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/5 px-2">
                         <div className="text-[10px] text-slate-400 text-center font-mono">
-                            v0.0.35-sidebar-ui
+                            v0.0.6-payment-live
                         </div>
                     </div>
                 </div>
