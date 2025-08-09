@@ -18,6 +18,7 @@ const BoardPage = lazyWithRetry(() => import('./pages/BoardPage'));
 const LandingPage = lazyWithRetry(() => import('./modules/landing'));
 const FreeTrialPage = lazyWithRetry(() => import('./pages/FreeTrialPage'));
 const FeedbackPage = lazyWithRetry(() => import('./pages/FeedbackPage'));
+const PricingPage = lazyWithRetry(() => import('./pages/PricingPage'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -266,6 +267,9 @@ function AppContent() {
                     <Route path="/legal/tokushoho" element={<Tokushoho />} />
                     <Route path="/legal/privacy" element={<Privacy />} />
                     <Route path="/legal/terms" element={<Terms />} />
+
+                    {/* Pricing */}
+                    <Route path="/pricing" element={<PricingPage />} />
 
                     <Route path="/gallery" element={
                         <GalleryPage
