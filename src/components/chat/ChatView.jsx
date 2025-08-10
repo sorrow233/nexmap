@@ -31,6 +31,13 @@ export default function ChatView({
     const config = providers[activeId];
     const analysisModel = useStore(state => state.getRoleModel('analysis'));
 
+    // Store-based persistent message queue (survives ChatModal close)
+    const pendingMessages = useStore(state => state.pendingMessages[card.id] || []);
+    const addPendingMessage = useStore(state => state.addPendingMessage);
+    const popPendingMessage = useStore(state => state.popPendingMessage);
+    const clearPendingMessages = useStore(state => state.clearPendingMessages);
+    const pendingCount = pendingMessages.length;
+
     const {
         images,
         setImages,
@@ -47,10 +54,6 @@ export default function ChatView({
     const scrollContainerRef = useRef(null);
     const fileInputRef = useRef(null);
     const modalRef = useRef(null);
-
-    // 消息等待队列（解决AI回复时发送新消息的问题）
-    const pendingMessagesRef = useRef([]);
-    const [pendingCount, setPendingCount] = useState(0);
 
     // Sprout Feature State
     const [isSprouting, setIsSprouting] = useState(false);
@@ -134,13 +137,12 @@ export default function ChatView({
         } finally {
             setIsStreaming(false);
 
-            // 处理队列中的下一条消息
-            if (pendingMessagesRef.current.length > 0) {
-                const nextMsg = pendingMessagesRef.current.shift();
-                setPendingCount(prev => prev - 1);
+            // 处理队列中的下一条消息 (from persistent store)
+            const nextMsg = popPendingMessage(card.id);
+            if (nextMsg) {
                 // 延迟一点调用，让UI有时间更新
                 setTimeout(() => {
-                    sendMessageInternal(nextMsg.input, nextMsg.images);
+                    sendMessageInternal(nextMsg.text, nextMsg.images);
                 }, 100);
             }
         }
@@ -154,10 +156,9 @@ export default function ChatView({
         setInput(''); // Immediate UI clear
         clearImages();
 
-        // 如果正在 streaming，将消息加入等待队列
+        // 如果正在 streaming，将消息加入等待队列 (persistent store)
         if (isStreaming) {
-            pendingMessagesRef.current.push({ input: currentInput, images: currentImages });
-            setPendingCount(prev => prev + 1);
+            addPendingMessage(card.id, currentInput, currentImages);
             return;
         }
 
@@ -184,9 +185,8 @@ export default function ChatView({
         console.log('[ChatView] Stopping generation for card:', card.id);
         aiManager.cancelByTags([`card:${card.id}`]);
         setIsStreaming(false);
-        // 清空等待队列
-        pendingMessagesRef.current = [];
-        setPendingCount(0);
+        // 清空等待队列 (from persistent store)
+        clearPendingMessages(card.id);
     };
 
     const handleTextSelection = () => {
