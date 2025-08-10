@@ -10,11 +10,12 @@ import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
 import SearchModal, { useSearchShortcut } from './components/SearchModal';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Lazy Load Pages
-const GalleryPage = lazy(() => import('./pages/GalleryPage'));
-const BoardPage = lazy(() => import('./pages/BoardPage'));
-const LandingPage = lazy(() => import('./modules/landing'));
+const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
+const BoardPage = lazyWithRetry(() => import('./pages/BoardPage'));
+const LandingPage = lazyWithRetry(() => import('./modules/landing'));
 
 
 import ModernDialog from './components/ModernDialog';

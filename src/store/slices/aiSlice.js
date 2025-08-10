@@ -204,11 +204,13 @@ export const createAISlice = (set, get) => {
             }
         },
 
-        updateCardContent: (id, chunk) => {
-            // console.log(`[ContentSlice] Received chunk for ${id}:`, chunk.substring(0, 20));
+        updateCardContent: (id, chunk, messageIndex = null) => {
+            // Use composite key when messageIndex is provided for precise targeting
+            const bufferKey = messageIndex !== null ? `${id}:${messageIndex}` : id;
+
             // 1. Buffer the content
-            const currentBuffer = contentBuffer.get(id) || "";
-            contentBuffer.set(id, currentBuffer + chunk);
+            const currentBuffer = contentBuffer.get(bufferKey) || "";
+            contentBuffer.set(bufferKey, currentBuffer + chunk);
 
             // 2. Schedule flush if not already scheduled
             if (!contentFlushTimer) {
@@ -222,24 +224,44 @@ export const createAISlice = (set, get) => {
                         // 3. Batch update
                         set(state => ({
                             cards: state.cards.map(c => {
-                                if (updates.has(c.id)) {
-                                    const newContent = updates.get(c.id);
-                                    const msgs = [...c.data.messages];
-                                    const lastMsg = msgs[msgs.length - 1];
+                                // Check for both cardId only and cardId:index patterns
+                                const directUpdate = updates.get(c.id);
+                                const indexedUpdates = [];
+                                updates.forEach((content, key) => {
+                                    if (key.startsWith(c.id + ':')) {
+                                        const idx = parseInt(key.split(':')[1], 10);
+                                        indexedUpdates.push({ index: idx, content });
+                                    }
+                                });
 
-                                    // Ensure last message exists and is assistant
+                                if (!directUpdate && indexedUpdates.length === 0) return c;
+
+                                const msgs = [...c.data.messages];
+
+                                // Handle indexed updates first (precise targeting)
+                                indexedUpdates.forEach(({ index, content }) => {
+                                    if (msgs[index] && msgs[index].role === 'assistant') {
+                                        msgs[index] = {
+                                            ...msgs[index],
+                                            content: msgs[index].content + content
+                                        };
+                                    }
+                                });
+
+                                // Handle direct/legacy update (last assistant message)
+                                if (directUpdate) {
+                                    const lastMsg = msgs[msgs.length - 1];
                                     if (!lastMsg || lastMsg.role !== 'assistant') {
-                                        // If for some reason the structure is broken, try to recover
-                                        msgs.push({ role: 'assistant', content: newContent });
+                                        msgs.push({ role: 'assistant', content: directUpdate });
                                     } else {
                                         msgs[msgs.length - 1] = {
                                             ...lastMsg,
-                                            content: lastMsg.content + newContent
+                                            content: lastMsg.content + directUpdate
                                         };
                                     }
-                                    return { ...c, data: { ...c.data, messages: msgs } };
                                 }
-                                return c;
+
+                                return { ...c, data: { ...c.data, messages: msgs } };
                             })
                         }));
                     } catch (e) {

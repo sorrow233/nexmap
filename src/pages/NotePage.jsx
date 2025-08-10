@@ -52,6 +52,10 @@ export default function NotePage({ onBack }) {
         const userMsg = { role: 'user', content: userContent };
         const assistantMsg = { role: 'assistant', content: '' };
 
+        // Calculate target message index BEFORE adding new messages
+        const currentMessagesLength = card.data.messages?.length || 0;
+        const targetMessageIndex = currentMessagesLength + 1;
+
         updateCardFull(cardId, (currentData) => ({
             ...currentData,
             messages: [...(currentData.messages || []), userMsg, assistantMsg]
@@ -61,10 +65,10 @@ export default function NotePage({ onBack }) {
 
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
-                updateCardContent(cardId, chunk);
+                updateCardContent(cardId, chunk, targetMessageIndex);
             });
         } catch (error) {
-            updateCardContent(cardId, `\n\n[System Error: ${error.message}]`);
+            updateCardContent(cardId, `\n\n[System Error: ${error.message}]`, targetMessageIndex);
         }
     };
 
