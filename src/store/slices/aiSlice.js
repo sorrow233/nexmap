@@ -134,7 +134,11 @@ export const createAISlice = (set, get) => {
                 // Messages are now [contextMessages, ...messages]
                 // Time injection will be handled by AIManager globally
                 const fullMessages = [...contextMessages, ...messages];
-                const card = cards.find(c => c.id === cardId);
+
+                // Re-fetch card from FRESH state to get updated model/providerId
+                // This is critical for handleRegenerate which updates these before calling us
+                const freshState = get();
+                const card = freshState.cards.find(c => c.id === cardId);
                 const model = card?.data?.model;
                 const providerId = card?.data?.providerId;
 

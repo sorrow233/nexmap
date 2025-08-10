@@ -205,7 +205,27 @@ class AIManager {
 
         try {
             while (this.activeTasks.size < this.concurrencyLimit && this.queue.length > 0) {
-                const task = this.queue.shift();
+                // Collect all tags from currently active tasks
+                const activeTagsSet = new Set();
+                for (const { task } of this.activeTasks.values()) {
+                    (task.tags || []).forEach(tag => activeTagsSet.add(tag));
+                }
+
+                // Find the next task that doesn't share tags with any active task
+                // This ensures tasks for the same card execute serially
+                const nextTaskIndex = this.queue.findIndex(task => {
+                    // Check if this task shares any tag with active tasks
+                    const hasConflict = (task.tags || []).some(tag => activeTagsSet.has(tag));
+                    return !hasConflict;
+                });
+
+                // If all queued tasks conflict with active ones, wait for active to finish
+                if (nextTaskIndex === -1) {
+                    console.log('[AIManager] All queued tasks conflict with active tasks, waiting...');
+                    break;
+                }
+
+                const task = this.queue.splice(nextTaskIndex, 1)[0];
                 const controller = new AbortController();
 
                 this.activeTasks.set(task.id, { controller, task });
