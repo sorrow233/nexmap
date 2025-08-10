@@ -127,6 +127,75 @@ class AIManager {
         });
     }
 
+    /**
+     * Cancel a specific task by ID
+     * @param {string} taskId - The task ID to cancel
+     */
+    cancelTask(taskId) {
+        // Cancel queued task
+        const queuedIndex = this.queue.findIndex(t => t.id === taskId);
+        if (queuedIndex !== -1) {
+            const task = this.queue[queuedIndex];
+            this.queue.splice(queuedIndex, 1);
+            task.reject(new Error('Cancelled by user'));
+            console.log(`[AIManager] Cancelled queued task: ${taskId}`);
+            return true;
+        }
+
+        // Cancel active task
+        const activeEntry = this.activeTasks.get(taskId);
+        if (activeEntry) {
+            activeEntry.controller.abort();
+            console.log(`[AIManager] Aborted active task: ${taskId}`);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Cancel all tasks matching the given tags (both queued and active)
+     * @param {string[]} tags - Tags to match
+     */
+    cancelByTags(tags) {
+        if (!tags || tags.length === 0) return;
+
+        // Cancel queued tasks
+        this.queue = this.queue.filter(t => {
+            const hasMatch = t.tags.some(tag => tags.includes(tag));
+            if (hasMatch) {
+                t.reject(new Error('Cancelled by user'));
+                console.log(`[AIManager] Cancelled queued task by tags: ${t.id}`);
+                return false;
+            }
+            return true;
+        });
+
+        // Cancel active tasks
+        for (const [taskId, entry] of this.activeTasks) {
+            const hasMatch = entry.task.tags.some(tag => tags.includes(tag));
+            if (hasMatch) {
+                entry.controller.abort();
+                console.log(`[AIManager] Aborted active task by tags: ${taskId}`);
+            }
+        }
+    }
+
+    /**
+     * Cancel all active and queued tasks
+     */
+    cancelAll() {
+        // Cancel all queued tasks
+        this.queue.forEach(t => t.reject(new Error('Cancelled by user')));
+        this.queue = [];
+
+        // Abort all active tasks
+        for (const [taskId, entry] of this.activeTasks) {
+            entry.controller.abort();
+            console.log(`[AIManager] Aborted all - task: ${taskId}`);
+        }
+    }
+
     async _processQueue() {
         if (this.processing) return;
         if (this.activeTasks.size >= this.concurrencyLimit) return;

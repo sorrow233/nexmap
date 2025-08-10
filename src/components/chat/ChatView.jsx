@@ -6,6 +6,7 @@ import { isSafari, isIOS } from '../../utils/browser';
 import { useStore } from '../../store/useStore';
 import useImageUpload from '../../hooks/useImageUpload';
 import { htmlToMarkdown } from '../../utils/htmlToMarkdown';
+import { aiManager } from '../../services/ai/AIManager';
 
 import SproutModal from '../chat/SproutModal';
 import ChatInput from '../chat/ChatInput';
@@ -176,6 +177,16 @@ export default function ChatView({
         } finally {
             setIsStreaming(false);
         }
+    };
+
+    // 停止生成
+    const handleStop = () => {
+        console.log('[ChatView] Stopping generation for card:', card.id);
+        aiManager.cancelByTags([`card:${card.id}`]);
+        setIsStreaming(false);
+        // 清空等待队列
+        pendingMessagesRef.current = [];
+        setPendingCount(0);
     };
 
     const handleTextSelection = () => {
@@ -410,6 +421,7 @@ export default function ChatView({
                 removeImage={removeImage}
                 fileInputRef={fileInputRef}
                 isStreaming={isStreaming}
+                onStop={handleStop}
                 placeholder={card.type === 'note' ? "Ask AI to refine this note..." : "Refine this thought..."}
             />
 
