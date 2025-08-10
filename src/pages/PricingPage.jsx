@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Check, Zap, Crown, Shield, ArrowLeft, Sparkles, Star, Globe, AlertTriangle } from 'lucide-react';
 import { auth } from '../services/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { isLikelyChinaUser } from '../utils/regionCheck';
 
 // Translations for pricing page
 const pricingTranslations = {
@@ -128,13 +129,7 @@ const pricingTranslations = {
     }
 };
 
-// Detect if user is likely from China
-const isLikelyChinaUser = () => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const lang = navigator.language || navigator.userLanguage || '';
-    const chinaTimezones = ['Asia/Shanghai', 'Asia/Urumqi', 'Asia/Chongqing', 'Asia/Harbin'];
-    return chinaTimezones.includes(tz) && lang.toLowerCase().startsWith('zh-cn');
-};
+
 
 export default function PricingPage() {
     const navigate = useNavigate();
