@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Crosshair } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
 import Zone from './Zone'; // NEW: Zone Component
@@ -322,7 +322,17 @@ export default function Canvas({ onCreateNote, ...props }) {
             </div>
 
             {/* Status Indicator */}
-            <div className="absolute bottom-4 left-4 flex items-center gap-4 pointer-events-none select-none">
+            <div className="absolute bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        useStore.getState().focusOnNearestCard();
+                    }}
+                    className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
+                    title="定位到最近的卡片 / Locate Nearest Card"
+                >
+                    <Crosshair size={16} className="group-hover:animate-pulse" />
+                </button>
                 <button
                     onClick={(e) => {
                         e.stopPropagation(); // Prevent canvas click
