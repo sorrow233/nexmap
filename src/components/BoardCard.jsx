@@ -32,10 +32,10 @@ export default function BoardCard({
             >
                 {/* Image Container - Aspect Ratio 4:3 */}
                 <div className="relative w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 overflow-hidden transition-transform duration-700 ease-out group-hover:shadow-2xl rounded-2xl">
-                    {board.backgroundImage ? (
+                    {board.backgroundImage || board.thumbnail ? (
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105 saturate-[0.85] group-hover:saturate-100"
-                            style={{ backgroundImage: `url(${board.backgroundImage})` }}
+                            style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-white/5 text-slate-200 dark:text-slate-700">
@@ -103,15 +103,13 @@ export default function BoardCard({
                 ${isTrashView ? 'cursor-default border-dashed border-slate-300 dark:border-white/10 opacity-70' : 'cursor-pointer hover:shadow-premium-hover hover:-translate-y-2'}
             `}
         >
-            {/* Background Image or Abstract Glow */}
-            {board.backgroundImage ? (
+            {/* Background Image or Thumbnail or Abstract Glow */}
+            {board.backgroundImage || board.thumbnail ? (
                 <>
                     <div
-                        key={board.backgroundImage}
+                        key={board.backgroundImage || board.thumbnail}
                         className="absolute inset-0 bg-cover bg-center transition-all duration-700 opacity-90 group-hover:opacity-100 group-hover:scale-105 animate-fade-in"
-                        style={{ backgroundImage: `url(${board.backgroundImage})` }}
-                        onLoad={() => console.log(`[UI] Background loaded for board ${board.id}`)}
-                        onError={(e) => console.error(`[UI] Background load ERROR for board ${board.id}. URL: ${board.backgroundImage}`)}
+                        style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                     />
                     <div className="absolute inset-0 bg-black/10 dark:bg-black/20 backdrop-blur-[0.5px] transition-all duration-500 group-hover:backdrop-blur-0 group-hover:bg-transparent" />
                 </>
