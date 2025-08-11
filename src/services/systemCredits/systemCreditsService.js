@@ -107,7 +107,6 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
     // Process stream
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let lastFullText = '';
     let buffer = '';
     let fullText = ''; // Track complete response
 
@@ -118,73 +117,35 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop();
+            buffer = lines.pop(); // Keep incomplete line
 
             for (const line of lines) {
-                let cleanLine = line.trim();
-                if (!cleanLine) continue;
+                if (line.trim().startsWith('data: ')) {
+                    const dataStr = line.trim().substring(6);
+                    if (dataStr === '[DONE]') continue;
 
-                if (cleanLine.startsWith('data: ')) {
-                    cleanLine = cleanLine.substring(6).trim();
-                }
+                    try {
+                        const data = JSON.parse(dataStr);
 
-                if (!cleanLine || cleanLine === '[DONE]') continue;
-
-                try {
-                    const data = JSON.parse(cleanLine);
-
-                    if (data.error) {
-                        throw new Error(data.error.message || JSON.stringify(data.error));
-                    }
-
-                    const currentText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                    if (currentText) {
-                        let delta = '';
-                        if (currentText.startsWith(lastFullText)) {
-                            delta = currentText.substring(lastFullText.length);
-                            lastFullText = currentText;
-                        } else {
-                            delta = currentText;
-                            lastFullText += currentText;
+                        if (data.error) {
+                            throw new Error(data.error.message || JSON.stringify(data.error));
                         }
+
+                        // OpenAI Format: choices[0].delta.content
+                        const delta = data.choices?.[0]?.delta?.content;
 
                         if (delta) {
                             fullText += delta;
                             onToken(delta);
                         }
-                    }
-                } catch (jsonErr) {
-                    if (jsonErr.message && jsonErr.message.indexOf('JSON') === -1) {
-                        throw jsonErr;
+                    } catch (jsonErr) {
+                        // Ignore parse errors on chunks or non-json lines
                     }
                 }
             }
         }
 
-        // Process remaining buffer
-        if (buffer.trim()) {
-            try {
-                let cleanLine = buffer.trim().startsWith('data: ')
-                    ? buffer.trim().substring(6)
-                    : buffer.trim();
-                const data = JSON.parse(cleanLine);
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                    const delta = text.startsWith(lastFullText)
-                        ? text.substring(lastFullText.length)
-                        : text;
-                    if (delta) {
-                        fullText += delta;
-                        onToken(delta);
-                    }
-                }
-            } catch (e) {
-                // Ignore parse errors for incomplete data
-            }
-        }
-
-        return fullText; // Return complete response for consistency
+        return fullText;
     } finally {
         reader.releaseLock();
     }

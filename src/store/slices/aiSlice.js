@@ -198,9 +198,23 @@ export const createAISlice = (set, get) => {
 
                 // Resolve config
                 const state = get();
-                // If card has a providerId, use it, otherwise use active config
+
+                // If using system credits (DeepSeek V3), FORCE the correct model/config
                 let config;
-                if (providerId && state.providers && state.providers[providerId]) {
+                if (state.isSystemCreditsUser) {
+                    config = {
+                        apiKey: 'system-credits',
+                        model: 'deepseek-ai/DeepSeek-V3.2', // FORCE correct model
+                        id: 'system-credits',
+                        protocol: 'system-credits' // Special protocol handled by ModelFactory
+                    };
+                    // Ensure the card data reflects the actual model used
+                    if (card.data.model !== 'deepseek-ai/DeepSeek-V3.2') {
+                        console.log('[AI] Correcting card model to DeepSeek V3 (System Credits)');
+                        // We don't await this state update, it just fixes the UI for next time
+                        updateCardFull(cardId, c => ({ ...c, model: 'deepseek-ai/DeepSeek-V3.2' }));
+                    }
+                } else if (providerId && state.providers && state.providers[providerId]) {
                     config = state.providers[providerId];
                 } else {
                     config = state.getActiveConfig();
