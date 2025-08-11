@@ -16,6 +16,7 @@ import { lazyWithRetry } from './utils/lazyWithRetry';
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
 const BoardPage = lazyWithRetry(() => import('./pages/BoardPage'));
 const LandingPage = lazyWithRetry(() => import('./modules/landing'));
+const FreeTrialPage = lazyWithRetry(() => import('./pages/FreeTrialPage'));
 
 
 import ModernDialog from './components/ModernDialog';
@@ -245,6 +246,7 @@ function AppContent() {
             <Suspense fallback={<Loading message="Initializing MixBoard..." />}>
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
+                    <Route path="/free-trial" element={<FreeTrialPage />} />
 
                     <Route path="/gallery" element={
                         <GalleryPage
