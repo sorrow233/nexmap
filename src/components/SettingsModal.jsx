@@ -14,6 +14,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     if (!isOpen) return null;
 
     const [activeTab, setActiveTab] = useState('credits');
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     // LLM State
     const [providers, setProviders] = useState({});
@@ -170,6 +171,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         </div>
                     </div>
                     {/* Tabs */}
+                    {/* Tabs */}
                     <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
                         <button
                             onClick={() => setActiveTab('credits')}
@@ -180,33 +182,61 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         >
                             <Gift size={14} /> Credits
                         </button>
-                        <button
-                            onClick={() => setActiveTab('llm')}
-                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'llm'
-                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            <Cpu size={14} /> Provider
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('roles')}
-                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'roles'
-                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            <Layers size={14} /> Roles
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('storage')}
-                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'storage'
-                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            <Database size={14} /> Storage
-                        </button>
+
+                        {/* Advanced Settings Toggle */}
+                        <div className="flex bg-slate-200/50 dark:bg-slate-700/50 rounded-lg p-0.5 gap-0.5 transition-all">
+                            {!showAdvanced ? (
+                                <button
+                                    onClick={() => setShowAdvanced(true)}
+                                    className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5"
+                                >
+                                    <Settings size={14} /> Advanced
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setShowAdvanced(false);
+                                            setActiveTab('credits');
+                                        }}
+                                        className="px-2 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                        title="Hide Advanced"
+                                    >
+                                        <Settings size={14} />
+                                    </button>
+
+                                    <div className="w-[1px] bg-slate-300 dark:bg-slate-600 my-1"></div>
+
+                                    <button
+                                        onClick={() => setActiveTab('llm')}
+                                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'llm'
+                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                            }`}
+                                    >
+                                        <Cpu size={14} /> Provider
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('roles')}
+                                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'roles'
+                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                            }`}
+                                    >
+                                        <Layers size={14} /> Roles
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('storage')}
+                                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'storage'
+                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                            }`}
+                                    >
+                                        <Database size={14} /> Storage
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -261,7 +291,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     >
                         Cancel
                     </button>
-                    <div className="mr-auto text-[10px] text-slate-300 dark:text-slate-700 font-mono mt-2 ml-2">v0.0.35-v3.2</div>
+                    <div className="mr-auto text-[10px] text-slate-300 dark:text-slate-700 font-mono mt-2 ml-2">v0.0.35-advanced-ui</div>
                     <button
                         onClick={handleSave}
                         className="px-5 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95"
