@@ -1,6 +1,6 @@
 import React from 'react';
 import { Key, Globe, Box, Layers, Settings, CheckCircle2, AlertCircle, RefreshCw, Plus, Trash2, Server } from 'lucide-react';
-import SystemCreditsCard from './SystemCreditsCard';
+
 
 
 export default function SettingsLLMTab({
@@ -73,8 +73,7 @@ export default function SettingsLLMTab({
             {/* Main Content: Configuration */}
             <div className="w-2/3 flex flex-col h-full overflow-y-auto pr-1 pb-4 custom-scrollbar">
 
-                {/* System Credits Card (for users without API key) */}
-                <SystemCreditsCard currentProvider={currentProvider} />
+
 
                 {/* Provider Name & Protocol Header */}
                 <div className="space-y-4 mb-6">
