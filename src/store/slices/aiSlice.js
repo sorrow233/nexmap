@@ -5,6 +5,7 @@ import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import favoritesService from '../../services/favoritesService';
 import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
+import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 
 
 export const createAISlice = (set, get) => {
@@ -88,8 +89,8 @@ export const createAISlice = (set, get) => {
             let providerId = requestedProviderId;
 
             if (state.isSystemCreditsUser) {
-                model = 'deepseek-ai/DeepSeek-V3.2';
-                providerId = 'system-credits';
+                model = AI_MODELS.FREE_TIER;
+                providerId = AI_PROVIDERS.SYSTEM_CREDITS;
             }
 
             const newId = id || uuid();
@@ -214,16 +215,16 @@ export const createAISlice = (set, get) => {
                 let config;
                 if (state.isSystemCreditsUser) {
                     config = {
-                        apiKey: 'system-credits',
-                        model: 'deepseek-ai/DeepSeek-V3.2', // FORCE correct model
-                        id: 'system-credits',
-                        protocol: 'system-credits' // Special protocol handled by ModelFactory
+                        apiKey: AI_PROVIDERS.SYSTEM_CREDITS,
+                        model: AI_MODELS.SYSTEM_CREDITS, // FORCE correct model
+                        id: AI_PROVIDERS.SYSTEM_CREDITS,
+                        protocol: AI_PROVIDERS.SYSTEM_CREDITS // Special protocol handled by ModelFactory
                     };
                     // Ensure the card data reflects the actual model used
-                    if (card.data.model !== 'deepseek-ai/DeepSeek-V3.2') {
+                    if (card.data.model !== AI_MODELS.SYSTEM_CREDITS) {
                         console.log('[AI] Correcting card model to DeepSeek V3 (System Credits)');
                         // We don't await this state update, it just fixes the UI for next time
-                        updateCardFull(cardId, c => ({ ...c, model: 'deepseek-ai/DeepSeek-V3.2' }));
+                        updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.SYSTEM_CREDITS }));
                     }
                 } else if (providerId && state.providers && state.providers[providerId]) {
                     config = state.providers[providerId];

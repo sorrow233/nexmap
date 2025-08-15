@@ -126,7 +126,7 @@ export default function SystemCreditsCard({ currentProvider }) {
                                 </span>
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                使用 DeepSeek V3 模型，约可进行 <strong className="text-brand-600 dark:text-brand-400">10 万+</strong> 次对话。
+                                使用 DeepSeek V3.2 模型，约可进行 <strong className="text-brand-600 dark:text-brand-400">10 万+</strong> 次对话。
                             </p>
                         </div>
                     )}

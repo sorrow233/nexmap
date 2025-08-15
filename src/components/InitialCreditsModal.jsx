@@ -77,7 +77,7 @@ export default function InitialCreditsModal({ isOpen, onClose }) {
                         </button>
 
                         <p className="mt-5 text-[10px] text-slate-600 uppercase tracking-[0.2em]">
-                            Powered by DeepSeek V3
+                            Powered by DeepSeek V3.2
                         </p>
                     </div>
                 </div>
