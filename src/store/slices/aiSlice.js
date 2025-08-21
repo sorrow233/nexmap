@@ -357,15 +357,23 @@ export const createAISlice = (set, get) => {
         },
 
         handleRegenerate: async () => {
-            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate, getActiveConfig, activeProviderId } = get();
+            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate, getActiveConfig, activeProviderId, isSystemCreditsUser } = get();
             // Filter out cards that don't have messages (like sticky notes)
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
 
             // Get current active config to use for regeneration
-            const activeConfig = getActiveConfig();
-            const currentModel = activeConfig?.model;
-            const currentProviderId = activeProviderId;
+            let currentModel, currentProviderId;
+
+            if (isSystemCreditsUser) {
+                // Force DeepSeek for system credits user
+                currentModel = AI_MODELS.SYSTEM_CREDITS;
+                currentProviderId = AI_PROVIDERS.SYSTEM_CREDITS;
+            } else {
+                const activeConfig = getActiveConfig();
+                currentModel = activeConfig?.model;
+                currentProviderId = activeProviderId;
+            }
 
             // Reset assistant messages first AND update to current model
             set(state => ({
