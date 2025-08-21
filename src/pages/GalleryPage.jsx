@@ -7,7 +7,7 @@ import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, getBoardsList, saveUserSettings, loadUserSettings, updateUserSettings } from '../services/storage';
 import { useNavigate } from 'react-router-dom';
 
-const WelcomeCanvas = React.lazy(() => import('../components/WelcomeCanvas'));
+import InitialCreditsModal from '../components/InitialCreditsModal';
 
 export default function GalleryPage({
     boardsList,
@@ -97,9 +97,10 @@ export default function GalleryPage({
     // Show welcome screen for first-time visitors
     if (showWelcome) {
         return (
-            <React.Suspense fallback={<div className="fixed inset-0 bg-white"></div>}>
-                <WelcomeCanvas onDismiss={handleDismissWelcome} />
-            </React.Suspense>
+            <InitialCreditsModal
+                isOpen={true}
+                onClose={handleDismissWelcome}
+            />
         );
     }
 
