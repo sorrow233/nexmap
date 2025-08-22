@@ -45,18 +45,15 @@ export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettin
                     <button
                         onClick={onOpenSettings}
                         className={`
-                            flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold
-                            bg-gradient-to-r from-violet-600 to-indigo-600 text-white
-                            border border-white/10
-                            shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer
-                            group
+                            flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
+                            bg-white/80 dark:bg-slate-800/80 backdrop-blur-md
+                            border border-slate-200 dark:border-slate-700
+                            shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer
+                            ${systemCredits > 20 ? 'text-amber-600' : systemCredits > 0 ? 'text-orange-500' : 'text-red-500'}
                         `}
-                        title="无需配置 API Key，直接开始使用"
                     >
-                        <Sparkles size={14} className="text-yellow-300 group-hover:rotate-12 transition-transform" fill="currentColor" />
-                        <span>10万+ 免费额度</span>
-                        <div className="w-[1px] h-3 bg-white/20 mx-1"></div>
-                        <span className="opacity-80 font-mono text-[10px]">{systemCredits.toFixed(0)}</span>
+                        <Coins size={14} />
+                        <span>{systemCredits.toFixed(1)} 积分</span>
                     </button>
                 )}
             </div>

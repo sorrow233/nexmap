@@ -21,16 +21,10 @@ export default function SettingsLLMTab({
     return (
         <div className="flex gap-6 h-full animate-slide-up">
 
-            {/* Advanced User Notice */}
-            <div className="absolute -top-2 left-0 right-0 px-4">
-                <div className="p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg text-xs border border-amber-200 dark:border-amber-800/30 flex items-center gap-2">
-                    <AlertCircle size={14} className="flex-shrink-0" />
-                    <span>⚙️ <strong>高级设置</strong> - 此页面用于配置自定义 API 密钥，普通用户无需修改。</span>
-                </div>
-            </div>
+
 
             {/* Sidebar: Provider List */}
-            <div className="w-1/3 flex flex-col min-h-[400px] border-r border-slate-100 dark:border-white/5 pr-6 pt-8">
+            <div className="w-1/3 flex flex-col min-h-[400px] border-r border-slate-100 dark:border-white/5 pr-4">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Providers</h3>
                     <button

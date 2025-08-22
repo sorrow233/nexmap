@@ -45,9 +45,9 @@ export class GeminiProvider extends LLMProvider {
 
 
     async chat(messages, model, options = {}) {
-        const { apiKey, baseUrl } = this.config;
+        const { apiKey, baseUrl = "" } = this.config;
         const modelToUse = model || this.config.model;
-        const cleanModel = (baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
+        const cleanModel = (baseUrl && baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
         const resolvedMessages = await resolveRemoteImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
@@ -132,9 +132,9 @@ export class GeminiProvider extends LLMProvider {
     }
 
     async stream(messages, onToken, model, options = {}) {
-        const { apiKey, baseUrl } = this.config;
+        const { apiKey, baseUrl = "" } = this.config;
         const modelToUse = model || this.config.model;
-        const cleanModel = (baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
+        const cleanModel = (baseUrl && baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
         const resolvedMessages = await resolveRemoteImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
