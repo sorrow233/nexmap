@@ -8,7 +8,8 @@ import {
     StickyNote,
     MessageSquare,
     Clipboard,
-    Unlink
+    Unlink,
+    Palette
 } from 'lucide-react';
 
 // Context Menu Context for global state
@@ -48,6 +49,40 @@ function MenuItem({ icon: Icon, label, onClick, danger = false, disabled = false
 // Separator Component
 function Separator() {
     return <div className="h-px bg-slate-200 dark:bg-slate-600 my-1" />;
+}
+
+// Color definitions for the color picker
+const CARD_COLORS = [
+    { id: null, label: '无', bgClass: 'bg-slate-200 dark:bg-slate-600' },
+    { id: 'amber', label: '琥珀', bgClass: 'bg-amber-400' },
+    { id: 'emerald', label: '翡翠', bgClass: 'bg-emerald-400' },
+    { id: 'violet', label: '紫罗兰', bgClass: 'bg-violet-400' }
+];
+
+// Color Picker Menu Item Component
+function ColorPickerItem({ currentColor, onColorSelect, onClose }) {
+    return (
+        <div className="px-3 py-2">
+            <div className="flex items-center gap-2 mb-2">
+                <Palette size={16} className="text-slate-500" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">卡片颜色</span>
+            </div>
+            <div className="flex items-center gap-2 ml-6">
+                {CARD_COLORS.map((color) => (
+                    <button
+                        key={color.id || 'none'}
+                        onClick={() => {
+                            onColorSelect(color.id);
+                            onClose();
+                        }}
+                        className={`w-6 h-6 rounded-full ${color.bgClass} transition-all hover:scale-110 hover:ring-2 hover:ring-offset-1 hover:ring-slate-400
+                            ${currentColor === color.id ? 'ring-2 ring-offset-2 ring-brand-500 scale-110' : ''}`}
+                        title={color.label}
+                    />
+                ))}
+            </div>
+        </div>
+    );
 }
 
 // Context Menu Panel
@@ -114,6 +149,16 @@ function ContextMenuPanel({ x, y, items, onClose }) {
                 if (item.type === 'separator') {
                     return <Separator key={index} />;
                 }
+                if (item.type === 'colorPicker') {
+                    return (
+                        <ColorPickerItem
+                            key={index}
+                            currentColor={item.currentColor}
+                            onColorSelect={item.onColorSelect}
+                            onClose={onClose}
+                        />
+                    );
+                }
                 return (
                     <MenuItem
                         key={index}
@@ -146,13 +191,14 @@ export function ContextMenuProvider({ children }) {
 
     // Card context menu items generator
     const getCardMenuItems = useCallback((card, handlers) => {
-        const { onCopy, onDelete, onToggleFavorite, onExpand, onConnect, isFavorite } = handlers;
+        const { onCopy, onDelete, onToggleFavorite, onExpand, onConnect, onSetColor, isFavorite } = handlers;
         return [
             { icon: Copy, label: '复制内容', onClick: onCopy },
             { type: 'separator' },
             { icon: Star, label: isFavorite ? '取消收藏' : '收藏', onClick: onToggleFavorite },
             { icon: Sparkles, label: 'AI 扩展', onClick: onExpand },
             { icon: Link, label: '创建连接', onClick: onConnect },
+            { type: 'colorPicker', currentColor: card.data?.cardColor, onColorSelect: onSetColor },
             { type: 'separator' },
             { icon: Trash2, label: '删除', onClick: onDelete, danger: true }
         ];
