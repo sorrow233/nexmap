@@ -209,6 +209,10 @@ function AppContent() {
         const { cards, connections, groups } = useStore.getState();
         if (currentBoardId) await saveBoard(currentBoardId, { cards, connections, groups });
 
+        // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
+        const freshBoards = getBoardsList();
+        setBoardsList(freshBoards);
+
         navigate('/gallery');
         setCards([]);
         setConnections([]);
