@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
 import { Share2, Star, ChevronDown, ChevronUp } from 'lucide-react';
@@ -10,7 +10,7 @@ const USER_MSG_MAX_LENGTH = 200;
 
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
     const isUser = message.role === 'user';
-    const cards = useStore(state => state.cards);
+    // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
     const contentRef = React.useRef(null);
 
@@ -144,6 +144,9 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         // This regex looks for UUIDs optionally wrapped in brackets
         const uuidRegex = /\[?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\]?/gi;
 
+        // Use getState() to avoid re-renders from cards array changes
+        const cards = useStore.getState().cards;
+
         return html.replace(uuidRegex, (match, id) => {
             const card = cards.find(c => c.id === id);
             if (card) {
@@ -159,7 +162,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         if (isUser) return null;
         const html = content ? renderMessageContent(content, marks, capturedNotes) : '';
         return resolveCardReferences(html);
-    }, [content, marks, capturedNotes, isUser, cards]);
+    }, [content, marks, capturedNotes, isUser]);
 
     const handleMessageClick = (e) => {
         const link = e.target.closest('.card-ref-link');

@@ -13,6 +13,9 @@ import ChatInput from '../chat/ChatInput';
 import MessageList from '../chat/MessageList';
 import ShareModal from '../share/ShareModal';
 
+// Stable empty array to prevent infinite re-renders from || [] pattern
+const EMPTY_PENDING_MESSAGES = [];
+
 export default function ChatView({
     card,
     onClose,
@@ -31,8 +34,8 @@ export default function ChatView({
     const analysisModel = useStore(state => state.getRoleModel('analysis'));
 
     // Store-based persistent message queue (survives ChatModal close)
-    // Use a stable selector that doesn't return a new array every time
-    const pendingMessages = useStore(state => state.pendingMessages[card.id] || []);
+    // Use stable empty array constant to prevent infinite re-renders
+    const pendingMessages = useStore(state => state.pendingMessages[card.id]) || EMPTY_PENDING_MESSAGES;
     const addPendingMessage = useStore(state => state.addPendingMessage);
     const popPendingMessage = useStore(state => state.popPendingMessage);
     const clearPendingMessages = useStore(state => state.clearPendingMessages);
