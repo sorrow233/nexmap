@@ -4,11 +4,14 @@ import ModernDialog from './ModernDialog';
 import useBoardBackground from '../hooks/useBoardBackground';
 import BoardDropZone from './BoardDropZone';
 import BoardCard from './BoardCard';
+import { useStore } from '../store/useStore';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const { generatingBoardId, generateBackground } = useBoardBackground();
-    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null });
+    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null, isPermanent: false });
+    const [freeUserDialog, setFreeUserDialog] = useState(false);
     const [greeting, setGreeting] = useState('Welcome back');
+    const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
 
     useEffect(() => {
         const hour = new Date().getHours();
@@ -75,10 +78,12 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                             index={index}
                                             isTrashView={false}
                                             onSelect={onSelectBoard}
-                                            onDelete={onDeleteBoard}
+                                            onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
                                             onGenerateBackground={generateBackground}
                                             generatingBoardId={generatingBoardId}
                                             variant="overlay"
+                                            isSystemCreditsUser={isSystemCreditsUser}
+                                            onFreeUserRestricted={() => setFreeUserDialog(true)}
                                         />
                                     </div>
                                 ))}
@@ -111,12 +116,14 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                 index={index}
                                 isTrashView={isTrashView}
                                 onSelect={onSelectBoard}
-                                onDelete={onDeleteBoard}
+                                onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
                                 onRestore={onRestoreBoard}
-                                onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id })}
+                                onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: true })}
                                 onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
                                 generatingBoardId={generatingBoardId}
                                 variant="stacked"
+                                isSystemCreditsUser={isSystemCreditsUser}
+                                onFreeUserRestricted={() => setFreeUserDialog(true)}
                             />
                         ))}
 
@@ -143,11 +150,29 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             {/* Delete Confirmation */}
             <ModernDialog
                 isOpen={deleteDialog.isOpen}
-                onClose={() => setDeleteDialog({ isOpen: false, boardId: null })}
-                onConfirm={() => onPermanentlyDeleteBoard(deleteDialog.boardId)}
-                title="Permanently Delete?"
-                message="This action cannot be undone. Are you sure you wish to dissolve this board into the void?"
+                onClose={() => setDeleteDialog({ isOpen: false, boardId: null, isPermanent: false })}
+                onConfirm={() => {
+                    if (deleteDialog.isPermanent) {
+                        onPermanentlyDeleteBoard(deleteDialog.boardId);
+                    } else {
+                        onDeleteBoard(deleteDialog.boardId);
+                    }
+                }}
+                title={deleteDialog.isPermanent ? "Permanently Delete?" : "Move to Trash?"}
+                message={deleteDialog.isPermanent
+                    ? "This action cannot be undone. Are you sure you wish to dissolve this board into the void?"
+                    : "This board will be moved to the trash. You can restore it within 30 days."
+                }
                 type="confirm"
+            />
+
+            {/* Free User Restriction Dialog */}
+            <ModernDialog
+                isOpen={freeUserDialog}
+                onClose={() => setFreeUserDialog(false)}
+                title="功能限制"
+                message="鉴于图片生成模型的成本较高，普通用户暂时不支持该功能。如需使用，请配置您自己的 API Key。"
+                type="alert"
             />
         </div>
     );
