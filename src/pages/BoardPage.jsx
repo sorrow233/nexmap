@@ -23,31 +23,34 @@ import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
     const navigate = useNavigate();
-    const { undo, redo, pastStates, futureStates } = useTemporalStore((state) => state);
-    const {
-        cards,
-        connections,
-        groups, // NEW: Needed for autosave
-        selectedIds,
-        generatingCardIds,
-        expandedCardId,
-        setExpandedCardId,
-        updateCardFull,
-        handleRegenerate,
-        handleBatchDelete,
-        handleChatGenerate,
-        updateCardContent,
-        offset,
-        scale,
-        toggleFavorite, favoritesLastUpdate, // For ChatModal favorites
-        createGroup, // NEW: Group action
-        getConnectedCards, // NEW: Helper
-        setSelectedIds, // Need this for select connected
-        arrangeSelectionGrid, // NEW: Grid Layout
-        isBoardLoading, // NEW: Loading State
-        lastSavedAt,
-        setLastSavedAt
-    } = useStore();
+    const cards = useStore(state => state.cards);
+    const connections = useStore(state => state.connections);
+    const groups = useStore(state => state.groups);
+    const selectedIds = useStore(state => state.selectedIds);
+    const generatingCardIds = useStore(state => state.generatingCardIds);
+    const expandedCardId = useStore(state => state.expandedCardId);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
+    const isBoardLoading = useStore(state => state.isBoardLoading);
+    const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
+
+    const setExpandedCardId = useStore(state => state.setExpandedCardId);
+    const updateCardFull = useStore(state => state.updateCardFull);
+    const handleRegenerate = useStore(state => state.handleRegenerate);
+    const handleBatchDelete = useStore(state => state.handleBatchDelete);
+    const handleChatGenerate = useStore(state => state.handleChatGenerate);
+    const updateCardContent = useStore(state => state.updateCardContent);
+    const toggleFavorite = useStore(state => state.toggleFavorite);
+    const createGroup = useStore(state => state.createGroup);
+    const getConnectedCards = useStore(state => state.getConnectedCards);
+    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
+    const setLastSavedAt = useStore(state => state.setLastSavedAt);
+
+    const undo = useTemporalStore((state) => state.undo);
+    const redo = useTemporalStore((state) => state.redo);
+    const pastStates = useTemporalStore((state) => state.pastStates);
+    const futureStates = useTemporalStore((state) => state.futureStates);
 
     const {
         handleCreateCard,

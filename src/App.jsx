@@ -61,26 +61,32 @@ function AppContent() {
     // Search Modal State
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [allBoardsData, setAllBoardsData] = useState({});
+    const [isSearchDataLoaded, setIsSearchDataLoaded] = useState(false);
 
     // Cmd+K shortcut for search
     useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
 
     // Load all boards data for search (lazy load when search opens)
     useEffect(() => {
-        if (isSearchOpen && Object.keys(allBoardsData).length === 0) {
+        if (isSearchOpen && !isSearchDataLoaded) {
             // Load data from localStorage for all boards
             const loadedData = {};
+            let hasFoundAny = false;
             boardsList.forEach(board => {
                 try {
                     const data = localStorage.getItem(`board_${board.id}`);
-                    if (data) loadedData[board.id] = JSON.parse(data);
+                    if (data) {
+                        loadedData[board.id] = JSON.parse(data);
+                        hasFoundAny = true;
+                    }
                 } catch (e) {
                     console.warn('Failed to load board data for search:', board.id);
                 }
             });
             setAllBoardsData(loadedData);
+            setIsSearchDataLoaded(true);
         }
-    }, [isSearchOpen, boardsList, allBoardsData]);
+    }, [isSearchOpen, boardsList, isSearchDataLoaded]);
 
     const showDialog = (title, message, type = 'info', onConfirm = () => { }) => {
         setDialog({ isOpen: true, title, message, type, onConfirm });

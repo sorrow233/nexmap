@@ -27,11 +27,11 @@ export default function ChatView({
 
     // Get config from Store
     const activeId = useStore(state => state.activeId);
-    const providers = useStore(state => state.providers);
-    const config = providers[activeId];
+    const config = useStore(state => state.providers[activeId]);
     const analysisModel = useStore(state => state.getRoleModel('analysis'));
 
     // Store-based persistent message queue (survives ChatModal close)
+    // Use a stable selector that doesn't return a new array every time
     const pendingMessages = useStore(state => state.pendingMessages[card.id] || []);
     const addPendingMessage = useStore(state => state.addPendingMessage);
     const popPendingMessage = useStore(state => state.popPendingMessage);
