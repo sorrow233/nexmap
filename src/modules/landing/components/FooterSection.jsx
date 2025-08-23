@@ -15,7 +15,12 @@ const FooterSection = () => {
             >
                 {t.footer.cta}
             </button>
-            <div className="mt-12 text-white/20 text-sm">
+            <div className="flex justify-center gap-6 mt-12 text-sm text-slate-400">
+                <a href="/legal/tokushoho" className="hover:text-white transition-colors">特定商取引法に基づく表記</a>
+                <a href="/legal/terms" className="hover:text-white transition-colors">利用規約</a>
+                <a href="/legal/privacy" className="hover:text-white transition-colors">プライバシーポリシー</a>
+            </div>
+            <div className="mt-8 text-white/20 text-sm">
                 {t.footer.rights}
             </div>
         </div>
