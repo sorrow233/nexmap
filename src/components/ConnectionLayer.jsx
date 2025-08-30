@@ -65,11 +65,17 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             nextCardsMap.set(c.id, c);
         }
 
-        // 1. Detect which cards actually moved/resized
+        // 1. Detect which cards actually moved/resized OR changed color
         const movedCardIds = new Set();
         for (const [id, card] of nextCardsMap) {
             const prev = prevCardsMap.get(id);
-            if (!prev || prev.x !== card.x || prev.y !== card.y || prev.w !== card.w || prev.h !== card.h) {
+            if (!prev ||
+                prev.x !== card.x ||
+                prev.y !== card.y ||
+                prev.w !== card.w ||
+                prev.h !== card.h ||
+                prev.data?.cardColor !== card.data?.cardColor // Deep check for color change
+            ) {
                 movedCardIds.add(id);
             }
         }
@@ -209,9 +215,9 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                     // 4. Group paths by color for efficient batch drawing
                     const colorGroups = {
                         default: [],
-                        amber: [],
-                        emerald: [],
-                        violet: []
+                        rose: [],
+                        teal: [],
+                        blue: []
                     };
 
                     for (const entry of map.values()) {
@@ -224,12 +230,12 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                         }
                     }
 
-                    // Color definitions for light/dark mode
+                    // Color definitions for light/dark mode - Modern Pastels
                     const colors = {
                         default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
-                        amber: isDark ? 'rgba(251, 191, 36, 0.6)' : 'rgba(245, 158, 11, 0.6)',
-                        emerald: isDark ? 'rgba(52, 211, 153, 0.6)' : 'rgba(16, 185, 129, 0.6)',
-                        violet: isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'
+                        rose: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // rose-500/400
+                        teal: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // teal-500/400
+                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)' // blue-500/400
                     };
 
                     // Draw each color group

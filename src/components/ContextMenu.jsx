@@ -54,9 +54,9 @@ function Separator() {
 // Color definitions for the color picker
 const CARD_COLORS = [
     { id: null, label: '无', bgClass: 'bg-slate-200 dark:bg-slate-600' },
-    { id: 'amber', label: '琥珀', bgClass: 'bg-amber-400' },
-    { id: 'emerald', label: '翡翠', bgClass: 'bg-emerald-400' },
-    { id: 'violet', label: '紫罗兰', bgClass: 'bg-violet-400' }
+    { id: 'rose', label: '玫瑰', bgClass: 'bg-rose-400' },
+    { id: 'teal', label: '青色', bgClass: 'bg-teal-400' },
+    { id: 'blue', label: '天空', bgClass: 'bg-blue-400' }
 ];
 
 // Color Picker Menu Item Component

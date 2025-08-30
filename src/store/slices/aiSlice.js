@@ -157,7 +157,7 @@ export const createAISlice = (set, get) => {
         },
 
         handleChatGenerate: async (cardId, messages, onToken) => {
-            const { setCardGenerating, updateCardContent, cards, connections } = get();
+            const { setCardGenerating, updateCardContent, updateCardFull, cards, connections } = get();
             setCardGenerating(cardId, true);
 
             try {
