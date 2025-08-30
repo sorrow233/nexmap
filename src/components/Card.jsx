@@ -149,7 +149,7 @@ const Card = React.memo(function Card({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[320px] rounded-2xl flex flex-col select-none pointer-events-auto group shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)]
+            className={`absolute w-[320px] rounded-2xl flex flex-col select-none pointer-events-auto group shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] border
                 ${isSafari || isIOS ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-white/20' : 'bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-300 dark:border-white/10'}
                 ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 cursor-grab'}
                 ${isSelected ? 'card-sharp-selected' : 'hover:scale-[1.01] hover:border-brand-300 dark:hover:border-white/20'}
