@@ -229,7 +229,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     // Wrapper to bridge ChatModal's signature with handleChatGenerate
     const handleChatModalGenerate = async (cardId, text, images = []) => {
         console.log('[DEBUG handleChatModalGenerate] Called with:', { cardId, text, imagesCount: images.length });
-        const card = cards.find(c => c.id === cardId);
+
+        // FIX: Gets fresh state to avoid stale closures in message queue
+        const freshCards = useStore.getState().cards;
+        const card = freshCards.find(c => c.id === cardId);
+
         if (!card) {
             console.error('[DEBUG handleChatModalGenerate] Card not found:', cardId);
             return;
