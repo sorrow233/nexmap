@@ -313,10 +313,24 @@ export const createAISlice = (set, get) => {
                                 // Handle indexed updates first (precise targeting)
                                 indexedUpdates.forEach(({ index, content }) => {
                                     if (msgs[index] && msgs[index].role === 'assistant') {
+                                        // Target index exists and is assistant - update it directly
                                         msgs[index] = {
                                             ...msgs[index],
                                             content: msgs[index].content + content
                                         };
+                                    } else {
+                                        // FALLBACK: Target index doesn't exist yet (race condition with optimistic update)
+                                        // Find the last assistant message and append there
+                                        // This prevents content loss during rapid message sending
+                                        for (let i = msgs.length - 1; i >= 0; i--) {
+                                            if (msgs[i].role === 'assistant') {
+                                                msgs[i] = {
+                                                    ...msgs[i],
+                                                    content: msgs[i].content + content
+                                                };
+                                                break;
+                                            }
+                                        }
                                     }
                                 });
 
