@@ -75,7 +75,7 @@ function ColorPickerItem({ currentColor, onColorSelect, onClose }) {
                 <Palette size={16} className="text-slate-500" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Line Color</span>
             </div>
-            <div className="flex items-center gap-2 ml-6 flex-wrap">
+            <div className="grid grid-cols-4 gap-2 ml-6">
                 {CARD_COLORS.map((color) => (
                     <button
                         key={color.id || 'none'}
