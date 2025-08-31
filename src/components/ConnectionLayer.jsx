@@ -217,21 +217,21 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                         default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
 
                         // Red / Rose
-                        red: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // rose-500/400
-                        rose: isDark ? 'rgba(244, 63, 94, 0.6)' : 'rgba(251, 113, 133, 0.6)', // legacy
+                        red: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)', // rose-500
+                        rose: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)', // legacy
 
                         // Orange
-                        orange: isDark ? 'rgba(251, 146, 60, 0.6)' : 'rgba(251, 146, 60, 0.6)', // orange-500/400
+                        orange: isDark ? 'rgba(249, 115, 22, 0.7)' : 'rgba(249, 115, 22, 0.65)', // orange-500
 
                         // Amber
-                        amber: isDark ? 'rgba(245, 158, 11, 0.6)' : 'rgba(251, 191, 36, 0.6)', // amber-500/400
+                        amber: isDark ? 'rgba(245, 158, 11, 0.7)' : 'rgba(251, 191, 36, 0.65)', // amber-500/400
 
                         // Green / Emerald
-                        green: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(52, 211, 153, 0.6)', // emerald-500/400
-                        emerald: isDark ? 'rgba(16, 185, 129, 0.6)' : 'rgba(52, 211, 153, 0.6)', // legacy
+                        green: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)', // green-500
+                        emerald: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)', // legacy
 
                         // Teal
-                        teal: isDark ? 'rgba(20, 184, 166, 0.6)' : 'rgba(45, 212, 191, 0.6)', // teal-500/400
+                        teal: isDark ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.65)', // cyan-500 (more distinct from green)
 
                         // Blue
                         blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)', // blue-500/400
