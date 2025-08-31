@@ -1,4 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+/**
+ * ContextMenu.jsx
+ * Build: 2025-12-28T03:41:00Z - Line Color with 7 colors
+ */
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import {
     Copy,
     Trash2,
