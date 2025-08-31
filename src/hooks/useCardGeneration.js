@@ -87,7 +87,11 @@ export function useCardGeneration() {
                             firstToken = false;
                         }
                         perfMonitor.onChunk(chunk);
-                        updateCardContent(newId, chunk);
+
+                        // Find the assistant message ID to ensure isolated buffering
+                        const freshCard = useStore.getState().cards.find(c => c.id === newId);
+                        const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                        updateCardContent(newId, chunk, assistantMsg?.id);
                     }
                 });
 
@@ -142,7 +146,8 @@ export function useCardGeneration() {
                 : userContentParts
         };
 
-        const assistantMsg = { role: 'assistant', content: '' };
+        const assistantId = uuid();
+        const assistantMsg = { id: assistantId, role: 'assistant', content: '' };
 
         // Optimistic UI Update
         setCards(prev => prev.map(c => {
@@ -159,7 +164,12 @@ export function useCardGeneration() {
         await Promise.all(targetCards.map(async (card) => {
             try {
                 const history = [...card.data.messages, userMsg];
-                await handleChatGenerate(card.id, history, (chunk) => updateCardContent(card.id, chunk));
+                // Find the specific assistant message ID we just created for this card in the optimistic update
+                const freshCard = useStore.getState().cards.find(c => c.id === card.id);
+                const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                const messageId = assistantMsg?.id;
+
+                await handleChatGenerate(card.id, history, (chunk, msgId) => updateCardContent(card.id, chunk, msgId || messageId));
                 debugLog.ai(`Batch response complete for card ${card.id}`);
             } catch (e) {
                 debugLog.error(`Batch chat failed for card ${card.id}`, e);
