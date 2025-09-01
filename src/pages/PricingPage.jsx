@@ -6,12 +6,13 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { isLikelyChinaUser } from '../utils/regionCheck';
 
 // Translations for pricing page
+// Translations for pricing page
 const pricingTranslations = {
     en: {
         backToNexMap: 'Back to NexMap',
         securedByStripe: 'Secured by Stripe',
         tagline: 'Simple, transparent pricing',
-        heroTitle: 'Unlock the Power of AI',
+        heroTitle: 'Unlock the Power of Spatial AI',
         heroDesc: 'Start with the Pro plan for unlimited potential, or pick a credit pack for casual use.',
         creditPacks: 'Credit Packs',
         creditPacksDesc: 'Perfect for beginners or casual users. Pay as you go.',
@@ -26,14 +27,14 @@ const pricingTranslations = {
         oneTimePayment: 'One-time payment',
         cancelAnytime: 'Cancel anytime. 100% secure.',
         proTitle: 'Pro Lifetime',
-        proDesc: 'The ultimate experience for power users. Bring your own keys and break free from limits.',
+        proDesc: 'The ultimate spatial thinking experience. Own your workflow, bring your own keys, and break free from limits.',
         proFeatures: [
-            'Bring Your Own API Keys (OpenAI, Anthropic, Google)',
-            'Unlimited usage — pay providers directly',
-            'Access GPT-4, Claude 3 Opus, Gemini Pro',
-            'Lifetime updates & early access to new features',
-            'Priority customer support',
-            'Commercial usage rights'
+            'Infinite Spatial Canvas — Think in 2D space, not just chat',
+            'Multi-Thread AI Orchestration — Run 10+ agents simultaneously',
+            'Ghost Streaming — Ultra-low latency (<50ms) AI responses',
+            'Bring Your Own Keys (BYOK) — Private, direct connection to OpenAI/Anthropic',
+            'Performance Unleashed — Smooth rendering for 500+ cards',
+            'Lifetime Updates & Commercial License'
         ],
         ssl: '256-bit SSL Encryption',
         poweredByStripe: 'Powered by Stripe',
@@ -49,7 +50,7 @@ const pricingTranslations = {
         forPowerUsers: 'For power users',
         maxEfficiency: 'Maximum efficiency',
         whyPro: 'Why Go Pro?',
-        whyProDesc: 'Designed for professionals who need control, privacy, and unlimited scalablity.',
+        whyProDesc: 'Designed for power thinkers who need an infinite canvas, privacy, and uncompromised speed.',
         casualUser: 'Casual User?',
         casualUserDesc: 'Get started with pre-loaded credits. No API keys needed.',
         hiddenPrice: '---'
@@ -58,7 +59,7 @@ const pricingTranslations = {
         backToNexMap: '返回 NexMap',
         securedByStripe: 'Stripe 安全支付',
         tagline: '简单透明的定价',
-        heroTitle: '解锁 AI 的强大力量',
+        heroTitle: '解锁 AI 的空间思维能力',
         heroDesc: '选择 Pro 版释放无限潜能，或选择积分包轻松上手。',
         creditPacks: '积分包',
         creditPacksDesc: '适合初学者或偶尔使用的用户。按需付费。',
@@ -73,14 +74,14 @@ const pricingTranslations = {
         oneTimePayment: '一次性付款',
         cancelAnytime: '随时取消，100% 安全。',
         proTitle: 'Pro 终身版',
-        proDesc: '为专业用户打造的终极体验。使用自己的 Key，打破一切限制。',
+        proDesc: '为专业思考者打造的终极体验。掌控你的工作流，使用自己的 Key，打破一切限制。',
         proFeatures: [
-            '绑定自己的 API Key (OpenAI, Anthropic, Google)',
-            '无限使用 — 直接向供应商官方付费 (成本更低)',
-            '解锁 GPT-4, Claude 3 Opus, Gemini Pro 等顶级模型',
-            '终身免费更新 & 抢先体验新功能',
-            '优先客户支持',
-            '商业使用授权'
+            '无限空间画布 — 跳出线性对话，在二维空间中自由思考',
+            '多线程 AI 协同 — 同时运行 10+ 个 AI 代理，拒绝等待',
+            'Ghost 流式响应 — 体验 <50ms 超低延迟交互，如影随形',
+            'BYOK 自带密钥 — 直连 OpenAI/Anthropic/Google，隐私至上',
+            '极致性能优化 — 支持 500+ 卡片同屏渲染，丝滑流畅',
+            '终身免费更新 & 商业使用授权'
         ],
         ssl: '256位 SSL 加密',
         poweredByStripe: 'Stripe 驱动',
@@ -96,7 +97,7 @@ const pricingTranslations = {
         forPowerUsers: '为重度用户打造',
         maxEfficiency: '最大效率',
         whyPro: '为什么选择 Pro？',
-        whyProDesc: '专为需要掌控力、隐私和无限扩展性的专业人士设计。',
+        whyProDesc: '专为需要无限画布、数据隐私和极致速度的专业人士设计。',
         casualUser: '偶尔使用？',
         casualUserDesc: '通过预充值积分快速开始，无需繁琐配置 API Key。',
         hiddenPrice: '---'
@@ -105,8 +106,8 @@ const pricingTranslations = {
         backToNexMap: 'NexMap に戻る',
         securedByStripe: 'Stripe で安全に保護',
         tagline: 'シンプルで透明な価格設定',
-        heroTitle: 'AI の力を解き放つ',
-        heroDesc: 'Pro プランで無限の可能性を、またはクレジットパックで手軽にスタート。',
+        heroTitle: '空間的 AI の力を解き放つ',
+        heroDesc: 'Pro プランで無限の可能を、またはクレジットパックで手軽にスタート。',
         creditPacks: 'クレジットパック',
         creditPacksDesc: '初心者やカジュアルユーザーに最適。従量課金。',
         proLifetime: 'Pro 永久版',
@@ -120,14 +121,14 @@ const pricingTranslations = {
         oneTimePayment: '一回払い',
         cancelAnytime: 'いつでもキャンセル可能。100% 安全。',
         proTitle: 'Pro 永久版',
-        proDesc: 'パワーユーザーのための究極の体験。自分のキーを使って制限から解放されましょう。',
+        proDesc: 'パワーユーザーのための究極の体験。自分のキーを使って制限から解放され、思考の翼を広げましょう。',
         proFeatures: [
-            '自分の API キーを使用 (OpenAI, Anthropic, Google)',
-            '無制限使用 — プロバイダーに直接支払い',
-            'GPT-4, Claude 3 Opus, Gemini Pro にアクセス',
-            '永久アップデート & 新機能への早期アクセス',
-            '優先カスタマーサポート',
-            '商用利用権'
+            '無限の空間キャンバス — チャット画面を超え、2D空間で自由に思考',
+            'マルチスレッド AI — 10以上のエージェントを同時実行。待ち時間ゼロ',
+            'ゴースト・ストリーミング — 50ms以下の超低遅延レスポンス',
+            'BYOK (APIキー持ち込み) — OpenAI/Anthropic に直接接続。プライバシー重視',
+            '圧倒的なパフォーマンス — 500枚以上のカードもサクサク動作',
+            '永久アップデート & 商用利用ライセンス'
         ],
         ssl: '256ビット SSL 暗号化',
         poweredByStripe: 'Stripe 提供',
@@ -143,7 +144,7 @@ const pricingTranslations = {
         forPowerUsers: 'パワーユーザー向け',
         maxEfficiency: '最大効率',
         whyPro: 'なぜ Pro なのか？',
-        whyProDesc: 'コントロール、プライバシー、そして無限の拡張性を求めるプロフェッショナルのために。',
+        whyProDesc: '無限のキャンバス、プライバシー、そして妥協のないスピードを求めるプロフェッショナルのために。',
         casualUser: 'カジュアルに使う？',
         casualUserDesc: 'API キー不要。プリペイドクレジットですぐに始められます。',
         hiddenPrice: '---'
@@ -384,8 +385,8 @@ export default function PricingPage() {
                                             onClick={() => handleCheckout('pro_lifetime')}
                                             disabled={loadingProduct === 'pro_lifetime' || isBlocked}
                                             className={`w-full py-4 px-6 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 group/btn ${isBlocked
-                                                    ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
-                                                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
+                                                ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
+                                                : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
                                                 }`}
                                         >
                                             {isBlocked ? (
@@ -436,7 +437,7 @@ export default function PricingPage() {
                                 <div
                                     key={plan.id}
                                     className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
-                                            'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
+                                        'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
                                         }`}
                                 >
                                     {plan.popular && (
@@ -473,10 +474,10 @@ export default function PricingPage() {
                                         onClick={() => handleCheckout(plan.id)}
                                         disabled={loadingProduct === plan.id || isBlocked}
                                         className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${isBlocked
-                                                ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                                                : plan.popular
-                                                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                                            ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                                            : plan.popular
+                                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                : 'bg-white/10 hover:bg-white/20 text-white'
                                             }`}
                                     >
                                         {isBlocked ? t.regionBlocked : loadingProduct === plan.id ? t.redirecting : t.getStarted}
