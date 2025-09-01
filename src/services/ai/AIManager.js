@@ -1,5 +1,6 @@
 import { uuid } from '../../utils/uuid.js';
 import { getSystemPrompt } from './promptUtils.js';
+import { streamChatCompletion, imageGeneration } from '../llm.js';
 
 /**
  * Task Priorities
@@ -248,9 +249,7 @@ class AIManager {
     }
 
     async _executeTask(task, signal) {
-        // Dynamic import to avoid circular dependencies if any
-        // In real impl, we'd import these at top level
-        const { streamChatCompletion, imageGeneration } = await import('../llm.js');
+        // Static imports used instead of dynamic to avoid production chunk load errors
         // REMOVED: import { getActiveConfig } ... 
 
         // Config should be passed in payload
