@@ -183,6 +183,7 @@ const translations = {
             usageGuide: "💡 Usage Guide",
             newBoard: "New Board",
             signIn: "Sign In",
+            pricing: "Plans & Pricing",
             signOut: "Sign Out"
         },
         welcome: {
@@ -464,6 +465,7 @@ const translations = {
             usageGuide: "💡 使用指南",
             newBoard: "新建画板",
             signIn: "登录",
+            pricing: "升级套餐",
             signOut: "退出登录"
         },
         welcome: {
@@ -745,6 +747,7 @@ const translations = {
             usageGuide: "💡 使い方ガイド",
             newBoard: "新しいボード",
             signIn: "サインイン",
+            pricing: "料金プラン",
             signOut: "サインアウト"
         },
         welcome: {
