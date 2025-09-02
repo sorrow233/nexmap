@@ -61,6 +61,7 @@ function AppContent() {
 
     // Dialog State
     const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => { } });
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
     // Search Modal State
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -97,23 +98,31 @@ function AppContent() {
     };
 
     // Board Management Handlers
-    const handleLogin = async () => {
+    const handleLogin = useCallback(async () => {
         try { await signInWithPopup(auth, googleProvider); }
         catch (e) {
             showDialog("Login Failed", e.message, "error");
         }
-    };
+    }, [showDialog]);
 
-    const handleLogout = async () => {
+    const handleLogout = useCallback(() => {
+        setIsLogoutConfirmOpen(true);
+    }, []);
+
+    const performActualLogout = useCallback(async () => {
         try {
+            console.log('[Logout] User confirmed logout, initiating cleanup...');
             // CRITICAL: Clear all local data before signing out
-            // This prevents data leakage between user accounts
             const { clearAllUserData } = await import('./services/clearAllUserData');
             await clearAllUserData();
             await signOut(auth);
+            setIsLogoutConfirmOpen(false);
         }
-        catch (e) { console.error(e); }
-    };
+        catch (e) {
+            console.error('[Logout] Error during cleanup:', e);
+            setIsLogoutConfirmOpen(false);
+        }
+    }, []);
 
     const handleCreateBoard = async (customName = null, initialPrompt = null, initialImages = []) => {
         let name = customName;
@@ -323,6 +332,16 @@ function AppContent() {
                 onClose={() => setIsSearchOpen(false)}
                 boardsList={boardsList}
                 allBoardsData={allBoardsData}
+            />
+
+            {/* Logout Confirmation Dialog */}
+            <ModernDialog
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={performActualLogout}
+                title="Sign Out?"
+                message="Are you sure you want to sign out? This will clear all local data for security. Ensure your boards are synced to the cloud."
+                type="confirm"
             />
         </>
     );
