@@ -105,64 +105,65 @@ export default function GalleryPage({
     }
 
     return (
-        <div className="bg-mesh-gradient h-screen text-slate-900 dark:text-slate-200 p-8 font-lxgw relative overflow-y-auto custom-scrollbar">
+        <div className="bg-mesh-gradient h-screen text-slate-900 dark:text-slate-200 p-4 md:p-8 font-lxgw relative overflow-y-auto custom-scrollbar">
             <div className="max-w-7xl mx-auto relative z-10">
-                <div className="sticky top-4 z-50 flex justify-between items-center mb-16 py-4 px-6 glass-card rounded-2xl transition-all duration-300">
-                    <div className="flex items-center gap-6">
-                        <h1 className="text-3xl font-black tracking-tight cursor-pointer" onClick={() => setViewMode('active')}>
-                            <span className="text-gradient">Nex</span> Map
+                <div className="sticky top-2 md:top-4 z-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-8 md:mb-16 py-3 md:py-4 px-4 md:px-6 glass-card rounded-2xl transition-all duration-300">
+                    <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight cursor-pointer" onClick={() => setViewMode('active')}>
+                            <span className="text-gradient">Nex</span>Map
                         </h1>
 
                         {/* View Switcher */}
-                        <div className="flex bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-white/10">
+                        <div className="flex bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-white/10 overflow-x-auto">
                             <button
                                 onClick={() => setViewMode('active')}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${viewMode === 'active' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'active' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 Gallery
                             </button>
                             <button
                                 onClick={() => setViewMode('favorites')}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'favorites' ? 'bg-white dark:bg-slate-700 shadow-sm text-orange-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${viewMode === 'favorites' ? 'bg-white dark:bg-slate-700 shadow-sm text-orange-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 <Star size={14} fill={viewMode === 'favorites' ? "currentColor" : "none"} />
-                                Favorites
+                                <span className="hidden sm:inline">Favorites</span>
                             </button>
                             <button
                                 onClick={() => setViewMode('trash')}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'trash' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${viewMode === 'trash' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-500' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
-                                Trash
+                                <span className="hidden sm:inline">Trash</span>
+                                <span className="sm:hidden">🗑️</span>
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
                         {/* Only show Create button in Active mode */}
                         {viewMode === 'active' && (
-                            <div className="flex gap-3">
+                            <div className="flex gap-2 md:gap-3">
                                 <button
                                     onClick={handleCreateGuide}
-                                    className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-200 dark:border-indigo-800/50 font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all shadow-sm"
+                                    className="hidden md:flex px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-200 dark:border-indigo-800/50 font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all shadow-sm"
                                 >
                                     💡 Usage Guide
                                 </button>
-                                <button onClick={() => onCreateBoard("New Board")} className="p-2.5 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/60 dark:border-white/10 shadow-sm hover:scale-110 hover:shadow-glow-blue transition-all group">
-                                    <Plus size={20} className="text-slate-700 dark:text-slate-200 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
+                                <button onClick={() => onCreateBoard("New Board")} className="p-2 md:p-2.5 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/60 dark:border-white/10 shadow-sm hover:scale-110 hover:shadow-glow-blue transition-all group">
+                                    <Plus size={18} className="md:w-5 md:h-5 text-slate-700 dark:text-slate-200 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
                                 </button>
                             </div>
                         )}
 
                         {user ? (
-                            <div className="flex items-center gap-3 bg-white/50 dark:bg-slate-800/50 rounded-2xl pl-2 pr-5 py-2 border border-white/60 dark:border-white/10 shadow-sm transition-all hover:shadow-md">
-                                {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm border border-white dark:border-white/10" alt="User" />}
+                            <div className="flex items-center gap-2 md:gap-3 bg-white/50 dark:bg-slate-800/50 rounded-2xl pl-2 pr-3 md:pr-5 py-2 border border-white/60 dark:border-white/10 shadow-sm transition-all hover:shadow-md">
+                                {user.photoURL && <img src={user.photoURL} className="w-7 h-7 md:w-8 md:h-8 rounded-xl shadow-sm border border-white dark:border-white/10" alt="User" />}
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-bold leading-none text-slate-800 dark:text-slate-200">{user.displayName}</span>
-                                    <button onClick={onLogout} className="text-[10px] text-slate-500 hover:text-red-500 font-bold uppercase mt-1 text-left transition-colors">Sign Out</button>
+                                    <span className="hidden sm:block text-sm font-bold leading-none text-slate-800 dark:text-slate-200">{user.displayName}</span>
+                                    <button onClick={onLogout} className="text-[10px] text-slate-500 hover:text-red-500 font-bold uppercase mt-0 sm:mt-1 text-left transition-colors">Sign Out</button>
                                 </div>
                             </div>
                         ) : (
-                            <button onClick={onLogin} className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">Sign In</button>
+                            <button onClick={onLogin} className="px-4 md:px-6 py-2 md:py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm md:text-base">Sign In</button>
                         )}
                     </div>
                 </div>
@@ -182,8 +183,8 @@ export default function GalleryPage({
                     />
                 )}
             </div>
-            <div className="fixed bottom-10 right-10 z-50">
-                <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-premium rounded-full text-slate-400 hover:text-orange-400 hover:rotate-90 hover:scale-110 transition-all border border-white/60 dark:border-white/10"><Settings size={24} /></button>
+            <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-50">
+                <button onClick={() => setIsSettingsOpen(true)} className="p-3 md:p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-premium rounded-full text-slate-400 hover:text-orange-400 hover:rotate-90 hover:scale-110 transition-all border border-white/60 dark:border-white/10"><Settings size={20} className="md:w-6 md:h-6" /></button>
             </div>
 
             <SettingsModal
