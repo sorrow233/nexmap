@@ -9,7 +9,6 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
-import CategorizationListener from './components/CategorizationListener';
 import SearchModal, { useSearchShortcut } from './components/SearchModal';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
@@ -42,7 +41,6 @@ export default function App() {
         <ToastProvider>
             <ContextMenuProvider>
                 <ErrorBoundary>
-                    <CategorizationListener />
                     <AppContent />
                 </ErrorBoundary>
             </ContextMenuProvider>
