@@ -154,17 +154,29 @@ export const createCardSlice = (set, get) => ({
             }));
         } else {
             // Grid Layout (Start at top-left of current view? Or average position?)
-            // Let's find top-left of all cards to anchor
+            // Filter out cards that are already connected (part of a mind map)
+            const connectedCardIds = new Set();
+            if (connections) {
+                connections.forEach(conn => {
+                    connectedCardIds.add(conn.from);
+                    connectedCardIds.add(conn.to);
+                });
+            }
+
+            const looseCards = cards.filter(c => !connectedCardIds.has(c.id));
+            if (looseCards.length === 0) return;
+
+            // Let's find top-left of loose cards to anchor
             let minX = Infinity;
             let minY = Infinity;
-            cards.forEach(c => {
+            looseCards.forEach(c => {
                 if (c.x < minX) minX = c.x;
                 if (c.y < minY) minY = c.y;
             });
 
             if (!Number.isFinite(minX)) { minX = 0; minY = 0; }
 
-            const newPositions = calculateGridLayout(cards, minX, minY);
+            const newPositions = calculateGridLayout(looseCards, minX, minY);
             if (newPositions.size === 0) return;
 
             set(state => ({
