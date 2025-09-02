@@ -14,10 +14,10 @@ const SpatialSection = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#050505] flex flex-col md:flex-row items-center justify-center p-8 md:p-24 overflow-hidden relative">
+        <div className="min-h-screen bg-[#050505] flex flex-col md:flex-row items-center justify-center p-6 md:p-24 overflow-hidden relative">
 
             {/* Visual - The Map */}
-            <div className="w-full md:w-1/2 relative h-[500px] flex items-center justify-center bg-[#0A0A0A] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
+            <div className="w-full md:w-1/2 relative h-[300px] md:h-[500px] flex items-center justify-center bg-[#0A0A0A] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
                 {/* Grid Pattern */}
                 <div className="absolute inset-0 bg-[linear-gradient(#333333_1px,transparent_1px),linear-gradient(90deg,#333333_1px,transparent_1px)] bg-[size:50px_50px] opacity-10" />
 
@@ -58,7 +58,7 @@ const SpatialSection = () => {
                     </div>
                 </div>
 
-                <h2 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 md:mb-6 tracking-tight">
                     {t.spatial.title1} <br />
                     <span className="text-blue-500 relative">
                         {t.spatial.title2}

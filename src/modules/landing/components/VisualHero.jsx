@@ -26,9 +26,9 @@ const VisualHero = ({ scrollProgress, onStart }) => {
                     transformStyle: 'preserve-3d',
                 }}
             >
-                {/* THE UNIVERSE OF CARDS */}
+                {/* THE UNIVERSE OF CARDS - Hidden on mobile to prevent overflow */}
                 <div
-                    className="relative w-[100vw] h-[100vh]"
+                    className="hidden md:block relative w-[100vw] h-[100vh]"
                     style={{
                         transform: `translateZ(${clampedProgress * 1500}px)`,
                         transformStyle: 'preserve-3d',
@@ -79,7 +79,7 @@ const VisualHero = ({ scrollProgress, onStart }) => {
                     <span className="text-gray-400 text-sm font-medium tracking-wide">{t.hero.brand}</span>
                 </div>
 
-                <h1 className="text-7xl md:text-[8rem] lg:text-[10rem] leading-[0.9] font-bold tracking-tighter text-white mb-6 font-inter-tight">
+                <h1 className="text-4xl sm:text-5xl md:text-[8rem] lg:text-[10rem] leading-[0.95] md:leading-[0.9] font-bold tracking-tighter text-white mb-4 md:mb-6 font-inter-tight">
                     {t.hero.title1} <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 relative">
                         {t.hero.title2}
@@ -87,17 +87,17 @@ const VisualHero = ({ scrollProgress, onStart }) => {
                     </span>
                 </h1>
 
-                <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-12 animate-fade-in-up delay-[200ms]">
-                    {t.hero.sub1} <br />
+                <p className="text-base sm:text-lg md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-8 md:mb-12 px-4 animate-fade-in-up delay-[200ms]">
+                    {t.hero.sub1} <br className="hidden sm:block" />
                     <span className="text-white font-semibold">{t.hero.sub2}</span>
                 </p>
 
-                <div className="flex flex-col md:flex-row gap-6 justify-center items-center animate-fade-in-up delay-[400ms]">
+                <div className="flex flex-col gap-4 md:flex-row md:gap-6 justify-center items-center animate-fade-in-up delay-[400ms] w-full px-4">
                     <button
                         onClick={() => navigate('/gallery')}
-                        className="group relative px-10 py-5 bg-white text-black rounded-full text-xl font-bold overflow-hidden transition-transform hover:scale-105"
+                        className="group relative px-8 py-4 md:px-10 md:py-5 bg-white text-black rounded-full text-lg md:text-xl font-bold overflow-hidden transition-transform hover:scale-105 w-full sm:w-auto"
                     >
-                        <span className="relative z-10 flex items-center gap-2">
+                        <span className="relative z-10 flex items-center justify-center gap-2">
                             {t.hero.ctaPrimary}
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </span>
@@ -106,7 +106,7 @@ const VisualHero = ({ scrollProgress, onStart }) => {
 
                     <button
                         onClick={onStart}
-                        className="px-8 py-5 text-gray-400 hover:text-white transition-colors flex items-center gap-2 font-medium"
+                        className="px-6 py-3 md:px-8 md:py-5 text-gray-400 hover:text-white transition-colors flex items-center gap-2 font-medium"
                     >
                         {t.hero.ctaSecondary} <span className="animate-bounce">↓</span>
                     </button>

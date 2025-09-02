@@ -97,7 +97,7 @@ const LandingModule = () => {
             </div>
 
             {/* Spacer for Sticky Hero */}
-            <div className="h-[50vh]" />
+            <div className="h-[20vh] md:h-[50vh]" />
 
             {/* 2. FEATURE BENTO (Moved here) */}
             <div className="relative z-20 bg-[#050505] border-t border-b border-white/5">
