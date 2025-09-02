@@ -6,23 +6,48 @@ import { useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
 import ShareModal from './share/ShareModal';
 
+
 export default function FavoritesGallery() {
     const [favorites, setFavorites] = useState([]);
+    const [filteredFavorites, setFilteredFavorites] = useState([]);
+    const [categories, setCategories] = useState(['All']);
+    const [activeCategory, setActiveCategory] = useState(['All']);
     const [expandedFav, setExpandedFav] = useState(null);
     const [shareContent, setShareContent] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         // Initial load
-        setFavorites(favoritesService.getFavorites());
+        const loadData = () => {
+            const allFavs = favoritesService.getFavorites();
+            setFavorites(allFavs);
+
+            // Extract categories
+            const cats = new Set(['All']);
+            allFavs.forEach(fav => {
+                if (fav.category) cats.add(fav.category);
+                else cats.add('Uncategorized');
+            });
+            setCategories(Array.from(cats));
+        };
+
+        loadData();
 
         // Listen for updates
         const handleUpdate = () => {
-            setFavorites(favoritesService.getFavorites());
+            loadData();
         };
         window.addEventListener('favorites-updated', handleUpdate);
         return () => window.removeEventListener('favorites-updated', handleUpdate);
     }, []);
+
+    useEffect(() => {
+        if (activeCategory === 'All') {
+            setFilteredFavorites(favorites);
+        } else {
+            setFilteredFavorites(favorites.filter(f => (f.category || 'Uncategorized') === activeCategory));
+        }
+    }, [activeCategory, favorites]);
 
     const handleCardClick = (boardId) => {
         if (boardId) navigate(`/board/${boardId}`);
@@ -61,18 +86,36 @@ export default function FavoritesGallery() {
     return (
         <>
             <div className="animate-fade-in pb-40">
-                <h2 className="text-xl font-black text-slate-800 dark:text-white mb-8 pl-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center">
-                        <Star size={20} fill="currentColor" />
+                <div className="flex items-center justify-between mb-8 pl-4 pr-4">
+                    <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center">
+                            <Star size={20} fill="currentColor" />
+                        </div>
+                        Collection
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs px-3 py-1 rounded-full font-bold">
+                            {favorites.length}
+                        </span>
+                    </h2>
+
+                    {/* Category Tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar max-w-[60%]">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setActiveCategory(cat)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${activeCategory === cat
+                                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg shadow-slate-900/10'
+                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
                     </div>
-                    Collection
-                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs px-3 py-1 rounded-full font-bold">
-                        {favorites.length}
-                    </span>
-                </h2>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
-                    {favorites.map((item, index) => (
+                    {filteredFavorites.map((item, index) => (
                         <div
                             key={item.id}
                             onDoubleClick={() => setExpandedFav(item)}
@@ -81,8 +124,11 @@ export default function FavoritesGallery() {
                         >
                             <div className="mb-4">
                                 <div className="flex justify-between items-start mb-4">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/5 px-2 py-1 rounded-lg">
-                                        Favorite Note
+                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${(item.category && item.category !== 'Uncategorized')
+                                            ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400'
+                                            : 'text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/5'
+                                        }`}>
+                                        {item.category || 'Note'}
                                     </span>
                                     <div className="flex gap-1">
                                         <button
