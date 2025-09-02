@@ -134,8 +134,8 @@ export const debugLog = new DebugLogger();
 
 // Initialization check
 (function () {
-    console.info(`[NexMap Debug] MODE: ${import.meta.env.MODE}, Logging: ${IS_DEBUG_MODE ? 'ACTIVE' : 'INACTIVE'}`);
     if (IS_DEBUG_MODE) {
+        console.info(`[NexMap Debug] MODE: ${import.meta.env.MODE}, Logging: ACTIVE`);
         debugLog.auth('Debug logging system initialized ✓');
     }
 })();

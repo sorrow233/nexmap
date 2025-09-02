@@ -59,37 +59,28 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
     const captureThumbnail = useCallback(async () => {
         // Skip conditions
         if (!canvasContainerRef.current) {
-            console.log('[Thumbnail] No canvas container ref');
             return null;
         }
 
         if (hasBackgroundImage) {
-            console.log('[Thumbnail] Skipping - board has background image');
             return null;
         }
 
         if (!cards || cards.length === 0) {
-            console.log('[Thumbnail] Skipping - no cards');
             return null;
         }
 
         const now = Date.now();
         if (now - lastCaptureRef.current < MIN_CAPTURE_INTERVAL) {
-            console.log('[Thumbnail] Skipping - cooldown');
             return null;
         }
 
         try {
-            console.log('[Thumbnail] Starting capture...');
-
             // Calculate card center view
             const centerView = calculateCardsCenterView(cards);
             if (!centerView) {
-                console.log('[Thumbnail] Could not calculate center view');
                 return null;
             }
-
-            console.log('[Thumbnail] Center view:', centerView);
 
             // Get the canvas internal content (cards layer)
             const canvasEl = canvasContainerRef.current;
@@ -124,12 +115,10 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
 
             // Check size
             const sizeKB = Math.round(dataUrl.length / 1024);
-            console.log('[Thumbnail] Captured:', sizeKB, 'KB');
 
             if (sizeKB > 300) {
                 // Too large, use lower quality
                 const smallerUrl = canvas.toDataURL('image/jpeg', 0.2);
-                console.log('[Thumbnail] Compressed to:', Math.round(smallerUrl.length / 1024), 'KB');
                 lastCaptureRef.current = now;
                 return smallerUrl;
             }
@@ -161,7 +150,6 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
             if (thumbnail && currentBoardId) {
                 try {
                     updateBoardMetadata(currentBoardId, { thumbnail });
-                    console.log('[Thumbnail] ✅ Saved to board metadata');
                 } catch (e) {
                     console.error('[Thumbnail] Save failed:', e);
                 }
@@ -172,7 +160,6 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
     // Trigger capture when card count changes
     useEffect(() => {
         if (cards && cards.length >= 1 && !hasBackgroundImage && currentBoardId) {
-            console.log('[Thumbnail] Card count changed, scheduling capture...');
             scheduleAutoCapture();
         }
 

@@ -228,14 +228,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
     // Wrapper to bridge ChatModal's signature with handleChatGenerate
     const handleChatModalGenerate = async (cardId, text, images = []) => {
-        console.log('[DEBUG handleChatModalGenerate] Called with:', { cardId, text, imagesCount: images.length });
 
         // FIX: Gets fresh state to avoid stale closures in message queue
         const freshCards = useStore.getState().cards;
         const card = freshCards.find(c => c.id === cardId);
 
         if (!card) {
-            console.error('[DEBUG handleChatModalGenerate] Card not found:', cardId);
             return;
         }
 
@@ -273,13 +271,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         const history = [...(card.data.messages || []), userMsg];
 
         // Call handleChatGenerate with the proper signature
-        console.log('[DEBUG handleChatModalGenerate] Calling handleChatGenerate with history length:', history.length);
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
                 // FIX: Update specific message by ID
                 updateCardContent(cardId, chunk, assistantMsgId);
             });
-            console.log('[DEBUG handleChatModalGenerate] Generation completed');
         } catch (error) {
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
             updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);

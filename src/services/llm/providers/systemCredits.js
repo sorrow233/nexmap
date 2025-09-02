@@ -66,14 +66,9 @@ export class SystemCreditsProvider extends LLMProvider {
             max_tokens: 8192,
         };
 
-        console.log('[SystemCredits] Making chat request with system credits (DeepSeek)');
-
         const response = await chatWithSystemCredits(requestBody);
 
-        // Log remaining credits
-        if (response._systemCredits) {
-            console.log(`[SystemCredits] Credits used: ${response._systemCredits.used.toFixed(4)}, Remaining: ${response._systemCredits.remaining.toFixed(2)}`);
-        }
+        // Standard text content
 
         // Parse OpenAI response format
         const content = response.choices?.[0]?.message?.content || "";
@@ -92,8 +87,6 @@ export class SystemCreditsProvider extends LLMProvider {
             temperature: options.temperature !== undefined ? options.temperature : 1.0,
             max_tokens: 8192,
         };
-
-        console.log('[SystemCredits] Starting stream with system credits (DeepSeek)');
 
         await streamWithSystemCredits(requestBody, onToken, options);
     }

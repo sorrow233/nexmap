@@ -27,7 +27,6 @@ export const createCreditsSlice = (set, get) => ({
     loadSystemCredits: async () => {
         const user = auth.currentUser;
         if (!user) {
-            console.log('[Credits] No user logged in, skipping load');
             set({ systemCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
             return;
         }
@@ -35,7 +34,6 @@ export const createCreditsSlice = (set, get) => ({
         // Prevent duplicate loading
         const { systemCreditsLoading } = get();
         if (systemCreditsLoading) {
-            console.log('[Credits] Already loading, skipping');
             return;
         }
 
@@ -55,10 +53,8 @@ export const createCreditsSlice = (set, get) => ({
                 systemCreditsError: null,
                 isSystemCreditsUser: true
             });
-            console.log(`[Credits] Loaded: ${typeof credits === 'number' ? credits.toFixed(2) : credits} credits`);
             return credits;
         } catch (error) {
-            console.error('[Credits] Failed to load:', error);
             set({
                 systemCreditsLoading: false,
                 systemCreditsError: error.message,
@@ -76,7 +72,6 @@ export const createCreditsSlice = (set, get) => ({
         if (creditsInfo?.remaining !== undefined) {
             const remaining = Number(creditsInfo.remaining);
             set({ systemCredits: remaining });
-            console.log(`[Credits] Updated: ${typeof remaining === 'number' ? remaining.toFixed(2) : remaining} remaining`);
         }
     },
 
