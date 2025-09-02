@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 
-const ZOOM_sensitivity = 0.01;
+// Detect device type for optimal sensitivity
+// Mouse wheel typically has larger deltaY values (100+)
+// Trackpad has smaller, more granular deltaY values
+const ZOOM_SENSITIVITY_TRACKPAD = 0.01;
+const ZOOM_SENSITIVITY_MOUSE = 0.003; // More sensitive for mouse wheel
 const PAN_sensitivity = 1;
 
 export function useCanvasGestures(canvasRef, stateRef, setScale, setOffset) {
@@ -19,7 +23,12 @@ export function useCanvasGestures(canvasRef, stateRef, setScale, setOffset) {
                 const mouseY = e.clientY;
                 const canvasX = (mouseX - currentOffset.x) / currentScale;
                 const canvasY = (mouseY - currentOffset.y) / currentScale;
-                const delta = -e.deltaY * ZOOM_sensitivity;
+                
+                // Auto-detect device: large deltaY = mouse wheel, small = trackpad
+                const isMouse = Math.abs(e.deltaY) > 50;
+                const sensitivity = isMouse ? ZOOM_SENSITIVITY_MOUSE : ZOOM_SENSITIVITY_TRACKPAD;
+                
+                const delta = -e.deltaY * sensitivity;
                 const newZoom = Math.min(Math.max(0.1, currentScale + delta), 5);
                 const newOffsetX = mouseX - canvasX * newZoom;
                 const newOffsetY = mouseY - canvasY * newZoom;
