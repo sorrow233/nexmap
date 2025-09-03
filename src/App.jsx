@@ -52,6 +52,8 @@ export default function App() {
     );
 }
 
+const SESSION_START_TIME = Date.now();
+
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -99,20 +101,44 @@ function AppContent() {
 
     // Board Management Handlers
     const handleLogin = useCallback(async () => {
-        try { await signInWithPopup(auth, googleProvider); }
+        try {
+            console.log('[Auth] handleLogin initiated');
+            await signInWithPopup(auth, googleProvider);
+        }
         catch (e) {
+            console.error('[Auth] Login failed:', e);
             showDialog("Login Failed", e.message, "error");
         }
     }, [showDialog]);
 
-    const handleLogout = useCallback(() => {
+    const handleLogout = useCallback((intent = 'manual') => {
+        console.group('[Logout Trace]');
+        console.log(`[Logout] handleLogout called with intent: ${intent}`);
+        console.trace('[Logout] Caller detail:');
+
+        // SAFETY LOCK: Block any automatic logout in first 15 seconds unless manual
+        const timeSinceLoad = (Date.now() - SESSION_START_TIME) / 1000;
+        if (timeSinceLoad < 15 && intent !== 'manual_user_click') {
+            console.warn(`[Logout] ABORTED: Session too fresh (${timeSinceLoad.toFixed(1)}s) and intent is ${intent}`);
+            console.groupEnd();
+            return;
+        }
+
         setIsLogoutConfirmOpen(true);
+        console.groupEnd();
     }, []);
 
     const performActualLogout = useCallback(async () => {
         try {
+            const timeSinceLoad = (Date.now() - SESSION_START_TIME) / 1000;
+            console.log(`[Logout] performActualLogout verified at ${timeSinceLoad.toFixed(1)}s`);
+
+            // Double check: if user just logged in, this is likely a misclick/bug
+            if (user && timeSinceLoad < 30) {
+                console.warn('[Logout] DANGER: User is logged in and session is very fresh. Proceeding with caution...');
+            }
+
             console.log('[Logout] User confirmed logout, initiating cleanup...');
-            // CRITICAL: Clear all local data before signing out
             const { clearAllUserData } = await import('./services/clearAllUserData');
             await clearAllUserData();
             await signOut(auth);
@@ -122,7 +148,7 @@ function AppContent() {
             console.error('[Logout] Error during cleanup:', e);
             setIsLogoutConfirmOpen(false);
         }
-    }, []);
+    }, [user]);
 
     const handleCreateBoard = async (customName = null, initialPrompt = null, initialImages = []) => {
         let name = customName;
