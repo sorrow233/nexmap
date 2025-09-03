@@ -50,21 +50,6 @@ export default function GalleryPage({
                 console.error('Failed to sync welcome status:', error);
             }
         }
-
-        // 3. Auto-create guide board for new users
-        const guideTitle = "NexMap 使用指南 🚀";
-        const existingBoard = boardsList.find(b => b.name === guideTitle && !b.deletedAt);
-
-        if (!existingBoard) {
-            try {
-                const newBoard = await createBoard(guideTitle);
-                const guideContent = getGuideBoardData();
-                await saveBoard(newBoard.id, guideContent);
-                console.log('✅ Guide board created automatically');
-            } catch (error) {
-                console.error('Failed to auto-create guide board:', error);
-            }
-        }
     };
 
     const navigate = useNavigate();
@@ -198,7 +183,7 @@ export default function GalleryPage({
                                                 </button>
                                                 <div className="h-px bg-slate-200/50 dark:bg-white/5 my-1" />
                                                 <button
-                                                    onClick={onLogout}
+                                                    onClick={() => onLogout('manual_user_click')}
                                                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
                                                 >
                                                     <LogOut size={16} />
