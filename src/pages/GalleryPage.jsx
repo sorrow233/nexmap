@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Settings, Star, MessageSquare } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
+import FeedbackView from '../components/FeedbackView';
 import SettingsModal from '../components/SettingsModal';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, getBoardsList, saveUserSettings, loadUserSettings, updateUserSettings } from '../services/storage';
@@ -138,8 +139,8 @@ export default function GalleryPage({
                                 <span className="sm:hidden">🗑️</span>
                             </button>
                             <button
-                                onClick={() => navigate('/feedback')}
-                                className="px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap text-slate-500 hover:text-orange-500 dark:hover:text-orange-400"
+                                onClick={() => setViewMode('feedback')}
+                                className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 md:gap-2 whitespace-nowrap ${viewMode === 'feedback' ? 'bg-white dark:bg-slate-700 shadow-sm text-orange-500' : 'text-slate-500 hover:text-orange-500 dark:hover:text-orange-400'}`}
                             >
                                 <MessageSquare size={14} />
                                 <span className="hidden sm:inline">{t.feedback?.title || 'Feedback'}</span>
@@ -177,7 +178,9 @@ export default function GalleryPage({
                     </div>
                 </div>
 
-                {viewMode === 'favorites' ? (
+                {viewMode === 'feedback' ? (
+                    <FeedbackView user={user} onLogin={onLogin} />
+                ) : viewMode === 'favorites' ? (
                     <FavoritesGallery />
                 ) : (
                     <BoardGallery
