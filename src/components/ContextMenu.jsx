@@ -15,6 +15,7 @@ import {
     Unlink,
     Palette
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Context Menu Context for global state
 const ContextMenuContext = React.createContext(null);
@@ -68,12 +69,12 @@ const CARD_COLORS = [
 ];
 
 // Color Picker Menu Item Component
-function ColorPickerItem({ currentColor, onColorSelect, onClose }) {
+function ColorPickerItem({ currentColor, onColorSelect, onClose, label }) {
     return (
         <div className="px-3 py-2">
             <div className="flex items-center gap-2 mb-2">
                 <Palette size={16} className="text-slate-500" />
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Line Color</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</span>
             </div>
             <div className="grid grid-cols-4 gap-2 ml-6">
                 {CARD_COLORS.map((color) => (
@@ -164,6 +165,7 @@ function ContextMenuPanel({ x, y, items, onClose }) {
                             currentColor={item.currentColor}
                             onColorSelect={item.onColorSelect}
                             onClose={onClose}
+                            label={item.label}
                         />
                     );
                 }
@@ -188,6 +190,7 @@ function ContextMenuPanel({ x, y, items, onClose }) {
 // Context Menu Provider
 export function ContextMenuProvider({ children }) {
     const [menu, setMenu] = useState(null);
+    const { t } = useLanguage();
 
     const showContextMenu = useCallback((x, y, items) => {
         setMenu({ x, y, items });
@@ -201,35 +204,35 @@ export function ContextMenuProvider({ children }) {
     const getCardMenuItems = useCallback((card, handlers) => {
         const { onCopy, onDelete, onToggleFavorite, onExpand, onConnect, onSetColor, isFavorite } = handlers;
         return [
-            { icon: Copy, label: '复制内容', onClick: onCopy },
+            { icon: Copy, label: t.contextMenu.copyContent, onClick: onCopy },
             { type: 'separator' },
-            { icon: Star, label: isFavorite ? '取消收藏' : '收藏', onClick: onToggleFavorite },
-            { icon: Sparkles, label: 'AI 扩展', onClick: onExpand },
-            { icon: Link, label: '创建连接', onClick: onConnect },
-            { type: 'colorPicker', currentColor: card.data?.cardColor, onColorSelect: onSetColor },
+            { icon: Star, label: isFavorite ? t.contextMenu.unfavorite : t.contextMenu.favorite, onClick: onToggleFavorite },
+            { icon: Sparkles, label: t.contextMenu.aiExpand, onClick: onExpand },
+            { icon: Link, label: t.contextMenu.createConnection, onClick: onConnect },
+            { type: 'colorPicker', currentColor: card.data?.cardColor, onColorSelect: onSetColor, label: t.contextMenu.lineColor },
             { type: 'separator' },
-            { icon: Trash2, label: '删除', onClick: onDelete, danger: true }
+            { icon: Trash2, label: t.contextMenu.delete, onClick: onDelete, danger: true }
         ];
-    }, []);
+    }, [t]);
 
     // Canvas context menu items generator
     const getCanvasMenuItems = useCallback((position, handlers) => {
         const { onCreateCard, onCreateNote, onPaste, canPaste } = handlers;
         return [
-            { icon: MessageSquare, label: '新建卡片', onClick: () => onCreateCard(position) },
-            { icon: StickyNote, label: '新建便签', onClick: () => onCreateNote(position) },
+            { icon: MessageSquare, label: t.contextMenu.newCard, onClick: () => onCreateCard(position) },
+            { icon: StickyNote, label: t.contextMenu.newNote, onClick: () => onCreateNote(position) },
             { type: 'separator' },
-            { icon: Clipboard, label: '粘贴', onClick: onPaste, disabled: !canPaste }
+            { icon: Clipboard, label: t.contextMenu.paste, onClick: onPaste, disabled: !canPaste }
         ];
-    }, []);
+    }, [t]);
 
     // Connection context menu items generator
     const getConnectionMenuItems = useCallback((connection, handlers) => {
         const { onDelete } = handlers;
         return [
-            { icon: Unlink, label: '删除连线', onClick: onDelete, danger: true }
+            { icon: Unlink, label: t.contextMenu.deleteConnection, onClick: onDelete, danger: true }
         ];
-    }, []);
+    }, [t]);
 
     // Use useMemo for stable context value
     const value = React.useMemo(() => ({

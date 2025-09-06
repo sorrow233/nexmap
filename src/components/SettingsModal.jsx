@@ -9,9 +9,12 @@ import SettingsCreditsTab from './settings/SettingsCreditsTab';
 import SettingsLLMTab from './settings/SettingsLLMTab';
 import SettingsRolesTab from './settings/SettingsRolesTab';
 import SettingsStorageTab from './settings/SettingsStorageTab';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) {
     if (!isOpen) return null;
+
+    const { t } = useLanguage();
 
     const [activeTab, setActiveTab] = useState('credits');
     const [showAdvanced, setShowAdvanced] = useState(false);
@@ -185,15 +188,15 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             <Settings size={20} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Settings</h2>
-                            <p className="text-xs text-slate-500 font-medium">Configuration</p>
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t.settings.title}</h2>
+                            <p className="text-xs text-slate-500 font-medium">{t.settings.configuration}</p>
                         </div>
                     </div>
 
                     <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2">
                         <div className="space-y-1">
-                            <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">General</div>
-                            <TabButton id="credits" icon={Gift} label="Credits" description="Manage usage & limits" />
+                            <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.settings.general}</div>
+                            <TabButton id="credits" icon={Gift} label={t.settings.credits} description={t.settings.creditsDesc} />
                         </div>
 
                         {/* Advanced Toggle */}
@@ -202,7 +205,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                                 onClick={() => setShowAdvanced(!showAdvanced)}
                                 className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors uppercase tracking-wider"
                             >
-                                <span>Advanced Settings</span>
+                                <span>{t.settings.advancedSettings}</span>
                                 <Settings size={14} className={`transition-transform duration-300 ${showAdvanced ? 'rotate-90' : ''}`} />
                             </button>
                         </div>
@@ -210,14 +213,14 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         {showAdvanced && (
                             <div className="animate-slide-down space-y-6 pl-2 border-l-2 border-slate-100 dark:border-white/5 ml-4">
                                 <div className="space-y-1">
-                                    <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">AI Configuration</div>
-                                    <TabButton id="llm" icon={Cpu} label="Provider" description="Models & API Keys" />
-                                    <TabButton id="roles" icon={Layers} label="Model Roles" description="Assign specialized models" />
+                                    <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.settings.aiConfiguration}</div>
+                                    <TabButton id="llm" icon={Cpu} label={t.settings.provider} description={t.settings.providerDesc} />
+                                    <TabButton id="roles" icon={Layers} label={t.settings.modelRoles} description={t.settings.modelRolesDesc} />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data & Storage</div>
-                                    <TabButton id="storage" icon={Database} label="Storage" description="S3 & Cloud settings" />
+                                    <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.settings.dataStorage}</div>
+                                    <TabButton id="storage" icon={Database} label={t.settings.storage} description={t.settings.storageDesc} />
                                 </div>
                             </div>
                         )}
@@ -235,23 +238,23 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     {/* Content Header */}
                     <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 sticky top-0">
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                            {activeTab === 'credits' && 'Credits & Usage'}
-                            {activeTab === 'llm' && 'Model Provider'}
-                            {activeTab === 'roles' && 'Model Roles'}
-                            {activeTab === 'storage' && 'Storage Settings'}
+                            {activeTab === 'credits' && t.settings.creditsUsage}
+                            {activeTab === 'llm' && t.settings.modelProvider}
+                            {activeTab === 'roles' && t.settings.modelRoles}
+                            {activeTab === 'storage' && t.settings.storageSettings}
                         </h2>
                         <div className="flex gap-3">
                             <button
                                 onClick={onClose}
                                 className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm"
                             >
-                                Cancel
+                                {t.settings.cancel}
                             </button>
                             <button
                                 onClick={handleSave}
                                 className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95 text-sm"
                             >
-                                Save Changes
+                                {t.settings.saveChanges}
                             </button>
                         </div>
                     </div>
@@ -306,8 +309,8 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md bg-opacity-95">
                             <CheckCircle2 size={24} />
                             <div>
-                                <p className="font-bold">Settings Saved!</p>
-                                <p className="text-sm text-emerald-100">Applying changes...</p>
+                                <p className="font-bold">{t.settings.settingsSaved}</p>
+                                <p className="text-sm text-emerald-100">{t.settings.applyingChanges}</p>
                             </div>
                         </div>
                     </div>
@@ -319,22 +322,22 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mx-auto mb-4">
                                 <AlertCircle size={32} />
                             </div>
-                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-2 text-center">Reset Configuration?</h3>
+                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-2 text-center">{t.settings.resetConfiguration}</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6 leading-relaxed">
-                                This will remove all custom providers and API keys. The app will return to its default state.
+                                {t.settings.resetWarning}
                             </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowResetConfirm(false)}
                                     className="flex-1 py-3 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
                                 >
-                                    Cancel
+                                    {t.settings.cancel}
                                 </button>
                                 <button
                                     onClick={confirmReset}
                                     className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500 transition-all shadow-lg shadow-red-500/20"
                                 >
-                                    Yes, Reset
+                                    {t.settings.yesReset}
                                 </button>
                             </div>
                         </div>

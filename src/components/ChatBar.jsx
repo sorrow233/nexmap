@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Frame, Network, LayoutGrid } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /**
  * ChatBar Component - Isolated input bar to prevent parent re-renders during typing
@@ -28,6 +29,7 @@ const ChatBar = React.memo(function ChatBar({
     const [promptInput, setPromptInput] = useState('');
     const globalPromptInputRef = useRef(null);
     const globalFileInputRef = useRef(null);
+    const { t } = useLanguage();
 
     const handleSubmit = () => {
         if (!promptInput.trim() && globalImages.length === 0) return;
@@ -67,10 +69,10 @@ const ChatBar = React.memo(function ChatBar({
     };
 
     const placeholderText = cards.length === 0
-        ? "Start a new board..."
+        ? t.chatBar.startNewBoard
         : selectedIds.length > 0
-            ? `Ask about ${selectedIds.length} selected items...`
-            : "Type to create or ask...";
+            ? t.chatBar.askAboutSelected.replace('{count}', selectedIds.length)
+            : t.chatBar.typeToCreate;
 
     const hasMarkedTopics = selectedIds.length === 1 &&
         cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0;
@@ -85,7 +87,7 @@ const ChatBar = React.memo(function ChatBar({
                             <button
                                 onClick={() => globalFileInputRef.current?.click()}
                                 className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                title="Upload Image"
+                                title={t.chatBar.uploadImage}
                             >
                                 <ImageIcon size={20} />
                             </button>
@@ -100,7 +102,7 @@ const ChatBar = React.memo(function ChatBar({
                             <button
                                 onClick={() => onCreateNote('', false)}
                                 className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                title="Add Sticky Note"
+                                title={t.chatBar.addStickyNote}
                             >
                                 <StickyNoteIcon size={20} />
                             </button>
@@ -110,10 +112,10 @@ const ChatBar = React.memo(function ChatBar({
                                 <button
                                     onClick={() => onExpandTopics(selectedIds[0])}
                                     className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-full transition-all flex items-center gap-1 animate-pulse"
-                                    title="Expand marked topics"
+                                    title={t.chatBar.expandTopics}
                                 >
                                     <Sparkles size={20} />
-                                    <span className="text-[10px] font-bold uppercase tracking-tighter">Topics</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-tighter">{t.chatBar.topics}</span>
                                 </button>
                             )}
 
@@ -124,21 +126,21 @@ const ChatBar = React.memo(function ChatBar({
                                     <button
                                         onClick={() => onSelectConnected(selectedIds[0])}
                                         className="p-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
-                                        title="Select Connected Cluster"
+                                        title={t.chatBar.selectConnected}
                                     >
                                         <Network size={20} />
                                     </button>
                                     <button
                                         onClick={() => onGroup(selectedIds)}
                                         className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-full transition-all"
-                                        title="Create Zone (Group)"
+                                        title={t.chatBar.createZone}
                                     >
                                         <Frame size={20} />
                                     </button>
                                     <button
                                         onClick={() => onLayoutGrid && onLayoutGrid()}
                                         className="p-2 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 rounded-full transition-all"
-                                        title="Grid Layout"
+                                        title={t.chatBar.gridLayout}
                                     >
                                         <LayoutGrid size={20} />
                                     </button>
@@ -190,7 +192,7 @@ const ChatBar = React.memo(function ChatBar({
                                     onClick={handleBatchSubmit}
                                     disabled={!promptInput.trim() && globalImages.length === 0}
                                     className="p-3 text-emerald-400 hover:bg-emerald-500/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
-                                    title="Append to selected cards' chat"
+                                    title={t.chatBar.appendToChat}
                                 >
                                     <MessageSquarePlus size={20} />
                                 </button>
