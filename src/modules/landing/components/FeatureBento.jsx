@@ -149,6 +149,19 @@ const FeatureBento = () => {
                     </SpotlightCard>
 
                 </div>
+
+                {/* Legal Footer */}
+                <div className="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+                    <div>
+                        &copy; {new Date().getFullYear()} NexMap. All rights reserved.
+                    </div>
+                    <div className="flex gap-6">
+                        <a href="/legal/terms" className="hover:text-slate-300 transition-colors">Terms</a>
+                        <a href="/legal/privacy" className="hover:text-slate-300 transition-colors">Privacy</a>
+                        <a href="/legal/tokushoho" className="hover:text-slate-300 transition-colors">特定商取引法</a>
+                    </div>
+                </div>
+
             </div>
 
             <style>{`

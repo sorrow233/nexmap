@@ -20,6 +20,8 @@ const FreeTrialPage = lazyWithRetry(() => import('./pages/FreeTrialPage'));
 const FeedbackPage = lazyWithRetry(() => import('./pages/FeedbackPage'));
 
 
+import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
+
 import ModernDialog from './components/ModernDialog';
 import {
     createBoard,
@@ -259,6 +261,11 @@ function AppContent() {
                     <Route path="/" element={user ? <Navigate to="/gallery" replace /> : <LandingPage />} />
                     <Route path="/intro" element={<LandingPage />} />
                     <Route path="/free-trial" element={<FreeTrialPage />} />
+
+                    {/* Legal Routes */}
+                    <Route path="/legal/tokushoho" element={<Tokushoho />} />
+                    <Route path="/legal/privacy" element={<Privacy />} />
+                    <Route path="/legal/terms" element={<Terms />} />
 
                     <Route path="/gallery" element={
                         <GalleryPage
