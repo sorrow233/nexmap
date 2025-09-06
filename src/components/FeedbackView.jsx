@@ -7,7 +7,7 @@ import { auth } from '../services/firebase';
 const API_BASE = '/api/feedback';
 
 // Max votes per user
-const MAX_VOTES_PER_USER = 10;
+const MAX_VOTES_PER_USER = 1;
 
 // Status badge colors
 const STATUS_COLORS = {
@@ -526,8 +526,8 @@ export default function FeedbackView({ user, onLogin }) {
             {user && (
                 <div className="mb-4 text-center">
                     <span className={`text-xs font-medium px-3 py-1 rounded-full ${totalUserVotes >= MAX_VOTES_PER_USER
-                            ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                        ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                         }`}>
                         {t.feedback?.votesRemaining || 'Votes remaining'}: {MAX_VOTES_PER_USER - totalUserVotes}/{MAX_VOTES_PER_USER}
                     </span>
