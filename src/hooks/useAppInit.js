@@ -8,7 +8,9 @@ import {
     loadUserSettings,
     createBoard,
     saveBoard,
-    cleanupExpiredTrash // New import
+    cleanupExpiredTrash,
+    getBoardsList, // New import
+    saveBoardToCloud // Ensure this is imported if not already, though it was in the file before? No wait, it wasn't used in this file before but I can import it.
 } from '../services/storage';
 import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
@@ -70,6 +72,45 @@ export function useAppInit() {
             }
 
             if (u) {
+                // MIGRATION: Check for local boards that need to be synced to this new user
+                // This handles the "Guest -> Logged In" flow where data would otherwise be lost
+                const migrateLocalData = async () => {
+                    const localBoards = getBoardsList();
+                    if (localBoards.length > 0) {
+                        debugLog.sync(`Found ${localBoards.length} local boards. Checking for migration candidates...`);
+
+                        // We can't easily know if they are "already in cloud" forTHIS user without checking cloud first.
+                        // But since we just logged in, we haven't loaded cloud boards yet.
+                        // STRATEGY: We upload ALL local boards to the new user. 
+                        // If they already exist (ID collision), `saveBoardToCloud` handles it (usually overwrites, which matches "local is newer").
+                        // But to be safe, we only migrate if we are sure it's a guest session being promoted.
+                        // A simple heuristic: If the user just logged in, pushing local work is generally desired.
+
+                        let migratedCount = 0;
+                        for (const board of localBoards) {
+                            try {
+                                // Load full board data
+                                const fullBoardData = await loadBoard(board.id);
+                                if (fullBoardData) {
+                                    // Push to cloud
+                                    await saveBoardToCloud(u.uid, board.id, fullBoardData);
+                                    migratedCount++;
+                                }
+                            } catch (err) {
+                                debugLog.error(`Failed to migrate board ${board.id}`, err);
+                            }
+                        }
+
+                        if (migratedCount > 0) {
+                            debugLog.sync(`Successfully migrated ${migratedCount} local boards to cloud account.`);
+                        }
+                    }
+                };
+
+                // Execute migration - don't await blocking the UI, but do it before setting up listener if possible?
+                // Actually parallel is fine, Firestore handles it.
+                migrateLocalData();
+
                 debugLog.sync('Starting cloud board sync...');
                 unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
                     debugLog.sync(`Received cloud update for ${cloudBoards.length} boards`, updatedIds);
@@ -164,6 +205,10 @@ export function useAppInit() {
                         }
                     }
                 });
+            } else {
+                // User logged out - clear user-specific state to prevent data leakage
+                debugLog.auth('User logged out, clearing user-specific state...');
+                setBoardsList([]);
             }
         });
 

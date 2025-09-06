@@ -8,6 +8,7 @@
 import { idbClear } from './db/indexedDB';
 import { useStore, clearHistory } from '../store/useStore';
 import { DEFAULT_PROVIDERS } from './llm/registry';
+import { getBoardsList, loadBoard } from './storage'; // Import for backup
 
 // All localStorage keys used by the app
 const STORAGE_KEYS_TO_REMOVE = [
@@ -35,6 +36,30 @@ export async function clearAllUserData() {
     console.log('[Logout] Clearing all user data...');
     console.trace('[Logout] Caller Trace:');
     console.groupEnd();
+
+    // 0. EMERGENCY BACKUP: Save current state just in case
+    try {
+        const minimalBackup = {
+            timestamp: Date.now(),
+            boards: getBoardsList(),
+            // We can't backup all board data as it's too large for localStorage,
+            // but we can try to backup the most recently active board if it exists.
+            activeBoardData: null
+        };
+
+        const activeId = localStorage.getItem('mixboard_current_board_id');
+        if (activeId) {
+            const boardData = await loadBoard(activeId);
+            if (boardData) {
+                minimalBackup.activeBoardData = { id: activeId, ...boardData };
+            }
+        }
+
+        localStorage.setItem('mixboard_safety_backup', JSON.stringify(minimalBackup));
+        console.log('[Logout] Emergency backup created at mixboard_safety_backup');
+    } catch (e) {
+        console.error('[Logout] Backup failed (likely quota exceeded):', e);
+    }
 
     // 1. Clear static localStorage keys
     STORAGE_KEYS_TO_REMOVE.forEach(key => {
