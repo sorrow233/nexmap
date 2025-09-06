@@ -256,11 +256,25 @@ export default function FeedbackPage() {
         localStorage.setItem('feedback_voted_ids', JSON.stringify(ids));
     };
 
+    // Helper to authenticated fetch
+    const authenticatedFetch = useCallback(async (url, options = {}) => {
+        const headers = { ...options.headers };
+        if (auth.currentUser) {
+            try {
+                const token = await auth.currentUser.getIdToken();
+                headers['Authorization'] = `Bearer ${token}`;
+            } catch (e) {
+                console.warn('Failed to get ID token', e);
+            }
+        }
+        return fetch(url, { ...options, headers });
+    }, []);
+
     // Fetch feedbacks
     const fetchFeedbacks = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE}?sort=${sortBy}`);
+            const response = await authenticatedFetch(`${API_BASE}?sort=${sortBy}`);
             const data = await response.json();
             setFeedbacks(data.feedbacks || []);
         } catch (error) {
@@ -269,7 +283,7 @@ export default function FeedbackPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [sortBy]);
+    }, [sortBy, authenticatedFetch]);
 
     useEffect(() => {
         fetchFeedbacks();
@@ -278,7 +292,7 @@ export default function FeedbackPage() {
     // Handle vote
     const handleVote = async (feedbackId, action) => {
         try {
-            const response = await fetch(API_BASE, {
+            const response = await authenticatedFetch(API_BASE, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ feedbackId, action })
@@ -308,7 +322,7 @@ export default function FeedbackPage() {
 
     // Handle submit feedback
     const handleSubmitFeedback = async ({ content, email, displayName, photoURL, uid }) => {
-        const response = await fetch(API_BASE, {
+        const response = await authenticatedFetch(API_BASE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content, email, displayName, photoURL, uid })
