@@ -67,7 +67,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const hasBackgroundImage = !!currentBoard?.backgroundImage;
 
     // Thumbnail auto-capture hook - captures card-dense area during usage
-    const { canvasContainerRef } = useThumbnailCapture(cards, currentBoardId, hasBackgroundImage);
+    const { canvasContainerRef } = useThumbnailCapture(cards, connections, currentBoardId, hasBackgroundImage);
 
     const [cloudSyncStatus, setCloudSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
     const [globalImages, setGlobalImages] = useState([]);
