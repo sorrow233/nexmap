@@ -1,16 +1,15 @@
-import html2canvas from 'html2canvas';
 import { useCallback, useRef, useEffect } from 'react';
 import { updateBoardMetadata } from '../services/storage';
 
 /**
- * Calculate the center point and viewport for focusing on card-dense area.
- * @param {Array} cards - Array of card objects
- * @returns {Object|null} - {centerX, centerY, scale} or null
+ * Calculate the bounding box for all cards.
+ * @param {Array} cards - Array of card objects with x, y positions
+ * @returns {Object|null} - Bounding box info or null
  */
-function calculateCardsCenterView(cards) {
+function calculateCardsBoundingBox(cards) {
     if (!cards || cards.length === 0) return null;
 
-    // Filter valid cards - cards store position as x, y directly (not position.x, position.y)
+    // Filter valid cards - cards store position as x, y directly
     const validCards = cards.filter(c =>
         typeof c.x === 'number' &&
         typeof c.y === 'number'
@@ -20,48 +19,182 @@ function calculateCardsCenterView(cards) {
 
     // Card default size
     const CARD_WIDTH = 320;
-    const CARD_HEIGHT = 280;
+    const CARD_HEIGHT = 200;
 
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
 
     for (const card of validCards) {
+        const width = card.width || CARD_WIDTH;
+        const height = card.height || CARD_HEIGHT;
         minX = Math.min(minX, card.x);
         minY = Math.min(minY, card.y);
-        maxX = Math.max(maxX, card.x + CARD_WIDTH);
-        maxY = Math.max(maxY, card.y + CARD_HEIGHT);
+        maxX = Math.max(maxX, card.x + width);
+        maxY = Math.max(maxY, card.y + height);
     }
 
+    const PADDING = 40;
     return {
-        centerX: (minX + maxX) / 2,
-        centerY: (minY + maxY) / 2,
-        boundingWidth: maxX - minX,
-        boundingHeight: maxY - minY,
-        minX, minY, maxX, maxY
+        minX: minX - PADDING,
+        minY: minY - PADDING,
+        maxX: maxX + PADDING,
+        maxY: maxY + PADDING,
+        width: maxX - minX + PADDING * 2,
+        height: maxY - minY + PADDING * 2
     };
 }
 
 /**
- * Hook for capturing canvas thumbnails.
- * Uses direct html2canvas capture of the canvas container.
+ * Draw a rounded rectangle on canvas.
+ */
+function roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+}
+
+/**
+ * Get card color or fallback.
+ */
+function getCardColor(card) {
+    if (card.data?.color) return card.data.color;
+    if (card.type === 'note') return '#6366f1'; // Indigo for notes
+    return '#f97316'; // Orange for chat cards
+}
+
+/**
+ * Render cards as simplified thumbnail using Canvas 2D API.
+ * Works on all platforms including mobile.
+ */
+function renderCardsThumbnail(cards, targetWidth = 400, targetHeight = 300) {
+    const bbox = calculateCardsBoundingBox(cards);
+    if (!bbox) return null;
+
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+
+    // Calculate scale to fit cards in thumbnail
+    const scaleX = targetWidth / bbox.width;
+    const scaleY = targetHeight / bbox.height;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 1x
+
+    // Background
+    ctx.fillStyle = '#0f172a'; // Dark slate background
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    // Draw dot grid pattern
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+    const dotSpacing = 12;
+    for (let x = 0; x < targetWidth; x += dotSpacing) {
+        for (let y = 0; y < targetHeight; y += dotSpacing) {
+            ctx.beginPath();
+            ctx.arc(x, y, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Center offset
+    const scaledWidth = bbox.width * scale;
+    const scaledHeight = bbox.height * scale;
+    const offsetX = (targetWidth - scaledWidth) / 2 - bbox.minX * scale;
+    const offsetY = (targetHeight - scaledHeight) / 2 - bbox.minY * scale;
+
+    // Default card dimensions
+    const CARD_WIDTH = 320;
+    const CARD_HEIGHT = 200;
+
+    // Draw each card
+    for (const card of cards) {
+        if (typeof card.x !== 'number' || typeof card.y !== 'number') continue;
+
+        const cardX = card.x * scale + offsetX;
+        const cardY = card.y * scale + offsetY;
+        const cardW = (card.width || CARD_WIDTH) * scale;
+        const cardH = (card.height || CARD_HEIGHT) * scale;
+        const radius = 8 * scale;
+
+        // Card shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 10 * scale;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4 * scale;
+
+        // Card background
+        const cardColor = getCardColor(card);
+        roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Color accent bar at top
+        roundRect(ctx, cardX, cardY, cardW, 6 * scale, radius);
+        ctx.fillStyle = cardColor;
+        ctx.fill();
+        // Cover bottom of accent bar to make it flat
+        ctx.fillRect(cardX, cardY + 3 * scale, cardW, 3 * scale);
+
+        // Title text (if available)
+        const title = card.data?.title || (card.type === 'note' ? 'Note' : 'Card');
+        const maxTitleLength = 20;
+        const displayTitle = title.length > maxTitleLength ? title.slice(0, maxTitleLength) + '...' : title;
+
+        ctx.font = `bold ${10 * scale}px system-ui, sans-serif`;
+        ctx.fillStyle = '#1e293b';
+        ctx.textBaseline = 'top';
+        ctx.fillText(displayTitle, cardX + 8 * scale, cardY + 12 * scale, cardW - 16 * scale);
+
+        // Content preview lines (simulate text)
+        ctx.fillStyle = '#94a3b8';
+        const lineY = cardY + 28 * scale;
+        const lineCount = Math.min(3, Math.floor((cardH - 40 * scale) / (8 * scale)));
+        for (let i = 0; i < lineCount; i++) {
+            const lineWidth = cardW * (0.5 + Math.random() * 0.4);
+            ctx.fillRect(cardX + 8 * scale, lineY + i * 8 * scale, lineWidth - 16 * scale, 4 * scale);
+        }
+    }
+
+    // Export as JPEG
+    try {
+        return canvas.toDataURL('image/jpeg', 0.7);
+    } catch (e) {
+        console.error('[Thumbnail] Export failed:', e);
+        return null;
+    }
+}
+
+/**
+ * Hook for capturing canvas thumbnails using Canvas 2D API.
+ * Cross-platform compatible - works on desktop and mobile.
  */
 export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
     const captureTimeoutRef = useRef(null);
     const lastCaptureRef = useRef(0);
-    const canvasContainerRef = useRef(null);
+    const canvasContainerRef = useRef(null); // Keep for API compatibility
 
-    // Minimum 60 seconds between captures
-    const MIN_CAPTURE_INTERVAL = 60000;
+    // Minimum 30 seconds between captures
+    const MIN_CAPTURE_INTERVAL = 30000;
 
     /**
-     * Capture the canvas container directly.
+     * Generate thumbnail using Canvas 2D API.
      */
-    const captureThumbnail = useCallback(async () => {
+    const captureThumbnail = useCallback(() => {
         // Skip conditions
-        if (!canvasContainerRef.current) {
-            return null;
-        }
-
         if (hasBackgroundImage) {
             return null;
         }
@@ -76,61 +209,29 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
         }
 
         try {
-            // Calculate card center view
-            const centerView = calculateCardsCenterView(cards);
-            if (!centerView) {
-                return null;
-            }
-
-            // Get the canvas internal content (cards layer)
-            const canvasEl = canvasContainerRef.current;
-
-            // Capture options - focus on the visible area
-            const canvas = await html2canvas(canvasEl, {
-                scale: 0.25, // Very low res for thumbnail
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#1e293b', // Dark slate background
-                width: Math.min(canvasEl.offsetWidth, 1600),
-                height: Math.min(canvasEl.offsetHeight, 1000),
-                // Ignore certain elements
-                ignoreElements: (el) => {
-                    // Skip modals, tooltips, fixed UI elements
-                    const classes = el.className || '';
-                    if (typeof classes === 'string') {
-                        if (classes.includes('fixed') ||
-                            classes.includes('modal') ||
-                            classes.includes('tooltip') ||
-                            classes.includes('z-50') ||
-                            classes.includes('z-[200]')) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-            });
-
-            // Convert to JPEG data URL
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-
-            // Check size
-            const sizeKB = Math.round(dataUrl.length / 1024);
-
-            if (sizeKB > 300) {
-                // Too large, use lower quality
-                const smallerUrl = canvas.toDataURL('image/jpeg', 0.2);
+            const thumbnail = renderCardsThumbnail(cards);
+            if (thumbnail) {
                 lastCaptureRef.current = now;
-                return smallerUrl;
             }
-
-            lastCaptureRef.current = now;
-            return dataUrl;
-
+            return thumbnail;
         } catch (error) {
             console.error('[Thumbnail] Capture failed:', error);
             return null;
         }
     }, [cards, hasBackgroundImage]);
+
+    /**
+     * Save thumbnail to board metadata.
+     */
+    const saveThumbnail = useCallback((thumbnail) => {
+        if (thumbnail && currentBoardId) {
+            try {
+                updateBoardMetadata(currentBoardId, { thumbnail });
+            } catch (e) {
+                console.error('[Thumbnail] Save failed:', e);
+            }
+        }
+    }, [currentBoardId]);
 
     /**
      * Schedule auto-capture with debounce.
@@ -144,18 +245,12 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
             return;
         }
 
-        // Wait 10 seconds after last card change
-        captureTimeoutRef.current = setTimeout(async () => {
-            const thumbnail = await captureThumbnail();
-            if (thumbnail && currentBoardId) {
-                try {
-                    updateBoardMetadata(currentBoardId, { thumbnail });
-                } catch (e) {
-                    console.error('[Thumbnail] Save failed:', e);
-                }
-            }
-        }, 10000);
-    }, [captureThumbnail, currentBoardId, hasBackgroundImage, cards]);
+        // Wait 3 seconds after last card change (faster for mobile)
+        captureTimeoutRef.current = setTimeout(() => {
+            const thumbnail = captureThumbnail();
+            saveThumbnail(thumbnail);
+        }, 3000);
+    }, [captureThumbnail, saveThumbnail, hasBackgroundImage, cards]);
 
     // Trigger capture when card count changes
     useEffect(() => {
@@ -168,7 +263,27 @@ export function useThumbnailCapture(cards, currentBoardId, hasBackgroundImage) {
                 clearTimeout(captureTimeoutRef.current);
             }
         };
-    }, [cards?.length, currentBoardId, hasBackgroundImage]);
+    }, [cards?.length, currentBoardId, hasBackgroundImage, scheduleAutoCapture]);
+
+    // Force capture on page visibility change (user leaving)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden' && cards && cards.length > 0 && !hasBackgroundImage && currentBoardId) {
+                // Immediate capture when user leaves
+                const thumbnail = renderCardsThumbnail(cards);
+                if (thumbnail) {
+                    try {
+                        updateBoardMetadata(currentBoardId, { thumbnail });
+                    } catch (e) {
+                        console.error('[Thumbnail] Save on exit failed:', e);
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [cards, currentBoardId, hasBackgroundImage]);
 
     return {
         canvasContainerRef,
