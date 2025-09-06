@@ -11,7 +11,20 @@ export default function useImageUpload() {
 
     const processFiles = (files) => {
         Array.from(files).forEach(file => {
-            if (!file.type.startsWith('image/')) return;
+            // Security: Check file type blacklist/whitelist
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`File type not allowed: ${file.name}. Only images (JPG, PNG, WebP, GIF) are accepted.`);
+                return;
+            }
+
+            // Security: Check file size (Max 5MB)
+            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+            if (file.size > MAX_SIZE) {
+                alert(`File too large: ${file.name}. Maximum size is 5MB.`);
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 setImages(prev => [...prev, {
