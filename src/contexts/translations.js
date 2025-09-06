@@ -254,12 +254,11 @@ const translations = {
         },
         feedback: {
             title: "Feedback",
-            submitFeedback: "Submit Feedback",
-            yourEmail: "Your Email",
-            emailHint: "Only Gmail or QQ email allowed",
-            feedbackTitle: "Title",
-            feedbackDescription: "Description (optional)",
-            submit: "Submit",
+            submitFeedback: "Send",
+            placeholder: "Share your thoughts... (Enter to send)",
+            emailHint: "Gmail, QQ, Outlook, 163, iCloud allowed",
+            noFeedback: "No feedback yet. Be the first to share!",
+            invalidEmail: "Please use a valid email (Gmail, QQ, Outlook, 163, iCloud)",
             hot: "Hot",
             top: "Top",
             recent: "Recent",
@@ -268,9 +267,7 @@ const translations = {
             done: "Done",
             pending: "Pending",
             votes: "votes",
-            comments: "comments",
-            invalidEmail: "Only Gmail (@gmail.com) or QQ (@qq.com) emails are allowed",
-            thankYou: "Thank you for your feedback!"
+            comments: "comments"
         },
         footer: {
             title: "Start Thinking in Connections.",
@@ -533,12 +530,11 @@ const translations = {
         },
         feedback: {
             title: "反馈",
-            submitFeedback: "提交反馈",
-            yourEmail: "您的邮箱",
-            emailHint: "仅支持 Gmail 或 QQ 邮箱",
-            feedbackTitle: "标题",
-            feedbackDescription: "详细描述（可选）",
-            submit: "提交",
+            submitFeedback: "发送",
+            placeholder: "分享你的想法... (回车发送)",
+            emailHint: "支持 Gmail, QQ, Outlook, 163, iCloud",
+            noFeedback: "暂无反馈，来抢沙发吧！",
+            invalidEmail: "请使用有效的邮箱 (Gmail, QQ, Outlook, 163, iCloud)",
             hot: "热门",
             top: "最高票",
             recent: "最新",
@@ -547,9 +543,7 @@ const translations = {
             done: "已完成",
             pending: "待处理",
             votes: "票",
-            comments: "评论",
-            invalidEmail: "仅支持 Gmail (@gmail.com) 或 QQ (@qq.com) 邮箱",
-            thankYou: "感谢您的反馈！"
+            comments: "评论"
         },
         footer: {
             title: "开始用「连接」思考。",
@@ -812,12 +806,11 @@ const translations = {
         },
         feedback: {
             title: "フィードバック",
-            submitFeedback: "フィードバックを送信",
-            yourEmail: "メールアドレス",
-            emailHint: "Gmail または QQ メールのみ",
-            feedbackTitle: "タイトル",
-            feedbackDescription: "詳細説明（任意）",
-            submit: "送信",
+            submitFeedback: "送信",
+            placeholder: "あなたの考えをシェア... (Enterで送信)",
+            emailHint: "Gmail, QQ, Outlook, 163, iCloud 対応",
+            noFeedback: "まだフィードバックはありません。最初の投稿者になりましょう！",
+            invalidEmail: "有効なメールアドレスを使用してください (Gmail, QQ, Outlook, 163, iCloud)",
             hot: "ホット",
             top: "トップ",
             recent: "最新",
@@ -826,9 +819,7 @@ const translations = {
             done: "完了",
             pending: "保留中",
             votes: "票",
-            comments: "コメント",
-            invalidEmail: "Gmail (@gmail.com) または QQ (@qq.com) のメールのみ使用できます",
-            thankYou: "フィードバックありがとうございます！"
+            comments: "コメント"
         },
         footer: {
             title: "思考の「繋がり」を始めよう。",
