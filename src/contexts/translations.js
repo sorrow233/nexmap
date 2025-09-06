@@ -132,8 +132,8 @@ const translations = {
         credits: {
             noConfigNeeded: "No Configuration Needed",
             readyToUse: "We've pre-configured the best AI models for you. Your free quota supports approximately",
-            interactions: "100,000",
-            conversations: "conversation interactions.",
+            interactions: "200",
+            conversations: "conversations.",
             remainingCredits: "Remaining Credits",
             fastResponse: "Fast Response",
             fastResponseDesc: "DeepSeek V3 High-Performance Model",
@@ -413,8 +413,8 @@ const translations = {
         credits: {
             noConfigNeeded: "无需配置，直接使用",
             readyToUse: "我们已经为您预置了最佳 AI 模型。您现在的免费额度足够支持约",
-            interactions: "10 万次",
-            conversations: "对话交互。",
+            interactions: "200",
+            conversations: "次对话。",
             remainingCredits: "剩余额度",
             fastResponse: "极速响应",
             fastResponseDesc: "DeepSeek V3 高性能模型",
@@ -694,8 +694,8 @@ const translations = {
         credits: {
             noConfigNeeded: "設定不要、すぐに使える",
             readyToUse: "最適なAIモデルを事前設定済み。無料クォータで約",
-            interactions: "10万回",
-            conversations: "の会話をサポート。",
+            interactions: "200",
+            conversations: "回の会話をサポート。",
             remainingCredits: "残りクレジット",
             fastResponse: "高速レスポンス",
             fastResponseDesc: "DeepSeek V3 高性能モデル",
