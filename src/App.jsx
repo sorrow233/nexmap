@@ -17,6 +17,7 @@ const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
 const BoardPage = lazyWithRetry(() => import('./pages/BoardPage'));
 const LandingPage = lazyWithRetry(() => import('./modules/landing'));
 const FreeTrialPage = lazyWithRetry(() => import('./pages/FreeTrialPage'));
+const FeedbackPage = lazyWithRetry(() => import('./pages/FeedbackPage'));
 
 
 import ModernDialog from './components/ModernDialog';
@@ -290,6 +291,7 @@ function AppContent() {
                             onBack={handleBackToGallery}
                         />
                     } />
+                    <Route path="/feedback" element={<FeedbackPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Suspense>
