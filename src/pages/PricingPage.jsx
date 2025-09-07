@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, Zap, Crown, Shield, ArrowLeft, Sparkles, Star, Globe, AlertTriangle, Infinity as InfinityIcon, Key } from 'lucide-react';
+import { Check, Zap, Crown, Shield, ArrowLeft, Sparkles, Star, Globe, AlertTriangle, Infinity as InfinityIcon, Key, ChevronDown } from 'lucide-react';
 import { auth } from '../services/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { isLikelyChinaUser } from '../utils/regionCheck';
@@ -39,8 +39,8 @@ const pricingTranslations = {
         poweredByStripe: 'Powered by Stripe',
         instantDelivery: 'Instant Delivery',
         allRights: 'All rights reserved.',
-        regionBlocked: 'Payment services are not available in your region.',
-        regionBlockedDesc: 'Due to regulatory requirements, online payment is temporarily unavailable in mainland China. Please contact us for alternative solutions.',
+        regionBlocked: 'Payment services unavailable in your region',
+        regionBlockedDesc: 'Due to regulatory requirements, online payment is temporarily unavailable in mainland China.',
         contactUs: 'Contact Support',
         payAsYouGo: 'Pay as you go',
         noExpiration: 'No expiration',
@@ -51,7 +51,8 @@ const pricingTranslations = {
         whyPro: 'Why Go Pro?',
         whyProDesc: 'Designed for professionals who need control, privacy, and unlimited scalablity.',
         casualUser: 'Casual User?',
-        casualUserDesc: 'Get started with pre-loaded credits. No API keys needed.'
+        casualUserDesc: 'Get started with pre-loaded credits. No API keys needed.',
+        hiddenPrice: '---'
     },
     zh: {
         backToNexMap: '返回 NexMap',
@@ -86,7 +87,7 @@ const pricingTranslations = {
         instantDelivery: '即时交付',
         allRights: '版权所有。',
         regionBlocked: '您所在的地区暂不支持支付服务',
-        regionBlockedDesc: '由于法规要求，中国大陆地区暂时无法使用在线支付功能。如需购买，请联系我们获取其他解决方案。',
+        regionBlockedDesc: '由于法规要求，中国大陆地区暂时无法使用在线支付功能。',
         contactUs: '联系客服',
         payAsYouGo: '按需付费',
         noExpiration: '永不过期',
@@ -97,7 +98,8 @@ const pricingTranslations = {
         whyPro: '为什么选择 Pro？',
         whyProDesc: '专为需要掌控力、隐私和无限扩展性的专业人士设计。',
         casualUser: '偶尔使用？',
-        casualUserDesc: '通过预充值积分快速开始，无需繁琐配置 API Key。'
+        casualUserDesc: '通过预充值积分快速开始，无需繁琐配置 API Key。',
+        hiddenPrice: '---'
     },
     ja: {
         backToNexMap: 'NexMap に戻る',
@@ -132,7 +134,7 @@ const pricingTranslations = {
         instantDelivery: '即時配信',
         allRights: 'All rights reserved.',
         regionBlocked: 'お住まいの地域では決済サービスをご利用いただけません',
-        regionBlockedDesc: '規制上の理由により、中国本土ではオンライン決済が一時的にご利用いただけません。代替についてはお問い合わせください。',
+        regionBlockedDesc: '規制上の理由により、中国本土ではオンライン決済が一時的にご利用いただけません。',
         contactUs: 'サポートに連絡',
         payAsYouGo: '従量課金',
         noExpiration: '有効期限なし',
@@ -143,28 +145,30 @@ const pricingTranslations = {
         whyPro: 'なぜ Pro なのか？',
         whyProDesc: 'コントロール、プライバシー、そして無限の拡張性を求めるプロフェッショナルのために。',
         casualUser: 'カジュアルに使う？',
-        casualUserDesc: 'API キー不要。プリペイドクレジットですぐに始められます。'
+        casualUserDesc: 'API キー不要。プリペイドクレジットですぐに始められます。',
+        hiddenPrice: '---'
     }
 };
 
 export default function PricingPage() {
     const navigate = useNavigate();
-    const { language } = useLanguage();
+    const { language, setLanguage } = useLanguage();
     const t = pricingTranslations[language] || pricingTranslations.en;
     const [loadingProduct, setLoadingProduct] = useState(null);
     const [isBlocked, setIsBlocked] = useState(false);
+    const [showLangMenu, setShowLangMenu] = useState(false);
 
     useEffect(() => {
         setIsBlocked(isLikelyChinaUser());
     }, []);
 
     const handleCheckout = async (productId) => {
+        if (isBlocked) return; // double check
+
         const user = auth.currentUser;
         if (!user) {
-            // Keep the query param or logic to redirect back after login if needed
-            // For now straightforward alert
             alert("Please login first to make a purchase.");
-            navigate('/?login=true'); // Assuming landing page can handle login trigger, or just stay here
+            navigate('/?login=true');
             return;
         }
 
@@ -195,6 +199,11 @@ export default function PricingPage() {
         }
     };
 
+    const toggleLanguage = (lang) => {
+        setLanguage(lang);
+        setShowLangMenu(false);
+    };
+
     const creditPlans = [
         {
             id: 'credits_500',
@@ -223,28 +232,6 @@ export default function PricingPage() {
         }
     ];
 
-    if (isBlocked) {
-        return (
-            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
-                <div className="max-w-md text-center">
-                    <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <AlertTriangle size={40} className="text-amber-500" />
-                    </div>
-                    <h1 className="text-2xl font-bold mb-4">{t.regionBlocked}</h1>
-                    <p className="text-white/60 mb-8 leading-relaxed">{t.regionBlockedDesc}</p>
-                    <div className="flex flex-col gap-4">
-                        <a href="mailto:support@nexmap.catzz.work" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold transition-all">
-                            {t.contactUs}
-                        </a>
-                        <Link to="/" className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all">
-                            {t.backToNexMap}
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden selection:bg-amber-500/30">
             {/* Background Effects */}
@@ -255,6 +242,16 @@ export default function PricingPage() {
             </div>
 
             <div className="relative z-10">
+                {/* Blocked Region Banner */}
+                {isBlocked && (
+                    <div className="bg-amber-600/20 border-b border-amber-500/20 backdrop-blur-md">
+                        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-center gap-3 text-sm font-medium text-amber-200">
+                            <AlertTriangle size={16} />
+                            <span>{t.regionBlockedDesc}</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <header className="px-6 py-6 flex items-center justify-between max-w-7xl mx-auto">
                     <Link to="/" className="group flex items-center gap-3 text-white/60 hover:text-white transition-colors">
@@ -263,9 +260,31 @@ export default function PricingPage() {
                         </div>
                         <span className="font-medium text-sm">{t.backToNexMap}</span>
                     </Link>
-                    <div className="flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
-                        <Shield size={12} />
-                        {t.securedByStripe}
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowLangMenu(!showLangMenu)}
+                                className="flex items-center gap-2 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+                            >
+                                <Globe size={12} />
+                                <span className="uppercase">{language}</span>
+                                <ChevronDown size={12} className={`transition-transform duration-200 ${showLangMenu ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showLangMenu && (
+                                <div className="absolute top-full right-0 mt-2 w-32 bg-slate-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                                    <button onClick={() => toggleLanguage('en')} className="w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors">English</button>
+                                    <button onClick={() => toggleLanguage('zh')} className="w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors">中文</button>
+                                    <button onClick={() => toggleLanguage('ja')} className="w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors">日本語</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
+                            <Shield size={12} />
+                            {t.securedByStripe}
+                        </div>
                     </div>
                 </header>
 
@@ -288,7 +307,7 @@ export default function PricingPage() {
                     <div className="max-w-5xl mx-auto mb-32">
                         <div className="relative group">
                             {/* Glow Effect */}
-                            <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 via-orange-600 to-yellow-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
+                            <div className={`absolute -inset-1 bg-gradient-to-r from-amber-500 via-orange-600 to-yellow-500 rounded-[2.5rem] blur opacity-20 ${isBlocked ? 'opacity-10' : 'group-hover:opacity-40'} transition duration-1000`} />
 
                             <div className="relative bg-slate-900 border border-white/10 rounded-[2rem] p-1 md:p-2 overflow-hidden">
                                 {/* Badge */}
@@ -326,12 +345,14 @@ export default function PricingPage() {
                                     </div>
 
                                     {/* Right Content - Pricing CArd */}
-                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md relative">
+                                    <div className={`bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md relative ${isBlocked ? 'opacity-50 grayscale' : ''}`}>
                                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-600 opacity-50" />
 
                                         <div className="mb-8">
                                             <div className="flex items-end gap-2 mb-2">
-                                                <span className="text-6xl font-black text-white">$10</span>
+                                                <span className="text-6xl font-black text-white">
+                                                    {isBlocked ? t.hiddenPrice : '$10'}
+                                                </span>
                                                 <span className="text-white/40 font-medium mb-2 uppercase text-sm">/ {t.oneTimePayment}</span>
                                             </div>
                                             <p className="text-white/40 text-sm">{t.cancelAnytime}</p>
@@ -339,10 +360,15 @@ export default function PricingPage() {
 
                                         <button
                                             onClick={() => handleCheckout('pro_lifetime')}
-                                            disabled={loadingProduct === 'pro_lifetime'}
-                                            className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 group/btn"
+                                            disabled={loadingProduct === 'pro_lifetime' || isBlocked}
+                                            className={`w-full py-4 px-6 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 group/btn ${isBlocked
+                                                    ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
+                                                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
+                                                }`}
                                         >
-                                            {loadingProduct === 'pro_lifetime' ? (
+                                            {isBlocked ? (
+                                                t.regionBlocked
+                                            ) : loadingProduct === 'pro_lifetime' ? (
                                                 t.redirecting
                                             ) : (
                                                 <>
@@ -387,11 +413,12 @@ export default function PricingPage() {
                             {creditPlans.map((plan) => (
                                 <div
                                     key={plan.id}
-                                    className={`relative group bg-white/5 hover:bg-white/[0.07] border transition-all duration-300 rounded-2xl p-6 ${plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10'
+                                    className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
+                                            'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
                                         }`}
                                 >
                                     {plan.popular && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20">
+                                        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg ${isBlocked ? 'bg-slate-700' : 'bg-indigo-600 shadow-indigo-500/20'}`}>
                                             {t.bestValue}
                                         </div>
                                     )}
@@ -399,7 +426,9 @@ export default function PricingPage() {
                                     <div className="mb-6">
                                         <h4 className="text-white/80 font-bold mb-1">{plan.name}</h4>
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-bold text-white">{plan.price}</span>
+                                            <span className="text-2xl font-bold text-white">
+                                                {isBlocked ? t.hiddenPrice : plan.price}
+                                            </span>
                                             <span className="text-sm text-white/40">/ pack</span>
                                         </div>
                                     </div>
@@ -420,13 +449,15 @@ export default function PricingPage() {
 
                                     <button
                                         onClick={() => handleCheckout(plan.id)}
-                                        disabled={loadingProduct === plan.id}
-                                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${plan.popular
-                                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                                : 'bg-white/10 hover:bg-white/20 text-white'
+                                        disabled={loadingProduct === plan.id || isBlocked}
+                                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${isBlocked
+                                                ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                                                : plan.popular
+                                                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                    : 'bg-white/10 hover:bg-white/20 text-white'
                                             }`}
                                     >
-                                        {loadingProduct === plan.id ? t.redirecting : t.getStarted}
+                                        {isBlocked ? t.regionBlocked : loadingProduct === plan.id ? t.redirecting : t.getStarted}
                                     </button>
                                 </div>
                             ))}
