@@ -4,6 +4,7 @@ import { Star, MessageSquare, ArrowRight, ExternalLink, Share2, X } from 'lucide
 import favoritesService from '../services/favoritesService';
 import { useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import ShareModal from './share/ShareModal';
 
 export default function FavoritesGallery() {
