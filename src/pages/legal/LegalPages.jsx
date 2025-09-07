@@ -58,43 +58,62 @@ export const Tokushoho = () => (
 );
 
 export const Privacy = () => (
-    <LegalLayout title="Privacy Policy">
+    <LegalLayout title="プライバシーポリシー">
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">1. Introduction</h3>
-            <p>NexMap respects your privacy. This policy explains how we handle your data.</p>
+            <h3 className="text-lg font-bold text-white mb-2">1. 個人情報の収集</h3>
+            <p>当サービスは、ユーザー認証のためにGoogle Firebaseを使用し、メールアドレス等の情報を収集します。クレジットカード情報はStripeによって安全に処理され、当サービスでは保存しません。</p>
         </section>
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">2. Data Collection</h3>
-            <p>We collect your email address for account authentication via Google Firebase. We do not store your credit card information; payments are processed securely by Stripe.</p>
+            <h3 className="text-lg font-bold text-white mb-2">2. 個人情報の利用目的</h3>
+            <p>収集した個人情報は、サービスの提供、運営、改善のためにのみ利用されます。法令に基づく場合を除き、第三者に個人情報を提供することはありません。</p>
         </section>
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">3. Data Usage</h3>
-            <p>Your data is used solely to provide and improve the NexMap service. We do not sell your personal data to third parties.</p>
+            <h3 className="text-lg font-bold text-white mb-2">3. データの安全性</h3>
+            <p>当サービスは、個人情報の漏洩、滅失、毀損の防止その他個人情報の安全管理のために必要かつ適切な措置を講じます。</p>
         </section>
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">4. AI Processing</h3>
-            <p>Content you submit to the AI features is processed by our AI providers (DeepSeek/Google) solely for generating responses.</p>
+            <h3 className="text-lg font-bold text-white mb-2">4. AIによるデータ処理</h3>
+            <p>AI機能のために送信されたコンテンツは、応答生成の目的でのみAIプロバイダー（DeepSeek/Google）によって処理されます。これらのデータが学習に使用されることはありません。</p>
+        </section>
+        <section>
+            <h3 className="text-lg font-bold text-white mb-2">5. お問い合わせ</h3>
+            <p>プライバシーポリシーに関するお問い合わせは、特定商取引法に基づく表記に記載のメールアドレスまでご連絡ください。</p>
         </section>
     </LegalLayout>
 );
 
 export const Terms = () => (
-    <LegalLayout title="Terms of Service">
+    <LegalLayout title="利用規約">
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">1. Acceptance of Terms</h3>
-            <p>By using NexMap, you agree to these terms. If you do not agree, please do not use our service.</p>
+            <h3 className="text-lg font-bold text-white mb-2">1. 規約への同意</h3>
+            <p>本規約は、NexMap（以下「本サービス」）の利用条件を定めるものです。本サービスを利用することで、ユーザーは本規約に同意したものとみなされます。</p>
         </section>
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">2. Service Usage</h3>
-            <p>You agree to use NexMap for lawful purposes only. You must not use the service to generate harmful, illegal, or abusive content.</p>
+            <h3 className="text-lg font-bold text-white mb-2">2. 禁止事項</h3>
+            <p>ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません。</p>
+            <ul className="list-disc list-inside ml-4 mt-2 text-slate-400">
+                <li>法令または公序良俗に違反する行為</li>
+                <li>犯罪行為に関連する行為</li>
+                <li>本サービスのサーバーまたはネットワークの機能を破壊したり、妨害したりする行為</li>
+                <li>他のユーザーに迷惑をかける行為</li>
+                <li>有害、違法、または不適切なコンテンツを生成・共有する行為</li>
+            </ul>
         </section>
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">3. Intellectual Property</h3>
-            <p>You retain rights to the content you create. The NexMap platform and its original content remain our property.</p>
+            <h3 className="text-lg font-bold text-white mb-2">3. 知的財産権</h3>
+            <p>ユーザーが作成したコンテンツの著作権はユーザーに帰属します。ただし、本サービス自体のプログラム、デザイン、ロゴ等の知的財産権は運営者に帰属します。</p>
         </section>
         <section>
-            <h3 className="text-lg font-bold text-white mb-2">4. Disclaimer</h3>
-            <p>The service is provided "as is" without warranties of any kind. AI-generated content may be inaccurate; please verify important information.</p>
+            <h3 className="text-lg font-bold text-white mb-2">4. 免責事項</h3>
+            <p>本サービスは「現状有姿」で提供されます。運営者は、本サービスに事実上または法律上の瑕疵がないことを保証しません。AIによって生成された情報の正確性、完全性について、運営者は一切の責任を負いません。</p>
+        </section>
+        <section>
+            <h3 className="text-lg font-bold text-white mb-2">5. サービス内容の変更等</h3>
+            <p>運営者は、ユーザーに通知することなく、本サービスの内容を変更し、または提供を中止することができるものとします。</p>
+        </section>
+        <section>
+            <h3 className="text-lg font-bold text-white mb-2">6. 準拠法・裁判管轄</h3>
+            <p>本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、運営者の所在地を管轄する裁判所を専属的合意管轄とします。</p>
         </section>
     </LegalLayout>
 );
