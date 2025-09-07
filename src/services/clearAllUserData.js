@@ -31,7 +31,10 @@ const STORAGE_PREFIXES = [
  * Should be called before Firebase signOut.
  */
 export async function clearAllUserData() {
+    console.group('[Logout Diagnostic]');
     console.log('[Logout] Clearing all user data...');
+    console.trace('[Logout] Caller Trace:');
+    console.groupEnd();
 
     // 1. Clear static localStorage keys
     STORAGE_KEYS_TO_REMOVE.forEach(key => {

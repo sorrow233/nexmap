@@ -8,16 +8,9 @@ export const isLikelyChinaUser = () => {
         const lang = navigator.language || navigator.userLanguage || '';
 
         const isChinese = lang.toLowerCase().startsWith('zh');
-        const isAsiaTimezone = tz.startsWith('Asia/');
 
-        // Stricter check: If user interface is Chinese AND they are in an Asia timezone, 
-        // assume they might be in China or subject to similar restrictions/preferences.
-        // This covers Asia/Tokyo (+09:00) users who use Chinese UI (like the current user).
-        if (isChinese && isAsiaTimezone) {
-            return true;
-        }
-
-        // Keep explicit mainland check just in case
+        // Only block mainland China timezones to avoid blocking users in Japan/Korea
+        // who prefer Chinese UI but should have access to payment features
         const chinaTimezones = ['Asia/Shanghai', 'Asia/Urumqi', 'Asia/Chongqing', 'Asia/Harbin'];
         return chinaTimezones.includes(tz) && isChinese;
     } catch (e) {
