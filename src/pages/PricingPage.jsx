@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, Zap, Crown, Shield, ArrowLeft, Sparkles, Star, Globe, AlertTriangle } from 'lucide-react';
+import { Check, Zap, Crown, Shield, ArrowLeft, Sparkles, Star, Globe, AlertTriangle, Infinity as InfinityIcon, Key } from 'lucide-react';
 import { auth } from '../services/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { isLikelyChinaUser } from '../utils/regionCheck';
@@ -12,8 +12,9 @@ const pricingTranslations = {
         securedByStripe: 'Secured by Stripe',
         tagline: 'Simple, transparent pricing',
         heroTitle: 'Unlock the Power of AI',
-        heroDesc: 'Choose the plan that fits your needs. No subscriptions, no hidden fees. Pay once, use forever.',
+        heroDesc: 'Start with the Pro plan for unlimited potential, or pick a credit pack for casual use.',
         creditPacks: 'Credit Packs',
+        creditPacksDesc: 'Perfect for beginners or casual users. Pay as you go.',
         proLifetime: 'Pro Lifetime',
         mostPopular: 'Most Popular',
         bestValue: 'Best Value',
@@ -25,13 +26,14 @@ const pricingTranslations = {
         oneTimePayment: 'One-time payment',
         cancelAnytime: 'Cancel anytime. 100% secure.',
         proTitle: 'Pro Lifetime',
-        proDesc: 'Unlock the full potential of NexMap with a one-time purchase. No subscriptions, no recurring fees.',
+        proDesc: 'The ultimate experience for power users. Bring your own keys and break free from limits.',
         proFeatures: [
             'Bring Your Own API Keys (OpenAI, Anthropic, Google)',
             'Unlimited usage — pay providers directly',
             'Access GPT-4, Claude 3 Opus, Gemini Pro',
             'Lifetime updates & early access to new features',
-            'Priority customer support'
+            'Priority customer support',
+            'Commercial usage rights'
         ],
         ssl: '256-bit SSL Encryption',
         poweredByStripe: 'Powered by Stripe',
@@ -45,15 +47,20 @@ const pricingTranslations = {
         bestValuePerCredit: 'Best value per credit',
         prioritySupport: 'Priority support',
         forPowerUsers: 'For power users',
-        maxEfficiency: 'Maximum efficiency'
+        maxEfficiency: 'Maximum efficiency',
+        whyPro: 'Why Go Pro?',
+        whyProDesc: 'Designed for professionals who need control, privacy, and unlimited scalablity.',
+        casualUser: 'Casual User?',
+        casualUserDesc: 'Get started with pre-loaded credits. No API keys needed.'
     },
     zh: {
         backToNexMap: '返回 NexMap',
         securedByStripe: 'Stripe 安全支付',
         tagline: '简单透明的定价',
         heroTitle: '解锁 AI 的强大力量',
-        heroDesc: '选择适合您的套餐。无订阅，无隐藏费用。一次购买，永久使用。',
+        heroDesc: '选择 Pro 版释放无限潜能，或选择积分包轻松上手。',
         creditPacks: '积分包',
+        creditPacksDesc: '适合初学者或偶尔使用的用户。按需付费。',
         proLifetime: 'Pro 终身版',
         mostPopular: '最受欢迎',
         bestValue: '超值',
@@ -65,13 +72,14 @@ const pricingTranslations = {
         oneTimePayment: '一次性付款',
         cancelAnytime: '随时取消，100% 安全。',
         proTitle: 'Pro 终身版',
-        proDesc: '一次购买，解锁 NexMap 的全部潜力。无订阅，无定期费用。',
+        proDesc: '为专业用户打造的终极体验。使用自己的 Key，打破一切限制。',
         proFeatures: [
-            '使用自己的 API 密钥 (OpenAI, Anthropic, Google)',
-            '无限使用 — 直接向供应商付费',
-            '访问 GPT-4, Claude 3 Opus, Gemini Pro',
-            '终身更新 & 抢先体验新功能',
-            '优先客户支持'
+            '绑定自己的 API Key (OpenAI, Anthropic, Google)',
+            '无限使用 — 直接向供应商官方付费 (成本更低)',
+            '解锁 GPT-4, Claude 3 Opus, Gemini Pro 等顶级模型',
+            '终身免费更新 & 抢先体验新功能',
+            '优先客户支持',
+            '商业使用授权'
         ],
         ssl: '256位 SSL 加密',
         poweredByStripe: 'Stripe 驱动',
@@ -85,15 +93,20 @@ const pricingTranslations = {
         bestValuePerCredit: '最佳性价比',
         prioritySupport: '优先支持',
         forPowerUsers: '为重度用户打造',
-        maxEfficiency: '最大效率'
+        maxEfficiency: '最大效率',
+        whyPro: '为什么选择 Pro？',
+        whyProDesc: '专为需要掌控力、隐私和无限扩展性的专业人士设计。',
+        casualUser: '偶尔使用？',
+        casualUserDesc: '通过预充值积分快速开始，无需繁琐配置 API Key。'
     },
     ja: {
         backToNexMap: 'NexMap に戻る',
         securedByStripe: 'Stripe で安全に保護',
         tagline: 'シンプルで透明な価格設定',
         heroTitle: 'AI の力を解き放つ',
-        heroDesc: 'ニーズに合ったプランをお選びください。サブスク無し、隠れた手数料無し。一度の支払いで永久に使用可能。',
+        heroDesc: 'Pro プランで無限の可能性を、またはクレジットパックで手軽にスタート。',
         creditPacks: 'クレジットパック',
+        creditPacksDesc: '初心者やカジュアルユーザーに最適。従量課金。',
         proLifetime: 'Pro 永久版',
         mostPopular: '最も人気',
         bestValue: 'ベストバリュー',
@@ -105,13 +118,14 @@ const pricingTranslations = {
         oneTimePayment: '一回払い',
         cancelAnytime: 'いつでもキャンセル可能。100% 安全。',
         proTitle: 'Pro 永久版',
-        proDesc: '一回の購入で NexMap の全機能をアンロック。サブスク無し、定期料金無し。',
+        proDesc: 'パワーユーザーのための究極の体験。自分のキーを使って制限から解放されましょう。',
         proFeatures: [
             '自分の API キーを使用 (OpenAI, Anthropic, Google)',
             '無制限使用 — プロバイダーに直接支払い',
             'GPT-4, Claude 3 Opus, Gemini Pro にアクセス',
             '永久アップデート & 新機能への早期アクセス',
-            '優先カスタマーサポート'
+            '優先カスタマーサポート',
+            '商用利用権'
         ],
         ssl: '256ビット SSL 暗号化',
         poweredByStripe: 'Stripe 提供',
@@ -125,18 +139,19 @@ const pricingTranslations = {
         bestValuePerCredit: 'クレジットあたり最高の価値',
         prioritySupport: '優先サポート',
         forPowerUsers: 'パワーユーザー向け',
-        maxEfficiency: '最大効率'
+        maxEfficiency: '最大効率',
+        whyPro: 'なぜ Pro なのか？',
+        whyProDesc: 'コントロール、プライバシー、そして無限の拡張性を求めるプロフェッショナルのために。',
+        casualUser: 'カジュアルに使う？',
+        casualUserDesc: 'API キー不要。プリペイドクレジットですぐに始められます。'
     }
 };
-
-
 
 export default function PricingPage() {
     const navigate = useNavigate();
     const { language } = useLanguage();
     const t = pricingTranslations[language] || pricingTranslations.en;
     const [loadingProduct, setLoadingProduct] = useState(null);
-    const [billingCycle, setBillingCycle] = useState('credits');
     const [isBlocked, setIsBlocked] = useState(false);
 
     useEffect(() => {
@@ -146,8 +161,10 @@ export default function PricingPage() {
     const handleCheckout = async (productId) => {
         const user = auth.currentUser;
         if (!user) {
+            // Keep the query param or logic to redirect back after login if needed
+            // For now straightforward alert
             alert("Please login first to make a purchase.");
-            navigate('/');
+            navigate('/?login=true'); // Assuming landing page can handle login trigger, or just stay here
             return;
         }
 
@@ -185,8 +202,7 @@ export default function PricingPage() {
             price: '$0.99',
             credits: '500',
             chats: '~1,000',
-            features: [t.payAsYouGo, t.noExpiration, t.instantDelivery],
-            popular: false
+            features: [t.payAsYouGo, t.noExpiration],
         },
         {
             id: 'credits_2000',
@@ -194,7 +210,7 @@ export default function PricingPage() {
             price: '$3.99',
             credits: '2,000',
             chats: '~4,000',
-            features: [t.bestValuePerCredit, t.prioritySupport, t.instantDelivery],
+            features: [t.bestValuePerCredit, t.instantDelivery],
             popular: true
         },
         {
@@ -203,12 +219,10 @@ export default function PricingPage() {
             price: '$9.99',
             credits: '5,000',
             chats: '~10,000',
-            features: [t.forPowerUsers, t.maxEfficiency, t.instantDelivery],
-            popular: false
+            features: [t.forPowerUsers, t.maxEfficiency],
         }
     ];
 
-    // Region Blocked UI
     if (isBlocked) {
         return (
             <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
@@ -232,93 +246,173 @@ export default function PricingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
-            {/* Animated Background */}
-            <div className="fixed inset-0 z-0">
-                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[150px]" />
+        <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden selection:bg-amber-500/30">
+            {/* Background Effects */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[150px]" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-600/10 rounded-full blur-[150px]" />
+                <div className="absolute top-[20%] left-[50%] -translate-x-1/2 w-[40%] h-[40%] bg-violet-600/5 rounded-full blur-[120px]" />
             </div>
 
-            {/* Content */}
             <div className="relative z-10">
                 {/* Header */}
                 <header className="px-6 py-6 flex items-center justify-between max-w-7xl mx-auto">
-                    <Link to="/" className="flex items-center gap-3 text-white/80 hover:text-white transition-colors">
-                        <ArrowLeft size={20} />
-                        <span className="font-bold">{t.backToNexMap}</span>
+                    <Link to="/" className="group flex items-center gap-3 text-white/60 hover:text-white transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
+                            <ArrowLeft size={16} />
+                        </div>
+                        <span className="font-medium text-sm">{t.backToNexMap}</span>
                     </Link>
-                    <div className="flex items-center gap-2 text-sm text-white/60">
-                        <Shield size={16} className="text-emerald-400" />
+                    <div className="flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
+                        <Shield size={12} />
                         {t.securedByStripe}
                     </div>
                 </header>
 
-                {/* Hero Section */}
-                <section className="text-center px-6 pt-12 pb-16 max-w-4xl mx-auto">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white/80 mb-8">
-                        <Sparkles size={16} className="text-amber-400" />
-                        {t.tagline}
+                <main className="px-6 pt-8 pb-32 max-w-7xl mx-auto">
+                    {/* Hero Text */}
+                    <div className="text-center max-w-3xl mx-auto mb-20">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-semibold mb-8">
+                            <Sparkles size={14} />
+                            {t.tagline}
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 bg-gradient-to-br from-white via-white to-white/50 bg-clip-text text-transparent">
+                            {t.heroTitle}
+                        </h1>
+                        <p className="text-xl text-white/50 max-w-2xl mx-auto leading-relaxed">
+                            {t.heroDesc}
+                        </p>
                     </div>
-                    <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-6 bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
-                        {t.heroTitle}
-                    </h1>
-                    <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
-                        {t.heroDesc}
-                    </p>
-                </section>
 
-                {/* Toggle */}
-                <div className="flex justify-center mb-12">
-                    <div className="inline-flex p-1.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                        <button
-                            onClick={() => setBillingCycle('credits')}
-                            className={`px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${billingCycle === 'credits' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-white/60 hover:text-white'}`}
-                        >
-                            <Zap size={16} />
-                            {t.creditPacks}
-                        </button>
-                        <button
-                            onClick={() => setBillingCycle('pro')}
-                            className={`px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${billingCycle === 'pro' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-orange-500/30' : 'text-white/60 hover:text-white'}`}
-                        >
-                            <Crown size={16} />
-                            {t.proLifetime}
-                        </button>
+                    {/* Pro Plan - Primary Focus */}
+                    <div className="max-w-5xl mx-auto mb-32">
+                        <div className="relative group">
+                            {/* Glow Effect */}
+                            <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 via-orange-600 to-yellow-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
+
+                            <div className="relative bg-slate-900 border border-white/10 rounded-[2rem] p-1 md:p-2 overflow-hidden">
+                                {/* Badge */}
+                                <div className="absolute top-0 right-0 bg-gradient-to-bl from-amber-500 to-orange-600 px-6 py-3 rounded-bl-[2rem] rounded-tr-[1.5rem] md:rounded-tr-[1.8rem] z-20">
+                                    <div className="flex items-center gap-2 text-white font-bold tracking-wide text-sm md:text-base shadow-sm">
+                                        <Crown size={16} fill="currentColor" />
+                                        {t.mostPopular}
+                                    </div>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-8 md:gap-16 p-8 md:p-12 items-center">
+                                    {/* Left Content */}
+                                    <div>
+                                        <div className="inline-flex items-center gap-2 text-amber-500 font-bold mb-4 tracking-wider uppercase text-xs">
+                                            <Star size={14} fill="currentColor" />
+                                            {t.whyPro}
+                                        </div>
+                                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">
+                                            {t.proTitle}
+                                        </h2>
+                                        <p className="text-lg text-white/60 mb-8 leading-relaxed">
+                                            {t.proDesc}
+                                        </p>
+
+                                        <div className="space-y-4">
+                                            {t.proFeatures.map((feature, i) => (
+                                                <div key={i} className="flex items-start gap-4">
+                                                    <div className="mt-1 w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                                                        <Check size={14} className="text-amber-500" />
+                                                    </div>
+                                                    <span className="text-white/80">{feature}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Content - Pricing CArd */}
+                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md relative">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-600 opacity-50" />
+
+                                        <div className="mb-8">
+                                            <div className="flex items-end gap-2 mb-2">
+                                                <span className="text-6xl font-black text-white">$10</span>
+                                                <span className="text-white/40 font-medium mb-2 uppercase text-sm">/ {t.oneTimePayment}</span>
+                                            </div>
+                                            <p className="text-white/40 text-sm">{t.cancelAnytime}</p>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleCheckout('pro_lifetime')}
+                                            disabled={loadingProduct === 'pro_lifetime'}
+                                            className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 group/btn"
+                                        >
+                                            {loadingProduct === 'pro_lifetime' ? (
+                                                t.redirecting
+                                            ) : (
+                                                <>
+                                                    <Zap size={20} className="fill-white/20 group-hover/btn:fill-white transition-colors" />
+                                                    {t.upgradeNow}
+                                                </>
+                                            )}
+                                        </button>
+
+                                        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-white/30">
+                                            <div className="flex items-center gap-1">
+                                                <Key size={12} />
+                                                Own API Key
+                                            </div>
+                                            <div className="w-1 h-1 rounded-full bg-white/20" />
+                                            <div className="flex items-center gap-1">
+                                                <InfinityIcon size={12} />
+                                                Unlimited
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                {/* Pricing Cards */}
-                <section className="px-6 pb-24 max-w-6xl mx-auto">
-                    {billingCycle === 'credits' ? (
-                        <div className="grid md:grid-cols-3 gap-6">
+                    {/* Divider */}
+                    <div className="flex items-center gap-4 max-w-2xl mx-auto mb-20 opacity-30">
+                        <div className="h-px bg-white flex-1" />
+                        <span className="text-sm font-medium uppercase tracking-widest text-white">OR</span>
+                        <div className="h-px bg-white flex-1" />
+                    </div>
+
+                    {/* Credits Section - Secondary Focus */}
+                    <div>
+                        <div className="text-center mb-12">
+                            <h3 className="text-2xl font-bold text-white mb-2">{t.casualUser}</h3>
+                            <p className="text-white/50">{t.casualUserDesc}</p>
+                        </div>
+
+                        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                             {creditPlans.map((plan) => (
                                 <div
                                     key={plan.id}
-                                    className={`relative rounded-3xl p-8 transition-all duration-300 hover:-translate-y-2 ${plan.popular
-                                        ? 'bg-gradient-to-b from-indigo-600/20 to-indigo-900/20 border-2 border-indigo-500/50 shadow-2xl shadow-indigo-500/20'
-                                        : 'bg-white/5 border border-white/10 hover:border-white/20'
+                                    className={`relative group bg-white/5 hover:bg-white/[0.07] border transition-all duration-300 rounded-2xl p-6 ${plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10'
                                         }`}
                                 >
                                     {plan.popular && (
-                                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg">
-                                            {t.mostPopular}
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-500/20">
+                                            {t.bestValue}
                                         </div>
                                     )}
 
-                                    <div className="text-center mb-8">
-                                        <h3 className="text-lg font-bold text-white/80 mb-2">{plan.name}</h3>
-                                        <div className="text-5xl font-black text-white mb-2">{plan.price}</div>
-                                        <div className="text-indigo-400 font-bold text-lg">{plan.credits} {t.credits}</div>
-                                        <div className="text-white/40 text-sm mt-1">{plan.chats} {t.conversations}</div>
+                                    <div className="mb-6">
+                                        <h4 className="text-white/80 font-bold mb-1">{plan.name}</h4>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-bold text-white">{plan.price}</span>
+                                            <span className="text-sm text-white/40">/ pack</span>
+                                        </div>
                                     </div>
 
-                                    <ul className="space-y-4 mb-8">
+                                    <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 mb-6">
+                                        <div className="text-indigo-400 font-bold">{plan.credits}</div>
+                                        <div className="text-[10px] uppercase font-bold text-white/30">{t.credits}</div>
+                                    </div>
+
+                                    <ul className="space-y-3 mb-8 min-h-[80px]">
                                         {plan.features.map((feature, i) => (
-                                            <li key={i} className="flex items-center gap-3 text-white/70">
-                                                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${plan.popular ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/10 text-white/50'}`}>
-                                                    <Check size={12} />
-                                                </div>
+                                            <li key={i} className="flex items-center gap-2 text-sm text-white/50">
+                                                <Check size={14} className="text-indigo-400" />
                                                 {feature}
                                             </li>
                                         ))}
@@ -327,9 +421,9 @@ export default function PricingPage() {
                                     <button
                                         onClick={() => handleCheckout(plan.id)}
                                         disabled={loadingProduct === plan.id}
-                                        className={`w-full py-4 rounded-xl font-bold text-lg transition-all active:scale-95 disabled:opacity-50 ${plan.popular
-                                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-                                            : 'bg-white/10 hover:bg-white/20 text-white'
+                                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${plan.popular
+                                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                : 'bg-white/10 hover:bg-white/20 text-white'
                                             }`}
                                     >
                                         {loadingProduct === plan.id ? t.redirecting : t.getStarted}
@@ -337,78 +431,25 @@ export default function PricingPage() {
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <div className="max-w-2xl mx-auto">
-                            <div className="rounded-3xl p-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 shadow-2xl shadow-orange-500/20">
-                                <div className="rounded-[22px] bg-slate-900 p-10">
-                                    <div className="flex flex-col md:flex-row gap-10 items-center">
-                                        <div className="flex-1 text-center md:text-left">
-                                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-wider mb-4">
-                                                <Star size={12} fill="currentColor" />
-                                                {t.bestValue}
-                                            </div>
-                                            <h3 className="text-3xl font-black text-white mb-3">{t.proTitle}</h3>
-                                            <p className="text-white/60 mb-6 leading-relaxed">
-                                                {t.proDesc}
-                                            </p>
-
-                                            <ul className="space-y-3 text-left">
-                                                {t.proFeatures.map((feature, i) => (
-                                                    <li key={i} className="flex items-start gap-3 text-white/70">
-                                                        <Check size={18} className="text-amber-400 shrink-0 mt-0.5" />
-                                                        <span>{feature}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-
-                                        <div className="w-full md:w-auto text-center bg-white/5 rounded-2xl p-8 border border-white/10">
-                                            <div className="text-white/50 text-sm mb-1">{t.oneTimePayment}</div>
-                                            <div className="text-5xl font-black text-white mb-6">$10</div>
-                                            <button
-                                                onClick={() => handleCheckout('pro_lifetime')}
-                                                disabled={loadingProduct === 'pro_lifetime'}
-                                                className="w-full py-4 px-8 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-50"
-                                            >
-                                                {loadingProduct === 'pro_lifetime' ? t.redirecting : t.upgradeNow}
-                                            </button>
-                                            <p className="text-white/40 text-xs mt-4">{t.cancelAnytime}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </section>
-
-                {/* Trust Section */}
-                <section className="px-6 pb-20 max-w-4xl mx-auto text-center">
-                    <div className="flex flex-wrap justify-center items-center gap-8 text-white/40 text-sm">
-                        <div className="flex items-center gap-2">
-                            <Shield size={18} className="text-emerald-400" />
-                            {t.ssl}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-                                <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
-                            </svg>
-                            {t.poweredByStripe}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Check size={18} className="text-emerald-400" />
-                            {t.instantDelivery}
-                        </div>
                     </div>
-                </section>
+                </main>
 
-                {/* Footer */}
-                <footer className="border-t border-white/5 px-6 py-8">
-                    <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-white/40">
-                        <div>© {new Date().getFullYear()} NexMap. {t.allRights}</div>
-                        <div className="flex gap-6">
-                            <Link to="/legal/terms" className="hover:text-white transition-colors">Terms</Link>
+                {/* Footer Trust */}
+                <footer className="border-t border-white/5 bg-white/[0.02]">
+                    <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-8 text-white/30 text-sm">
+                            <span className="flex items-center gap-2">
+                                <Shield size={14} />
+                                {t.ssl}
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <Globe size={14} />
+                                {t.poweredByStripe}
+                            </span>
+                        </div>
+                        <div className="flex gap-6 text-sm text-white/40">
                             <Link to="/legal/privacy" className="hover:text-white transition-colors">Privacy</Link>
-                            <Link to="/legal/tokushoho" className="hover:text-white transition-colors">特定商取引法</Link>
+                            <Link to="/legal/terms" className="hover:text-white transition-colors">Terms</Link>
                         </div>
                     </div>
                 </footer>
