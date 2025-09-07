@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Star, MessageSquare } from 'lucide-react';
+import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
@@ -26,6 +26,7 @@ export default function GalleryPage({
     setHasSeenWelcome         // New: from useAppInit
 }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash'
     const { t } = useLanguage();
 
@@ -165,15 +166,51 @@ export default function GalleryPage({
                         )}
 
                         {user ? (
-                            <div className="flex items-center gap-2 md:gap-3 bg-white/50 dark:bg-slate-800/50 rounded-2xl pl-2 pr-3 md:pr-5 py-2 border border-white/60 dark:border-white/10 shadow-sm transition-all hover:shadow-md">
-                                {user.photoURL && <img src={user.photoURL} className="w-7 h-7 md:w-8 md:h-8 rounded-xl shadow-sm border border-white dark:border-white/10" alt="User" />}
-                                <div className="flex flex-col">
-                                    <span className="hidden sm:block text-sm font-bold leading-none text-slate-800 dark:text-slate-200">{user.displayName}</span>
-                                    <button onClick={onLogout} className="text-[10px] text-slate-500 hover:text-red-500 font-bold uppercase mt-0 sm:mt-1 text-left transition-colors">{t.gallery.signOut}</button>
-                                </div>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowUserMenu(!showUserMenu)}
+                                    className="flex items-center gap-2 md:gap-3 bg-white/50 dark:bg-slate-800/50 rounded-2xl pl-2 pr-3 md:pr-4 py-2 border border-white/60 dark:border-white/10 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 cursor-pointer"
+                                >
+                                    {user.photoURL ? (
+                                        <img src={user.photoURL} className="w-7 h-7 md:w-8 md:h-8 rounded-xl shadow-sm border border-white dark:border-white/10" alt="User" />
+                                    ) : (
+                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-xl bg-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                            {user.displayName?.[0] || 'U'}
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-sm font-bold leading-none text-slate-800 dark:text-slate-200 pr-1">{user.displayName}</span>
+                                    </div>
+                                    <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {showUserMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                                        <div className="absolute top-full right-0 mt-2 w-48 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 dark:border-white/5 rounded-2xl shadow-xl overflow-hidden z-50 animate-scale-in origin-top-right">
+                                            <div className="p-1.5 space-y-0.5">
+                                                <button
+                                                    onClick={() => navigate('/pricing')}
+                                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-all"
+                                                >
+                                                    <CreditCard size={16} className="text-amber-500" />
+                                                    {t.gallery.pricing}
+                                                </button>
+                                                <div className="h-px bg-slate-200/50 dark:bg-white/5 my-1" />
+                                                <button
+                                                    onClick={onLogout}
+                                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
+                                                >
+                                                    <LogOut size={16} />
+                                                    {t.gallery.signOut}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
-                            <button onClick={onLogin} className="px-4 md:px-6 py-2 md:py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm md:text-base">{t.gallery.signIn}</button>
+                            <button onClick={onLogin} className="px-4 md:px-6 py-2 md:py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm md:text-base cursor-pointer z-50 relative">{t.gallery.signIn}</button>
                         )}
                     </div>
                 </div>
