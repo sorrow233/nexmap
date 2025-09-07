@@ -1,8 +1,8 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle2, Gift, Zap, Infinity } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
-
+import { isLikelyChinaUser } from '../../utils/regionCheck';
 import PaymentModal from '../PaymentModal';
 
 /**
@@ -14,7 +14,12 @@ import PaymentModal from '../PaymentModal';
 export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
     const { t } = useLanguage();
-    const [isPaymentOpen, setIsPaymentOpen] = React.useState(false);
+    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [isChinaUser, setIsChinaUser] = useState(false);
+
+    useEffect(() => {
+        setIsChinaUser(isLikelyChinaUser());
+    }, []);
 
     // Default to 100 if undefined, clamp between 0 and 100
     const creditsValue = typeof systemCredits === 'number' ? systemCredits : 100;
@@ -81,22 +86,24 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                 </div>
             </div>
 
-            {/* Info Box */}
-            <div className="text-center space-y-4">
-                <button
-                    onClick={() => setIsPaymentOpen(true)}
-                    className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2 mx-auto"
-                >
-                    <Gift size={20} />
-                    {t.credits.getMore || "Get More Credits / Pro"}
-                </button>
+            {/* Info Box - HIDDEN FOR CHINA USERS */}
+            {!isChinaUser && (
+                <div className="text-center space-y-4">
+                    <button
+                        onClick={() => setIsPaymentOpen(true)}
+                        className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2 mx-auto"
+                    >
+                        <Gift size={20} />
+                        {t.credits.getMore || "Get More Credits / Pro"}
+                    </button>
 
-                <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
-                    {t.credits.advancedNote} <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={onOpenAdvanced}>{t.credits.advancedLink}</span> {t.credits.toConfig}
-                </p>
-            </div>
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
+                        {t.credits.advancedNote} <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={onOpenAdvanced}>{t.credits.advancedLink}</span> {t.credits.toConfig}
+                    </p>
+                </div>
+            )}
 
-            <PaymentModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} />
+            {!isChinaUser && <PaymentModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} />}
         </div>
     );
 }
