@@ -233,7 +233,7 @@ export default function PricingPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden selection:bg-amber-500/30">
+        <div className="h-full overflow-y-auto custom-scrollbar bg-slate-950 text-white overflow-x-hidden selection:bg-amber-500/30">
             {/* Background Effects */}
             <div className="fixed inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[150px]" />
@@ -362,8 +362,8 @@ export default function PricingPage() {
                                             onClick={() => handleCheckout('pro_lifetime')}
                                             disabled={loadingProduct === 'pro_lifetime' || isBlocked}
                                             className={`w-full py-4 px-6 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 group/btn ${isBlocked
-                                                    ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
-                                                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
+                                                ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
+                                                : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
                                                 }`}
                                         >
                                             {isBlocked ? (
@@ -414,7 +414,7 @@ export default function PricingPage() {
                                 <div
                                     key={plan.id}
                                     className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
-                                            'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
+                                        'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
                                         }`}
                                 >
                                     {plan.popular && (
@@ -451,10 +451,10 @@ export default function PricingPage() {
                                         onClick={() => handleCheckout(plan.id)}
                                         disabled={loadingProduct === plan.id || isBlocked}
                                         className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${isBlocked
-                                                ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                                                : plan.popular
-                                                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                                            ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                                            : plan.popular
+                                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                : 'bg-white/10 hover:bg-white/20 text-white'
                                             }`}
                                     >
                                         {isBlocked ? t.regionBlocked : loadingProduct === plan.id ? t.redirecting : t.getStarted}
