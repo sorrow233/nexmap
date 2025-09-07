@@ -29,7 +29,7 @@ export const Tokushoho = () => (
 
             <div className="font-bold text-slate-400">お問い合わせ</div>
             <div>
-                sorrowful2233@gmail.com<br />
+                support.nexmap@catzz.work<br />
                 <span className="text-xs text-slate-500">※お問い合わせはメールにてお願いいたします。</span>
             </div>
 
