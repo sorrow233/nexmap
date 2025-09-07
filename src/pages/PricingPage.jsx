@@ -162,6 +162,27 @@ export default function PricingPage() {
         setIsBlocked(isLikelyChinaUser());
     }, []);
 
+    // Pricing Configurations
+    const pricingConfig = {
+        en: {
+            currency: '$',
+            pro: '10',
+            packs: { starter: '0.99', standard: '3.99', power: '9.99' }
+        },
+        zh: {
+            currency: '$',
+            pro: '10',
+            packs: { starter: '0.99', standard: '3.99', power: '9.99' }
+        },
+        ja: {
+            currency: '¥',
+            pro: '1,500',
+            packs: { starter: '150', standard: '600', power: '1,500' }
+        }
+    };
+
+    const currentPricing = pricingConfig[language] || pricingConfig.en;
+
     const handleCheckout = async (productId) => {
         if (isBlocked) return; // double check
 
@@ -183,6 +204,7 @@ export default function PricingPage() {
                 },
                 body: JSON.stringify({
                     productId,
+                    currency: language === 'ja' ? 'jpy' : 'usd',
                     successUrl: window.location.origin + '/gallery?payment=success',
                     cancelUrl: window.location.origin + '/pricing?payment=cancelled'
                 })
@@ -208,7 +230,7 @@ export default function PricingPage() {
         {
             id: 'credits_500',
             name: 'Starter',
-            price: '$0.99',
+            price: `${currentPricing.currency}${currentPricing.packs.starter}`,
             credits: '500',
             chats: '~1,000',
             features: [t.payAsYouGo, t.noExpiration],
@@ -216,7 +238,7 @@ export default function PricingPage() {
         {
             id: 'credits_2000',
             name: 'Standard',
-            price: '$3.99',
+            price: `${currentPricing.currency}${currentPricing.packs.standard}`,
             credits: '2,000',
             chats: '~4,000',
             features: [t.bestValuePerCredit, t.instantDelivery],
@@ -225,7 +247,7 @@ export default function PricingPage() {
         {
             id: 'credits_5000',
             name: 'Power',
-            price: '$9.99',
+            price: `${currentPricing.currency}${currentPricing.packs.power}`,
             credits: '5,000',
             chats: '~10,000',
             features: [t.forPowerUsers, t.maxEfficiency],
@@ -351,7 +373,7 @@ export default function PricingPage() {
                                         <div className="mb-8">
                                             <div className="flex items-end gap-2 mb-2">
                                                 <span className="text-6xl font-black text-white">
-                                                    {isBlocked ? t.hiddenPrice : '$10'}
+                                                    {currentPricing.currency}{currentPricing.pro}
                                                 </span>
                                                 <span className="text-white/40 font-medium mb-2 uppercase text-sm">/ {t.oneTimePayment}</span>
                                             </div>
@@ -362,8 +384,8 @@ export default function PricingPage() {
                                             onClick={() => handleCheckout('pro_lifetime')}
                                             disabled={loadingProduct === 'pro_lifetime' || isBlocked}
                                             className={`w-full py-4 px-6 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 group/btn ${isBlocked
-                                                ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
-                                                : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
+                                                    ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
+                                                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-orange-500/20'
                                                 }`}
                                         >
                                             {isBlocked ? (
@@ -414,7 +436,7 @@ export default function PricingPage() {
                                 <div
                                     key={plan.id}
                                     className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
-                                        'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
+                                            'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
                                         }`}
                                 >
                                     {plan.popular && (
@@ -427,7 +449,7 @@ export default function PricingPage() {
                                         <h4 className="text-white/80 font-bold mb-1">{plan.name}</h4>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-2xl font-bold text-white">
-                                                {isBlocked ? t.hiddenPrice : plan.price}
+                                                {plan.price}
                                             </span>
                                             <span className="text-sm text-white/40">/ pack</span>
                                         </div>
@@ -451,10 +473,10 @@ export default function PricingPage() {
                                         onClick={() => handleCheckout(plan.id)}
                                         disabled={loadingProduct === plan.id || isBlocked}
                                         className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${isBlocked
-                                            ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                                            : plan.popular
-                                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                                : 'bg-white/10 hover:bg-white/20 text-white'
+                                                ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                                                : plan.popular
+                                                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                    : 'bg-white/10 hover:bg-white/20 text-white'
                                             }`}
                                     >
                                         {isBlocked ? t.regionBlocked : loadingProduct === plan.id ? t.redirecting : t.getStarted}
