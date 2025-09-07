@@ -7,25 +7,25 @@
 // Stripe API Base URL
 const STRIPE_API = 'https://api.stripe.com/v1';
 
-// Products Configuration
+// Products Configuration - Updated for better value (30-50% margin)
 const PRODUCTS = {
-    'credits_100': {
-        name: 'Starter Credits (100)',
-        description: 'Supports ~200 conversations',
-        amount: 99, // $0.99
-        credits: 100
-    },
     'credits_500': {
-        name: 'Standard Credits (500)',
+        name: 'Starter Credits (500)',
         description: 'Supports ~1,000 conversations',
-        amount: 399, // $3.99
+        amount: 99, // $0.99
         credits: 500
     },
     'credits_2000': {
-        name: 'Power Credits (2,000)',
+        name: 'Standard Credits (2,000)',
         description: 'Supports ~4,000 conversations',
-        amount: 999, // $9.99
+        amount: 399, // $3.99
         credits: 2000
+    },
+    'credits_5000': {
+        name: 'Power Credits (5,000)',
+        description: 'Supports ~10,000 conversations',
+        amount: 999, // $9.99
+        credits: 5000
     },
     'pro_lifetime': {
         name: 'NexMap Pro Lifetime',
