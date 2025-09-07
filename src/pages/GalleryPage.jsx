@@ -240,9 +240,19 @@ export default function GalleryPage({
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
                 user={user}
-                onShowWelcome={() => {
+                onShowWelcome={async () => {
                     setIsSettingsOpen(false);
                     setHasSeenWelcome(false);
+                    localStorage.removeItem('hasVisitedBefore');
+                    // Sync reset to cloud if logged in
+                    if (user) {
+                        try {
+                            await updateUserSettings(user.uid, { hasSeenWelcome: false });
+                            console.log('✅ Welcome status reset in cloud');
+                        } catch (e) {
+                            console.error('Failed to reset welcome status in cloud:', e);
+                        }
+                    }
                 }}
             />
         </div>

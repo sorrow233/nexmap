@@ -104,18 +104,25 @@ export function useAppInit() {
                         }
 
                         // Check welcome page status from cloud
-                        if (settings.hasSeenWelcome !== undefined) {
-                            setHasSeenWelcome(settings.hasSeenWelcome === true);
-                            debugLog.auth(`Welcome status from cloud: ${settings.hasSeenWelcome}`);
-                        } else {
-                            // If cloud doesn't have it (migration), keep local state but likely sync it up later
-                            // actually, for consistency, if no cloud setting and local says NOT SEEN (new user),
-                            // we should probably trust local or default to NOT seen?
-                            // Actually, simpler: if undefined, treat as new user unless localstorage says otherwise.
-                            // But we already init from localstorage.
-                            // Let's defer to the "Not cloud settings" block logic if strictly empty?
-                            // No, settings object exists but field missing.
-                            // Let's treat undefined as "trust local state"
+                        const cloudHasSeen = settings.hasSeenWelcome === true;
+
+                        // If cloud says SEEN, update local state
+                        if (cloudHasSeen) {
+                            setHasSeenWelcome(true);
+                            localStorage.setItem('hasVisitedBefore', 'true');
+                            debugLog.auth('Welcome status from cloud: true');
+                        }
+                        // If cloud says NOT SEEN but local says SEEN, sync local to cloud
+                        else if (hasSeenWelcome === true) {
+                            debugLog.auth('Local says seen, but cloud is stale/missing. Syncing to cloud...');
+                            import('../services/storage').then(({ updateUserSettings }) => {
+                                updateUserSettings(u.uid, { hasSeenWelcome: true });
+                            });
+                        }
+                        // Otherwise, follow cloud state if it's explicitly FALSE
+                        else if (settings.hasSeenWelcome === false) {
+                            setHasSeenWelcome(false);
+                            debugLog.auth('Welcome status from cloud: false');
                         }
 
                         // Load system credits if user has no API key configured
@@ -124,16 +131,30 @@ export function useAppInit() {
                             debugLog.auth('No API key configured, loading system credits...');
                             useStore.getState().loadSystemCredits?.();
                         }
+
+                        // NEW: Auto-create guide for truly new cloud users
+                        // Only if we just finished loading settings and found no boards
+                        const currentBoards = loadBoardsMetadata();
+                        if (currentBoards.length === 0) {
+                            debugLog.auth('New cloud user with no boards, creating guide...');
+                            createBoard("NexMap 使用指南 🚀").then(async (newBoard) => {
+                                const { getGuideBoardData } = await import('../utils/guideBoardData');
+                                await saveBoard(newBoard.id, getGuideBoardData());
+                                setBoardsList([newBoard]);
+                            });
+                        }
                     } else {
                         // No cloud settings = new user (or just created)
-                        // Trust local flag OR default to false if really fresh
-                        // But init already handled local flag.
-                        // If we are here, settings are null.
-                        // Force false only if strictly new?
-                        // Let's explicitly set to false if local is also false/missing (implicitly handled by init state)
-                        // But to be safe for cross-device:
-                        // setHasSeenWelcome(false); // REMOVED: Do not overwrite local state if cloud is empty/fails
-                        debugLog.auth('No cloud settings found, keeping local state for welcome page');
+                        debugLog.auth('No cloud settings found, checking for onboarding...');
+
+                        const currentBoards = loadBoardsMetadata();
+                        if (currentBoards.length === 0) {
+                            createBoard("NexMap 使用指南 🚀").then(async (newBoard) => {
+                                const { getGuideBoardData } = await import('../utils/guideBoardData');
+                                await saveBoard(newBoard.id, getGuideBoardData());
+                                setBoardsList([newBoard]);
+                            });
+                        }
 
                         // Check if we should load credits
                         const activeConfig = useStore.getState().getActiveConfig();
