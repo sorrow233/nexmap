@@ -21,7 +21,8 @@ body,
     body,
     #root,
     .font-lxgw {
-        font-family: "LXGW WenKai", "楷体", "KaiTi", serif;
+        /* User requested removal of specialized fonts */
+        font-family: inherit; 
     }
 
     /* Force inherit for monos if they interfere with the aesthetic */
