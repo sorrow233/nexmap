@@ -83,8 +83,8 @@ export class GeminiProvider extends LLMProvider {
 
         while (retries >= 0) {
             try {
-                console.log(`[Gemini] Sending chat request to /api/gmi-proxy for model ${cleanModel}`);
-                const response = await fetch('/api/gmi-proxy', {
+                console.log(`[Gemini] Sending chat request to /api/gmi-serving for model ${cleanModel}`);
+                const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -181,7 +181,7 @@ export class GeminiProvider extends LLMProvider {
         while (retries >= 0) {
             try {
                 console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel}`);
-                const response = await fetch('/api/gmi-proxy', {
+                const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     signal: options.signal, // Pass AbortSignal
