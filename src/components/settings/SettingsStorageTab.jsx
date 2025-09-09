@@ -370,47 +370,45 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                 )}
             </div>
 
-            {/* Manual Import Section (Always available if auto backup fails) */}
-            {!hasBackup && (
-                <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                    <button
-                        onClick={() => setShowManualImport(!showManualImport)}
-                        className="text-xs font-bold text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1"
-                    >
-                        {showManualImport ? "Hide Advanced Recovery" : "Show Advanced Recovery (Manual Import)"}
-                    </button>
+            {/* Manual Import Section (Always available) */}
+            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+                <button
+                    onClick={() => setShowManualImport(!showManualImport)}
+                    className="text-xs font-bold text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1"
+                >
+                    {showManualImport ? "Hide Advanced Recovery" : "Show Advanced Recovery (Manual Import)"}
+                </button>
 
-                    {showManualImport && (
-                        <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 animate-fade-in">
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">Manual JSON Import</h4>
-                            <p className="text-xs text-slate-500 mb-3">
-                                Paste the raw backup data JSON provided by support below.
-                            </p>
+                {showManualImport && (
+                    <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 animate-fade-in">
+                        <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">Manual JSON Import</h4>
+                        <p className="text-xs text-slate-500 mb-3">
+                            Paste the raw backup data JSON provided by support below.
+                        </p>
 
-                            <textarea
-                                value={manualJson}
-                                onChange={(e) => setManualJson(e.target.value)}
-                                placeholder='[{"id":"123", "name":"My Board"...}]'
-                                className="w-full h-32 p-3 text-xs font-mono bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-brand-500 mb-3 resize-none"
-                            />
+                        <textarea
+                            value={manualJson}
+                            onChange={(e) => setManualJson(e.target.value)}
+                            placeholder='[{"id":"123", "name":"My Board"...}]'
+                            className="w-full h-32 p-3 text-xs font-mono bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-brand-500 mb-3 resize-none"
+                        />
 
-                            <div className="flex items-center justify-between">
-                                <div className="text-xs">
-                                    {manualRestoreStatus === 'success' && <span className="text-emerald-600 font-bold">{manualRestoreMsg}</span>}
-                                    {manualRestoreStatus === 'error' && <span className="text-red-500 font-bold">{manualRestoreMsg}</span>}
-                                </div>
-                                <button
-                                    onClick={handleManualImport}
-                                    disabled={manualRestoreStatus === 'restoring' || !manualJson.trim()}
-                                    className="px-4 py-2 bg-brand-600 text-white font-bold rounded-lg text-xs hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                >
-                                    {manualRestoreStatus === 'restoring' ? "Importing..." : "Import & Restore"}
-                                </button>
+                        <div className="flex items-center justify-between">
+                            <div className="text-xs">
+                                {manualRestoreStatus === 'success' && <span className="text-emerald-600 font-bold">{manualRestoreMsg}</span>}
+                                {manualRestoreStatus === 'error' && <span className="text-red-500 font-bold">{manualRestoreMsg}</span>}
                             </div>
+                            <button
+                                onClick={handleManualImport}
+                                disabled={manualRestoreStatus === 'restoring' || !manualJson.trim()}
+                                className="px-4 py-2 bg-brand-600 text-white font-bold rounded-lg text-xs hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                {manualRestoreStatus === 'restoring' ? "Importing..." : "Import & Restore"}
+                            </button>
                         </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
 
             {/* Scheduled Backups Section */}
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
@@ -441,8 +439,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
                 {backupActionStatus !== 'idle' && backupActionMsg && (
                     <div className={`mb-3 p-2 rounded-lg text-xs font-bold ${backupActionStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
-                            backupActionStatus === 'error' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' :
-                                'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                        backupActionStatus === 'error' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' :
+                            'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                         }`}>
                         {backupActionMsg}
                     </div>
