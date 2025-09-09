@@ -83,6 +83,7 @@ export class GeminiProvider extends LLMProvider {
 
         while (retries >= 0) {
             try {
+                console.log(`[Gemini] Sending chat request to /api/gmi-proxy for model ${cleanModel}`);
                 const response = await fetch('/api/gmi-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -94,6 +95,8 @@ export class GeminiProvider extends LLMProvider {
                         requestBody
                     })
                 });
+
+                console.log(`[Gemini] Response status: ${response.status} ${response.statusText}`);
 
                 if (response.ok) {
                     const data = await response.json();
@@ -113,14 +116,20 @@ export class GeminiProvider extends LLMProvider {
                     return content;
                 }
 
+                if (response.status === 404) {
+                    throw new Error("API Proxy endpoint not found (404). This might be a deployment or routing issue.");
+                }
+
                 if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
+                    console.warn(`[Gemini] Server error ${response.status}, retrying...`);
                     await new Promise(r => setTimeout(r, 2000));
                     retries--; continue;
                 }
 
                 const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || response.statusText);
+                throw new Error(err.error?.message || err.message || `API Error ${response.status}: ${response.statusText}`);
             } catch (e) {
+                console.error('[Gemini] Chat error details:', e);
                 if (retries > 0) {
                     await new Promise(r => setTimeout(r, 2000));
                     retries--;
@@ -188,6 +197,12 @@ export class GeminiProvider extends LLMProvider {
 
                 if (!response.ok) {
                     const errStatus = response.status;
+                    console.error(`[Gemini] Stream response error: ${errStatus} ${response.statusText}`);
+
+                    if (errStatus === 404) {
+                        throw new Error("Stream API Proxy endpoint not found (404). This might be a deployment or routing issue.");
+                    }
+
                     if ([429, 500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
                         console.warn(`[Gemini] Request failed with ${errStatus}, retrying in ${delay}ms...`);
                         await new Promise(r => setTimeout(r, delay));
@@ -198,7 +213,7 @@ export class GeminiProvider extends LLMProvider {
 
                     const errData = await response.json().catch(() => ({}));
                     console.error('[Gemini] API Error:', errStatus, errData);
-                    throw new Error(errData.error?.message || errData.message || response.statusText);
+                    throw new Error(errData.error?.message || errData.message || `API Error ${errStatus}: ${response.statusText}`);
                 }
 
                 const reader = response.body.getReader();
