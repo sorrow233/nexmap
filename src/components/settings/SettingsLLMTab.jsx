@@ -19,7 +19,7 @@ export default function SettingsLLMTab({
     const providerList = Object.values(providers || {});
 
     return (
-        <div className="flex gap-6 h-full animate-slide-up">
+        <div className="flex gap-6 h-full">
 
 
 

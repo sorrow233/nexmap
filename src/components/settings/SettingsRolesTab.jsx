@@ -13,7 +13,7 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
     };
 
     return (
-        <div className="space-y-6 animate-slide-up">
+        <div className="space-y-6">
 
 
             <div className="p-4 bg-brand-50 dark:bg-brand-900/20 text-brand-800 dark:text-brand-200 rounded-xl text-sm border border-brand-100 dark:border-brand-900/30">

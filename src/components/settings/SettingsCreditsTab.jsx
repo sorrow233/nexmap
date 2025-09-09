@@ -29,7 +29,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const isLow = creditsValue < 20;
 
     return (
-        <div className="space-y-6 animate-slide-up">
+        <div className="space-y-6">
             {/* Main Welcome Card */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-2xl p-8 group">
                 {/* Background Effects */}
