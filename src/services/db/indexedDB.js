@@ -1,7 +1,8 @@
 
 const IDB_NAME = 'MixBoardDB';
 const IDB_STORE = 'boards';
-const IDB_VERSION = 1;
+const IDB_BACKUP_STORE = 'scheduled_backups';
+const IDB_VERSION = 2; // Upgraded for scheduled backups
 
 const initDB = () => new Promise((resolve, reject) => {
     const request = indexedDB.open(IDB_NAME, IDB_VERSION);
@@ -11,6 +12,10 @@ const initDB = () => new Promise((resolve, reject) => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(IDB_STORE)) {
             db.createObjectStore(IDB_STORE);
+        }
+        // V2: Add scheduled backups store
+        if (!db.objectStoreNames.contains(IDB_BACKUP_STORE)) {
+            db.createObjectStore(IDB_BACKUP_STORE);
         }
     };
 });
