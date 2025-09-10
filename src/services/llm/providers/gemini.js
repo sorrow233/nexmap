@@ -54,23 +54,26 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            tools: [
-                {
-                    google_search: {},
-                    // code_execution: {} // Confilct with google_search
-                }
-
-                // code_execution: {} // Confilct with google_search
-            ],
             generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0,
-                maxOutputTokens: 65536,
-                thinkingConfig: {
-                    thinkingLevel: options.thinkingLevel || "HIGH"
-                },
-                mediaResolution: options.mediaResolution || "media_resolution_high"
+                temperature: options.temperature !== undefined ? options.temperature : 0.7,
+                maxOutputTokens: 65536
             }
         };
+
+        // Add tools ONLY if explicitly requested in options
+        if (options.tools) {
+            requestBody.tools = options.tools;
+        } else if (options.useSearch) {
+            requestBody.tools = [{ google_search: {} }];
+        }
+
+        // Add experimental features ONLY if explicitly requested
+        if (options.thinkingLevel) {
+            requestBody.generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
+        }
+        if (options.mediaResolution) {
+            requestBody.generationConfig.mediaResolution = options.mediaResolution;
+        }
 
         console.log('[Gemini] Generation Config:', JSON.stringify(requestBody.generationConfig, null, 2));
 
@@ -79,7 +82,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 1; // Retry once if needed
+        let retries = 1; // Standard retry for network issues
 
         while (retries >= 0) {
             try {
@@ -101,19 +104,7 @@ export class GeminiProvider extends LLMProvider {
                 if (response.ok) {
                     const data = await response.json();
                     const candidate = data.candidates?.[0];
-                    const content = candidate?.content?.parts?.[0]?.text || "";
-
-                    // Simple logic: If no search used (groundingMetadata missing) and it's the first attempt,
-                    // retry silently once. If second attempt also no search, just return it.
-                    const hasSearch = !!candidate?.groundingMetadata;
-                    if (!hasSearch && retries > 0) {
-                        console.warn('[Gemini] Response missing search grounding. Retrying once in background...');
-                        await new Promise(r => setTimeout(r, 1000));
-                        retries--;
-                        continue;
-                    }
-
-                    return content;
+                    return candidate?.content?.parts?.[0]?.text || "";
                 }
 
                 if (response.status === 404) {
@@ -150,23 +141,26 @@ export class GeminiProvider extends LLMProvider {
 
         const requestBody = {
             contents,
-            tools: [
-                {
-                    google_search: {},
-                    // code_execution: {} // Confilct with google_search
-                }
-
-                // code_execution: {} // Confilct with google_search
-            ],
             generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0,
-                maxOutputTokens: 65536,
-                thinkingConfig: {
-                    thinkingLevel: options.thinkingLevel || "HIGH"
-                },
-                mediaResolution: options.mediaResolution || "media_resolution_high"
+                temperature: options.temperature !== undefined ? options.temperature : 0.7,
+                maxOutputTokens: 65536
             }
         };
+
+        // Add tools ONLY if explicitly requested
+        if (options.tools) {
+            requestBody.tools = options.tools;
+        } else if (options.useSearch) {
+            requestBody.tools = [{ google_search: {} }];
+        }
+
+        // Add experimental features ONLY if explicitly requested
+        if (options.thinkingLevel) {
+            requestBody.generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
+        }
+        if (options.mediaResolution) {
+            requestBody.generationConfig.mediaResolution = options.mediaResolution;
+        }
 
         console.log('[Gemini] Stream Config:', JSON.stringify(requestBody.generationConfig, null, 2));
 
