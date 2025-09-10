@@ -69,14 +69,11 @@ class AIManager {
             }
         }
 
-        // 2. Conflict Handling (Replace Obsolete)
-        // For chat tasks, we want to ensure only the LATEST request for a specific card is running.
-        // We cancel both queued and ACTIVE tasks that match the tags.
-        if (type === 'chat' && tags.length > 0) {
-            this.cancelByTags(tags);
-        } else {
-            this._cancelConflictingQueuedTasks(tags);
-        }
+        // 2. Conflict Handling
+        // For chat tasks, we NO LONGER cancel active tasks by default.
+        // Instead, we let them queue up so that messages sent in quick succession are all processed.
+        // We only cancel items still in the QUEUE to avoid redundant work.
+        this._cancelConflictingQueuedTasks(tags);
 
         // 3. Create Task
         const task = {
@@ -197,14 +194,30 @@ class AIManager {
         this.processing = true;
 
         try {
-            while (this.activeTasks.size < this.concurrencyLimit && this.queue.length > 0) {
-                const task = this.queue.shift();
-                const controller = new AbortController();
+            let i = 0;
+            while (this.activeTasks.size < this.concurrencyLimit && i < this.queue.length) {
+                const task = this.queue[i];
 
+                // SEQUENTIAL TAG CHECK: 
+                // Don't start a task if another task with any of the same tags is already running.
+                const hasRunningConflict = [...this.activeTasks.values()].some(entry =>
+                    entry.task.tags.some(tag => task.tags.includes(tag))
+                );
+
+                if (hasRunningConflict) {
+                    i++; // Skip to next candidate in queue
+                    continue;
+                }
+
+                // Remove from queue and start
+                this.queue.splice(i, 1);
+                const controller = new AbortController();
                 this.activeTasks.set(task.id, { controller, task });
 
-                // Non-blocking execution of the task
+                // Non-blocking execution
                 this._runTask(task, controller);
+                // Reset index since we modified queue and might have unlocked others
+                i = 0;
             }
         } finally {
             this.processing = false;
