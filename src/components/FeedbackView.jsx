@@ -12,7 +12,7 @@ const MAX_VOTES_PER_USER = 1;
 // Status badge colors
 const STATUS_COLORS = {
     pending: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
-    in_progress: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    in_progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
     planned: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
 };
@@ -170,14 +170,14 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
             return {
                 disabled: false,
                 title: t.feedback?.loginToVote || 'Sign in to vote',
-                className: 'bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-400 dark:bg-slate-800 dark:hover:bg-orange-900/20'
+                className: 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-indigo-400 dark:bg-slate-800 dark:hover:bg-indigo-900/20'
             };
         }
         if (hasVoted) {
             return {
                 disabled: isVoting,
                 title: t.feedback?.removeVote || 'Remove vote',
-                className: 'bg-orange-100 text-orange-500 dark:bg-orange-900/30'
+                className: 'bg-indigo-100 text-indigo-500 dark:bg-indigo-900/30'
             };
         }
         if (totalUserVotes >= MAX_VOTES_PER_USER) {
@@ -190,14 +190,14 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
         return {
             disabled: isVoting,
             title: t.feedback?.upvote || 'Upvote',
-            className: 'bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-400 dark:bg-slate-800 dark:hover:bg-orange-900/20'
+            className: 'bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-400 dark:bg-slate-800 dark:hover:bg-indigo-900/20'
         };
     };
 
     const voteButtonProps = getVoteButtonProps();
 
     return (
-        <div className="glass-card rounded-2xl p-4 hover:shadow-lg transition-all duration-300 group">
+        <div className="glass-card rounded-2xl p-4 hover:shadow-lg transition-all duration-300 group ring-1 ring-slate-900/5 dark:ring-white/10">
             <div className="flex gap-3">
                 {/* Vote Section */}
                 <div className="flex flex-col items-center gap-1 pt-1">
@@ -209,7 +209,7 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
                     >
                         <ThumbsUp size={16} fill={hasVoted ? 'currentColor' : 'none'} className={isVoting ? 'scale-90 opacity-70' : ''} />
                     </button>
-                    <span className={`font-bold text-sm ${hasVoted ? 'text-orange-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                    <span className={`font-bold text-sm ${hasVoted ? 'text-indigo-500' : 'text-slate-600 dark:text-slate-300'}`}>
                         {feedback.votes}
                     </span>
                 </div>
@@ -223,7 +223,7 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
                                     {statusLabel[feedback.status]}
                                 </span>
                             )}
-                            <p className="text-slate-800 dark:text-slate-100 text-sm leading-relaxed mb-2 whitespace-pre-wrap break-words">
+                            <p className="text-slate-800 dark:text-slate-100 text-sm leading-relaxed mb-2 whitespace-pre-wrap break-words font-inter-tight">
                                 {feedback.content}
                             </p>
                         </div>
@@ -241,7 +241,7 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
 
                         <button
                             onClick={() => setShowComments(!showComments)}
-                            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-orange-500 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 ml-auto"
+                            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-indigo-500 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 ml-auto"
                         >
                             <MessageSquare size={14} />
                             <span>{comments.length || feedback.comments}</span>
@@ -255,7 +255,7 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
                             {/* Comment List */}
                             <div className="space-y-3 mb-4">
                                 {loadingComments ? (
-                                    <div className="flex justify-center py-2"><div className="w-4 h-4 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" /></div>
+                                    <div className="flex justify-center py-2"><div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" /></div>
                                 ) : comments.length > 0 ? (
                                     comments.map(c => <CommentItem key={c.id} comment={c} />)
                                 ) : (
@@ -271,7 +271,7 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
                                         value={commentEmail}
                                         onChange={e => setCommentEmail(e.target.value)}
                                         placeholder="Email"
-                                        className="w-24 px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-orange-500"
+                                        className="w-24 px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-indigo-500"
                                     />
                                 )}
                                 <div className="flex-1 relative">
@@ -281,12 +281,12 @@ function FeedbackCard({ feedback, onVote, votedIds, authenticatedFetch, user, on
                                         onChange={e => setCommentContent(e.target.value)}
                                         onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleCommentSubmit()}
                                         placeholder="Add a comment..."
-                                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-orange-500 pr-8"
+                                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-indigo-500 pr-8"
                                     />
                                     <button
                                         onClick={handleCommentSubmit}
                                         disabled={submittingComment || !commentContent.trim()}
-                                        className="absolute right-1 top-1 p-1 text-orange-500 hover:bg-orange-50 rounded dark:hover:bg-slate-600 disabled:opacity-30"
+                                        className="absolute right-1 top-1 p-1 text-indigo-500 hover:bg-indigo-50 rounded dark:hover:bg-slate-600 disabled:opacity-30"
                                     >
                                         <Send size={14} />
                                     </button>
@@ -346,7 +346,7 @@ function FeedbackSubmitForm({ user, onSubmit, t }) {
     };
 
     return (
-        <div className="glass-card rounded-2xl p-4 mb-6 sticky top-4 z-10 shadow-xl shadow-orange-500/5 ring-1 ring-white/20 backdrop-blur-xl">
+        <div className="glass-card rounded-2xl p-4 mb-6 sticky top-4 z-10 shadow-xl shadow-indigo-500/5 ring-1 ring-white/20 backdrop-blur-xl">
             {error && (
                 <div className="p-2 mb-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-xs">
                     {error}
@@ -363,7 +363,7 @@ function FeedbackSubmitForm({ user, onSubmit, t }) {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder={t.feedback?.yourEmail || "Email"}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-inter-tight"
                         />
                     </div>
                 )}
@@ -375,13 +375,13 @@ function FeedbackSubmitForm({ user, onSubmit, t }) {
                         onChange={(e) => setContent(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={t.feedback?.placeholder || "Share your thoughts..."}
-                        className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                        className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-inter-tight"
                         disabled={isSubmitting}
                     />
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting || !content.trim()}
-                        className="p-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        className="p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl shadow-lg hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                         {isSubmitting ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -557,7 +557,7 @@ export default function FeedbackView({ user, onLogin }) {
             <div className="space-y-4">
                 {isLoading && feedbacks.length === 0 ? (
                     <div className="flex justify-center py-12">
-                        <div className="w-8 h-8 border-3 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
                     </div>
                 ) : feedbacks.length === 0 ? (
                     <div className="text-center py-12 glass-card rounded-2xl">

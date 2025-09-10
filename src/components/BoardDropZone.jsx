@@ -52,12 +52,12 @@ export default function BoardDropZone({ onCreateBoard }) {
     };
 
     return (
-        <div className="mb-24 relative group max-w-4xl mx-auto mt-8">
-            <div className={`absolute inset-0 bg-gradient-to-r from-orange-300/20 via-rose-300/20 to-orange-300/20 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}></div>
+        <div className="mb-12 relative group max-w-4xl mx-auto mt-4">
+            <div className={`absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-indigo-500/20 rounded-[2.5rem] blur-3xl transition-opacity duration-1000 ${isDragging ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}></div>
 
             <div
                 className={`relative glass-card-premium transition-all duration-500 p-4 rounded-[2.5rem] flex flex-col
-                    ${isDragging ? 'border-orange-300 ring-4 ring-orange-300/20 scale-[1.01]' : 'hover:border-white/60 dark:hover:border-white/20 hover:shadow-premium-hover'}
+                    ${isDragging ? 'border-blue-400 ring-4 ring-blue-400/20 scale-[1.01]' : 'hover:border-white/60 dark:hover:border-white/20 hover:shadow-premium-hover'}
                 `}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -88,7 +88,7 @@ export default function BoardDropZone({ onCreateBoard }) {
                 )}
 
                 <div className="flex items-center gap-4 w-full pl-2">
-                    <div className="pl-4 text-orange-400 dark:text-orange-300 my-auto shrink-0">
+                    <div className="pl-4 text-blue-500 dark:text-blue-400 my-auto shrink-0">
                         <Sparkles size={24} className="animate-pulse-slow drop-shadow-sm" strokeWidth={2.5} />
                     </div>
 
@@ -98,7 +98,7 @@ export default function BoardDropZone({ onCreateBoard }) {
                         onChange={e => setQuickPrompt(e.target.value)}
                         onKeyDown={handleKeyPress}
                         placeholder="What would you like to create?"
-                        className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 font-medium min-w-0 tracking-tight"
+                        className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 font-medium min-w-0 tracking-tight font-inter-tight"
                     />
 
                     {/* Image Upload Button */}
@@ -112,7 +112,7 @@ export default function BoardDropZone({ onCreateBoard }) {
                     />
                     <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-4 text-slate-400 hover:text-orange-400 hover:bg-orange-50/50 dark:hover:bg-white/5 rounded-2xl transition-all mr-1 shrink-0 group-hover:scale-105 active:scale-95"
+                        className="p-4 text-slate-400 hover:text-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-500/10 rounded-2xl transition-all mr-1 shrink-0 group-hover:scale-105 active:scale-95"
                         title="Upload Image"
                     >
                         <ImageIcon size={24} strokeWidth={2} />
@@ -129,9 +129,9 @@ export default function BoardDropZone({ onCreateBoard }) {
 
                 {/* Drag Overlay Hint */}
                 {isDragging && (
-                    <div className="absolute inset-0 bg-orange-300/10 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center pointer-events-none z-20 border-2 border-dashed border-orange-300/30">
-                        <div className="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl shadow-premium-hover flex items-center gap-4 animate-bounce border border-orange-100 dark:border-white/10">
-                            <div className="bg-orange-400 p-2 rounded-xl text-white">
+                    <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center pointer-events-none z-20 border-2 border-dashed border-blue-400/30">
+                        <div className="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl shadow-premium-hover flex items-center gap-4 animate-bounce border border-blue-100 dark:border-white/10">
+                            <div className="bg-blue-500 p-2 rounded-xl text-white">
                                 <ImageIcon size={20} />
                             </div>
                             <span className="font-black text-slate-900 dark:text-white tracking-tight">Release to upload</span>

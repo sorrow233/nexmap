@@ -29,14 +29,17 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
             {/* Hero Section & Greeting */}
             {!isTrashView && (
-                <div className="relative pt-6 md:pt-12 pb-4 md:pb-6 px-4 md:px-8 max-w-[1600px] mx-auto">
-                    <div className="text-center mb-6 md:mb-10 animate-fade-in-up">
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter mb-2 md:mb-4 text-slate-900 dark:text-white">
-                            {greeting}, <span className="text-gradient-gold">Creator.</span>
-                        </h1>
-                        <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-medium tracking-tight px-2">
-                            Ready to capture your next big idea?
-                        </p>
+                <div className="relative pt-2 pb-8 px-2 max-w-[1800px] mx-auto">
+                    <div className="flex flex-col md:flex-row items-end md:items-center justify-between mb-8 animate-fade-in-up">
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-slate-900 dark:text-white font-inter-tight">
+                                {greeting}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Creator.</span>
+                            </h1>
+                            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                                Ready to capture your next big idea?
+                            </p>
+                        </div>
+                        {/* DropZone is now more compact or integrated if needed, keeping as creates new board */}
                     </div>
 
                     <BoardDropZone onCreateBoard={onCreateBoard} />
@@ -45,34 +48,32 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
             {/* Trash View Header */}
             {isTrashView && (
-                <div className="pt-12 pb-6 px-8 max-w-[1600px] mx-auto text-center animate-fade-in-up">
-                    <h1 className="text-4xl font-black tracking-tighter mb-4 text-slate-900 dark:text-white">
+                <div className="pt-6 pb-6 px-2 text-center animate-fade-in-up">
+                    <h1 className="text-3xl font-bold tracking-tight mb-4 text-slate-900 dark:text-white font-inter-tight">
                         Recycle Bin
                     </h1>
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 text-red-500 font-bold text-sm">
-                        <Clock size={16} />
-                        <span>Items are permanently deleted after 30 days</span>
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 text-red-500 font-semibold text-sm">
+                        <Clock size={14} />
+                        <span>Items deleted longer than 30 days are removed forever</span>
                     </div>
                 </div>
             )}
 
             {/* Content Container */}
-            <div className="max-w-[1600px] mx-auto px-2 md:px-8 space-y-8 md:space-y-16">
+            <div className="max-w-[1800px] mx-auto px-1 md:px-2 space-y-12">
 
                 {/* Recently Visited - Horizontal Carousel */}
                 {!isTrashView && recentBoards.length > 0 && (
                     <div className="animate-fade-in-up delay-100">
-                        <div className="flex items-center gap-3 mb-6 px-2">
-                            <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-orange-500">
-                                <Clock size={16} strokeWidth={2.5} />
-                            </div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Recently Visited</h2>
+                        <div className="flex items-center gap-2 mb-4 px-1">
+                            <Clock size={16} className="text-indigo-500" />
+                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recently Visited</h2>
                         </div>
 
                         <div className="relative group/carousel">
-                            <div className="flex overflow-x-auto gap-6 pb-8 pt-2 px-2 custom-scrollbar snap-x snap-mandatory mask-gradient-right">
+                            <div className="flex overflow-x-auto gap-4 pb-4 pt-2 px-1 custom-scrollbar snap-x snap-mandatory mask-gradient-right">
                                 {recentBoards.map((board, index) => (
-                                    <div key={`recent-${board.id}`} className="snap-start shrink-0 w-[220px] md:w-[260px]">
+                                    <div key={`recent-${board.id}`} className="snap-start shrink-0 w-[240px] md:w-[280px]">
                                         <BoardCard
                                             board={board}
                                             index={index}
@@ -94,52 +95,51 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     </div>
                 )}
 
-                {/* All Boards Grid */}
+                {/* All Boards - Masonry Grid */}
                 <div className="animate-fade-in-up delay-200">
                     {!isTrashView && (
-                        <div className="flex items-center gap-3 mb-6 px-2">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                                <LayoutGrid size={16} strokeWidth={2.5} />
-                            </div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">All Boards</h2>
-                            <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md">
+                        <div className="flex items-center gap-2 mb-6 px-1">
+                            <LayoutGrid size={16} className="text-indigo-500" />
+                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">All Boards</h2>
+                            <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
                                 {boards.length}
                             </span>
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 px-2">
+                    <div className="masonry-grid px-1">
                         {boards.map((board, index) => (
-                            <BoardCard
-                                key={board.id}
-                                board={board}
-                                index={index}
-                                isTrashView={isTrashView}
-                                onSelect={onSelectBoard}
-                                onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
-                                onRestore={onRestoreBoard}
-                                onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: true })}
-                                onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
-                                generatingBoardId={generatingBoardId}
-                                variant="stacked"
-                                isSystemCreditsUser={isSystemCreditsUser}
-                                onFreeUserRestricted={() => setFreeUserDialog(true)}
-                            />
+                            <div key={board.id} className="masonry-item">
+                                <BoardCard
+                                    board={board}
+                                    index={index}
+                                    isTrashView={isTrashView}
+                                    onSelect={onSelectBoard}
+                                    onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
+                                    onRestore={onRestoreBoard}
+                                    onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: true })}
+                                    onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
+                                    generatingBoardId={generatingBoardId}
+                                    variant="stacked"
+                                    isSystemCreditsUser={isSystemCreditsUser}
+                                    onFreeUserRestricted={() => setFreeUserDialog(true)}
+                                />
+                            </div>
                         ))}
 
                         {/* Empty State */}
                         {boards.length === 0 && (
-                            <div className="col-span-full py-32 glass-panel rounded-[2.5rem] flex flex-col items-center justify-center text-center animate-fade-in border-dashed border-2 border-slate-200 dark:border-white/5">
-                                <div className={`w-28 h-28 rounded-[2.5rem] flex items-center justify-center mb-8 backdrop-blur-md transition-transform hover:scale-110 duration-500 ${isTrashView ? 'bg-red-50 dark:bg-red-900/10 text-red-300' : 'bg-gradient-to-br from-orange-100 to-rose-100 dark:from-white/5 dark:to-white/5 text-orange-400'}`}>
-                                    {isTrashView ? <Trash2 size={48} strokeWidth={1.5} /> : <Sparkles size={48} strokeWidth={1.5} className="animate-pulse" />}
+                            <div className="col-span-full py-32 glass-panel rounded-3xl flex flex-col items-center justify-center text-center animate-fade-in border-dashed border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 transition-transform hover:scale-110 duration-500 ${isTrashView ? 'bg-red-50 dark:bg-red-900/10 text-red-300' : 'bg-indigo-50 dark:bg-white/5 text-indigo-400'}`}>
+                                    {isTrashView ? <Trash2 size={32} /> : <Sparkles size={32} />}
                                 </div>
-                                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">
                                     {isTrashView ? 'Trash is empty' : 'A fresh start'}
                                 </h2>
-                                <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm leading-relaxed text-lg">
+                                <p className="text-slate-500 dark:text-slate-400 max-w-xs text-sm">
                                     {isTrashView
-                                        ? 'Your deleted boards will appear here before they vanish forever.'
-                                        : "Your canvas is waiting. Type a thought above to begin your journey."}
+                                        ? 'Items appearing here can be restored.'
+                                        : "Your canvas is waiting. Create your first board above."}
                                 </p>
                             </div>
                         )}
