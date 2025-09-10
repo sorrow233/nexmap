@@ -68,7 +68,7 @@ export default function GalleryPage({
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white relative overflow-y-auto custom-scrollbar font-inter-tight selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white font-inter-tight selection:bg-indigo-500/30">
             {/* Inject Font locally for this page if not global */}
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&display=swap');
@@ -219,7 +219,7 @@ export default function GalleryPage({
                 </div>
 
                 {/* Main Content Area */}
-                <div className="animate-fade-in-up duration-500 delay-100 min-h-[60vh]">
+                <div className="animate-fade-in-up duration-500 delay-100 min-h-[60vh] pb-32">
                     {viewMode === 'feedback' ? (
                         <FeedbackView user={user} onLogin={onLogin} />
                     ) : viewMode === 'favorites' ? (
