@@ -77,18 +77,18 @@ export default function GalleryPage({
                 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&display=swap');
                 .font-inter-tight { font-family: 'Inter Tight', sans-serif; }
                 
-                /* Custom Masonry Grid Support via CSS Columns */
+                /* Modern Grid Layout - fixes empty space issue after deletion */
                 .masonry-grid {
-                    column-count: 1;
-                    column-gap: 1.5rem;
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 1.5rem;
                 }
-                @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
-                @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
-                @media (min-width: 1280px) { .masonry-grid { column-count: 4; } }
+                @media (min-width: 640px) { .masonry-grid { grid-template-columns: repeat(2, 1fr); } }
+                @media (min-width: 1024px) { .masonry-grid { grid-template-columns: repeat(3, 1fr); } }
+                @media (min-width: 1280px) { .masonry-grid { grid-template-columns: repeat(4, 1fr); } }
 
                 .masonry-item {
-                    break-inside: avoid;
-                    margin-bottom: 1.5rem;
+                    /* Grid items automatically fill without gaps */
                 }
             `}</style>
 
