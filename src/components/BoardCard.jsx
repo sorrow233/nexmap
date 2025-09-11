@@ -97,8 +97,8 @@ export default function BoardCard({
                 </div>
 
                 {/* Content Section (Bottom Half) */}
-                <div className="p-5 flex flex-col gap-3 flex-1">
-                    <div className="flex items-start justify-between gap-2">
+                <div className="p-5 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2 h-12">
                         <h3 className="font-bold text-lg text-slate-900 dark:text-gray-100 leading-tight line-clamp-2 font-inter-tight">
                             {board.name}
                         </h3>
