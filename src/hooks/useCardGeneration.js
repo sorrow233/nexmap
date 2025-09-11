@@ -99,7 +99,11 @@ export function useCardGeneration() {
                 perfMonitor.onComplete();
             } catch (innerError) {
                 debugLog.error(`Streaming failed for card ${newId}`, innerError);
-                updateCardContent(newId, `\n\n[System Error: ${innerError.message || 'Generation failed'}]`);
+                const errMsg = innerError.message || 'Generation failed';
+                const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
+                    ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
+                    : `\n\n⚠️ **生成失败**: ${errMsg}`;
+                updateCardContent(newId, userMessage);
             } finally {
                 setCardGenerating(newId, false);
             }
@@ -173,7 +177,11 @@ export function useCardGeneration() {
                 debugLog.ai(`Batch response complete for card ${card.id}`);
             } catch (e) {
                 debugLog.error(`Batch chat failed for card ${card.id}`, e);
-                updateCardContent(card.id, `\n\n[System Error: ${e.message}]`);
+                const errMsg = e.message || 'Generation failed';
+                const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
+                    ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
+                    : `\n\n⚠️ **生成失败**: ${errMsg}`;
+                updateCardContent(card.id, userMessage);
             }
         }));
         return true;
