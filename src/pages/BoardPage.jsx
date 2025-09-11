@@ -393,6 +393,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 onImageUpload={handleGlobalImageUpload}
                 globalImages={globalImages}
                 onRemoveImage={removeGlobalImage}
+                onClearImages={() => setGlobalImages([])}
                 onGroup={(ids) => createGroup(ids)}
                 onSelectConnected={handleSelectConnected}
                 onLayoutGrid={arrangeSelectionGrid} // Wire up the action
