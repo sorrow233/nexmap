@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift } from 'lucide-react';
+import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift, Globe } from 'lucide-react';
 // import { chatCompletion } from '../services/llm'; // Converted to dynamic import
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
@@ -9,6 +9,7 @@ import SettingsCreditsTab from './settings/SettingsCreditsTab';
 import SettingsLLMTab from './settings/SettingsLLMTab';
 import SettingsRolesTab from './settings/SettingsRolesTab';
 import SettingsStorageTab from './settings/SettingsStorageTab';
+import SettingsGeneralTab from './settings/SettingsGeneralTab';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) {
@@ -197,6 +198,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         <div className="space-y-1">
                             <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.settings.general}</div>
                             <TabButton id="credits" icon={Gift} label={t.settings.credits} description={t.settings.creditsDesc} />
+                            <TabButton id="language" icon={Globe} label={t.settings.language} description={t.settings.language} />
                         </div>
 
                         {/* Advanced Toggle */}
@@ -239,6 +241,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 sticky top-0">
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                             {activeTab === 'credits' && t.settings.creditsUsage}
+                            {activeTab === 'language' && t.settings.language}
                             {activeTab === 'llm' && t.settings.modelProvider}
                             {activeTab === 'roles' && t.settings.modelRoles}
                             {activeTab === 'storage' && t.settings.storageSettings}
@@ -265,9 +268,11 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             {activeTab === 'credits' && (
                                 <SettingsCreditsTab onOpenAdvanced={() => {
                                     setShowAdvanced(true);
-                                    setActiveTab('llm'); // Or stay on credits? User likely wants to config. Let's go to LLM.
+                                    setActiveTab('llm');
                                 }} />
                             )}
+
+                            {activeTab === 'language' && <SettingsGeneralTab />}
 
                             {activeTab === 'llm' && (
                                 <SettingsLLMTab

@@ -10,7 +10,14 @@ export const LanguageProvider = ({ children }) => {
 
     useEffect(() => {
         const detectLanguage = () => {
-            // Simply check Browser Language
+            // 1. Check LocalStorage (User Preference)
+            const savedLang = localStorage.getItem('userLanguage');
+            if (savedLang && ['en', 'zh', 'ja'].includes(savedLang)) {
+                setLanguage(savedLang);
+                return;
+            }
+
+            // 2. Check Browser Language
             const navLang = navigator.language || navigator.userLanguage;
 
             if (navLang) {
