@@ -20,7 +20,10 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         else setGreeting('Good evening');
     }, []);
 
-    const recentBoards = [...boards]
+    // DEFENSIVE: Filter out invalid boards (no id or name)
+    const validBoards = boards.filter(b => b && b.id && b.name);
+
+    const recentBoards = [...validBoards]
         .filter(b => b.lastAccessedAt)
         .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
         .slice(0, 5);
@@ -102,13 +105,13 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                             <LayoutGrid size={16} className="text-indigo-500" />
                             <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">All Boards</h2>
                             <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
-                                {boards.length}
+                                {validBoards.length}
                             </span>
                         </div>
                     )}
 
                     <div className="masonry-grid px-1">
-                        {boards.map((board, index) => (
+                        {validBoards.map((board, index) => (
                             <div key={board.id} className="masonry-item">
                                 <BoardCard
                                     board={board}
@@ -128,7 +131,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                         ))}
 
                         {/* Empty State */}
-                        {boards.length === 0 && (
+                        {validBoards.length === 0 && (
                             <div className="col-span-full py-32 glass-panel rounded-3xl flex flex-col items-center justify-center text-center animate-fade-in border-dashed border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
                                 <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 transition-transform hover:scale-110 duration-500 ${isTrashView ? 'bg-red-50 dark:bg-red-900/10 text-red-300' : 'bg-indigo-50 dark:bg-white/5 text-indigo-400'}`}>
                                     {isTrashView ? <Trash2 size={32} /> : <Sparkles size={32} />}

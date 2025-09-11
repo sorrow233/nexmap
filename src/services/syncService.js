@@ -86,8 +86,8 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 if (hasChanges) debugLog.sync(`Hydration complete for ${promises.length} board(s)`);
             }
 
-            // Sync Metadata List
-            const allBoards = snapshot.docs.map(doc => doc.data());
+            // Sync Metadata List - FILTER OUT INVALID DOCS (no id or name)
+            const allBoards = snapshot.docs.map(doc => doc.data()).filter(b => b && b.id);
             const metadataList = allBoards.map(b => ({
                 id: b.id,
                 name: b.name || 'Untitled',
