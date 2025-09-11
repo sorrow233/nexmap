@@ -109,7 +109,7 @@ export default function BoardCard({
                             <span className={`w-2 h-2 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-700'}`} />
                             <span>{board.cardCount || 0} Cards</span>
                         </div>
-                        <span>{new Date(board.updatedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                     </div>
 
                     {isTrashView && (
@@ -156,7 +156,7 @@ export default function BoardCard({
                     {board.name}
                 </h3>
                 <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                    <span>{new Date(board.updatedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                    <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                     <span>•</span>
                     <span>{board.cardCount || 0} items</span>
                 </div>
