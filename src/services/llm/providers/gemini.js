@@ -1,6 +1,22 @@
 import { LLMProvider } from './base';
 import { resolveRemoteImages, getAuthMethod } from '../utils';
 
+// Errors that are likely transient and worth retrying
+const RETRYABLE_ERRORS = [
+    'Upstream service unavailable',
+    'upstream connect error',
+    'Service Unavailable',
+    'temporarily unavailable',
+    'overloaded',
+    'rate limit'
+];
+
+function isRetryableError(errorMessage) {
+    if (!errorMessage) return false;
+    const lower = errorMessage.toLowerCase();
+    return RETRYABLE_ERRORS.some(e => lower.includes(e.toLowerCase()));
+}
+
 export class GeminiProvider extends LLMProvider {
     /**
      * Gemini 原生协议转换
@@ -89,7 +105,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 1; // Standard retry for network issues
+        let retries = 2; // Allow 2 retries (3 total attempts)
 
         while (retries >= 0) {
             try {
@@ -110,6 +126,19 @@ export class GeminiProvider extends LLMProvider {
 
                 if (response.ok) {
                     const data = await response.json();
+
+                    // Check for errors in response body
+                    if (data.error) {
+                        const errMsg = data.error.message || JSON.stringify(data.error);
+                        if (isRetryableError(errMsg) && retries > 0) {
+                            console.warn(`[Gemini] Retryable error: ${errMsg}, retrying... (${retries} left)`);
+                            await new Promise(r => setTimeout(r, 2000));
+                            retries--;
+                            continue;
+                        }
+                        throw new Error(errMsg);
+                    }
+
                     const candidate = data.candidates?.[0];
                     return candidate?.content?.parts?.[0]?.text || "";
                 }
@@ -119,7 +148,7 @@ export class GeminiProvider extends LLMProvider {
                 }
 
                 if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
-                    console.warn(`[Gemini] Server error ${response.status}, retrying...`);
+                    console.warn(`[Gemini] Server error ${response.status}, retrying... (${retries} left)`);
                     await new Promise(r => setTimeout(r, 2000));
                     retries--; continue;
                 }
@@ -128,6 +157,15 @@ export class GeminiProvider extends LLMProvider {
                 throw new Error(err.error?.message || err.message || `API Error ${response.status}: ${response.statusText}`);
             } catch (e) {
                 console.error('[Gemini] Chat error details:', e);
+
+                // Check if error is retryable
+                if (isRetryableError(e.message) && retries > 0) {
+                    console.warn(`[Gemini] Retryable error: ${e.message}, retrying... (${retries} left)`);
+                    await new Promise(r => setTimeout(r, 2000));
+                    retries--;
+                    continue;
+                }
+
                 if (retries > 0) {
                     await new Promise(r => setTimeout(r, 2000));
                     retries--;
@@ -176,12 +214,12 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 0; // No retries, fail fast
-        let delay = 1000;
+        let retries = 2; // Allow 2 retries (3 total attempts)
+        let delay = 1500;
 
         while (retries >= 0) {
             try {
-                console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel}`);
+                console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel} (attempts left: ${retries + 1})`);
                 const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -205,10 +243,10 @@ export class GeminiProvider extends LLMProvider {
                     }
 
                     if ([429, 500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
-                        console.warn(`[Gemini] Request failed with ${errStatus}, retrying in ${delay}ms...`);
+                        console.warn(`[Gemini] Request failed with ${errStatus}, retrying in ${delay}ms... (${retries} left)`);
                         await new Promise(r => setTimeout(r, delay));
                         retries--;
-                        delay *= 2;
+                        delay *= 1.5;
                         continue;
                     }
 
@@ -256,7 +294,15 @@ export class GeminiProvider extends LLMProvider {
 
                                 // CRITICAL: Check for API errors that might be returned as JSON (even with 200 OK)
                                 if (data.error) {
-                                    throw new Error(data.error.message || JSON.stringify(data.error));
+                                    const errMsg = data.error.message || JSON.stringify(data.error);
+
+                                    // Check if this is a retryable error
+                                    if (isRetryableError(errMsg) && retries > 0) {
+                                        console.warn(`[Gemini] Retryable upstream error: ${errMsg}, will retry... (${retries} left)`);
+                                        throw { retryable: true, message: errMsg };
+                                    }
+
+                                    throw new Error(errMsg);
                                 }
 
                                 const candidate = data.candidates?.[0];
@@ -280,6 +326,11 @@ export class GeminiProvider extends LLMProvider {
                                     }
                                 }
                             } catch (jsonErr) {
+                                // Handle retryable errors thrown above
+                                if (jsonErr.retryable) {
+                                    throw jsonErr;
+                                }
+
                                 // If parsing fails or we threw an error above, re-throw if it's our error
                                 if (jsonErr.message && !jsonErr.message.includes('JSON')) {
                                     throw jsonErr;
@@ -298,7 +349,13 @@ export class GeminiProvider extends LLMProvider {
                                 cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
                             }
                             const data = JSON.parse(cleanLine);
-                            if (data.error) throw new Error(data.error.message);
+                            if (data.error) {
+                                const errMsg = data.error.message || JSON.stringify(data.error);
+                                if (isRetryableError(errMsg) && retries > 0) {
+                                    throw { retryable: true, message: errMsg };
+                                }
+                                throw new Error(errMsg);
+                            }
 
                             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
                             if (text) {
@@ -308,6 +365,7 @@ export class GeminiProvider extends LLMProvider {
                                 }
                             }
                         } catch (e) {
+                            if (e.retryable) throw e;
                             if (e.message && !e.message.includes('JSON')) throw e;
                         }
                     }
@@ -325,12 +383,26 @@ export class GeminiProvider extends LLMProvider {
                     throw e;
                 }
 
-                if (retries > 0) {
-                    console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay}ms...`);
+                // Handle retryable errors (including our custom {retryable: true} objects)
+                if ((e.retryable || isRetryableError(e.message)) && retries > 0) {
+                    console.warn(`[Gemini] Retryable error: ${e.message}, retrying in ${delay}ms... (${retries} left)`);
                     await new Promise(r => setTimeout(r, delay));
                     retries--;
-                    delay *= 2;
+                    delay *= 1.5;
                     continue;
+                }
+
+                if (retries > 0) {
+                    console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay}ms... (${retries} left)`);
+                    await new Promise(r => setTimeout(r, delay));
+                    retries--;
+                    delay *= 1.5;
+                    continue;
+                }
+
+                // Final failure - throw the actual error
+                if (e.retryable) {
+                    throw new Error(e.message);
                 }
                 throw e;
             }
@@ -440,5 +512,3 @@ export class GeminiProvider extends LLMProvider {
         throw new Error("Image generation timed out after 60 seconds");
     }
 }
-
-
