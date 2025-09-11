@@ -74,14 +74,15 @@ export default function useImageUpload() {
     };
 
     const clearImages = () => {
-        setImages(prev => {
-            prev.forEach(img => {
-                if (img.previewUrl) {
-                    URL.revokeObjectURL(img.previewUrl);
-                }
-            });
-            return [];
+        console.log('[useImageUpload] clearImages called, current count:', images.length);
+        // Revoke URLs first using current state reference
+        images.forEach(img => {
+            if (img.previewUrl) {
+                URL.revokeObjectURL(img.previewUrl);
+            }
         });
+        // Then clear the state
+        setImages([]);
     };
 
     // Cleanup URLs on unmount
