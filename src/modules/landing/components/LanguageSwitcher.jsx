@@ -28,7 +28,7 @@ const LanguageSwitcher = () => {
 
     return (
         <div
-            className="fixed top-6 right-6 z-[9999] flex flex-col items-end pointer-events-auto"
+            className="relative z-50 flex flex-col items-end pointer-events-auto"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={() => setIsOpen(!isOpen)}
@@ -44,7 +44,7 @@ const LanguageSwitcher = () => {
                 `}
             >
                 <Globe className="w-4 h-4" />
-                <span className="text-sm font-medium tracking-wide">{currentLang.label}</span>
+                <span className="hidden sm:inline text-sm font-medium tracking-wide">{currentLang.label}</span>
             </button>
 
             {/* Dropdown Menu - Added pt-2 to bridge gap physically as well */}
