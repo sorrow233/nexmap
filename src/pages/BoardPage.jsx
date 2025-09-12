@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Sparkles, RefreshCw, Trash2, Undo2, Redo2 } from 'lucide-react';
+import { LayoutGrid, Sparkles, RefreshCw, Trash2, Undo2, Redo2, Sprout } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -19,6 +19,7 @@ import favoritesService from '../services/favoritesService';
 import QuickPromptModal from '../components/QuickPromptModal';
 import { useToast } from '../components/Toast';
 import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
+import { useAISprouting } from '../hooks/useAISprouting';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -61,6 +62,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     } = useCardCreator();
 
     const toast = useToast();
+
+    // Quick Sprout Hook (for top selection toolbar)
+    const { handleQuickSprout } = useAISprouting();
 
     // Get current board info for thumbnail capture
     const currentBoard = boardsList.find(b => b.id === currentBoardId);
@@ -412,6 +416,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     <button onClick={handleRegenerate} className="flex items-center gap-1 md:gap-2 text-blue-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95">
                         <RefreshCw size={14} className="md:w-4 md:h-4" />
                         <span className="hidden sm:inline text-sm font-medium">Retry</span>
+                    </button>
+                    <div className="h-3 md:h-4 w-px bg-slate-300"></div>
+                    <button onClick={() => selectedIds.forEach(id => handleQuickSprout(id))} className="flex items-center gap-1 md:gap-2 text-emerald-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20 active:scale-95">
+                        <Sprout size={14} className="md:w-4 md:h-4" />
+                        <span className="hidden sm:inline text-sm font-medium">Sprout</span>
                     </button>
                     <div className="h-3 md:h-4 w-px bg-slate-300"></div>
                     <button onClick={handleBatchDelete} className="flex items-center gap-1 md:gap-2 text-red-500 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95">
