@@ -199,3 +199,113 @@ Example (Chinese): ["React Hooks 内部机制", "虚拟DOM差分算法", "状态
         return ["Core concepts", "Key details", "Practical applications"];
     }
 }
+
+/**
+ * Generate a single continue topic - for in-card follow-up
+ * Returns 1 question that continues the current conversation
+ */
+export async function generateContinueTopic(messages, config, model = null, options = {}) {
+    try {
+        const contextMessages = messages.slice(-4); // Last 4 messages for better context
+        const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
+        const finalPrompt = `CONTEXT:
+${contextText}
+
+TASK: Generate exactly 1 thought-provoking follow-up question that will help deepen the user's understanding of this topic.
+
+REQUIREMENTS:
+- The question should explore an UNEXPLORED aspect of the topic
+- Focus on providing NEW PERSPECTIVE or deeper insight
+- Make it specific, not generic
+- IMPORTANT: Output in the SAME LANGUAGE as the context above
+
+OUTPUT FORMAT:
+Return ONLY the question text, no quotes or extra formatting.`;
+
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            config,
+            model,
+            options
+        );
+
+        if (!response || response.trim().length === 0) {
+            return "请详细解释一下这个概念的核心原理？";
+        }
+
+        return response.trim();
+    } catch (e) {
+        console.error("[ContinueTopic] Failed:", e);
+        return "请详细解释一下这个概念的核心原理？";
+    }
+}
+
+/**
+ * Extract ALL main topics/sections from a conversation
+ * Returns variable number of topics (not fixed to 3)
+ * Used for the Branch feature - splits conversation into topic cards
+ */
+export async function extractConversationTopics(messages, config, model = null, options = {}) {
+    try {
+        // Use more context for topic extraction
+        const contextText = messages.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
+        const finalPrompt = `CONTEXT:
+${contextText}
+
+TASK: Analyze the conversation and extract ALL distinct main topics or sections that are discussed.
+
+REQUIREMENTS:
+- Identify EVERY major topic/subject that is introduced in the conversation
+- Each topic should be a clear, standalone subject that can be discussed independently
+- Include the key content/context for each topic so it can be understood alone
+- IMPORTANT: Output topics in the SAME LANGUAGE as the context above
+
+Example: If the conversation discusses 4 different games, extract all 4 game names as topics.
+Example: If the conversation covers 3 different concepts, extract all 3 concepts.
+
+OUTPUT FORMAT:
+Return a valid JSON array with topic strings. The number of topics should match what's actually in the conversation.
+Example: ["Detroit: Become Human 游戏介绍", "Beyond: Two Souls 游戏介绍", "Heavy Rain 游戏介绍", "Fahrenheit 游戏介绍"]`;
+
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            config,
+            model,
+            options
+        );
+
+        if (!response || response.trim().length === 0) {
+            console.warn('[ExtractTopics] Empty response');
+            return ["主要话题"];
+        }
+
+        let cleanResponse = response.trim();
+
+        // Remove markdown code blocks
+        if (cleanResponse.startsWith('\`\`\`json')) {
+            cleanResponse = cleanResponse.replace(/^\`\`\`json\s*/, '').replace(/\s*\`\`\`$/, '');
+        } else if (cleanResponse.startsWith('\`\`\`')) {
+            cleanResponse = cleanResponse.replace(/^\`\`\`\s*/, '').replace(/\s*\`\`\`$/, '');
+        }
+
+        // Extract JSON array
+        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+            cleanResponse = arrayMatch[0];
+        }
+
+        const parsed = JSON.parse(cleanResponse);
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            console.warn('[ExtractTopics] Invalid array');
+            return ["主要话题"];
+        }
+
+        return parsed;
+    } catch (e) {
+        console.error("[ExtractTopics] Failed:", e);
+        return ["主要话题"];
+    }
+}

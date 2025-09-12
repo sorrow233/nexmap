@@ -221,5 +221,120 @@ export function useAISprouting() {
         }
     };
 
-    return { handleExpandTopics, handleSprout, handleQuickSprout };
+    /**
+     * Continue Topic: Generate 1 follow-up question and add to current card's conversation
+     * Does NOT create new cards - stays in current conversation
+     */
+    const handleContinueTopic = async (cardId, onSendMessage) => {
+        const source = cards.find(c => c.id === cardId);
+        if (!source) return;
+
+        debugLog.ai(`Continue topic for card: ${cardId}`);
+
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const analysisModel = state.getRoleModel('analysis');
+
+        try {
+            const { generateContinueTopic } = await import('../services/llm');
+            const topic = await generateContinueTopic(
+                source.data.messages || [],
+                activeConfig,
+                analysisModel
+            );
+
+            debugLog.ai(`Continue topic generated:`, topic);
+
+            // Send the generated topic as a new message in the current card
+            if (topic && onSendMessage) {
+                onSendMessage(topic);
+            }
+        } catch (e) {
+            debugLog.error(`Continue topic failed`, e);
+        }
+    };
+
+    /**
+     * Branch: Extract all topics from conversation and create separate cards for each
+     * Creates N new cards (one per topic detected)
+     */
+    const handleBranch = async (sourceId) => {
+        const source = cards.find(c => c.id === sourceId);
+        if (!source) return;
+
+        debugLog.ai(`Branching conversation for card: ${sourceId}`);
+
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const analysisModel = state.getRoleModel('analysis');
+        const chatModel = state.getRoleModel('chat');
+
+        try {
+            const { extractConversationTopics } = await import('../services/llm');
+            const topics = await extractConversationTopics(
+                source.data.messages || [],
+                activeConfig,
+                analysisModel
+            );
+
+            debugLog.ai(`Branch topics extracted:`, topics);
+
+            if (topics && topics.length > 0) {
+                const CARD_HEIGHT = 400;
+                const totalHeight = topics.length * CARD_HEIGHT;
+                const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
+
+                topics.forEach((topic, index) => {
+                    (async () => {
+                        try {
+                            const newY = startY + (index * CARD_HEIGHT);
+                            const newId = uuid();
+
+                            debugLog.ai(`Creating branch card: ${newId}`, { topic });
+
+                            await createAICard({
+                                id: newId,
+                                text: topic,
+                                x: source.x + 450,
+                                y: newY,
+                                autoConnections: [{ from: sourceId, to: newId }],
+                                model: chatModel,
+                                providerId: activeConfig.id
+                            });
+
+                            try {
+                                await aiManager.requestTask({
+                                    type: 'chat',
+                                    priority: PRIORITY.HIGH,
+                                    payload: {
+                                        messages: [{ role: 'user', content: `请详细介绍: ${topic}` }],
+                                        model: chatModel,
+                                        config: activeConfig
+                                    },
+                                    tags: [`card:${newId}`],
+                                    onProgress: (chunk) => updateCardContent(newId, chunk)
+                                });
+                                debugLog.ai(`Branch generation complete for: ${newId}`);
+                            } catch (innerError) {
+                                debugLog.error(`Branch generation failed for ${newId}`, innerError);
+                                const errMsg = innerError.message || 'Generation failed';
+                                const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
+                                    ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
+                                    : `\n\n⚠️ **生成失败**: ${errMsg}`;
+                                updateCardContent(newId, userMessage);
+                            } finally {
+                                setCardGenerating(newId, false);
+                            }
+                        } catch (e) {
+                            debugLog.error(`Branch creation failed`, e);
+                        }
+                    })();
+                });
+            }
+        } catch (e) {
+            debugLog.error(`Branch failed`, e);
+        }
+    };
+
+    return { handleExpandTopics, handleSprout, handleQuickSprout, handleContinueTopic, handleBranch };
 }
