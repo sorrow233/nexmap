@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
-import { Share2, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Share2, Star, ChevronDown, ChevronUp, Sprout } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import DOMPurify from 'dompurify';
@@ -9,7 +9,7 @@ import DOMPurify from 'dompurify';
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
 
-const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite }) => {
+const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onQuickSprout }) => {
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
@@ -280,6 +280,16 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                             <Share2 size={14} />
                             <span>Share</span>
                         </button>
+                        {onQuickSprout && (
+                            <button
+                                onClick={() => onQuickSprout()}
+                                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-3 py-1.5 rounded-full transition-all"
+                                title="Quick Sprout - Generate 3 related cards"
+                            >
+                                <Sprout size={14} />
+                                <span>Sprout</span>
+                            </button>
+                        )}
                     </div>
                 )}
 

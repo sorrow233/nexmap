@@ -15,7 +15,8 @@ export default function MessageList({
     onUpdate,
     onShare,
     onToggleFavorite,
-    pendingCount = 0
+    pendingCount = 0,
+    onQuickSprout
 }) {
 
     // Helper to identify if it's a note or chat
@@ -58,6 +59,7 @@ export default function MessageList({
                                     onShare={onShare}
                                     onToggleFavorite={(idx, content) => onToggleFavorite(card.id, idx, content)}
                                     isFavorite={favoritesService.isFavorite(card.id, i)}
+                                    onQuickSprout={onQuickSprout}
                                 />
                             </ErrorBoundary>
                         ))}

@@ -136,5 +136,90 @@ export function useAISprouting() {
         });
     };
 
-    return { handleExpandTopics, handleSprout };
+    /**
+     * Quick Sprout: Auto-generate 3 related cards without user selection
+     * Uses topic decomposition strategy for better accuracy
+     * This is a SEPARATE feature from the original Sprout
+     */
+    const handleQuickSprout = async (sourceId) => {
+        const source = cards.find(c => c.id === sourceId);
+        if (!source) return;
+
+        debugLog.ai(`Quick sprouting for card: ${sourceId}`);
+
+        const state = useStore.getState();
+        const activeConfig = state.getActiveConfig();
+        const analysisModel = state.getRoleModel('analysis');
+        const chatModel = state.getRoleModel('chat');
+
+        try {
+            // Dynamic import to avoid circular dependency
+            const { generateQuickSproutTopics } = await import('../services/llm');
+            const topics = await generateQuickSproutTopics(
+                source.data.messages || [],
+                activeConfig,
+                analysisModel
+            );
+
+            debugLog.ai(`Quick sprout topics generated:`, topics);
+
+            // Create cards using the same layout logic as handleSprout
+            if (topics && topics.length > 0) {
+                const CARD_HEIGHT = 400;
+                const totalHeight = topics.length * CARD_HEIGHT;
+                const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
+
+                topics.forEach((topic, index) => {
+                    (async () => {
+                        try {
+                            const newY = startY + (index * CARD_HEIGHT);
+                            const newId = uuid();
+
+                            debugLog.ai(`Creating quick sprouted card: ${newId}`, { topic });
+
+                            await createAICard({
+                                id: newId,
+                                text: topic,
+                                x: source.x + 450,
+                                y: newY,
+                                autoConnections: [{ from: sourceId, to: newId }],
+                                model: chatModel,
+                                providerId: activeConfig.id
+                            });
+
+                            try {
+                                await aiManager.requestTask({
+                                    type: 'chat',
+                                    priority: PRIORITY.HIGH,
+                                    payload: {
+                                        messages: [{ role: 'user', content: topic }],
+                                        model: chatModel,
+                                        config: activeConfig
+                                    },
+                                    tags: [`card:${newId}`],
+                                    onProgress: (chunk) => updateCardContent(newId, chunk)
+                                });
+                                debugLog.ai(`Quick sprout generation complete for: ${newId}`);
+                            } catch (innerError) {
+                                debugLog.error(`Quick sprout generation failed for ${newId}`, innerError);
+                                const errMsg = innerError.message || 'Generation failed';
+                                const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
+                                    ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
+                                    : `\n\n⚠️ **生成失败**: ${errMsg}`;
+                                updateCardContent(newId, userMessage);
+                            } finally {
+                                setCardGenerating(newId, false);
+                            }
+                        } catch (e) {
+                            debugLog.error(`Quick sprout creation failed`, e);
+                        }
+                    })();
+                });
+            }
+        } catch (e) {
+            debugLog.error(`Quick sprout failed`, e);
+        }
+    };
+
+    return { handleExpandTopics, handleSprout, handleQuickSprout };
 }
