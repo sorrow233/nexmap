@@ -102,15 +102,19 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
             const currentConfig = providers[activeId];
             if (!currentConfig.apiKey) throw new Error("API Key is missing");
 
+            // Use the user's configured model for testing:
+            // Priority: roles.chat > model > default
+            const testModel = currentConfig.roles?.chat || currentConfig.model || null;
+
             const { chatCompletion } = await import('../services/llm');
             await chatCompletion(
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
                 currentConfig,
-                null,
+                testModel,
                 {}
             );
             setTestStatus('success');
-            setTestMessage('Connection Successful!');
+            setTestMessage(`Connection Successful! (${testModel || 'default model'})`);
         } catch (error) {
             setTestStatus('error');
             setTestMessage(error.message || 'Connection Failed');
