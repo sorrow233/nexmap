@@ -1,5 +1,10 @@
 const translations = {
     en: {
+        nav: {
+            about: "About",
+            history: "History",
+            pricing: "Pricing"
+        },
         hero: {
             brand: "NexMap 2.0",
             title1: "Infinite",
@@ -381,6 +386,11 @@ const translations = {
         }
     },
     zh: {
+        nav: {
+            about: "关于",
+            history: "历史",
+            pricing: "定价"
+        },
         hero: {
             brand: "NexMap 2.0",
             title1: "无限",
@@ -762,6 +772,11 @@ const translations = {
         }
     },
     ja: {
+        nav: {
+            about: "概要",
+            history: "履歴",
+            pricing: "料金"
+        },
         hero: {
             brand: "NexMap 2.0",
             title1: "無限の",
@@ -1144,6 +1159,11 @@ const translations = {
         }
     },
     ko: {
+        nav: {
+            about: "소개",
+            history: "히스토리",
+            pricing: "요금"
+        },
         hero: {
             brand: "NexMap 2.0",
             title1: "무한한",

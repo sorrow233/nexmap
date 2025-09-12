@@ -16,9 +16,9 @@ const TopNav = () => {
             {/* Right Side - Links + Lang Switcher */}
             <div className="flex items-center gap-8 pointer-events-auto">
                 <div className="flex items-center gap-4 md:gap-8 text-xs md:text-sm font-medium text-white/70">
-                    <Link to="/about" className="hover:text-white transition-colors">About</Link>
-                    <Link to="/history" className="hover:text-white transition-colors">History</Link>
-                    <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+                    <Link to="/about" className="hover:text-white transition-colors">{t.nav?.about || 'About'}</Link>
+                    <Link to="/history" className="hover:text-white transition-colors">{t.nav?.history || 'History'}</Link>
+                    <Link to="/pricing" className="hover:text-white transition-colors">{t.nav?.pricing || 'Pricing'}</Link>
                 </div>
 
                 <LanguageSwitcher />
