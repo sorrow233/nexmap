@@ -212,13 +212,18 @@ export async function generateContinueTopic(messages, config, model = null, opti
         const finalPrompt = `CONTEXT:
 ${contextText}
 
-TASK: Generate exactly 1 thought-provoking follow-up question that will help deepen the user's understanding of this topic.
+TASK: You are an expert conversation partner. Your goal is to predict the single most valuable follow-up question the user should ask next to deepen their mastery of this topic.
+
+ANALYSIS INSTRUCTIONS:
+1. Analyze the last response from the assistant. What specific concepts, terms, or implications were mentioned but not fully explained?
+2. Identify the most interesting "hook" in the previous answer that invites further inquiry.
+3. Formulate a question that targets that specific hook.
 
 REQUIREMENTS:
-- The question should explore an UNEXPLORED aspect of the topic
-- Focus on providing NEW PERSPECTIVE or deeper insight
-- Make it specific, not generic
-- IMPORTANT: Output in the SAME LANGUAGE as the context above
+- The question must be a natural, logical next step in the learning process.
+- It should feel like "mind reading" - addressing exactly what a curious learner would wonder about next.
+- Avoid generic questions like "Tell me more" or "Explain this". Be specific.
+- IMPORTANT: Output in the SAME LANGUAGE as the context above.
 
 OUTPUT FORMAT:
 Return ONLY the question text, no quotes or extra formatting.`;
