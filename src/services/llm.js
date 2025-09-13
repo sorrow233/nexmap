@@ -187,8 +187,8 @@ ${contextText}
             return ["Core concepts", "Key details", "Practical applications"];
         }
 
-        // Ensure exactly 3 topics
-        return parsed.slice(0, 3);
+        // Return all detected topics
+        return parsed;
     } catch (e) {
         console.error("[QuickSprout] Failed to generate topics:", e);
         return ["Core concepts", "Key details", "Practical applications"];
