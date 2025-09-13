@@ -298,8 +298,8 @@ Example: ["Detroit: Become Human 游戏介绍", "Beyond: Two Souls 游戏介绍"
             console.warn('[ExtractTopics] Invalid array');
             return ["主要话题"];
         }
-
-        return parsed;
+        // Limit to max 5 topics
+        return parsed.slice(0, 5);
     } catch (e) {
         console.error("[ExtractTopics] Failed:", e);
         return ["主要话题"];
