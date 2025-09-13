@@ -139,22 +139,19 @@ export async function generateQuickSproutTopics(messages, config, model = null, 
         const contextMessages = messages.slice(-2);
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        // Simple topic decomposition - split the conversation into 3 key sub-topics
-        const finalPrompt = `CONTEXT:
+        // Let AI detect how many topics naturally exist
+        const finalPrompt = `对话内容：
 ${contextText}
 
-TASK: Analyze the conversation above and identify exactly 3 distinct sub-topics or key concepts that are worth exploring in depth.
+分析上面的对话，提取出所有值得单独深入探讨的子话题或核心概念。
 
-REQUIREMENTS:
-- Each sub-topic should be specific, independent, and directly related to the main topic
-- Focus on DECOMPOSING the knowledge structure
-- Each sub-topic should be something that can be explained or discussed further
-- Keep each topic concise (under 15 words)
-- IMPORTANT: Output topics in the SAME LANGUAGE as the context above
+要求：
+- 有多少个就输出多少个，不要强行凑数
+- 每个话题要具体、独立
+- 用对话中使用的语言输出
 
-OUTPUT FORMAT:
-Return ONLY a valid JSON array with exactly 3 topic strings.
-Example: ["React Hooks 内部机制", "虚拟DOM差分算法", "状态管理模式"]`;
+输出格式：
+只输出 JSON 数组，例如：["话题1", "话题2", "话题3"]`;
 
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
