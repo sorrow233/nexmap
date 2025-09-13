@@ -1,6 +1,10 @@
 
 const FAVORITES_KEY = 'mixboard_favorites_index';
 
+// Cloud sync integration
+import { saveFavoriteToCloud, deleteFavoriteFromCloud } from './syncService';
+import { auth } from './firebase';
+
 // Helper to get raw favorites
 const getRawFavorites = () => {
     try {
@@ -51,22 +55,40 @@ const favoritesService = {
         saveFavorites([newFavorite, ...list]);
         console.log(`[Favorites] Snapshotted message ${messageIndex} from card ${card.id}`);
 
+        // Cloud Sync
+        if (auth.currentUser) {
+            saveFavoriteToCloud(auth.currentUser.uid, newFavorite);
+        }
+
         // Trigger auto-categorization
         favoritesService.autoCategorize(newFavorite.id, messageContent);
     },
 
     removeFavorite: (cardId, messageIndex) => {
         const list = getRawFavorites();
+        // Find ID first for cloud delete
+        const itemToDelete = list.find(item => item.source?.cardId === cardId && item.source?.messageIndex === messageIndex);
+
         // Remove by source identity
         const newList = list.filter(item => !(item.source?.cardId === cardId && item.source?.messageIndex === messageIndex));
         saveFavorites(newList);
         console.log(`[Favorites] Removed snapshot for message ${messageIndex} of card ${cardId}`);
+
+        // Cloud Sync
+        if (auth.currentUser && itemToDelete) {
+            deleteFavoriteFromCloud(auth.currentUser.uid, itemToDelete.id);
+        }
     },
 
     removeFavoriteById: (favId) => {
         const list = getRawFavorites();
         const newList = list.filter(item => item.id !== favId);
         saveFavorites(newList);
+
+        // Cloud Sync
+        if (auth.currentUser) {
+            deleteFavoriteFromCloud(auth.currentUser.uid, favId);
+        }
     },
 
     updateCategory: (favId, newCategory) => {
@@ -75,6 +97,43 @@ const favoritesService = {
         if (index !== -1) {
             list[index].category = newCategory;
             saveFavorites(list);
+
+            // Cloud Sync
+            if (auth.currentUser) {
+                saveFavoriteToCloud(auth.currentUser.uid, list[index]);
+            }
+        }
+    },
+
+    // Called by sync listener to update local state from cloud
+    updateLocalFavorites: (updates) => {
+        let list = getRawFavorites();
+        let hasChanges = false;
+
+        updates.forEach(update => {
+            if (update._deleted) {
+                const initialLen = list.length;
+                list = list.filter(f => f.id !== update.id);
+                if (list.length !== initialLen) hasChanges = true;
+            } else {
+                const index = list.findIndex(f => f.id === update.id);
+                if (index !== -1) {
+                    // Update existing
+                    if (JSON.stringify(list[index]) !== JSON.stringify(update)) {
+                        list[index] = update;
+                        hasChanges = true;
+                    }
+                } else {
+                    // Add new
+                    list.push(update);
+                    hasChanges = true;
+                }
+            }
+        });
+
+        if (hasChanges) {
+            saveFavorites(list);
+            console.log(`[Favorites] Updated local state with ${updates.length} changes from cloud`);
         }
     },
 

@@ -211,20 +211,21 @@ export const createAISlice = (set, get) => {
                 // Resolve config
                 const state = get();
 
-                // If using system credits (DeepSeek V3), FORCE the correct model/config
+                // If using system credits, FORCE the correct model/config
+                // Note: Display shows FREE_TIER (Kimi-K2-Thinking), backend actually uses this model
                 let config;
                 if (state.isSystemCreditsUser) {
                     config = {
                         apiKey: AI_PROVIDERS.SYSTEM_CREDITS,
-                        model: AI_MODELS.SYSTEM_CREDITS, // FORCE correct model
+                        model: AI_MODELS.FREE_TIER, // Use FREE_TIER (Kimi-K2-Thinking)
                         id: AI_PROVIDERS.SYSTEM_CREDITS,
                         protocol: AI_PROVIDERS.SYSTEM_CREDITS // Special protocol handled by ModelFactory
                     };
                     // Ensure the card data reflects the actual model used
-                    if (card.data.model !== AI_MODELS.SYSTEM_CREDITS) {
-                        console.log('[AI] Correcting card model to DeepSeek V3 (System Credits)');
+                    if (card.data.model !== AI_MODELS.FREE_TIER) {
+                        console.log('[AI] Correcting card model to Kimi-K2-Thinking (System Credits)');
                         // We don't await this state update, it just fixes the UI for next time
-                        updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.SYSTEM_CREDITS }));
+                        updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.FREE_TIER }));
                     }
                 } else if (providerId && state.providers && state.providers[providerId]) {
                     config = state.providers[providerId];
@@ -411,8 +412,8 @@ export const createAISlice = (set, get) => {
             let currentModel, currentProviderId;
 
             if (isSystemCreditsUser) {
-                // Force DeepSeek for system credits user
-                currentModel = AI_MODELS.SYSTEM_CREDITS;
+                // Force Kimi-K2-Thinking for system credits user
+                currentModel = AI_MODELS.FREE_TIER;
                 currentProviderId = AI_PROVIDERS.SYSTEM_CREDITS;
             } else {
                 const activeConfig = getActiveConfig();

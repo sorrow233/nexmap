@@ -17,6 +17,12 @@ const STORAGE_KEYS_TO_REMOVE = [
     'mixboard_s3_config',
     'mixboard_current_board_id',
     'mixboard_favorites',
+    'mixboard_favorites_index',
+    'mixboard_global_prompts',
+    'mixboard_custom_instructions',
+    'mixboard_settings',
+    'userLanguage',
+    'feedback_voted_ids',
     'hasVisitedBefore',
     'hasUsedConnections'
 ];

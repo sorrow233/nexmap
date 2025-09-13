@@ -120,6 +120,15 @@ export default function Sidebar({ className = "" }) {
     const saveGlobalPrompts = (prompts) => {
         setGlobalPrompts(prompts);
         localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
+
+        // Cloud sync
+        import('../../services/syncService').then(({ updateUserSettings }) => {
+            import('../../services/firebase').then(({ auth }) => {
+                if (auth?.currentUser) {
+                    updateUserSettings(auth.currentUser.uid, { globalPrompts: prompts });
+                }
+            });
+        });
     };
 
     const handleAdd = (type) => {
