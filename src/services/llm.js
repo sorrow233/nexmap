@@ -210,33 +210,23 @@ Example: ["Virtual DOM 在十万节点下的性能极限", "Svelte 的'无Virtua
  */
 export async function generateContinueTopic(messages, config, model = null, options = {}) {
     try {
-        const contextMessages = messages.slice(-4); // Last 4 messages for better context
+        const contextMessages = messages.slice(-4);
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        const finalPrompt = `CONTEXT:
+        const finalPrompt = `对话内容：
 ${contextText}
 
-ROLE: You are a Curiosity Designer. Your job is to find the most irresistible "rabbit hole entrance" in the conversation above.
+你是一个正在和朋友聊天的普通人。刚才朋友给你讲了上面这些内容。
 
-STEP 1 (Internal Analysis):
-Read the conversation. Identify ONE element that would make a curious reader think "wait, I need to know more about THAT". Look for:
-- A concept mentioned but not fully explained
-- A counterintuitive implication hiding in plain sight
-- An unexpected connection to another domain
-- An edge case that would reveal deeper truth
-- A hint of controversy or debate among experts
+现在，你对其中某个细节特别好奇，想追问一句。
 
-STEP 2 (Output):
-Turn that element into a question that feels like a TEMPTATION, not a task.
+要求：
+- 用最自然的口语问一个问题（就像你真的在微信上打字）
+- 问题要简短，不超过20个字
+- 不要用"请问"、"能否"这种书面语
+- 直接问最想知道的那个点
 
-REQUIREMENTS:
-- The question should make the reader feel "I MUST know the answer to this"
-- It should promise unexpected depth or challenge existing assumptions
-- Avoid boring patterns like "Can you explain X?" or "Tell me more about Y"
-- CRITICAL: Output in the SAME LANGUAGE as the context above
-
-OUTPUT FORMAT:
-Return ONLY the question text. No quotes, no preamble, no explanation.`;
+只输出问题本身，不要任何其他内容。`;
 
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
@@ -246,13 +236,13 @@ Return ONLY the question text. No quotes, no preamble, no explanation.`;
         );
 
         if (!response || response.trim().length === 0) {
-            return "请详细解释一下这个概念的核心原理？";
+            return "这个具体是怎么实现的？";
         }
 
         return response.trim();
     } catch (e) {
         console.error("[ContinueTopic] Failed:", e);
-        return "请详细解释一下这个概念的核心原理？";
+        return "这个具体是怎么实现的？";
     }
 }
 
