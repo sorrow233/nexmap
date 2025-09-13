@@ -21,6 +21,7 @@ const FeedbackPage = lazyWithRetry(() => import('./pages/FeedbackPage'));
 const PricingPage = lazyWithRetry(() => import('./pages/PricingPage'));
 const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
 const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
+const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -344,7 +345,7 @@ function AppContent() {
                         />
                     } />
                     <Route path="/feedback" element={<FeedbackPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<NotFound />} />
                 </Routes>
             </Suspense>
 
