@@ -129,7 +129,7 @@ class AIManager {
     cancelTask(taskId) {
         // Cancel queued task
         const queuedIndex = this.queue.findIndex(t => t.id === taskId);
-        if (queuedIndex === -1) {
+        if (queuedIndex !== -1) {
             const task = this.queue[queuedIndex];
             this.queue.splice(queuedIndex, 1);
             task.reject(new Error('Cancelled by user'));
