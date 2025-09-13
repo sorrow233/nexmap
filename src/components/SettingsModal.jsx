@@ -3,7 +3,7 @@ import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift, Globe
 // import { chatCompletion } from '../services/llm'; // Converted to dynamic import
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
-import { saveUserSettings } from '../services/storage';
+import { updateUserSettings } from '../services/syncService';
 
 import SettingsCreditsTab from './settings/SettingsCreditsTab';
 import SettingsLLMTab from './settings/SettingsLLMTab';
@@ -142,7 +142,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
         if (user && user.uid) {
             try {
-                await saveUserSettings(user.uid, {
+                await updateUserSettings(user.uid, {
                     providers,
                     activeId,
                     s3Config,
