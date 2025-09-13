@@ -56,9 +56,12 @@ export async function onRequest(context) {
             url += `?key=${apiKey}`;
         }
 
-        // Prepare headers
+        // Prepare headers - include User-Agent to help pass Cloudflare checks
         const headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'NexMap/1.0 (https://nexmap.catzz.work)',
+            'Accept': 'application/json, text/event-stream',
+            'Accept-Language': 'en-US,en;q=0.9'
         };
 
         if (authMethod === 'bearer') {
