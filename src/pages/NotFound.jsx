@@ -2,10 +2,10 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
-import { useTranslation } from '../contexts/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const NotFound = () => {
-    const { t } = useTranslation();
+    const { t } = useLanguage();
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 text-center">
