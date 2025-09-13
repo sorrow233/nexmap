@@ -263,8 +263,11 @@ class AIManager {
             const { messages, model, temperature } = task.payload;
             let fullText = '';
 
-            // Original: Inject time awareness and search mandate into ALL chat requests (REMOVED)
-            const timeSystemMsg = getSystemPrompt();
+            // Get user's custom instructions from localStorage
+            const customInstructions = localStorage.getItem('mixboard_custom_instructions') || '';
+
+            // Inject time awareness and custom instructions into ALL chat requests
+            const timeSystemMsg = getSystemPrompt(customInstructions);
             const enhancedMessages = [timeSystemMsg, ...messages];
 
             // Wrapped streamChatCompletion that respects AbortSignal

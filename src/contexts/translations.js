@@ -128,7 +128,17 @@ const translations = {
             applyingChanges: "Applying changes...",
             resetConfiguration: "Reset Configuration?",
             resetWarning: "This will remove all custom providers and API keys. The app will return to its default state.",
-            yesReset: "Yes, Reset"
+            yesReset: "Yes, Reset",
+            customInstructions: "Custom Instructions",
+            customInstructionsDesc: "Global AI behavior",
+            customInstructionsHelp: "Instructions you add here will be included in every AI interaction across all cards and canvases.",
+            customInstructionsPlaceholder: "Example: Always respond in a friendly, casual tone. Use bullet points for lists. Prefer concise answers.",
+            customInstructionsNote: "How it works",
+            customInstructionsInfo: "Your instructions are prepended to every AI request. Use them to set language preferences, response styles, or domain-specific context.",
+            exampleInstructions: "Example Instructions",
+            exampleInstruction1: "Always respond in Japanese",
+            exampleInstruction2: "I am a software engineer, use technical terms",
+            exampleInstruction3: "Keep responses under 200 words"
         },
         credits: {
             noConfigNeeded: "No Configuration Needed",
@@ -464,7 +474,17 @@ const translations = {
             applyingChanges: "正在应用更改...",
             resetConfiguration: "重置配置？",
             resetWarning: "这将删除所有自定义提供商和 API 密钥。应用将恢复到默认状态。",
-            yesReset: "确认重置"
+            yesReset: "确认重置",
+            customInstructions: "自定义指令",
+            customInstructionsDesc: "全局 AI 行为",
+            customInstructionsHelp: "在此添加的指令将应用于所有卡片和画布中的每次 AI 交互。",
+            customInstructionsPlaceholder: "示例：请用轻松友好的语气回复。使用项目符号列表。回答尽量简洁。",
+            customInstructionsNote: "工作原理",
+            customInstructionsInfo: "您的指令会被添加到每个 AI 请求的开头。用于设置语言偏好、回复风格或特定领域的上下文。",
+            exampleInstructions: "示例指令",
+            exampleInstruction1: "请始终用日语回复",
+            exampleInstruction2: "我是软件工程师，请使用专业术语",
+            exampleInstruction3: "回复控制在 200 字以内"
         },
         credits: {
             noConfigNeeded: "无需配置，直接使用",
@@ -800,7 +820,17 @@ const translations = {
             applyingChanges: "変更を適用中...",
             resetConfiguration: "設定をリセット？",
             resetWarning: "これにより、すべてのカスタムプロバイダーとAPIキーが削除されます。アプリはデフォルト状態に戻ります。",
-            yesReset: "リセットする"
+            yesReset: "リセットする",
+            customInstructions: "カスタム指示",
+            customInstructionsDesc: "グローバルAI動作設定",
+            customInstructionsHelp: "ここで追加した指示は、すべてのカードとキャンバスでのAI対話に適用されます。",
+            customInstructionsPlaceholder: "例：親しみやすいカジュアルなトーンで回答してください。箇条書きを使用してください。簡潔に回答してください。",
+            customInstructionsNote: "仕組み",
+            customInstructionsInfo: "あなたの指示はすべてのAIリクエストの先頭に追加されます。言語設定、回答スタイル、ドメイン固有のコンテキストに使用できます。",
+            exampleInstructions: "指示の例",
+            exampleInstruction1: "常に日本語で回答してください",
+            exampleInstruction2: "私はソフトウェアエンジニアです。専門用語をお使いください",
+            exampleInstruction3: "回答は200文字以内にしてください"
         },
         credits: {
             noConfigNeeded: "設定不要、すぐに使える",
