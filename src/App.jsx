@@ -267,8 +267,8 @@ function AppContent() {
         // 2. Update in-memory state (immediate UI update)
         setBoardsList(prev => prev.map(b => b.id === currentBoardId ? { ...b, name: newTitle } : b));
 
-        // 3. Update cloud (sync across devices)
-        if (user) saveBoardToCloud(user.uid, currentBoardId, { name: newTitle }, true);
+        // 3. Update cloud (sync across devices) - Use metadata update to avoid overwriting card data!
+        if (user) updateBoardMetadataInCloud(user.uid, currentBoardId, { name: newTitle });
     };
 
     const handleUpdateBoardMetadata = async (boardId, metadata) => {
