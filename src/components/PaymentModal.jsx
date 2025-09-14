@@ -6,7 +6,7 @@ import { auth } from '../services/firebase';
 
 const PaymentModal = ({ isOpen, onClose }) => {
     const { t } = useLanguage();
-    const [activeTab, setActiveTab] = useState('credits'); // 'credits' or 'pro'
+    const [activeTab, setActiveTab] = useState('chats'); // 'chats' or 'pro'
     const [loadingProduct, setLoadingProduct] = useState(null);
 
     if (!isOpen) return null;
@@ -66,11 +66,11 @@ const PaymentModal = ({ isOpen, onClose }) => {
                 {/* Tabs */}
                 <div className="flex p-2 bg-black/20 gap-2 border-b border-white/5">
                     <button
-                        onClick={() => setActiveTab('credits')}
-                        className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'credits' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:bg-white/5'}`}
+                        onClick={() => setActiveTab('chats')}
+                        className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'chats' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:bg-white/5'}`}
                     >
                         <Zap size={16} />
-                        Credits Packs
+                        Chat Packs
                     </button>
                     <button
                         onClick={() => setActiveTab('pro')}
@@ -82,7 +82,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="p-6">
-                    {activeTab === 'credits' ? (
+                    {activeTab === 'chats' ? (
                         <div className="space-y-6">
                             {/* Free Tier Banner */}
                             <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl p-4">
@@ -99,37 +99,34 @@ const PaymentModal = ({ isOpen, onClose }) => {
 
                             {/* Optional: Need More Section */}
                             <div className="text-center text-xs text-white/40 uppercase tracking-wider font-medium">
-                                Need more? Buy credits below
+                                Need more? Buy chat packs below
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* Starter - credits_500 */}
+                                {/* Starter - 600 chats */}
                                 <PlanCard
                                     title="Starter"
                                     amount="$0.99"
-                                    credits="500 credits"
-                                    sub="~1,000 chats"
+                                    chats="600 chats"
                                     features={['Pay as you go', 'No expiration']}
                                     onClick={() => handleCheckout('credits_500')}
                                     loading={loadingProduct === 'credits_500'}
                                 />
-                                {/* Standard - credits_2000 (Recommended) */}
+                                {/* Standard - 3,000 chats (Recommended) */}
                                 <PlanCard
                                     title="Standard"
                                     amount="$3.99"
-                                    credits="2,000 credits"
-                                    sub="~4,000 chats"
+                                    chats="3,000 chats"
                                     popular
                                     features={['Best value', 'Priority support']}
                                     onClick={() => handleCheckout('credits_2000')}
                                     loading={loadingProduct === 'credits_2000'}
                                 />
-                                {/* Power - credits_5000 */}
+                                {/* Power - 9,000 chats */}
                                 <PlanCard
                                     title="Power"
                                     amount="$9.99"
-                                    credits="5,000 credits"
-                                    sub="~10,000 chats"
+                                    chats="9,000 chats"
                                     features={['For heavy users', 'Max efficiency']}
                                     onClick={() => handleCheckout('credits_5000')}
                                     loading={loadingProduct === 'credits_5000'}
@@ -188,7 +185,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
     );
 };
 
-const PlanCard = ({ title, amount, credits, sub, popular, features, onClick, loading }) => (
+const PlanCard = ({ title, amount, chats, popular, features, onClick, loading }) => (
     <div className={`relative p-5 rounded-2xl border flex flex-col items-center text-center transition-all cursor-pointer group hover:-translate-y-1 ${popular ? 'bg-indigo-600/10 border-indigo-500/50 hover:bg-indigo-600/20 shadow-lg shadow-indigo-500/10' : 'bg-white/5 border-white/10 hover:bg-white/10'}`} onClick={onClick}>
         {popular && (
             <div className="absolute -top-3 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full text-[10px] font-bold text-white uppercase tracking-wider shadow-lg">
@@ -197,8 +194,7 @@ const PlanCard = ({ title, amount, credits, sub, popular, features, onClick, loa
         )}
         <div className="text-slate-400 font-medium mb-1">{title}</div>
         <div className="text-2xl font-bold text-white mb-1">{amount}</div>
-        <div className="text-indigo-300 font-bold mb-1">{credits}</div>
-        <div className="text-slate-500 text-xs mb-4">{sub}</div>
+        <div className="text-indigo-300 font-bold mb-4">{chats}</div>
 
         <div className="space-y-2 mb-6 w-full">
             {features.map((f, i) => (

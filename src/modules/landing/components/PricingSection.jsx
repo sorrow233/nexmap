@@ -74,21 +74,19 @@ export default function PricingSection({ showTitle = true }) {
         }
     };
 
-    const creditPlans = [
+    const chatPlans = [
         {
             id: 'credits_500',
             name: 'Starter',
             price: `${currentPricing.currency}${currentPricing.packs.starter}`,
-            credits: '500',
-            chats: '~1,000',
+            chats: '600',
             features: [t.payAsYouGo, t.noExpiration],
         },
         {
             id: 'credits_2000',
             name: 'Standard',
             price: `${currentPricing.currency}${currentPricing.packs.standard}`,
-            credits: '2,000',
-            chats: '~4,000',
+            chats: '3,000',
             features: [t.bestValuePerCredit, t.instantDelivery],
             popular: true
         },
@@ -96,8 +94,7 @@ export default function PricingSection({ showTitle = true }) {
             id: 'credits_5000',
             name: 'Power',
             price: `${currentPricing.currency}${currentPricing.packs.power}`,
-            credits: '5,000',
-            chats: '~10,000',
+            chats: '9,000',
             features: [t.forPowerUsers, t.maxEfficiency],
         }
     ];
@@ -259,7 +256,7 @@ export default function PricingSection({ showTitle = true }) {
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                    {creditPlans.map((plan) => (
+                    {chatPlans.map((plan) => (
                         <div
                             key={plan.id}
                             className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
@@ -283,8 +280,8 @@ export default function PricingSection({ showTitle = true }) {
                             </div>
 
                             <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 mb-6">
-                                <div className="text-indigo-400 font-bold">{plan.credits}</div>
-                                <div className="text-[10px] uppercase font-bold text-white/30">{pricing.credits}</div>
+                                <div className="text-indigo-400 font-bold">{plan.chats}</div>
+                                <div className="text-[10px] uppercase font-bold text-white/30">{pricing.chats || "Chats"}</div>
                             </div>
 
                             <ul className="space-y-3 mb-8 min-h-[80px]">

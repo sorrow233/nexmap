@@ -7,25 +7,25 @@
 // Stripe API Base URL
 const STRIPE_API = 'https://api.stripe.com/v1';
 
-// Products Configuration - Updated for better value (30-50% margin)
+// Products Configuration - Based on Kimi-K2-Thinking pricing
 const PRODUCTS = {
     'credits_500': {
-        name: 'Starter Credits (500)',
-        description: 'Supports ~1,000 conversations',
+        name: 'Starter Chat Pack (600)',
+        description: '600 AI conversations',
         amount: 99, // $0.99
-        credits: 500
+        chats: 600
     },
     'credits_2000': {
-        name: 'Standard Credits (2,000)',
-        description: 'Supports ~4,000 conversations',
+        name: 'Standard Chat Pack (3,000)',
+        description: '3,000 AI conversations',
         amount: 399, // $3.99
-        credits: 2000
+        chats: 3000
     },
     'credits_5000': {
-        name: 'Power Credits (5,000)',
-        description: 'Supports ~10,000 conversations',
+        name: 'Power Chat Pack (9,000)',
+        description: '9,000 AI conversations',
         amount: 999, // $9.99
-        credits: 5000
+        chats: 9000
     },
     'pro_lifetime': {
         name: 'NexMap Pro Lifetime',
@@ -85,7 +85,7 @@ export async function onRequestPost(context) {
         // Metadata to track what to give the user
         params.append('metadata[userId]', userId);
         params.append('metadata[productId]', productId);
-        if (product.credits) params.append('metadata[credits]', product.credits);
+        if (product.chats) params.append('metadata[chats]', product.chats);
         if (product.isPro) params.append('metadata[isPro]', 'true');
 
         // Line Items
