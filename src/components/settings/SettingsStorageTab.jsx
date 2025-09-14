@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2 } from 'lucide-react';
-import { saveBoardToCloud } from '../../services/storage';
+import { saveBoardToCloud, updateBoardMetadataInCloud } from '../../services/storage';
 import { auth, db } from '../../services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import {
@@ -80,7 +80,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                     // So we can definitely restore the ACTIVE board fully.
                     // For others, we restore metadata. If they click it, it might be empty or load from cloud if a previous sync existed.
 
-                    await saveBoardToCloud(user.uid, board.id, board); // This saves metadata/shell
+                    await updateBoardMetadataInCloud(user.uid, board.id, board); // This saves metadata only (merge), preserving content if exists
                     restoredCount++;
                 }
                 setRestoreMsg(`Restored metadata for ${restoredCount} boards.`);
