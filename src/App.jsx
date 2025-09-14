@@ -243,7 +243,7 @@ function AppContent() {
         );
     };
 
-    const handleBackToGallery = async () => {
+    const handleBackToGallery = useCallback(async () => {
         // Save handled by Autosave in BoardPage mostly
         const { cards, connections, groups } = useStore.getState();
         if (currentBoardId) await saveBoard(currentBoardId, { cards, connections, groups });
@@ -256,9 +256,9 @@ function AppContent() {
         setCards([]);
         setConnections([]);
         setGroups([]);
-    };
+    }, [currentBoardId, navigate, setBoardsList, setCards, setConnections, setGroups]);
 
-    const handleUpdateBoardTitle = async (newTitle) => {
+    const handleUpdateBoardTitle = useCallback(async (newTitle) => {
         if (!currentBoardId || !newTitle.trim()) return;
 
         // 1. Update local storage (persist across reloads)
@@ -269,9 +269,9 @@ function AppContent() {
 
         // 3. Update cloud (sync across devices)
         if (user) saveBoardToCloud(user.uid, currentBoardId, { name: newTitle }, true);
-    };
+    }, [currentBoardId, user, setBoardsList]);
 
-    const handleUpdateBoardMetadata = async (boardId, metadata) => {
+    const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
         // 1. Update local storage
         updateBoardMetadata(boardId, metadata);
 
@@ -286,7 +286,7 @@ function AppContent() {
             const freshBoards = await getBoardsList();
             setBoardsList(freshBoards);
         }, 100);
-    };
+    }, [user, setBoardsList]);
 
     if (!isInitialized) return null;
 
