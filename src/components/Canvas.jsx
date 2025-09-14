@@ -268,12 +268,33 @@ export default function Canvas({ onCreateNote, ...props }) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [toggleCanvasMode]);
 
+    const handleDrop = (e) => {
+        e.preventDefault();
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (data.type === 'prompt') {
+                // If dropping on background (e.target check is tricky with overlays, checking if NOT a card?)
+                // Actually if dropping on a card, the card's onDrop usually fires and stops propagation?
+                // We should check e.target.
+                // But e.target might be an overlay if we are not careful.
+                // Assuming Card handles its own drop and stops propagation.
+
+                const canvasX = (e.clientX - offset.x) / scale;
+                const canvasY = (e.clientY - offset.y) / scale;
+
+                if (props.onPromptDrop) {
+                    props.onPromptDrop(data, canvasX, canvasY);
+                }
+            }
+        } catch (err) { }
+    };
+
     return (
         <div
             ref={canvasRef}
             className={`w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 ${canvasMode === 'pan'
-                    ? 'cursor-grab active:cursor-grabbing'
-                    : 'cursor-default'
+                ? 'cursor-grab active:cursor-grabbing'
+                : 'cursor-default'
                 }`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -285,6 +306,9 @@ export default function Canvas({ onCreateNote, ...props }) {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
+
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
 
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
@@ -338,6 +362,7 @@ export default function Canvas({ onCreateNote, ...props }) {
                                 isConnectionStart={connectionStartId === card.id}
                                 onCreateNote={onCreateNote}
                                 onCardFullScreen={props.onCardFullScreen ? () => props.onCardFullScreen(card.id) : undefined}
+                                onPromptDrop={props.onCardPromptDrop}
                             />
                         </ErrorBoundary>
                     );

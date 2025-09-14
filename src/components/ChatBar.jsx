@@ -25,7 +25,11 @@ const ChatBar = React.memo(function ChatBar({
 
     onGroup, // New prop
     onSelectConnected, // New prop
-    onLayoutGrid // New prop
+    onLayoutGrid, // New prop
+
+    onPromptDrop,
+    instructions = [],
+    onClearInstructions
 }) {
     const [promptInput, setPromptInput] = useState('');
     const globalPromptInputRef = useRef(null);
@@ -67,6 +71,21 @@ const ChatBar = React.memo(function ChatBar({
         }
     };
 
+    const handleDrop = (e) => {
+        e.preventDefault();
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (data.type === 'prompt') {
+                onPromptDrop && onPromptDrop(data);
+                if (globalPromptInputRef.current) {
+                    globalPromptInputRef.current.focus();
+                }
+            }
+        } catch (err) {
+            // Ignore non-json drops
+        }
+    };
+
     const handleInput = (e) => {
         setPromptInput(e.target.value);
         e.target.style.height = 'auto';
@@ -83,8 +102,8 @@ const ChatBar = React.memo(function ChatBar({
         cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0;
 
     return (
-        <div className="fixed bottom-0 inset-x-0 z-50 pointer-events-none">
-            <div className="fixed bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4 pointer-events-auto">
+        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none">
+            <div className="absolute bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4 pointer-events-auto">
                 <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
                     <div className="flex items-end gap-2 px-2">
                         {/* Left Actions */}
@@ -155,7 +174,24 @@ const ChatBar = React.memo(function ChatBar({
 
                         {/* Input Area */}
 
-                        <div className="flex-1 relative">
+                        <div
+                            className="flex-1 relative flex flex-col"
+                            onDrop={handleDrop}
+                            onDragOver={(e) => e.preventDefault()}
+                        >
+                            {/* Instruction Badges */}
+                            {instructions.length > 0 && (
+                                <div className="flex flex-wrap gap-2 px-3 pb-2 border-b border-white/5 mx-2 mb-2 pt-2">
+                                    {instructions.map((inst, idx) => (
+                                        <div key={idx} className="flex items-center gap-1 bg-purple-500/20 text-purple-200 text-xs px-2 py-1 rounded border border-purple-500/30 animate-in fade-in zoom-in-95">
+                                            <span className="font-semibold text-[10px] uppercase opacity-70">Instruction</span>
+                                            <span className="truncate max-w-[150px]">{inst.text}</span>
+                                            <button onClick={() => onClearInstructions && onClearInstructions()} className="hover:text-white ml-1"><X size={10} /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             <textarea
                                 ref={globalPromptInputRef}
                                 value={promptInput}

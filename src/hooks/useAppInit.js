@@ -30,7 +30,7 @@ export function useAppInit() {
             return true;
         }
     });
-    const { setCards, setConnections, setGroups } = useStore();
+    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
     const location = useLocation();
 
     // Load initial boards metadata
@@ -127,6 +127,7 @@ export function useAppInit() {
                                 if (data.cards) setCards(data.cards);
                                 if (data.connections) setConnections(data.connections);
                                 if (data.groups) setGroups(data.groups);
+                                if (data.boardPrompts) setBoardPrompts(data.boardPrompts);
                                 debugLog.sync('Rehydration complete');
                             }
                         });
