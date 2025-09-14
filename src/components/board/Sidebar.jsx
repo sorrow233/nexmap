@@ -2,37 +2,47 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../store/useStore';
-import { Plus, Trash2, GripVertical, Save, X, MessageSquare, Layout } from 'lucide-react';
+import { Plus, X, GripVertical } from 'lucide-react';
 import { uuid } from '../../utils/uuid';
-import { useToast } from '../Toast';
 import { useParams } from 'react-router-dom';
 
 const GLOBAL_PROMPTS_KEY = 'mixboard_global_prompts';
+const MAX_PROMPT_LENGTH = 10;
+// Notion-like pastel colors
+const TAG_COLORS = [
+    'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800',
+    'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+    'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800',
+    'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+    'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+    'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 border-pink-200 dark:border-pink-800',
+    'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+];
+
+const getRandomColor = () => TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
 
 export default function Sidebar({ className = "" }) {
     const { t } = useLanguage();
-    const [activeTab, setActiveTab] = useState('global'); // 'global' | 'board'
-    const [isAdding, setIsAdding] = useState(false);
-    const [newPromptText, setNewPromptText] = useState('');
-    const toast = useToast();
     const { id: boardId } = useParams();
-
-    // Board Prompts from Store
-    // Ensure we are reading prompts for the *current board* (store state is board-scoped mostly, but boardPrompts is global in store? 
-    // Wait, useStore is global. When we switch boards, the store state is replaced/loaded.
-    // So boardPrompts in store refers to the current board's prompts.
     const boardPrompts = useStore(state => state.boardPrompts || []);
     const addBoardPrompt = useStore(state => state.addBoardPrompt);
     const removeBoardPrompt = useStore(state => state.removeBoardPrompt);
 
-    // Global Prompts (Local State + LocalStorage)
     const [globalPrompts, setGlobalPrompts] = useState([]);
+    const [isAdding, setIsAdding] = useState(null); // 'global' | 'board' | null
+    const [newPromptText, setNewPromptText] = useState('');
 
     useEffect(() => {
         const stored = localStorage.getItem(GLOBAL_PROMPTS_KEY);
         if (stored) {
             try {
-                setGlobalPrompts(JSON.parse(stored));
+                const parsed = JSON.parse(stored);
+                // Ensure prompts have colors if legacy data didn't have them
+                const withColors = parsed.map(p => p.color ? p : { ...p, color: getRandomColor() });
+                setGlobalPrompts(withColors);
             } catch (e) {
                 console.error("Failed to load global prompts", e);
             }
@@ -44,161 +54,131 @@ export default function Sidebar({ className = "" }) {
         localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
     };
 
-    const handleAddPrompt = () => {
-        if (!newPromptText.trim()) return;
+    const handleAdd = (type) => {
+        if (!newPromptText.trim()) {
+            setIsAdding(null);
+            return;
+        }
 
-        if (activeTab === 'global') {
-            const newPrompt = { id: uuid(), text: newPromptText, createdAt: Date.now() };
+        const newPrompt = {
+            id: uuid(),
+            text: newPromptText.trim().substring(0, MAX_PROMPT_LENGTH), // Enforce limit
+            createdAt: Date.now(),
+            color: getRandomColor()
+        };
+
+        if (type === 'global') {
             saveGlobalPrompts([...globalPrompts, newPrompt]);
         } else {
-            addBoardPrompt(newPromptText);
+            addBoardPrompt({ ...newPrompt, text: newPrompt.text }); // Store handles adding
         }
         setNewPromptText('');
-        setIsAdding(false);
+        setIsAdding(null);
     };
 
-    const handleDelete = (id) => {
-        if (confirm(t.sidebar.deleteConfirm)) {
-            if (activeTab === 'global') {
-                saveGlobalPrompts(globalPrompts.filter(p => p.id !== id));
-            } else {
-                removeBoardPrompt(id);
-            }
+    const handleDelete = (id, type) => {
+        if (type === 'global') {
+            saveGlobalPrompts(globalPrompts.filter(p => p.id !== id));
+        } else {
+            removeBoardPrompt(id);
         }
     };
 
     const handleDragStart = (e, prompt) => {
-        // Set drag data
         e.dataTransfer.setData('application/json', JSON.stringify({
             type: 'prompt',
             text: prompt.text,
             isInstruction: true
         }));
         e.dataTransfer.effectAllowed = 'copy';
-
-        // Also set plain text for generic drop targets
         e.dataTransfer.setData('text/plain', prompt.text);
     };
 
-    const currentPrompts = activeTab === 'global' ? globalPrompts : boardPrompts;
-
-    return (
-        <div className={`flex flex-col h-full bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-800 w-64 transition-all z-20 pointer-events-auto ${className}`}>
-            {/* Header / Tabs */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 shrink-0">
+    const PromptTag = ({ prompt, type }) => {
+        const colorClass = prompt.color || getRandomColor();
+        return (
+            <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, prompt)}
+                className={`
+                    group relative flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full cursor-grab active:cursor-grabbing transition-all hover:scale-105 shadow-sm border
+                    ${colorClass}
+                `}
+            >
+                <GripVertical size={10} className="opacity-40 group-hover:opacity-100" />
+                <span>{prompt.text}</span>
                 <button
-                    onClick={() => setActiveTab('global')}
-                    className={`flex-1 py-3 text-xs font-medium transition-colors flex items-center justify-center gap-2 relative ${activeTab === 'global'
-                            ? 'text-brand-600 bg-brand-50/50 dark:bg-slate-800'
-                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id, type); }}
+                    className="opacity-0 group-hover:opacity-100 ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/20 transition-all"
                 >
-                    <Layout size={14} />
-                    {t.sidebar.global}
-                    {activeTab === 'global' && <div className="absolute bottom-0 inset-x-0 h-0.5 bg-brand-600"></div>}
-                </button>
-                <div className="w-px bg-slate-200 dark:bg-slate-800"></div>
-                <button
-                    onClick={() => setActiveTab('board')}
-                    className={`flex-1 py-3 text-xs font-medium transition-colors flex items-center justify-center gap-2 relative ${activeTab === 'board'
-                            ? 'text-brand-600 bg-brand-50/50 dark:bg-slate-800'
-                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                >
-                    <MessageSquare size={14} />
-                    {t.sidebar.board}
-                    {activeTab === 'board' && <div className="absolute bottom-0 inset-x-0 h-0.5 bg-brand-600"></div>}
+                    <X size={10} />
                 </button>
             </div>
+        );
+    };
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
-                <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        {t.sidebar.myPrompts}
-                    </div>
-                    {/* Add Button (Icon only) */}
-                    {!isAdding && (
+    const AddInput = ({ type, onCancel }) => (
+        <div className="flex items-center gap-1 animate-in fade-in zoom-in-95 duration-200">
+            <input
+                autoFocus
+                type="text"
+                value={newPromptText}
+                onChange={e => setNewPromptText(e.target.value)}
+                maxLength={MAX_PROMPT_LENGTH}
+                placeholder={t.sidebar.addPrompt}
+                className="w-24 px-2 py-1 text-xs rounded-full bg-white dark:bg-slate-800 border border-brand-300 dark:border-brand-600 focus:ring-1 focus:ring-brand-500 outline-none"
+                onKeyDown={e => {
+                    if (e.key === 'Enter') handleAdd(type);
+                    if (e.key === 'Escape') onCancel();
+                }}
+                onBlur={() => handleAdd(type)} // Auto-save on blur
+            />
+            <span className="text-[10px] text-slate-400">{newPromptText.length}/{MAX_PROMPT_LENGTH}</span>
+        </div>
+    );
+
+    return (
+        <div className={`flex flex-col gap-6 pointer-events-none select-none ${className}`} style={{ width: 'fit-content' }}>
+            {/* Global Group */}
+            <div className="flex flex-col items-start gap-2 pointer-events-auto">
+                <div className="flex items-center justify-between w-full gap-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">{t.sidebar.global}</span>
+                </div>
+                <div className="flex flex-col items-start gap-2 max-w-[140px] flex-wrap">
+                    {globalPrompts.map(p => <PromptTag key={p.id} prompt={p} type="global" />)}
+
+                    {isAdding === 'global' ? (
+                        <AddInput type="global" onCancel={() => setIsAdding(null)} />
+                    ) : (
                         <button
-                            onClick={() => setIsAdding(true)}
-                            className="p-1 text-slate-500 hover:text-brand-600 rounded-md hover:bg-brand-50 dark:hover:bg-slate-800 transition-all"
-                            title={t.sidebar.addPrompt}
+                            onClick={() => setIsAdding('global')}
+                            className="px-2 py-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
                         >
-                            <Plus size={14} />
+                            <Plus size={12} /> {t.sidebar.add}
                         </button>
                     )}
                 </div>
-
-                {isAdding && (
-                    <div className="bg-white dark:bg-slate-800 border border-brand-300 dark:border-brand-700 rounded-lg p-2 shadow-md animate-in fade-in zoom-in-95 duration-200">
-                        <textarea
-                            autoFocus
-                            value={newPromptText}
-                            onChange={e => setNewPromptText(e.target.value)}
-                            placeholder={t.chatBar.typeToCreate}
-                            className="w-full text-sm bg-transparent border-none focus:ring-0 p-0 text-slate-700 dark:text-slate-200 resize-none min-h-[60px]"
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleAddPrompt();
-                                } else if (e.key === 'Escape') {
-                                    setIsAdding(false);
-                                }
-                            }}
-                        />
-                        <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-                            <button
-                                onClick={() => setIsAdding(false)}
-                                className="p-1 px-2 text-xs text-slate-500 hover:text-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                            >
-                                {t.sidebar.cancel}
-                            </button>
-                            <button
-                                onClick={handleAddPrompt}
-                                disabled={!newPromptText.trim()}
-                                className="p-1 px-3 text-xs bg-brand-500 text-white rounded hover:bg-brand-600 disabled:opacity-50 font-medium"
-                            >
-                                {t.sidebar.save}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                <div className="space-y-2">
-                    {currentPrompts.length === 0 && !isAdding && (
-                        <div className="text-center py-8 text-slate-400 text-xs italic border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-                            {t.card.noMessagesYet}
-                        </div>
-                    )}
-
-                    {currentPrompts.map(prompt => (
-                        <div
-                            key={prompt.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, prompt)}
-                            className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm hover:shadow-md hover:border-brand-300 dark:hover:border-brand-700 transition-all cursor-grab active:cursor-grabbing select-none"
-                        >
-                            <div className="text-sm text-slate-700 dark:text-slate-200 line-clamp-3">
-                                {prompt.text}
-                            </div>
-                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/90 dark:bg-slate-800/90 rounded backdrop-blur-sm shadow-sm ring-1 ring-black/5">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id); }}
-                                    className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                >
-                                    <Trash2 size={12} />
-                                </button>
-                            </div>
-                            <div className="absolute top-1/2 -left-2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-slate-300 pointer-events-none">
-                                <GripVertical size={12} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
             </div>
 
-            <div className="p-2 bg-slate-100/50 dark:bg-slate-900/30 text-[10px] text-slate-400 text-center border-t border-slate-200 dark:border-slate-800 shrink-0 select-none">
-                {t.sidebar.dragHelp}
+            {/* Board Group */}
+            <div className="flex flex-col items-start gap-2 pointer-events-auto">
+                <div className="flex items-center justify-between w-full gap-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">{t.sidebar.board}</span>
+                </div>
+                <div className="flex flex-col items-start gap-2 max-w-[140px] flex-wrap">
+                    {boardPrompts.map(p => <PromptTag key={p.id} prompt={p} type="board" />)}
+
+                    {isAdding === 'board' ? (
+                        <AddInput type="board" onCancel={() => setIsAdding(null)} />
+                    ) : (
+                        <button
+                            onClick={() => setIsAdding('board')}
+                            className="px-2 py-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+                        >
+                            <Plus size={12} /> {t.sidebar.add}
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
