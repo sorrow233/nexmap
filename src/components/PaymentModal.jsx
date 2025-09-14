@@ -103,36 +103,36 @@ const PaymentModal = ({ isOpen, onClose }) => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* Starter */}
+                                {/* Starter - credits_500 */}
                                 <PlanCard
                                     title="Starter"
                                     amount="$0.99"
-                                    credits="100 credits"
-                                    sub="~200 chats"
-                                    features={['Pay as you go', 'No expiration']}
-                                    onClick={() => handleCheckout('credits_100')}
-                                    loading={loadingProduct === 'credits_100'}
-                                />
-                                {/* Standard - Recommended */}
-                                <PlanCard
-                                    title="Standard"
-                                    amount="$3.99"
                                     credits="500 credits"
                                     sub="~1,000 chats"
-                                    popular
-                                    features={['Best value', 'Priority support']}
+                                    features={['Pay as you go', 'No expiration']}
                                     onClick={() => handleCheckout('credits_500')}
                                     loading={loadingProduct === 'credits_500'}
                                 />
-                                {/* Power */}
+                                {/* Standard - credits_2000 (Recommended) */}
+                                <PlanCard
+                                    title="Standard"
+                                    amount="$3.99"
+                                    credits="2,000 credits"
+                                    sub="~4,000 chats"
+                                    popular
+                                    features={['Best value', 'Priority support']}
+                                    onClick={() => handleCheckout('credits_2000')}
+                                    loading={loadingProduct === 'credits_2000'}
+                                />
+                                {/* Power - credits_5000 */}
                                 <PlanCard
                                     title="Power"
                                     amount="$9.99"
-                                    credits="2,000 credits"
-                                    sub="~4,000 chats"
+                                    credits="5,000 credits"
+                                    sub="~10,000 chats"
                                     features={['For heavy users', 'Max efficiency']}
-                                    onClick={() => handleCheckout('credits_2000')}
-                                    loading={loadingProduct === 'credits_2000'}
+                                    onClick={() => handleCheckout('credits_5000')}
+                                    loading={loadingProduct === 'credits_5000'}
                                 />
                             </div>
                         </div>

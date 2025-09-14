@@ -83,6 +83,7 @@ async function getUserUsage(env, userId) {
             conversationCount: 0,
             imageCount: 0,
             week: currentWeek,
+            bonusCredits: 0,
             createdAt: data?.createdAt || Date.now(),
             lastUpdated: Date.now()
         };
@@ -188,7 +189,8 @@ export async function onRequest(context) {
             return new Response(JSON.stringify({
                 conversationCount: usageData.conversationCount,
                 weeklyLimit: WEEKLY_CONVERSATION_LIMIT,
-                remaining: WEEKLY_CONVERSATION_LIMIT - usageData.conversationCount,
+                bonusCredits: usageData.bonusCredits || 0,
+                remaining: (WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)) - usageData.conversationCount,
                 week: usageData.week,
                 model: CONVERSATION_MODEL,
                 // Image quota info
@@ -197,8 +199,8 @@ export async function onRequest(context) {
                 imageRemaining: WEEKLY_IMAGE_LIMIT - (usageData.imageCount || 0),
                 imageModel: IMAGE_MODEL,
                 // Legacy compatibility
-                credits: WEEKLY_CONVERSATION_LIMIT - usageData.conversationCount,
-                initialCredits: WEEKLY_CONVERSATION_LIMIT
+                credits: (WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)) - usageData.conversationCount,
+                initialCredits: WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -369,12 +371,14 @@ export async function onRequest(context) {
         const selectedModel = isConversation ? CONVERSATION_MODEL : ANALYSIS_MODEL;
 
         // Check conversation limit only for conversation tasks
-        if (isConversation && usageData.conversationCount >= WEEKLY_CONVERSATION_LIMIT) {
+        const effectiveLimit = WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0);
+        if (isConversation && usageData.conversationCount >= effectiveLimit) {
             return new Response(JSON.stringify({
                 error: 'Limit reached',
-                message: `本周免费对话次数（${WEEKLY_CONVERSATION_LIMIT}次）已用完！每周一重置。请在设置中配置您自己的 API Key 继续使用。`,
+                message: `本周免费对话次数（${effectiveLimit}次，含奖励）已用完！请在设置中配置您自己的 API Key 继续使用。`,
                 conversationCount: usageData.conversationCount,
                 weeklyLimit: WEEKLY_CONVERSATION_LIMIT,
+                bonusCredits: usageData.bonusCredits || 0,
                 remaining: 0,
                 needsUpgrade: true,
                 // Legacy compatibility
@@ -483,7 +487,8 @@ export async function onRequest(context) {
             _systemCredits: {
                 conversationCount: updatedUsageData.conversationCount,
                 weeklyLimit: WEEKLY_CONVERSATION_LIMIT,
-                remaining: WEEKLY_CONVERSATION_LIMIT - updatedUsageData.conversationCount
+                bonusCredits: updatedUsageData.bonusCredits || 0,
+                remaining: (WEEKLY_CONVERSATION_LIMIT + (updatedUsageData.bonusCredits || 0)) - updatedUsageData.conversationCount
             }
         }), {
             status: 200,
