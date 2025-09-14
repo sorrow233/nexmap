@@ -87,17 +87,34 @@ export default function ShareModal({ isOpen, onClose, content }) {
 
             const formatConfig = FORMATS.find(f => f.id === format);
             const needsQuality = format !== 'png';
-            let image = canvas.toDataURL(formatConfig.mime, needsQuality ? quality : undefined);
 
-            if (format === 'webp' && (!image || image.length < 100)) {
-                console.warn('WebP export failed, falling back to PNG');
-                image = canvas.toDataURL('image/png');
-            }
+            // Use toBlob for better performance and iOS compatibility
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    console.error("Canvas to Blob failed");
+                    return;
+                }
 
-            const link = document.createElement('a');
-            link.href = image;
-            link.download = `nexmap-${theme}-${Date.now()}.${formatConfig.ext}`;
-            link.click();
+                // Create Object URL (better for iOS than Data URL)
+                const url = URL.createObjectURL(blob);
+                const filename = `nexmap-${theme}-${Date.now()}.${formatConfig.ext}`;
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+
+                // Required for Firefox/some browsers to work properly
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Cleanup
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 1000);
+
+            }, formatConfig.mime, needsQuality ? quality : undefined);
+
         } catch (err) {
             console.error("Export failed:", err);
         } finally {
