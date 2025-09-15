@@ -6,36 +6,34 @@ const LanguageContext = createContext();
 export const useLanguage = () => useContext(LanguageContext);
 
 export const LanguageProvider = ({ children }) => {
-    const [language, setLanguage] = useState('en');
-
-    useEffect(() => {
-        const detectLanguage = () => {
+    const [language, setLanguage] = useState(() => {
+        // Initialize with logic to detect language immediately
+        try {
             // 1. Check LocalStorage (User Preference)
             const savedLang = localStorage.getItem('userLanguage');
-            if (savedLang && ['en', 'zh', 'ja'].includes(savedLang)) {
-                setLanguage(savedLang);
-                return;
+            if (savedLang && ['en', 'zh', 'ja', 'ko'].includes(savedLang)) {
+                return savedLang;
             }
 
             // 2. Check Browser Language
             const navLang = navigator.language || navigator.userLanguage;
-
             if (navLang) {
                 const lowerLang = navLang.toLowerCase();
                 if (lowerLang.includes('zh')) {
-                    setLanguage('zh');
+                    return 'zh';
                 } else if (lowerLang.includes('ja')) {
-                    setLanguage('ja');
-                } else {
-                    setLanguage('en');
+                    return 'ja';
+                } else if (lowerLang.includes('ko')) {
+                    return 'ko';
                 }
-            } else {
-                setLanguage('en');
             }
-        };
+        } catch (e) {
+            console.error("Error initializing language:", e);
+        }
 
-        detectLanguage();
-    }, []);
+        // 3. Default fallback
+        return 'en';
+    });
 
     const t = translations[language] || translations['en'];
 

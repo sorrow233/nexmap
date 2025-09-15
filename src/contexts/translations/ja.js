@@ -386,5 +386,14 @@ export const ja = {
         title: "思考の「繋がり」を始めよう。",
         cta: "Alpha版を起動",
         rights: "© 2024 NexMap. All rights reserved."
+    },
+    // ===== TOOLBAR TRANSLATIONS =====
+    toolbar: {
+        items: "個のアイテム",
+        retry: "再試行",
+        sprout: "発芽",
+        zone: "Zone",
+        delete: "削除",
+        expand: "展開"
     }
 };

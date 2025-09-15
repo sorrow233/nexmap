@@ -22,6 +22,7 @@ import QuickPromptModal from '../components/QuickPromptModal';
 import { useToast } from '../components/Toast';
 import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 import { useAISprouting } from '../hooks/useAISprouting';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -58,6 +59,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleBatchChat,
         handleSprout
     } = useCardCreator();
+
+    const { t } = useLanguage();
 
     const toast = useToast();
 
@@ -370,32 +373,32 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
 
                 {selectedIds.length > 0 && (
                     <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit glass-panel px-3 md:px-6 py-2 md:py-3 rounded-full flex items-center gap-2 md:gap-4 z-50 animate-slide-up shadow-2xl">
-                        <span className="text-xs md:text-sm font-semibold text-slate-300">{selectedIds.length} <span className="hidden sm:inline">items</span></span>
+                        <span className="text-xs md:text-sm font-semibold text-slate-300">{selectedIds.length} <span className="hidden sm:inline">{t.toolbar?.items || "items"}</span></span>
                         {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
                             <>
                                 <div className="h-4 w-px bg-slate-300"></div>
-                                <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
+                                <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">{t.toolbar?.expand || "Expand"}</span></button>
                             </>
                         )}
                         <div className="h-3 md:h-4 w-px bg-slate-300"></div>
                         <button onClick={handleRegenerate} className="flex items-center gap-1 md:gap-2 text-blue-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95">
                             <RefreshCw size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">Retry</span>
+                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.retry || "Retry"}</span>
                         </button>
                         <div className="h-3 md:h-4 w-px bg-slate-300"></div>
                         <button onClick={() => selectedIds.forEach(id => handleQuickSprout(id))} className="flex items-center gap-1 md:gap-2 text-emerald-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20 active:scale-95">
                             <Sprout size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">Sprout</span>
+                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.sprout || "Sprout"}</span>
                         </button>
                         <div className="h-3 md:h-4 w-px bg-slate-300"></div>
                         <button onClick={() => createGroup(selectedIds)} className="flex items-center gap-1 md:gap-2 text-indigo-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95">
                             <BoxSelect size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">Zone</span>
+                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.zone || "Zone"}</span>
                         </button>
                         <div className="h-3 md:h-4 w-px bg-slate-300"></div>
                         <button onClick={handleBatchDelete} className="flex items-center gap-1 md:gap-2 text-red-500 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95">
                             <Trash2 size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">Delete</span>
+                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.delete || "Delete"}</span>
                         </button>
                     </div>
                 )}
