@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Frame, Network, LayoutGrid } from 'lucide-react';
+import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 /**
@@ -23,7 +23,7 @@ const ChatBar = React.memo(function ChatBar({
     onClearImages, // NEW: Clear images after submit
     onBatchChat,
 
-    onGroup, // New prop
+
     onSelectConnected, // New prop
     onLayoutGrid, // New prop
 
@@ -153,13 +153,6 @@ const ChatBar = React.memo(function ChatBar({
                                         title={t.chatBar.selectConnected}
                                     >
                                         <Network size={20} />
-                                    </button>
-                                    <button
-                                        onClick={() => onGroup(selectedIds)}
-                                        className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-full transition-all"
-                                        title={t.chatBar.createZone}
-                                    >
-                                        <Frame size={20} />
                                     </button>
                                     <button
                                         onClick={() => onLayoutGrid && onLayoutGrid()}

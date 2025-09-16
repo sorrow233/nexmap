@@ -11,7 +11,7 @@ import { createAISlice } from './slices/aiSlice';
 import { createSettingsSlice } from './slices/settingsSlice';
 import { createShareSlice } from './slices/shareSlice';
 import { createCreditsSlice } from './slices/creditsSlice';
-import { createPromptSlice } from './slices/promptSlice';
+import { createBoardSlice } from './slices/boardSlice';
 
 
 // --- Global Store with Temporal Middleware ---
@@ -28,7 +28,7 @@ const useStoreBase = create(
             ...createSettingsSlice(set, get),
             ...createShareSlice(set, get),
             ...createCreditsSlice(set, get),
-            ...createPromptSlice(set, get),
+            ...createBoardSlice(set, get),
 
             // Global reset for logout
             resetAllState: () => {
@@ -46,7 +46,6 @@ const useStoreBase = create(
             equality: (a, b) => a.cards === b.cards && a.connections === b.connections,
             partialize: (state) => ({
                 cards: state.cards,
-                connections: state.connections,
                 connections: state.connections,
                 groups: state.groups, // Persist groups
                 boardPrompts: state.boardPrompts // Persist board prompts
