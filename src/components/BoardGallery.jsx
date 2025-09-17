@@ -15,6 +15,19 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
     const { t } = useLanguage();
 
+    // Track if initial animation has played to prevent re-triggering on data updates
+    const hasAnimatedRef = useRef(false);
+    const [shouldAnimate, setShouldAnimate] = useState(true);
+
+    useEffect(() => {
+        // After initial mount + animation duration, mark animations as done
+        const timer = setTimeout(() => {
+            hasAnimatedRef.current = true;
+            setShouldAnimate(false);
+        }, 1000); // 1 second covers animation duration
+        return () => clearTimeout(timer);
+    }, []);
+
     useEffect(() => {
         const hour = new Date().getHours();
         if (hour < 12) setGreeting('morning');
