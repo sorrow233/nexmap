@@ -14,7 +14,59 @@ import SEO from '../../components/SEO';
 
 // The New Landing Orchestrator
 const LandingModule = () => {
-    // ... (existing code) ...
+    // --- Global Scroll Fix ---
+    useEffect(() => {
+        const doc = document.documentElement;
+        const body = document.body;
+        const rootEl = document.getElementById('root');
+
+        // 1. Force the document to be scrollable
+        doc.style.height = 'auto';
+        doc.style.overflowY = 'auto';
+        doc.style.overflowX = 'hidden';
+
+        // 2. Allow body to grow
+        body.style.height = 'auto';
+        body.style.overflowY = 'visible';
+        body.style.overflowX = 'hidden';
+
+        // 3. Unlock root
+        if (rootEl) {
+            rootEl.style.height = 'auto';
+            rootEl.style.overflowY = 'visible';
+            rootEl.style.overflowX = 'hidden';
+        }
+
+        return () => {
+            doc.style.height = '';
+            doc.style.overflowY = '';
+            doc.style.overflowX = '';
+
+            body.style.height = '';
+            body.style.overflowY = '';
+            body.style.overflowX = '';
+
+            if (rootEl) {
+                rootEl.style.height = '';
+                rootEl.style.overflowY = '';
+                rootEl.style.overflowX = '';
+            }
+        };
+    }, []);
+
+    const [scrollProgress, setScrollProgress] = useState(0);
+
+    // Track scroll for VisualHero
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrTop = window.scrollY;
+            const innerH = window.innerHeight;
+            const progress = scrTop / innerH;
+            setScrollProgress(progress);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const handleStart = () => {
         const nextSection = window.innerHeight;
