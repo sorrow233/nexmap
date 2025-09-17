@@ -8,62 +8,13 @@ import FooterSection from './components/FooterSection';
 import DemoInfinite from './components/DemoInfinite';
 import FeatureBento from './components/FeatureBento';
 import LanguageSwitcher from './components/LanguageSwitcher';
+import PricingSection from './components/PricingSection';
+
+import SEO from '../../components/SEO';
 
 // The New Landing Orchestrator
 const LandingModule = () => {
-    // --- Global Scroll Fix ---
-    useEffect(() => {
-        const doc = document.documentElement;
-        const body = document.body;
-        const rootEl = document.getElementById('root');
-
-        // 1. Force the document to be scrollable
-        doc.style.height = 'auto';
-        doc.style.overflowY = 'auto';
-        doc.style.overflowX = 'hidden';
-
-        // 2. Allow body to grow
-        body.style.height = 'auto';
-        body.style.overflowY = 'visible';
-        body.style.overflowX = 'hidden';
-
-        // 3. Unlock root
-        if (rootEl) {
-            rootEl.style.height = 'auto';
-            rootEl.style.overflowY = 'visible';
-            rootEl.style.overflowX = 'hidden';
-        }
-
-        return () => {
-            doc.style.height = '';
-            doc.style.overflowY = '';
-            doc.style.overflowX = '';
-
-            body.style.height = '';
-            body.style.overflowY = '';
-            body.style.overflowX = '';
-
-            if (rootEl) {
-                rootEl.style.height = '';
-                rootEl.style.overflowY = '';
-                rootEl.style.overflowX = '';
-            }
-        };
-    }, []);
-
-    const [scrollProgress, setScrollProgress] = useState(0);
-
-    // Track scroll for VisualHero
-    useEffect(() => {
-        const handleScroll = () => {
-            const scrTop = window.scrollY;
-            const innerH = window.innerHeight;
-            const progress = scrTop / innerH;
-            setScrollProgress(progress);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    // ... (existing code) ...
 
     const handleStart = () => {
         const nextSection = window.innerHeight;
@@ -72,6 +23,7 @@ const LandingModule = () => {
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+            <SEO title="Home" />
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');
                 ::-webkit-scrollbar { width: 0px; background: transparent; }
@@ -127,6 +79,11 @@ const LandingModule = () => {
             {/* 7. GRAPH CONTEXT WALKING */}
             <div className="relative z-10 border-t border-white/5">
                 <GraphSection />
+            </div>
+
+            {/* 8. PRICING SECTION */}
+            <div className="relative z-10 border-t border-white/5 bg-[#0A0A0A]">
+                <PricingSection showTitle={true} />
             </div>
 
             {/* FOOTER */}

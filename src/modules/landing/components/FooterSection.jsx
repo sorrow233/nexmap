@@ -1,4 +1,4 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
 const FooterSection = () => {
@@ -15,7 +15,14 @@ const FooterSection = () => {
             >
                 {t.footer.cta}
             </button>
-            <div className="flex justify-center gap-6 mt-12 text-sm text-slate-400">
+
+            <div className="flex justify-center gap-8 mt-12 mb-8 text-base font-medium text-white/50">
+                <Link to="/about" className="hover:text-white transition-colors">About</Link>
+                <Link to="/history" className="hover:text-white transition-colors">History</Link>
+                <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+            </div>
+
+            <div className="flex justify-center gap-6 text-sm text-slate-400">
                 <a href="/legal/tokushoho" className="hover:text-white transition-colors">特定商取引法に基づく表記</a>
                 <a href="/legal/terms" className="hover:text-white transition-colors">利用規約</a>
                 <a href="/legal/privacy" className="hover:text-white transition-colors">プライバシーポリシー</a>

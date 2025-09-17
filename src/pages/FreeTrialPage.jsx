@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Gift, Sparkles, Zap, ArrowRight, Check, Shield, Infinity } from 'lucide-react';
+import SEO from '../components/SEO';
 
 /**
  * FreeTrialPage - A dedicated page showing free trial credits
@@ -15,6 +16,7 @@ export default function FreeTrialPage() {
 
     return (
         <div className="min-h-screen bg-mesh-gradient flex items-center justify-center p-4 overflow-hidden relative">
+            <SEO title="Free Trial" description="Get 100 free credits to use DeepSeek V3 AI model instantly. No configuration required." />
             {/* Animated Background Elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-3xl animate-float" />
