@@ -82,7 +82,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
 
                 {/* Recently Visited - Horizontal Carousel */}
                 {!isTrashView && recentBoards.length > 0 && (
-                    <div className="animate-fade-in-up delay-100">
+                    <div className={shouldAnimate ? "animate-fade-in-up delay-100" : ""}>
                         <div className="flex items-center gap-2 mb-4 px-1">
                             <Clock size={16} className="text-indigo-500" />
                             <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.gallery.recentlyVisited}</h2>
@@ -102,6 +102,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                             generatingBoardId={generatingBoardId}
                                             variant="overlay"
                                             isSystemCreditsUser={isSystemCreditsUser}
+                                            shouldAnimate={shouldAnimate}
                                         />
                                     </div>
                                 ))}
@@ -113,7 +114,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 )}
 
                 {/* All Boards - Masonry Grid */}
-                <div className="animate-fade-in-up delay-200">
+                <div className={shouldAnimate ? "animate-fade-in-up delay-200" : ""}>
                     {!isTrashView && (
                         <div className="flex items-center gap-2 mb-6 px-1">
                             <LayoutGrid size={16} className="text-indigo-500" />
@@ -139,6 +140,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     generatingBoardId={generatingBoardId}
                                     variant="stacked"
                                     isSystemCreditsUser={isSystemCreditsUser}
+                                    shouldAnimate={shouldAnimate}
                                 />
                             </div>
                         ))}

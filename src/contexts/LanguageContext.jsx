@@ -37,6 +37,11 @@ export const LanguageProvider = ({ children }) => {
 
     const t = translations[language] || translations['en'];
 
+    // Persist language selection to localStorage
+    useEffect(() => {
+        localStorage.setItem('userLanguage', language);
+    }, [language]);
+
     return (
         <LanguageContext.Provider value={{ language, setLanguage, t }}>
             {children}

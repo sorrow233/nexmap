@@ -32,6 +32,11 @@ export default function PricingSection({ showTitle = true }) {
             currency: '¥',
             pro: '1,500',
             packs: { starter: '150', standard: '600', power: '1,500' }
+        },
+        ko: {
+            currency: '₩',
+            pro: '15,000',
+            packs: { starter: '1,500', standard: '5,500', power: '15,000' }
         }
     };
 
