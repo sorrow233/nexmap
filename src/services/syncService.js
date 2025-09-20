@@ -114,7 +114,13 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 cardCount: b.cards?.length || 0,
                 deletedAt: b.deletedAt,
                 backgroundImage: b.backgroundImage
-            })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            })).sort((a, b) => {
+                // Sort by lastAccessedAt (descending) for recent boards ordering
+                const timeDiff = (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0);
+                if (timeDiff !== 0) return timeDiff;
+                // Stable tie-breaker: use id comparison for consistent ordering
+                return a.id.localeCompare(b.id);
+            });
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));

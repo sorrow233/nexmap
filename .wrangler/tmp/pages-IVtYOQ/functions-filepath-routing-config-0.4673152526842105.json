@@ -1,0 +1,93 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/admin/codes",
+      "mountPath": "/api/admin",
+      "method": "",
+      "module": [
+        "api/admin/codes.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/create-checkout",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/create-checkout.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/webhook",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/webhook.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/feedback",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/feedback.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/gmi-serving",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/gmi-serving.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/image-gen",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/image-gen.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/image-proxy",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/image-proxy.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/redeem",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/redeem.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/system-credits",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/system-credits.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/test",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/test.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/",
+      "mountPath": "/",
+      "method": "",
+      "middleware": [
+        "_middleware.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
