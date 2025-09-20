@@ -15,8 +15,13 @@ const CONVERSATION_MODEL = 'moonshotai/Kimi-K2-Thinking';
 const ANALYSIS_MODEL = 'deepseek-ai/DeepSeek-V3.2';
 const SYSTEM_BASE_URL = 'https://api.gmi-serving.com/v1';
 
-// Weekly usage limit for conversations
+// Image generation model (Seedream)
+const IMAGE_MODEL = 'seedream-4-0-250828';
+const IMAGE_API_BASE = 'https://console.gmicloud.ai/api/v1/ie/requestqueue/apikey';
+
+// Weekly usage limits
 const WEEKLY_CONVERSATION_LIMIT = 200;
+const WEEKLY_IMAGE_LIMIT = 20;
 
 /**
  * Get the current week number (ISO week, Monday is first day)
@@ -76,12 +81,18 @@ async function getUserUsage(env, userId) {
         // Initialize new user or reset for new week
         const newData = {
             conversationCount: 0,
+            imageCount: 0,
             week: currentWeek,
             createdAt: data?.createdAt || Date.now(),
             lastUpdated: Date.now()
         };
         await env.SYSTEM_CREDITS_KV?.put(key, JSON.stringify(newData));
         return newData;
+    }
+
+    // Ensure imageCount exists for older records
+    if (data.imageCount === undefined) {
+        data.imageCount = 0;
     }
 
     return data;
@@ -95,6 +106,20 @@ async function incrementConversationCount(env, userId, currentData) {
     const data = {
         ...currentData,
         conversationCount: currentData.conversationCount + 1,
+        lastUpdated: Date.now()
+    };
+    await env.SYSTEM_CREDITS_KV?.put(key, JSON.stringify(data));
+    return data;
+}
+
+/**
+ * Increment image count in KV storage
+ */
+async function incrementImageCount(env, userId, currentData) {
+    const key = `usage:${userId}`;
+    const data = {
+        ...currentData,
+        imageCount: (currentData.imageCount || 0) + 1,
         lastUpdated: Date.now()
     };
     await env.SYSTEM_CREDITS_KV?.put(key, JSON.stringify(data));
@@ -166,6 +191,11 @@ export async function onRequest(context) {
                 remaining: WEEKLY_CONVERSATION_LIMIT - usageData.conversationCount,
                 week: usageData.week,
                 model: CONVERSATION_MODEL,
+                // Image quota info
+                imageCount: usageData.imageCount || 0,
+                imageLimit: WEEKLY_IMAGE_LIMIT,
+                imageRemaining: WEEKLY_IMAGE_LIMIT - (usageData.imageCount || 0),
+                imageModel: IMAGE_MODEL,
                 // Legacy compatibility
                 credits: WEEKLY_CONVERSATION_LIMIT - usageData.conversationCount,
                 initialCredits: WEEKLY_CONVERSATION_LIMIT
@@ -173,6 +203,164 @@ export async function onRequest(context) {
                 status: 200,
                 headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
             });
+        }
+
+        // Handle image generation action
+        if (action === 'image') {
+            const { prompt, size = '1024x1024', watermark = false } = body;
+
+            if (!prompt) {
+                return new Response(JSON.stringify({ error: 'Prompt is required for image generation' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                });
+            }
+
+            // Check image limit
+            const imageCount = usageData.imageCount || 0;
+            if (imageCount >= WEEKLY_IMAGE_LIMIT) {
+                return new Response(JSON.stringify({
+                    error: 'Image limit reached',
+                    message: `本周免费图片生成次数（${WEEKLY_IMAGE_LIMIT}次）已用完！每周一重置。请在设置中配置您自己的 API Key 继续使用。`,
+                    imageCount: imageCount,
+                    imageLimit: WEEKLY_IMAGE_LIMIT,
+                    imageRemaining: 0,
+                    needsUpgrade: true
+                }), {
+                    status: 402,
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                });
+            }
+
+            try {
+                console.log(`[SystemCredits] User ${userId} generating image (${imageCount}/${WEEKLY_IMAGE_LIMIT}): ${prompt.substring(0, 50)}...`);
+
+                // 1. Submit image generation request
+                const submitResponse = await fetch(`${IMAGE_API_BASE}/requests`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${systemApiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: IMAGE_MODEL,
+                        payload: {
+                            prompt: prompt,
+                            size: size,
+                            max_images: 1,
+                            watermark: watermark
+                        }
+                    })
+                });
+
+                if (!submitResponse.ok) {
+                    const err = await submitResponse.json().catch(() => ({}));
+                    console.error('[SystemCredits] Image submit failed:', err);
+                    return new Response(JSON.stringify({
+                        error: 'Image generation failed',
+                        message: err.error?.message || err.error || 'Failed to submit image request'
+                    }), {
+                        status: 500,
+                        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                    });
+                }
+
+                const submitData = await submitResponse.json();
+                const requestId = submitData.request_id;
+
+                if (!requestId) {
+                    console.error('[SystemCredits] No request_id in response:', submitData);
+                    return new Response(JSON.stringify({
+                        error: 'Image generation failed',
+                        message: 'No request ID returned from API'
+                    }), {
+                        status: 500,
+                        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                    });
+                }
+
+                console.log(`[SystemCredits] Image request queued: ${requestId}`);
+
+                // 2. Poll for completion (max 30 attempts, 2s interval = 60s timeout)
+                let attempts = 0;
+                const maxAttempts = 30;
+
+                while (attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    attempts++;
+
+                    const pollResponse = await fetch(`${IMAGE_API_BASE}/requests/${requestId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${systemApiKey}`
+                        }
+                    });
+
+                    if (!pollResponse.ok) {
+                        console.warn(`[SystemCredits] Poll attempt ${attempts} failed:`, pollResponse.status);
+                        continue;
+                    }
+
+                    const pollData = await pollResponse.json();
+
+                    if (pollData.status === 'success') {
+                        const imageUrl = pollData.outcome?.media_urls?.[0]?.url;
+                        if (!imageUrl) {
+                            return new Response(JSON.stringify({
+                                error: 'Image generation failed',
+                                message: 'Image generated but no URL returned'
+                            }), {
+                                status: 500,
+                                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                            });
+                        }
+
+                        // Increment usage count on success
+                        const updatedUsage = await incrementImageCount(env, userId, usageData);
+                        console.log(`[SystemCredits] User ${userId} image generation success. Count: ${updatedUsage.imageCount}/${WEEKLY_IMAGE_LIMIT}`);
+
+                        return new Response(JSON.stringify({
+                            url: imageUrl,
+                            imageCount: updatedUsage.imageCount,
+                            imageLimit: WEEKLY_IMAGE_LIMIT,
+                            imageRemaining: WEEKLY_IMAGE_LIMIT - updatedUsage.imageCount
+                        }), {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                        });
+                    }
+
+                    if (pollData.status === 'failed' || pollData.status === 'cancelled') {
+                        console.error('[SystemCredits] Image generation failed:', pollData);
+                        return new Response(JSON.stringify({
+                            error: 'Image generation failed',
+                            message: pollData.error || pollData.message || 'Generation failed'
+                        }), {
+                            status: 500,
+                            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                        });
+                    }
+                }
+
+                // Timeout
+                return new Response(JSON.stringify({
+                    error: 'Image generation timeout',
+                    message: 'Image generation timed out after 60 seconds'
+                }), {
+                    status: 504,
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                });
+
+            } catch (error) {
+                console.error('[SystemCredits] Image generation error:', error);
+                return new Response(JSON.stringify({
+                    error: 'Image generation failed',
+                    message: error.message || 'Internal server error'
+                }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+                });
+            }
         }
 
         // Determine which model to use based on task type

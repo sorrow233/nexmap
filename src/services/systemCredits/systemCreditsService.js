@@ -163,6 +163,54 @@ export class CreditsExhaustedError extends Error {
 }
 
 /**
+ * Custom error for image quota exhausted state
+ */
+export class ImageQuotaExhaustedError extends Error {
+    constructor(message) {
+        super(message || '本周免费图片生成次数已用完！每周一重置。请在设置中配置您自己的 API Key 继续使用。');
+        this.name = 'ImageQuotaExhaustedError';
+        this.needsUpgrade = true;
+    }
+}
+
+/**
+ * Generate image using system credits
+ * @param {string} prompt - Image generation prompt
+ * @param {Object} options - Options like size, watermark
+ * @returns {Promise<{url: string, imageCount: number, imageLimit: number, imageRemaining: number}>}
+ */
+export async function imageWithSystemCredits(prompt, options = {}) {
+    const token = await getAuthToken();
+
+    const response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            action: 'image',
+            prompt,
+            size: options.size || '1024x1024',
+            watermark: options.watermark || false
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+
+        // Special handling for image quota exhausted
+        if (response.status === 402) {
+            throw new ImageQuotaExhaustedError(error.message);
+        }
+
+        throw new Error(error.message || error.error?.message || '图片生成失败');
+    }
+
+    return response.json();
+}
+
+/**
  * Check if user should use system credits (no API key configured)
  */
 export function shouldUseSystemCredits(providerConfig) {

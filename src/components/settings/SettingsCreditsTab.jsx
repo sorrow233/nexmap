@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, Gift, Zap, Infinity } from 'lucide-react';
+import { Sparkles, CheckCircle2, Gift, Zap, Infinity, Image } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { isLikelyChinaUser } from '../../utils/regionCheck';
@@ -13,6 +13,7 @@ import PaymentModal from '../PaymentModal';
  */
 export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
+    const systemImageCredits = useStore(state => state.systemImageCredits);
     const { t } = useLanguage();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [isChinaUser, setIsChinaUser] = useState(false);
@@ -21,12 +22,13 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
         setIsChinaUser(isLikelyChinaUser());
     }, []);
 
-    // Default to 100 if undefined, clamp between 0 and 100
-    const creditsValue = typeof systemCredits === 'number' ? systemCredits : 100;
-    const creditsPercent = Math.max(0, Math.min(100, creditsValue));
+    // Default to 200 if undefined (weekly conversation limit)
+    const creditsValue = typeof systemCredits === 'number' ? systemCredits : 200;
+    const creditsPercent = Math.max(0, Math.min(100, (creditsValue / 200) * 100));
 
-    // Calculate usage status
-    const isLow = creditsValue < 20;
+    // Image credits: default to 20 if undefined (weekly image limit)
+    const imageCreditsValue = typeof systemImageCredits === 'number' ? systemImageCredits : 20;
+    const imageCreditsPercent = Math.max(0, Math.min(100, (imageCreditsValue / 20) * 100));
 
     return (
         <div className="space-y-6">
@@ -46,18 +48,40 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{t.credits.interactions}</strong> {t.credits.conversations}
                     </p>
 
-                    {/* Usage Stats (Simplified) */}
-                    <div className="w-full max-w-sm bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-indigo-200 text-sm font-medium">{t.credits.remainingCredits}</span>
-                            <span className="text-2xl font-bold font-mono">{creditsValue.toFixed(1)}</span>
+                    {/* Usage Stats */}
+                    <div className="w-full max-w-sm space-y-4">
+                        {/* Conversation Credits */}
+                        <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-indigo-200 text-sm font-medium">{t.credits.remainingCredits}</span>
+                                <span className="text-2xl font-bold font-mono">{creditsValue}</span>
+                            </div>
+                            <div className="h-3 bg-black/20 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full relative"
+                                    style={{ width: `${creditsPercent}%` }}
+                                >
+                                    <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="h-3 bg-black/20 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full relative"
-                                style={{ width: `${creditsPercent}%` }}
-                            >
-                                <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
+
+                        {/* Image Credits */}
+                        <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-indigo-200 text-sm font-medium flex items-center gap-2">
+                                    <Image size={14} />
+                                    {t.credits.imageCredits || '图片生成'}
+                                </span>
+                                <span className="text-2xl font-bold font-mono">{imageCreditsValue}<span className="text-sm text-indigo-300">/20</span></span>
+                            </div>
+                            <div className="h-3 bg-black/20 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-pink-400 to-orange-400 rounded-full relative"
+                                    style={{ width: `${imageCreditsPercent}%` }}
+                                >
+                                    <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

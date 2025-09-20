@@ -8,16 +8,19 @@ import { checkCredits as fetchCredits } from '../../services/systemCredits/syste
 import { auth } from '../../services/firebase';
 
 const INITIAL_CREDITS = 100;
+const INITIAL_IMAGE_CREDITS = 20;
 
 export const createCreditsSlice = (set, get) => ({
     // Credits State
     systemCredits: null,           // null = not loaded, number = current credits
+    systemImageCredits: null,      // null = not loaded, number = remaining image credits
     systemCreditsLoading: false,
     systemCreditsError: null,
     isSystemCreditsUser: false,    // true if user is using system credits (no API key)
 
     // Actions
     setSystemCredits: (credits) => set({ systemCredits: credits }),
+    setSystemImageCredits: (credits) => set({ systemImageCredits: credits }),
 
     setIsSystemCreditsUser: (value) => set({ isSystemCreditsUser: value }),
 
@@ -27,7 +30,7 @@ export const createCreditsSlice = (set, get) => ({
     loadSystemCredits: async () => {
         const user = auth.currentUser;
         if (!user) {
-            set({ systemCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
+            set({ systemCredits: null, systemImageCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
             return;
         }
 
@@ -47,8 +50,10 @@ export const createCreditsSlice = (set, get) => ({
 
             const data = await Promise.race([fetchCredits(), timeoutPromise]);
             const credits = data?.credits ?? 0;
+            const imageCredits = data?.imageRemaining ?? INITIAL_IMAGE_CREDITS;
             set({
                 systemCredits: credits,
+                systemImageCredits: imageCredits,
                 systemCreditsLoading: false,
                 systemCreditsError: null,
                 isSystemCreditsUser: true
@@ -98,6 +103,7 @@ export const createCreditsSlice = (set, get) => ({
     resetCreditsState: () => {
         set({
             systemCredits: null,
+            systemImageCredits: null,
             systemCreditsLoading: false,
             systemCreditsError: null,
             isSystemCreditsUser: false
