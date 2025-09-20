@@ -105,20 +105,34 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 
             // Sync Metadata List - FILTER OUT INVALID DOCS (no id or name)
             const allBoards = snapshot.docs.map(doc => doc.data()).filter(b => b && b.id);
-            const metadataList = allBoards.map(b => ({
-                id: b.id,
-                name: b.name || 'Untitled',
-                createdAt: b.createdAt || Date.now(),
-                updatedAt: b.updatedAt || Date.now(),
-                lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
-                cardCount: b.cards?.length || 0,
-                deletedAt: b.deletedAt,
-                backgroundImage: b.backgroundImage
-            })).sort((a, b) => {
-                // Sort by lastAccessedAt (descending) for recent boards ordering
-                const timeDiff = (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0);
+            const metadataList = allBoards.map(b => {
+                // Infer createdAt from ID if missing and ID is a timestamp (13 digits)
+                let createdAt = b.createdAt;
+                if (!createdAt && b.id && /^\d{13}$/.test(b.id)) {
+                    createdAt = parseInt(b.id, 10);
+                }
+                // Final fallback
+                createdAt = createdAt || Date.now();
+
+                // Default updatedAt to createdAt if missing, not Date.now()
+                // This prevents old boards from showing as "just updated" simply because they were synced
+                const updatedAt = b.updatedAt || createdAt;
+
+                return {
+                    id: b.id,
+                    name: b.name || 'Untitled',
+                    createdAt: createdAt,
+                    updatedAt: updatedAt,
+                    lastAccessedAt: b.lastAccessedAt || updatedAt,
+                    cardCount: b.cards?.length || 0,
+                    deletedAt: b.deletedAt,
+                    backgroundImage: b.backgroundImage
+                };
+            }).sort((a, b) => {
+                // Sort by createdAt (descending) for main gallery stability
+                const timeDiff = (b.createdAt || 0) - (a.createdAt || 0);
                 if (timeDiff !== 0) return timeDiff;
-                // Stable tie-breaker: use id comparison for consistent ordering
+                // Stable tie-breaker
                 return a.id.localeCompare(b.id);
             });
 
