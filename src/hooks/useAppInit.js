@@ -12,6 +12,7 @@ import {
     getBoardsList, // New import
     saveBoardToCloud // Ensure this is imported if not already, though it was in the file before? No wait, it wasn't used in this file before but I can import it.
 } from '../services/storage';
+import { initScheduledBackup } from '../services/scheduledBackupService';
 import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
 import { useLocation } from 'react-router-dom';
@@ -38,6 +39,9 @@ export function useAppInit() {
             debugLog.auth('Initializing app state...');
             // Run cleanup first
             await cleanupExpiredTrash();
+
+            // Initialize scheduled backup system
+            initScheduledBackup();
 
             const list = loadBoardsMetadata();
             debugLog.storage(`Loaded metadata for ${list.length} boards`);
