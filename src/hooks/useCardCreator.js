@@ -7,6 +7,7 @@ import { useAISprouting } from './useAISprouting';
 import { debugLog } from '../utils/debugLogger';
 import { useCardGeneration } from './useCardGeneration';
 import { useNeuralNotepad } from './useNeuralNotepad';
+import { enhancePromptWithStyle, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -44,10 +45,14 @@ export function useCardCreator() {
             try {
                 const state = useStore.getState();
                 const activeConfig = state.getActiveConfig();
+                // Enhance prompt with みふねたかし/Irasutoya style
+                const styledPrompt = enhancePromptWithStyle(promptText, DEFAULT_STYLE);
+                debugLog.ai('Enhanced prompt with style', { original: promptText, styled: styledPrompt });
+
                 const imageUrl = await aiManager.requestTask({
                     type: 'image',
                     priority: PRIORITY.HIGH,
-                    payload: { prompt: promptText, config: activeConfig },
+                    payload: { prompt: styledPrompt, config: activeConfig },
                     tags: [`card:${newId}`]
                 });
 
