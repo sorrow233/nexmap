@@ -13,9 +13,17 @@ export default function SettingsGeneralTab() {
 
     const handleLanguageChange = (code) => {
         setLanguage(code);
-        // Optional: Persist to localStorage if LanguageContext doesn't do it automatically (it currently detects from browser)
-        // Given LanguageContext implementation, we might want to update it to prefer localStorage > browser
+        // Persist to localStorage
         localStorage.setItem('userLanguage', code);
+
+        // Cloud sync
+        import('../../services/syncService').then(({ updateUserSettings }) => {
+            import('../../services/firebase').then(({ auth }) => {
+                if (auth?.currentUser) {
+                    updateUserSettings(auth.currentUser.uid, { userLanguage: code });
+                }
+            });
+        });
     };
 
     return (
@@ -38,8 +46,8 @@ export default function SettingsGeneralTab() {
                         key={lang.code}
                         onClick={() => handleLanguageChange(lang.code)}
                         className={`relative group p-4 rounded-2xl border-2 transition-all duration-200 text-left ${language === lang.code
-                                ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-900/20'
-                                : 'border-slate-100 dark:border-white/10 hover:border-brand-200 dark:hover:border-white/20 bg-white dark:bg-white/5'
+                            ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-900/20'
+                            : 'border-slate-100 dark:border-white/10 hover:border-brand-200 dark:hover:border-white/20 bg-white dark:bg-white/5'
                             }`}
                     >
                         {language === lang.code && (
