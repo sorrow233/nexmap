@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, Gift, Zap, Infinity, Image } from 'lucide-react';
+import { Sparkles, CheckCircle2, Gift, Zap, Infinity, Image, Ticket, Lock, Loader2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { isLikelyChinaUser } from '../../utils/regionCheck';
+import { redeemCode } from '../../services/redeemService';
 import PaymentModal from '../PaymentModal';
+import AdminCodePanel from '../AdminCodePanel';
 
 /**
  * SettingsCreditsTab
@@ -14,13 +16,41 @@ import PaymentModal from '../PaymentModal';
 export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
     const systemImageCredits = useStore(state => state.systemImageCredits);
+    const loadSystemCredits = useStore(state => state.loadSystemCredits);
     const { t } = useLanguage();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [isChinaUser, setIsChinaUser] = useState(false);
 
+    // Redeem State
+    const [redeemInput, setRedeemInput] = useState('');
+    const [redeemStatus, setRedeemStatus] = useState('idle'); // idle, loading, success, error
+    const [redeemMessage, setRedeemMessage] = useState('');
+
+    // Admin State
+    const [showAdmin, setShowAdmin] = useState(false);
+
     useEffect(() => {
         setIsChinaUser(isLikelyChinaUser());
     }, []);
+
+    const handleRedeem = async () => {
+        if (!redeemInput.trim()) return;
+
+        setRedeemStatus('loading');
+        setRedeemMessage('');
+
+        try {
+            const result = await redeemCode(redeemInput);
+            setRedeemStatus('success');
+            setRedeemMessage(result.message);
+            // Reload credits to show new balance
+            loadSystemCredits();
+            setRedeemInput('');
+        } catch (error) {
+            setRedeemStatus('error');
+            setRedeemMessage(error.message);
+        }
+    };
 
     // Default to 200 if undefined (weekly conversation limit)
     const creditsValue = typeof systemCredits === 'number' ? systemCredits : 200;
@@ -87,6 +117,64 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                     </div>
                 </div>
             </div>
+
+            {/* Redeem Section */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-white/10 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                        <Ticket size={20} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-slate-800 dark:text-white">兑换码</h3>
+                        <p className="text-xs text-slate-500">使用兑换码获取额外积分</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={redeemInput}
+                        onChange={(e) => setRedeemInput(e.target.value)}
+                        placeholder="请输入兑换码 (XXXX-XXXX-XXXX)"
+                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono uppercase"
+                    />
+                    <button
+                        onClick={handleRedeem}
+                        disabled={redeemStatus === 'loading' || !redeemInput.trim()}
+                        className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center gap-2"
+                    >
+                        {redeemStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : '兑换'}
+                    </button>
+                </div>
+
+                {/* Redeem Feedback */}
+                {redeemMessage && (
+                    <div className={`mt-3 text-sm p-3 rounded-xl flex items-center gap-2 ${redeemStatus === 'success'
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
+                        : 'bg-red-50 text-red-600 dark:bg-red-900/20'
+                        }`}>
+                        {redeemStatus === 'success' ? <CheckCircle2 size={16} /> : <Zap size={16} />}
+                        {redeemMessage}
+                    </div>
+                )}
+            </div>
+
+            {/* Admin Toggle (Secret) */}
+            <div className="flex justify-center">
+                <button
+                    onClick={() => setShowAdmin(!showAdmin)}
+                    className="text-xs text-slate-300 dark:text-slate-700 hover:text-slate-400 transition-colors uppercase font-bold tracking-widest flex items-center gap-1"
+                >
+                    <Lock size={10} />
+                    {showAdmin ? 'Hide Admin Tools' : 'Admin Area'}
+                </button>
+            </div>
+
+            {showAdmin && (
+                <div className="animate-in fade-in slide-in-from-bottom-4">
+                    <AdminCodePanel />
+                </div>
+            )}
 
             {/* Features Info */}
             <div className="grid grid-cols-2 gap-4">
