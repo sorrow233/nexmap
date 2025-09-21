@@ -174,9 +174,9 @@ export default function GalleryPage({
 
                                 {showUserMenu && (
                                     <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                                        <div className="absolute top-full right-0 mt-3 w-56 z-50 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden animate-scale-in origin-top-right p-2">
-                                            <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Account</div>
+                                        <div className="fixed inset-0 z-[100]" onClick={() => setShowUserMenu(false)} />
+                                        <div className="absolute top-full right-0 mt-3 w-56 z-[101] bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden animate-scale-in origin-top-right p-2">
+                                            <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t.gallery.account}</div>
                                             <button onClick={() => navigate('/pricing')} className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
                                                 <CreditCard size={16} /> {t.gallery.pricing}
                                             </button>
