@@ -1,7 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /board/
 Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /404
 
-# Sitemap location
 Sitemap: https://nexmap.catzz.work/sitemap.xml

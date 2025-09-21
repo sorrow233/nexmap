@@ -1,122 +1,264 @@
-import { config } from '../seo-config.js';
+/**
+ * Cloudflare Pages Middleware for Multi-Language SEO
+ * 
+ * This middleware intercepts HTML requests and uses HTMLRewriter to dynamically
+ * modify SEO tags based on the URL language prefix.
+ * 
+ * Supported languages: en (default), zh, ja, ko
+ */
+
+import { SEO_CONFIG, LANGUAGES, BASE_URL } from '../src/config/seoConfig.js';
+// Note: Relative import from src should work in Cloudflare Pages build environment if configured correctly.
+// If not, we might need a build step to copy config, but standard bundlers handle this.
 
 /**
- * Cloudflare Pages Function Middleware
- * Intercepts requests to inject localized SEO tags.
+ * Parse language and path from URL
+ * Examples:
+ *   /ja/pricing -> { lang: 'ja', path: '/pricing' }
+ *   /pricing -> { lang: 'en', path: '/pricing' }
+ *   / -> { lang: 'en', path: '/' }
  */
-export async function onRequest(context) {
-    const url = new URL(context.request.url);
-    const { pathname } = url;
+function parseUrlLanguage(pathname) {
+    const parts = pathname.split('/').filter(Boolean);
 
-    // 1. Identify Language
-    let lang = config.defaultLanguage;
-    let routePath = pathname;
+    if (parts.length > 0 && LANGUAGES.includes(parts[0])) {
+        const lang = parts[0];
+        const restPath = '/' + parts.slice(1).join('/') || '/';
+        return { lang, path: restPath };
+    }
 
-    // Check if path starts with a supported language prefix
-    // e.g., /ja/pricing -> lang='ja', routePath='/pricing'
-    for (const supportedLang of config.supportedLanguages) {
-        if (supportedLang === config.defaultLanguage) continue; // Skip default (usually root)
-        if (pathname.startsWith(`/${supportedLang}/`) || pathname === `/${supportedLang}`) {
-            lang = supportedLang;
-            // Remove language prefix from route path for matching
-            routePath = pathname.replace(`/${supportedLang}`, '') || '/';
-            break;
+    return { lang: 'en', path: pathname };
+}
+
+/**
+ * Get SEO config for a specific language and page
+ */
+function getSeoConfig(lang, path) {
+    // Normalize path to remove trailing slashes (except root) and query params if any
+    // The middleware receives pure pathname, so just handle trailing slash
+    const normalizedPath = path === '/' ? '/' : path.replace(/\/$/, '');
+
+    // Look up in the centralized config
+    // We check exact match for now. 
+    // If we had dynamic routes (e.g. /board/:id), we would need regex matching or wildcard logic here.
+    // Given the current config structure, it is static paths.
+
+    let pageConfig = SEO_CONFIG[normalizedPath];
+    if (!pageConfig) {
+        // Fallback to home/default if page not found in config (effectively a 404 from SEO perspective, but we still serve the app)
+        // Ideally we might want generic metadata or just keep the defaults if we implement 404 page separately.
+        // For now, let's use the Home config as a safe fallback for "site-wide" values if specific page missing
+        // OR better: use a default generic set.
+        // Let's fallback to Home but maybe indicate... 
+        // Actually, if it's a board page (/board/...), the BoardPage component handles specific titles client-side.
+        // But for OG tags, unless we fetch dynamic data here, we can only provide generic ones.
+        // Let's check if it starts with /board/
+        if (normalizedPath.startsWith('/board/')) {
+            // Use Gallery or partial generic config
+            pageConfig = SEO_CONFIG['/gallery']; // Use gallery metadata as a proxy for app workspace
+        } else {
+            pageConfig = SEO_CONFIG['/'];
         }
     }
 
-    // 2. Determine Metadata
-    // Find matching page config or fall back to default for that language
-    let pageMeta = config.pages[routePath]?.[lang];
+    return pageConfig[lang] || pageConfig['en'];
+}
 
-    // If strict match not found, check if it's strictly the root
-    if (!pageMeta && routePath === '/') {
-        // Explicit root page data if defined, else fallback
-        pageMeta = config.pages['/']?.[lang];
+/**
+ * Generate hreflang link tags for all supported languages
+ */
+function generateHreflangTags(path, currentLang) {
+    const tags = LANGUAGES.map(lang => {
+        const href = lang === 'en'
+            ? `${BASE_URL}${path}`
+            : `${BASE_URL}/${lang}${path === '/' ? '' : path}`;
+        const hreflang = lang === 'en' ? 'en' : (lang === 'zh' ? 'zh-Hans' : lang);
+        return `<link rel="alternate" hreflang="${hreflang}" href="${href}" />`;
+    });
+
+    // Add x-default (points to English version)
+    tags.push(`<link rel="alternate" hreflang="x-default" href="${BASE_URL}${path}" />`);
+
+    return tags.join('\n    ');
+}
+
+/**
+ * Generate JSON-LD for the page
+ */
+function generateJsonLd(seoConfig, canonicalUrl, lang) {
+    // Basic WebApplication Schema
+    const schema = {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "NexMap",
+        "description": seoConfig.description,
+        "url": canonicalUrl,
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "inLanguage": lang
+    };
+
+    return JSON.stringify(schema);
+}
+
+/**
+ * HTMLRewriter handlers
+ */
+class HtmlLangHandler {
+    constructor(lang) {
+        this.lang = lang;
     }
 
-    // Fallback to language defaults
-    const langConfig = config.translations[lang] || config.translations[config.defaultLanguage];
+    element(element) {
+        element.setAttribute('lang', this.lang);
+    }
+}
 
-    const title = pageMeta?.title || langConfig.defaultTitle;
-    const description = pageMeta?.description || langConfig.defaultDescription;
+class TitleHandler {
+    constructor(title) {
+        this.title = title;
+    }
 
-    // 3. Get Original Response (index.html)
-    // We expect the upstream to serve index.html for SPA routes.
-    const response = await context.next();
+    element(element) {
+        element.setInnerContent(this.title);
+    }
+}
 
-    // If validation fails or not HTML, return original
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('text/html')) {
+class MetaHandler {
+    constructor(seoConfig, info) {
+        this.seoConfig = seoConfig;
+        this.info = info; // { canonicalUrl, lang }
+    }
+
+    element(element) {
+        const name = element.getAttribute('name');
+        const property = element.getAttribute('property');
+
+        // Description meta
+        if (name === 'description') {
+            element.setAttribute('content', this.seoConfig.description);
+        }
+
+        // Keywords meta (if exists)
+        if (name === 'keywords' && this.seoConfig.keywords) {
+            element.setAttribute('content', this.seoConfig.keywords);
+        }
+
+        // Open Graph meta
+        if (property === 'og:title') {
+            element.setAttribute('content', this.seoConfig.ogTitle || this.seoConfig.title);
+        }
+        if (property === 'og:description') {
+            element.setAttribute('content', this.seoConfig.ogDescription || this.seoConfig.description);
+        }
+        if (property === 'og:url') {
+            element.setAttribute('content', this.info.canonicalUrl);
+        }
+        if (property === 'og:locale') {
+            // Map simplified lang to locale if possible, or just use lang
+            const localeMap = { 'en': 'en_US', 'zh': 'zh_CN', 'ja': 'ja_JP', 'ko': 'ko_KR' };
+            element.setAttribute('content', localeMap[this.info.lang] || this.info.lang);
+        }
+
+        // Twitter meta
+        if (name === 'twitter:title') {
+            element.setAttribute('content', this.seoConfig.ogTitle || this.seoConfig.title);
+        }
+        if (name === 'twitter:description') {
+            element.setAttribute('content', this.seoConfig.ogDescription || this.seoConfig.description);
+        }
+    }
+}
+
+class CanonicalHandler {
+    constructor(canonicalUrl) {
+        this.canonicalUrl = canonicalUrl;
+    }
+
+    element(element) {
+        const rel = element.getAttribute('rel');
+        if (rel === 'canonical') {
+            element.setAttribute('href', this.canonicalUrl);
+        }
+    }
+}
+
+class HeadEndHandler {
+    constructor(hreflangTags, jsonLd) {
+        this.hreflangTags = hreflangTags;
+        this.jsonLd = jsonLd;
+    }
+
+    element(element) {
+        // Inject hreflang tags
+        element.append(`\n    <!-- Hreflang for multi-language SEO -->\n    ${this.hreflangTags}\n`, { html: true });
+
+        // Inject JSON-LD
+        if (this.jsonLd) {
+            element.append(`\n    <!-- JSON-LD Structured Data -->\n    <script type="application/ld+json">\n    ${this.jsonLd}\n    </script>\n`, { html: true });
+        }
+    }
+}
+
+/**
+ * Main middleware function
+ */
+export async function onRequest(context) {
+    const { request, next } = context;
+    const url = new URL(request.url);
+
+    // Only process HTML requests (not API, assets, etc.)
+    const pathname = url.pathname;
+    if (
+        pathname.startsWith('/api/') ||
+        pathname.startsWith('/_next/') ||
+        pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|xml|txt|webp|mp4|webm)$/i)
+    ) {
+        return next();
+    }
+
+    // Get the response from the origin (Vite/static files)
+    const response = await next();
+
+    // Only rewrite HTML responses
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) {
         return response;
     }
 
-    // 4. Inject Tags using HTMLRewriter
-    // We use the baseUrl + original pathname for canonical if it's the default lang,
-    // or construct proper canonicals for others? 
-    // Usually canonical points to itself.
-    const currentUrl = `${config.baseUrl}${pathname}`;
+    // Parse language from URL
+    const { lang, path } = parseUrlLanguage(pathname);
+    const seoConfig = getSeoConfig(lang, path);
 
-    return new HTMLRewriter()
-        .on('title', {
-            element(e) {
-                e.setInnerContent(title);
-            }
-        })
-        .on('meta[name="description"]', {
-            element(e) {
-                e.setAttribute('content', description);
-            }
-        })
-        .on('meta[property="og:title"]', {
-            element(e) {
-                e.setAttribute('content', title);
-            }
-        })
-        .on('meta[property="og:description"]', {
-            element(e) {
-                e.setAttribute('content', description);
-            }
-        })
-        .on('meta[property="og:url"]', {
-            element(e) {
-                e.setAttribute('content', currentUrl);
-            }
-        })
-        .on('meta[property="og:locale"]', {
-            element(e) {
-                // Map supportedLang to og:locale format if needed (e.g. ja -> ja_JP)
-                // For now using the lang code as is or simple mapping
-                let locale = lang;
-                if (lang === 'en') locale = 'en_US';
-                if (lang === 'ja') locale = 'ja_JP';
-                if (lang === 'ko') locale = 'ko_KR';
-                if (lang === 'zh-CN') locale = 'zh_CN';
-                if (lang === 'zh-TW') locale = 'zh_TW';
-                e.setAttribute('content', locale);
-            }
-        })
-        // Injects hreflang tags to head
-        .on('head', {
-            append(e) {
-                let hreflangs = '';
-                for (const l of config.supportedLanguages) {
-                    // Construct URL for this language
-                    let langUrl = config.baseUrl;
-                    if (l !== config.defaultLanguage) {
-                        langUrl += `/${l}`;
-                    }
-                    // Append the route path (clean)
-                    if (routePath !== '/') {
-                        langUrl += routePath;
-                    }
-                    hreflangs += `<link rel="alternate" hreflang="${l}" href="${langUrl}" />`;
-                }
-                // Also add x-default (usually point to en)
-                // const defaultUrl = `${config.baseUrl}${routePath === '/' ? '' : routePath}`;
-                // hreflangs += `<link rel="alternate" hreflang="x-default" href="${defaultUrl}" />`;
+    // Build canonical URL
+    const canonicalUrl = lang === 'en'
+        ? `${BASE_URL}${path}`
+        : `${BASE_URL}/${lang}${path === '/' ? '' : path}`;
 
-                e.append(hreflangs, { html: true });
-            }
-        })
-        .transform(response);
+    // Generate hreflang tags
+    const hreflangTags = generateHreflangTags(path, lang);
+
+    // Generate JSON-LD
+    const jsonLd = generateJsonLd(seoConfig, canonicalUrl, lang);
+
+    // Apply HTMLRewriter transformations
+    const rewriter = new HTMLRewriter()
+        .on('html', new HtmlLangHandler(lang))
+        .on('title', new TitleHandler(seoConfig.title))
+        .on('meta', new MetaHandler(seoConfig, { canonicalUrl, lang })) // Handle all meta via one handler selector if possible, or specific selectors. 
+        // Note: 'meta' selector matches ALL meta tags. Efficient but need careful logic inside.
+        // Actually, let's use specific attributes to be safer and avoid iterating unnecessary tags.
+        .on('meta[name="description"]', new MetaHandler(seoConfig, { canonicalUrl, lang }))
+        .on('meta[name="keywords"]', new MetaHandler(seoConfig, { canonicalUrl, lang }))
+        .on('meta[property^="og:"]', new MetaHandler(seoConfig, { canonicalUrl, lang }))
+        .on('meta[name^="twitter:"]', new MetaHandler(seoConfig, { canonicalUrl, lang }))
+        .on('link[rel="canonical"]', new CanonicalHandler(canonicalUrl))
+        .on('head', new HeadEndHandler(hreflangTags, jsonLd));
+
+    return rewriter.transform(response);
 }
