@@ -18,21 +18,31 @@ export const removeUndefined = (obj) => {
 };
 
 /**
- * Reconciles cloud cards with local cards, handling generic content merging and deletion detection based on timestamps.
+ * Reconciles cloud cards with local cards, handling generic content merging and deletion detection.
+ * Uses syncVersion (logical clock) for reliable conflict detection, with timestamp fallback for backward compatibility.
  * 
  * @param {Array} cloudCards - Cards from the cloud snapshot
  * @param {Array} localCards - Cards from local storage
- * @param {number} localUpdatedAt - Timestamp of the last local update
- * @param {number} boardUpdatedAt - Timestamp of the cloud update
+ * @param {number} localSyncVersion - Local syncVersion (logical clock), 0 if not available
+ * @param {number} cloudSyncVersion - Cloud syncVersion (logical clock), 0 if not available
+ * @param {number} localUpdatedAt - Timestamp of the last local update (fallback)
+ * @param {number} boardUpdatedAt - Timestamp of the cloud update (fallback)
  * @returns {Array} - The final list of merged cards
  */
-export const reconcileCards = (cloudCards = [], localCards = [], localUpdatedAt = 0, boardUpdatedAt = 0) => {
+export const reconcileCards = (cloudCards = [], localCards = [], localSyncVersion = 0, cloudSyncVersion = 0, localUpdatedAt = 0, boardUpdatedAt = 0) => {
+    // Determine which source is authoritative based on syncVersion or timestamp
+    const cloudIsNewer = cloudSyncVersion > 0 && localSyncVersion > 0
+        ? cloudSyncVersion > localSyncVersion
+        : boardUpdatedAt > localUpdatedAt;
+
     // 1. Reconcile Cloud Cards (Keep unless locally deleted)
     const mergedCards = cloudCards.map(cloudCard => {
         const localCard = localCards.find(c => c.id === cloudCard.id);
         if (!localCard) {
             // RECONCILIATION: Is this a remote addition or a local deletion?
-            if (cloudCard.createdAt && cloudCard.createdAt > localUpdatedAt) {
+            // Use syncVersion-based detection if available, otherwise use timestamp
+            const referenceTime = localSyncVersion > 0 ? 0 : localUpdatedAt;
+            if (cloudCard.createdAt && cloudCard.createdAt > referenceTime) {
                 return cloudCard; // Remote addition
             }
             return null; // Likely local deletion

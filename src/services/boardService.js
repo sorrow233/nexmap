@@ -46,7 +46,8 @@ export const createBoard = async (name) => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         lastAccessedAt: Date.now(),
-        cardCount: 0
+        cardCount: 0,
+        syncVersion: 0 // Initialize logical clock
     };
     debugLog.storage(`Creating new board: ${newBoard.name}`, { id: newBoard.id });
     const list = getRawBoardsList();
@@ -86,15 +87,18 @@ export const saveBoard = async (id, data) => {
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
+        // Preserve and increment syncVersion for cloud sync
+        const currentVersion = list[boardIndex].syncVersion || 0;
         list[boardIndex] = {
             ...list[boardIndex],
             updatedAt: timestamp,
             cardCount: data.cards?.length || 0,
+            syncVersion: data.syncVersion !== undefined ? data.syncVersion : currentVersion,
             ...(data.name && { name: data.name })
         };
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
     }
-    await idbSet(BOARD_PREFIX + id, { ...data, updatedAt: timestamp });
+    await idbSet(BOARD_PREFIX + id, { ...data, updatedAt: timestamp, syncVersion: data.syncVersion });
 };
 
 export const loadBoard = async (id) => {
