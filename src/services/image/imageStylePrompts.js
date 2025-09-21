@@ -32,60 +32,60 @@ export const DEFAULT_STYLE = STYLE_TYPES.KANGO_ROO;
  */
 const STYLE_DEFINITIONS = {
     [STYLE_TYPES.KANGO_ROO]: {
-        name: 'Kango Roo! (看護roo!)',
-        description: 'Japanese medical/nursing illustration style. Extremely soft, rounded, clinical colors. Used to de-escalate scary medical topics.',
+        name: 'いらすとや',
+        description: 'Authentic Irasutoya style by Takashi Mifune. Chibi characters with pink rosy cheeks, black hair, thin dark outlines.',
 
-        // Core style keywords
+        // Core style keywords - AUTHENTIC IRASUTOYA
         keywords: [
-            'みふねたかし style',         // Takashi Mifune in Japanese - most important
-            'Mifune Takashi illustration',
-            'いらすとや風',                // Irasutoya style in Japanese
-            'Irasutoya style',
-            'Japanese フリー素材',
-            'Kango Roo style',
-            'soft rounded shapes',
-            'clinical pastel colors',
-            'gentle and approachable',
-            'educational illustration',
-            'simple clean design',
-            'no harsh outlines',
-            'soft colored edges',
+            'いらすとや',
+            'Irasutoya',
+            'Takashi Mifune',
+            'みふねたかし',
+            'Japanese free clip art',
+            'フリー素材',
+            'chibi character',
+            'pink rosy cheeks',
+            'black hair',
+            'thin dark outlines',
+            '2 heads tall proportions',
+            'cute simple Japanese illustration',
+            'flat cel shading',
         ],
 
         // Things to explicitly avoid
         negative: [
             'anime style',
+            '3D',
             'realistic',
             'photographic',
-            'sharp outlines',
-            '3D render',
-            'cinematic lighting',
-            'dramatic shadows',
-            'detailed shading',
-            'complex textures',
-            'scary',
-            'bloody',
-            'anatomically detailed',
+            'gradients',
+            'soft shading',
+            'detailed',
+            'western cartoon',
+            'disney style',
         ],
 
-        // Character design rules
+        // Character design rules - AUTHENTIC IRASUTOYA
         characterRules: `
-            - Simple "dot eyes" (●) or small oval eyes, never anime-style large eyes
-            - Minimal facial features: simple nose (or none), gentle curved smile
-            - Rounded body proportions, soft edges, 2-3 heads tall
-            - Hands simplified (mitten-like or 4 fingers)
-            - Clothing in soft pastel colors (light blue, pink, cream, mint)
-            - No gender stereotyping - use diverse characters (women, elderly, children, animals)
-            - Expressions simple but warm and reassuring
+            AUTHENTIC いらすとや CHARACTERISTICS:
+            - PINK ROSY CHEEKS - signature look (circular pink blush on cheeks)
+            - BLACK HAIR - almost always black, simple rounded shapes
+            - THIN DARK OUTLINES - thin black or dark brown lines around everything
+            - CHIBI PROPORTIONS - 2 heads tall, very short and round body
+            - Eyes: curved lines (^_^) or simple dots, expressing emotions
+            - Simple curved smile, NO complex facial features
+            - Very round, soft body shapes
+            - Simple mitten-like hands
         `,
 
-        // Color guidance
+        // Color guidance - AUTHENTIC IRASUTOYA
         colorPalette: `
-            - Low saturation pastels: soft pink, light blue, cream, mint green
-            - White or very light beige backgrounds
-            - Soft shadows using slightly darker pastels (no black shadows)
-            - Skin tones in warm peachy-cream
-            - Avoid primary colors; use muted, clinical versions
+            AUTHENTIC いらすとや COLORS:
+            - Skin: peachy-cream with PINK CIRCULAR BLUSH on cheeks
+            - Hair: BLACK (almost always)
+            - Clothes: muted pastels (not too bright)
+            - Background: pure white
+            - Flat colors with thin dark outlines
         `,
     },
 
@@ -147,11 +147,8 @@ export function getStyleDefinition(styleType = DEFAULT_STYLE) {
  * @returns {string} - Enhanced prompt with style keywords
  */
 export function enhancePromptWithStyle(userPrompt, styleType = DEFAULT_STYLE) {
-    const style = getStyleDefinition(styleType);
-
-    // Build enhanced prompt
-    const stylePrefix = style.keywords.slice(0, 5).join(', ');
-    const enhancedPrompt = `${stylePrefix}. ${userPrompt}. Simple clean illustration, soft pastel colors, white background, no text.`;
+    // AI models KNOW いらすとや - just use the famous name directly
+    const enhancedPrompt = `いらすとや style by みふねたかし (Takashi Mifune). ${userPrompt}. Japanese free clip art, white background.`;
 
     return enhancedPrompt;
 }
@@ -237,9 +234,7 @@ ${style.characterRules}
  * Simplified version for Cloudflare Functions (no module imports)
  */
 export const BACKEND_STYLE_PREFIX =
-    'Kango Roo style, Japanese medical illustration, soft rounded shapes, ' +
-    'clinical pastel colors, simple clean design, no harsh outlines, ' +
-    'dot eyes, gentle expression, white background, no text. ';
+    'いらすとや style by みふねたかし (Takashi Mifune). Japanese free clip art, white background. ';
 
 /**
  * Get negative prompt keywords for style

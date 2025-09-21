@@ -23,11 +23,9 @@ const IMAGE_API_BASE = 'https://console.gmicloud.ai/api/v1/ie/requestqueue/apike
 const WEEKLY_CONVERSATION_LIMIT = 200;
 const WEEKLY_IMAGE_LIMIT = 20;
 
-// Style prefix for image generation (みふねたかし / Irasutoya style)
+// Style prefix - AI models KNOW いらすとや by name!
 const IMAGE_STYLE_PREFIX =
-    'みふねたかし style, Mifune Takashi illustration, いらすとや風, Irasutoya style, ' +
-    'Japanese フリー素材, soft rounded shapes, clinical pastel colors, simple clean design, ' +
-    'no harsh outlines, dot eyes, gentle expression, white background, no text. ';
+    'いらすとや style by みふねたかし (Takashi Mifune). Japanese free clip art, white background. ';
 
 /**
  * Get the current week number (ISO week, Monday is first day)

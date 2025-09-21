@@ -51,12 +51,13 @@ export async function redeemCode(code) {
 
 /**
  * Admin: Generate new codes
- * @param {number} amount - Credits per code
+ * @param {number} amount - Credits per code (ignored for Pro type)
  * @param {number} count - Number of codes to generate
  * @param {string} note - Optional note
+ * @param {'credits'|'pro'} type - Code type: 'credits' or 'pro'
  * @returns {Promise<Object>}
  */
-export async function generateCodes(amount, count, note = '') {
+export async function generateCodes(amount, count, note = '', type = 'credits') {
     try {
         const token = await getAuthToken();
         const response = await fetch(`${API_BASE}/admin/codes`, {
@@ -65,7 +66,7 @@ export async function generateCodes(amount, count, note = '') {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ amount, count, note })
+            body: JSON.stringify({ amount, count, note, type })
         });
 
         const data = await response.json();
