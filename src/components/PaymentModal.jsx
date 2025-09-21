@@ -83,38 +83,58 @@ const PaymentModal = ({ isOpen, onClose }) => {
 
                 <div className="p-6">
                     {activeTab === 'credits' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Starter */}
-                            <PlanCard
-                                title="Starter"
-                                amount="$0.99"
-                                credits="100 credits"
-                                sub="~200 chats"
-                                features={['Pay as you go', 'No expiration']}
-                                onClick={() => handleCheckout('credits_100')}
-                                loading={loadingProduct === 'credits_100'}
-                            />
-                            {/* Standard - Recommended */}
-                            <PlanCard
-                                title="Standard"
-                                amount="$3.99"
-                                credits="500 credits"
-                                sub="~1,000 chats"
-                                popular
-                                features={['Best value', 'Priority support']}
-                                onClick={() => handleCheckout('credits_500')}
-                                loading={loadingProduct === 'credits_500'}
-                            />
-                            {/* Power */}
-                            <PlanCard
-                                title="Power"
-                                amount="$9.99"
-                                credits="2,000 credits"
-                                sub="~4,000 chats"
-                                features={['For heavy users', 'Max efficiency']}
-                                onClick={() => handleCheckout('credits_2000')}
-                                loading={loadingProduct === 'credits_2000'}
-                            />
+                        <div className="space-y-6">
+                            {/* Free Tier Banner */}
+                            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl p-4">
+                                <div className="flex items-center justify-between flex-wrap gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white bg-emerald-600">
+                                            FREE
+                                        </div>
+                                        <span className="text-sm text-white/80">You get <b className="text-emerald-400">200 chats</b> + <b className="text-emerald-400">20 images</b> per week</span>
+                                    </div>
+                                    <span className="text-xs text-white/40">Resets Monday</span>
+                                </div>
+                            </div>
+
+                            {/* Optional: Need More Section */}
+                            <div className="text-center text-xs text-white/40 uppercase tracking-wider font-medium">
+                                Need more? Buy credits below
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Starter */}
+                                <PlanCard
+                                    title="Starter"
+                                    amount="$0.99"
+                                    credits="100 credits"
+                                    sub="~200 chats"
+                                    features={['Pay as you go', 'No expiration']}
+                                    onClick={() => handleCheckout('credits_100')}
+                                    loading={loadingProduct === 'credits_100'}
+                                />
+                                {/* Standard - Recommended */}
+                                <PlanCard
+                                    title="Standard"
+                                    amount="$3.99"
+                                    credits="500 credits"
+                                    sub="~1,000 chats"
+                                    popular
+                                    features={['Best value', 'Priority support']}
+                                    onClick={() => handleCheckout('credits_500')}
+                                    loading={loadingProduct === 'credits_500'}
+                                />
+                                {/* Power */}
+                                <PlanCard
+                                    title="Power"
+                                    amount="$9.99"
+                                    credits="2,000 credits"
+                                    sub="~4,000 chats"
+                                    features={['For heavy users', 'Max efficiency']}
+                                    onClick={() => handleCheckout('credits_2000')}
+                                    loading={loadingProduct === 'credits_2000'}
+                                />
+                            </div>
                         </div>
                     ) : (
                         <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 rounded-2xl p-1 border border-amber-500/20">

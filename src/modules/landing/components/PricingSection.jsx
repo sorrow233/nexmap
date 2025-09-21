@@ -218,11 +218,44 @@ export default function PricingSection({ showTitle = true }) {
                 <div className="h-px bg-white flex-1" />
             </div>
 
-            {/* Credits Section - Secondary Focus */}
+            {/* Free + Credits Section */}
             <div>
                 <div className="text-center mb-12">
-                    <h3 className="text-2xl font-bold text-white mb-2">{pricing.casualUser}</h3>
-                    <p className="text-white/50">{pricing.casualUserDesc}</p>
+                    <h3 className="text-2xl font-bold text-white mb-2">{pricing.casualUser || "Start Free, Upgrade When Ready"}</h3>
+                    <p className="text-white/50">{pricing.casualUserDesc || "Everyone gets generous free credits. Buy more when you need them."}</p>
+                </div>
+
+                {/* Free Tier Banner */}
+                <div className="max-w-5xl mx-auto mb-8">
+                    <div className="relative bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-6 md:p-8">
+                        <div className="absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white bg-emerald-600 shadow-lg shadow-emerald-500/20">
+                            {pricing.freeTierBadge || "FREE FOREVER"}
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="text-center md:text-left">
+                                <h4 className="text-xl font-bold text-white mb-2">{pricing.freeTierTitle || "Free Tier"}</h4>
+                                <p className="text-white/60 text-sm max-w-md">
+                                    {pricing.freeTierDesc || "No credit card required. Resets every Monday."}
+                                </p>
+                            </div>
+
+                            <div className="flex gap-6 flex-wrap justify-center">
+                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
+                                    <div className="text-2xl font-bold text-emerald-400">200</div>
+                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.chatsPerWeek || "Chats/Week"}</div>
+                                </div>
+                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
+                                    <div className="text-2xl font-bold text-emerald-400">20</div>
+                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.imagesPerWeek || "Images/Week"}</div>
+                                </div>
+                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
+                                    <div className="text-2xl font-bold text-emerald-400">∞</div>
+                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.boards || "Boards"}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
