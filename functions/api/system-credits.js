@@ -399,10 +399,14 @@ export async function onRequest(context) {
         console.log(`[SystemCredits] User ${userId} (${usageData.conversationCount}/${WEEKLY_CONVERSATION_LIMIT} this week) -> ${url} [${selectedModel}]`);
 
         // Ensure request body matches OpenAI spec
+        // For Kimi-K2-Thinking: use temperature=1.0 to enable reasoning exploration
         const openaiBody = {
             ...requestBody,
             model: selectedModel,
             stream: stream,
+            // Enable reasoning mode with recommended settings for Kimi-K2-Thinking
+            temperature: selectedModel === CONVERSATION_MODEL ? 1.0 : (requestBody.temperature || 0.7),
+            max_tokens: requestBody.max_tokens || 16384, // Higher limit for reasoning chains
             stream_options: stream ? { include_usage: true } : undefined
         };
 

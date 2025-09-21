@@ -12,6 +12,8 @@ import {
     getBoardsList, // New import
     saveBoardToCloud // Ensure this is imported if not already, though it was in the file before? No wait, it wasn't used in this file before but I can import it.
 } from '../services/storage';
+import { listenForFavoriteUpdates, saveFavoriteToCloud as saveFavoritesToCloud } from '../services/syncService';
+import favoritesService from '../services/favoritesService';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
@@ -115,6 +117,15 @@ export function useAppInit() {
                 // Actually parallel is fine, Firestore handles it.
                 migrateLocalData();
 
+                // Migrate Favorites
+                const localFavorites = favoritesService.getFavorites();
+                if (localFavorites.length > 0) {
+                    debugLog.sync(`Found ${localFavorites.length} local favorites. Migrating to cloud...`);
+                    localFavorites.forEach(fav => {
+                        saveFavoritesToCloud(u.uid, fav);
+                    });
+                }
+
                 debugLog.sync('Starting cloud board sync...');
                 unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
                     debugLog.sync(`Received cloud update for ${cloudBoards.length} boards`, updatedIds);
@@ -134,6 +145,18 @@ export function useAppInit() {
                     }
                 });
 
+                // Listen for favorites
+                const unsubFav = listenForFavoriteUpdates(u.uid, (updates) => {
+                    favoritesService.updateLocalFavorites(updates);
+                });
+
+                // Chain unsubscribe
+                const originalUnsubDb = unsubDb;
+                unsubDb = () => {
+                    originalUnsubDb();
+                    unsubFav();
+                };
+
                 debugLog.auth('Loading user settings from cloud...');
                 loadUserSettings(u.uid).then(settings => {
                     if (settings) {
@@ -147,6 +170,21 @@ export function useAppInit() {
                         }
                         if (settings.s3Config) {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
+                        }
+
+                        // Sync custom instructions from cloud
+                        if (settings.customInstructions) {
+                            localStorage.setItem('mixboard_custom_instructions', settings.customInstructions);
+                        }
+
+                        // Sync global prompts from cloud
+                        if (settings.globalPrompts && Array.isArray(settings.globalPrompts)) {
+                            localStorage.setItem('mixboard_global_prompts', JSON.stringify(settings.globalPrompts));
+                        }
+
+                        // Sync language preference from cloud
+                        if (settings.userLanguage) {
+                            localStorage.setItem('userLanguage', settings.userLanguage);
                         }
 
                         // Check welcome page status from cloud

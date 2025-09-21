@@ -258,3 +258,59 @@ export const loadUserSettings = async (userId) => {
         return null;
     }
 };
+
+// --- Favorites Sync ---
+
+export const listenForFavoriteUpdates = (userId, onUpdate) => {
+    if (!db || !userId) return () => { };
+
+    try {
+        debugLog.sync('Initializing Firestore listener for user favorites');
+        const favoritesRef = collection(db, 'users', userId, 'favorites');
+        return onSnapshot(favoritesRef, (snapshot) => {
+            const changes = [];
+
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                // Ensure ID is present
+                if (!data.id) return;
+
+                if (change.type === 'added' || change.type === 'modified') {
+                    changes.push(data);
+                } else if (change.type === 'removed') {
+                    changes.push({ id: data.id, _deleted: true });
+                }
+            });
+
+            if (changes.length > 0) {
+                debugLog.sync(`Received ${changes.length} favorite updates from cloud`);
+                onUpdate(changes);
+            }
+        });
+    } catch (err) {
+        debugLog.error("listenForFavoriteUpdates error:", err);
+        return () => { };
+    }
+};
+
+export const saveFavoriteToCloud = async (userId, favorite) => {
+    if (!db || !userId || !favorite || !favorite.id) return;
+    try {
+        // debugLog.sync(`Saving favorite ${favorite.id} to cloud`);
+        const favRef = doc(db, 'users', userId, 'favorites', favorite.id);
+        await setDoc(favRef, { ...favorite, updatedAt: serverTimestamp() });
+    } catch (e) {
+        debugLog.error(`Cloud save failed for favorite ${favorite.id}`, e);
+    }
+};
+
+export const deleteFavoriteFromCloud = async (userId, favoriteId) => {
+    if (!db || !userId) return;
+    try {
+        debugLog.sync(`Deleting favorite ${favoriteId} from cloud`);
+        const favRef = doc(db, 'users', userId, 'favorites', favoriteId);
+        await deleteDoc(favRef);
+    } catch (e) {
+        debugLog.error(`Cloud delete failed for favorite ${favoriteId}`, e);
+    }
+};

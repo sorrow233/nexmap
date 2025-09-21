@@ -10,7 +10,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const { generatingBoardId, generateBackground } = useBoardBackground();
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null, isPermanent: false });
-    const [freeUserDialog, setFreeUserDialog] = useState(false);
+    // NOTE: freeUserDialog removed - free users now have 20 images/week quota
     const [greeting, setGreeting] = useState('morning');
     const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
     const { t } = useLanguage();
@@ -89,7 +89,6 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                             generatingBoardId={generatingBoardId}
                                             variant="overlay"
                                             isSystemCreditsUser={isSystemCreditsUser}
-                                            onFreeUserRestricted={() => setFreeUserDialog(true)}
                                         />
                                     </div>
                                 ))}
@@ -127,7 +126,6 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     generatingBoardId={generatingBoardId}
                                     variant="stacked"
                                     isSystemCreditsUser={isSystemCreditsUser}
-                                    onFreeUserRestricted={() => setFreeUserDialog(true)}
                                 />
                             </div>
                         ))}
@@ -170,14 +168,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                 type="confirm"
             />
 
-            {/* Free User Restriction Dialog */}
-            <ModernDialog
-                isOpen={freeUserDialog}
-                onClose={() => setFreeUserDialog(false)}
-                title="功能限制"
-                message="鉴于图片生成模型的成本较高，普通用户暂时不支持该功能。如需使用，请配置您自己的 API Key。"
-                type="alert"
-            />
+            {/* NOTE: Free User Restriction Dialog removed - free users now have 20 images/week quota */}
         </div>
     );
 }

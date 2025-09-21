@@ -17,11 +17,8 @@ export default function BoardCard({
 }) {
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
-        if (isSystemCreditsUser && onFreeUserRestricted) {
-            onFreeUserRestricted();
-        } else {
-            onGenerateBackground(boardId);
-        }
+        // Free users now have 20 images/week quota, no restriction needed
+        onGenerateBackground(boardId);
     };
 
     const getDaysRemaining = (deletedAt) => {
