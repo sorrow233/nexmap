@@ -105,16 +105,24 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 
             // Sync Metadata List - FILTER OUT INVALID DOCS (no id or name)
             const allBoards = snapshot.docs.map(doc => doc.data()).filter(b => b && b.id);
-            const metadataList = allBoards.map(b => ({
-                id: b.id,
-                name: b.name || 'Untitled',
-                createdAt: b.createdAt || Date.now(),
-                updatedAt: b.updatedAt || Date.now(),
-                lastAccessedAt: b.lastAccessedAt || b.updatedAt || Date.now(),
-                cardCount: b.cards?.length || 0,
-                deletedAt: b.deletedAt,
-                backgroundImage: b.backgroundImage
-            })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            const metadataList = allBoards.map(b => {
+                // CRITICAL FIX: Recover createdAt from board ID (timestamp-based) if missing
+                // Board IDs are generated with Date.now().toString(), so we can extract the original creation time
+                const idAsTimestamp = parseInt(b.id, 10);
+                const recoveredCreatedAt = (!isNaN(idAsTimestamp) && idAsTimestamp > 1000000000000) ? idAsTimestamp : null;
+
+                return {
+                    id: b.id,
+                    name: b.name || 'Untitled',
+                    // Prefer explicit createdAt, then recover from ID, lastly use updatedAt (NOT Date.now())
+                    createdAt: b.createdAt || recoveredCreatedAt || b.updatedAt || 0,
+                    updatedAt: b.updatedAt || recoveredCreatedAt || 0,
+                    lastAccessedAt: b.lastAccessedAt || b.updatedAt || recoveredCreatedAt || 0,
+                    cardCount: b.cards?.length || 0,
+                    deletedAt: b.deletedAt,
+                    backgroundImage: b.backgroundImage
+                };
+            }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
