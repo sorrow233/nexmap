@@ -99,7 +99,7 @@ export default function GalleryPage({
             <div className="max-w-[1800px] mx-auto relative z-10 px-4 md:px-8 py-6">
 
                 {/* Modern Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 animate-fade-in-up">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 animate-fade-in-up relative z-20">
 
                     {/* Brand & View Switcher */}
                     <div className="flex items-center gap-8">

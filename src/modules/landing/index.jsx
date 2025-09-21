@@ -7,7 +7,7 @@ import GraphSection from './components/GraphSection';
 import FooterSection from './components/FooterSection';
 import DemoInfinite from './components/DemoInfinite';
 import FeatureBento from './components/FeatureBento';
-import LanguageSwitcher from './components/LanguageSwitcher';
+import TopNav from './components/TopNav';
 import PricingSection from './components/PricingSection';
 
 import SEO from '../../components/SEO';
@@ -143,7 +143,8 @@ const LandingModule = () => {
                 <FooterSection />
             </div>
 
-            <LanguageSwitcher />
+            {/* Top Navigation Overlay */}
+            <TopNav />
 
         </div>
     );
