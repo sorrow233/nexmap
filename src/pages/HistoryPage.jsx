@@ -1,28 +1,136 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, GitCommit, Calendar, Tag, Activity } from 'lucide-react';
+import SEO from '../components/SEO';
 
 export default function HistoryPage() {
-    // Simulated 2-month timeline (Nov 2025 - Jan 2026)
-    // Derived from actual git logs but spread out
+    // Real changelog derived from actual git history
     const changes = [
-        { date: "Jan 03, 2026", version: "0.0.26", title: "Global Polish & SEO", items: ["Added 'About' and 'History' pages to showcase project vision", "Implemented 'Pricing' section on Landing page", "Optimized SEO with proper meta tags and sitemap", "Fixed missing translations in settings menu"] },
-        { date: "Jan 01, 2026", version: "0.0.25", title: "Visual Refinement", items: ["New application icons with clean mind map logo", "Updated Gallery UI with glassmorphism effects", "Fixed board prompts sync issue with cloud storage", "Resolved unclickable user menu buttons"] },
-        { date: "Dec 29, 2025", version: "0.0.24", title: "Intelligence Upgrade", items: ["Switched free tier conversation model to Kimi-K2-Thinking", "Implemented weekly usage limits for free users", "Fixed infinite loop bug in BoardPage", "Refactored sidebar for better IME support on macOS"] },
-        { date: "Dec 25, 2025", version: "0.0.23", title: "Christmas Update", items: ["Added 'Zone' feature for quick card grouping", "Implemented Drag-and-Drop for sidebar prompts", "Fixed sidebar translation errors", "Improved mobile scrolling experience"] },
-        { date: "Dec 20, 2025", version: "0.0.22", title: "Sprout & Branch", items: ["Launched 'Quick Sprout' for one-click topic decomposition", "Added 'Curiosity Maximization' prompt strategy", "Improved collision detection for new cards", "Standardized mindmap layout algorithms"] },
-        { date: "Dec 15, 2025", version: "0.0.21", title: "Core Stability", items: ["Fixed data overwrite bug during backup restoration", "Modularized Gemini provider for better error handling", "Solved 404 errors for image generation proxy", "Added automatic retry mechanism for API calls"] },
-        { date: "Dec 10, 2025", version: "0.0.20", title: "Globalization", items: ["Added support for 4 languages (EN, ZH, JA, KO)", "Localized Pricing page with dynamic currency support", "Implemented region-based restriction checks", "Added 'Tokushoho' and Privacy Policy pages"] },
-        { date: "Dec 05, 2025", version: "0.0.19", title: "Settings Overhaul", items: ["Redesigned Settings modal with better categorization", "Added user custom instructions support", "Implemented manual JSON export/import for emergency backup", "Fixed transition animations causing lag"] },
-        { date: "Nov 28, 2025", version: "0.0.18", title: "Visual Generation", items: ["Integrated 'Irasutoya' style for image generation", "Fixed iPad Safari image export issues", "Added watermark options for exported images", "optimized html2canvas performance"] },
-        { date: "Nov 20, 2025", version: "0.0.17", title: "Coconara Automation", items: ["released automated application generator tool", "Added dual-model scoring (Gemini + Kimi)", "Implemented interactive CLI for job selection", "Refined scoring prompts for better accuracy"] },
-        { date: "Nov 15, 2025", version: "0.0.15", title: "Security Hardening", items: ["Implemented secure layout for auth tokens", "Added logout confirmation dialog", "Prevented data leakage on public terminals", "Fixed ghost logout issues"] },
-        { date: "Nov 08, 2025", version: "0.0.12", title: "Beta Launch", items: ["Initial Beta Release", "Basic infinite canvas functionality", "Real-time Google Firebase sync", "Markdown support in cards"] },
-        { date: "Nov 03, 2025", version: "0.0.1", title: "Inception", items: ["Project initialized", "Core architecture design", "First commit to repository"] }
+        {
+            date: "Jan 03, 2026",
+            version: "0.0.26",
+            title: "SEO & Accessibility",
+            items: [
+                "Implemented dynamic SEO with per-page meta tags (react-helmet-async)",
+                "Added proper favicon for Google Search display",
+                "Fixed unclickable user menu buttons (CSS stacking context)",
+                "Added free image generation for free users (20/week)",
+                "Switched free tier conversation model to Kimi-K2-Thinking"
+            ]
+        },
+        {
+            date: "Jan 03, 2026",
+            version: "0.0.25",
+            title: "Internationalization & Sync",
+            items: [
+                "Complete 4-language support (EN, ZH, JA, KO)",
+                "Updated app icons with new NexMap mind map logo",
+                "Fixed board prompts (tags) cloud sync issue",
+                "Fixed Mac IME positioning issues in Sidebar"
+            ]
+        },
+        {
+            date: "Jan 03, 2026",
+            version: "0.0.24",
+            title: "Sidebar & Zone",
+            items: [
+                "Redesigned Sidebar to floating Notion-style tags",
+                "Added Zone button for quick card grouping",
+                "Implemented Prompt Sidebar with Drag-and-Drop",
+                "Fixed infinite loop bug in BoardPage"
+            ]
+        },
+        {
+            date: "Dec 31, 2025",
+            version: "0.0.23",
+            title: "Sprout & Branch",
+            items: [
+                "Added Quick Sprout for one-click topic decomposition",
+                "Implemented 'Curiosity Maximization' prompt strategy",
+                "Standard mindmap layout for Sprout/Branch",
+                "Added collision detection for new card placement"
+            ]
+        },
+        {
+            date: "Dec 31, 2025",
+            version: "0.0.22",
+            title: "Image & Export",
+            items: [
+                "Refined image generation with Irasutoya style prompts",
+                "Fixed iPad Safari image export issues",
+                "Added user custom instructions support",
+                "Modularized Gemini provider for better error handling"
+            ]
+        },
+        {
+            date: "Dec 30, 2025",
+            version: "0.0.21",
+            title: "Gallery Modernization",
+            items: [
+                "Modernized Gallery UI with glassmorphism",
+                "Resolved scrolling issues on mobile",
+                "Added auto-retry (max 2) for API errors",
+                "Enabled manual language switching via settings"
+            ]
+        },
+        {
+            date: "Dec 29, 2025",
+            version: "0.0.19",
+            title: "AI Manager",
+            items: [
+                "Fixed Gemini 400 validation errors",
+                "Resolved AIManager message loss issue",
+                "Sanitized image data for API compatibility"
+            ]
+        },
+        {
+            date: "Dec 28, 2025",
+            version: "0.0.17",
+            title: "Security & Backup",
+            items: [
+                "Added 5-day timed sync rollback feature",
+                "Fixed data clearing bug on login",
+                "Introduced logout safety lock",
+                "Made manual JSON import always visible for recovery"
+            ]
+        },
+        {
+            date: "Dec 28, 2025",
+            version: "0.0.16",
+            title: "Localization",
+            items: [
+                "Localized Pricing page content (EN, ZH, JA)",
+                "Added Tokushoho and Privacy Policy pages",
+                "Implemented region-based access restriction"
+            ]
+        },
+        {
+            date: "Dec 27, 2025",
+            version: "0.0.15",
+            title: "Stability",
+            items: [
+                "Fixed ghost logout issues",
+                "Prevented welcome popup from reappearing",
+                "Optimized code structure"
+            ]
+        },
+        {
+            date: "Nov 2025",
+            version: "0.0.1",
+            title: "Initial Release",
+            items: [
+                "Basic infinite canvas functionality",
+                "Real-time Google Firebase sync",
+                "Markdown support in cards",
+                "Multi-modal AI chat integration"
+            ]
+        }
     ];
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-indigo-500/30">
+            <SEO title="Changelog" description="See what's new in NexMap. A transparent look at our development journey." />
+
             {/* Background Effects */}
             <div className="fixed inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[20%] right-[-5%] w-[40%] h-[40%] bg-blue-900/5 rounded-full blur-[120px]" />
@@ -44,10 +152,10 @@ export default function HistoryPage() {
 
                 <div className="mb-24">
                     <h1 className="text-5xl font-bold tracking-tight mb-6">
-                        Evolution of <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">MixBoard</span>
+                        Evolution of <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">NexMap</span>
                     </h1>
                     <p className="text-xl text-white/50 max-w-2xl">
-                        A transparent look at our journey from a rough prototype to a spatial thinking engine. We ship fast and break things, then fix them.
+                        A transparent look at our journey from a rough prototype to a spatial thinking engine. We ship fast and iterate often.
                     </p>
                 </div>
 
