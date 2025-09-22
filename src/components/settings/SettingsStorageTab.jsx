@@ -227,7 +227,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
     };
 
     return (
-        <div className="space-y-6 animate-slide-up">
+        <div className="space-y-6">
 
 
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">

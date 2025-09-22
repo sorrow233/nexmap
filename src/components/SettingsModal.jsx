@@ -178,7 +178,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     );
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-4">
             <div className="bg-white dark:bg-slate-900 w-[950px] h-[650px] rounded-3xl shadow-2xl flex overflow-hidden border border-slate-200 dark:border-white/10">
 
                 {/* Sidebar */}
@@ -211,7 +211,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         </div>
 
                         {showAdvanced && (
-                            <div className="animate-slide-down space-y-6 pl-2 border-l-2 border-slate-100 dark:border-white/5 ml-4">
+                            <div className="space-y-6 pl-2 border-l-2 border-slate-100 dark:border-white/5 ml-4">
                                 <div className="space-y-1">
                                     <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.settings.aiConfiguration}</div>
                                     <TabButton id="llm" icon={Cpu} label={t.settings.provider} description={t.settings.providerDesc} />
@@ -252,7 +252,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95 text-sm"
+                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm"
                             >
                                 {t.settings.saveChanges}
                             </button>
@@ -261,7 +261,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
                     {/* Scrollable Content */}
                     <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                        <div className="max-w-3xl mx-auto animate-fade-in-up">
+                        <div className="max-w-3xl mx-auto">
                             {activeTab === 'credits' && (
                                 <SettingsCreditsTab onOpenAdvanced={() => {
                                     setShowAdvanced(true);
@@ -305,7 +305,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
                 {/* Dialogs & Toasts */}
                 {saveSuccess && (
-                    <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[200] animate-slide-down">
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[200]">
                         <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md bg-opacity-95">
                             <CheckCircle2 size={24} />
                             <div>
@@ -317,8 +317,8 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                 )}
 
                 {showResetConfirm && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center animate-fade-in">
-                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-sm animate-scale-in border border-slate-200 dark:border-white/10">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-sm border border-slate-200 dark:border-white/10">
                             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mx-auto mb-4">
                                 <AlertCircle size={32} />
                             </div>
