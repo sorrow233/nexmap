@@ -80,14 +80,14 @@ export default function PricingSection({ showTitle = true }) {
             name: 'Starter',
             price: `${currentPricing.currency}${currentPricing.packs.starter}`,
             chats: '600',
-            features: [t.payAsYouGo, t.noExpiration],
+            features: [pricing.payAsYouGo, pricing.noExpiration],
         },
         {
             id: 'credits_2000',
             name: 'Standard',
             price: `${currentPricing.currency}${currentPricing.packs.standard}`,
             chats: '3,000',
-            features: [t.bestValuePerCredit, t.instantDelivery],
+            features: [pricing.bestValuePerCredit, pricing.instantDelivery],
             popular: true
         },
         {
@@ -95,7 +95,7 @@ export default function PricingSection({ showTitle = true }) {
             name: 'Power',
             price: `${currentPricing.currency}${currentPricing.packs.power}`,
             chats: '9,000',
-            features: [t.forPowerUsers, t.maxEfficiency],
+            features: [pricing.forPowerUsers, pricing.maxEfficiency],
         }
     ];
 
@@ -180,9 +180,9 @@ export default function PricingSection({ showTitle = true }) {
                                         }`}
                                 >
                                     {isBlocked ? (
-                                        t.regionBlocked
+                                        pricing.regionBlocked
                                     ) : loadingProduct === 'pro_lifetime' ? (
-                                        t.redirecting
+                                        pricing.redirecting
                                     ) : (
                                         <>
                                             <Zap size={20} className="fill-white/20 group-hover/btn:fill-white transition-colors" />
@@ -303,7 +303,7 @@ export default function PricingSection({ showTitle = true }) {
                                         : 'bg-white/10 hover:bg-white/20 text-white'
                                     }`}
                             >
-                                {isBlocked ? t.regionBlocked : loadingProduct === plan.id ? t.redirecting : t.getStarted}
+                                {isBlocked ? pricing.regionBlocked : loadingProduct === plan.id ? pricing.redirecting : pricing.getStarted}
                             </button>
                         </div>
                     ))}
