@@ -79,11 +79,13 @@ async function getUserUsage(env, userId) {
 
     if (!data || data.week !== currentWeek) {
         // Initialize new user or reset for new week
+        // IMPORTANT: Preserve bonusCredits across week resets!
+        const previousBonus = data?.bonusCredits || 0;
         const newData = {
             conversationCount: 0,
             imageCount: 0,
             week: currentWeek,
-            bonusCredits: 0,
+            bonusCredits: previousBonus, // Preserve bonus credits
             createdAt: data?.createdAt || Date.now(),
             lastUpdated: Date.now()
         };

@@ -16,7 +16,10 @@ import AdminCodePanel from '../AdminCodePanel';
 export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
     const systemImageCredits = useStore(state => state.systemImageCredits);
+    const systemTotalCredits = useStore(state => state.systemTotalCredits); // New Selector
     const loadSystemCredits = useStore(state => state.loadSystemCredits);
+    const setSystemCredits = useStore(state => state.setSystemCredits); // New Action
+    const setSystemTotalCredits = useStore(state => state.setSystemTotalCredits); // New Action
     const { t } = useLanguage();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [isChinaUser, setIsChinaUser] = useState(false);
@@ -43,6 +46,19 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
             const result = await redeemCode(redeemInput);
             setRedeemStatus('success');
             setRedeemMessage(result.message);
+
+            // Optimistic Update
+            if (result.addedCredits) {
+                const current = typeof systemCredits === 'number' ? systemCredits : 0;
+                setSystemCredits(current + result.addedCredits);
+                // Also update the total cap if we want to show expanded capacity, 
+                // OR just leave the cap as is if we want to show >100%. 
+                // But generally users perceive "Total Available" = Limit + Bonus.
+                // Since result.totalBonus is available depending on API response,
+                // but simpler is: Total = OldTotal + Added
+                setSystemTotalCredits((systemTotalCredits || 200) + result.addedCredits);
+            }
+
             // Reload credits to show new balance
             loadSystemCredits();
             setRedeemInput('');
@@ -54,7 +70,9 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
 
     // Default to 200 if undefined (weekly conversation limit)
     const creditsValue = typeof systemCredits === 'number' ? systemCredits : 200;
-    const creditsPercent = Math.max(0, Math.min(100, (creditsValue / 200) * 100));
+    // Calculate percentage based on total available credits (limit + bonus)
+    const totalCap = systemTotalCredits || 200;
+    const creditsPercent = Math.max(0, Math.min(100, (creditsValue / totalCap) * 100));
 
     // Image credits: default to 20 if undefined (weekly image limit)
     const imageCreditsValue = typeof systemImageCredits === 'number' ? systemImageCredits : 20;
@@ -75,7 +93,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
 
                     <h2 className="text-3xl font-bold mb-4">{t.credits.noConfigNeeded}</h2>
                     <p className="text-indigo-100 text-lg max-w-md mx-auto mb-8 leading-relaxed">
-                        {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{t.credits.interactions}</strong> {t.credits.conversations}
+                        {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{totalCap}</strong> {t.credits.conversations}
                     </p>
 
                     {/* Usage Stats */}
@@ -84,7 +102,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-indigo-200 text-sm font-medium">{t.credits.remainingCredits}</span>
-                                <span className="text-2xl font-bold font-mono">{creditsValue}</span>
+                                <span className="text-2xl font-bold font-mono">{creditsValue} <span className="text-sm text-indigo-300">/ {totalCap}</span></span>
                             </div>
                             <div className="h-3 bg-black/20 rounded-full overflow-hidden">
                                 <div
@@ -150,8 +168,8 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                 {/* Redeem Feedback */}
                 {redeemMessage && (
                     <div className={`mt-3 text-sm p-3 rounded-xl flex items-center gap-2 ${redeemStatus === 'success'
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
-                        : 'bg-red-50 text-red-600 dark:bg-red-900/20'
+                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
+                            : 'bg-red-50 text-red-600 dark:bg-red-900/20'
                         }`}>
                         {redeemStatus === 'success' ? <CheckCircle2 size={16} /> : <Zap size={16} />}
                         {redeemMessage}

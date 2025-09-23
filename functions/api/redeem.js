@@ -97,12 +97,24 @@ export async function onRequest(context) {
         // Update Code Status
         await env.SYSTEM_CREDITS_KV.put(codeKey, JSON.stringify(redeemedCodeData));
 
+        // Get current ISO week for consistent week tracking
+        function getCurrentWeekNumber() {
+            const now = new Date();
+            const thursday = new Date(now);
+            thursday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 3);
+            const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+            firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() + 6) % 7) + 3);
+            const weekNumber = Math.round((thursday - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1;
+            return `${thursday.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
+        }
+
         // Get User Data
         const userKey = `usage:${userId}`;
         const userData = await env.SYSTEM_CREDITS_KV.get(userKey, 'json') || {
             conversationCount: 0,
             imageCount: 0,
-            week: new Date().toISOString().substring(0, 10), // simplified init
+            week: getCurrentWeekNumber(),
+            bonusCredits: 0,
             createdAt: Date.now()
         };
 
