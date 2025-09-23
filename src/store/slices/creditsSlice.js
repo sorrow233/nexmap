@@ -96,9 +96,9 @@ export const createCreditsSlice = (set, get) => ({
      * Get credits percentage for display
      */
     getCreditsPercentage: () => {
-        const { systemCredits } = get();
+        const { systemCredits, systemTotalCredits } = get();
         if (systemCredits === null) return 0;
-        return Math.round((systemCredits / INITIAL_CREDITS) * 100);
+        return Math.round((systemCredits / (systemTotalCredits || 200)) * 100);
     },
 
     /**

@@ -13,7 +13,8 @@ export default function BoardCard({
     generatingBoardId,
     variant = 'overlay', // 'overlay' | 'stacked'
     isSystemCreditsUser = false,
-    onFreeUserRestricted
+    onFreeUserRestricted,
+    shouldAnimate = true
 }) {
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
@@ -48,14 +49,14 @@ export default function BoardCard({
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
                 className={`
-                    group relative flex flex-col cursor-pointer transition-all duration-300 animate-fade-in-up
+                    group relative flex flex-col cursor-pointer transition-all duration-300 ${shouldAnimate ? 'animate-fade-in-up' : ''}
                     rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden
                     hover:shadow-2xl hover:border-indigo-500/30 dark:hover:border-indigo-400/30 hover:-translate-y-1
                     bg-white dark:bg-[#0A0A0A]
                     ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
                 `}
-                style={{ animationDelay: `${index * 50}ms` }}
-            >
+                style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
+
                 {/* Image Section (Top Half) */}
                 <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-[#111]">
                     {hasImage ? (
@@ -129,7 +130,7 @@ export default function BoardCard({
     return (
         <div
             onClick={() => !isTrashView && onSelect(board.id)}
-            style={{ animationDelay: `${index * 50}ms` }}
+            style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}
             className={`
                 group relative h-[180px] w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] transition-all duration-300 hover:shadow-xl hover:scale-[1.02]
             `}
