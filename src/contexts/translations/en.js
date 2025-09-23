@@ -384,5 +384,14 @@ export const en = {
         title: "Start Thinking in Connections.",
         cta: "Launch Alpha",
         rights: "© 2024 NexMap. All rights reserved."
+    },
+    // ===== TOOLBAR TRANSLATIONS =====
+    toolbar: {
+        items: "items",
+        retry: "Retry",
+        sprout: "Sprout",
+        zone: "Zone",
+        delete: "Delete",
+        expand: "Expand"
     }
 };

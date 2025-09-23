@@ -13,6 +13,7 @@ const INITIAL_IMAGE_CREDITS = 20;
 export const createCreditsSlice = (set, get) => ({
     // Credits State
     systemCredits: null,           // null = not loaded, number = current credits
+    systemTotalCredits: 200,       // Default weekly limit + bonus
     systemImageCredits: null,      // null = not loaded, number = remaining image credits
     systemCreditsLoading: false,
     systemCreditsError: null,
@@ -20,6 +21,7 @@ export const createCreditsSlice = (set, get) => ({
 
     // Actions
     setSystemCredits: (credits) => set({ systemCredits: credits }),
+    setSystemTotalCredits: (total) => set({ systemTotalCredits: total }),
     setSystemImageCredits: (credits) => set({ systemImageCredits: credits }),
 
     setIsSystemCreditsUser: (value) => set({ isSystemCreditsUser: value }),
@@ -30,7 +32,7 @@ export const createCreditsSlice = (set, get) => ({
     loadSystemCredits: async () => {
         const user = auth.currentUser;
         if (!user) {
-            set({ systemCredits: null, systemImageCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
+            set({ systemCredits: null, systemTotalCredits: 200, systemImageCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
             return;
         }
 
@@ -50,9 +52,11 @@ export const createCreditsSlice = (set, get) => ({
 
             const data = await Promise.race([fetchCredits(), timeoutPromise]);
             const credits = data?.credits ?? 0;
+            const totalCredits = data?.initialCredits ?? 200;
             const imageCredits = data?.imageRemaining ?? INITIAL_IMAGE_CREDITS;
             set({
                 systemCredits: credits,
+                systemTotalCredits: totalCredits,
                 systemImageCredits: imageCredits,
                 systemCreditsLoading: false,
                 systemCreditsError: null,
