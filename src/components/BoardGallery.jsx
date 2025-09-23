@@ -38,9 +38,16 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
     // Use boards directly
     const validBoards = boards;
 
+    // Sort by lastAccessedAt (descending), with board.id as stable tie-breaker
+    // This prevents random order changes when timestamps are identical
     const recentBoards = [...validBoards]
         .filter(b => b.lastAccessedAt)
-        .sort((a, b) => (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0))
+        .sort((a, b) => {
+            const timeDiff = (b.lastAccessedAt || 0) - (a.lastAccessedAt || 0);
+            if (timeDiff !== 0) return timeDiff;
+            // Stable tie-breaker: use id comparison for consistent ordering
+            return a.id.localeCompare(b.id);
+        })
         .slice(0, 5);
 
     return (
