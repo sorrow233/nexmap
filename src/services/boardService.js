@@ -183,11 +183,22 @@ export const loadBoard = async (id) => {
         const list = getRawBoardsList();
         const boardIndex = list.findIndex(b => b.id === id);
         if (boardIndex >= 0) {
+            const now = Date.now();
             list[boardIndex] = {
                 ...list[boardIndex],
-                lastAccessedAt: Date.now()
+                lastAccessedAt: now
             };
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+
+            // Sync lastAccessedAt to cloud (non-blocking)
+            // Use dynamic import to avoid circular dependency
+            import('./syncService').then(({ updateBoardMetadataInCloud }) => {
+                import('./firebase').then(({ auth }) => {
+                    if (auth?.currentUser?.uid) {
+                        updateBoardMetadataInCloud(auth.currentUser.uid, id, { lastAccessedAt: now });
+                    }
+                });
+            }).catch(() => { }); // Silently fail if sync unavailable
         }
     }
 
