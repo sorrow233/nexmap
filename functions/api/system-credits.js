@@ -9,6 +9,9 @@
  * Security: Uses Firebase ID Token for user authentication
  */
 
+import { verifyFirebaseToken } from '../utils/auth.js';
+import { getCurrentWeekNumber } from '../utils/weekUtils.js';
+
 // Constants - Conversation model (free tier)
 const CONVERSATION_MODEL = 'moonshotai/Kimi-K2-Thinking';
 // Analysis model (for system tasks like image analysis, not counted in conversation limit)
@@ -26,52 +29,6 @@ const WEEKLY_IMAGE_LIMIT = 20;
 // Style prefix - AI models KNOW いらすとや by name!
 const IMAGE_STYLE_PREFIX =
     'いらすとや style by みふねたかし (Takashi Mifune). Japanese free clip art, white background. ';
-
-/**
- * Get the current week number (ISO week, Monday is first day)
- * Used to reset usage count every week
- */
-function getCurrentWeekNumber() {
-    const now = new Date();
-    // Get the Thursday of the current week (ISO week algorithm)
-    const thursday = new Date(now);
-    thursday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 3);
-    // Get the first Thursday of the year
-    const firstThursday = new Date(thursday.getFullYear(), 0, 4);
-    firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() + 6) % 7) + 3);
-    // Calculate week number
-    const weekNumber = Math.round((thursday - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1;
-    return `${thursday.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
-}
-
-/**
- * Verify Firebase ID Token
- * For Cloudflare Workers, we use a simplified verification approach
- */
-async function verifyFirebaseToken(token) {
-    if (!token) return null;
-
-    try {
-        // Decode JWT payload (base64)
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-
-        // Check expiration
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp && payload.exp < now) {
-            console.log('[SystemCredits] Token expired');
-            return null;
-        }
-
-        // Return user ID
-        return payload.user_id || payload.sub;
-    } catch (e) {
-        console.error('[SystemCredits] Token verification failed:', e);
-        return null;
-    }
-}
 
 /**
  * Get user usage data from KV storage

@@ -6,20 +6,7 @@
  * Access restricted to admins defined in ADMIN_UIDS env var.
  */
 
-// Helper to verify Firebase ID Token (reused from system-credits.js logic)
-async function verifyFirebaseToken(token) {
-    if (!token) return null;
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp && payload.exp < now) return null;
-        return payload.user_id || payload.sub;
-    } catch (e) {
-        return null;
-    }
-}
+import { verifyFirebaseToken } from '../../utils/auth.js';
 
 // Generate a random alphanumeric code
 function generateCode(length = 12) {

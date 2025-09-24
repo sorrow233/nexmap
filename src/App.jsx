@@ -21,6 +21,7 @@ const FeedbackPage = lazyWithRetry(() => import('./pages/FeedbackPage'));
 const PricingPage = lazyWithRetry(() => import('./pages/PricingPage'));
 const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
 const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
+const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
 
 
@@ -311,6 +312,9 @@ function AppContent() {
 
                     {/* Pricing */}
                     <Route path="/pricing" element={<PricingPage />} />
+
+                    {/* Admin (Hidden) */}
+                    <Route path="/admin" element={<AdminPage />} />
 
                     <Route path="/gallery" element={
                         <GalleryPage
