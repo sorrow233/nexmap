@@ -85,7 +85,8 @@ export async function onRequestPost(context) {
         // Metadata to track what to give the user
         params.append('metadata[userId]', userId);
         params.append('metadata[productId]', productId);
-        if (product.chats) params.append('metadata[chats]', product.chats);
+        // Map 'chats' to 'credits' for the webhook
+        if (product.chats) params.append('metadata[credits]', product.chats);
         if (product.isPro) params.append('metadata[isPro]', 'true');
 
         // Line Items
