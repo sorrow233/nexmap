@@ -13,7 +13,6 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
-    const contentRef = React.useRef(null);
 
     // 长文本折叠状态
     const [isExpanded, setIsExpanded] = useState(false);
@@ -228,7 +227,6 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                 {/* Message Content */}
                 <div
                     className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem]"
-                    ref={contentRef}
                     onClick={handleMessageClick}
                 >
                     {isUser ? (
