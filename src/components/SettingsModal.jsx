@@ -77,7 +77,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
             ...prev,
             [newId]: {
                 id: newId,
-                name: 'New Provider',
+                name: t.settings.newProvider,
                 baseUrl: 'https://api.openai.com/v1',
                 apiKey: '',
                 model: 'gpt-4o',
@@ -122,10 +122,10 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                 {}
             );
             setTestStatus('success');
-            setTestMessage(`Connection Successful!(${testModel || 'default model'})`);
+            setTestMessage(`${t.settings.connectionSuccess}(${testModel || 'default model'})`);
         } catch (error) {
             setTestStatus('error');
-            setTestMessage(error.message || 'Connection Failed');
+            setTestMessage(error.message || t.settings.connectionFailed);
         }
     };
 
