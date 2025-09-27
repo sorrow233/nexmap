@@ -8,6 +8,28 @@ import { reconcileCards, removeUndefined } from './syncUtils';
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 
+// Global quota error detection - intercept Firebase console errors
+// This catches errors that happen at the connection level before onSnapshot callbacks
+const originalConsoleError = console.error;
+console.error = (...args) => {
+    originalConsoleError.apply(console, args);
+    // Check if this is a Firestore quota error
+    const message = args.map(a => String(a)).join(' ');
+    if (message.includes('resource-exhausted') || message.includes('Quota exceeded')) {
+        const offlineMode = localStorage.getItem('mixboard_offline_mode');
+        if (offlineMode !== 'true') {
+            debugLog.sync('[GlobalErrorHandler] Detected quota error from Firebase, triggering offline mode');
+            localStorage.setItem('mixboard_offline_mode', 'true');
+            localStorage.setItem('mixboard_offline_auto', 'true');
+            localStorage.setItem('mixboard_offline_time', Date.now().toString());
+            // Trigger store update asynchronously
+            import('../store/useStore').then(({ useStore }) => {
+                useStore.getState().triggerAutoOffline?.();
+            }).catch(() => { });
+        }
+    }
+};
+
 // Check if error is quota exhausted and trigger offline mode
 const handleQuotaError = async (error, context) => {
     if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota exceeded')) {
