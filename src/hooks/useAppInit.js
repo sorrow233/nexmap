@@ -80,50 +80,55 @@ export function useAppInit() {
             if (u) {
                 // MIGRATION: Check for local boards that need to be synced to this new user
                 // This handles the "Guest -> Logged In" flow where data would otherwise be lost
-                const migrateLocalData = async () => {
-                    const localBoards = getBoardsList();
-                    if (localBoards.length > 0) {
-                        debugLog.sync(`Found ${localBoards.length} local boards. Checking for migration candidates...`);
+                // OPTIMIZATION: Only migrate once per user to avoid quota exhaustion
+                const migrationKey = `mixboard_migrated_${u.uid}`;
+                const hasMigrated = localStorage.getItem(migrationKey) === 'true';
 
-                        // We can't easily know if they are "already in cloud" forTHIS user without checking cloud first.
-                        // But since we just logged in, we haven't loaded cloud boards yet.
-                        // STRATEGY: We upload ALL local boards to the new user. 
-                        // If they already exist (ID collision), `saveBoardToCloud` handles it (usually overwrites, which matches "local is newer").
-                        // But to be safe, we only migrate if we are sure it's a guest session being promoted.
-                        // A simple heuristic: If the user just logged in, pushing local work is generally desired.
+                if (!hasMigrated) {
+                    const migrateLocalData = async () => {
+                        const localBoards = getBoardsList();
+                        if (localBoards.length > 0) {
+                            debugLog.sync(`Found ${localBoards.length} local boards. Migrating to cloud (first login)...`);
 
-                        let migratedCount = 0;
-                        for (const board of localBoards) {
-                            try {
-                                // Load full board data
-                                const fullBoardData = await loadBoard(board.id);
-                                if (fullBoardData) {
-                                    // Push to cloud
-                                    await saveBoardToCloud(u.uid, board.id, fullBoardData);
-                                    migratedCount++;
+                            let migratedCount = 0;
+                            for (const board of localBoards) {
+                                try {
+                                    const fullBoardData = await loadBoard(board.id);
+                                    if (fullBoardData) {
+                                        await saveBoardToCloud(u.uid, board.id, fullBoardData);
+                                        migratedCount++;
+                                    }
+                                } catch (err) {
+                                    debugLog.error(`Failed to migrate board ${board.id}`, err);
                                 }
-                            } catch (err) {
-                                debugLog.error(`Failed to migrate board ${board.id}`, err);
+                            }
+
+                            if (migratedCount > 0) {
+                                debugLog.sync(`Successfully migrated ${migratedCount} local boards to cloud account.`);
                             }
                         }
 
-                        if (migratedCount > 0) {
-                            debugLog.sync(`Successfully migrated ${migratedCount} local boards to cloud account.`);
+                        // Migrate Favorites (only on first login)
+                        const localFavorites = favoritesService.getFavorites();
+                        if (localFavorites.length > 0) {
+                            debugLog.sync(`Found ${localFavorites.length} local favorites. Migrating to cloud...`);
+                            // Batch with small delay to avoid hammering
+                            for (let i = 0; i < localFavorites.length; i++) {
+                                await saveFavoritesToCloud(u.uid, localFavorites[i]);
+                                if (i > 0 && i % 5 === 0) {
+                                    await new Promise(r => setTimeout(r, 100)); // Small pause every 5
+                                }
+                            }
                         }
-                    }
-                };
 
-                // Execute migration - don't await blocking the UI, but do it before setting up listener if possible?
-                // Actually parallel is fine, Firestore handles it.
-                migrateLocalData();
+                        // Mark as migrated
+                        localStorage.setItem(migrationKey, 'true');
+                        debugLog.sync('Migration complete, marked as migrated.');
+                    };
 
-                // Migrate Favorites
-                const localFavorites = favoritesService.getFavorites();
-                if (localFavorites.length > 0) {
-                    debugLog.sync(`Found ${localFavorites.length} local favorites. Migrating to cloud...`);
-                    localFavorites.forEach(fav => {
-                        saveFavoritesToCloud(u.uid, fav);
-                    });
+                    migrateLocalData();
+                } else {
+                    debugLog.sync('Already migrated to cloud, skipping migration.');
                 }
 
                 debugLog.sync('Starting cloud board sync...');

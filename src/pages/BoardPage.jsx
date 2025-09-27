@@ -132,7 +132,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                         console.error('[BoardPage] Cloud sync failed:', e);
                         toast.error('云同步失败');
                     }
-                }, 3000); // Longer delay for cloud to avoid hammering
+                }, 30000); // 30s delay - conservative for quota
             }
 
             return () => {
