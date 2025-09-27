@@ -439,5 +439,19 @@ export const en = {
         zone: "Zone",
         delete: "Delete",
         expand: "Expand"
+    },
+    favorites: {
+        collection: "Collection",
+        noFavorites: "No favorites yet",
+        noFavoritesDesc: "Star your most important conversations to keep them handy here.",
+        note: "Note",
+        shareTooltip: "Share as image",
+        removeTooltip: "Remove from favorites",
+        from: "From",
+        goToSource: "Go to source board",
+        favoriteNoteTitle: "Favorite Note",
+        share: "Share",
+        source: "Source",
+        goToBoard: "Go to Board"
     }
 };
