@@ -4,6 +4,7 @@
  */
 export async function onRequest(context) {
     const { request } = context;
+    console.log(`[Proxy] Received request: ${request.method} ${request.url}`);
 
     // CORS preflight
     if (request.method === 'OPTIONS') {
