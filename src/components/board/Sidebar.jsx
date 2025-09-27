@@ -267,13 +267,12 @@ export default function Sidebar({ className = "" }) {
                             <Plus size={12} /> {t.sidebar.add}
                         </button>
                         {isAdding === 'global' && createPortal(<AddInput type="global" onCancel={() => setIsAdding(null)} newName={newName} setNewName={setNewName} newContent={newContent} setNewContent={setNewContent} onSubmit={() => handleAdd('global')} t={t} />, document.body)}
-                    </div >
-                </div >
-            </div >
+                    </div>
+                </div>
+            </div>
 
             {/* Board Group */}
-            < div className={`flex flex-col items-start gap-2 pointer-events-auto relative ${isAdding === 'board' ? 'z-50' : ''}`
-            }>
+            <div className={`flex flex-col items-start gap-2 pointer-events-auto relative ${isAdding === 'board' ? 'z-50' : ''}`}>
                 <div className="flex items-center justify-between w-full gap-4">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">{t.sidebar.board}</span>
                 </div>
@@ -288,9 +287,9 @@ export default function Sidebar({ className = "" }) {
                             <Plus size={12} /> {t.sidebar.add}
                         </button>
                         {isAdding === 'board' && createPortal(<AddInput type="board" onCancel={() => setIsAdding(null)} newName={newName} setNewName={setNewName} newContent={newContent} setNewContent={setNewContent} onSubmit={() => handleAdd('board')} t={t} />, document.body)}
-                    </div >
-                </div >
-            </div >
+                    </div>
+                </div>
+            </div>
 
             {/* Edit Modal - Rendered via Portal to escape pointer-events-none parent */}
             {editingPrompt && createPortal(
@@ -357,6 +356,6 @@ export default function Sidebar({ className = "" }) {
                 </div>,
                 document.body
             )}
-        </div >
+        </div>
     );
 }

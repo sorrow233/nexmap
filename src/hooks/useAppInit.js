@@ -20,6 +20,28 @@ import { ONBOARDING_DATA } from '../utils/onboarding';
 import { useLocation } from 'react-router-dom';
 import { debugLog } from '../utils/debugLogger';
 
+// --- Timestamp-aware localStorage utilities for smart sync ---
+const loadWithTimestamp = (key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return { value: '', lastModified: 0 };
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+            return { value: parsed.value, lastModified: parsed.lastModified || 0 };
+        }
+        return { value: raw, lastModified: 0 };
+    } catch {
+        return { value: raw, lastModified: 0 };
+    }
+};
+
+const saveWithTimestamp = (key, value) => {
+    localStorage.setItem(key, JSON.stringify({
+        value,
+        lastModified: Date.now()
+    }));
+};
+
 export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
@@ -179,21 +201,40 @@ export function useAppInit() {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
                         }
 
-                        // Sync custom instructions from cloud
-                        // Sync custom instructions from cloud
-                        const localInstructions = localStorage.getItem('mixboard_custom_instructions');
-                        if (settings.customInstructions) {
-                            // Verify if they are different to avoid unnecessary writes
-                            if (settings.customInstructions !== localInstructions) {
-                                localStorage.setItem('mixboard_custom_instructions', settings.customInstructions);
+                        // --- Smart Sync: Compare timestamps for customInstructions ---
+                        const localData = loadWithTimestamp('mixboard_custom_instructions');
+                        const cloudModified = settings.customInstructionsModifiedAt?.toMillis?.() || 0;
+
+                        if (cloudModified > localData.lastModified) {
+                            // Cloud is newer, use cloud value
+                            debugLog.sync(`Cloud customInstructions is newer (${cloudModified} > ${localData.lastModified}), using cloud`);
+                            if (settings.customInstructions) {
+                                saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
                             }
-                        } else if (localInstructions) {
-                            // Cloud is empty, but local has data. Trust local and sync back to cloud.
-                            debugLog.sync('Cloud instructions empty, migrating local to cloud...');
+                        } else if (localData.lastModified > cloudModified && localData.value) {
+                            // Local is newer, sync to cloud
+                            debugLog.sync(`Local customInstructions is newer (${localData.lastModified} > ${cloudModified}), syncing to cloud`);
                             import('../services/storage').then(({ updateUserSettings }) => {
-                                updateUserSettings(u.uid, { customInstructions: localInstructions });
+                                updateUserSettings(u.uid, {
+                                    customInstructions: localData.value,
+                                    customInstructionsModified: true
+                                });
                             });
+                        } else if (!cloudModified && !localData.lastModified) {
+                            // Neither has timestamp (legacy), fall back to content-based merge
+                            if (settings.customInstructions && settings.customInstructions !== localData.value) {
+                                saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
+                            } else if (localData.value && !settings.customInstructions) {
+                                // Local has data, cloud is empty - sync local to cloud
+                                import('../services/storage').then(({ updateUserSettings }) => {
+                                    updateUserSettings(u.uid, {
+                                        customInstructions: localData.value,
+                                        customInstructionsModified: true
+                                    });
+                                });
+                            }
                         }
+                        // If timestamps are equal, do nothing (already in sync)
 
                         // Sync global prompts from cloud
                         if (settings.globalPrompts && Array.isArray(settings.globalPrompts)) {
