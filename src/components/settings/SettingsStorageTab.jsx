@@ -233,15 +233,15 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
 
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">
-                <p className="font-bold mb-1">{t.settings.storage?.byok || 'BYOK (Bring Your Own Key)'}</p>
-                <p>{t.settings.storage?.byokDesc || 'Use your own S3 storage (AWS, Cloudflare R2, MinIO) to store images.'}</p>
+                <p className="font-bold mb-1">{t.settings.storageConfig?.byok || 'BYOK (Bring Your Own Key)'}</p>
+                <p>{t.settings.storageConfig?.byokDesc || 'Use your own S3 storage (AWS, Cloudflare R2, MinIO) to store images.'}</p>
             </div>
 
             {/* Enable Toggle */}
             <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-white/10 rounded-2xl">
                 <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storage?.enable || 'Enable S3 Storage'}</h3>
-                    <p className="text-xs text-slate-500">{t.settings.storage?.enableDesc || 'Upload images to your own cloud bucket'}</p>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storageConfig?.enable || 'Enable S3 Storage'}</h3>
+                    <p className="text-xs text-slate-500">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -257,7 +257,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
             {s3Config.enabled && (
                 <div className="space-y-4 animate-fade-in">
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storage?.endpoint || 'Endpoint URL'}</label>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.endpoint || 'Endpoint URL'}</label>
                         <input
                             type="text"
                             value={s3Config.endpoint}
@@ -268,7 +268,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storage?.region || 'Region'}</label>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.region || 'Region'}</label>
                             <input
                                 type="text"
                                 value={s3Config.region}
@@ -278,7 +278,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storage?.bucket || 'Bucket Name'}</label>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.bucket || 'Bucket Name'}</label>
                             <input
                                 type="text"
                                 value={s3Config.bucket}
@@ -289,7 +289,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storage?.accessKey || 'Access Key ID'}</label>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.accessKey || 'Access Key ID'}</label>
                             <input
                                 type="text"
                                 value={s3Config.accessKeyId}
@@ -298,7 +298,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storage?.secretKey || 'Secret Access Key'}</label>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.storageConfig?.secretKey || 'Secret Access Key'}</label>
                             <input
                                 type="password"
                                 value={s3Config.secretAccessKey}
@@ -312,7 +312,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
             {/* Data Recovery Section */}
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">{t.settings.storage?.recovery || 'Data Recovery'}</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">{t.settings.storageConfig?.recovery || 'Data Recovery'}</h3>
 
                 {hasBackup ? (
                     <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl space-y-3">
@@ -321,9 +321,9 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                                 <Database size={18} />
                             </div>
                             <div>
-                                <h4 className="font-bold text-emerald-800 dark:text-emerald-300">{t.settings.storage?.backupFound || 'Safety Backup Found'}</h4>
+                                <h4 className="font-bold text-emerald-800 dark:text-emerald-300">{t.settings.storageConfig?.backupFound || 'Safety Backup Found'}</h4>
                                 <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
-                                    {t.settings.storage?.backupFoundDesc || 'We found a local backup of your boards created before the last logout. You can attempt to restore this data to your cloud account.'}
+                                    {t.settings.storageConfig?.backupFoundDesc || 'We found a local backup of your boards created before the last logout. You can attempt to restore this data to your cloud account.'}
                                 </p>
                             </div>
                         </div>
@@ -331,7 +331,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                         {restoreStatus === 'success' ? (
                             <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-white/50 dark:bg-black/20 p-2 rounded-lg">
                                 <CheckCircle2 size={16} />
-                                <span>{restoreMsg || t.settings.storage?.restoreComplete || "Restoration Complete!"}</span>
+                                <span>{restoreMsg || t.settings.storageConfig?.restoreComplete || "Restoration Complete!"}</span>
                             </div>
                         ) : (
                             <div className="flex items-center justify-between">
@@ -346,12 +346,12 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                                     {restoreStatus === 'restoring' ? (
                                         <>
                                             <RotateCcw size={14} className="animate-spin" />
-                                            {t.settings.storage?.restoring || 'Restoring...'}
+                                            {t.settings.storageConfig?.restoring || 'Restoring...'}
                                         </>
                                     ) : (
                                         <>
                                             <RotateCcw size={14} />
-                                            {t.settings.storage?.restore || 'Restore Backup'}
+                                            {t.settings.storageConfig?.restore || 'Restore Backup'}
                                         </>
                                     )}
                                 </button>
@@ -366,7 +366,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                 ) : (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2">
                         <CheckCircle2 size={16} className="text-slate-400" />
-                        {t.settings.storage?.noBackup || 'No pending safety backups found.'}
+                        {t.settings.storageConfig?.noBackup || 'No pending safety backups found.'}
                     </div>
                 )}
             </div>
@@ -377,14 +377,14 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                     onClick={() => setShowManualImport(!showManualImport)}
                     className="text-xs font-bold text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1"
                 >
-                    {showManualImport ? (t.settings.storage?.hideAdvancedRecovery || "Hide Advanced Recovery") : (t.settings.storage?.advancedRecovery || "Show Advanced Recovery (Manual Import)")}
+                    {showManualImport ? (t.settings.storageConfig?.hideAdvancedRecovery || "Hide Advanced Recovery") : (t.settings.storageConfig?.advancedRecovery || "Show Advanced Recovery (Manual Import)")}
                 </button>
 
                 {showManualImport && (
                     <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 animate-fade-in">
-                        <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">{t.settings.storage?.manualImport || "Manual JSON Import"}</h4>
+                        <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">{t.settings.storageConfig?.manualImport || "Manual JSON Import"}</h4>
                         <p className="text-xs text-slate-500 mb-3">
-                            {t.settings.storage?.manualImportDesc || "Paste the raw backup data JSON provided by support below."}
+                            {t.settings.storageConfig?.manualImportDesc || "Paste the raw backup data JSON provided by support below."}
                         </p>
 
                         <textarea
@@ -404,7 +404,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                                 disabled={manualRestoreStatus === 'restoring' || !manualJson.trim()}
                                 className="px-4 py-2 bg-brand-600 text-white font-bold rounded-lg text-xs hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
-                                {manualRestoreStatus === 'restoring' ? (t.settings.storage?.importing || "Importing...") : (t.settings.storage?.importRestore || "Import & Restore")}
+                                {manualRestoreStatus === 'restoring' ? (t.settings.storageConfig?.importing || "Importing...") : (t.settings.storageConfig?.importRestore || "Import & Restore")}
                             </button>
                         </div>
                     </div>
@@ -415,8 +415,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storage?.scheduledBackups || "Scheduled Backups"}</h3>
-                        <p className="text-xs text-slate-500">{t.settings.storage?.scheduledDesc || "Auto backup at 3:00 AM and 4:00 PM daily (5-day history)"}</p>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storageConfig?.scheduledBackups || "Scheduled Backups"}</h3>
+                        <p className="text-xs text-slate-500">{t.settings.storageConfig?.scheduledDesc || "Auto backup at 3:00 AM and 4:00 PM daily (5-day history)"}</p>
                     </div>
                     <button
                         onClick={handleForceBackup}
@@ -424,9 +424,9 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white font-bold text-xs rounded-lg hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         {backupActionStatus === 'loading' ? (
-                            <><RotateCcw size={12} className="animate-spin" /> {t.settings.storage?.backingUp || "Backing up..."}</>
+                            <><RotateCcw size={12} className="animate-spin" /> {t.settings.storageConfig?.backingUp || "Backing up..."}</>
                         ) : (
-                            <><Database size={12} /> {t.settings.storage?.backupNow || "Backup Now"}</>
+                            <><Database size={12} /> {t.settings.storageConfig?.backupNow || "Backup Now"}</>
                         )}
                     </button>
                 </div>
@@ -434,7 +434,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                 {nextBackupTime && (
                     <div className="flex items-center gap-2 mb-3 text-xs text-slate-500 dark:text-slate-400">
                         <Clock size={12} />
-                        {t.settings.storage?.nextBackup || "Next backup:"} {nextBackupTime.toLocaleString()}
+                        {t.settings.storageConfig?.nextBackup || "Next backup:"} {nextBackupTime.toLocaleString()}
                     </div>
                 )}
 
@@ -449,7 +449,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
                 {backupHistory.length === 0 ? (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-center text-slate-500 dark:text-slate-400 text-sm">
-                        {t.settings.storage?.noBackupsYet || "No backups yet. Backups are created automatically at scheduled times."}
+                        {t.settings.storageConfig?.noBackupsYet || "No backups yet. Backups are created automatically at scheduled times."}
                     </div>
                 ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -476,7 +476,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                                         onClick={() => handleRestoreScheduledBackup(backup.id)}
                                         className="px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
                                     >
-                                        {t.settings.storage?.restore || "Restore"}
+                                        {t.settings.storageConfig?.restore || "Restore"}
                                     </button>
                                     <button
                                         onClick={() => handleDeleteScheduledBackup(backup.id)}
