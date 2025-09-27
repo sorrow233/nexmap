@@ -190,7 +190,7 @@ export const zh = {
             important: "重要",
             importantText: "这些角色分配是针对每个提供商单独保存的。当您切换提供商时，系统会自动切换到为该提供商配置的角色。"
         },
-        storage: {
+        storageConfig: {
             byok: "BYOK (自带密钥)",
             byokDesc: "使用您自己的 S3 存储 (AWS, Cloudflare R2, MinIO) 来存储图片。",
             enable: "启用 S3 存储",

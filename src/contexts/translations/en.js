@@ -190,7 +190,7 @@ export const en = {
             important: "Important",
             importantText: "These role assignments are saved separately for each provider. When you switch providers, the system will automatically switch to the roles configured for that provider."
         },
-        storage: {
+        storageConfig: {
             byok: "BYOK (Bring Your Own Key)",
             byokDesc: "Use your own S3 storage (AWS, Cloudflare R2, MinIO) to store images.",
             enable: "Enable S3 Storage",
