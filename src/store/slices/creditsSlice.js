@@ -7,7 +7,6 @@
 import { checkCredits as fetchCredits } from '../../services/systemCredits/systemCreditsService';
 import { auth } from '../../services/firebase';
 
-const INITIAL_CREDITS = 100;
 const INITIAL_IMAGE_CREDITS = 20;
 
 export const createCreditsSlice = (set, get) => ({

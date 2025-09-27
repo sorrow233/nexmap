@@ -13,7 +13,6 @@ export default function BoardCard({
     generatingBoardId,
     variant = 'overlay', // 'overlay' | 'stacked'
     isSystemCreditsUser = false,
-    onFreeUserRestricted,
     shouldAnimate = true
 }) {
     const handleImageButtonClick = (e, boardId) => {
