@@ -5,20 +5,8 @@
  * Allows users to redeem codes for bonus system credits.
  */
 
-// Helper to verify Firebase ID Token
-async function verifyFirebaseToken(token) {
-    if (!token) return null;
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp && payload.exp < now) return null;
-        return payload.user_id || payload.sub;
-    } catch (e) {
-        return null;
-    }
-}
+import { verifyFirebaseToken } from '../utils/auth.js';
+import { getCurrentWeekNumber } from '../utils/weekUtils.js';
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -96,17 +84,6 @@ export async function onRequest(context) {
 
         // Update Code Status
         await env.SYSTEM_CREDITS_KV.put(codeKey, JSON.stringify(redeemedCodeData));
-
-        // Get current ISO week for consistent week tracking
-        function getCurrentWeekNumber() {
-            const now = new Date();
-            const thursday = new Date(now);
-            thursday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 3);
-            const firstThursday = new Date(thursday.getFullYear(), 0, 4);
-            firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() + 6) % 7) + 3);
-            const weekNumber = Math.round((thursday - firstThursday) / (7 * 24 * 60 * 60 * 1000)) + 1;
-            return `${thursday.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
-        }
 
         // Get User Data
         const userKey = `usage:${userId}`;
