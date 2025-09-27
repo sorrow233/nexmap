@@ -111,11 +111,11 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                     {isPro ? (
                         <>
                             <h2 className="text-3xl font-black mb-2 tracking-tight flex items-center gap-3">
-                                <span className="drop-shadow-sm">PRO USER</span>
+                                <span className="drop-shadow-sm">{t.credits.proUser}</span>
                                 <ProBadge size="md" className="shadow-lg" />
                             </h2>
                             <p className="text-orange-100 text-lg max-w-md mx-auto mb-8 font-medium">
-                                You have unlocked premium features. Enjoy standard priority and exclusive access.
+                                {t.credits.proFeaturesUnlocked}
                             </p>
                         </>
                     ) : (
@@ -150,7 +150,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                             <div className="flex justify-between items-end mb-2">
                                 <span className={`${isPro ? 'text-orange-200' : 'text-indigo-200'} text-sm font-medium flex items-center gap-2`}>
                                     <Image size={14} />
-                                    {t.credits.imageCredits || '图片生成'}
+                                    {t.credits.imageCredits || 'Image Generation'}
                                 </span>
                                 <span className="text-2xl font-bold font-mono">{imageCreditsValue}<span className={`text-sm ${isPro ? 'text-orange-300' : 'text-indigo-300'}`}>/20</span></span>
                             </div>
@@ -174,8 +174,8 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         <Ticket size={20} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-slate-800 dark:text-white">兑换码</h3>
-                        <p className="text-xs text-slate-500">使用兑换码获取额外积分</p>
+                        <h3 className="font-bold text-slate-800 dark:text-white">{t.credits.redeemCode}</h3>
+                        <p className="text-xs text-slate-500">{t.credits.redeemCodeDesc}</p>
                     </div>
                 </div>
 
@@ -184,7 +184,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         type="text"
                         value={redeemInput}
                         onChange={(e) => setRedeemInput(e.target.value)}
-                        placeholder="请输入兑换码 (XXXX-XXXX-XXXX)"
+                        placeholder={t.credits.enterCodePlaceholder}
                         className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono uppercase"
                     />
                     <button
@@ -192,7 +192,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         disabled={redeemStatus === 'loading' || !redeemInput.trim()}
                         className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center gap-2"
                     >
-                        {redeemStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : '兑换'}
+                        {redeemStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : t.credits.redeem}
                     </button>
                 </div>
 
@@ -217,7 +217,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                             className="text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors uppercase font-bold tracking-widest flex items-center gap-1"
                         >
                             <Lock size={10} />
-                            {showAdmin ? '隐藏管理工具' : '管理员工具'}
+                            {showAdmin ? t.credits.hideAdminTools : t.credits.adminTools}
                         </button>
                     </div>
 
@@ -259,7 +259,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2 mx-auto"
                     >
                         <Gift size={20} />
-                        {t.credits.getMore || "Get More Credits / Pro"}
+                        {t.credits.getMore}
                     </button>
 
                     <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">

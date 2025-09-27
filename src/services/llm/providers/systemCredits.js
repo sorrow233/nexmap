@@ -6,7 +6,7 @@
  */
 
 import { LLMProvider } from './base';
-import { resolveRemoteImages } from '../utils';
+import { resolveAllImages } from '../utils';
 import {
     streamWithSystemCredits,
     chatWithSystemCredits,
@@ -57,7 +57,7 @@ export class SystemCreditsProvider extends LLMProvider {
      * Non-streaming chat (for analysis tasks)
      */
     async chat(messages, model, options = {}) {
-        const resolvedMessages = await resolveRemoteImages(messages);
+        const resolvedMessages = await resolveAllImages(messages);
 
         // Pass standard messages to backend
         const formattedMessages = this.formatMessages(resolvedMessages);
@@ -81,7 +81,7 @@ export class SystemCreditsProvider extends LLMProvider {
      * Streaming chat (for main conversations)
      */
     async stream(messages, onToken, model, options = {}) {
-        const resolvedMessages = await resolveRemoteImages(messages);
+        const resolvedMessages = await resolveAllImages(messages);
         const formattedMessages = this.formatMessages(resolvedMessages);
 
         const requestBody = {

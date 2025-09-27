@@ -35,7 +35,7 @@ export default function SettingsGeneralTab() {
                     {t.settings.language}
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    Choose your preferred language for the interface.
+                    {t.settings.languageChoose}
                 </p>
             </div>
 
@@ -69,8 +69,8 @@ export default function SettingsGeneralTab() {
             </div>
 
             <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                <span className="font-bold block mb-1 text-slate-700 dark:text-slate-300">Note:</span>
-                Changing the language will instantly update the user interface. Some AI-generated content (like existing cards) will remain in their original language.
+                <span className="font-bold block mb-1 text-slate-700 dark:text-slate-300">{t.settings.languageNote}</span>
+                {t.settings.languageNoteDesc}
             </div>
         </div>
     );
