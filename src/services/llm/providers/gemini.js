@@ -333,6 +333,7 @@ export class GeminiProvider extends LLMProvider {
         const proxyEndpoint = '/api/image-gen';
 
         console.log('[Gemini] Starting image generation with model:', modelToUse);
+        console.log('[Gemini] API Key present:', !!apiKey, apiKey ? `(length: ${apiKey.length})` : '');
 
         // 1. Submit Request
         const payload = {
@@ -343,6 +344,8 @@ export class GeminiProvider extends LLMProvider {
                 aspect_ratio: "16:9" // Suitable for background
             }
         };
+
+        console.log('[Gemini] Submitting image request with payload:', JSON.stringify(payload, null, 2));
 
         const submitResponse = await fetch(proxyEndpoint, {
             method: 'POST',
@@ -356,13 +359,22 @@ export class GeminiProvider extends LLMProvider {
             })
         });
 
+        console.log('[Gemini] Submit response status:', submitResponse.status);
+
         if (!submitResponse.ok) {
             const err = await submitResponse.json().catch(() => ({}));
-            throw new Error(`Image Request Failed: ${err.error?.message || submitResponse.statusText}`);
+            console.error('[Gemini] Submit failed:', err);
+            throw new Error(`Image Request Failed: ${err.error?.message || err.error || JSON.stringify(err) || submitResponse.statusText}`);
         }
 
         const submitData = await submitResponse.json();
+        console.log('[Gemini] Submit response data:', JSON.stringify(submitData, null, 2));
+
         const requestId = submitData.request_id;
+        if (!requestId) {
+            console.error('[Gemini] No request_id in response:', submitData);
+            throw new Error(`GMI API did not return a request_id. Response: ${JSON.stringify(submitData)}`);
+        }
         console.log('[Gemini] Image request queued, ID:', requestId);
 
         // 2. Poll for Status
@@ -385,23 +397,31 @@ export class GeminiProvider extends LLMProvider {
                 })
             });
 
-            if (!statusResponse.ok) continue;
+            console.log(`[Gemini] Poll attempt ${attempts}/${maxAttempts}, response status:`, statusResponse.status);
+
+            if (!statusResponse.ok) {
+                console.warn(`[Gemini] Poll response not OK:`, statusResponse.status);
+                continue;
+            }
 
             const statusData = await statusResponse.json();
-            // console.log('[Gemini] Polling status:', statusData.status);
+            console.log('[Gemini] Poll status:', statusData.status, statusData.error || '');
 
             if (statusData.status === 'success') {
                 const imageUrl = statusData.outcome?.media_urls?.[0]?.url;
-                if (!imageUrl) throw new Error("Image generated but no URL found");
+                console.log('[Gemini] Image generation success! URL:', imageUrl?.substring(0, 100));
+                if (!imageUrl) throw new Error("Image generated but no URL found in response");
                 return imageUrl;
             }
 
             if (statusData.status === 'failed' || statusData.status === 'cancelled') {
-                throw new Error(`Image Generation Failed: ${statusData.status}`);
+                console.error('[Gemini] Image generation failed with status:', statusData);
+                throw new Error(`Image Generation ${statusData.status}: ${statusData.error || statusData.message || 'Unknown error'}`);
             }
         }
 
-        throw new Error("Image generation timed out");
+        console.error('[Gemini] Image generation timed out after', maxAttempts * 2, 'seconds');
+        throw new Error("Image generation timed out after 60 seconds");
     }
 }
 
