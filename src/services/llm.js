@@ -258,6 +258,7 @@ REQUIREMENTS:
 - Each topic should be a clear, standalone subject that can be discussed independently
 - Include the key content/context for each topic so it can be understood alone
 - IMPORTANT: Output topics in the SAME LANGUAGE as the context above
+- CRITICAL: Return a MAXIMUM of 4 topics. If there are more, select the 4 most important ones.
 
 Example: If the conversation discusses 4 different games, extract all 4 game names as topics.
 Example: If the conversation covers 3 different concepts, extract all 3 concepts.
@@ -299,8 +300,8 @@ Example: ["Detroit: Become Human 游戏介绍", "Beyond: Two Souls 游戏介绍"
             console.warn('[ExtractTopics] Invalid array');
             return ["主要话题"];
         }
-        // Limit to max 5 topics
-        return parsed.slice(0, 5);
+        // Limit to max 4 topics
+        return parsed.slice(0, 4);
     } catch (e) {
         console.error("[ExtractTopics] Failed:", e);
         return ["主要话题"];

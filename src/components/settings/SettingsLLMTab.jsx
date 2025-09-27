@@ -88,7 +88,7 @@ export default function SettingsLLMTab({
                                 value={currentProvider.name || ''}
                                 onChange={e => handleUpdateProvider('name', e.target.value)}
                                 className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-bold text-sm text-slate-800 dark:text-white"
-                                placeholder="My AI Provider"
+                                placeholder={t.settings.newProvider || "My AI Provider"}
                             />
                         </div>
                     </div>

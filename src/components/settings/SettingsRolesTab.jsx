@@ -1,7 +1,9 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function SettingsRolesTab({ currentProvider, handleUpdateProvider }) {
+    const { t } = useLanguage();
     const roles = currentProvider.roles || {};
 
     const updateRole = (roleKey, value) => {
@@ -17,8 +19,8 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
 
 
             <div className="p-4 bg-brand-50 dark:bg-brand-900/20 text-brand-800 dark:text-brand-200 rounded-xl text-sm border border-brand-100 dark:border-brand-900/30">
-                <p className="font-bold mb-1">🎯 Model Assignment for {currentProvider.name || 'this provider'}</p>
-                <p>Assign specific models to different functions. These settings are specific to <b>{currentProvider.name}</b>.</p>
+                <p className="font-bold mb-1">🎯 {t.settings.roles?.title || 'Model Assignment'} for {currentProvider.name || 'this provider'}</p>
+                <p>{t.settings.roles?.description || 'Assign specific models to different functions. These settings are specific to'} <b>{currentProvider.name}</b>.</p>
             </div>
 
             <div className="space-y-4">
@@ -26,8 +28,8 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                 <div className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex justify-between items-start mb-3">
                         <div>
-                            <h4 className="font-bold text-slate-800 dark:text-slate-100">💬 Chat Conversations</h4>
-                            <p className="text-xs text-slate-500 mt-1">Main model for all card conversations</p>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100">💬 {t.settings.roles?.chatTitle || 'Chat Conversations'}</h4>
+                            <p className="text-xs text-slate-500 mt-1">{t.settings.roles?.chatDesc || 'Main model for all card conversations'}</p>
                         </div>
                         <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
                             chat
@@ -46,8 +48,8 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                 <div className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex justify-between items-start mb-3">
                         <div>
-                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🌱 Sprout Ideas (Analysis)</h4>
-                            <p className="text-xs text-slate-500 mt-1">Model for generating follow-up questions</p>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🌱 {t.settings.roles?.analysisTitle || 'Sprout Ideas (Analysis)'}</h4>
+                            <p className="text-xs text-slate-500 mt-1">{t.settings.roles?.analysisDesc || 'Model for generating follow-up questions'}</p>
                         </div>
                         <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
                             analysis
@@ -66,8 +68,8 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                 <div className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex justify-between items-start mb-3">
                         <div>
-                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🎨 Image Generation</h4>
-                            <p className="text-xs text-slate-500 mt-1">Model for creating board backgrounds</p>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🎨 {t.settings.roles?.imageTitle || 'Image Generation'}</h4>
+                            <p className="text-xs text-slate-500 mt-1">{t.settings.roles?.imageDesc || 'Model for creating board backgrounds'}</p>
                         </div>
                         <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
                             image
@@ -86,9 +88,9 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
             <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-slate-500">
                 <div className="flex gap-2 items-center mb-1 text-slate-600 dark:text-slate-300">
                     <AlertCircle size={14} />
-                    <p className="font-bold">Important</p>
+                    <p className="font-bold">{t.settings.roles?.important || 'Important'}</p>
                 </div>
-                <p>These role assignments are saved <b>separately for each provider</b>. When you switch providers, the system will automatically switch to the roles configured for that provider.</p>
+                <p>{t.settings.roles?.importantText || 'These role assignments are saved <b>separately for each provider</b>. When you switch providers, the system will automatically switch to the roles configured for that provider.'}</p>
             </div>
         </div>
     );
