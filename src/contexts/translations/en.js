@@ -378,7 +378,22 @@ export const en = {
         privacy: "Privacy",
         terms: "Terms",
         ownKey: "Own API Key",
-        unlimited: "Unlimited"
+        ownKey: "Own API Key",
+        unlimited: "Unlimited",
+        getMorePower: "Get More Power",
+        chatPacks: "Chat Packs",
+        needMore: "Need more? Buy chat packs below",
+        starter: "Starter",
+        standard: "Standard",
+        power: "Power",
+        becomePro: "Become a Pro User",
+        unlockPotential: "Unlock the full potential of NexMap with a one-time purchase.",
+        processing: "Processing...",
+        loginRequired: "Please login first to make a purchase.",
+        youGet: "You get",
+        perWeek: "per week",
+        resetsMonday: "Resets Monday",
+        images: "images"
     },
     footer: {
         title: "Start Thinking in Connections.",

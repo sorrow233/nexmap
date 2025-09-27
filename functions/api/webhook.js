@@ -30,13 +30,15 @@ export async function onRequestPost(context) {
         // Simple check: ensure it's a checkout session completed event
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object;
-            const { userId, credits, isPro } = session.metadata || {};
+            const { userId, credits, chats, isPro } = session.metadata || {};
 
             if (userId) {
                 // 1. Get current data
-                const kvKey = `credits:${userId}`;
+                // CRITICAL FIX: Use 'usage:' prefix to match system-credits.js
+                const kvKey = `usage:${userId}`;
                 const data = await env.SYSTEM_CREDITS_KV.get(kvKey, 'json') || {
-                    credits: 100, // Default starter
+                    conversationCount: 0,
+                    bonusCredits: 0,
                     isPro: false,
                     createdAt: Date.now()
                 };
@@ -44,13 +46,16 @@ export async function onRequestPost(context) {
                 // 2. Update data
                 if (isPro === 'true') {
                     data.isPro = true;
+                    // Pro users also get a "Pro Since" timestamp if not present
+                    if (!data.proSince) data.proSince = Date.now();
                     console.log(`[Stripe] Upgraded user ${userId} to PRO`);
                 }
 
-                if (credits) {
-                    const addAmount = parseInt(credits);
-                    data.credits = (data.credits || 0) + addAmount;
-                    console.log(`[Stripe] Added ${addAmount} credits to user ${userId}. New total: ${data.credits}`);
+                // Handle credits (or 'chats' from old metadata)
+                const addAmount = parseInt(credits || chats || '0');
+                if (addAmount > 0) {
+                    data.bonusCredits = (data.bonusCredits || 0) + addAmount;
+                    console.log(`[Stripe] Added ${addAmount} bonus credits to user ${userId}. New bonus total: ${data.bonusCredits}`);
                 }
 
                 data.lastUpdated = Date.now();

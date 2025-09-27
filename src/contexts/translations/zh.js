@@ -378,7 +378,22 @@ export const zh = {
         privacy: "隐私政策",
         terms: "服务条款",
         ownKey: "自带 Key",
-        unlimited: "无限使用"
+        ownKey: "自带 Key",
+        unlimited: "无限使用",
+        getMorePower: "获取更多算力",
+        chatPacks: "对话流量包",
+        needMore: "需要更多？请购买下方的流量包",
+        starter: "入门版",
+        standard: "标准版",
+        power: "专业版",
+        becomePro: "成为 Pro 用户",
+        unlockPotential: "一次性付费，解锁 NexMap 的全部潜能。",
+        processing: "处理中...",
+        loginRequired: "请先登录后再进行购买。",
+        youGet: "您获得",
+        perWeek: "每周",
+        resetsMonday: "每周一重置",
+        images: "张图片"
     },
     footer: {
         title: "开始用「连接」思考。",
