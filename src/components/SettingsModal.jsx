@@ -260,7 +260,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                 {/* Content Area */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 relative">
                     {/* Content Header */}
-                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-50">
+                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-50 relative transform translate-z-0">
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                             {activeTab === 'credits' && t.settings.creditsUsage}
                             {activeTab === 'language' && t.settings.language}
@@ -278,7 +278,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm cursor-pointer"
+                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm cursor-pointer relative z-50 hover:scale-105 active:scale-95"
                             >
                                 {t.settings.saveChanges}
                             </button>
