@@ -180,8 +180,19 @@ export function useAppInit() {
                         }
 
                         // Sync custom instructions from cloud
+                        // Sync custom instructions from cloud
+                        const localInstructions = localStorage.getItem('mixboard_custom_instructions');
                         if (settings.customInstructions) {
-                            localStorage.setItem('mixboard_custom_instructions', settings.customInstructions);
+                            // Verify if they are different to avoid unnecessary writes
+                            if (settings.customInstructions !== localInstructions) {
+                                localStorage.setItem('mixboard_custom_instructions', settings.customInstructions);
+                            }
+                        } else if (localInstructions) {
+                            // Cloud is empty, but local has data. Trust local and sync back to cloud.
+                            debugLog.sync('Cloud instructions empty, migrating local to cloud...');
+                            import('../services/storage').then(({ updateUserSettings }) => {
+                                updateUserSettings(u.uid, { customInstructions: localInstructions });
+                            });
                         }
 
                         // Sync global prompts from cloud
@@ -190,8 +201,17 @@ export function useAppInit() {
                         }
 
                         // Sync language preference from cloud
+                        // Sync language preference from cloud
                         if (settings.userLanguage) {
                             localStorage.setItem('userLanguage', settings.userLanguage);
+                        } else {
+                            // If user has local language valid setting, sync to cloud
+                            const localLang = localStorage.getItem('userLanguage');
+                            if (localLang) {
+                                import('../services/storage').then(({ updateUserSettings }) => {
+                                    updateUserSettings(u.uid, { userLanguage: localLang });
+                                });
+                            }
                         }
 
                         // Check welcome page status from cloud
