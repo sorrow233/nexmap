@@ -130,31 +130,36 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     };
 
     const handleSave = async () => {
-        useStore.getState().setFullConfig({
-            providers,
-            activeId
-        });
+        try {
+            useStore.getState().setFullConfig({
+                providers,
+                activeId
+            });
 
-        saveS3Config(s3Config);
+            saveS3Config(s3Config);
 
-        // Save custom instructions to localStorage
-        localStorage.setItem('mixboard_custom_instructions', customInstructions);
+            // Save custom instructions to localStorage
+            localStorage.setItem('mixboard_custom_instructions', customInstructions);
 
-        if (user && user.uid) {
-            try {
-                await updateUserSettings(user.uid, {
-                    providers,
-                    activeId,
-                    s3Config,
-                    customInstructions
-                });
-            } catch (e) {
-                // console.error(e);
+            if (user && user.uid) {
+                try {
+                    await updateUserSettings(user.uid, {
+                        providers,
+                        activeId,
+                        s3Config,
+                        customInstructions
+                    });
+                } catch (e) {
+                    // console.error(e);
+                }
             }
-        }
 
-        setSaveSuccess(true);
-        setTimeout(() => window.location.reload(), 1500);
+            setSaveSuccess(true);
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+            console.error("Failed to save settings:", error);
+            // Optionally set an error state here if we had one
+        }
     };
 
     const handleReset = () => {
@@ -255,7 +260,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                 {/* Content Area */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 relative">
                     {/* Content Header */}
-                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 sticky top-0">
+                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-50">
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                             {activeTab === 'credits' && t.settings.creditsUsage}
                             {activeTab === 'language' && t.settings.language}
@@ -267,13 +272,13 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         <div className="flex gap-3">
                             <button
                                 onClick={onClose}
-                                className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm"
+                                className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm cursor-pointer"
                             >
                                 {t.settings.cancel}
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm"
+                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm cursor-pointer"
                             >
                                 {t.settings.saveChanges}
                             </button>

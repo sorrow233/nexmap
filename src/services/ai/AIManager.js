@@ -28,11 +28,8 @@ class AIManager {
             return AIManager.instance;
         }
 
-        this.queue = [];
         this.activeTasks = new Map(); // taskId -> { controller, task }
         this.results = new Map();     // taskId -> result
-        this.concurrencyLimit = Infinity; // UNLIMITED: No artificial restriction
-        this.processing = false;
 
         AIManager.instance = this;
     }
@@ -52,12 +49,12 @@ class AIManager {
         // Chat messages should NEVER be deduplicated - each message is a unique continuation
         // Only deduplicate for non-chat types (e.g., image generation)
         if (type !== 'chat') {
-            const tagsKey = tags.sort().join('|');
-            const identicalTask = [...this.activeTasks.values(), ...this.queue].find(item => {
+            const identicalTask = [...this.activeTasks.values()].find(item => {
                 const t = item.task || item;
                 if (t.type !== type) return false;
                 const existingTagsKey = (t.tags || []).sort().join('|');
-                return existingTagsKey === tagsKey;
+                const newTagsKey = tags.sort().join('|');
+                return existingTagsKey === newTagsKey;
             });
 
             if (identicalTask) {
@@ -69,13 +66,7 @@ class AIManager {
             }
         }
 
-        // 2. Conflict Handling
-        // For chat tasks, we NO LONGER cancel active tasks by default.
-        // Instead, we let them queue up so that messages sent in quick succession are all processed.
-        // We only cancel items still in the QUEUE to avoid redundant work.
-        this._cancelConflictingQueuedTasks(tags);
-
-        // 3. Create Task
+        // 2. Create Task
         const task = {
             id: uuid(),
             type,
@@ -87,7 +78,7 @@ class AIManager {
             timestamp: Date.now(),
         };
 
-        // 4. Create Promise
+        // 3. Create Promise
         const promise = new Promise((resolve, reject) => {
             task.resolve = resolve;
             task.reject = reject;
@@ -97,29 +88,12 @@ class AIManager {
         task.promise = promise;
         promise.taskId = task.id;
 
-        this.queue.push(task);
-        this.queue.sort((a, b) => b.priority - a.priority || a.timestamp - b.timestamp);
-
-        this._processQueue();
+        // 4. Run Immediately (No Queue)
+        const controller = new AbortController();
+        this.activeTasks.set(task.id, { controller, task });
+        this._runTask(task, controller);
 
         return promise;
-    }
-
-    /**
-     * Cancel ONLY QUEUED tasks that match the tags (Strategy: Replace Obsolete)
-     * Active tasks are allowed to finish.
-     */
-    _cancelConflictingQueuedTasks(tags) {
-        if (!tags || tags.length === 0) return;
-
-        this.queue = this.queue.filter(t => {
-            const hasConflict = t.tags.some(tag => tags.includes(tag));
-            if (hasConflict) {
-                t.reject(new Error('Cancelled by newer task'));
-                return false;
-            }
-            return true;
-        });
     }
 
     /**
@@ -127,41 +101,21 @@ class AIManager {
      * @param {string} taskId - The task ID to cancel
      */
     cancelTask(taskId) {
-        // Cancel queued task
-        const queuedIndex = this.queue.findIndex(t => t.id === taskId);
-        if (queuedIndex !== -1) {
-            const task = this.queue[queuedIndex];
-            this.queue.splice(queuedIndex, 1);
-            task.reject(new Error('Cancelled by user'));
-            return true;
-        }
-
         // Cancel active task
         const activeEntry = this.activeTasks.get(taskId);
         if (activeEntry) {
             activeEntry.controller.abort();
             return true;
         }
-
         return false;
     }
 
     /**
-     * Cancel all tasks matching the given tags (both queued and active)
+     * Cancel all tasks matching the given tags (active)
      * @param {string[]} tags - Tags to match
      */
     cancelByTags(tags) {
         if (!tags || tags.length === 0) return;
-
-        // Cancel queued tasks
-        this.queue = this.queue.filter(t => {
-            const hasMatch = t.tags.some(tag => tags.includes(tag));
-            if (hasMatch) {
-                t.reject(new Error('Cancelled by user'));
-                return false;
-            }
-            return true;
-        });
 
         // Cancel active tasks
         for (const [taskId, entry] of this.activeTasks) {
@@ -173,54 +127,12 @@ class AIManager {
     }
 
     /**
-     * Cancel all active and queued tasks
+     * Cancel all active tasks
      */
     cancelAll() {
-        // Cancel all queued tasks
-        this.queue.forEach(t => t.reject(new Error('Cancelled by user')));
-        this.queue = [];
-
         // Abort all active tasks
         for (const [taskId, entry] of this.activeTasks) {
             entry.controller.abort();
-        }
-    }
-
-    async _processQueue() {
-        if (this.processing) return;
-        if (this.activeTasks.size >= this.concurrencyLimit) return;
-        if (this.queue.length === 0) return;
-
-        this.processing = true;
-
-        try {
-            let i = 0;
-            while (this.activeTasks.size < this.concurrencyLimit && i < this.queue.length) {
-                const task = this.queue[i];
-
-                // SEQUENTIAL TAG CHECK: 
-                // Don't start a task if another task with any of the same tags is already running.
-                const hasRunningConflict = [...this.activeTasks.values()].some(entry =>
-                    entry.task.tags.some(tag => task.tags.includes(tag))
-                );
-
-                if (hasRunningConflict) {
-                    i++; // Skip to next candidate in queue
-                    continue;
-                }
-
-                // Remove from queue and start
-                this.queue.splice(i, 1);
-                const controller = new AbortController();
-                this.activeTasks.set(task.id, { controller, task });
-
-                // Non-blocking execution
-                this._runTask(task, controller);
-                // Reset index since we modified queue and might have unlocked others
-                i = 0;
-            }
-        } finally {
-            this.processing = false;
         }
     }
 
@@ -245,7 +157,6 @@ class AIManager {
             }
         } finally {
             this.activeTasks.delete(task.id);
-            this._processQueue(); // Check for next task
         }
     }
 
