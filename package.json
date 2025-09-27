@@ -31,6 +31,7 @@
     "react-helmet-async": "^2.0.5",
     "react-hotkeys-hook": "^5.2.1",
     "react-router-dom": "^7.11.0",
+    "use-sync-external-store": "^1.6.0",
     "zundo": "^2.3.0",
     "zustand": "^5.0.9"
   },
