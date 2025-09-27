@@ -439,5 +439,19 @@ export const zh = {
         zone: "分区",
         delete: "删除",
         expand: "展开"
+    },
+    favorites: {
+        collection: "收藏集",
+        noFavorites: "暂无收藏",
+        noFavoritesDesc: "将重要的对话收藏在这里，随时查看。",
+        note: "笔记",
+        shareTooltip: "分享为图片",
+        removeTooltip: "取消收藏",
+        from: "来自",
+        goToSource: "前往来源看板",
+        favoriteNoteTitle: "精选笔记",
+        share: "分享",
+        source: "来源",
+        goToBoard: "查看原文"
     }
 };

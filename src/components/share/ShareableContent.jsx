@@ -176,14 +176,14 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         {/* Logo Mark */}
-                        <div style={{
-                            width: '24px', height: '24px',
-                            background: themeConfig.accent,
-                            borderRadius: '4px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: currentThemeId === 'swiss' ? themeConfig.bg : '#fff',
-                            fontSize: '14px', fontWeight: 'bold'
-                        }}>N</div>
+                        <img
+                            src="/nexmap-icon.svg"
+                            alt="NexMap Logo"
+                            style={{
+                                width: '24px', height: '24px',
+                                objectFit: 'contain'
+                            }}
+                        />
                         <span style={{ fontWeight: 'bold', letterSpacing: '-0.02em', fontSize: '1.1em' }}>NexMap</span>
                     </div>
                 </div>
