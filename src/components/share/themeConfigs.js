@@ -746,6 +746,34 @@ export const THEME_CONFIGS = {
             '--code-color': '#495057',
         }
     },
+
+    // 27. Night - 夜间阅读 (Night)
+    night: {
+        id: 'night',
+        name: 'Night',
+        fonts: ['Inter'],
+        bg: '#1a1a1a',
+        text: '#E0E0E0',
+        accent: '#BB86FC',
+        padding: 60,
+        radius: 8,
+        settings: {
+            '--font-heading': '"Inter", sans-serif',
+            '--font-body': '"Inter", sans-serif',
+            '--font-code': '"JetBrains Mono", monospace',
+            '--h1-size': '2.8em',
+            '--h1-weight': '700',
+            '--h2-size': '1.8em',
+            '--line-height': '1.8',
+            '--block-margin': '1.8em',
+            '--quote-style': 'normal',
+            '--quote-border': '4px solid #BB86FC',
+            '--quote-bg': '#2C2C2C',
+            '--quote-color': '#E0E0E0',
+            '--code-bg': '#2C2C2C',
+            '--code-color': '#E0E0E0',
+        }
+    },
 };
 
 // Layout configs (Base 1179px)
