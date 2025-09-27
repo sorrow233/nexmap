@@ -16,6 +16,7 @@ const THEME_CATEGORIES = [
             { id: 'academia', label: 'Academia', icon: School, preview: 'bg-[#F5F5F0] border-[#C5A059]', accent: 'bg-[#C5A059]' },
             { id: 'ghibli', label: 'Ghibli', icon: Mountain, preview: 'bg-[#F5F5DC] border-[#8F9779]', accent: 'bg-[#8F9779]' },
             { id: 'rainy', label: 'Rainy', icon: Cloud, preview: 'bg-[#CFD8DC] border-[#455A64]', accent: 'bg-[#455A64]' },
+            { id: 'night', label: 'Night', icon: Moon, preview: 'bg-[#1a1a1a] border-zinc-700', accent: 'bg-[#BB86FC]' },
         ]
     }
 ];

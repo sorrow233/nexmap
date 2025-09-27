@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid } from 'lucide-react';
+import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Copy } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 /**
@@ -147,6 +147,32 @@ const ChatBar = React.memo(function ChatBar({
                             {selectedIds.length > 0 && (
                                 <>
                                     <div className="w-px h-6 bg-white/10 mx-1" />
+                                    <button
+                                        onClick={() => {
+                                            const selectedContent = selectedIds
+                                                .map(id => {
+                                                    const card = cards.find(c => c.id === id);
+                                                    if (!card?.data?.messages) return '';
+                                                    const lastMsg = card.data.messages[card.data.messages.length - 1];
+                                                    if (!lastMsg) return '';
+                                                    // Helper to extract text from multimodal content (can duplicate logic or simplify)
+                                                    const content = lastMsg.content;
+                                                    if (Array.isArray(content)) {
+                                                        return content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+                                                    }
+                                                    return content || '';
+                                                })
+                                                .filter(Boolean)
+                                                .join('\n\n---\n\n');
+
+                                            navigator.clipboard.writeText(selectedContent)
+                                                .catch(err => console.error('Failed to copy', err));
+                                        }}
+                                        className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-full transition-all"
+                                        title={t.common?.copy || "Copy"}
+                                    >
+                                        <Copy size={20} />
+                                    </button>
                                     <button
                                         onClick={() => onSelectConnected(selectedIds[0])}
                                         className="p-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
