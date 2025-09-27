@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Cloud, CloudOff, RefreshCw, Coins, Sparkles } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, Coins, Sparkles, WifiOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 
@@ -11,16 +11,21 @@ export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettin
     // Use individual selectors to avoid object reference issues
     const systemCredits = useStore(state => state.systemCredits);
     const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
+    const offlineMode = useStore(state => state.offlineMode);
+    const autoOfflineTriggered = useStore(state => state.autoOfflineTriggered);
 
     // Sync status config
     const syncConfig = {
         idle: { icon: Cloud, label: '已同步', color: 'text-emerald-500' },
         syncing: { icon: RefreshCw, label: '同步中...', color: 'text-blue-500', animate: true },
         synced: { icon: Cloud, label: '已同步', color: 'text-emerald-500' },
-        error: { icon: CloudOff, label: '同步失败', color: 'text-red-500' }
+        error: { icon: CloudOff, label: '同步失败', color: 'text-red-500' },
+        offline: { icon: WifiOff, label: autoOfflineTriggered ? '配额已满，等待恢复' : '离线模式', color: 'text-slate-400' }
     };
 
-    const currentSync = syncConfig[syncStatus] || syncConfig.idle;
+    // Override status if offline mode is enabled
+    const effectiveStatus = offlineMode ? 'offline' : syncStatus;
+    const currentSync = syncConfig[effectiveStatus] || syncConfig.idle;
     const SyncIcon = currentSync.icon;
 
     return (

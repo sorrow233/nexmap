@@ -38,6 +38,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
     const boardPrompts = useStore(state => state.boardPrompts);
+    const isHydratingFromCloud = useStore(state => state.isHydratingFromCloud);
 
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
     const updateCardFull = useStore(state => state.updateCardFull);
@@ -92,6 +93,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const lastSavedState = useRef('');
     useEffect(() => {
         if (isBoardLoading) return; // SKIP SAVE IF LOADING
+        // CRITICAL: Skip autosave when hydrating from cloud to prevent infinite loop
+        // Loop: cloud update -> setCardsFromCloud -> useEffect -> saveBoardToCloud -> cloud update
+        if (isHydratingFromCloud) {
+            debugLog.sync('Skipping autosave: hydrating from cloud');
+            return;
+        }
         if (currentBoardId && cards.length > 0) {
             // Use a normalized state for comparison to avoid loops caused by field order or undefined
             const currentStateObj = {
@@ -140,7 +147,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading]);
+    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud]);
 
     // Persist canvas state per board
     useEffect(() => {

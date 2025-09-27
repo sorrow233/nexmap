@@ -140,7 +140,9 @@ export function useAppInit() {
                         debugLog.sync(`Active board ${currentActiveId} updated in cloud, rehydrating...`);
                         loadBoard(currentActiveId).then(data => {
                             if (data) {
-                                if (data.cards) setCards(data.cards);
+                                // Use setCardsFromCloud to prevent save loop
+                                // This sets isHydratingFromCloud=true temporarily
+                                if (data.cards) useStore.getState().setCardsFromCloud?.(data.cards) || setCards(data.cards);
                                 if (data.connections) setConnections(data.connections);
                                 if (data.groups) setGroups(data.groups);
                                 if (data.boardPrompts) setBoardPrompts(data.boardPrompts);
