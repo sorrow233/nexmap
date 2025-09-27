@@ -79,7 +79,7 @@ export async function onRequest(context) {
             });
         }
 
-        // 3. Update User Credits
+        // 3. Update User Credits or Status
         // We need to fetch current user usage, add credits, and save everything atomically-ish
         // KV doesn't support transactions, but we can verify the code status first.
 
@@ -118,24 +118,35 @@ export async function onRequest(context) {
             createdAt: Date.now()
         };
 
-        // Add Bonus
-        const currentBonus = userData.bonusCredits || 0;
-        const newBonus = currentBonus + codeData.value;
+        let updatedUserData = { ...userData };
+        let responseMessage = '';
+        let addedCredits = 0;
+        let totalBonus = userData.bonusCredits || 0;
 
-        const updatedUserData = {
-            ...userData,
-            bonusCredits: newBonus,
-            lastBonusAdded: Date.now()
-        };
+        if (codeData.type === 'pro') {
+            // Pro Upgrade Logic
+            updatedUserData.isPro = true;
+            updatedUserData.proSince = Date.now();
+            responseMessage = '恭喜！您已成功升级为 Pro 用户！';
+        } else {
+            // Default: Credits Logic
+            addedCredits = codeData.value;
+            totalBonus = (userData.bonusCredits || 0) + addedCredits;
+
+            updatedUserData.bonusCredits = totalBonus;
+            updatedUserData.lastBonusAdded = Date.now();
+            responseMessage = `成功兑换 ${codeData.value} 积分！`;
+        }
 
         // Save User Data
         await env.SYSTEM_CREDITS_KV.put(userKey, JSON.stringify(updatedUserData));
 
         return new Response(JSON.stringify({
             success: true,
-            addedCredits: codeData.value,
-            totalBonus: newBonus,
-            message: `成功兑换 ${codeData.value} 积分！`
+            addedCredits: addedCredits,
+            totalBonus: totalBonus,
+            isPro: updatedUserData.isPro, // Return Pro status
+            message: responseMessage
         }), {
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });

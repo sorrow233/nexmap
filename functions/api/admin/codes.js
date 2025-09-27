@@ -67,18 +67,20 @@ export async function onRequest(context) {
         }
 
         // 3. Parse request
-        const { amount = 50, count = 1, note = '' } = await request.json();
+        // 3. Parse request
+        const { amount = 50, count = 1, note = '', type = 'credits' } = await request.json();
         const safeAmount = Math.min(Math.max(1, parseInt(amount) || 50), 10000); // 1-10000 credits
         const safeCount = Math.min(Math.max(1, parseInt(count) || 1), 50); // Max 50 codes at once
 
         const generatedCodes = [];
-        const operations = []; // Batched KV operations if possible, but we'll do sequential for safety with KV put
 
         for (let i = 0; i < safeCount; i++) {
             const code = generateCode();
+
             const codeData = {
                 code,
-                value: safeAmount,
+                value: type === 'pro' ? 'PRO_STATUS' : safeAmount,
+                type: type, // 'credits' (default) or 'pro'
                 status: 'active', // active, redeemed
                 createdAt: Date.now(),
                 createdBy: userId,
@@ -97,7 +99,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({
             success: true,
             codes: generatedCodes,
-            message: `Successfully generated ${safeCount} codes`
+            message: `Successfully generated ${safeCount} ${type === 'pro' ? 'PRO' : 'credit'} codes`
         }), {
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });

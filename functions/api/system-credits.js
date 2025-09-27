@@ -23,6 +23,12 @@ const IMAGE_API_BASE = 'https://console.gmicloud.ai/api/v1/ie/requestqueue/apike
 const WEEKLY_CONVERSATION_LIMIT = 200;
 const WEEKLY_IMAGE_LIMIT = 20;
 
+// Style prefix for image generation (みふねたかし / Irasutoya style)
+const IMAGE_STYLE_PREFIX =
+    'みふねたかし style, Mifune Takashi illustration, いらすとや風, Irasutoya style, ' +
+    'Japanese フリー素材, soft rounded shapes, clinical pastel colors, simple clean design, ' +
+    'no harsh outlines, dot eyes, gentle expression, white background, no text. ';
+
 /**
  * Get the current week number (ISO week, Monday is first day)
  * Used to reset usage count every week
@@ -202,7 +208,8 @@ export async function onRequest(context) {
                 imageModel: IMAGE_MODEL,
                 // Legacy compatibility
                 credits: (WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)) - usageData.conversationCount,
-                initialCredits: WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)
+                initialCredits: WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0),
+                isPro: !!usageData.isPro
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -249,7 +256,8 @@ export async function onRequest(context) {
                     body: JSON.stringify({
                         model: IMAGE_MODEL,
                         payload: {
-                            prompt: prompt,
+                            // Prepend style prefix for consistent みふねたかし/Irasutoya style
+                            prompt: IMAGE_STYLE_PREFIX + prompt,
                             size: size,
                             max_images: 1,
                             watermark: watermark

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, Gift, Zap, Infinity, Image, Ticket, Lock, Loader2 } from 'lucide-react';
+import { Sparkles, CheckCircle2, Gift, Zap, Infinity, Image, Ticket, Lock, Loader2, Crown } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { isLikelyChinaUser } from '../../utils/regionCheck';
 import { redeemCode } from '../../services/redeemService';
 import PaymentModal from '../PaymentModal';
 import AdminCodePanel from '../AdminCodePanel';
+import ProBadge from '../ProBadge';
 
 /**
  * SettingsCreditsTab
@@ -17,9 +18,11 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemCredits = useStore(state => state.systemCredits);
     const systemImageCredits = useStore(state => state.systemImageCredits);
     const systemTotalCredits = useStore(state => state.systemTotalCredits); // New Selector
+    const isPro = useStore(state => state.isPro); // Pro Status
     const loadSystemCredits = useStore(state => state.loadSystemCredits);
     const setSystemCredits = useStore(state => state.setSystemCredits); // New Action
     const setSystemTotalCredits = useStore(state => state.setSystemTotalCredits); // New Action
+    const setIsPro = useStore(state => state.setIsPro); // Update Pro status locally
     const { t } = useLanguage();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [isChinaUser, setIsChinaUser] = useState(false);
@@ -47,19 +50,20 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
             setRedeemStatus('success');
             setRedeemMessage(result.message);
 
+            // Handle Pro Upgrade
+            if (result.isPro) {
+                setIsPro(true);
+            }
+
             // Optimistic Update
             if (result.addedCredits) {
                 const current = typeof systemCredits === 'number' ? systemCredits : 0;
                 setSystemCredits(current + result.addedCredits);
-                // Also update the total cap if we want to show expanded capacity, 
-                // OR just leave the cap as is if we want to show >100%. 
-                // But generally users perceive "Total Available" = Limit + Bonus.
-                // Since result.totalBonus is available depending on API response,
-                // but simpler is: Total = OldTotal + Added
+                // Also update the total cap
                 setSystemTotalCredits((systemTotalCredits || 200) + result.addedCredits);
             }
 
-            // Reload credits to show new balance
+            // Reload credits to show new balance/status
             loadSystemCredits();
             setRedeemInput('');
         } catch (error) {
@@ -81,32 +85,58 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
     return (
         <div className="space-y-6">
             {/* Main Welcome Card */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-2xl p-8 group">
+            <div className={`relative overflow-hidden rounded-3xl text-white shadow-2xl p-8 group transition-all duration-500
+                ${isPro ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-red-600' : 'bg-gradient-to-br from-indigo-600 to-violet-700'}
+            `}>
                 {/* Background Effects */}
                 <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-white/15 transition-colors duration-700"></div>
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-900/40 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+                {isPro && <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />}
 
                 <div className="relative z-10 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-1 ring-white/30">
-                        <CheckCircle2 size={32} className="text-white" />
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-1 ring-white/30 relative">
+                        {isPro ? (
+                            <>
+                                <Crown size={32} className="text-white drop-shadow-md" />
+                                <div className="absolute -top-1 -right-1">
+                                    <Sparkles size={16} className="text-yellow-200 animate-pulse" />
+                                </div>
+                            </>
+                        ) : (
+                            <CheckCircle2 size={32} className="text-white" />
+                        )}
                     </div>
 
-                    <h2 className="text-3xl font-bold mb-4">{t.credits.noConfigNeeded}</h2>
-                    <p className="text-indigo-100 text-lg max-w-md mx-auto mb-8 leading-relaxed">
-                        {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{totalCap}</strong> {t.credits.conversations}
-                    </p>
+                    {isPro ? (
+                        <>
+                            <h2 className="text-3xl font-black mb-2 tracking-tight flex items-center gap-3">
+                                <span className="drop-shadow-sm">PRO USER</span>
+                                <ProBadge size="md" className="shadow-lg" />
+                            </h2>
+                            <p className="text-orange-100 text-lg max-w-md mx-auto mb-8 font-medium">
+                                You have unlocked premium features. Enjoy standard priority and exclusive access.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <h2 className="text-3xl font-bold mb-4">{t.credits.noConfigNeeded}</h2>
+                            <p className="text-indigo-100 text-lg max-w-md mx-auto mb-8 leading-relaxed">
+                                {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{totalCap}</strong> {t.credits.conversations}
+                            </p>
+                        </>
+                    )}
 
                     {/* Usage Stats */}
                     <div className="w-full max-w-sm space-y-4">
                         {/* Conversation Credits */}
                         <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                             <div className="flex justify-between items-end mb-2">
-                                <span className="text-indigo-200 text-sm font-medium">{t.credits.remainingCredits}</span>
-                                <span className="text-2xl font-bold font-mono">{creditsValue} <span className="text-sm text-indigo-300">/ {totalCap}</span></span>
+                                <span className={`${isPro ? 'text-orange-200' : 'text-indigo-200'} text-sm font-medium`}>{t.credits.remainingCredits}</span>
+                                <span className="text-2xl font-bold font-mono">{creditsValue} <span className={`text-sm ${isPro ? 'text-orange-300' : 'text-indigo-300'}`}>/ {totalCap}</span></span>
                             </div>
                             <div className="h-3 bg-black/20 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full relative"
+                                    className={`h-full rounded-full relative ${isPro ? 'bg-gradient-to-r from-yellow-300 to-amber-500' : 'bg-gradient-to-r from-emerald-400 to-cyan-400'}`}
                                     style={{ width: `${creditsPercent}%` }}
                                 >
                                     <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
@@ -117,11 +147,11 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                         {/* Image Credits */}
                         <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                             <div className="flex justify-between items-end mb-2">
-                                <span className="text-indigo-200 text-sm font-medium flex items-center gap-2">
+                                <span className={`${isPro ? 'text-orange-200' : 'text-indigo-200'} text-sm font-medium flex items-center gap-2`}>
                                     <Image size={14} />
                                     {t.credits.imageCredits || '图片生成'}
                                 </span>
-                                <span className="text-2xl font-bold font-mono">{imageCreditsValue}<span className="text-sm text-indigo-300">/20</span></span>
+                                <span className="text-2xl font-bold font-mono">{imageCreditsValue}<span className={`text-sm ${isPro ? 'text-orange-300' : 'text-indigo-300'}`}>/20</span></span>
                             </div>
                             <div className="h-3 bg-black/20 rounded-full overflow-hidden">
                                 <div
@@ -168,8 +198,8 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                 {/* Redeem Feedback */}
                 {redeemMessage && (
                     <div className={`mt-3 text-sm p-3 rounded-xl flex items-center gap-2 ${redeemStatus === 'success'
-                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
-                            : 'bg-red-50 text-red-600 dark:bg-red-900/20'
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
+                        : 'bg-red-50 text-red-600 dark:bg-red-900/20'
                         }`}>
                         {redeemStatus === 'success' ? <CheckCircle2 size={16} /> : <Zap size={16} />}
                         {redeemMessage}

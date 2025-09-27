@@ -17,11 +17,13 @@ export const createCreditsSlice = (set, get) => ({
     systemCreditsLoading: false,
     systemCreditsError: null,
     isSystemCreditsUser: false,    // true if user is using system credits (no API key)
+    isPro: false,                  // true if user is Pro
 
     // Actions
     setSystemCredits: (credits) => set({ systemCredits: credits }),
     setSystemTotalCredits: (total) => set({ systemTotalCredits: total }),
     setSystemImageCredits: (credits) => set({ systemImageCredits: credits }),
+    setIsPro: (value) => set({ isPro: value }),
 
     setIsSystemCreditsUser: (value) => set({ isSystemCreditsUser: value }),
 
@@ -31,7 +33,7 @@ export const createCreditsSlice = (set, get) => ({
     loadSystemCredits: async () => {
         const user = auth.currentUser;
         if (!user) {
-            set({ systemCredits: null, systemTotalCredits: 200, systemImageCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false });
+            set({ systemCredits: null, systemTotalCredits: 200, systemImageCredits: null, isSystemCreditsUser: false, systemCreditsLoading: false, isPro: false });
             return;
         }
 
@@ -53,10 +55,13 @@ export const createCreditsSlice = (set, get) => ({
             const credits = data?.credits ?? 0;
             const totalCredits = data?.initialCredits ?? 200;
             const imageCredits = data?.imageRemaining ?? INITIAL_IMAGE_CREDITS;
+            const isPro = !!data?.isPro;
+
             set({
                 systemCredits: credits,
                 systemTotalCredits: totalCredits,
                 systemImageCredits: imageCredits,
+                isPro: isPro,
                 systemCreditsLoading: false,
                 systemCreditsError: null,
                 isSystemCreditsUser: true

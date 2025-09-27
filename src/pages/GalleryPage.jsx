@@ -10,6 +10,8 @@ import { createBoard, saveBoard, updateUserSettings } from '../services/storage'
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import InitialCreditsModal from '../components/InitialCreditsModal';
+import { useStore } from '../store/useStore';
+import ProBadge from '../components/ProBadge';
 
 export default function GalleryPage({
     boardsList,
@@ -30,6 +32,7 @@ export default function GalleryPage({
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash' | 'favorites' | 'feedback'
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const isPro = useStore(state => state.isPro);
 
     // Determine if we should show welcome
     const showWelcome = hasSeenWelcome === false;
@@ -169,6 +172,7 @@ export default function GalleryPage({
                                         </div>
                                     )}
                                     <span className="text-sm font-bold truncate max-w-[100px] hidden sm:block">{user.displayName}</span>
+                                    {isPro && <ProBadge size="sm" />}
                                     <ChevronDown size={14} className={`text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
                                 </button>
 
