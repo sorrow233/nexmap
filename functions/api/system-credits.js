@@ -187,7 +187,9 @@ export async function onRequest(context) {
         const usageData = await getUserUsage(env, userId);
 
         // Get admin UIDs for admin check
-        const adminUids = (env.ADMIN_UIDS || '').split(',').map(id => id.trim());
+        const adminUids = (env.ADMIN_UIDS || '').split(',').map(id => id.trim()).filter(id => id.length > 0);
+        const isUserAdmin = adminUids.includes(userId);
+        console.log('[SystemCredits] Admin check:', { userId, adminUids, isUserAdmin });
 
         // 4. Parse request
         const body = await request.json();
@@ -211,7 +213,7 @@ export async function onRequest(context) {
                 credits: (WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)) - usageData.conversationCount,
                 initialCredits: WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0),
                 isPro: !!usageData.isPro,
-                isAdmin: adminUids.includes(userId)
+                isAdmin: isUserAdmin
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
