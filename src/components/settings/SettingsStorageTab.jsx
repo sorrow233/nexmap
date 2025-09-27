@@ -377,14 +377,14 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                     onClick={() => setShowManualImport(!showManualImport)}
                     className="text-xs font-bold text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1"
                 >
-                    {showManualImport ? "Hide Advanced Recovery" : "Show Advanced Recovery (Manual Import)"}
+                    {showManualImport ? (t.settings.storage?.hideAdvancedRecovery || "Hide Advanced Recovery") : (t.settings.storage?.advancedRecovery || "Show Advanced Recovery (Manual Import)")}
                 </button>
 
                 {showManualImport && (
                     <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 animate-fade-in">
-                        <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">Manual JSON Import</h4>
+                        <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">{t.settings.storage?.manualImport || "Manual JSON Import"}</h4>
                         <p className="text-xs text-slate-500 mb-3">
-                            Paste the raw backup data JSON provided by support below.
+                            {t.settings.storage?.manualImportDesc || "Paste the raw backup data JSON provided by support below."}
                         </p>
 
                         <textarea
@@ -404,7 +404,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                                 disabled={manualRestoreStatus === 'restoring' || !manualJson.trim()}
                                 className="px-4 py-2 bg-brand-600 text-white font-bold rounded-lg text-xs hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
-                                {manualRestoreStatus === 'restoring' ? "Importing..." : "Import & Restore"}
+                                {manualRestoreStatus === 'restoring' ? (t.settings.storage?.importing || "Importing...") : (t.settings.storage?.importRestore || "Import & Restore")}
                             </button>
                         </div>
                     </div>
@@ -415,8 +415,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="font-bold text-slate-800 dark:text-slate-200">Scheduled Backups</h3>
-                        <p className="text-xs text-slate-500">Auto backup at 3:00 AM and 4:00 PM daily (5-day history)</p>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storage?.scheduledBackups || "Scheduled Backups"}</h3>
+                        <p className="text-xs text-slate-500">{t.settings.storage?.scheduledDesc || "Auto backup at 3:00 AM and 4:00 PM daily (5-day history)"}</p>
                     </div>
                     <button
                         onClick={handleForceBackup}
@@ -424,9 +424,9 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white font-bold text-xs rounded-lg hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         {backupActionStatus === 'loading' ? (
-                            <><RotateCcw size={12} className="animate-spin" /> Backing up...</>
+                            <><RotateCcw size={12} className="animate-spin" /> {t.settings.storage?.backingUp || "Backing up..."}</>
                         ) : (
-                            <><Database size={12} /> Backup Now</>
+                            <><Database size={12} /> {t.settings.storage?.backupNow || "Backup Now"}</>
                         )}
                     </button>
                 </div>
@@ -434,7 +434,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                 {nextBackupTime && (
                     <div className="flex items-center gap-2 mb-3 text-xs text-slate-500 dark:text-slate-400">
                         <Clock size={12} />
-                        Next backup: {nextBackupTime.toLocaleString()}
+                        {t.settings.storage?.nextBackup || "Next backup:"} {nextBackupTime.toLocaleString()}
                     </div>
                 )}
 
@@ -449,7 +449,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
                 {backupHistory.length === 0 ? (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-center text-slate-500 dark:text-slate-400 text-sm">
-                        No backups yet. Backups are created automatically at scheduled times.
+                        {t.settings.storage?.noBackupsYet || "No backups yet. Backups are created automatically at scheduled times."}
                     </div>
                 ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -476,7 +476,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
                                         onClick={() => handleRestoreScheduledBackup(backup.id)}
                                         className="px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
                                     >
-                                        Restore
+                                        {t.settings.storage?.restore || "Restore"}
                                     </button>
                                     <button
                                         onClick={() => handleDeleteScheduledBackup(backup.id)}
@@ -493,17 +493,17 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
             {/* Application Settings (Moved down) */}
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">Application Settings</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">{t.settings.app?.settings || "Application Settings"}</h3>
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5">
                     <div>
-                        <p className="font-bold text-slate-700 dark:text-slate-300">Show Welcome Screen</p>
-                        <p className="text-xs text-slate-500">View the introduction and guide again</p>
+                        <p className="font-bold text-slate-700 dark:text-slate-300">{t.settings.app?.showWelcome || "Show Welcome Screen"}</p>
+                        <p className="text-xs text-slate-500">{t.settings.app?.showWelcomeDesc || "View the introduction and guide again"}</p>
                     </div>
                     <button
                         onClick={onShowWelcome}
                         className="px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm"
                     >
-                        Show Welcome
+                        {t.settings.app?.show || "Show Welcome"}
                     </button>
                 </div>
             </div>
