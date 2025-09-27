@@ -76,6 +76,7 @@ export default function BoardCard({
                             <button
                                 onClick={(e) => handleImageButtonClick(e, board.id)}
                                 disabled={generatingBoardId === board.id}
+                                aria-label="Generate Board Image"
                                 className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-black transition-colors"
                             >
                                 {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
@@ -85,6 +86,7 @@ export default function BoardCard({
                                     e.stopPropagation();
                                     onDelete(board.id);
                                 }}
+                                aria-label="Delete Board"
                                 className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500 transition-colors"
                             >
                                 <Trash2 size={14} />
@@ -115,8 +117,8 @@ export default function BoardCard({
                                 <Clock size={12} /> {getDaysRemaining(board.deletedAt)} days left
                             </span>
                             <div className="flex gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 rounded-md transition-colors"><RotateCcw size={14} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 rounded-md transition-colors"><Trash2 size={14} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} aria-label="Restore Board" className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 rounded-md transition-colors"><RotateCcw size={14} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} aria-label="Permanently Delete Board" className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 rounded-md transition-colors"><Trash2 size={14} /></button>
                             </div>
                         </div>
                     )}

@@ -22,10 +22,7 @@ export default defineConfig({
                     if (id.includes('node_modules/zustand') || id.includes('node_modules/zundo')) {
                         return 'vendor-state';
                     }
-                    // Animation
-                    if (id.includes('node_modules/react-spring') || id.includes('node_modules/@react-spring')) {
-                        return 'vendor-animation';
-                    }
+
                     // Firebase - use specific subpackages
                     if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
                         return 'vendor-firebase';
