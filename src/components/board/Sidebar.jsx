@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../store/useStore';
 import { Plus, X, GripVertical, Check } from 'lucide-react';
@@ -265,7 +266,7 @@ export default function Sidebar({ className = "" }) {
                         >
                             <Plus size={12} /> {t.sidebar.add}
                         </button>
-                        {isAdding === 'global' && <AddInput type="global" onCancel={() => setIsAdding(null)} newName={newName} setNewName={setNewName} newContent={newContent} setNewContent={setNewContent} onSubmit={() => handleAdd('global')} t={t} />}
+                        {isAdding === 'global' && createPortal(<AddInput type="global" onCancel={() => setIsAdding(null)} newName={newName} setNewName={setNewName} newContent={newContent} setNewContent={setNewContent} onSubmit={() => handleAdd('global')} t={t} />, document.body)}
                     </div >
                 </div >
             </div >
@@ -286,15 +287,15 @@ export default function Sidebar({ className = "" }) {
                         >
                             <Plus size={12} /> {t.sidebar.add}
                         </button>
-                        {isAdding === 'board' && <AddInput type="board" onCancel={() => setIsAdding(null)} newName={newName} setNewName={setNewName} newContent={newContent} setNewContent={setNewContent} onSubmit={() => handleAdd('board')} t={t} />}
+                        {isAdding === 'board' && createPortal(<AddInput type="board" onCancel={() => setIsAdding(null)} newName={newName} setNewName={setNewName} newContent={newContent} setNewContent={setNewContent} onSubmit={() => handleAdd('board')} t={t} />, document.body)}
                     </div >
                 </div >
             </div >
 
-            {/* Edit Modal */}
-            {editingPrompt && (
+            {/* Edit Modal - Rendered via Portal to escape pointer-events-none parent */}
+            {editingPrompt && createPortal(
                 <div
-                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm pointer-events-auto"
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm"
                     onClick={e => { if (e.target === e.currentTarget) setEditingPrompt(null); }}
                 >
                     <div
@@ -353,7 +354,8 @@ export default function Sidebar({ className = "" }) {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div >
     );

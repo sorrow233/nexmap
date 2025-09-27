@@ -259,8 +259,8 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
                 {/* Content Area */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 relative">
-                    {/* Content Header */}
-                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-50 relative transform translate-z-0">
+                    {/* Content Header - z-[60] to stay above scrollable content */}
+                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-[60] relative">
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                             {activeTab === 'credits' && t.settings.creditsUsage}
                             {activeTab === 'language' && t.settings.language}
@@ -269,7 +269,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             {activeTab === 'roles' && t.settings.modelRoles}
                             {activeTab === 'storage' && t.settings.storageSettings}
                         </h2>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 relative z-[70] pointer-events-auto">
                             <button
                                 onClick={onClose}
                                 className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm cursor-pointer"
@@ -278,15 +278,15 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             </button>
                             <button
                                 onClick={handleSave}
-                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm cursor-pointer relative z-50 hover:scale-105 active:scale-95"
+                                className="px-6 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 shadow-lg shadow-brand-500/30 transition-all text-sm cursor-pointer hover:scale-105 active:scale-95"
                             >
                                 {t.settings.saveChanges}
                             </button>
                         </div>
                     </div>
 
-                    {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                    {/* Scrollable Content - z-10 to stay below header */}
+                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative z-10">
                         <div className="max-w-3xl mx-auto">
                             {activeTab === 'credits' && (
                                 <SettingsCreditsTab onOpenAdvanced={() => {
