@@ -13,14 +13,7 @@ export function useCardGeneration() {
         setCardGenerating,
         selectedIds,
         cards
-    } = useStore(state => ({
-        setCards: state.setCards,
-        createAICard: state.createAICard,
-        updateCardContent: state.updateCardContent,
-        setCardGenerating: state.setCardGenerating,
-        selectedIds: state.selectedIds,
-        cards: state.cards
-    }));
+    } = useStore();
 
     /**
      * Internal helper for AI generation

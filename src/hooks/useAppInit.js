@@ -32,12 +32,7 @@ export function useAppInit() {
             return true;
         }
     });
-    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore(state => ({
-        setCards: state.setCards,
-        setConnections: state.setConnections,
-        setGroups: state.setGroups,
-        setBoardPrompts: state.setBoardPrompts
-    }));
+    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
     const location = useLocation();
 
     // Load initial boards metadata

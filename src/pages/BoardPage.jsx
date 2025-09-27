@@ -27,63 +27,30 @@ import { useLanguage } from '../contexts/LanguageContext';
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
     const { id: currentBoardId, noteId } = useParams();
     const navigate = useNavigate();
-    // Unified Store Selectors - Consolidate individual calls to reduce re-renders and fix potential selector issues
-    const {
-        cards,
-        connections,
-        groups,
-        selectedIds,
-        generatingCardIds,
-        expandedCardId,
-        offset,
-        scale,
-        isBoardLoading,
-        favoritesLastUpdate,
-        boardPrompts
-    } = useStore(state => ({
-        cards: state.cards,
-        connections: state.connections,
-        groups: state.groups,
-        selectedIds: state.selectedIds,
-        generatingCardIds: state.generatingCardIds,
-        expandedCardId: state.expandedCardId,
-        offset: state.offset,
-        scale: state.scale,
-        isBoardLoading: state.isBoardLoading,
-        favoritesLastUpdate: state.favoritesLastUpdate,
-        boardPrompts: state.boardPrompts
-    }));
+    const cards = useStore(state => state.cards);
+    const connections = useStore(state => state.connections);
+    const groups = useStore(state => state.groups);
+    const selectedIds = useStore(state => state.selectedIds);
+    const generatingCardIds = useStore(state => state.generatingCardIds);
+    const expandedCardId = useStore(state => state.expandedCardId);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
+    const isBoardLoading = useStore(state => state.isBoardLoading);
+    const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
+    const boardPrompts = useStore(state => state.boardPrompts);
 
-    // Actions - Using a single selector to avoid stale closure issues
-    const storeActions = useStore(state => ({
-        setExpandedCardId: state.setExpandedCardId,
-        updateCardFull: state.updateCardFull,
-        handleRegenerate: state.handleRegenerate,
-        handleBatchDelete: state.handleBatchDelete,
-        handleChatGenerate: state.handleChatGenerate,
-        updateCardContent: state.updateCardContent,
-        toggleFavorite: state.toggleFavorite,
-        createGroup: state.createGroup,
-        getConnectedCards: state.getConnectedCards,
-        setSelectedIds: state.setSelectedIds,
-        arrangeSelectionGrid: state.arrangeSelectionGrid,
-        setLastSavedAt: state.setLastSavedAt,
-    }));
-
-    const {
-        setExpandedCardId,
-        updateCardFull,
-        handleRegenerate,
-        handleBatchDelete,
-        handleChatGenerate,
-        updateCardContent,
-        toggleFavorite,
-        createGroup,
-        getConnectedCards,
-        setSelectedIds,
-        arrangeSelectionGrid,
-        setLastSavedAt
-    } = storeActions;
+    const setExpandedCardId = useStore(state => state.setExpandedCardId);
+    const updateCardFull = useStore(state => state.updateCardFull);
+    const handleRegenerate = useStore(state => state.handleRegenerate);
+    const handleBatchDelete = useStore(state => state.handleBatchDelete);
+    const handleChatGenerate = useStore(state => state.handleChatGenerate);
+    const updateCardContent = useStore(state => state.updateCardContent);
+    const toggleFavorite = useStore(state => state.toggleFavorite);
+    const createGroup = useStore(state => state.createGroup);
+    const getConnectedCards = useStore(state => state.getConnectedCards);
+    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
+    const setLastSavedAt = useStore(state => state.setLastSavedAt);
 
     const {
         handleCreateCard,

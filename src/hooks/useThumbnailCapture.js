@@ -7,10 +7,7 @@ import { updateBoardMetadata } from '../services/storage';
  * @returns {Object|null} - Bounding box info or null
  */
 function calculateCardsBoundingBox(cards) {
-    if (!cards || !Array.isArray(cards) || cards.length === 0) {
-        if (cards && !Array.isArray(cards)) console.warn('[Thumbnail] calculateCardsBoundingBox: cards is not an array', cards);
-        return null;
-    }
+    if (!cards || cards.length === 0) return null;
 
     // Filter valid cards - cards store position as x, y directly
     const validCards = cards.filter(c =>
@@ -78,10 +75,6 @@ function getCardColor(card) {
  * Works on all platforms including mobile.
  */
 function renderCardsThumbnail(cards, connections = [], targetWidth = 400, targetHeight = 300) {
-    if (!Array.isArray(cards)) {
-        console.warn('[Thumbnail] renderCardsThumbnail: cards is not an array', cards);
-        return null;
-    }
     const bbox = calculateCardsBoundingBox(cards);
     if (!bbox) return null;
 

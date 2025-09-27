@@ -10,12 +10,13 @@ import { Gift, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export default function SystemCreditsCard({ currentProvider }) {
-    // Selectors for system credits state and actions
-    const systemCredits = useStore(state => state.systemCredits);
-    const systemCreditsLoading = useStore(state => state.systemCreditsLoading);
-    const systemCreditsError = useStore(state => state.systemCreditsError);
-    const loadSystemCredits = useStore(state => state.loadSystemCredits);
-    const getCreditsPercentage = useStore(state => state.getCreditsPercentage);
+    const {
+        systemCredits,
+        systemCreditsLoading,
+        systemCreditsError,
+        loadSystemCredits,
+        getCreditsPercentage
+    } = useStore();
 
     // Check if user should see credits (no API key configured)
     const hasApiKey = currentProvider?.apiKey && currentProvider.apiKey.trim() !== '';
