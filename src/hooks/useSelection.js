@@ -3,7 +3,11 @@ import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 
 export function useSelection() {
-    const { cards, setSelectedIds, toCanvasCoords } = useStore();
+    const { cards, setSelectedIds, toCanvasCoords } = useStore(state => ({
+        cards: state.cards,
+        setSelectedIds: state.setSelectedIds,
+        toCanvasCoords: state.toCanvasCoords
+    }));
 
     // We keep this locally to throttle checks if needed, but it's pure logic now.
     // The previous implementation used a ref for throttling.

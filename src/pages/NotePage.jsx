@@ -14,7 +14,13 @@ export default function NotePage({ onBack }) {
         handleChatGenerate,
         updateCardContent,
         toggleFavorite
-    } = useStore();
+    } = useStore(state => ({
+        cards: state.cards,
+        updateCardFull: state.updateCardFull,
+        handleChatGenerate: state.handleChatGenerate,
+        updateCardContent: state.updateCardContent,
+        toggleFavorite: state.toggleFavorite
+    }));
 
     const {
         handleCreateNote,

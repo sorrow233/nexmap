@@ -49,7 +49,11 @@ const COLORS = {
 };
 
 const Zone = ({ group, isSelected }) => {
-    const { cards, updateGroup, deleteGroup } = useStore();
+    const { cards, updateGroup, deleteGroup } = useStore(state => ({
+        cards: state.cards,
+        updateGroup: state.updateGroup,
+        deleteGroup: state.deleteGroup
+    }));
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(group.title || 'New Zone');
 

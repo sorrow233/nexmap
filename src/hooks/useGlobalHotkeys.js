@@ -15,7 +15,19 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         setSelectedIds,
         offset,
         scale
-    } = useStore();
+    } = useStore(state => ({
+        selectedIds: state.selectedIds,
+        cards: state.cards,
+        setCards: state.setCards,
+        handleBatchDelete: state.handleBatchDelete,
+        handleRegenerate: state.handleRegenerate,
+        handleConnect: state.handleConnect,
+        setConnections: state.setConnections,
+        connections: state.connections,
+        setSelectedIds: state.setSelectedIds,
+        offset: state.offset,
+        scale: state.scale
+    }));
 
     // Helper for Copy
     const handleCopy = async () => {

@@ -14,7 +14,12 @@ export function useAISprouting() {
         createAICard,
         updateCardContent,
         setCardGenerating
-    } = useStore();
+    } = useStore(state => ({
+        cards: state.cards,
+        createAICard: state.createAICard,
+        updateCardContent: state.updateCardContent,
+        setCardGenerating: state.setCardGenerating
+    }));
 
     /**
      * Calculate standard mindmap layout for child cards.

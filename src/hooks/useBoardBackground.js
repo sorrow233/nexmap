@@ -9,7 +9,11 @@ import { getAnalysisPrompt, getPromptGeneratorPrompt, DEFAULT_STYLE } from '../s
 
 export default function useBoardBackground() {
     const [generatingBoardId, setGeneratingBoardId] = useState(null);
-    const { providers, activeId, getRoleModel } = useStore();
+    const { providers, activeId, getRoleModel } = useStore(state => ({
+        providers: state.providers,
+        activeId: state.activeId,
+        getRoleModel: state.getRoleModel
+    }));
 
     // Helper to get active config for LLM calls
     const getLlmConfig = () => {

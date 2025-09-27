@@ -10,7 +10,13 @@ export function useNeuralNotepad() {
         addCard,
         offset,
         scale
-    } = useStore();
+    } = useStore(state => ({
+        cards: state.cards,
+        updateCard: state.updateCard,
+        addCard: state.addCard,
+        offset: state.offset,
+        scale: state.scale
+    }));
 
     /**
      * Neural Notepad (Sticky Note) handling
