@@ -19,6 +19,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const systemImageCredits = useStore(state => state.systemImageCredits);
     const systemTotalCredits = useStore(state => state.systemTotalCredits); // New Selector
     const isPro = useStore(state => state.isPro); // Pro Status
+    const isAdmin = useStore(state => state.isAdmin); // Admin Status
     const loadSystemCredits = useStore(state => state.loadSystemCredits);
     const setSystemCredits = useStore(state => state.setSystemCredits); // New Action
     const setSystemTotalCredits = useStore(state => state.setSystemTotalCredits); // New Action
@@ -207,21 +208,25 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                 )}
             </div>
 
-            {/* Admin Toggle (Secret) */}
-            <div className="flex justify-center">
-                <button
-                    onClick={() => setShowAdmin(!showAdmin)}
-                    className="text-xs text-slate-300 dark:text-slate-700 hover:text-slate-400 transition-colors uppercase font-bold tracking-widest flex items-center gap-1"
-                >
-                    <Lock size={10} />
-                    {showAdmin ? 'Hide Admin Tools' : 'Admin Area'}
-                </button>
-            </div>
+            {/* Admin Panel - Only visible to admins */}
+            {isAdmin && (
+                <>
+                    <div className="flex justify-center">
+                        <button
+                            onClick={() => setShowAdmin(!showAdmin)}
+                            className="text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors uppercase font-bold tracking-widest flex items-center gap-1"
+                        >
+                            <Lock size={10} />
+                            {showAdmin ? '隐藏管理工具' : '管理员工具'}
+                        </button>
+                    </div>
 
-            {showAdmin && (
-                <div className="animate-in fade-in slide-in-from-bottom-4">
-                    <AdminCodePanel />
-                </div>
+                    {showAdmin && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4">
+                            <AdminCodePanel />
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Features Info */}

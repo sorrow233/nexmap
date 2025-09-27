@@ -186,6 +186,9 @@ export async function onRequest(context) {
         // 3. Get user usage data
         const usageData = await getUserUsage(env, userId);
 
+        // Get admin UIDs for admin check
+        const adminUids = (env.ADMIN_UIDS || '').split(',').map(id => id.trim());
+
         // 4. Parse request
         const body = await request.json();
         const { requestBody, stream = false, action, taskType } = body;
@@ -207,7 +210,8 @@ export async function onRequest(context) {
                 // Legacy compatibility
                 credits: (WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0)) - usageData.conversationCount,
                 initialCredits: WEEKLY_CONVERSATION_LIMIT + (usageData.bonusCredits || 0),
-                isPro: !!usageData.isPro
+                isPro: !!usageData.isPro,
+                isAdmin: adminUids.includes(userId)
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
