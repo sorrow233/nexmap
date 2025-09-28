@@ -1,18 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { Trash2, GripVertical, Palette, Smile, FileText, X } from 'lucide-react';
+import { Trash2, Palette, Smile, FileText, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const COLORS = {
-    // Modern, premium glass-like aesthetic
+    // 1. Blue (Existing - Refined)
     blue: {
-        bg: 'bg-indigo-500/5 dark:bg-indigo-500/10',
-        border: 'border-indigo-500/20 dark:border-indigo-400/30',
-        text: 'text-indigo-600 dark:text-indigo-300',
-        ring: 'ring-indigo-500/20',
-        indicator: 'bg-indigo-500',
-        hex: '#6366f1'
+        bg: 'bg-blue-500/5 dark:bg-blue-500/10',
+        border: 'border-blue-500/20 dark:border-blue-400/30',
+        text: 'text-blue-600 dark:text-blue-300',
+        ring: 'ring-blue-500/20',
+        indicator: 'bg-blue-500',
+        hex: '#3b82f6'
     },
+    // 2. Purple (Existing - Refined)
     purple: {
         bg: 'bg-purple-500/5 dark:bg-purple-500/10',
         border: 'border-purple-500/20 dark:border-purple-400/30',
@@ -21,6 +22,7 @@ const COLORS = {
         indicator: 'bg-purple-500',
         hex: '#a855f7'
     },
+    // 3. Teal (Existing - Refined)
     teal: {
         bg: 'bg-teal-500/5 dark:bg-teal-500/10',
         border: 'border-teal-500/20 dark:border-teal-400/30',
@@ -29,6 +31,7 @@ const COLORS = {
         indicator: 'bg-teal-500',
         hex: '#14b8a6'
     },
+    // 4. Rose (Existing - Refined)
     rose: {
         bg: 'bg-rose-500/5 dark:bg-rose-500/10',
         border: 'border-rose-500/20 dark:border-rose-400/30',
@@ -37,6 +40,7 @@ const COLORS = {
         indicator: 'bg-rose-500',
         hex: '#f43f5e'
     },
+    // 5. Amber (Existing - Refined)
     amber: {
         bg: 'bg-amber-500/5 dark:bg-amber-500/10',
         border: 'border-amber-500/20 dark:border-amber-400/30',
@@ -45,6 +49,7 @@ const COLORS = {
         indicator: 'bg-amber-500',
         hex: '#f59e0b'
     },
+    // 6. Slate (Existing - Refined)
     slate: {
         bg: 'bg-slate-500/5 dark:bg-slate-500/10',
         border: 'border-slate-500/20 dark:border-slate-400/30',
@@ -53,9 +58,73 @@ const COLORS = {
         indicator: 'bg-slate-500',
         hex: '#64748b'
     },
+    // New Colors
+    // 7. Sky
+    sky: {
+        bg: 'bg-sky-500/5 dark:bg-sky-500/10',
+        border: 'border-sky-500/20 dark:border-sky-400/30',
+        text: 'text-sky-600 dark:text-sky-300',
+        ring: 'ring-sky-500/20',
+        indicator: 'bg-sky-500',
+        hex: '#0ea5e9'
+    },
+    // 8. Lime
+    lime: {
+        bg: 'bg-lime-500/5 dark:bg-lime-500/10',
+        border: 'border-lime-500/20 dark:border-lime-400/30',
+        text: 'text-lime-600 dark:text-lime-300',
+        ring: 'ring-lime-500/20',
+        indicator: 'bg-lime-500',
+        hex: '#84cc16'
+    },
+    // 9. Fuchsia
+    fuchsia: {
+        bg: 'bg-fuchsia-500/5 dark:bg-fuchsia-500/10',
+        border: 'border-fuchsia-500/20 dark:border-fuchsia-400/30',
+        text: 'text-fuchsia-600 dark:text-fuchsia-300',
+        ring: 'ring-fuchsia-500/20',
+        indicator: 'bg-fuchsia-500',
+        hex: '#d946ef'
+    },
+    // 10. Emerald
+    emerald: {
+        bg: 'bg-emerald-500/5 dark:bg-emerald-500/10',
+        border: 'border-emerald-500/20 dark:border-emerald-400/30',
+        text: 'text-emerald-600 dark:text-emerald-300',
+        ring: 'ring-emerald-500/20',
+        indicator: 'bg-emerald-500',
+        hex: '#10b981'
+    },
+    // 11. Violet
+    violet: {
+        bg: 'bg-violet-500/5 dark:bg-violet-500/10',
+        border: 'border-violet-500/20 dark:border-violet-400/30',
+        text: 'text-violet-600 dark:text-violet-300',
+        ring: 'ring-violet-500/20',
+        indicator: 'bg-violet-500',
+        hex: '#8b5cf6'
+    },
+    // 12. Orange
+    orange: {
+        bg: 'bg-orange-500/5 dark:bg-orange-500/10',
+        border: 'border-orange-500/20 dark:border-orange-400/30',
+        text: 'text-orange-600 dark:text-orange-300',
+        ring: 'ring-orange-500/20',
+        indicator: 'bg-orange-500',
+        hex: '#f97316'
+    },
+    // 13. Cyan
+    cyan: {
+        bg: 'bg-cyan-500/5 dark:bg-cyan-500/10',
+        border: 'border-cyan-500/20 dark:border-cyan-400/30',
+        text: 'text-cyan-600 dark:text-cyan-300',
+        ring: 'ring-cyan-500/20',
+        indicator: 'bg-cyan-500',
+        hex: '#06b6d4'
+    }
 };
 
-const EMOJI_PRESETS = ['📁', '💡', '🎯', '⭐', '🔥', '💎', '🚀', '📌', '🎨', '💻', '📊', '🌟'];
+const EMOJI_PRESETS = ['📁', '💡', '🎯', '⭐', '🔥', '💎', '🚀', '📌', '🎨', '💻', '📊', '🌟', '🧠', '⚙️', '📝', '✨'];
 
 const Zone = ({ group, isSelected }) => {
     const { cards, updateGroup, deleteGroup } = useStore();
@@ -148,13 +217,13 @@ const Zone = ({ group, isSelected }) => {
 
     const handleColorChange = (colorKey) => {
         updateGroup(group.id, { color: colorKey, customColor: '' });
-        setShowColorPicker(false);
+        // setShowColorPicker(false); // Can keep open for rapid preview
     };
 
     const handleCustomColorApply = () => {
         if (/^#[0-9A-Fa-f]{6}$/.test(customColorInput)) {
             updateGroup(group.id, { customColor: customColorInput });
-            setShowColorPicker(false);
+            // setShowColorPicker(false);
         }
     };
 
@@ -165,7 +234,6 @@ const Zone = ({ group, isSelected }) => {
 
     const handleDescriptionSave = () => {
         updateGroup(group.id, { description: description.trim() });
-        setShowDescription(false);
     };
 
     // Dynamic styles for custom color
@@ -190,91 +258,106 @@ const Zone = ({ group, isSelected }) => {
             }}
         >
             {/* Title Bar */}
-            <div className="absolute -top-12 left-0 right-0 flex justify-center items-center">
+            <div className="absolute -top-14 left-0 right-0 flex justify-center items-center">
                 <div
-                    className={`
-                        flex items-center gap-2 px-4 py-2 rounded-full 
-                        bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg border border-slate-200 dark:border-slate-700
-                        transition-all duration-200 opacity-70 hover:opacity-100 group-hover:opacity-100
-                    `}
+                    className="
+                        flex items-center gap-0.5 px-3 py-2 rounded-2xl
+                        bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-xl border border-slate-200/50 dark:border-slate-700/50
+                        transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5
+                    "
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Icon */}
-                    {group.icon && (
-                        <span className="text-base">{group.icon}</span>
-                    )}
+                    {/* Icon section */}
+                    <div className="flex items-center gap-2 pl-1 pr-3 border-r border-slate-200 dark:border-slate-800">
+                        {/* Icon */}
+                        {group.icon && (
+                            <span className="text-xl select-none">{group.icon}</span>
+                        )}
 
-                    {/* Title */}
-                    {isEditingTitle ? (
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            onBlur={handleTitleSave}
-                            onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 dark:text-slate-200 w-32 text-center"
-                        />
-                    ) : (
-                        <span
-                            onDoubleClick={(e) => { e.stopPropagation(); setIsEditingTitle(true); }}
-                            className="text-sm font-bold text-slate-600 dark:text-slate-300 cursor-text select-none"
-                        >
-                            {title}
-                        </span>
-                    )}
+                        {/* Title */}
+                        {isEditingTitle ? (
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                onBlur={handleTitleSave}
+                                onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                                autoFocus
+                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 dark:text-slate-100 min-w-[80px] w-auto max-w-[200px]"
+                            />
+                        ) : (
+                            <span
+                                onDoubleClick={(e) => { e.stopPropagation(); setIsEditingTitle(true); }}
+                                className="text-sm font-bold text-slate-700 dark:text-slate-200 cursor-text select-none truncate max-w-[200px]"
+                            >
+                                {title}
+                            </span>
+                        )}
 
-                    {/* Stats Badge */}
-                    <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                        {stats.cardCount} 📄 {stats.messageCount > 0 && `· ${stats.messageCount} 💬`}
-                    </span>
+                        {/* Stats Badge */}
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/50 ml-1">
+                            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                {stats.cardCount} <span className="opacity-50">Docs</span>
+                            </span>
+                            {stats.messageCount > 0 && (
+                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap border-l border-slate-200 dark:border-slate-700/50 pl-1.5">
+                                    {stats.messageCount} <span className="opacity-50">Msg</span>
+                                </span>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Quick Actions */}
-                    <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2 ml-1">
+                    <div className="flex items-center pl-2 gap-0.5">
                         {/* Color Picker */}
                         <div className="relative">
                             <button
-                                onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                                title={t?.zone?.customColor || "Color"}
+                                onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowEmojiPicker(false); setShowDescription(false); }}
+                                className={`p-1.5 rounded-lg transition-all ${showColorPicker ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800'}`}
+                                title={t?.zone?.customColor || "Color Theme"}
                             >
-                                <Palette size={14} />
+                                <Palette size={15} />
                             </button>
 
                             {showColorPicker && (
                                 <div
-                                    className="absolute top-8 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 z-50 min-w-[180px]"
-                                    onMouseDown={(e) => e.stopPropagation()}
+                                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 z-50 w-[280px] animate-in fade-in zoom-in-95 duration-200"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
-                                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
+                                    <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
                                         {t?.zone?.colorPresets || "Presets"}
                                     </div>
-                                    <div className="flex flex-wrap gap-2 mb-3">
+                                    <div className="grid grid-cols-7 gap-2 mb-4">
                                         {Object.entries(COLORS).map(([key, val]) => (
                                             <button
                                                 key={key}
                                                 onClick={() => handleColorChange(key)}
-                                                className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${group.color === key && !hasCustomColor ? 'border-slate-800 dark:border-white scale-110' : 'border-transparent'}`}
+                                                className={`w-7 h-7 rounded-full border-2 transition-all hover:scale-110 ${group.color === key && !hasCustomColor ? 'border-slate-900 dark:border-slate-100 scale-110 ring-2 ring-offset-2 ring-slate-100 dark:ring-slate-900' : 'border-transparent hover:border-slate-200 dark:hover:border-slate-700'}`}
                                                 style={{ backgroundColor: val.hex }}
+                                                title={key}
                                             />
                                         ))}
                                     </div>
-                                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-                                        {t?.zone?.customColor || "Custom"}
+
+                                    <div className="border-t border-slate-100 dark:border-slate-800 my-3"></div>
+
+                                    <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
+                                        {t?.zone?.customColor || "Custom Hex"}
                                     </div>
                                     <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={customColorInput}
-                                            onChange={(e) => setCustomColorInput(e.target.value)}
-                                            placeholder="#FF5733"
-                                            className="flex-1 px-2 py-1 text-xs border rounded-lg dark:bg-slate-700 dark:border-slate-600"
-                                        />
+                                        <div className="relative flex-1">
+                                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-slate-200 dark:border-slate-600" style={{ backgroundColor: customColorInput || '#ffffff' }}></div>
+                                            <input
+                                                type="text"
+                                                value={customColorInput}
+                                                onChange={(e) => setCustomColorInput(e.target.value)}
+                                                placeholder="#FF5733"
+                                                className="w-full pl-8 pr-2 py-1.5 text-xs font-mono border rounded-lg bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                            />
+                                        </div>
                                         <button
                                             onClick={handleCustomColorApply}
-                                            className="px-2 py-1 bg-indigo-500 text-white text-xs rounded-lg hover:bg-indigo-600"
+                                            className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
                                         >
                                             OK
                                         </button>
@@ -286,35 +369,34 @@ const Zone = ({ group, isSelected }) => {
                         {/* Emoji Picker */}
                         <div className="relative">
                             <button
-                                onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); setShowColorPicker(false); setShowDescription(false); }}
+                                className={`p-1.5 rounded-lg transition-all ${showEmojiPicker ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800'}`}
                                 title={t?.zone?.selectEmoji || "Icon"}
                             >
-                                <Smile size={14} />
+                                <Smile size={15} />
                             </button>
 
                             {showEmojiPicker && (
                                 <div
-                                    className="absolute top-8 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 z-50"
-                                    onMouseDown={(e) => e.stopPropagation()}
+                                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 z-50 w-[240px] animate-in fade-in zoom-in-95 duration-200"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
-                                    <div className="grid grid-cols-6 gap-1">
+                                    <div className="grid grid-cols-6 gap-2">
                                         {EMOJI_PRESETS.map(emoji => (
                                             <button
                                                 key={emoji}
                                                 onClick={() => handleEmojiSelect(emoji)}
-                                                className="w-8 h-8 flex items-center justify-center text-lg hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                                className="w-8 h-8 flex items-center justify-center text-xl hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all hover:scale-110 active:scale-95"
                                             >
                                                 {emoji}
                                             </button>
                                         ))}
                                         <button
                                             onClick={() => handleEmojiSelect('')}
-                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                            title="Remove"
+                                            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/20 dark:hover:text-red-400 rounded-xl transition-all"
+                                            title="Remove Icon"
                                         >
-                                            <X size={14} />
+                                            <X size={16} />
                                         </button>
                                     </div>
                                 </div>
@@ -322,47 +404,59 @@ const Zone = ({ group, isSelected }) => {
                         </div>
 
                         {/* Description */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setShowDescription(!showDescription); }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            className={`p-1 transition-colors ${group.description ? 'text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
-                            title={t?.zone?.description || "Notes"}
-                        >
-                            <FileText size={14} />
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowDescription(!showDescription); setShowColorPicker(false); setShowEmojiPicker(false); }}
+                                className={`p-1.5 rounded-lg transition-all ${showDescription || description ? 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-500/10' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800'}`}
+                                title={t?.zone?.description || "Notes"}
+                            >
+                                <FileText size={15} />
+                            </button>
+
+                            {showDescription && (
+                                <div
+                                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-0 z-50 w-72 animate-in fade-in zoom-in-95 duration-200 overflow-hidden flex flex-col"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                            {t?.zone?.description || "Zone Notes"}
+                                        </span>
+                                        <button
+                                            onClick={() => setShowDescription(false)}
+                                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="p-3">
+                                        <textarea
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            onBlur={handleDescriptionSave}
+                                            placeholder={t?.zone?.descriptionPlaceholder || "Add notes about this zone..."}
+                                            rows={5}
+                                            className="w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-200 border-0 bg-transparent resize-none focus:outline-none placeholder:text-slate-400"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Delete */}
+                        <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
                         <button
                             onClick={(e) => { e.stopPropagation(); deleteGroup(group.id); }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
-                            title="Remove Zone"
+                            className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-all"
+                            title="Delete Zone"
                         >
-                            <Trash2 size={14} />
+                            <Trash2 size={15} />
                         </button>
                     </div>
                 </div>
             </div>
-
-            {/* Description Panel */}
-            {showDescription && (
-                <div
-                    className="absolute -top-32 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 z-50 w-64"
-                    onMouseDown={(e) => e.stopPropagation()}
-                >
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-                        {t?.zone?.description || "Zone Notes"}
-                    </div>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        onBlur={handleDescriptionSave}
-                        placeholder={t?.zone?.descriptionPlaceholder || "Add notes..."}
-                        rows={3}
-                        className="w-full px-2 py-1.5 text-sm border rounded-lg resize-none dark:bg-slate-700 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                </div>
-            )}
         </div>
     );
 };
