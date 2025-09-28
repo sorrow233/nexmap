@@ -127,6 +127,7 @@ export default function GalleryPage({
                                 <button
                                     key={tab.id}
                                     onClick={() => setViewMode(tab.id)}
+                                    aria-label={tab.label}
                                     className={`
                                         px-5 py-2 rounded-full text-sm font-semibold transition-all relative overflow-hidden flex items-center gap-2
                                         ${viewMode === tab.id
@@ -162,6 +163,7 @@ export default function GalleryPage({
                             <div className="relative z-50">
                                 <button
                                     onClick={() => setShowUserMenu(!showUserMenu)}
+                                    aria-label="User Menu"
                                     className="flex items-center gap-3 pl-2 pr-4 py-1.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full hover:bg-slate-50 dark:hover:bg-white/10 transition-all"
                                 >
                                     {user.photoURL ? (
@@ -227,7 +229,7 @@ export default function GalleryPage({
                 </div>
 
                 {/* Main Content Area */}
-                <div className="animate-fade-in-up duration-500 delay-100 min-h-[60vh] pb-32">
+                <main className="animate-fade-in-up duration-500 delay-100 min-h-[60vh] pb-32">
                     {viewMode === 'feedback' ? (
                         <FeedbackView user={user} onLogin={onLogin} />
                     ) : viewMode === 'favorites' ? (
@@ -245,13 +247,14 @@ export default function GalleryPage({
                             onImportGuide={handleCreateGuide}
                         />
                     )}
-                </div>
+                </main>
             </div>
 
             {/* Quick Settings Action (Floating) */}
             <div className="fixed bottom-8 right-8 z-40 hidden md:block">
                 <button
                     onClick={() => setIsSettingsOpen(true)}
+                    aria-label="Open Settings"
                     className="w-12 h-12 rounded-full bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:scale-110 transition-all"
                 >
                     <Settings size={20} />
