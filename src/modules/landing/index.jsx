@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import VisualHero from './components/VisualHero';
-import SpatialSection from './components/SpatialSection';
-import ConcurrencySection from './components/ConcurrencySection';
-import SproutSection from './components/SproutSection';
-import GraphSection from './components/GraphSection';
-import FooterSection from './components/FooterSection';
-import DemoInfinite from './components/DemoInfinite';
-import FeatureBento from './components/FeatureBento';
 import TopNav from './components/TopNav';
-import PricingSection from './components/PricingSection';
-
 import SEO from '../../components/SEO';
+
+// Lazy Load Heavy Sections
+const FeatureBento = React.lazy(() => import('./components/FeatureBento'));
+const ConcurrencySection = React.lazy(() => import('./components/ConcurrencySection'));
+const SpatialSection = React.lazy(() => import('./components/SpatialSection'));
+const DemoInfinite = React.lazy(() => import('./components/DemoInfinite'));
+const SproutSection = React.lazy(() => import('./components/SproutSection'));
+const GraphSection = React.lazy(() => import('./components/GraphSection'));
+const PricingSection = React.lazy(() => import('./components/PricingSection'));
+const FooterSection = React.lazy(() => import('./components/FooterSection'));
+
+
 
 // The New Landing Orchestrator
 const LandingModule = () => {
@@ -95,7 +98,7 @@ const LandingModule = () => {
                 .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
             `}</style>
 
-            {/* 1. VISUAL HERO (Sticky) */}
+            {/* 1. VISUAL HERO (Sticky) - Keep Eager for LCP */}
             <div className="h-screen w-full sticky top-0 z-0">
                 <VisualHero scrollProgress={scrollProgress} onStart={handleStart} />
             </div>
@@ -103,47 +106,50 @@ const LandingModule = () => {
             {/* Spacer for Sticky Hero */}
             <div className="h-[20vh] md:h-[50vh]" />
 
-            {/* 2. FEATURE BENTO (Moved here) */}
-            <div className="relative z-20 bg-[#050505] border-t border-b border-white/5">
-                <FeatureBento />
-            </div>
+            {/* Lazy Load Below-the-Fold Sections */}
+            <React.Suspense fallback={<div className="min-h-screen bg-[#050505]" />}>
+                {/* 2. FEATURE BENTO */}
+                <div className="relative z-20 bg-[#050505] border-t border-b border-white/5">
+                    <FeatureBento />
+                </div>
 
-            {/* 3. UNLIMITED CONCURRENCY */}
-            <div className="relative z-10 bg-[#050505] border-t border-white/5">
-                <ConcurrencySection />
-            </div>
+                {/* 3. UNLIMITED CONCURRENCY */}
+                <div className="relative z-10 bg-[#050505] border-t border-white/5">
+                    <ConcurrencySection />
+                </div>
 
-            {/* 4. SPATIAL ORGANIZATION */}
-            <div className="relative z-10 border-t border-white/5">
-                <SpatialSection />
-            </div>
+                {/* 4. SPATIAL ORGANIZATION */}
+                <div className="relative z-10 border-t border-white/5">
+                    <SpatialSection />
+                </div>
 
-            {/* 5. DEMO INFINITE (Embrace Chaos) - Moved Here */}
-            <div className="relative z-10 border-t border-white/5">
-                <DemoInfinite />
-            </div>
+                {/* 5. DEMO INFINITE (Embrace Chaos) */}
+                <div className="relative z-10 border-t border-white/5">
+                    <DemoInfinite />
+                </div>
 
-            {/* 6. RECURSIVE SPROUT */}
-            <div className="relative z-10 border-t border-white/5">
-                <SproutSection />
-            </div>
+                {/* 6. RECURSIVE SPROUT */}
+                <div className="relative z-10 border-t border-white/5">
+                    <SproutSection />
+                </div>
 
-            {/* 7. GRAPH CONTEXT WALKING */}
-            <div className="relative z-10 border-t border-white/5">
-                <GraphSection />
-            </div>
+                {/* 7. GRAPH CONTEXT WALKING */}
+                <div className="relative z-10 border-t border-white/5">
+                    <GraphSection />
+                </div>
 
-            {/* 8. PRICING SECTION */}
-            <div className="relative z-10 border-t border-white/5 bg-[#0A0A0A]">
-                <PricingSection showTitle={true} />
-            </div>
+                {/* 8. PRICING SECTION */}
+                <div className="relative z-10 border-t border-white/5 bg-[#0A0A0A]">
+                    <PricingSection showTitle={true} />
+                </div>
 
-            {/* FOOTER */}
-            <div className="relative z-20">
-                <FooterSection />
-            </div>
+                {/* FOOTER */}
+                <div className="relative z-20">
+                    <FooterSection />
+                </div>
+            </React.Suspense>
 
-            {/* Top Navigation Overlay */}
+            {/* Top Navigation Overlay - Keep Eager */}
             <TopNav />
 
         </div>
