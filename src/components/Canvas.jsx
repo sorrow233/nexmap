@@ -369,8 +369,8 @@ export default function Canvas({ onCreateNote, ...props }) {
                 })}
             </div>
 
-            {/* Status Indicator */}
-            <div className="absolute bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
+            {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
+            <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
                 {/* Canvas Mode Toggle - Modern canvas standard */}
                 <button
                     onClick={(e) => {
