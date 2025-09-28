@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { Trash2, GripVertical, Palette, Smile, FileText, ChevronDown, X } from 'lucide-react';
+import { Trash2, GripVertical, Palette, Smile, FileText, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const COLORS = {
@@ -58,7 +58,7 @@ const COLORS = {
 const EMOJI_PRESETS = ['📁', '💡', '🎯', '⭐', '🔥', '💎', '🚀', '📌', '🎨', '💻', '📊', '🌟'];
 
 const Zone = ({ group, isSelected }) => {
-    const { cards, updateGroup, deleteGroup, moveGroupCards } = useStore();
+    const { cards, updateGroup, deleteGroup } = useStore();
     const { t } = useLanguage();
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(group.title || 'New Zone');
@@ -68,36 +68,9 @@ const Zone = ({ group, isSelected }) => {
     const [description, setDescription] = useState(group.description || '');
     const [customColorInput, setCustomColorInput] = useState(group.customColor || '');
 
-    // Drag state
-    const isDragging = useRef(false);
-    const dragStart = useRef({ x: 0, y: 0 });
-    const colorPickerRef = useRef(null);
-    const emojiPickerRef = useRef(null);
-
-    // Close dropdowns when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (colorPickerRef.current && !colorPickerRef.current.contains(e.target)) {
-                setShowColorPicker(false);
-            }
-            if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
-                setShowEmojiPicker(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    // Filter only cards in this group for optimized rect calculation
-    const groupCards = useMemo(() =>
-        cards.filter(c => group.cardIds.includes(c.id)),
-        [cards, group.cardIds]
-    );
-
-    // Debounced rect calculation for performance
-    const [debouncedRect, setDebouncedRect] = useState(null);
-
-    const computeRect = useCallback(() => {
+    // Calculate Bounding Box
+    const rect = useMemo(() => {
+        const groupCards = cards.filter(c => group.cardIds.includes(c.id));
         if (groupCards.length === 0) return null;
 
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -132,18 +105,11 @@ const Zone = ({ group, isSelected }) => {
             width: (maxX - minX) + (PADDING_X * 2),
             height: (maxY - minY) + (PADDING_Y * 2) + 40
         };
-    }, [groupCards]);
-
-    // Debounce rect updates
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedRect(computeRect());
-        }, 100);
-        return () => clearTimeout(timer);
-    }, [computeRect]);
+    }, [cards, group.cardIds]);
 
     // Calculate stats
     const stats = useMemo(() => {
+        const groupCards = cards.filter(c => group.cardIds.includes(c.id));
         const cardCount = groupCards.length;
         let messageCount = 0;
         groupCards.forEach(c => {
@@ -152,9 +118,9 @@ const Zone = ({ group, isSelected }) => {
             }
         });
         return { cardCount, messageCount };
-    }, [groupCards]);
+    }, [cards, group.cardIds]);
 
-    if (!debouncedRect) return null;
+    if (!rect) return null;
 
     // Get color - prioritize customColor
     const getZoneColor = () => {
@@ -202,41 +168,6 @@ const Zone = ({ group, isSelected }) => {
         setShowDescription(false);
     };
 
-    // Drag handlers for moving entire zone - using refs to avoid circular useCallback dependencies
-    const handleDragMoveRef = useRef(null);
-    const handleDragEndRef = useRef(null);
-
-    // Update refs on each render
-    handleDragMoveRef.current = (e) => {
-        if (!isDragging.current) return;
-
-        const scale = useStore.getState().scale || 1;
-        const deltaX = (e.clientX - dragStart.current.x) / scale;
-        const deltaY = (e.clientY - dragStart.current.y) / scale;
-
-        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
-            moveGroupCards(group.id, deltaX, deltaY);
-            dragStart.current = { x: e.clientX, y: e.clientY };
-        }
-    };
-
-    handleDragEndRef.current = () => {
-        isDragging.current = false;
-        document.removeEventListener('mousemove', handleDragMoveRef.current);
-        document.removeEventListener('mouseup', handleDragEndRef.current);
-    };
-
-    const handleDragStart = (e) => {
-        if (isEditingTitle) return;
-        e.preventDefault();
-        e.stopPropagation();
-        isDragging.current = true;
-        dragStart.current = { x: e.clientX, y: e.clientY };
-
-        document.addEventListener('mousemove', handleDragMoveRef.current);
-        document.addEventListener('mouseup', handleDragEndRef.current);
-    };
-
     // Dynamic styles for custom color
     const customBgStyle = hasCustomColor ? { backgroundColor: `${group.customColor}08` } : {};
     const customBorderStyle = hasCustomColor ? { borderColor: `${group.customColor}30` } : {};
@@ -248,30 +179,25 @@ const Zone = ({ group, isSelected }) => {
                 ${isSelected ? `ring-4 ${!hasCustomColor ? colorTheme.ring : ''}` : 'hover:ring-2 hover:ring-black/5 dark:hover:ring-white/5'}
             `}
             style={{
-                left: debouncedRect.x,
-                top: debouncedRect.y,
-                width: debouncedRect.width,
-                height: debouncedRect.height,
+                left: rect.x,
+                top: rect.y,
+                width: rect.width,
+                height: rect.height,
                 zIndex: 0,
                 ...customBgStyle,
                 ...customBorderStyle,
                 ...(isSelected && hasCustomColor ? { boxShadow: `0 0 0 4px ${group.customColor}20` } : {})
             }}
         >
-            {/* Title Bar - Draggable */}
+            {/* Title Bar */}
             <div className="absolute -top-12 left-0 right-0 flex justify-center items-center">
                 <div
                     className={`
                         flex items-center gap-2 px-4 py-2 rounded-full 
                         bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg border border-slate-200 dark:border-slate-700
                         transition-all duration-200 opacity-70 hover:opacity-100 group-hover:opacity-100
-                        cursor-grab active:cursor-grabbing
                     `}
-                    onMouseDown={handleDragStart}
                 >
-                    {/* Drag Handle */}
-                    <GripVertical size={14} className="text-slate-400 flex-shrink-0" />
-
                     {/* Icon */}
                     {group.icon && (
                         <span className="text-base">{group.icon}</span>
@@ -307,7 +233,7 @@ const Zone = ({ group, isSelected }) => {
                     {/* Quick Actions */}
                     <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2 ml-1">
                         {/* Color Picker */}
-                        <div className="relative" ref={colorPickerRef}>
+                        <div className="relative">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); }}
                                 onMouseDown={(e) => e.stopPropagation()}
@@ -358,7 +284,7 @@ const Zone = ({ group, isSelected }) => {
                         </div>
 
                         {/* Emoji Picker */}
-                        <div className="relative" ref={emojiPickerRef}>
+                        <div className="relative">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
                                 onMouseDown={(e) => e.stopPropagation()}
