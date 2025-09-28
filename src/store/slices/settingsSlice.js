@@ -29,6 +29,24 @@ export const createSettingsSlice = (set, get) => ({
     isSettingsOpen: false,
     setIsSettingsOpen: (val) => set((state) => ({ isSettingsOpen: typeof val === 'function' ? val(state.isSettingsOpen) : val })),
 
+    // Offline Mode - reduces cloud sync to save quota
+    offlineMode: localStorage.getItem('mixboard_offline_mode') === 'true',
+    autoOfflineTriggered: false, // True if quota exhausted triggered offline mode
+
+    setOfflineMode: (enabled) => {
+        localStorage.setItem('mixboard_offline_mode', enabled ? 'true' : 'false');
+        set({ offlineMode: enabled, autoOfflineTriggered: false });
+    },
+
+    // Called when quota is exhausted - auto-enable offline mode
+    triggerAutoOffline: () => {
+        if (!get().offlineMode) {
+            console.warn('[Settings] Quota exhausted - auto-enabling offline mode');
+            localStorage.setItem('mixboard_offline_mode', 'true');
+            set({ offlineMode: true, autoOfflineTriggered: true });
+        }
+    },
+
     // Data State
     providers: initialState.providers,
     activeId: initialState.activeId,

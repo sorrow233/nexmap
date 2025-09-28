@@ -8,6 +8,57 @@ import { reconcileCards, removeUndefined } from './syncUtils';
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 
+// Check if error is quota exhausted and trigger offline mode
+const handleQuotaError = async (error, context) => {
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota exceeded')) {
+        console.error(`[Sync] Quota exhausted during ${context}. Switching to offline mode.`);
+        localStorage.setItem('mixboard_offline_mode', 'true');
+        localStorage.setItem('mixboard_offline_auto', 'true'); // Mark as auto-triggered
+        localStorage.setItem('mixboard_offline_time', Date.now().toString());
+        try {
+            const { useStore } = await import('../store/useStore');
+            useStore.getState().triggerAutoOffline?.();
+        } catch (e) {
+            // Fallback handled above
+        }
+        return true;
+    }
+    return false;
+};
+
+// Check if offline mode is enabled
+const isOfflineMode = () => {
+    // If manually enabled, always respect it
+    if (localStorage.getItem('mixboard_offline_mode') === 'true') {
+        // Check if auto-triggered and enough time has passed (5 minutes)
+        const isAuto = localStorage.getItem('mixboard_offline_auto') === 'true';
+        const offlineTime = parseInt(localStorage.getItem('mixboard_offline_time') || '0', 10);
+        const elapsed = Date.now() - offlineTime;
+
+        // Auto-triggered offline mode expires after 5 minutes - allow retry
+        if (isAuto && elapsed > 5 * 60 * 1000) {
+            debugLog.sync('Auto-offline expired (5 min), allowing sync retry...');
+            return false; // Allow one sync attempt
+        }
+        return true;
+    }
+    return false;
+};
+
+// Called when sync succeeds - clear auto-offline state
+const onSyncSuccess = () => {
+    if (localStorage.getItem('mixboard_offline_auto') === 'true') {
+        debugLog.sync('Sync succeeded! Clearing auto-offline mode.');
+        localStorage.removeItem('mixboard_offline_mode');
+        localStorage.removeItem('mixboard_offline_auto');
+        localStorage.removeItem('mixboard_offline_time');
+        // Update store if available
+        import('../store/useStore').then(({ useStore }) => {
+            useStore.getState().setOfflineMode?.(false);
+        }).catch(() => { });
+    }
+};
+
 export const listenForBoardUpdates = (userId, onUpdate) => {
     if (!db || !userId) return () => { };
 
@@ -141,6 +192,12 @@ const lastSyncedContentHash = new Map();
 export const saveBoardToCloud = async (userId, boardId, boardContent) => {
     if (!db || !userId) return;
 
+    // Skip cloud sync in offline mode
+    if (isOfflineMode()) {
+        debugLog.sync(`Skipping cloud save for ${boardId}: offline mode enabled`);
+        return;
+    }
+
     // Generate content hash for dirty checking
     const contentHash = JSON.stringify({
         cards: (boardContent.cards || []).map(c => ({
@@ -227,19 +284,22 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
 
         // Cache successful sync
         lastSyncedContentHash.set(cacheKey, contentHash);
+        onSyncSuccess(); // Clear auto-offline if was triggered
         debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
     } catch (e) {
+        await handleQuotaError(e, 'saveBoardToCloud');
         debugLog.error(`Cloud save failed for board ${boardId}`, e);
     }
 };
 
 export const updateBoardMetadataInCloud = async (userId, boardId, metadata) => {
-    if (!db || !userId) return;
+    if (!db || !userId || isOfflineMode()) return;
     try {
         debugLog.sync(`Updating cloud metadata for board ${boardId}`, metadata);
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await setDoc(boardRef, metadata, { merge: true });
     } catch (e) {
+        await handleQuotaError(e, 'updateBoardMetadataInCloud');
         debugLog.error(`Cloud metadata update failed for board ${boardId}`, e);
     }
 };
@@ -256,23 +316,25 @@ export const deleteBoardFromCloud = async (userId, boardId) => {
 };
 
 export const saveUserSettings = async (userId, settings) => {
-    if (!db || !userId) return;
+    if (!db || !userId || isOfflineMode()) return;
     try {
         debugLog.auth('Saving user settings to cloud...', settings);
         const configRef = doc(db, 'users', userId, 'settings', 'config');
-        await setDoc(configRef, settings); // Overwrite cleanly to handle deletions
+        await setDoc(configRef, settings);
     } catch (e) {
+        await handleQuotaError(e, 'saveUserSettings');
         debugLog.error("Save settings failed", e);
     }
 };
 
 export const updateUserSettings = async (userId, updates) => {
-    if (!db || !userId) return;
+    if (!db || !userId || isOfflineMode()) return;
     try {
         debugLog.auth('Updating user settings in cloud...', updates);
         const configRef = doc(db, 'users', userId, 'settings', 'config');
         await setDoc(configRef, updates, { merge: true });
     } catch (e) {
+        await handleQuotaError(e, 'updateUserSettings');
         debugLog.error("Update settings failed", e);
     }
 };
