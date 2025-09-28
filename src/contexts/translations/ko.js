@@ -387,6 +387,19 @@ export const ko = {
         cta: "Alpha 시작",
         rights: "© 2024 NexMap. All rights reserved."
     },
+    payment: {
+        successTitle: "결제 완료!",
+        successDesc: "구매해 주셔서 감사합니다. 크레딧이 추가되었습니다.",
+        orderNumber: "주문 번호",
+        copy: "복사",
+        copied: "복사됨!",
+        product: "제품",
+        amount: "금액",
+        creditsAdded: "추가된 크레딧",
+        proUnlocked: "Pro 상태 해제!",
+        welcomePro: "Pro에 오신 것을 환영합니다!",
+        contactSupport: "질문이 있으신가요? 문의하기:"
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "개 항목",

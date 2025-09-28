@@ -7,11 +7,13 @@ import SettingsModal from '../components/SettingsModal';
 import SEO from '../components/SEO';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import InitialCreditsModal from '../components/InitialCreditsModal';
 import { useStore } from '../store/useStore';
 import ProBadge from '../components/ProBadge';
+import PaymentSuccessModal from '../components/PaymentSuccessModal';
+import { auth } from '../services/firebase';
 
 export default function GalleryPage({
     boardsList,
@@ -30,9 +32,50 @@ export default function GalleryPage({
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash' | 'favorites' | 'feedback'
+    const [paymentSuccessOpen, setPaymentSuccessOpen] = useState(false);
+    const [orderDetails, setOrderDetails] = useState(null);
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const isPro = useStore(state => state.isPro);
+    const refreshCredits = useStore(state => state.fetchSystemCredits);
+
+    // Detect payment success from URL
+    useEffect(() => {
+        const paymentStatus = searchParams.get('payment');
+        const sessionId = searchParams.get('session_id');
+
+        if (paymentStatus === 'success' && sessionId && user) {
+            // Fetch order details
+            const fetchOrderDetails = async () => {
+                try {
+                    const token = await auth.currentUser?.getIdToken();
+                    if (!token) return;
+
+                    const res = await fetch(`/api/order-details?session_id=${sessionId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        setOrderDetails(data);
+                        setPaymentSuccessOpen(true);
+                        // Refresh credits after successful payment
+                        if (refreshCredits) refreshCredits(user.uid);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch order details:', err);
+                }
+            };
+
+            fetchOrderDetails();
+
+            // Clean up URL parameters
+            searchParams.delete('payment');
+            searchParams.delete('session_id');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, user, setSearchParams, refreshCredits]);
 
     // Determine if we should show welcome
     const showWelcome = hasSeenWelcome === false;
@@ -277,6 +320,16 @@ export default function GalleryPage({
                         }
                     }
                 }}
+            />
+
+            {/* Payment Success Modal */}
+            <PaymentSuccessModal
+                isOpen={paymentSuccessOpen}
+                onClose={() => {
+                    setPaymentSuccessOpen(false);
+                    setOrderDetails(null);
+                }}
+                orderDetails={orderDetails}
             />
         </div>
     );

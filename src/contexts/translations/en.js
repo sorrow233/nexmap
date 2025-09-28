@@ -479,6 +479,19 @@ export const en = {
         cta: "Launch Alpha",
         rights: "© 2024 NexMap. All rights reserved."
     },
+    payment: {
+        successTitle: "Payment Successful!",
+        successDesc: "Thank you for your purchase. Your credits have been added.",
+        orderNumber: "Order Number",
+        copy: "Copy",
+        copied: "Copied!",
+        product: "Product",
+        amount: "Amount",
+        creditsAdded: "Credits Added",
+        proUnlocked: "Pro Status Unlocked!",
+        welcomePro: "Welcome to Pro!",
+        contactSupport: "Questions? Contact us:"
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "items",
