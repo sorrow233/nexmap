@@ -1,10 +1,97 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { createRoot } from 'react-dom/client';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
 import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import DOMPurify from 'dompurify';
+import CodeBlock from './CodeBlock';
+
+// Configure marked to use placeholder for code blocks
+const codeBlockPlaceholder = '___CODE_BLOCK_PLACEHOLDER_';
+let codeBlockCounter = 0;
+let codeBlocks = [];
+
+const markedRenderer = new marked.Renderer();
+markedRenderer.code = function (code, language) {
+    const id = codeBlockCounter++;
+    codeBlocks.push({ id, code, language });
+    return `<div data-code-block-id="${id}"></div>`;
+};
+
+// Component to render message content with code blocks as React components
+const MessageContentWithCodeBlocks = React.memo(({ html, codeBlocks, onClick }) => {
+    const containerRef = React.useRef(null);
+
+    // Parse HTML and split by code block placeholders
+    const parts = React.useMemo(() => {
+        if (!html) return [];
+
+        const result = [];
+        let lastIndex = 0;
+        const regex = /<div data-code-block-id="(\d+)"><\/div>/g;
+        let match;
+
+        while ((match = regex.exec(html)) !== null) {
+            // Add HTML before this code block
+            if (match.index > lastIndex) {
+                result.push({
+                    type: 'html',
+                    content: html.slice(lastIndex, match.index)
+                });
+            }
+
+            // Add code block
+            const blockId = parseInt(match[1], 10);
+            const block = codeBlocks.find(b => b.id === blockId);
+            if (block) {
+                result.push({
+                    type: 'code',
+                    code: block.code,
+                    language: block.language
+                });
+            }
+
+            lastIndex = match.index + match[0].length;
+        }
+
+        // Add remaining HTML
+        if (lastIndex < html.length) {
+            result.push({
+                type: 'html',
+                content: html.slice(lastIndex)
+            });
+        }
+
+        return result;
+    }, [html, codeBlocks]);
+
+    return (
+        <div
+            className="font-sans break-words"
+            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+            onClick={onClick}
+        >
+            {parts.map((part, index) => (
+                part.type === 'html' ? (
+                    <span
+                        key={index}
+                        dangerouslySetInnerHTML={{ __html: part.content }}
+                    />
+                ) : (
+                    <CodeBlock
+                        key={index}
+                        code={part.code}
+                        language={part.language}
+                    />
+                )
+            ))}
+        </div>
+    );
+});
+
+MessageContentWithCodeBlocks.displayName = 'MessageContentWithCodeBlocks';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
@@ -77,10 +164,18 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
 
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
-        if (!cnt) return '';
-        let html = marked ? marked.parse(cnt) : cnt;
+        if (!cnt) return { html: '', codeBlocksData: [] };
 
-        if ((!currentMarks || currentMarks.length === 0) && (!currentNotes || currentNotes.length === 0)) return html;
+        // Reset code block tracking for this render
+        codeBlockCounter = 0;
+        codeBlocks = [];
+
+        let html = marked ? marked.parse(cnt, { renderer: markedRenderer }) : cnt;
+        const capturedCodeBlocks = [...codeBlocks];
+
+        if ((!currentMarks || currentMarks.length === 0) && (!currentNotes || currentNotes.length === 0)) {
+            return { html, codeBlocksData: capturedCodeBlocks };
+        }
 
         // Sort marks by length descending to match longest phrases first
         const sortedMarks = currentMarks ? [...currentMarks].sort((a, b) => b.length - a.length) : [];
@@ -144,7 +239,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         };
 
         Array.from(container.childNodes).forEach(highlightNode);
-        return container.innerHTML;
+        return { html: container.innerHTML, codeBlocksData: capturedCodeBlocks };
     };
 
     // Card Reference Resolution Logic
@@ -169,10 +264,13 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         });
     };
 
-    const renderedHtml = React.useMemo(() => {
-        if (isUser) return null;
-        const html = content ? renderMessageContent(content, marks, capturedNotes) : '';
-        return resolveCardReferences(html);
+    const { renderedHtml, codeBlocksToRender } = React.useMemo(() => {
+        if (isUser) return { renderedHtml: null, codeBlocksToRender: [] };
+        const result = content ? renderMessageContent(content, marks, capturedNotes) : { html: '', codeBlocksData: [] };
+        return {
+            renderedHtml: resolveCardReferences(result.html),
+            codeBlocksToRender: result.codeBlocksData
+        };
     }, [content, marks, capturedNotes, isUser]);
 
     const handleMessageClick = (e) => {
@@ -262,10 +360,10 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                             )}
                         </div>
                     ) : (
-                        <div
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderedHtml) }}
-                            className="font-sans break-words"
-                            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                        <MessageContentWithCodeBlocks
+                            html={DOMPurify.sanitize(renderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
+                            codeBlocks={codeBlocksToRender}
+                            onClick={handleMessageClick}
                         />
                     )}
                 </div>

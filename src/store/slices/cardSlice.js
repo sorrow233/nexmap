@@ -245,10 +245,23 @@ export const createCardSlice = (set, get) => ({
         }));
     },
 
-    // Alias for explicit drag end handling
+    // Alias for explicit drag end handling + Magnetic snap to zones
     handleCardMoveEnd: (id, newX, newY, moveWithConnections = false) => {
         debugLog.ui(`Card move end: ${id}`, { newX, newY });
         get().handleCardMove(id, newX, newY, moveWithConnections);
+
+        // Magnetic snap: Check if card is near a zone
+        const { findZoneNearCard, updateGroup } = get();
+        if (findZoneNearCard) {
+            const nearbyZone = findZoneNearCard(id, 80); // 80px threshold
+            if (nearbyZone && !nearbyZone.cardIds.includes(id)) {
+                // Add card to zone
+                updateGroup(nearbyZone.id, {
+                    cardIds: [...nearbyZone.cardIds, id]
+                });
+                debugLog.ui(`Card ${id} snapped to zone: ${nearbyZone.title}`);
+            }
+        }
     },
 
     // Reset card state on logout
