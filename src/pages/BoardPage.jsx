@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
 import { Sparkles, RefreshCw, Trash2, Sprout, BoxSelect } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
@@ -8,316 +7,71 @@ import Loading from '../components/Loading';
 import StatusBar from '../components/StatusBar';
 import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
+import QuickPromptModal from '../components/QuickPromptModal';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
 const SettingsModal = lazy(() => import('../components/SettingsModal'));
-import { useStore } from '../store/useStore';
-import { useCardCreator } from '../hooks/useCardCreator';
-import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
-import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/storage';
-import { debugLog } from '../utils/debugLogger';
-import favoritesService from '../services/favoritesService';
-import QuickPromptModal from '../components/QuickPromptModal';
-import { useToast } from '../components/Toast';
-import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
-import { useAISprouting } from '../hooks/useAISprouting';
-import { useLanguage } from '../contexts/LanguageContext';
+
+import { useBoardLogic } from '../hooks/useBoardLogic';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack }) {
-    const { id: currentBoardId, noteId } = useParams();
-    const navigate = useNavigate();
-    const cards = useStore(state => state.cards);
-    const connections = useStore(state => state.connections);
-    const groups = useStore(state => state.groups);
-    const selectedIds = useStore(state => state.selectedIds);
-    const generatingCardIds = useStore(state => state.generatingCardIds);
-    const expandedCardId = useStore(state => state.expandedCardId);
-    const offset = useStore(state => state.offset);
-    const scale = useStore(state => state.scale);
-    const isBoardLoading = useStore(state => state.isBoardLoading);
-    const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
-    const boardPrompts = useStore(state => state.boardPrompts);
-    const isHydratingFromCloud = useStore(state => state.isHydratingFromCloud);
 
-    const setExpandedCardId = useStore(state => state.setExpandedCardId);
-    const updateCardFull = useStore(state => state.updateCardFull);
-    const handleRegenerate = useStore(state => state.handleRegenerate);
-    const handleBatchDelete = useStore(state => state.handleBatchDelete);
-    const handleChatGenerate = useStore(state => state.handleChatGenerate);
-    const updateCardContent = useStore(state => state.updateCardContent);
-    const toggleFavorite = useStore(state => state.toggleFavorite);
-    const createGroup = useStore(state => state.createGroup);
-    const getConnectedCards = useStore(state => state.getConnectedCards);
-    const setSelectedIds = useStore(state => state.setSelectedIds);
-    const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
-    const setLastSavedAt = useStore(state => state.setLastSavedAt);
-
+    // Extracted Logic
     const {
-        handleCreateCard,
-        handleCreateNote,
-        handleExpandTopics,
+        // Data
+        cards,
+        generatingCardIds,
+        selectedIds,
+        expandedCardId,
+        currentBoard,
+        cloudSyncStatus,
+        globalImages,
+        isSettingsOpen,
+        quickPrompt,
+        tempInstructions,
+        t,
+        noteId,
+        currentBoardId,
+
+        // Refs
+        canvasContainerRef,
+
+        // Actions
+        setIsSettingsOpen,
+        setGlobalImages,
+        setQuickPrompt,
+        setExpandedCardId,
+        setTempInstructions,
+        navigate,
+        toggleFavorite,
+        updateCardFull,
+
+        handleRegenerate,
+        handleBatchDelete,
+        handleGlobalImageUpload,
+        removeGlobalImage,
+        createGroup,
+        arrangeSelectionGrid,
         handleBatchChat,
-        handleSprout
-    } = useCardCreator();
 
-    const { t } = useLanguage();
+        // Complex Handlers
+        handleCanvasDoubleClick,
+        handleQuickPromptSubmit,
+        handleFullScreen,
+        handleChatModalGenerate,
+        handleSelectConnected,
+        handleChatSubmitWithInstructions,
+        handlePromptDropOnChat,
+        handlePromptDropOnCanvas,
+        handlePromptDropOnCard,
+        handleQuickSprout,
+        handleSprout,
+        handleCreateNote,
+        handleExpandTopics
 
-    const toast = useToast();
+    } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack });
 
-    // Quick Sprout Hook (for top selection toolbar)
-    const { handleQuickSprout } = useAISprouting();
-
-    // Get current board info for thumbnail capture
-    const currentBoard = boardsList.find(b => b.id === currentBoardId);
-    const hasBackgroundImage = !!currentBoard?.backgroundImage;
-
-    // Thumbnail auto-capture hook - captures card-dense area during usage
-    const { canvasContainerRef } = useThumbnailCapture(cards, connections, currentBoardId, hasBackgroundImage);
-
-    const [cloudSyncStatus, setCloudSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
-    const [globalImages, setGlobalImages] = useState([]);
-    const [clipboard, setClipboard] = useState(null);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-    // Initial setup for document title
-    useEffect(() => {
-        if (currentBoardId) {
-            const board = boardsList.find(b => b.id === currentBoardId);
-            document.title = board ? `${board.name} | NexMap` : 'NexMap';
-        }
-        return () => { document.title = 'NexMap'; };
-    }, [currentBoardId, boardsList]);
-
-    // Autosave Logic
-    const lastSavedState = useRef('');
-    useEffect(() => {
-        if (isBoardLoading) return; // SKIP SAVE IF LOADING
-        // CRITICAL: Skip autosave when hydrating from cloud to prevent infinite loop
-        // Loop: cloud update -> setCardsFromCloud -> useEffect -> saveBoardToCloud -> cloud update
-        if (isHydratingFromCloud) {
-            debugLog.sync('Skipping autosave: hydrating from cloud');
-            return;
-        }
-        if (currentBoardId && cards.length > 0) {
-            // Use a normalized state for comparison to avoid loops caused by field order or undefined
-            const currentStateObj = {
-                cards: cards.map(c => ({ ...c, data: { ...c.data } })),
-                connections: connections || [],
-                groups: groups || [],
-                boardPrompts: boardPrompts || []
-            };
-            const currentState = JSON.stringify(currentStateObj);
-
-            if (currentState === lastSavedState.current) return;
-
-            const saveTimeout = setTimeout(() => {
-                try {
-                    const now = Date.now();
-                    saveBoard(currentBoardId, { cards, connections, groups, boardPrompts });
-                    if (setLastSavedAt && typeof setLastSavedAt === 'function') {
-                        setLastSavedAt(now);
-                    }
-                    lastSavedState.current = currentState;
-                    debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
-                } catch (e) {
-                    console.error("[BoardPage] Autosave failed", e);
-                    toast.error('保存失败，请检查存储空间');
-                }
-            }, 1000); // Slightly longer delay for local debounce
-
-            let cloudTimeout;
-            if (user) {
-                cloudTimeout = setTimeout(async () => {
-                    setCloudSyncStatus('syncing');
-                    try {
-                        await saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups, boardPrompts });
-                        setCloudSyncStatus('synced');
-                        debugLog.sync(`Cloud autosave complete for board: ${currentBoardId}`);
-                    } catch (e) {
-                        setCloudSyncStatus('error');
-                        console.error('[BoardPage] Cloud sync failed:', e);
-                        toast.error('云同步失败');
-                    }
-                }, 180000); // 3 minutes - very conservative for quota
-            }
-
-            return () => {
-                clearTimeout(saveTimeout);
-                if (cloudTimeout) clearTimeout(cloudTimeout);
-            };
-        }
-    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud]);
-
-    // Persist canvas state per board
-    useEffect(() => {
-        if (currentBoardId && !isBoardLoading) {
-            saveViewportState(currentBoardId, { offset, scale });
-        }
-    }, [offset, scale, currentBoardId, isBoardLoading]);
-
-
-    // Hotkeys
-    useGlobalHotkeys(clipboard, setClipboard);
-
-    // Handlers
-    const handleGlobalImageUpload = (e) => {
-        const files = Array.from(e.target.files);
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = (e) => setGlobalImages(prev => [...prev, {
-                file, previewUrl: URL.createObjectURL(file), base64: e.target.result.split(',')[1], mimeType: file.type
-            }]);
-            reader.readAsDataURL(file);
-        });
-        e.target.value = '';
-    };
-
-    const removeGlobalImage = (index) => {
-        setGlobalImages(prev => {
-            const next = [...prev];
-            URL.revokeObjectURL(next[index].previewUrl);
-            next.splice(index, 1);
-            return next;
-        });
-    };
-
-    // Note: Global paste for images is handled in App.jsx (window listener), 
-    // but maybe we should move it here? 
-    // The original code had it in AppContent. 
-    // If we want it only on the board, we can put it here.
-    // Let's implement it here for better modularity.
-    useEffect(() => {
-        const handlePaste = (e) => {
-            const items = e.clipboardData.items;
-            for (const item of items) {
-                if (item.type.indexOf("image") !== -1) {
-                    const file = item.getAsFile();
-                    const reader = new FileReader();
-                    reader.onload = (event) => setGlobalImages(prev => [...prev, {
-                        file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
-                    }]);
-                    reader.readAsDataURL(file);
-                    e.preventDefault(); // Prevent default paste if it's an image
-                }
-            }
-        };
-        window.addEventListener('paste', handlePaste);
-        return () => window.removeEventListener('paste', handlePaste);
-    }, []);
-
-
-    // Double-click Quick Prompt Logic
-    const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
-
-    const handleCanvasDoubleClick = (e) => {
-        setQuickPrompt({
-            isOpen: true,
-            x: e.screenX,
-            y: e.screenY,
-            canvasX: e.canvasX,
-            canvasY: e.canvasY
-        });
-    };
-
-    const handleQuickPromptSubmit = (text) => {
-        if (!quickPrompt.isOpen) return;
-        handleCreateCard(text, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
-    };
-
-    const handleFullScreen = (cardId) => {
-        navigate(`/board/${currentBoardId}/note/${cardId}`);
-    };
-
-    // Wrapper to bridge ChatModal's signature with handleChatGenerate
-    const handleChatModalGenerate = async (cardId, text, images = []) => {
-
-        // FIX: Gets fresh state to avoid stale closures in message queue
-        const freshCards = useStore.getState().cards;
-        const card = freshCards.find(c => c.id === cardId);
-
-        if (!card) {
-            return;
-        }
-
-        // Construct the new user message
-        let userContent;
-        if (images.length > 0) {
-            const imageParts = images.map(img => ({
-                type: 'image',
-                source: {
-                    type: 'base64',
-                    media_type: img.mimeType,
-                    data: img.base64
-                }
-            }));
-            userContent = [
-                { type: 'text', text },
-                ...imageParts
-            ];
-        } else {
-            userContent = text;
-        }
-
-        const userMsg = { role: 'user', content: userContent };
-        // FIX: Generate unique ID for assistant message to handle concurrency
-        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-        const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
-
-        // Optimistically update the card's messages
-        updateCardFull(cardId, (currentData) => ({
-            ...currentData,
-            messages: [...(currentData.messages || []), userMsg, assistantMsg]
-        }));
-
-        // Prepare the history for AI (exclude the empty assistant message we just added)
-        const history = [...(card.data.messages || []), userMsg];
-
-        // Call handleChatGenerate with the proper signature
-        try {
-            await handleChatGenerate(cardId, history, (chunk) => {
-                // FIX: Update specific message by ID
-                updateCardContent(cardId, chunk, assistantMsgId);
-            });
-        } catch (error) {
-            console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
-            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);
-        }
-    };
-
-    const handleSelectConnected = (startId) => {
-        const connectedIds = getConnectedCards(startId);
-        // Include the start card itself if not already included (graphUtils usually returns visited set including start)
-        // Ensure unique
-        const uniqueIds = Array.from(new Set([...connectedIds, startId]));
-        setSelectedIds(uniqueIds);
-    };
-
-    const [tempInstructions, setTempInstructions] = useState([]);
-
-    const handlePromptDropOnChat = (prompt) => {
-        setTempInstructions(prev => [...prev, prompt]);
-        toast.success(`Added instruction: ${prompt.text.substring(0, 20)}...`);
-    };
-
-    const handleChatSubmitWithInstructions = async (text, images) => {
-        let finalText = text;
-        if (tempInstructions.length > 0) {
-            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
-            finalText = `${contextStr}\n\n${text}`;
-        }
-        await handleCreateCard(finalText, images);
-        setTempInstructions([]);
-    };
-
-    const handlePromptDropOnCanvas = (prompt, x, y) => {
-        handleCreateCard(prompt.text, [], { x, y });
-    };
-
-    const handlePromptDropOnCard = (cardId, prompt) => {
-        handleChatModalGenerate(cardId, prompt.text, []);
-    };
 
     return (
         <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative">

@@ -135,4 +135,46 @@ const { style, handleMouseDown, handleTouchStart } = useDraggable({
         return <path d={...} />;
     })}
 </svg>
+</svg>
 ```
+
+### 1.7 `StickyNote.jsx` - 便签
+
+**职责：**
+- 显示 Markdown 文本
+- 颜色切换
+- 调整大小逻辑
+
+### 1.8 `Zone.jsx` - 分组区域
+
+**职责：**
+- 视觉分组
+- 拖拽 Zone 移动内部元素
+- 自动吸附 logic
+
+### 1.9 `PaymentModal.jsx` - 支付弹窗
+
+**职责：**
+- 展示 Stripe 产品 (Credits/Pro)
+- 调用 `create-checkout` API
+- 处理支付成功/取消回调状态
+
+### 1.10 `FeedbackView.jsx` - 反馈中心
+
+**职责：**
+- 展示用户反馈列表 (Hot/Top/Recent)
+- 提交反馈表单
+- 评论区交互
+
+### 1.11 `FavoritesGallery.jsx` - 收藏夹
+
+**职责：**
+- 展示用户收藏的 AI 对话片段
+- 瀑布流布局
+- 拖拽回画布逻辑
+
+### 1.12 `SearchModal.jsx` - 全局搜索
+
+**职责：**
+- 搜索画板内所有卡片内容
+- 快速跳转定位

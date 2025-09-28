@@ -114,3 +114,19 @@ redo();
 - 如果源卡片在 Zone 中，目标自动加入
 - 如果目标在 Zone 中，源自动加入
 - 如果都在不同 Zone，合并到源的 Zone
+
+## 6. 性能监控 (`performanceMonitor.js`)
+
+**功能：**
+- 追踪 LLM 响应时间 (TTFT - Time To First Token)
+- 计算 tokens/sec (生成速率)
+- 估算 chunk 大小与 token 的关系 (约 1.5 chars/token)
+- 自动记录性能日志供分析
+
+## 7. 用户引导 (`onboarding.js`)
+
+**功能：**
+- 定义首次加载时的欢迎卡片数据结构
+- 预设连接关系 (Guide 1 -> Guide 2)
+- 介绍核心功能 (双击创建、智能连线、快捷键)
+- 区分不同分发渠道 (Alpha/Beta/Main) 的引导内容

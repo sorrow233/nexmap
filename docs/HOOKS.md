@@ -88,3 +88,23 @@ useDraggable({
 - 加载用户设置
 - 设置云同步监听
 - 加载系统额度
+
+## 7. `useBoardBackground.js` - 背景管理
+
+**功能：**
+- 切换背景类型 (点阵/网格/图片)
+- 上传自定义背景图 (S3)
+- 调整透明度和模糊度
+
+## 8. `useThumbnailCapture.js` - 缩略图生成
+
+**功能：**
+- 使用 `html-to-image` 捕获画布截图
+- 自动压缩
+- 保存到 IDB 作为画板封面
+
+## 9. `useNeuralNotepad.js` - 智能便签
+
+**功能：**
+- 实时 AI 补全 (Typewriter effect)
+- 选中相关性分析
