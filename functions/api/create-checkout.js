@@ -7,6 +7,27 @@
 // Stripe API Base URL
 const STRIPE_API = 'https://api.stripe.com/v1';
 
+/**
+ * Generate a unique order ID
+ * Format: NM-YYYYMMDD-XXXX (e.g., NM-20260105-A3X7)
+ */
+function generateOrderId() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+
+    // Generate 4-character alphanumeric code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // exclude similar chars like 0/O, 1/I
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    return `NM-${dateStr}-${code}`;
+}
+
 // Products Configuration - Based on Kimi-K2-Thinking pricing
 const PRODUCTS = {
     'credits_500': {
@@ -75,16 +96,22 @@ export async function onRequestPost(context) {
         const stripeKey = env.STRIPE_SECRET_KEY;
         if (!stripeKey) throw new Error('Stripe key not configured');
 
+        // Generate unique order ID
+        const orderId = generateOrderId();
+
         // Build Form Data for Stripe API (x-www-form-urlencoded)
         const params = new URLSearchParams();
         params.append('mode', 'payment');
-        params.append('success_url', successUrl || 'https://nexmap.catzz.work/gallery?payment=success');
+        // Include session_id in success URL for order tracking
+        const baseSuccessUrl = successUrl || 'https://nexmap.catzz.work/gallery';
+        params.append('success_url', `${baseSuccessUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`);
         params.append('cancel_url', cancelUrl || 'https://nexmap.catzz.work/gallery?payment=cancelled');
         params.append('client_reference_id', userId);
 
         // Metadata to track what to give the user
         params.append('metadata[userId]', userId);
         params.append('metadata[productId]', productId);
+        params.append('metadata[orderId]', orderId);
         // Map 'chats' to 'credits' for the webhook
         if (product.chats) params.append('metadata[credits]', product.chats);
         if (product.isPro) params.append('metadata[isPro]', 'true');

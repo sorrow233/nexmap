@@ -6,6 +6,18 @@ export default {
     ],
     darkMode: 'media',
     theme: {
+        screens: {
+            'xs': '375px',
+            'sm': '640px',
+            'md': '768px',
+            'lg': '1024px',
+            'xl': '1280px',
+            '2xl': '1536px',
+            // Touch-specific variant
+            'touch': { 'raw': '(hover: none) and (pointer: coarse)' },
+            // Non-touch devices
+            'mouse': { 'raw': '(hover: hover) and (pointer: fine)' },
+        },
         extend: {
             colors: {
                 brand: {
