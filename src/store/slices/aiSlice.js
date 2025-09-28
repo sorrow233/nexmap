@@ -193,8 +193,15 @@ export const createAISlice = (set, get) => {
                 // This is critical for handleRegenerate which updates these before calling us
                 const freshState = get();
                 const card = freshState.cards.find(c => c.id === cardId);
-                const model = card?.data?.model;
-                const providerId = card?.data?.providerId;
+
+                // FIXED: Use current active role model from settings, not card's saved model
+                // This allows model switching to take effect immediately for existing cards
+                // Card's saved model is kept as a reference but not used for API calls
+                const currentRoleModel = freshState.getRoleModel('chat');
+                const model = currentRoleModel; // Use current settings
+                const providerId = freshState.activeId; // Use current active provider
+
+                console.log(`[handleChatGenerate] Card: ${cardId}, Using model: ${model}, Provider: ${providerId}, Card's saved model: ${card?.data?.model}`);
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
@@ -227,14 +234,9 @@ export const createAISlice = (set, get) => {
                         // We don't await this state update, it just fixes the UI for next time
                         updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.FREE_TIER }));
                     }
-                } else if (providerId && state.providers && state.providers[providerId]) {
-                    config = state.providers[providerId];
                 } else {
+                    // FIXED: Always use active provider config
                     config = state.getActiveConfig();
-                    // Warn if card had a provider that no longer exists
-                    if (providerId && (!state.providers || !state.providers[providerId])) {
-                        console.warn(`[AI] Card ${cardId} references deleted provider ${providerId}, using active config instead`);
-                    }
                 }
 
                 // Use AIManager for centralized scheduling and cancellation
