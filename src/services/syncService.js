@@ -135,10 +135,32 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     }
 };
 
-// getRawBoardsList is now imported from boardService
+// Content hash cache to avoid redundant writes
+const lastSyncedContentHash = new Map();
 
 export const saveBoardToCloud = async (userId, boardId, boardContent) => {
     if (!db || !userId) return;
+
+    // Generate content hash for dirty checking
+    const contentHash = JSON.stringify({
+        cards: (boardContent.cards || []).map(c => ({
+            id: c.id,
+            x: c.x,
+            y: c.y,
+            type: c.type,
+            data: c.data
+        })),
+        connections: boardContent.connections || [],
+        groups: boardContent.groups || [],
+        boardPrompts: boardContent.boardPrompts || []
+    });
+
+    const cacheKey = `${userId}:${boardId}`;
+    if (lastSyncedContentHash.get(cacheKey) === contentHash) {
+        debugLog.sync(`Skipping cloud save for ${boardId}: content unchanged`);
+        return;
+    }
+
     try {
         debugLog.sync(`Saving board ${boardId} to cloud...`);
         const list = getRawBoardsList();
@@ -202,6 +224,9 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         // Use serverTimestamp for authoritative server time
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await setDoc(boardRef, { ...fullBoard, serverUpdatedAt: serverTimestamp() });
+
+        // Cache successful sync
+        lastSyncedContentHash.set(cacheKey, contentHash);
         debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
     } catch (e) {
         debugLog.error(`Cloud save failed for board ${boardId}`, e);
