@@ -17,7 +17,13 @@ export function useCardCreator() {
         offset,
         scale,
         selectedIds
-    } = useStore();
+    } = useStore(state => ({
+        cards: state.cards,
+        setCards: state.setCards,
+        offset: state.offset,
+        scale: state.scale,
+        selectedIds: state.selectedIds
+    }));
 
     const { handleExpandTopics, handleSprout } = useAISprouting();
     const { _generateAICard, handleBatchChat } = useCardGeneration();

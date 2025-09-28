@@ -62,7 +62,12 @@ function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized, hasSeenWelcome, setHasSeenWelcome } = useAppInit();
-    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
+    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore(state => ({
+        setCards: state.setCards,
+        setConnections: state.setConnections,
+        setGroups: state.setGroups,
+        setBoardPrompts: state.setBoardPrompts
+    }));
     const { createCardWithText } = useCardCreator();
 
     // Dialog State
