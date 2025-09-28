@@ -330,53 +330,54 @@ export function useAISprouting() {
                 // Calculate positions using mindmap layout
                 const positions = calculateMindmapChildPositions(source, topics.length);
 
-                for (let i = 0; i < topics.length; i++) {
-                    const topic = topics[i];
-                    const newId = uuid();
-                    const pos = positions[i];
+                topics.forEach((topic, i) => {
+                    (async () => {
+                        const newId = uuid();
+                        const pos = positions[i];
 
-                    debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { topic });
+                        debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { topic });
 
-                    await createAICard({
-                        id: newId,
-                        text: topic,
-                        x: pos.x,
-                        y: pos.y,
-                        autoConnections: [{ from: sourceId, to: newId }],
-                        model: chatModel,
-                        providerId: activeConfig.id
-                    });
-
-                    // Build context from source card's conversation
-                    const sourceContext = (source.data.messages || []).slice(-6)
-                        .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
-                        .join('\n');
-
-                    try {
-                        await aiManager.requestTask({
-                            type: 'chat',
-                            priority: PRIORITY.HIGH,
-                            payload: {
-                                messages: [{
-                                    role: 'user',
-                                    content: `[Previous Context]\n${sourceContext}\n\n[Topic to Detail]\n${topic}\n\nBased on the previous context, please provide a detailed explanation of this specific topic.`
-                                }],
-                                model: chatModel,
-                                config: activeConfig
-                            },
-                            tags: [`card:${newId}`],
-                            onProgress: (chunk) => updateCardContent(newId, chunk)
+                        await createAICard({
+                            id: newId,
+                            text: topic,
+                            x: pos.x,
+                            y: pos.y,
+                            autoConnections: [{ from: sourceId, to: newId }],
+                            model: chatModel,
+                            providerId: activeConfig.id
                         });
-                        debugLog.ai(`Branch generation complete for: ${newId}`);
-                    } catch (innerError) {
-                        debugLog.error(`Branch generation failed for ${newId}`, innerError);
-                        const errMsg = innerError.message || 'Generation failed';
-                        const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                            ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                            : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                        updateCardContent(newId, userMessage);
-                    }
-                }
+
+                        // Build context from source card's conversation
+                        const sourceContext = (source.data.messages || []).slice(-6)
+                            .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
+                            .join('\n');
+
+                        try {
+                            await aiManager.requestTask({
+                                type: 'chat',
+                                priority: PRIORITY.HIGH,
+                                payload: {
+                                    messages: [{
+                                        role: 'user',
+                                        content: `[Previous Context]\n${sourceContext}\n\n[Topic to Detail]\n${topic}\n\nBased on the previous context, please provide a detailed explanation of this specific topic.`
+                                    }],
+                                    model: chatModel,
+                                    config: activeConfig
+                                },
+                                tags: [`card:${newId}`],
+                                onProgress: (chunk) => updateCardContent(newId, chunk)
+                            });
+                            debugLog.ai(`Branch generation complete for: ${newId}`);
+                        } catch (innerError) {
+                            debugLog.error(`Branch generation failed for ${newId}`, innerError);
+                            const errMsg = innerError.message || 'Generation failed';
+                            const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
+                                ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
+                                : `\n\n⚠️ **生成失败**: ${errMsg}`;
+                            updateCardContent(newId, userMessage);
+                        }
+                    })();
+                });
             }
         } catch (e) {
             debugLog.error(`Branch failed`, e);
