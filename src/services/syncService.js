@@ -178,6 +178,8 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
         }, (error) => {
+            // Check for quota error and trigger offline mode
+            handleQuotaError(error, 'listenForBoardUpdates');
             debugLog.error("Firestore sync error:", error);
         });
     } catch (err) {
@@ -381,6 +383,9 @@ export const listenForFavoriteUpdates = (userId, onUpdate) => {
                 debugLog.sync(`Received ${changes.length} favorite updates from cloud`);
                 onUpdate(changes);
             }
+        }, (error) => {
+            handleQuotaError(error, 'listenForFavoriteUpdates');
+            debugLog.error("Firestore favorites sync error:", error);
         });
     } catch (err) {
         debugLog.error("listenForFavoriteUpdates error:", err);
