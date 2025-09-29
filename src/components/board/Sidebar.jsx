@@ -294,7 +294,7 @@ export default function Sidebar({ className = "" }) {
             {/* Edit Modal */}
             {editingPrompt && (
                 <div
-                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm"
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm pointer-events-auto"
                     onClick={e => { if (e.target === e.currentTarget) setEditingPrompt(null); }}
                 >
                     <div

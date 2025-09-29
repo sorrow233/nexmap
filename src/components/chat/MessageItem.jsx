@@ -276,20 +276,20 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                 {!isUser && !isStreaming && content && !content.includes("⚠️ Error") && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                            onClick={handleCopy}
-                            className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${copySuccess ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'text-slate-400 hover:text-brand-500 bg-slate-50 dark:bg-white/5 hover:bg-brand-50 dark:hover:bg-brand-500/10'}`}
-                            title="Copy to clipboard"
-                        >
-                            {copySuccess ? <Check size={14} /> : <Copy size={14} />}
-                            <span>{copySuccess ? 'Copied' : 'Copy'}</span>
-                        </button>
-                        <button
                             onClick={() => onToggleFavorite && onToggleFavorite(index, textContent)}
                             className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${isFavorite ? 'text-orange-400 bg-orange-50 dark:bg-orange-500/10' : 'text-slate-400 hover:text-orange-400 bg-slate-50 dark:bg-white/5 hover:bg-orange-50 dark:hover:bg-white/10'}`}
                             title={isFavorite ? "Unfavorite" : "Favorite Message"}
                         >
                             <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
                             <span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
+                        </button>
+                        <button
+                            onClick={handleCopy}
+                            className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${copySuccess ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'text-slate-400 hover:text-emerald-500 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10'}`}
+                            title="Copy text to clipboard"
+                        >
+                            {copySuccess ? <Check size={14} /> : <Copy size={14} />}
+                            <span>{copySuccess ? 'Copied' : 'Copy'}</span>
                         </button>
                         <button
                             onClick={() => onShare && onShare(textContent)}
