@@ -7,12 +7,26 @@ export const createCardSlice = (set, get) => ({
     expandedCardId: null,
     lastSavedAt: 0,
 
+    // Flag to prevent cloud sync loops
+    // When true, BoardPage should skip saveBoardToCloud
+    isHydratingFromCloud: false,
+    setIsHydratingFromCloud: (val) => set({ isHydratingFromCloud: val }),
+
     setLastSavedAt: (val) => set({ lastSavedAt: val }),
 
     setCards: (cardsOrUpdater) => {
         const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
         debugLog.store('Bulk setting cards', { count: nextCards.length });
         set({ cards: nextCards });
+    },
+
+    // Special setter that marks data as coming from cloud sync
+    // This prevents the save loop: cloud -> setCards -> autosave -> cloud
+    setCardsFromCloud: (cards) => {
+        debugLog.store('Setting cards from cloud sync (hydrating)', { count: cards?.length || 0 });
+        set({ cards: cards || [], isHydratingFromCloud: true });
+        // Clear flag after a short delay to allow BoardPage effect to skip
+        setTimeout(() => set({ isHydratingFromCloud: false }), 500);
     },
 
     setExpandedCardId: (id) => {
