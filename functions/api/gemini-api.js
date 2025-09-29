@@ -1,6 +1,7 @@
 /**
  * Cloudflare Function: Universal GMI API Proxy
  * Handles all GMI Cloud API requests (chat, stream, image) to protect API keys
+ * Renamed from gmi-serving.js to fix 404 issues
  */
 export async function onRequest(context) {
     const { request } = context;
