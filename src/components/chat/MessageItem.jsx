@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
-import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch } from 'lucide-react';
+import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import DOMPurify from 'dompurify';
@@ -17,6 +17,17 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
 
     // 长文本折叠状态
     const [isExpanded, setIsExpanded] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(textContent);
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text:', err);
+        }
+    };
 
     let textContent = "";
     let msgImages = [];
@@ -264,6 +275,14 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                 {/* Action Bar (Share, etc.) */}
                 {!isUser && !isStreaming && content && !content.includes("⚠️ Error") && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                            onClick={handleCopy}
+                            className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${copySuccess ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'text-slate-400 hover:text-brand-500 bg-slate-50 dark:bg-white/5 hover:bg-brand-50 dark:hover:bg-brand-500/10'}`}
+                            title="Copy to clipboard"
+                        >
+                            {copySuccess ? <Check size={14} /> : <Copy size={14} />}
+                            <span>{copySuccess ? 'Copied' : 'Copy'}</span>
+                        </button>
                         <button
                             onClick={() => onToggleFavorite && onToggleFavorite(index, textContent)}
                             className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${isFavorite ? 'text-orange-400 bg-orange-50 dark:bg-orange-500/10' : 'text-slate-400 hover:text-orange-400 bg-slate-50 dark:bg-white/5 hover:bg-orange-50 dark:hover:bg-white/10'}`}
