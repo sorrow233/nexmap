@@ -4,6 +4,32 @@ import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift, Globe
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
 import { updateUserSettings } from '../services/syncService';
+import { serverTimestamp } from 'firebase/firestore';
+
+// --- Timestamp-aware localStorage utilities for smart sync ---
+const loadWithTimestamp = (key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return { value: '', lastModified: 0 };
+    try {
+        const parsed = JSON.parse(raw);
+        // New format: { value, lastModified }
+        if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
+            return { value: parsed.value, lastModified: parsed.lastModified || 0 };
+        }
+        // Old format was just a string, JSON.parse would fail or return non-object
+        return { value: raw, lastModified: 0 };
+    } catch {
+        // Old format: plain string
+        return { value: raw, lastModified: 0 };
+    }
+};
+
+const saveWithTimestamp = (key, value) => {
+    localStorage.setItem(key, JSON.stringify({
+        value,
+        lastModified: Date.now()
+    }));
+};
 
 import SettingsCreditsTab from './settings/SettingsCreditsTab';
 import SettingsLLMTab from './settings/SettingsLLMTab';
@@ -56,8 +82,8 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
         const s3 = getS3Config();
         if (s3) setS3ConfigState(s3);
 
-        // Load custom instructions
-        const savedInstructions = localStorage.getItem('mixboard_custom_instructions') || '';
+        // Load custom instructions (with timestamp support)
+        const { value: savedInstructions } = loadWithTimestamp('mixboard_custom_instructions');
         setCustomInstructions(savedInstructions);
     }, [isOpen]);
 
@@ -138,16 +164,18 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
             saveS3Config(s3Config);
 
-            // Save custom instructions to localStorage
-            localStorage.setItem('mixboard_custom_instructions', customInstructions);
+            // Save custom instructions to localStorage with timestamp
+            saveWithTimestamp('mixboard_custom_instructions', customInstructions);
 
             if (user && user.uid) {
                 try {
+                    // Include timestamp flag so cloud can track modification time
                     await updateUserSettings(user.uid, {
                         providers,
                         activeId,
                         s3Config,
-                        customInstructions
+                        customInstructions,
+                        customInstructionsModified: true // Signal to add serverTimestamp
                     });
                 } catch (e) {
                     // console.error(e);

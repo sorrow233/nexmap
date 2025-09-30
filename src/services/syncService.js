@@ -355,8 +355,24 @@ export const updateUserSettings = async (userId, updates) => {
     if (!db || !userId || isOfflineMode()) return;
     try {
         debugLog.auth('Updating user settings in cloud...', updates);
+
+        // Process timestamp flags: if xxxModified: true, replace with serverTimestamp()
+        const processedUpdates = { ...updates };
+        if (processedUpdates.customInstructionsModified === true) {
+            delete processedUpdates.customInstructionsModified;
+            processedUpdates.customInstructionsModifiedAt = serverTimestamp();
+        }
+        if (processedUpdates.globalPromptsModified === true) {
+            delete processedUpdates.globalPromptsModified;
+            processedUpdates.globalPromptsModifiedAt = serverTimestamp();
+        }
+        if (processedUpdates.userLanguageModified === true) {
+            delete processedUpdates.userLanguageModified;
+            processedUpdates.userLanguageModifiedAt = serverTimestamp();
+        }
+
         const configRef = doc(db, 'users', userId, 'settings', 'config');
-        await setDoc(configRef, updates, { merge: true });
+        await setDoc(configRef, processedUpdates, { merge: true });
     } catch (e) {
         await handleQuotaError(e, 'updateUserSettings');
         debugLog.error("Update settings failed", e);
