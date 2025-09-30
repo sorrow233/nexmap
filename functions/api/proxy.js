@@ -1,7 +1,7 @@
 /**
- * Cloudflare Function: Universal GMI API Proxy
+ * Cloudflare Function: Universal Proxy
  * Handles all GMI Cloud API requests (chat, stream, image) to protect API keys
- * Renamed from gmi-serving.js to fix 404 issues
+ * Renamed to proxy.js for simplicity
  */
 export async function onRequest(context) {
     const { request } = context;
@@ -118,7 +118,7 @@ export async function onRequest(context) {
         });
 
     } catch (error) {
-        console.error('[GMI Proxy] Error:', error);
+        console.error('[Proxy] Error:', error);
         return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
             status: 500,
             headers: {
