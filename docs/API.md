@@ -79,3 +79,60 @@ POST /api/system-credits
 **路径：** `/api/image-proxy`
 
 **功能：** 代理外部图片加载，解决 CORS
+
+## 5. `create-checkout.js` - Stripe 支付
+
+**路径：** `/api/create-checkout`
+
+**功能：**
+- 创建 Stripe Checkout Session
+- 处理不同的产品套餐 (Credits 500/2000/5000, Pro License)
+- 验证 Firebase Token
+
+**请求格式：**
+```javascript
+POST /api/create-checkout
+{
+    productId: 'credits_500' | 'pro_lifetime',
+    successUrl: '...',
+    cancelUrl: '...'
+}
+```
+
+## 6. `feedback.js` - 用户反馈系统
+
+**路径：** `/api/feedback`
+
+**功能：**
+- `GET`: 获取反馈列表 (支持 sort=hot/top/recent)
+- `POST`: 提交新反馈 (需验证邮箱)
+- `PUT`: 投票 (Upvote/Downvote)
+- 子资源 `/comments`: 获取或提交评论
+
+**存储：** Firestore `feedback` 集合
+
+## 7. `redeem.js` - 兑换码系统
+
+**路径：** `/api/redeem`
+
+**功能：**
+- 验证并消耗兑换码
+- 增加用户积分或升级 Pro
+- 防止重复兑换 (KV 存储状态)
+
+**请求格式：**
+```javascript
+POST /api/redeem
+{
+    code: 'PRO-2024-XYZ'
+}
+```
+
+## 8. `webhook.js` - Stripe Webhook
+
+**路径：** `/api/webhook`
+
+**功能：**
+- 监听 `checkout.session.completed` 事件
+- 自动发货 (增加积分或开通 Pro)
+- 更新 System Credits KV

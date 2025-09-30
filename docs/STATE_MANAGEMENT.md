@@ -245,3 +245,39 @@ sequenceDiagram
 | `updateGroup(id, updater)` | 更新分组 |
 | `deleteGroup(id)` | 删除分组 |
 | `addConnectedCardsToZone(id1, id2)` | 连接时自动扩展分组 |
+
+### 2.8 `boardSlice.js` - 画板元数据
+
+**状态：**
+```javascript
+{
+    boardPrompts: [] // 画板级提示词
+}
+```
+
+**功能：** 管理当前画板特定的提示词设置。
+
+### 2.9 `promptSlice.js` - 全局提示词
+
+**状态：**
+```javascript
+{
+    boardPrompts: [] // 全局常用提示词库
+}
+```
+
+**功能：** 管理用户的全局提示词库（System Prompts 预设）。
+
+### 2.10 `settingsSlice.js` (更新)
+
+**新增状态：**
+```javascript
+{
+    offlineMode: false,       // 离线模式 (即使有网也不上传)
+    autoOfflineTriggered: false // 是否因配额耗尽自动触发
+}
+```
+
+**功能：**
+- `setOfflineMode(bool)`: 手动切换离线模式
+- `triggerAutoOffline()`: 额度耗尽时自动降级

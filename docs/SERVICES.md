@@ -285,3 +285,37 @@ export async function clearAllUserData() {
     console.log('[Cleanup] All user data cleared');
 }
 ```
+
+## 7. `redeemService.js` - 兑换服务
+
+**功能：** 处理兑换码逻辑
+- `redeemCode(code)`: 调用 API 兑换
+- `generateCodes(...)`: 管理员生成兑换码
+
+## 8. `s3.js` - S3 存储服务
+
+**功能：** 处理图片上传到 S3/R2/OBS
+- `uploadImageToS3(file)`: 直接前端直传 (Web Cryptography API)
+- 支持 AWS S3, Cloudflare R2, Huawei OBS 等兼容 S3 的存储
+- 配置存储在 localStorage `mixboard_s3_config`
+
+## 9. `scheduledBackupService.js` - 定时备份
+
+**机制：**
+- **独立于云同步**，纯本地 IndexedDB 备份
+- **时间点：** 每日 3:00 和 16:00 (可配置)
+- **保留策略：** 保留最近 5 天 (最多 10 份 snapshot)
+
+**核心方法：**
+- `performScheduledBackup()`: 执行全量备份 (Boards + Settings)
+- `restoreFromBackup(backupId)`: 恢复指定备份
+- `initScheduledBackup()`: 应用启动时初始化定时器
+
+## 10. `syncUtils.js` - 同步工具
+
+**功能：** 解决多端数据冲突
+- `reconcileCards(cloud, local)`: 智能合并算法
+    - 使用 `syncVersion` (逻辑时钟) 识别最新变更
+    - 智能识别 "远程新增" vs "本地删除"
+    - 文本内容差异合并
+    - 消息流式合并
