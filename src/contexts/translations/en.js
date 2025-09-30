@@ -501,5 +501,16 @@ export const en = {
         share: "Share",
         source: "Source",
         goToBoard: "Go to Board"
+    },
+    zone: {
+        dragToMove: "Drag title to move zone",
+        description: "Notes",
+        descriptionPlaceholder: "Add notes...",
+        icon: "Icon",
+        customColor: "Custom Color",
+        cardCount: "{count} Cards",
+        messageCount: "{count} Messages",
+        colorPresets: "Presets",
+        selectEmoji: "Select Icon"
     }
 };

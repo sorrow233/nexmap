@@ -501,5 +501,16 @@ export const zh = {
         share: "分享",
         source: "来源",
         goToBoard: "查看原文"
+    },
+    zone: {
+        dragToMove: "拖拽标题移动分区",
+        description: "备注",
+        descriptionPlaceholder: "添加备注...",
+        icon: "图标",
+        customColor: "自定义颜色",
+        cardCount: "{count} 张卡片",
+        messageCount: "{count} 条对话",
+        colorPresets: "预设颜色",
+        selectEmoji: "选择图标"
     }
 };

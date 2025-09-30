@@ -5,6 +5,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App.jsx'
 import { LanguageProvider } from './contexts/LanguageContext';
 import './index.css'
+import './styles/hljs-theme.css'
 
 console.log(`%c NexMap v2.1.4 - Loaded at ${new Date().toISOString()}`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
 
