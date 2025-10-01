@@ -8,7 +8,7 @@ import { useStore } from '../store/useStore';
 
 export default function useBoardBackground() {
     const [generatingBoardId, setGeneratingBoardId] = useState(null);
-    const { providers, activeId, roles } = useStore();
+    const { providers, activeId, getRoleModel } = useStore();
 
     // Helper to get active config for LLM calls
     const getLlmConfig = () => {
@@ -22,7 +22,7 @@ export default function useBoardBackground() {
     };
 
     const getModelForRole = (role) => {
-        return roles?.[role] || DEFAULT_ROLES[role];
+        return getRoleModel(role);
     };
 
     const generateBackground = async (boardId, onUpdateBoardMetadata) => {
