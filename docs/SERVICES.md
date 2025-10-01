@@ -285,6 +285,16 @@ export async function clearAllUserData() {
     console.log('[Cleanup] All user data cleared');
 }
 ```
+    console.log('[Cleanup] All user data cleared');
+}
+```
+
+### 6.3 LLM Provider 健壮性设计 (`GeminiProvider`)
+- **指数退避重试**: 实现了 `Delay * 1.5` (Stream) 和 `Delay * 2` (Chat) 的指数退避策略。
+- **特殊错误处理**:
+    - **404 Proxy Error**: 明确提示部署问题。
+    - **Image Validation**: 自动过滤没有 `data` 的 image parts，防止 API 400 错误。
+- **实验性特性**: 支持 `thinkingLevel` (思考模型) 和 `mediaResolution` 参数透传。
 
 ## 7. `redeemService.js` - 兑换服务
 
