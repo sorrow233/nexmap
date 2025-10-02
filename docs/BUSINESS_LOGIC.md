@@ -70,7 +70,8 @@ temporal(storeCreator, {
     partialize: (state) => ({
         cards: state.cards,
         connections: state.connections,
-        groups: state.groups
+        groups: state.groups,
+        boardPrompts: state.boardPrompts
     })
 })
 ```
@@ -149,7 +150,31 @@ redo();
 - 估算 chunk 大小与 token 的关系 (约 1.5 chars/token)
 - 自动记录性能日志供分析
 
-## 7. 用户引导 (`onboarding.js`)
+## 8. AI 生态与进化 (AI Services)
+
+**核心服务 (`src/services/llm.js`):**
+
+1. **Sprout (深度追问):** `generateFollowUpTopics`
+   - 基于对话历史生成 5 个深度后续问题
+   - 使用 `analysis` 角色模型进行推理
+   - 输出格式: JSON 数组
+
+2. **Quick Sprout (快速话题):** `generateQuickSproutTopics`
+   - 快速提取 3 个核心子话题
+   - 独立于主对话流，用于工具栏快速引导
+   - 采用话题拆解策略 (Topic Decomposition)
+
+3. **Branching (话题分叉):** `extractConversationTopics`
+   - **功能**: 将长对话拆解为独立的主题卡片
+   - **逻辑**: 分析上下文提取所有独立讨论点 (Limit: 4)
+   - **用途**: `UseAISprouting` 钩子中处理分叉逻辑
+
+4. **Continue (自然追问):** `generateContinueTopic`
+   - 模拟自然语言追问 (例如: "这个具体是怎么实现的？")
+   - 用于卡片内的快速延续对话
+   - 限制 20 字以内的口语化提问
+
+## 9. 用户引导 (`onboarding.js`)
 
 **功能：**
 - 定义首次加载时的欢迎卡片数据结构
