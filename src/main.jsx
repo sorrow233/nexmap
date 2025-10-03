@@ -7,7 +7,8 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import './index.css'
 import './styles/hljs-theme.css'
 
-console.log(`%c NexMap v2.1.4 - Loaded at ${new Date().toISOString()}`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
+import packageJson from '../package.json';
+console.log(`%c NexMap v${packageJson.version} - Loaded at ${new Date().toISOString()}`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
 
 
 // Prevent browser navigation gestures globally
