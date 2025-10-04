@@ -313,6 +313,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         setTempInstructions,
         navigate,
         toggleFavorite,
+        updateCardFull,
 
         handleRegenerate,
         handleBatchDelete,
