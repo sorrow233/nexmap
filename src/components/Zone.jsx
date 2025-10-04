@@ -202,19 +202,12 @@ const Zone = ({ group, isSelected }) => {
         setShowDescription(false);
     };
 
-    // Drag handlers for moving entire zone
-    const handleDragStart = (e) => {
-        if (isEditingTitle) return;
-        e.preventDefault();
-        e.stopPropagation();
-        isDragging.current = true;
-        dragStart.current = { x: e.clientX, y: e.clientY };
+    // Drag handlers for moving entire zone - using refs to avoid circular useCallback dependencies
+    const handleDragMoveRef = useRef(null);
+    const handleDragEndRef = useRef(null);
 
-        document.addEventListener('mousemove', handleDragMove);
-        document.addEventListener('mouseup', handleDragEnd);
-    };
-
-    const handleDragMove = useCallback((e) => {
+    // Update refs on each render
+    handleDragMoveRef.current = (e) => {
         if (!isDragging.current) return;
 
         const scale = useStore.getState().scale || 1;
@@ -225,13 +218,24 @@ const Zone = ({ group, isSelected }) => {
             moveGroupCards(group.id, deltaX, deltaY);
             dragStart.current = { x: e.clientX, y: e.clientY };
         }
-    }, [group.id, moveGroupCards]);
+    };
 
-    const handleDragEnd = useCallback(() => {
+    handleDragEndRef.current = () => {
         isDragging.current = false;
-        document.removeEventListener('mousemove', handleDragMove);
-        document.removeEventListener('mouseup', handleDragEnd);
-    }, [handleDragMove]);
+        document.removeEventListener('mousemove', handleDragMoveRef.current);
+        document.removeEventListener('mouseup', handleDragEndRef.current);
+    };
+
+    const handleDragStart = (e) => {
+        if (isEditingTitle) return;
+        e.preventDefault();
+        e.stopPropagation();
+        isDragging.current = true;
+        dragStart.current = { x: e.clientX, y: e.clientY };
+
+        document.addEventListener('mousemove', handleDragMoveRef.current);
+        document.addEventListener('mouseup', handleDragEndRef.current);
+    };
 
     // Dynamic styles for custom color
     const customBgStyle = hasCustomColor ? { backgroundColor: `${group.customColor}08` } : {};
