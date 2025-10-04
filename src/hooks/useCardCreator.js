@@ -92,16 +92,15 @@ export function useCardCreator() {
                 // Build context from card's conversation history
                 const title = c.data?.title || 'Untitled';
                 const messages = c.data?.messages || [];
-                // Get last 3 messages for context (to avoid token overflow)
-                const recentMessages = messages.slice(-3).map(m => {
+                // Get last 5 messages for context (increased from 3 for better context)
+                const recentMessages = messages.slice(-5).map(m => {
                     const contentStr = typeof m.content === 'string'
                         ? m.content
                         : (Array.isArray(m.content)
                             ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
                             : '');
-                    // Truncate very long messages
-                    const truncated = contentStr.length > 500 ? contentStr.substring(0, 500) + '...' : contentStr;
-                    return `${m.role}: ${truncated}`;
+                    // No truncation - pass full message content
+                    return `${m.role}: ${contentStr}`;
                 }).join('\n');
                 return `--- Card: "${title}" ---\n${recentMessages}`;
             }).join('\n\n') + '\n\n---\n\nBased on the above context, please respond to:\n\n';
