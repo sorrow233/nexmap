@@ -23,12 +23,19 @@ export class GeminiProvider extends LLMProvider {
             } else if (Array.isArray(msg.content)) {
                 parts = msg.content.map(part => {
                     if (part.type === 'text') return { text: part.text };
-                    if (part.type === 'image') return {
-                        inline_data: {
-                            mime_type: part.source.media_type,
-                            data: part.source.data
+                    if (part.type === 'image') {
+                        // CRITICAL: Only include if data is actually present to avoid 400 Validation Error
+                        if (!part.source?.data) {
+                            console.warn('[Gemini] Skipping image part due to missing data');
+                            return null;
                         }
-                    };
+                        return {
+                            inline_data: {
+                                mime_type: part.source.media_type || 'image/png',
+                                data: part.source.data
+                            }
+                        };
+                    }
                     return null;
                 }).filter(Boolean);
             }
