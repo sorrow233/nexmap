@@ -92,13 +92,14 @@ function Toast({ id, message, type = 'info', duration = 3000, onClose, onUndo })
 // Toast Container Component
 function ToastContainer({ toasts, removeToast }) {
     return (
-        <div className="fixed bottom-24 right-6 z-[9999] flex flex-col gap-2 pointer-events-auto">
+        <div className="fixed bottom-24 right-6 sm:bottom-24 sm:right-6 top-4 sm:top-auto left-4 right-4 sm:left-auto z-[9999] flex flex-col sm:items-end gap-2 pointer-events-none">
             {toasts.map(toast => (
-                <Toast
-                    key={toast.id}
-                    {...toast}
-                    onClose={removeToast}
-                />
+                <div key={toast.id} className="pointer-events-auto">
+                    <Toast
+                        {...toast}
+                        onClose={removeToast}
+                    />
+                </div>
             ))}
         </div>
     );

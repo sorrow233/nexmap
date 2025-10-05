@@ -22,7 +22,7 @@ body,
     #root,
     .font-lxgw {
         /* User requested removal of specialized fonts */
-        font-family: inherit; 
+        font-family: inherit;
     }
 
     /* Force inherit for monos if they interfere with the aesthetic */
@@ -33,6 +33,110 @@ body,
     /* System theme transitions */
     body {
         @apply transition-colors duration-300;
+    }
+
+    /* ========================================
+       MOBILE OPTIMIZATIONS
+       ======================================== */
+
+    /* Safe Area Padding for notched devices */
+    .safe-area-inset {
+        padding-top: env(safe-area-inset-top);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+    }
+
+    .safe-bottom {
+        padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+    }
+
+    /* iOS Safari 100vh fix - use CSS custom property */
+    :root {
+        --vh: 1vh;
+    }
+
+    .h-screen-safe {
+        height: 100vh;
+        height: calc(var(--vh, 1vh) * 100);
+    }
+
+    .min-h-screen-safe {
+        min-height: 100vh;
+        min-height: calc(var(--vh, 1vh) * 100);
+    }
+
+    /* Touch target minimum size (44x44px for Apple HIG) */
+    .touch-target {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Disable hover on touch devices */
+    @media (hover: none) and (pointer: coarse) {
+        .mouse-hover\:opacity-100 {
+            opacity: 1 !important;
+        }
+
+        /* Show button icons that are normally hidden on hover */
+        .group:hover .group-hover\:opacity-100 {
+            opacity: 0;
+        }
+
+        /* Faster transitions for touch feedback */
+        .transition-all {
+            transition-duration: 150ms;
+        }
+
+        /* Disable backdrop blur on lower-end mobile for performance */
+        .mobile-blur-disable {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+    }
+
+    /* Active state for touch feedback */
+    @media (hover: none) and (pointer: coarse) {
+
+        button:active,
+        a:active,
+        [role="button"]:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+
+    /* Mobile-specific scrollbar hide */
+    @media (max-width: 640px) {
+        .mobile-scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .mobile-scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    }
+
+    /* Mobile card responsive width */
+    @media (max-width: 640px) {
+        .mobile-w-full {
+            width: calc(100vw - 2rem) !important;
+            max-width: 100% !important;
+        }
     }
 }
 

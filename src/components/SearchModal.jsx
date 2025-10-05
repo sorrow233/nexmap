@@ -135,7 +135,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
 
     return (
         <div
-            className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh]"
+            className="fixed inset-0 z-[9999] flex items-start justify-center pt-4 sm:pt-[15vh] safe-area-inset"
             onClick={onClose}
         >
             {/* Backdrop */}
@@ -143,7 +143,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
 
             {/* Modal */}
             <div
-                className="relative w-full max-w-xl mx-4 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                className="relative w-full h-full sm:h-auto max-w-xl mx-0 sm:mx-4 bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Search Input */}
@@ -164,7 +164,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                 </div>
 
                 {/* Results */}
-                <div className="max-h-[50vh] overflow-y-auto">
+                <div className="flex-1 sm:flex-none sm:max-h-[50vh] overflow-y-auto">
                     {results.length === 0 && query && (
                         <div className="px-4 py-8 text-center text-slate-400">
                             {t.search.noResults}

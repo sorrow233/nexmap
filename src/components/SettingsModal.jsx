@@ -228,11 +228,11 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     );
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-4">
-            <div className="bg-white dark:bg-slate-900 w-[950px] h-[650px] rounded-3xl shadow-2xl flex overflow-hidden border border-slate-200 dark:border-white/10">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-0 sm:p-4 safe-area-inset">
+            <div className="bg-white dark:bg-slate-900 w-full h-full sm:w-[950px] sm:h-[650px] sm:rounded-3xl shadow-2xl flex flex-col sm:flex-row overflow-hidden border-0 sm:border border-slate-200 dark:border-white/10">
 
-                {/* Sidebar */}
-                <div className="w-[280px] bg-slate-50/50 dark:bg-slate-900/50 border-r border-slate-100 dark:border-white/5 p-6 flex flex-col">
+                {/* Sidebar - Hidden on mobile, visible on sm+ */}
+                <div className="hidden sm:flex w-[280px] bg-slate-50/50 dark:bg-slate-900/50 border-r border-slate-100 dark:border-white/5 p-6 flex-col">
                     <div className="flex items-center gap-3 mb-8 px-2">
                         <div className="p-2.5 bg-brand-600 rounded-xl text-white shadow-lg shadow-brand-500/30">
                             <Settings size={20} />
@@ -285,11 +285,30 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     </div>
                 </div>
 
+                {/* Mobile Tab Navigation - Only visible on mobile */}
+                <div className="sm:hidden flex overflow-x-auto border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900 px-2 py-2 gap-1">
+                    <button onClick={() => setActiveTab('credits')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap ${activeTab === 'credits' ? 'bg-brand-500 text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <Gift size={14} />{t.settings.credits}
+                    </button>
+                    <button onClick={() => setActiveTab('language')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap ${activeTab === 'language' ? 'bg-brand-500 text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <Globe size={14} />{t.settings.language}
+                    </button>
+                    <button onClick={() => setActiveTab('instructions')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap ${activeTab === 'instructions' ? 'bg-brand-500 text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <FileText size={14} />Instructions
+                    </button>
+                    <button onClick={() => { setShowAdvanced(true); setActiveTab('llm'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap ${activeTab === 'llm' ? 'bg-brand-500 text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <Cpu size={14} />LLM
+                    </button>
+                    <button onClick={() => { setShowAdvanced(true); setActiveTab('storage'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap ${activeTab === 'storage' ? 'bg-brand-500 text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <Database size={14} />Storage
+                    </button>
+                </div>
+
                 {/* Content Area */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 relative">
                     {/* Content Header - z-[60] to stay above scrollable content */}
-                    <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-[60] relative">
-                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                    <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-[60] relative">
+                        <h2 className="text-lg sm:text-2xl font-bold text-slate-800 dark:text-white">
                             {activeTab === 'credits' && t.settings.creditsUsage}
                             {activeTab === 'language' && t.settings.language}
                             {activeTab === 'instructions' && (t.settings?.customInstructions || 'Custom Instructions')}
@@ -314,7 +333,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                     </div>
 
                     {/* Scrollable Content - z-10 to stay below header */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative z-10">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar relative z-10">
                         <div className="max-w-3xl mx-auto">
                             {activeTab === 'credits' && (
                                 <SettingsCreditsTab onOpenAdvanced={() => {

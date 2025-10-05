@@ -102,15 +102,15 @@ const ChatBar = React.memo(function ChatBar({
         cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0;
 
     return (
-        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none">
-            <div className="absolute bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-4 pointer-events-auto">
-                <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
-                    <div className="flex items-end gap-2 px-2">
-                        {/* Left Actions */}
+        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom">
+            <div className="absolute bottom-2 sm:bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-2 sm:px-4 pointer-events-auto">
+                <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
+                    <div className="flex items-end gap-2 px-1 sm:px-2">
+                        {/* Left Actions - simplified on mobile */}
                         <div className="flex gap-1 pb-2">
                             <button
                                 onClick={() => globalFileInputRef.current?.click()}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all touch-target"
                                 title={t.chatBar.uploadImage}
                             >
                                 <ImageIcon size={20} />
@@ -123,9 +123,10 @@ const ChatBar = React.memo(function ChatBar({
                                 multiple
                                 onChange={(e) => onImageUpload(e.target.files)}
                             />
+                            {/* StickyNote button - hidden on mobile */}
                             <button
                                 onClick={() => onCreateNote('', false)}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                className="hidden sm:flex p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
                                 title={t.chatBar.addStickyNote}
                             >
                                 <StickyNoteIcon size={20} />
