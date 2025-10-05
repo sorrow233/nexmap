@@ -387,6 +387,19 @@ export const ja = {
         cta: "Alpha版を起動",
         rights: "© 2024 NexMap. All rights reserved."
     },
+    payment: {
+        successTitle: "お支払い完了！",
+        successDesc: "ご購入ありがとうございます。クレジットが追加されました。",
+        orderNumber: "注文番号",
+        copy: "コピー",
+        copied: "コピーしました！",
+        product: "製品",
+        amount: "金額",
+        creditsAdded: "追加されたクレジット",
+        proUnlocked: "Proステータス解放！",
+        welcomePro: "Proへようこそ！",
+        contactSupport: "ご質問がありますか？お問い合わせ："
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "個のアイテム",

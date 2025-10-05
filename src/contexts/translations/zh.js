@@ -479,6 +479,19 @@ export const zh = {
         cta: "启动 Alpha 版",
         rights: "© 2024 NexMap. 保留所有权利。"
     },
+    payment: {
+        successTitle: "支付成功！",
+        successDesc: "感谢您的购买，积分已添加到您的账户。",
+        orderNumber: "订单编号",
+        copy: "复制",
+        copied: "已复制！",
+        product: "产品",
+        amount: "金额",
+        creditsAdded: "已添加积分",
+        proUnlocked: "已解锁 Pro 会员！",
+        welcomePro: "欢迎成为 Pro！",
+        contactSupport: "有疑问？联系我们："
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "个项目",
