@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { debugLog } from '../utils/debugLogger';
 
+// Long-press duration for multi-select on touch devices (ms)
+const LONG_PRESS_DURATION = 400;
+
 /**
  * A shared hook for handling standardized drag-and-drop behavior 
  * across different canvas elements.
@@ -22,6 +25,8 @@ export function useDraggable({
     const hasDraggedRef = useRef(false);
     const pendingDeselectRef = useRef(false);
     const cmdKeyPressedRef = useRef(false);
+    const longPressTriggeredRef = useRef(false);
+    const longPressTimerRef = useRef(null);
 
     // Internal state for drag calculations
     const dragDataRef = useRef({
@@ -33,17 +38,48 @@ export function useDraggable({
         lastY: 0
     });
 
-    const handleStart = (e, clientX, clientY) => {
+    // Clear long-press timer
+    const clearLongPressTimer = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+    };
+
+    const handleStart = (e, clientX, clientY, isTouch = false) => {
         if (disabled) return;
         if (e.target.closest('button') || e.target.closest('.no-drag') || e.target.closest('.custom-scrollbar')) return;
 
         e.stopPropagation();
 
-        debugLog.ui(`Drag start: ${id}`, { clientX, clientY, isSelected });
+        debugLog.ui(`Drag start: ${id}`, { clientX, clientY, isSelected, isTouch });
 
         // Track Cmd/Ctrl key for drag mode
         cmdKeyPressedRef.current = e.metaKey || e.ctrlKey;
         const isAdditive = e.shiftKey || e.metaKey || e.ctrlKey;
+        longPressTriggeredRef.current = false;
+
+        // For touch devices, start long-press timer for multi-select
+        if (isTouch && !isAdditive) {
+            clearLongPressTimer();
+            longPressTimerRef.current = setTimeout(() => {
+                // Long press detected - trigger additive selection
+                longPressTriggeredRef.current = true;
+                cmdKeyPressedRef.current = true; // Enable connected card movement
+
+                // Vibrate for haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+
+                // If not already selected, add to selection
+                if (onSelect && !isSelected) {
+                    onSelect(id, { shiftKey: true, metaKey: false, ctrlKey: false });
+                }
+
+                debugLog.ui(`Long-press multi-select triggered for ${id}`);
+            }, LONG_PRESS_DURATION);
+        }
 
         if (onSelect) {
             if (isAdditive) {
@@ -71,11 +107,11 @@ export function useDraggable({
         hasDraggedRef.current = false;
     };
 
-    const handleMouseDown = (e) => handleStart(e, e.clientX, e.clientY);
+    const handleMouseDown = (e) => handleStart(e, e.clientX, e.clientY, false);
 
     const handleTouchStart = (e) => {
         const touch = e.touches[0];
-        handleStart(e, touch.clientX, touch.clientY);
+        handleStart(e, touch.clientX, touch.clientY, true);
     };
 
     useEffect(() => {
@@ -109,6 +145,7 @@ export function useDraggable({
             if (!hasDraggedRef.current && (Math.abs(clientX - startX) > dragThreshold || Math.abs(clientY - startY) > dragThreshold)) {
                 hasDraggedRef.current = true;
                 pendingDeselectRef.current = false;
+                clearLongPressTimer(); // Cancel long-press if user starts dragging
                 debugLog.ui(`Drag threshold exceeded for ${id}`);
             }
 
@@ -122,6 +159,7 @@ export function useDraggable({
         };
 
         const handleEnd = (e) => {
+            clearLongPressTimer(); // Always clear timer on end
             setIsDragging(false);
             const dragHappened = hasDraggedRef.current;
 
