@@ -301,8 +301,10 @@ export function useAISprouting() {
     };
 
     /**
-     * Branch: Split the LAST assistant response into separate cards
-     * Uses AI to intelligently split text into logical sections (preserving original text)
+     * Branch: Split the LAST assistant response into separate cards for deep dive
+     * 1. Uses AI to split text into logical sections / exact substrings
+     * 2. Creates new cards using these substrings as PROMPTS
+     * 3. AI generates detailed explanation for each substring
      */
     const handleBranch = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
@@ -320,7 +322,7 @@ export function useAISprouting() {
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
-        // Use analysis model for splitting task if available, or chat model
+        // Use analysis model for splitting task if available
         const analysisModel = state.getRoleModel('analysis') || chatModel;
 
         const content = typeof lastAssistantMsg.content === 'string'
@@ -332,13 +334,9 @@ export function useAISprouting() {
 
         let chunks = [];
         try {
-            // Dynamic import to avoid circular dependency issues if any
             const { splitTextIntoSections } = await import('../services/llm');
-            chunks = await splitTextIntoSections(
-                content,
-                activeConfig,
-                analysisModel
-            );
+            // Reuse explicit splitting function
+            chunks = await splitTextIntoSections(content, activeConfig, analysisModel);
         } catch (e) {
             console.error("AI split failed, falling back to basic split", e);
             chunks = content.split(/\n\s*\n/).filter(c => c.trim().length > 10).slice(0, 4);
@@ -352,33 +350,61 @@ export function useAISprouting() {
         const positions = calculateMindmapChildPositions(source, chunks.length);
 
         chunks.forEach((chunk, i) => {
-            const newId = uuid();
-            const pos = positions[i];
-            const cleanChunk = chunk.trim();
+            (async () => {
+                const newId = uuid();
+                const pos = positions[i];
+                const cleanChunk = chunk.trim();
 
-            // Use start of chunk as title
-            const cardTitle = cleanChunk.slice(0, 40) + (cleanChunk.length > 40 ? '...' : '');
+                // Use start of chunk as title (for UI)
+                const cardTitle = cleanChunk.slice(0, 40) + (cleanChunk.length > 40 ? '...' : '');
 
-            debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { title: cardTitle });
+                debugLog.ai(`Creating branch card: ${newId}`, { title: cardTitle });
 
-            // Create card with the chunk as the ASSISTANT's content
-            const cardMessages = [
-                { role: 'user', content: `[Section ${i + 1} from parent]` },
-                { role: 'assistant', content: cleanChunk }
-            ];
+                // Create card: Use the CHUNK as the User's Prompt text
+                await createAICard({
+                    id: newId,
+                    text: cleanChunk, // Full chunk as prompt
+                    x: pos.x,
+                    y: pos.y,
+                    autoConnections: [{ from: sourceId, to: newId }],
+                    model: chatModel,
+                    providerId: activeConfig.id
+                    // No initialMessages -> standard AI generation flow
+                });
 
-            createAICard({
-                id: newId,
-                text: cardTitle,
-                x: pos.x,
-                y: pos.y,
-                autoConnections: [{ from: sourceId, to: newId }],
-                model: chatModel,
-                providerId: activeConfig.id,
-                initialMessages: cardMessages
-            });
+                // Build context from source card
+                const sourceContext = (source.data.messages || []).slice(-6)
+                    .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
+                    .join('\n');
 
-            debugLog.ai(`Branch card created: ${newId}`);
+                try {
+                    // Trigger AI generation for "Deep Dive"
+                    await aiManager.requestTask({
+                        type: 'chat',
+                        priority: PRIORITY.HIGH,
+                        payload: {
+                            messages: [{
+                                role: 'user',
+                                content: `[Previous Context]\n${sourceContext}\n\n[Focus Topic]\n${cleanChunk}\n\nBased on the context, please provide a deeper explanation, analysis, or additional details about this specific point.`
+                            }],
+                            model: chatModel,
+                            config: activeConfig
+                        },
+                        tags: [`card:${newId}`],
+                        onProgress: (chunk) => updateCardContent(newId, chunk)
+                    });
+                    debugLog.ai(`Branch generation complete for: ${newId}`);
+                } catch (innerError) {
+                    debugLog.error(`Branch generation failed for ${newId}`, innerError);
+                    const errMsg = innerError.message || 'Generation failed';
+                    const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
+                        ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
+                        : `\n\n⚠️ **生成失败**: ${errMsg}`;
+                    updateCardContent(newId, userMessage);
+                } finally {
+                    setCardGenerating(newId, false);
+                }
+            })();
         });
     };
 
