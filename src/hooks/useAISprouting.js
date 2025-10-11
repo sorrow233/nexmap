@@ -302,7 +302,7 @@ export function useAISprouting() {
 
     /**
      * Branch: Split the LAST assistant response into separate cards
-     * Splits text by paragraphs, creates max 4 cards
+     * Uses AI to intelligently split text into logical sections (preserving original text)
      */
     const handleBranch = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
@@ -320,29 +320,38 @@ export function useAISprouting() {
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
+        // Use analysis model for splitting task if available, or chat model
+        const analysisModel = state.getRoleModel('analysis') || chatModel;
 
-        // 2. Split content by double newlines (paragraphs)
         const content = typeof lastAssistantMsg.content === 'string'
             ? lastAssistantMsg.content
             : '';
 
-        // Split by double newlines or clear section breaks
-        let chunks = content.split(/\n\s*\n/);
+        // 2. Split content using LLM
+        debugLog.ai(`Requesting AI text split...`);
 
-        // Filter out empty or very short chunks (e.g. "Sure!")
-        chunks = chunks.filter(c => c.trim().length > 10);
+        let chunks = [];
+        try {
+            // Dynamic import to avoid circular dependency issues if any
+            const { splitTextIntoSections } = await import('../services/llm');
+            chunks = await splitTextIntoSections(
+                content,
+                activeConfig,
+                analysisModel
+            );
+        } catch (e) {
+            console.error("AI split failed, falling back to basic split", e);
+            chunks = content.split(/\n\s*\n/).filter(c => c.trim().length > 10).slice(0, 4);
+        }
 
-        // 3. Take max 4 chunks
-        const chunksToCreate = chunks.slice(0, 4);
+        if (!chunks || chunks.length === 0) return;
 
-        if (chunksToCreate.length === 0) return;
-
-        debugLog.ai(`Branch chunks to create:`, chunksToCreate.length);
+        debugLog.ai(`Branch chunks to create:`, chunks.length);
 
         // Calculate positions using mindmap layout
-        const positions = calculateMindmapChildPositions(source, chunksToCreate.length);
+        const positions = calculateMindmapChildPositions(source, chunks.length);
 
-        chunksToCreate.forEach((chunk, i) => {
+        chunks.forEach((chunk, i) => {
             const newId = uuid();
             const pos = positions[i];
             const cleanChunk = chunk.trim();
@@ -353,7 +362,6 @@ export function useAISprouting() {
             debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { title: cardTitle });
 
             // Create card with the chunk as the ASSISTANT's content
-            // We provide a dummy user message to maintain structure
             const cardMessages = [
                 { role: 'user', content: `[Section ${i + 1} from parent]` },
                 { role: 'assistant', content: cleanChunk }
