@@ -301,87 +301,93 @@ export function useAISprouting() {
     };
 
     /**
-     * Branch: Extract all topics from conversation and create separate cards for each
-     * Creates N new cards (one per topic detected)
+     * Branch: Split conversation into separate Q&A pairs
+     * Creates N new cards (one per Q&A pair, max 4)
+     * Directly copies original content without AI analysis
      */
     const handleBranch = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source) return;
 
+        const messages = source.data.messages || [];
+        if (messages.length === 0) return;
+
         debugLog.ai(`Branching conversation for card: ${sourceId}`);
 
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
-        const analysisModel = state.getRoleModel('analysis');
         const chatModel = state.getRoleModel('chat');
 
-        try {
-            const { extractConversationTopics } = await import('../services/llm');
-            const topics = await extractConversationTopics(
-                source.data.messages || [],
-                activeConfig,
-                analysisModel
-            );
-
-            debugLog.ai(`Branch topics extracted:`, topics);
-
-            // Create cards using standard mindmap layout
-            if (topics && topics.length > 0) {
-                // Calculate positions using mindmap layout
-                const positions = calculateMindmapChildPositions(source, topics.length);
-
-                topics.forEach((topic, i) => {
-                    (async () => {
-                        const newId = uuid();
-                        const pos = positions[i];
-
-                        debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { topic });
-
-                        await createAICard({
-                            id: newId,
-                            text: topic,
-                            x: pos.x,
-                            y: pos.y,
-                            autoConnections: [{ from: sourceId, to: newId }],
-                            model: chatModel,
-                            providerId: activeConfig.id
-                        });
-
-                        // Build context from source card's conversation
-                        const sourceContext = (source.data.messages || []).slice(-6)
-                            .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
-                            .join('\n');
-
-                        try {
-                            await aiManager.requestTask({
-                                type: 'chat',
-                                priority: PRIORITY.HIGH,
-                                payload: {
-                                    messages: [{
-                                        role: 'user',
-                                        content: `[Previous Context]\n${sourceContext}\n\n[Topic to Detail]\n${topic}\n\nBased on the previous context, please provide a detailed explanation of this specific topic.`
-                                    }],
-                                    model: chatModel,
-                                    config: activeConfig
-                                },
-                                tags: [`card:${newId}`],
-                                onProgress: (chunk) => updateCardContent(newId, chunk)
-                            });
-                            debugLog.ai(`Branch generation complete for: ${newId}`);
-                        } catch (innerError) {
-                            debugLog.error(`Branch generation failed for ${newId}`, innerError);
-                            const errMsg = innerError.message || 'Generation failed';
-                            const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                                ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                                : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                            updateCardContent(newId, userMessage);
-                        }
-                    })();
-                });
+        // Split messages into Q&A pairs (user + assistant)
+        const qaPairs = [];
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
+            if (msg.role === 'user') {
+                // Find the next assistant message
+                const assistantMsg = messages[i + 1];
+                if (assistantMsg && assistantMsg.role === 'assistant') {
+                    qaPairs.push({
+                        user: msg,
+                        assistant: assistantMsg
+                    });
+                    i++; // Skip the assistant message in next iteration
+                } else {
+                    // User message without response - still include it
+                    qaPairs.push({
+                        user: msg,
+                        assistant: null
+                    });
+                }
             }
-        } catch (e) {
-            debugLog.error(`Branch failed`, e);
         }
+
+        // Take max 4 Q&A pairs (most recent ones)
+        const pairsToCreate = qaPairs.slice(-4);
+
+        if (pairsToCreate.length === 0) return;
+
+        debugLog.ai(`Branch Q&A pairs to create:`, pairsToCreate.length);
+
+        // Calculate positions using mindmap layout
+        const positions = calculateMindmapChildPositions(source, pairsToCreate.length);
+
+        pairsToCreate.forEach((pair, i) => {
+            const newId = uuid();
+            const pos = positions[i];
+
+            // Extract user question text for card title
+            const userContent = typeof pair.user.content === 'string' 
+                ? pair.user.content 
+                : (Array.isArray(pair.user.content) 
+                    ? pair.user.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
+                    : '');
+            
+            // Truncate for title (first 50 chars)
+            const cardTitle = userContent.slice(0, 50) + (userContent.length > 50 ? '...' : '');
+
+            debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { title: cardTitle });
+
+            // Build messages array for the new card
+            const cardMessages = [pair.user];
+            if (pair.assistant) {
+                cardMessages.push(pair.assistant);
+            }
+
+            // Create the card with the original Q&A content
+            createAICard({
+                id: newId,
+                text: cardTitle,
+                x: pos.x,
+                y: pos.y,
+                autoConnections: [{ from: sourceId, to: newId }],
+                model: chatModel,
+                providerId: activeConfig.id,
+                // Pass the original messages directly
+                initialMessages: cardMessages
+            });
+
+            debugLog.ai(`Branch card created: ${newId}`);
+        });
     };
 
     return { handleExpandTopics, handleSprout, handleQuickSprout, handleContinueTopic, handleBranch };

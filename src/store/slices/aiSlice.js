@@ -79,7 +79,8 @@ export const createAISlice = (set, get) => {
         createAICard: async (params) => {
             const {
                 id, text, x, y, images = [], contextPrefix = "",
-                autoConnections = [], model: requestedModel, providerId: requestedProviderId
+                autoConnections = [], model: requestedModel, providerId: requestedProviderId,
+                initialMessages = null // NEW: Allow passing pre-existing messages (for Branch feature)
             } = params;
 
             const state = get();
@@ -95,6 +96,29 @@ export const createAISlice = (set, get) => {
 
             const newId = id || uuid();
 
+            // If initialMessages provided, use them directly (for Branch feature)
+            if (initialMessages && Array.isArray(initialMessages) && initialMessages.length > 0) {
+                const newCard = {
+                    id: newId, x, y,
+                    createdAt: Date.now(),
+                    data: {
+                        title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
+                        messages: initialMessages,
+                        model,
+                        providerId
+                    }
+                };
+
+                set(state => ({
+                    cards: [...state.cards, newCard],
+                    connections: [...state.connections, ...autoConnections]
+                    // NOTE: Do NOT add to generatingCardIds since we're not generating
+                }));
+
+                return newId;
+            }
+
+            // Original logic for creating new AI cards
             let content = text;
             if (images.length > 0) {
                 // Process images to IDB
