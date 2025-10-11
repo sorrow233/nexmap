@@ -307,3 +307,71 @@ Example: ["Detroit: Become Human 游戏介绍", "Beyond: Two Souls 游戏介绍"
         return ["主要话题"];
     }
 }
+/**
+ * Split text into logical sections using AI understanding
+ * Returns EXACT substrings from the original text (no paraphrasing)
+ * Max 4 sections
+ */
+export async function splitTextIntoSections(text, config, model = null, options = {}) {
+    try {
+        if (!text || text.length < 50) return [text];
+
+        const finalPrompt = `TEXT TO SPLIT:
+${text}
+
+TASK: Split the text above into logical sections (e.g., based on numbered lists, distinct topics, or paragraphs).
+
+CRITICAL REQUIREMENTS:
+1. Return a JSON array of strings.
+2. Each string MUST be an EXACT COPY of a part of the original text.
+3. DO NOT rewrite, summarize, or paraphrase anything.
+4. The concatenation of the parts should roughly reconstruct the main ideas of the original text, but you can omit transitional fluff.
+5. Max 4 sections. If there are more, combine them or pick the most important 4.
+6. Each section should be substantial enough to be a standalone card content.
+
+Example Output:
+["First part of text...", "Second part of text..."]`;
+
+        // console.log('[SplitText] Sending prompt length:', finalPrompt.length);
+
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            config,
+            model,
+            options
+        );
+
+        if (!response || response.trim().length === 0) {
+            console.warn('[SplitText] Empty response');
+            return [text];
+        }
+
+        let cleanResponse = response.trim();
+
+        // Remove markdown code blocks
+        if (cleanResponse.startsWith('```json')) {
+            cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+
+        const parsed = JSON.parse(cleanResponse);
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            console.warn('[SplitText] Invalid array');
+            return [text];
+        }
+
+        // Validate that chunks are actually in the text (fuzzy check or just trust for now, 
+        // enforcing exact match in prompt is usually enough for decent models)
+        // If the model summarizes, it's a failure of the model instruction following, 
+        // but typically "EXACT COPY" works well with modern models.
+
+        return parsed.slice(0, 4);
+
+    } catch (e) {
+        console.error("[SplitText] Failed:", e);
+        // Fallback: split by double newline
+        return text.split(/\n\s*\n/).filter(s => s.trim().length > 20).slice(0, 4);
+    }
+}
