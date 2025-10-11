@@ -301,9 +301,8 @@ export function useAISprouting() {
     };
 
     /**
-     * Branch: Split conversation into separate Q&A pairs
-     * Creates N new cards (one per Q&A pair, max 4)
-     * Directly copies original content without AI analysis
+     * Branch: Split the LAST assistant response into separate cards
+     * Splits text by paragraphs, creates max 4 cards
      */
     const handleBranch = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
@@ -312,68 +311,54 @@ export function useAISprouting() {
         const messages = source.data.messages || [];
         if (messages.length === 0) return;
 
-        debugLog.ai(`Branching conversation for card: ${sourceId}`);
+        // 1. Get the last assistant message
+        const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+        if (!lastAssistantMsg || !lastAssistantMsg.content) return;
+
+        debugLog.ai(`Branching content for card: ${sourceId}`);
 
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
 
-        // Split messages into Q&A pairs (user + assistant)
-        const qaPairs = [];
-        for (let i = 0; i < messages.length; i++) {
-            const msg = messages[i];
-            if (msg.role === 'user') {
-                // Find the next assistant message
-                const assistantMsg = messages[i + 1];
-                if (assistantMsg && assistantMsg.role === 'assistant') {
-                    qaPairs.push({
-                        user: msg,
-                        assistant: assistantMsg
-                    });
-                    i++; // Skip the assistant message in next iteration
-                } else {
-                    // User message without response - still include it
-                    qaPairs.push({
-                        user: msg,
-                        assistant: null
-                    });
-                }
-            }
-        }
+        // 2. Split content by double newlines (paragraphs)
+        const content = typeof lastAssistantMsg.content === 'string'
+            ? lastAssistantMsg.content
+            : '';
 
-        // Take max 4 Q&A pairs (most recent ones)
-        const pairsToCreate = qaPairs.slice(-4);
+        // Split by double newlines or clear section breaks
+        let chunks = content.split(/\n\s*\n/);
 
-        if (pairsToCreate.length === 0) return;
+        // Filter out empty or very short chunks (e.g. "Sure!")
+        chunks = chunks.filter(c => c.trim().length > 10);
 
-        debugLog.ai(`Branch Q&A pairs to create:`, pairsToCreate.length);
+        // 3. Take max 4 chunks
+        const chunksToCreate = chunks.slice(0, 4);
+
+        if (chunksToCreate.length === 0) return;
+
+        debugLog.ai(`Branch chunks to create:`, chunksToCreate.length);
 
         // Calculate positions using mindmap layout
-        const positions = calculateMindmapChildPositions(source, pairsToCreate.length);
+        const positions = calculateMindmapChildPositions(source, chunksToCreate.length);
 
-        pairsToCreate.forEach((pair, i) => {
+        chunksToCreate.forEach((chunk, i) => {
             const newId = uuid();
             const pos = positions[i];
+            const cleanChunk = chunk.trim();
 
-            // Extract user question text for card title
-            const userContent = typeof pair.user.content === 'string' 
-                ? pair.user.content 
-                : (Array.isArray(pair.user.content) 
-                    ? pair.user.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
-                    : '');
-            
-            // Truncate for title (first 50 chars)
-            const cardTitle = userContent.slice(0, 50) + (userContent.length > 50 ? '...' : '');
+            // Use start of chunk as title
+            const cardTitle = cleanChunk.slice(0, 40) + (cleanChunk.length > 40 ? '...' : '');
 
             debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { title: cardTitle });
 
-            // Build messages array for the new card
-            const cardMessages = [pair.user];
-            if (pair.assistant) {
-                cardMessages.push(pair.assistant);
-            }
+            // Create card with the chunk as the ASSISTANT's content
+            // We provide a dummy user message to maintain structure
+            const cardMessages = [
+                { role: 'user', content: `[Section ${i + 1} from parent]` },
+                { role: 'assistant', content: cleanChunk }
+            ];
 
-            // Create the card with the original Q&A content
             createAICard({
                 id: newId,
                 text: cardTitle,
@@ -382,7 +367,6 @@ export function useAISprouting() {
                 autoConnections: [{ from: sourceId, to: newId }],
                 model: chatModel,
                 providerId: activeConfig.id,
-                // Pass the original messages directly
                 initialMessages: cardMessages
             });
 
