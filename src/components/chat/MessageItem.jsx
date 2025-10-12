@@ -291,7 +291,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     };
 
     return (
-        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+        <div id={`message-${index}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
             <div className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-6 shadow-sm group relative ${isUser
                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tr-none'
                 : 'bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-tl-none'

@@ -21,7 +21,7 @@ export function useCardCreator() {
 
     const { handleExpandTopics, handleSprout } = useAISprouting();
     const { _generateAICard, handleBatchChat } = useCardGeneration();
-    const { handleCreateNote } = useNeuralNotepad();
+    const { handleCreateNote, createStandaloneNote } = useNeuralNotepad();
 
     /**
      * General purpose card creation (Text/AI/Image)
@@ -126,6 +126,7 @@ export function useCardCreator() {
     return {
         handleCreateCard,
         handleCreateNote: (text, isMaster) => handleCreateNote(text, isMaster, currentBoardId),
+        createStandaloneNote: (text, position) => createStandaloneNote(text, position, currentBoardId), // NEW
         handleExpandTopics,
         handleBatchChat,
         handleSprout,

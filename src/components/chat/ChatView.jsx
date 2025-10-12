@@ -14,6 +14,7 @@ import SproutModal from '../chat/SproutModal';
 import ChatInput from '../chat/ChatInput';
 import MessageList from '../chat/MessageList';
 import ShareModal from '../share/ShareModal';
+import ChatIndexSidebar from '../chat/ChatIndexSidebar';
 
 // Stable empty array to prevent infinite re-renders from || [] pattern
 const EMPTY_PENDING_MESSAGES = [];
@@ -461,6 +462,19 @@ export default function ChatView({
                 placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
             />
 
+            {/* Sidebar Index for Quick Navigation */}
+            {card.type !== 'note' && (
+                <ChatIndexSidebar
+                    messages={card.data.messages || []}
+                    onScrollTo={(index) => {
+                        const el = document.getElementById(`message-${index}`);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }}
+                />
+            )}
+
             {/* Share Modal */}
             <ShareModal
                 isOpen={!!shareContent}
@@ -470,3 +484,4 @@ export default function ChatView({
         </div>
     );
 }
+

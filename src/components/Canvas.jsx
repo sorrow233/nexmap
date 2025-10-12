@@ -77,8 +77,8 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                         }
                     },
                     onCreateNote: (pos) => {
-                        if (onCreateNote) {
-                            onCreateNote({ x: pos.x, y: pos.y });
+                        if (props.onCreateStandaloneNote) {
+                            props.onCreateStandaloneNote('', { x: pos.x, y: pos.y });
                         }
                     },
                     onPaste: () => {

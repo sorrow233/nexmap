@@ -68,6 +68,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleQuickSprout,
         handleSprout,
         handleCreateNote,
+        createStandaloneNote,
         handleExpandTopics,
         // NEW
         customSproutPrompt,
@@ -87,6 +88,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     <div ref={canvasContainerRef} className="absolute inset-0">
                         <Canvas
                             onCreateNote={handleCreateNote}
+                            onCreateStandaloneNote={createStandaloneNote}
                             onCanvasDoubleClick={handleCanvasDoubleClick}
                             onCustomSprout={handleCustomSprout}
                             onCardFullScreen={handleFullScreen}
