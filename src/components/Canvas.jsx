@@ -13,7 +13,7 @@ import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
 import { useContextMenu } from './ContextMenu';
 
-export default function Canvas({ onCreateNote, ...props }) {
+export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     // Granular selectors to prevent unnecessary re-renders
     const cards = useStore(state => state.cards);
     const connections = useStore(state => state.connections);
@@ -363,6 +363,7 @@ export default function Canvas({ onCreateNote, ...props }) {
                                 onCreateNote={onCreateNote}
                                 onCardFullScreen={props.onCardFullScreen ? () => props.onCardFullScreen(card.id) : undefined}
                                 onPromptDrop={props.onCardPromptDrop}
+                                onCustomSprout={onCustomSprout}
                             />
                         </ErrorBoundary>
                     );

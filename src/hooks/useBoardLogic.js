@@ -46,7 +46,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     const cardCreator = useCardCreator();
     const { t } = useLanguage();
     const toast = useToast();
-    const { handleQuickSprout, handleSprout } = useAISprouting();
+    const { handleQuickSprout, handleSprout, handleDirectedSprout, handleExpandTopics } = useAISprouting();
 
     // Derived State
     const currentBoard = boardsList.find(b => b.id === currentBoardId);
@@ -278,6 +278,36 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         handleChatModalGenerate(cardId, prompt.text, []);
     };
 
+    // Directed Generation (Custom Sprout)
+    const [customSproutPrompt, setCustomSproutPrompt] = useState({ isOpen: false, sourceId: null, x: 0, y: 0 });
+
+    const handleCustomSprout = (sourceId) => {
+        const sourceCard = cards.find(c => c.id === sourceId);
+        if (!sourceCard) return;
+
+        // Position modal to the right of the card, with bounds checking
+        let screenX = (sourceCard.x * scale) + offset.x + 350 * scale;
+        let screenY = (sourceCard.y * scale) + offset.y;
+
+        // Ensure modal stays within viewport
+        screenX = Math.max(10, Math.min(screenX, window.innerWidth - 340));
+        screenY = Math.max(10, Math.min(screenY, window.innerHeight - 150));
+
+        setCustomSproutPrompt({
+            isOpen: true,
+            sourceId,
+            x: screenX,
+            y: screenY
+        });
+    };
+
+    const handleCustomSproutSubmit = (instruction) => {
+        if (!customSproutPrompt.isOpen || !customSproutPrompt.sourceId) return;
+
+        handleDirectedSprout(customSproutPrompt.sourceId, instruction);
+        setCustomSproutPrompt({ isOpen: false, sourceId: null, x: 0, y: 0 });
+    };
+
     return {
         // Data
         cards,
@@ -297,6 +327,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         clipboard,
         isSettingsOpen,
         quickPrompt,
+        customSproutPrompt, // Exported State
         tempInstructions,
         t,
         noteId,
@@ -309,6 +340,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         setIsSettingsOpen,
         setGlobalImages,
         setQuickPrompt,
+        setCustomSproutPrompt,
         setExpandedCardId,
         setTempInstructions,
         navigate,
@@ -325,6 +357,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         // Complex Handlers
         handleCanvasDoubleClick,
         handleQuickPromptSubmit,
+        handleCustomSprout, // Exported Handler
+        handleCustomSproutSubmit, // Exported Handler
         handleFullScreen,
         handleChatModalGenerate,
         handleSelectConnected,
@@ -332,8 +366,9 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         handlePromptDropOnChat,
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,
-        handleQuickSprout, // from useAISprouting
-        handleSprout,      // from useAISprouting and passed to ChatModal
+        handleQuickSprout,
+        handleSprout,
+        handleExpandTopics,
 
         // Card Creator exports
         ...cardCreator

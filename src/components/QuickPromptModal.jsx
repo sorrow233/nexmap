@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X } from 'lucide-react';
 
-export default function QuickPromptModal({ isOpen, onClose, onSubmit, initialPosition }) {
+export default function QuickPromptModal({ isOpen, onClose, onSubmit, initialPosition, placeholder }) {
     const [text, setText] = useState('');
     const inputRef = useRef(null);
     const modalRef = useRef(null);
@@ -70,7 +70,7 @@ export default function QuickPromptModal({ isOpen, onClose, onSubmit, initialPos
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Type to create card..."
+                            placeholder={placeholder || "Type to create card..."}
                             className="w-full bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 rounded-lg pl-3 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none"
                             rows={2}
                             style={{ minHeight: '60px' }}

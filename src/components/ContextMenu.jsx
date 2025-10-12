@@ -13,7 +13,8 @@ import {
     MessageSquare,
     Clipboard,
     Unlink,
-    Palette
+    Palette,
+    Wand2
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -208,6 +209,8 @@ export function ContextMenuProvider({ children }) {
             { type: 'separator' },
             { icon: Star, label: isFavorite ? t.contextMenu.unfavorite : t.contextMenu.favorite, onClick: onToggleFavorite },
             { icon: Sparkles, label: t.contextMenu.aiExpand, onClick: onExpand },
+            // NEW: Directed Generation
+            { icon: Wand2, label: "Directed Generation", onClick: handlers.onCustomSprout },
             { icon: Link, label: t.contextMenu.createConnection, onClick: onConnect },
             { type: 'colorPicker', currentColor: card.data?.cardColor, onColorSelect: onSetColor, label: t.contextMenu.lineColor },
             { type: 'separator' },
