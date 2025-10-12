@@ -479,10 +479,12 @@ export const createAISlice = (set, get) => {
             // Use handleChatGenerate which now uses AIManager
             try {
                 await Promise.all(targets.map(async (card) => {
-                    const currentMsgs = [...(card.data.messages || [])];
-                    // Find the precise assistant message we just added
+                    // BUG FIX: 必须从freshCard获取更新后的messages，而不是targets中的旧数据
                     const freshCard = get().cards.find(c => c.id === card.id);
-                    const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                    if (!freshCard) return;
+
+                    const currentMsgs = [...(freshCard.data.messages || [])];
+                    const assistantMsg = currentMsgs.slice().reverse().find(m => m.role === 'assistant');
                     const messageId = assistantMsg?.id;
 
                     // handleChatGenerate handles config resolution and AIManager enqueuing

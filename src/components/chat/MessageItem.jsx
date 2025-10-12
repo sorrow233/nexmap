@@ -418,17 +418,19 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                     </div>
                 )}
 
-                {/* Retry Button (only for assistant and if it's an error or last message) */}
-                {!isUser && !isStreaming && content && content.includes("⚠️ Error") && (
-                    <div className="mt-3 pt-3 border-t border-red-100 dark:border-red-900/30 flex justify-end">
-                        <button
-                            onClick={handleRetry}
-                            className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 bg-red-50 dark:bg-red-900/10 px-3 py-1.5 rounded-full transition-colors"
-                        >
-                            Retry Generation
-                        </button>
-                    </div>
-                )}
+                {/* Retry Button (only for assistant messages with error content) */}
+                {!isUser && !isStreaming && content && (
+                    content.includes("⚠️") && (content.includes("Error") || content.includes("失败") || content.includes("不可用") || content.includes("超时") || content.includes("用完"))
+                ) && (
+                        <div className="mt-3 pt-3 border-t border-red-100 dark:border-red-900/30 flex justify-end">
+                            <button
+                                onClick={handleRetry}
+                                className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 bg-red-50 dark:bg-red-900/10 px-3 py-1.5 rounded-full transition-colors"
+                            >
+                                Retry Generation
+                            </button>
+                        </div>
+                    )}
             </div>
         </div>
     );
