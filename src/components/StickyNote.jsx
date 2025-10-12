@@ -60,6 +60,14 @@ const StickyNote = React.memo(function StickyNote({
         disabled: isEditing
     });
 
+    // Cleanup timeout refs on unmount
+    useEffect(() => {
+        return () => {
+            if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+            if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+        };
+    }, []);
+
     const handleContentChange = (e) => {
         onUpdate(data.id, { ...data.data, content: e.target.value });
     };
@@ -219,6 +227,14 @@ const StickyNote = React.memo(function StickyNote({
                         <ListOrdered size={16} />
                     </button>
                 </div>
+                {/* Delete Button */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDelete && onDelete(data.id); }}
+                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 backdrop-blur-md transition-all active:scale-95"
+                    title="Delete Note"
+                >
+                    <Trash2 size={16} />
+                </button>
             </div>
 
             {/* Content Area */}
@@ -259,10 +275,11 @@ const StickyNote = React.memo(function StickyNote({
                 ) : (
                     <div
                         ref={contentRef}
-                        className={`w-full flex-grow text-slate-800 dark:text-slate-100 font-lxgw leading-[1.8] text-lg custom-scrollbar markdown-content select-text break-words overflow-x-hidden
+                        className={`w-full flex-grow text-slate-800 dark:text-slate-100 font-lxgw leading-[1.8] text-lg custom-scrollbar markdown-content select-text break-words overflow-x-hidden cursor-text
                             ${isExpanded && canScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
                         onWheel={handleWheel}
                         onMouseDown={(e) => e.stopPropagation()} // Allow selecting text
+                        onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }} // Enter edit mode on double click
                         dangerouslySetInnerHTML={{
                             __html: DOMPurify.sanitize(marked(data.data?.content || '', { breaks: true }))
                         }}
