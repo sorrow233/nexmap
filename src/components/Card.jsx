@@ -22,7 +22,8 @@ const Card = React.memo(function Card({
     onConnect,
     onUpdate,
     onCreateNote,
-    onPromptDrop
+    onPromptDrop,
+    onCustomSprout // NEW
 }) {
     const [isDragOver, setIsDragOver] = useState(false);
     const cardRef = useRef(null);
@@ -150,6 +151,7 @@ const Card = React.memo(function Card({
             onDelete: () => onDelete && onDelete(data.id),
             onToggleFavorite: () => { /* TODO: implement if needed */ },
             onExpand: () => onExpand && onExpand(data.id),
+            onCustomSprout: () => onCustomSprout && onCustomSprout(data.id),
             onConnect: () => onConnect && onConnect(data.id),
             onSetColor: (color) => {
                 if (onUpdate) {

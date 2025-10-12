@@ -375,3 +375,63 @@ Example Output:
         return text.split(/\n\s*\n/).filter(s => s.trim().length > 20).slice(0, 4);
     }
 }
+
+/**
+ * Generate cards based on user direction/instruction
+ * Returns array of card contents
+ */
+export async function generateDirectedCards(messages, instruction, config, model = null, options = {}) {
+    try {
+        const contextText = messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : ''}`).join('\n\n');
+
+        const finalPrompt = `CONTEXT:
+${contextText}
+
+USER INSTRUCTION:
+"${instruction}"
+
+TASK:
+Based on the context above and the user's instruction, generate a list of new card contents.
+The user wants to branch out or explore specific aspects as described in the instruction.
+
+REQUIREMENTS:
+1. Return a JSON array of strings.
+2. Each string will be the content of a new card.
+3. The content can be a summary, an expanded explanation, a question, or whatever the user asked for.
+4. Max 4 cards.
+
+Example Output:
+["Content for card 1", "Content for card 2"]`;
+
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            config,
+            model,
+            options
+        );
+
+        if (!response || response.trim().length === 0) {
+            return [];
+        }
+
+        let cleanResponse = response.trim();
+        if (cleanResponse.startsWith('```json')) {
+            cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanResponse.startsWith('```')) {
+            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+
+        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+            cleanResponse = arrayMatch[0];
+        }
+
+        const parsed = JSON.parse(cleanResponse);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.slice(0, 4);
+
+    } catch (e) {
+        console.error("[DirectedCards] Failed:", e);
+        return [];
+    }
+}

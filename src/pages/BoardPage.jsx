@@ -68,7 +68,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         handleQuickSprout,
         handleSprout,
         handleCreateNote,
-        handleExpandTopics
+        handleExpandTopics,
+        // NEW
+        customSproutPrompt,
+        setCustomSproutPrompt,
+        handleCustomSprout,
+        handleCustomSproutSubmit
 
     } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack });
 
@@ -83,6 +88,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                         <Canvas
                             onCreateNote={handleCreateNote}
                             onCanvasDoubleClick={handleCanvasDoubleClick}
+                            onCustomSprout={handleCustomSprout}
                             onCardFullScreen={handleFullScreen}
                             onPromptDrop={handlePromptDropOnCanvas}
                             onCardPromptDrop={handlePromptDropOnCard}
@@ -104,6 +110,15 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                     onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
                     onSubmit={handleQuickPromptSubmit}
                     initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
+                />
+
+                {/* Custom Sprout Modal */}
+                <QuickPromptModal
+                    isOpen={customSproutPrompt.isOpen}
+                    onClose={() => setCustomSproutPrompt(prev => ({ ...prev, isOpen: false }))}
+                    onSubmit={handleCustomSproutSubmit}
+                    initialPosition={{ x: customSproutPrompt.x, y: customSproutPrompt.y }}
+                    placeholder="Tell AI how to generate cards from this..."
                 />
 
                 {/* Top Bar */}
