@@ -79,7 +79,49 @@ export function useNeuralNotepad() {
         }
     };
 
+    const createStandaloneNote = (text = '', position = null, currentBoardId = null) => {
+        const safeText = (typeof text === 'string' ? text : '').trim();
+        const newId = uuid();
+
+        // Calculate position (default center or specific)
+        let noteX, noteY;
+        if (position) {
+            noteX = position.x;
+            noteY = position.y;
+        } else {
+            noteX = Math.max(0, (window.innerWidth / 2 - offset.x) / scale - 160);
+            noteY = Math.max(0, (window.innerHeight / 2 - offset.y) / scale - 250);
+        }
+
+        addCard({
+            id: newId,
+            type: 'note',
+            x: noteX,
+            y: noteY,
+            createdAt: Date.now(),
+            data: {
+                content: safeText, // Standalone note usually starts empty or with specific text, no numbering enforced
+                color: 'yellow',
+                isNotepad: false, // Explicitly NOT the master notepad
+                title: 'Note'
+            }
+        });
+        debugLog.ui(`Created standalone note: ${newId}`);
+
+        // Trigger persistence
+        if (currentBoardId) {
+            setTimeout(() => {
+                const latestState = useStore.getState();
+                saveBoard(currentBoardId, {
+                    cards: latestState.cards,
+                    connections: latestState.connections
+                });
+            }, 50);
+        }
+    };
+
     return {
-        handleCreateNote
+        handleCreateNote,
+        createStandaloneNote
     };
 }
