@@ -52,8 +52,13 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         if (selectedIds.length > 0) handleBatchDelete();
     }, [selectedIds]);
 
-    // R -> Regenerate
+    // R -> Regenerate (with input field protection)
     useHotkeys('r', () => {
+        const activeEl = document.activeElement;
+        const isEditing = activeEl?.tagName === 'INPUT' ||
+            activeEl?.tagName === 'TEXTAREA' ||
+            activeEl?.isContentEditable;
+        if (isEditing) return;
         if (selectedIds.length > 0) handleRegenerate();
     }, [selectedIds]);
 

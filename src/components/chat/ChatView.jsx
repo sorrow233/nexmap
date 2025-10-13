@@ -187,15 +187,32 @@ export default function ChatView({
         const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
         if (!lastUserMessage) return;
 
+        // BUG FIX: content可能是字符串或数组（包含图片），需要正确提取
+        let textContent = '';
+        let imageContent = [];
+
+        if (typeof lastUserMessage.content === 'string') {
+            textContent = lastUserMessage.content;
+        } else if (Array.isArray(lastUserMessage.content)) {
+            // 多部分内容：提取文本和图片
+            lastUserMessage.content.forEach(part => {
+                if (part.type === 'text') textContent += part.text;
+                if (part.type === 'image') imageContent.push(part);
+            });
+        }
+
+        if (!textContent.trim() && imageContent.length === 0) return;
+
         setIsStreaming(true);
         try {
-            await onGenerateResponse(card.id, lastUserMessage.text, lastUserMessage.images || []);
+            await onGenerateResponse(card.id, textContent, imageContent);
         } catch (e) {
             console.error('Failed to retry:', e);
         } finally {
             setIsStreaming(false);
         }
     };
+
 
     // 停止生成
     const handleStop = () => {
