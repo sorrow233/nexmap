@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, Sparkles } from 'lucide-react';
+import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, Sparkles, BarChart3 } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
 import SettingsModal from '../components/SettingsModal';
+import UsageStatsModal from '../components/UsageStatsModal';
 import SEO from '../components/SEO';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
@@ -30,6 +31,7 @@ export default function GalleryPage({
     setHasSeenWelcome
 }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash' | 'favorites' | 'feedback'
     const [paymentSuccessOpen, setPaymentSuccessOpen] = useState(false);
@@ -192,6 +194,15 @@ export default function GalleryPage({
                             {/* Mobile tabs would go here if needed, keeping it simple for now */}
                         </div>
 
+                        {/* Usage Stats (Desktop) */}
+                        <button
+                            onClick={() => setIsStatsOpen(true)}
+                            className="hidden md:flex p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors text-slate-500 dark:text-slate-400"
+                            title={t.gallery?.stats || "Statistics"}
+                        >
+                            <BarChart3 size={20} />
+                        </button>
+
                         {viewMode === 'active' && (
                             <button
                                 onClick={() => onCreateBoard("New Board")}
@@ -320,6 +331,13 @@ export default function GalleryPage({
                         }
                     }
                 }}
+            />
+
+            <UsageStatsModal
+                isOpen={isStatsOpen}
+                onClose={() => setIsStatsOpen(false)}
+                boardsList={boardsList}
+                user={user}
             />
 
             {/* Payment Success Modal */}
