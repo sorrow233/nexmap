@@ -492,6 +492,22 @@ export const zh = {
         welcomePro: "欢迎成为 Pro！",
         contactSupport: "有疑问？联系我们："
     },
+    stats: {
+        title: "创意旅程",
+        totalBoards: "创意宇宙",
+        activeBoards: "活跃项目",
+        trashBoards: "已归档",
+        totalCards: "捕捉的灵感",
+        cardsSubtitle: "跨越所有画布",
+        aiCredits: "神经能量",
+        creditsRemaining: "剩余",
+        creditsUsed: "已消耗",
+        globalTokens: "上下文上下文吞吐",
+        lastActive: "上次头脑风暴",
+        never: "从未",
+        signIn: "登录以查看神经统计数据",
+        loading: "正在加载神经指标..."
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "个项目",

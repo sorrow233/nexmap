@@ -400,6 +400,22 @@ export const ja = {
         welcomePro: "Proへようこそ！",
         contactSupport: "ご質問がありますか？お問い合わせ："
     },
+    stats: {
+        title: "クリエイティブ・ジャーニー",
+        totalBoards: "クリエイティブ・ユニバース",
+        activeBoards: "アクティブなプロジェクト",
+        trashBoards: "アーカイブ済み",
+        totalCards: "キャプチャされた思考",
+        cardsSubtitle: "すべてのキャンバスにわたり",
+        aiCredits: "ニューラル・エネルギー",
+        creditsRemaining: "残り",
+        creditsUsed: "使用済み",
+        globalTokens: "処理されたコンテキスト",
+        lastActive: "前回のブレインストーミング",
+        never: "まだありません",
+        signIn: "ニューラル統計を表示するにはサインインして",
+        loading: "ニューラル指標を読み込み中..."
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "個のアイテム",

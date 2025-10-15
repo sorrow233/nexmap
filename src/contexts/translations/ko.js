@@ -400,6 +400,22 @@ export const ko = {
         welcomePro: "Pro에 오신 것을 환영합니다!",
         contactSupport: "질문이 있으신가요? 문의하기:"
     },
+    stats: {
+        title: "창의적인 여정",
+        totalBoards: "크리에이티브 유니버스",
+        activeBoards: "활성 프로젝트",
+        trashBoards: "보관됨",
+        totalCards: "포착된 생각들",
+        cardsSubtitle: "모든 캔버승에 걸쳐",
+        aiCredits: "신경 에너지",
+        creditsRemaining: "남음",
+        creditsUsed: "사용됨",
+        globalTokens: "처리된 컨텍스트",
+        lastActive: "마지막 브레인스토밍",
+        never: "아직 없음",
+        signIn: "신경 통계를 보려면 로그인하세요",
+        loading: "신경 지표 로딩 중..."
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "개 항목",

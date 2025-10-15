@@ -492,6 +492,22 @@ export const en = {
         welcomePro: "Welcome to Pro!",
         contactSupport: "Questions? Contact us:"
     },
+    stats: {
+        title: "Your Creative Journey",
+        totalBoards: "Creative Universe",
+        activeBoards: "Active Projects",
+        trashBoards: "Archived",
+        totalCards: "Thoughts Captured",
+        cardsSubtitle: "Across your entire canvas",
+        aiCredits: "Neural Energy",
+        creditsRemaining: "Remaining",
+        creditsUsed: "Used",
+        globalTokens: "Context Processed",
+        lastActive: "Last Brainstorm",
+        never: "Not yet",
+        signIn: "Sign in to view your neural stats",
+        loading: "Loading neural metrics..."
+    },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
         items: "items",
