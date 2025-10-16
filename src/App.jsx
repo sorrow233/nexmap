@@ -337,6 +337,7 @@ function AppContent() {
                             user={user}
                             boardsList={boardsList}
                             onUpdateBoardTitle={handleUpdateBoardTitle}
+                            onUpdateBoardMetadata={handleUpdateBoardMetadata}
                             onBack={handleBackToGallery}
                         />
                     } />
@@ -345,6 +346,7 @@ function AppContent() {
                             user={user}
                             boardsList={boardsList}
                             onUpdateBoardTitle={handleUpdateBoardTitle}
+                            onUpdateBoardMetadata={handleUpdateBoardMetadata}
                             onBack={handleBackToGallery}
                         />
                     } />

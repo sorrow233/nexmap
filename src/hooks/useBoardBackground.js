@@ -143,8 +143,8 @@ export default function useBoardBackground() {
                     // console.log('[Background Gen] Successfully uploaded to S3:', finalImageUrl);
 
                 } catch (uploadError) {
-                    // console.error('[Background Gen] S3 Upload Failed:', uploadError);
-                    alert(`Background generated but S3 Upload failed: ${uploadError.message}. Using temporary URL.`);
+                    console.warn('[Background Gen] S3 Upload Failed:', uploadError);
+                    // alert(`Background generated but S3 Upload failed: ${uploadError.message}. Using temporary URL.`);
                     // We keep finalImageUrl as valid GMI url so user still gets a result (if it's not a massive data uri causing issues elsewhere)
                 }
             } else {
