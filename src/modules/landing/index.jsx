@@ -10,7 +10,6 @@ const SpatialSection = React.lazy(() => import('./components/SpatialSection'));
 const DemoInfinite = React.lazy(() => import('./components/DemoInfinite'));
 const SproutSection = React.lazy(() => import('./components/SproutSection'));
 const GraphSection = React.lazy(() => import('./components/GraphSection'));
-const PricingSection = React.lazy(() => import('./components/PricingSection'));
 const FooterSection = React.lazy(() => import('./components/FooterSection'));
 
 
@@ -138,10 +137,7 @@ const LandingModule = () => {
                     <GraphSection />
                 </div>
 
-                {/* 8. PRICING SECTION */}
-                <div className="relative z-10 border-t border-white/5 bg-[#0A0A0A]">
-                    <PricingSection showTitle={true} />
-                </div>
+
 
                 {/* FOOTER */}
                 <div className="relative z-20">
