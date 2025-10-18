@@ -1,6 +1,7 @@
 import { uuid } from '../../utils/uuid.js';
 import { getSystemPrompt } from './promptUtils.js';
 import { streamChatCompletion, imageGeneration } from '../llm.js';
+import { userStatsService } from '../stats/userStatsService.js';
 
 /**
  * Task Priorities
@@ -198,6 +199,12 @@ class AIManager {
                     ...task.payload.options // Pass other options
                 }
             );
+
+            // Track usage stats (characters generated)
+            if (fullText && fullText.length > 0) {
+                userStatsService.incrementCharCount(fullText.length);
+            }
+
             return fullText;
         }
 

@@ -506,7 +506,11 @@ export const zh = {
         lastActive: "上次头脑风暴",
         never: "从未",
         signIn: "登录以查看神经统计数据",
-        loading: "正在加载神经指标..."
+        loading: "正在加载神经指标...",
+        dailyActivity: "神经突触活动",
+        today: "今日生成",
+        yesterday: "昨日",
+        globalChars: "总生成字符"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

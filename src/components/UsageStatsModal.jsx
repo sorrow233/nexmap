@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap } from 'lucide-react';
+import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap, Activity } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { userStatsService } from '../services/stats/userStatsService';
 
 export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
     if (!isOpen) return null;
@@ -15,7 +16,12 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
         totalCards: 0,
         lastActive: null,
         credits: null,
-        loadingCredits: false
+        loadingCredits: false,
+        tokenStats: {
+            totalChars: 0,
+            todayChars: 0,
+            yesterdayChars: 0
+        }
     });
 
     useEffect(() => {
@@ -34,13 +40,17 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
             }
         }
 
+        // Get local token stats
+        const tokenStats = userStatsService.getStats();
+
         setStats(prev => ({
             ...prev,
             totalBoards: boardsList.length,
             activeBoards: active,
             trashBoards: trash,
             totalCards: totalCards,
-            lastActive: lastActive
+            lastActive: lastActive,
+            tokenStats: tokenStats
         }));
 
         // Fetch Credits if user is logged in
@@ -57,11 +67,8 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
 
     }, [isOpen, boardsList, user]);
 
-    // Calculate "Global Tokens" / Energy Used
-    // Heuristic: Initial - Remaining. If undefined, show 0.
-    const energyUsed = stats.credits
-        ? (stats.credits.initialCredits || 0) - (stats.credits.credits || 0)
-        : 0;
+    // Format utility
+    const fmt = (n) => n?.toLocaleString() || '0';
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-4 animate-fade-in">
@@ -119,66 +126,86 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
                         </div>
                     </div>
 
-                    {/* AI Credits / Energy */}
-                    <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-600 dark:to-purple-700 rounded-3xl text-white shadow-xl shadow-slate-900/10 dark:shadow-indigo-500/20 relative overflow-hidden group">
+                    {/* AI Activity / Energy */}
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
 
-                        {/* Background Effect */}
-                        <div className="absolute top-0 right-0 p-8 opacity-5 transform group-hover:scale-110 transition-transform duration-700">
-                            <Zap size={120} />
-                        </div>
+                        {/* Credits Card (3/5 width) */}
+                        <div className="sm:col-span-3 p-6 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-600 dark:to-purple-700 rounded-3xl text-white shadow-xl shadow-slate-900/10 dark:shadow-indigo-500/20 relative overflow-hidden group">
 
-                        <div className="flex flex-col h-full relative z-10">
-                            <div className="flex items-center gap-2 mb-6 opacity-90">
-                                <Zap size={18} className="text-yellow-400" fill="currentColor" />
-                                <span className="text-sm font-bold uppercase tracking-wider">{t.stats?.aiCredits || "Neural Energy"}</span>
+                            {/* Background Effect */}
+                            <div className="absolute top-0 right-0 p-8 opacity-5 transform group-hover:scale-110 transition-transform duration-700">
+                                <Zap size={120} />
                             </div>
 
-                            {user ? (
-                                stats.loadingCredits ? (
-                                    <div className="animate-pulse flex flex-col gap-2">
-                                        <div className="h-8 w-32 bg-white/20 rounded-lg"></div>
-                                        <div className="h-4 w-48 bg-white/10 rounded-lg"></div>
-                                    </div>
-                                ) : stats.credits ? (
-                                    <div className="space-y-6">
-                                        <div className="flex items-end justify-between">
-                                            <div>
-                                                <div className="text-4xl font-black tracking-tight flex items-baseline gap-2">
-                                                    {stats.credits.credits?.toLocaleString()}
-                                                    <span className="text-sm font-medium opacity-50 uppercase tracking-widest translate-y-[-4px]">{t.stats?.creditsRemaining || "Left"}</span>
+                            <div className="flex flex-col h-full relative z-10 justify-between">
+                                <div className="flex items-center gap-2 mb-4 opacity-90">
+                                    <Zap size={18} className="text-yellow-400" fill="currentColor" />
+                                    <span className="text-sm font-bold uppercase tracking-wider">{t.stats?.aiCredits || "Neural Energy"}</span>
+                                </div>
+
+                                {user ? (
+                                    stats.loadingCredits ? (
+                                        <div className="animate-pulse flex flex-col gap-2">
+                                            <div className="h-8 w-24 bg-white/20 rounded-lg"></div>
+                                        </div>
+                                    ) : stats.credits ? (
+                                        <div>
+                                            <div className="text-3xl font-black tracking-tight flex items-baseline gap-2">
+                                                {stats.credits.credits?.toLocaleString()}
+                                                <span className="text-sm font-medium opacity-50 uppercase tracking-widest translate-y-[-4px]">{t.stats?.creditsRemaining || "Left"}</span>
+                                            </div>
+
+                                            {/* Progress Bar */}
+                                            <div className="relative pt-3">
+                                                <div className="h-1.5 w-full bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+                                                        style={{ width: `${Math.min(100, (stats.credits.credits / stats.credits.initialCredits) * 100)}%` }}
+                                                    />
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="text-xl font-bold opacity-90">{energyUsed.toLocaleString()}</div>
-                                                <div className="text-[10px] uppercase tracking-wider opacity-60 font-bold">{t.stats?.globalTokens || "Context Processed"}</div>
-                                            </div>
                                         </div>
-
-                                        {/* Progress Bar */}
-                                        <div className="relative pt-2">
-                                            <div className="h-2 w-full bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-                                                    style={{ width: `${Math.min(100, (stats.credits.credits / stats.credits.initialCredits) * 100)}%` }}
-                                                />
-                                            </div>
-                                            <div className="flex justify-between mt-2 text-[10px] font-medium opacity-60 uppercase tracking-wider">
-                                                <span>{t.stats?.creditsUsed || "Used"}: {Math.round(100 - (stats.credits.credits / stats.credits.initialCredits) * 100)}%</span>
-                                                <span>Capacity: {stats.credits.initialCredits?.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    ) : (
+                                        <div className="text-xs opacity-60">Sync failed</div>
+                                    )
                                 ) : (
-                                    <div className="text-sm py-4 text-center bg-white/5 rounded-xl border border-white/10">
-                                        Unable to sync neural state.
+                                    <div className="text-xs opacity-60">Sign in to view</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Daily Activity (2/5 width) */}
+                        <div className="sm:col-span-2 p-5 bg-slate-50 dark:bg-slate-800/80 rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 text-orange-500 mb-2">
+                                <Activity size={16} />
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.stats?.dailyActivity || "Daily Activity"}</span>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+                                        +{fmt(stats.tokenStats.todayChars)}
                                     </div>
-                                )
-                            ) : (
-                                <div className="text-center py-6">
-                                    <p className="font-medium text-white/90 mb-2">{t.stats?.signIn || "Sign in to view your neural stats"}</p>
-                                    <div className="h-1 w-12 bg-white/20 mx-auto rounded-full"></div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        {t.stats?.today || "Today"} (Chars)
+                                    </div>
                                 </div>
-                            )}
+
+                                <div className="w-full h-px bg-slate-200 dark:bg-white/10"></div>
+
+                                <div>
+                                    <div className="text-lg font-bold text-slate-600 dark:text-slate-300 tracking-tight">
+                                        {fmt(stats.tokenStats.yesterdayChars)}
+                                    </div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        {t.stats?.yesterday || "Yesterday"}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 pt-2 text-[10px] text-slate-400 text-right opacity-60 border-t border-slate-200 dark:border-white/5">
+                                {t.stats?.globalChars || "Total Chars"}: {fmt(stats.tokenStats.totalChars)}
+                            </div>
                         </div>
                     </div>
 

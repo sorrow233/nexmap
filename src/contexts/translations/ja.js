@@ -414,7 +414,10 @@ export const ja = {
         lastActive: "前回のブレインストーミング",
         never: "まだありません",
         signIn: "ニューラル統計を表示するにはサインインして",
-        loading: "ニューラル指標を読み込み中..."
+        loading: "ニューラル指標を読み込み中...",
+        dailyActivity: "毎日の活動",
+        today: "今日",
+        yesterday: "昨日"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
