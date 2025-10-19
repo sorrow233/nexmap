@@ -18,7 +18,7 @@ export default function AboutPage() {
                 {/* Header */}
                 <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-20 group">
                     <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-medium tracking-wide">BACK TO HOME</span>
+                    <span className="text-sm font-medium tracking-wide">{t.aboutPage.backToHome}</span>
                 </Link>
 
                 {/* Main Content */}
@@ -26,13 +26,13 @@ export default function AboutPage() {
                     <div className="mb-24">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-mono mb-8">
                             <Sparkles size={12} />
-                            <span>OUR MANIFESTO</span>
+                            <span>{t.aboutPage.manifesto}</span>
                         </div>
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent mb-8">
-                            Beyond the Chatbox.
+                            {t.aboutPage.title}
                         </h1>
                         <p className="text-2xl md:text-3xl text-white/60 font-light leading-relaxed">
-                            We believe that the current interface of Large Language Models—the chatbox—is a bottleneck for human creativity.
+                            {t.aboutPage.subtitle}
                         </p>
                     </div>
 
@@ -42,10 +42,10 @@ export default function AboutPage() {
                             <div className="absolute -left-12 top-0 text-8xl font-black text-white/[0.02] -z-10 select-none group-hover:text-white/[0.04] transition-colors">01</div>
                             <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-4">
                                 <Brain className="text-indigo-400" size={28} />
-                                The Cognitive Cage
+                                {t.aboutPage.section1.title}
                             </h2>
                             <p className="text-white/70 leading-loose">
-                                Look at how we interact with the most powerful intelligence humanity has ever created. It's confined to a linear, text-based terminal. It feels like talking to a genius through a telegram wire. We are forcing multi-dimensional thoughts into a single dimension of text stream. This is not how our brains work. We think in connections, in spaces, in chaotic webs of related ideas.
+                                {t.aboutPage.section1.text}
                             </p>
                         </section>
 
@@ -54,10 +54,10 @@ export default function AboutPage() {
                             <div className="absolute -left-12 top-0 text-8xl font-black text-white/[0.02] -z-10 select-none group-hover:text-white/[0.04] transition-colors">02</div>
                             <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-4">
                                 <Zap className="text-amber-400" size={28} />
-                                Breaking the Linear Wall
+                                {t.aboutPage.section2.title}
                             </h2>
                             <p className="text-white/70 leading-loose">
-                                MixBoard isn't just a canvas; it's a rebellion against the linearity of modern AI interfaces. We are building a space where your thoughts can explode, branch out, and reconnect. Where an AI response isn't the end of a conversation, but the seed of a new forest. We want to unleash the true potential of LLMs by giving them a spatial dimension to live in.
+                                {t.aboutPage.section2.text}
                             </p>
                         </section>
 
@@ -66,20 +66,20 @@ export default function AboutPage() {
                             <div className="absolute -left-12 top-0 text-8xl font-black text-white/[0.02] -z-10 select-none group-hover:text-white/[0.04] transition-colors">03</div>
                             <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-4">
                                 <InfinityIcon className="text-emerald-400" size={28} />
-                                The Future is Infinite
+                                {t.aboutPage.section3.title}
                             </h2>
                             <p className="text-white/70 leading-loose">
-                                We are just getting started. The future of AI interaction won't be scrolling through a history of 500 messages to find that one code snippet. It will be a living, breathing map of your intellect, augmented by an AI that understands context, structure, and intent. We are building the tools for the next generation of thinkers, creators, and dreamers.
+                                {t.aboutPage.section3.text}
                             </p>
                             <p className="text-white/70 leading-loose mt-8">
-                                Welcome to the infinite canvas.
+                                {t.aboutPage.section3.extra}
                             </p>
                         </section>
                     </div>
 
                     <div className="mt-40 pt-20 border-t border-white/5 text-center">
                         <p className="text-white/30 text-sm font-mono">
-                            BUILT FOR THE REBELS.
+                            {t.aboutPage.footer}
                         </p>
                     </div>
                 </article>
