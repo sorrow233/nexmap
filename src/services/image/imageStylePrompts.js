@@ -174,21 +174,22 @@ ${boardContext.slice(0, 3000)}
 """
 
 **YOUR TASK**:
-1. **Identify the Core Topic & Design Diverse Characters**:
-   - AVOID defaulting to a generic male office worker unless explicitly required.
-   - Actively diversify: use women, children, elderly, or cute animals (cat/dog/rabbit) where appropriate.
-   - Example: For "software testing", use a female engineer or a cat debugging code.
-   - Example: For "medical checkup", use a friendly nurse with a patient (not just a doctor).
-   - Example: For "family planning", use a diverse family group.
+1. **Analyze the Content**: Understand the core topics, various themes, and key concepts.
+2. **Design a Rich Composition**:
+    - Instead of a single scene, design a **set of 4-7 distinct, independent illustrative elements** or small scenes.
+    - Each element should represent a different aspect of the content.
+    - **Diversify Characters**: Use men, women, children, elderly, and animals (cats/rabbits in suits, etc.) to depict various roles.
+    - **Actions**: Show them doing specific actions related to the text (e.g., debugging code, checking health, family gathering).
 
-2. **Character Design Rules**:
+3. **Character Design Rules**:
 ${style.characterRules}
 
-3. **Color Palette**:
+4. **Color Palette**:
 ${style.colorPalette}
 
-**OUTPUT FORMAT** (1-2 sentences only):
-Describe ONLY the character(s), their appearance, and their action/setting.
+**OUTPUT FORMAT**:
+Provide a **numbered list** of 4-7 distinct visual descriptions.
+Each item should be a standalone description of a character or small scene.
 Focus on visual description suitable for ${style.name} style illustration.`;
 }
 
@@ -208,23 +209,28 @@ export function getPromptGeneratorPrompt(visualConcept, styleType = DEFAULT_STYL
 
     return `You are an expert prompt engineer for **${style.name}** image generation.
 
-**CHARACTER CONCEPT**: "${visualConcept}"
+**VISUAL CONCEPTS**:
+${visualConcept}
+
+**YOUR TASK**:
+Convert the above visual concepts into a **single final image prompt** formatted as a numbered list.
+This allows the image generation model to create a rich composition with all these elements on a white background.
 
 **CRITICAL STYLE RULES**:
 1. **Style MUST be**: "${style.keywords.slice(0, 3).join('", "')}"
 2. **Character Features**:
 ${style.characterRules}
 3. **Colors**: ${style.colorPalette.split('\n')[1]?.trim() || 'Soft pastels'}
-4. **Background**: Minimal, solid white or light beige, simple if any.
+4. **Background**: Pure white background.
 5. **NO TEXT** in the image.
 
 **FORBIDDEN** (will ruin the style):
 - "${negativeString}"
 
-**ALLOWED KEYWORDS**:
-- "${keywordsString}"
-
-**OUTPUT**: Return ONLY the final English image prompt (1-2 sentences maximum). Do not include any explanation.
+**OUTPUT FORMAT**:
+Return a **numbered list** (1. ... 2. ... etc.) where each item is a detailed English description of one element from the concepts.
+Do not add any introductory text. Just the list.
+Ensure every item mentions "Irasutoya style" or "flat illustration" to maintain consistency.
 
 **FINAL PROMPT**:`;
 }
