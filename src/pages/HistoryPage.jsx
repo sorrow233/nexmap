@@ -5,40 +5,53 @@ import SEO from '../components/SEO';
 
 export default function HistoryPage() {
     // Real changelog derived from actual git history
+    // Real changelog derived from actual git history
     const changes = [
         {
             date: "Jan 06, 2026",
-            version: "0.0.27",
-            title: "Performance & Refactor",
+            version: "0.0.28",
+            title: "Global SEO & Intelligence",
             items: [
-                "Implemented intelligent 'Branch' card splitting (AI-driven segmentation)",
-                "Added chat message previews in sidebar for quick navigation",
-                "Fixed StickyNote bugs (deletion, editing, single-instance)",
-                "Refactored Landing Page visuals (bento grid animations)",
-                "Client-side token limit tracking & statistics"
+                "Implemented localized SEO (Hreflang) strategies for EN/ZH/JA/KO/TW",
+                "Added 'Manifesto' style About page with bilingual support",
+                "Client-side token/character usage tracking & daily stats panel",
+                "Refined 'Branch' feature to use AI for intelligent topic splitting",
+                "Optimized landing page animations (Bento Grid) & removed pricing section"
+            ]
+        },
+        {
+            date: "Jan 06, 2026",
+            version: "0.0.27",
+            title: "Gallery & Core Features",
+            items: [
+                "Added Chat Message Previews in sidebar (Reference Index)",
+                "Fixed StickyNote bugs (delete, edit, single-instance restrictions)",
+                "Implemented auto-background generation for large boards (>10 cards)",
+                "Enhanced Irasutoya image prompts for complex scene generation",
+                "Added independent 'New Note' creation logic"
             ]
         },
         {
             date: "Jan 05, 2026",
             version: "0.0.26",
-            title: "Infrastructure & SEO",
+            title: "Infrastructure & Mobile",
             items: [
-                "Implemented dynamic SEO with per-page meta tags (react-helmet-async)",
-                "Added proper favicon for Google Search display",
-                "Centralized S3 configuration & error handling",
-                "Added free image generation for free users (20/week)",
-                "Switched free tier conversation model to Kimi-K2-Thinking"
+                "Bumped version to v2.2.1",
+                "Implemented long-press multi-select for touch devices",
+                "Optimized mobile bottom button layout to avoid overlap",
+                "Added Order Number system & Payment Success modal",
+                "Security fix: Removed sensitive logs from settings"
             ]
         },
         {
-            date: "Jan 03, 2026",
+            date: "Jan 04, 2026",
             version: "0.0.25",
-            title: "Internationalization & Sync",
+            title: "Stability & Fixes",
             items: [
-                "Complete 4-language support (EN, ZH, JA, KO)",
-                "Updated app icons with new NexMap mind map logo",
-                "Fixed board prompts (tags) cloud sync issue",
-                "Fixed Mac IME positioning issues in Sidebar"
+                "Fixed context truncation limit (removed artificial cap)",
+                "Fixed model switching for existing cards",
+                "Fixed 'Edit Prompt' saving issue",
+                "Resolved React error #310 in Zone component"
             ]
         },
         {
