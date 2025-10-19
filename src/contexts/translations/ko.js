@@ -414,7 +414,10 @@ export const ko = {
         lastActive: "마지막 브레인스토밍",
         never: "아직 없음",
         signIn: "신경 통계를 보려면 로그인하세요",
-        loading: "신경 지표 로딩 중..."
+        loading: "신경 지표 로딩 중...",
+        dailyActivity: "일일 활동",
+        today: "오늘",
+        yesterday: "어제"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

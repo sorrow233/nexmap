@@ -506,7 +506,11 @@ export const en = {
         lastActive: "Last Brainstorm",
         never: "Not yet",
         signIn: "Sign in to view your neural stats",
-        loading: "Loading neural metrics..."
+        loading: "Loading neural metrics...",
+        dailyActivity: "Neural Activity",
+        today: "Today Generated",
+        yesterday: "Yesterday",
+        globalChars: "Total Characters"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
