@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap, Activity } from 'lucide-react';
+import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap, Activity, Sparkles, TrendingUp } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -71,153 +71,178 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
     const fmt = (n) => n?.toLocaleString() || '0';
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-white/10 transform transition-all scale-100 animate-scale-in">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-lg z-[100] flex items-center justify-center font-sans p-4 animate-fade-in transition-all duration-300">
+            {/* Main Container - Modern Glass/Flat hybrid */}
+            <div className="bg-white/95 dark:bg-[#0f1117]/95 backdrop-blur-2xl w-full max-w-2xl rounded-[32px] shadow-2xl shadow-black/20 overflow-hidden border border-white/20 dark:border-white/5 transform transition-all scale-100 animate-scale-in ring-1 ring-black/5 dark:ring-white/5">
 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-500/30">
-                            <BarChart3 size={20} />
+                <div className="px-8 py-6 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-gradient-to-tr from-indigo-500 to-violet-500 rounded-2xl text-white shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
+                            <BarChart3 size={22} className="" />
                         </div>
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t.stats?.title || "Your Creative Journey"}</h2>
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t.stats?.title || "Your Creative Journey"}</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t.stats?.loading ? t.stats.loading.replace('...', '') : "Insights & Metrics"}</p>
+                        </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors text-slate-500 dark:text-slate-400"
+                        className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 active:scale-95"
                     >
-                        <X size={20} />
+                        <X size={22} />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 space-y-6">
+                {/* Bento Grid Content */}
+                <div className="p-8 pt-2 grid grid-cols-1 md:grid-cols-2 gap-5">
 
-                    {/* General Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
-                            <div className="flex items-center gap-2 text-indigo-500 dark:text-indigo-400 mb-3">
-                                <Database size={16} />
-                                <span className="text-xs font-bold uppercase tracking-wider opacity-80">{t.stats?.totalBoards || "Creative Universe"}</span>
+                    {/* Left Column: Stats Cards */}
+                    <div className="space-y-5">
+                        {/* Boards & Cards Row */}
+                        <div className="grid grid-cols-2 gap-5">
+                            {/* Boards Card */}
+                            <div className="p-5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all group duration-300">
+                                <div className="flex items-center gap-2 text-indigo-500 dark:text-indigo-400 mb-3 group-hover:scale-105 transition-transform origin-left">
+                                    <Database size={18} />
+                                </div>
+                                <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
+                                    {stats.totalBoards}
+                                </div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {t.stats?.totalBoards || "Boards"}
+                                </div>
                             </div>
-                            <div className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
-                                {stats.totalBoards}
-                            </div>
-                            <div className="text-xs font-medium text-slate-400 mt-2 flex items-center gap-2">
-                                <span className="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">
-                                    {stats.activeBoards} {t.stats?.activeBoards || "Active"}
-                                </span>
-                                <span>•</span>
-                                <span>{stats.trashBoards} {t.stats?.trashBoards || "Archived"}</span>
+
+                            {/* Cards Card */}
+                            <div className="p-5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all group duration-300">
+                                <div className="flex items-center gap-2 text-fuchsia-500 dark:text-fuchsia-400 mb-3 group-hover:scale-105 transition-transform origin-left">
+                                    <Layers size={18} />
+                                </div>
+                                <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
+                                    {stats.totalCards}
+                                </div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {t.stats?.totalCards || "Cards"}
+                                </div>
                             </div>
                         </div>
 
-                        <div className="p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
-                            <div className="flex items-center gap-2 text-purple-500 dark:text-purple-400 mb-3">
-                                <Layers size={16} />
-                                <span className="text-xs font-bold uppercase tracking-wider opacity-80">{t.stats?.totalCards || "Thoughts Captured"}</span>
+                        {/* Daily Activity Card - Modernized */}
+                        <div className="p-6 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all flex flex-col justify-between h-auto min-h-[160px] relative overflow-hidden group">
+                            {/* Decorative blurred blob */}
+                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-orange-400/10 dark:bg-orange-400/20 blur-2xl rounded-full group-hover:bg-orange-400/20 transition-colors"></div>
+
+                            <div className="relative z-10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2 text-orange-500 mb-1">
+                                        <div className="p-1.5 bg-orange-500/10 rounded-lg">
+                                            <Activity size={16} />
+                                        </div>
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.stats?.dailyActivity || "Daily Activity"}</span>
+                                    </div>
+                                    <div className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold flex items-center gap-1">
+                                        <TrendingUp size={10} />
+                                        Today
+                                    </div>
+                                </div>
+
+                                <div className="flex items-baseline gap-1 mt-1">
+                                    <span className="text-lg font-bold text-orange-500/80 mr-1">+</span>
+                                    <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                        {fmt(stats.tokenStats.todayChars)}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Chars</span>
+                                </div>
                             </div>
-                            <div className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
-                                {stats.totalCards}
-                            </div>
-                            <div className="text-xs font-medium text-slate-400 mt-2">
-                                {t.stats?.cardsSubtitle || "Across your entire canvas"}
+
+                            <div className="relative z-10 mt-4 flex items-center justify-between pt-4 border-t border-slate-200 dark:border-white/5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                <div>Yesterday: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.yesterdayChars)}</span></div>
+                                <div>{t.stats?.globalChars}: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.totalChars)}</span></div>
                             </div>
                         </div>
                     </div>
 
-                    {/* AI Activity / Energy */}
-                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                    {/* Right Column: AI Energy */}
+                    <div className="flex flex-col gap-5">
+                        <div className="flex-1 p-7 bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 dark:from-violet-600 dark:via-indigo-600 dark:to-purple-700 rounded-[30px] text-white shadow-xl shadow-indigo-500/25 relative overflow-hidden group">
 
-                        {/* Credits Card (3/5 width) */}
-                        <div className="sm:col-span-3 p-6 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-600 dark:to-purple-700 rounded-3xl text-white shadow-xl shadow-slate-900/10 dark:shadow-indigo-500/20 relative overflow-hidden group">
+                            {/* Animated Background Mesh */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/3 group-hover:scale-110 transition-transform duration-1000 ease-out pointer-events-none"></div>
+                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-fuchsia-500/20 blur-[50px] rounded-full -translate-x-1/3 translate-y-1/3 group-hover:scale-110 transition-transform duration-1000 ease-out pointer-events-none"></div>
 
-                            {/* Background Effect */}
-                            <div className="absolute top-0 right-0 p-8 opacity-5 transform group-hover:scale-110 transition-transform duration-700">
-                                <Zap size={120} />
+                            {/* Icon overlay */}
+                            <div className="absolute top-6 right-6 p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 shadow-inner group-hover:rotate-12 transition-transform duration-500">
+                                <Sparkles size={24} className="text-yellow-300" />
                             </div>
 
-                            <div className="flex flex-col h-full relative z-10 justify-between">
-                                <div className="flex items-center gap-2 mb-4 opacity-90">
-                                    <Zap size={18} className="text-yellow-400" fill="currentColor" />
-                                    <span className="text-sm font-bold uppercase tracking-wider">{t.stats?.aiCredits || "Neural Energy"}</span>
+                            <div className="flex flex-col h-full relative z-10 justify-between min-h-[220px]">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2 opacity-90">
+                                        <Zap size={18} className="text-yellow-300" fill="currentColor" />
+                                        <span className="text-sm font-bold uppercase tracking-wider opacity-80">{t.stats?.aiCredits || "Neural Energy"}</span>
+                                    </div>
+                                    <h3 className="text-lg font-medium text-white/80 leading-relaxed max-w-[80%]">
+                                        {t.stats?.cardsSubtitle || "Powering your creative engine"}
+                                    </h3>
                                 </div>
 
                                 {user ? (
                                     stats.loadingCredits ? (
-                                        <div className="animate-pulse flex flex-col gap-2">
-                                            <div className="h-8 w-24 bg-white/20 rounded-lg"></div>
+                                        <div className="animate-pulse space-y-3">
+                                            <div className="h-10 w-32 bg-white/20 rounded-xl"></div>
+                                            <div className="h-2 w-full bg-white/10 rounded-full"></div>
                                         </div>
                                     ) : stats.credits ? (
-                                        <div>
-                                            <div className="text-3xl font-black tracking-tight flex items-baseline gap-2">
-                                                {stats.credits.credits?.toLocaleString()}
-                                                <span className="text-sm font-medium opacity-50 uppercase tracking-widest translate-y-[-4px]">{t.stats?.creditsRemaining || "Left"}</span>
+                                        <div className="space-y-6">
+                                            <div>
+                                                <div className="text-5xl font-black tracking-tighter flex items-baseline gap-2 text-white drop-shadow-sm">
+                                                    {stats.credits.credits?.toLocaleString()}
+                                                </div>
+                                                <div className="text-sm font-medium text-indigo-100 mt-1">
+                                                    {t.stats?.creditsRemaining || "Remaining available credits"}
+                                                </div>
                                             </div>
 
-                                            {/* Progress Bar */}
-                                            <div className="relative pt-3">
-                                                <div className="h-1.5 w-full bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
+                                            {/* Modern Progress Bar */}
+                                            <div className="space-y-2">
+                                                <div className="h-3 w-full bg-black/20 rounded-full overflow-hidden backdrop-blur-sm border border-white/5 ring-1 ring-white/10">
                                                     <div
-                                                        className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+                                                        className="h-full bg-gradient-to-r from-yellow-300 to-orange-400 rounded-full shadow-[0_0_15px_rgba(253,224,71,0.5)] transition-all duration-1000 ease-out"
                                                         style={{ width: `${Math.min(100, (stats.credits.credits / stats.credits.initialCredits) * 100)}%` }}
                                                     />
+                                                </div>
+                                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/60">
+                                                    <span>Used: {Math.round(100 - (stats.credits.credits / stats.credits.initialCredits) * 100)}%</span>
+                                                    <span>Max: {stats.credits.initialCredits?.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="text-xs opacity-60">Sync failed</div>
+                                        <div className="p-4 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md text-sm">
+                                            Unable to sync credits.
+                                        </div>
                                     )
                                 ) : (
-                                    <div className="text-xs opacity-60">Sign in to view</div>
+                                    <div className="p-6 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md text-center">
+                                        <p className="font-semibold">{t.stats?.signIn || "Sign In"}</p>
+                                        <p className="text-xs opacity-70 mt-1">View your energy stats</p>
+                                    </div>
                                 )}
                             </div>
                         </div>
-
-                        {/* Daily Activity (2/5 width) */}
-                        <div className="sm:col-span-2 p-5 bg-slate-50 dark:bg-slate-800/80 rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
-                            <div className="flex items-center gap-2 text-orange-500 mb-2">
-                                <Activity size={16} />
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.stats?.dailyActivity || "Daily Activity"}</span>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div>
-                                    <div className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-                                        +{fmt(stats.tokenStats.todayChars)}
-                                    </div>
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                        {t.stats?.today || "Today"} (Chars)
-                                    </div>
-                                </div>
-
-                                <div className="w-full h-px bg-slate-200 dark:bg-white/10"></div>
-
-                                <div>
-                                    <div className="text-lg font-bold text-slate-600 dark:text-slate-300 tracking-tight">
-                                        {fmt(stats.tokenStats.yesterdayChars)}
-                                    </div>
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                        {t.stats?.yesterday || "Yesterday"}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-3 pt-2 text-[10px] text-slate-400 text-right opacity-60 border-t border-slate-200 dark:border-white/5">
-                                {t.stats?.globalChars || "Total Chars"}: {fmt(stats.tokenStats.totalChars)}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Last Active */}
-                    <div className="flex items-center gap-4 px-2 opacity-60 hover:opacity-100 transition-opacity">
-                        <Clock size={14} />
-                        <span className="text-xs font-medium uppercase tracking-wider">
-                            {t.stats?.lastActive || "Last Brainstorm"}: <span className="font-bold text-slate-800 dark:text-white ml-1">{stats.lastActive || (t.stats?.never || "Not yet")}</span>
-                        </span>
                     </div>
 
                 </div>
+
+                {/* Footer */}
+                <div className="px-8 pb-6 flex justify-center opacity-60 hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-full">
+                        <Clock size={12} />
+                        {t.stats?.lastActive}: {stats.lastActive || "Just now"}
+                    </div>
+                </div>
+
             </div>
         </div>
     );
