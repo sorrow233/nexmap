@@ -2,97 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, GitCommit, Calendar, Tag, Activity } from 'lucide-react';
 import SEO from '../components/SEO';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function HistoryPage() {
-    // Real changelog derived from actual git history
-    // Real changelog derived from actual git history
-    // Real changelog derived from actual git history
-    const changes = [
-        {
-            date: "Jan 06, 2026",
-            version: "2.2.8",
-            title: "Global Intelligence & SEO",
-            items: [
-                "Implemented full-stack localized SEO (Hreflang) for EN/ZH/JA/KO/TW",
-                "Launched 'Manifesto' About page with bilingual support",
-                "Added neural usage analytics: Client-side token/character tracking & daily stats",
-                "Refined 'Branch' engine: Now uses AI to intelligently segment topics instead of regex",
-                "Visual Overhaul: New Bento Grid landing animations & simplified pricing flow"
-            ]
-        },
-        {
-            date: "Jan 06, 2026",
-            version: "2.2.7",
-            title: "Core Experience",
-            items: [
-                "Feature: Added 'Reference Index' sidebar for quick chat navigation",
-                "Fix: Resolved StickyNote persistence issues (delete/edit/duplicate bugs)",
-                "Performance: Auto-background generation for large boards (>10 cards)",
-                "AI: Enhanced Irasutoya prompt engineering for complex scene composition",
-                "UX: Decoupled 'New Note' creation for faster ideation"
-            ]
-        },
-        {
-            date: "Jan 05, 2026",
-            version: "2.2.1",
-            title: "Mobile & Infrastructure",
-            items: [
-                "Mobile: Implemented long-press multi-select for touch interfaces",
-                "Layout: Optimized mobile bottom bar to prevent overlapping",
-                "Commerce: Added Order Number system & validated Payment Success modal",
-                "Security: Audit & removal of sensitive logs from settings",
-                "Bumped core version to 2.2 series"
-            ]
-        },
-        {
-            date: "Jan 04, 2026",
-            version: "2.1.4",
-            title: "Stability Protocol",
-            items: [
-                "Core: Removed artificial context truncation limits for larger models",
-                "Fix: Model switching now correctly applies to pre-existing cards",
-                "Fix: 'Edit Prompt' persistence issues resolved",
-                "Fix: React error #310 in Zone component resolved during high-concurrency"
-            ]
-        },
-        {
-            date: "Jan 03, 2026",
-            version: "2.1.1",
-            title: "Identity & Sync",
-            items: [
-                "Rebranding: Updated all app icons to new NexMap visual identity",
-                "Sync: Fixed Board Prompts (tags) cloud synchronization",
-                "Localization: Fixed Mac IME positioning bugs in Sidebar inputs",
-                "Export: Corrected logo watermark in exported images"
-            ]
-        },
-        {
-            date: "Jan 03, 2026",
-            version: "2.1.0",
-            title: "The Spatial Update",
-            items: [
-                "Major: Redesigned Sidebar to floating Notion-style tags",
-                "Feature: Added 'Zone' for semantic spatial grouping",
-                "Feature: Prompt Sidebar with Drag-and-Drop capability",
-                "Fix: Resolved infinite render loop in BoardPage"
-            ]
-        },
-        {
-            date: "Dec 31, 2025",
-            version: "2.0.0",
-            title: "NexMap 2.0: Sprout",
-            items: [
-                "New Feature: Quick Sprout for one-click recursive topic decomposition",
-                "AI Strategy: Implemented 'Curiosity Maximization' prompt chains",
-                "Layout: Standardized mindmap auto-layout for Sprout/Branch",
-                "Physics: Added collision detection for non-overlapping card placement"
-            ]
-        }
-    ];
+    const { t } = useLanguage();
+    const changes = t.historyPage.changes;
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-indigo-500/30">
-            <SEO title="Changelog" description="See what's new in NexMap. A transparent look at our development journey." />
+            <SEO title={t.historyPage.seoTitle} description={t.historyPage.seoDesc} />
 
             {/* Background Effects */}
             <div className="fixed inset-0 z-0 pointer-events-none">
@@ -105,20 +23,20 @@ export default function HistoryPage() {
                 <div className="flex items-center justify-between mb-20">
                     <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors group">
                         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                        <span className="text-sm font-medium tracking-wide">BACK TO HOME</span>
+                        <span className="text-sm font-medium tracking-wide">{t.historyPage.backToHome}</span>
                     </Link>
                     <div className="flex items-center gap-2 text-white/20 text-sm font-mono">
                         <Activity size={14} />
-                        <span>CHANGELOG</span>
+                        <span>{t.historyPage.label}</span>
                     </div>
                 </div>
 
                 <div className="mb-24">
                     <h1 className="text-5xl font-bold tracking-tight mb-6">
-                        Evolution of <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">NexMap</span>
+                        {t.historyPage.titlePrefix} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">{t.historyPage.titleHighlight}</span>
                     </h1>
                     <p className="text-xl text-white/50 max-w-2xl">
-                        A transparent look at our journey from a rough prototype to a spatial thinking engine. We ship fast and iterate often.
+                        {t.historyPage.subtitle}
                     </p>
                 </div>
 
@@ -162,7 +80,7 @@ export default function HistoryPage() {
                 </div>
 
                 <div className="mt-24 pt-12 border-t border-white/5 text-center text-white/20 text-sm">
-                    <p>End of records. The journey continues.</p>
+                    <p>{t.historyPage.endOfRecords}</p>
                 </div>
             </div>
         </div>
