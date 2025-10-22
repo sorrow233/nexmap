@@ -35,8 +35,26 @@ export default function ModernDialog({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl border border-slate-100 dark:border-white/10 overflow-hidden animate-scale-in">
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+        }}>
+            <div style={{
+                backgroundColor: 'white',
+                width: '100%',
+                maxWidth: '384px',
+                borderRadius: '24px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid #f1f5f9',
+                overflow: 'hidden'
+            }}>
                 <div className="p-6">
                     <div className="flex items-start gap-4 mb-4">
                         <div className={`p-3 rounded-2xl ${colors[type]} shrink-0`}>
