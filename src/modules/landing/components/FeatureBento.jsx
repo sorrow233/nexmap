@@ -50,8 +50,8 @@ const FeatureBento = () => {
                         </div>
 
                         {/* Interactive Visual: Graph Traversal */}
-                        <div className="absolute inset-0 z-10 opacity-30 group-hover:opacity-100 transition-opacity duration-700">
-                            <div className="absolute right-[-100px] top-1/2 -translate-y-1/2 w-[600px] h-[600px]">
+                        <div className="absolute inset-0 z-10 opacity-40 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                            <div className="absolute right-0 top-0 w-full h-full">
                                 <GraphVisualization />
                             </div>
                         </div>
@@ -59,47 +59,35 @@ const FeatureBento = () => {
 
                     {/* 2. RECURSIVE IDEATION (1x1) */}
                     <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden min-h-[200px] md:min-h-0">
-                        <div className="relative z-20 p-6 md:p-8 h-full flex flex-col justify-between">
-                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500">
+                        <div className="relative z-20 p-6 md:p-8 h-full flex flex-col justify-between pointer-events-none">
+                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500 z-10 bg-[#080808]">
                                 <GitBranch className="w-7 h-7 text-emerald-400" />
                             </div>
-                            <div>
+                            <div className="z-10">
                                 <h3 className="text-2xl font-bold text-white mb-2">{t.bento.sprout.title}</h3>
                                 <p className="text-gray-400 text-sm leading-relaxed">{t.bento.sprout.text}</p>
                             </div>
                         </div>
                         {/* Recursive Branching Visual */}
-                        <div className="absolute top-10 right-10 w-32 h-32 opacity-20 group-hover:opacity-100 transition-opacity duration-700">
-                            <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                                <path d="M10 50 C 40 50, 40 20, 90 20" className="text-emerald-500 stroke-2" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'dash 2s ease-out forwards' }} />
-                                <path d="M10 50 C 40 50, 40 50, 90 50" className="text-emerald-500 stroke-2" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'dash 2s ease-out 0.2s forwards' }} />
-                                <path d="M10 50 C 40 50, 40 80, 90 80" className="text-emerald-500 stroke-2" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'dash 2s ease-out 0.4s forwards' }} />
-                                <circle cx="90" cy="20" r="3" className="fill-emerald-400 animate-pulse" />
-                                <circle cx="90" cy="50" r="3" className="fill-emerald-400 animate-pulse delay-100" />
-                                <circle cx="90" cy="80" r="3" className="fill-emerald-400 animate-pulse delay-200" />
-                            </svg>
-                        </div>
+                        <SproutVisualization />
                     </SpotlightCard>
+
 
                     {/* 3. UNLIMITED CONCURRENCY (1x1) */}
                     <SpotlightCard className="bg-[#080808] border-white/5 group relative overflow-hidden min-h-[200px] md:min-h-0">
-                        <div className="relative z-20 p-6 md:p-8 h-full flex flex-col justify-between">
-                            <div className="w-14 h-14 bg-gradient-to-br from-pink-500/20 to-red-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:rotate-180 transition-transform duration-700 ease-out">
+                        <div className="relative z-20 p-6 md:p-8 h-full flex flex-col justify-between pointer-events-none">
+                            <div className="w-14 h-14 bg-gradient-to-br from-pink-500/20 to-red-500/20 rounded-2xl flex items-center justify-center border border-white/10 group-hover:rotate-180 transition-transform duration-700 ease-out z-10 bg-[#080808]">
                                 <Cpu className="w-7 h-7 text-pink-400" />
                             </div>
-                            <div>
+                            <div className="z-10">
                                 <h3 className="text-2xl font-bold text-white mb-2">{t.bento.concurrency.title}</h3>
                                 <p className="text-gray-400 text-sm leading-relaxed">{t.bento.concurrency.text}</p>
                             </div>
                         </div>
                         {/* Concurrency lines */}
-                        <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="absolute h-[1px] bg-gradient-to-r from-transparent via-pink-500/50 to-transparent w-full"
-                                    style={{ top: `${20 + i * 15}%`, animation: `scanline 2s linear infinite ${i * 0.2}s` }} />
-                            ))}
-                        </div>
+                        <ConcurrencyVisualization />
                     </SpotlightCard>
+
 
                     {/* 4. SEMANTIC ZONING (Bottom Full Width) - REPLACED DIRECT-TO-API */}
                     <SpotlightCard className="md:col-span-3 bg-[#080808] border-white/5 group overflow-hidden">
@@ -118,31 +106,17 @@ const FeatureBento = () => {
                             </div>
 
                             {/* Zoning Visualization */}
-                            <div className="w-full md:w-1/2 h-40 relative flex items-center justify-center">
-                                {/* Zone Container */}
-                                <div className="absolute inset-4 border border-dashed border-purple-500/30 rounded-3xl bg-purple-500/5 backdrop-blur-sm animate-pulse-slow flex items-center justify-center">
+                            <div className="w-full md:w-1/2 h-full min-h-[160px] relative flex items-center justify-center overflow-hidden">
+                                <SpatialVisualization />
+
+                                {/* Representational UI Overlay */}
+                                <div className="relative z-10 border border-dashed border-purple-500/30 rounded-3xl bg-purple-500/5 backdrop-blur-sm p-6 flex gap-4 animate-pulse-slow">
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-[10px] font-bold text-purple-300 uppercase tracking-widest">
                                         {t.bento.spatial.zoneExample}
                                     </div>
-
-                                    {/* Nodes inside Zone */}
-                                    <div className="flex gap-4">
-                                        <div className="w-12 h-12 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center shadow-lg transform group-hover:-translate-y-2 transition-transform duration-500">
-                                            <div className="w-6 h-1 bg-white/20 rounded-full" />
-                                        </div>
-                                        <div className="w-12 h-12 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center shadow-lg transform group-hover:translate-x-2 transition-transform duration-500 delay-75">
-                                            <div className="w-6 h-1 bg-white/20 rounded-full" />
-                                        </div>
-                                        <div className="w-12 h-12 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center shadow-lg transform group-hover:translate-y-2 transition-transform duration-500 delay-150">
-                                            <div className="w-6 h-1 bg-white/20 rounded-full" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Floating "Add to Zone" cursor/action */}
-                                <div className="absolute -right-4 bottom-0 bg-white text-black p-2 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 group-hover:-translate-y-4 transition-all duration-300 pointer-events-none font-bold text-xs flex gap-2 items-center">
-                                    <PlusIcon className="w-3 h-3" />
-                                    <span>{t.bento.spatial.autoExpand}</span>
+                                    <div className="w-12 h-12 bg-purple-400/10 rounded-xl border border-purple-400/20 shadow-inner" />
+                                    <div className="w-12 h-12 bg-purple-400/10 rounded-xl border border-purple-400/20 shadow-inner" />
+                                    <div className="w-12 h-12 bg-purple-400/10 rounded-xl border border-purple-400/20 shadow-inner" />
                                 </div>
                             </div>
                         </div>
@@ -174,31 +148,42 @@ const FeatureBento = () => {
                      100% { filter: hue-rotate(30deg); }
                 }
                 @keyframes dash {
-                    to { stroke-dashoffset: -400; }
+                    to { stroke-dashoffset: 0; }
                 }
                 @keyframes scanline {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
+                    0% { transform: translateX(-100%); opacity: 0; }
+                    10% { opacity: 1; }
+                    90% { opacity: 1; }
+                    100% { transform: translateX(100%); opacity: 0; }
                 }
-                @keyframes spin-extremely-slow {
+                @keyframes spin-slow {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
-                @keyframes pulse-slow {
-                    0%, 100% { opacity: 0.8; transform: scale(1); }
-                    50% { opacity: 1; transform: scale(1.02); }
+                @keyframes pulse-glow {
+                    0%, 100% { opacity: 0.4; transform: scale(1); filter: blur(0px); }
+                    50% { opacity: 1; transform: scale(1.5); filter: blur(2px); }
+                }
+                @keyframes float-up {
+                    0% { transform: translateY(20px); opacity: 0; }
+                    100% { transform: translateY(0); opacity: 1; }
+                }
+                @keyframes beam {
+                    0% { opacity: 0; transform: scaleX(0); }
+                    50% { opacity: 1; transform: scaleX(1); }
+                    100% { opacity: 0; transform: scaleX(0); }
+                }
+                .animate-beam {
+                     transform-origin: left;
+                     animation: beam 2s ease-in-out infinite;
                 }
                 .animate-dash {
-                    animation: dash 1s linear infinite;
+                    animation: dash 2s ease-out forwards;
                 }
-                .animate-ping-fast {
-                    animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-                }
-                .animate-pulse-slow {
-                    animation: pulse-slow 4s ease-in-out infinite;
-                }
-                .animate-spin-extremely-slow {
-                    animation: spin-extremely-slow 60s linear infinite;
+                .bg-grid-pattern {
+                    background-image: linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+                                      linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+                    background-size: 20px 20px;
                 }
             `}</style>
         </div>
@@ -211,29 +196,157 @@ const PlusIcon = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="M12 5v14" /></svg>
 );
 
-const GraphVisualization = () => (
-    <div className="relative w-full h-full animate-spin-extremely-slow">
-        {/* Central Hub */}
-        <div className="absolute top-1/2 left-1/2 w-8 h-8 bg-indigo-500 rounded-full blur-xl -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 z-10" />
+const GraphVisualization = () => {
+    // Desktop-class heavy visualization
+    const nodes = [
+        { x: 50, y: 50, r: 4 },
+        { x: 30, y: 30, r: 2 }, { x: 70, y: 30, r: 2 },
+        { x: 30, y: 70, r: 2 }, { x: 70, y: 70, r: 2 },
+        { x: 50, y: 20, r: 3 }, { x: 50, y: 80, r: 3 },
+        { x: 20, y: 50, r: 3 }, { x: 80, y: 50, r: 3 },
+        { x: 35, y: 40, r: 2 }, { x: 65, y: 40, r: 2 },
+        { x: 35, y: 60, r: 2 }, { x: 65, y: 60, r: 2 },
+    ];
 
-        {/* Orbiting Nodes */}
-        {[...Array(6)].map((_, i) => {
-            const angle = (i * 60) * (Math.PI / 180);
-            const radius = 150;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            return (
-                <div key={i} className="absolute top-1/2 left-1/2" style={{ transform: `translate(${x}px, ${y}px)` }}>
-                    <div className="w-3 h-3 bg-indigo-400 rounded-full animate-pulse opacity-50" style={{ animationDelay: `${i * 0.2}s` }} />
-                    <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] pointer-events-none" style={{ left: -x, top: -y }}>
-                        <line x1="150" y1="150" x2={150 + x} y2={150 + y} stroke="rgba(99, 102, 241, 0.2)" strokeWidth="1" />
-                    </svg>
+    // Connections
+    const edges = [
+        [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7], [0, 8],
+        [1, 5], [2, 5], [3, 6], [4, 6], [7, 1], [7, 3], [8, 2], [8, 4],
+        [9, 1], [9, 3], [10, 2], [10, 4]
+    ];
+
+    return (
+        <div className="relative w-full h-full animate-spin-extremely-slow" style={{ animationDuration: '60s' }}>
+            {/* Ambient Background Glow */}
+            <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-indigo-600/20 rounded-full blur-[50px] -translate-x-1/2 -translate-y-1/2 animate-pulse-slow" />
+
+            {/* Edges */}
+            <svg className="absolute inset-0 w-full h-full overflow-visible">
+                {edges.map(([a, b], i) => (
+                    <line
+                        key={i}
+                        x1={`${nodes[a].x}%`} y1={`${nodes[a].y}%`}
+                        x2={`${nodes[b].x}%`} y2={`${nodes[b].y}%`}
+                        stroke="rgba(99, 102, 241, 0.15)"
+                        strokeWidth="1"
+                    />
+                ))}
+                {/* Active Data Packets traveling */}
+                {edges.map(([a, b], i) => (
+                    i % 3 === 0 && (
+                        <circle key={`p-${i}`} r="1.5" fill="#a5b4fc">
+                            <animateMotion
+                                dur={`${2 + i % 3}s`}
+                                repeatCount="indefinite"
+                                path={`M${nodes[a].x * 3 /* scale fix attempt? No, SVG coords differ */}...`}
+                            // CSS motion on lines is harder purely with SVG coords in % without exact pixels.
+                            // Fallback to CSS animation wrapper
+                            />
+                            {/* Alternative: CSS animation on line stroke-dashoffset or a traveling div */}
+                        </circle>
+                    )
+                ))}
+            </svg>
+
+            {/* Simulated Traveling Signals via DOM for easier relative positioning */}
+            {edges.slice(0, 8).map(([a, b], i) => {
+                // Calculate angle and length for custom moving particle
+                // Simplified: Just use pulsing nodes
+                return null;
+            })}
+
+            {/* Dynamic Pulses on Nodes */}
+            {nodes.map((node, i) => (
+                <div key={i} className="absolute w-2 h-2 rounded-full -translate-x-1/2 -translate-y-1/2" style={{ left: `${node.x}%`, top: `${node.y}%` }}>
+                    <div className={`w-full h-full rounded-full ${i === 0 ? 'bg-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.6)]' : 'bg-indigo-500/50'}`} />
+                    {i === 0 && <div className="absolute inset-0 bg-indigo-400 rounded-full animate-ping opacity-75" />}
+                    {(i % 3 === 0) && <div className="absolute inset-0 border border-indigo-400 rounded-full animate-ping" style={{ animationDuration: '3s', animationDelay: `${i * 0.2}s` }} />}
                 </div>
-            );
-        })}
+            ))}
+        </div>
+    );
+};
+
+const SproutVisualization = () => (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 group-hover:opacity-100 transition-opacity duration-700">
+        {/* Fractal Tree SVG */}
+        <svg className="w-full h-full max-w-[200px]" viewBox="0 0 200 200" fill="none" stroke="currentColor">
+            {/* Main Trunk */}
+            <motion-path d="M100 200 L100 150" className="stroke-emerald-500 stroke-2" />
+
+            {/* Branch Level 1 */}
+            <path d="M100 150 Q 60 100 40 80" className="stroke-emerald-500/80 stroke-2" strokeDasharray="120" strokeDashoffset="120" style={{ animation: 'dash 1.5s ease-out forwards 0.2s' }} />
+            <path d="M100 150 Q 140 100 160 80" className="stroke-emerald-500/80 stroke-2" strokeDasharray="120" strokeDashoffset="120" style={{ animation: 'dash 1.5s ease-out forwards 0.4s' }} />
+            <path d="M100 150 L 100 90" className="stroke-emerald-500/80 stroke-2" strokeDasharray="120" strokeDashoffset="120" style={{ animation: 'dash 1.5s ease-out forwards 0.3s' }} />
+
+            {/* Branch Level 2 (Tips) */}
+            <circle cx="40" cy="80" r="3" className="fill-emerald-300 animate-pulse" />
+            <circle cx="160" cy="80" r="3" className="fill-emerald-300 animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <circle cx="100" cy="90" r="3" className="fill-emerald-300 animate-pulse" style={{ animationDelay: '0.3s' }} />
+
+            {/* "Thoughts" popping */}
+            <circle cx="30" cy="60" r="1.5" className="fill-emerald-200/50 animate-ping" style={{ animationDuration: '2s' }} />
+            <circle cx="170" cy="60" r="1.5" className="fill-emerald-200/50 animate-ping" style={{ animationDuration: '2.5s' }} />
+        </svg>
     </div>
 );
+
+const ConcurrencyVisualization = () => (
+    <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden">
+        {/* Matrix Rain / High speed scanlines */}
+        {[...Array(20)].map((_, i) => (
+            <div
+                key={i}
+                className="absolute h-[1px] w-1/2 bg-gradient-to-r from-transparent via-pink-400 to-transparent blur-[0.5px]"
+                style={{
+                    top: `${Math.random() * 100}%`,
+                    left: 0,
+                    animation: `scanline ${0.5 + Math.random()}s linear infinite`,
+                    animationDelay: `${Math.random() * 2}s`
+                }}
+            />
+        ))}
+        {/* Particles */}
+        {[...Array(10)].map((_, i) => (
+            <div
+                key={`p-${i}`}
+                className="absolute w-1 h-1 bg-pink-300 rounded-full shadow-[0_0_5px_currentColor]"
+                style={{
+                    top: `${Math.random() * 100}%`,
+                    left: 0,
+                    animation: `scanline ${1 + Math.random()}s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
+                    animationDelay: `${Math.random()}s`
+                }}
+            />
+        ))}
+    </div>
+);
+
+const SpatialVisualization = () => {
+    return (
+        <div className="absolute inset-0 pointer-events-none">
+            {/* 3D-ish Isometric Grid effect via CSS transform */}
+            <div className="absolute inset-0 perspective-[1000px] opacity-0 group-hover:opacity-100 transition-all duration-700">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] flex flex-wrap gap-2 rotate-x-60 rotate-z-12 bg-grid-pattern opacity-20" />
+
+                {/* Rising Blocks */}
+                {[...Array(6)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="absolute bg-purple-500/20 border border-purple-400/30 backdrop-blur-sm shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                        style={{
+                            width: '40px', height: '40px',
+                            left: `${40 + (i % 3) * 15}%`,
+                            top: `${30 + Math.floor(i / 3) * 30}%`,
+                            animation: 'pulse-glow 3s infinite ease-in-out',
+                            animationDelay: `${i * 0.2}s`
+                        }}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
 
 const SpotlightCard = ({ children, className = "" }) => {
     const divRef = useRef(null);
