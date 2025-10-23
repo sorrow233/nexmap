@@ -1,224 +1,284 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://nexmap.catzz.work/</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW" />
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/zh</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/ja</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW" />
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/ko</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW" />
-  </url>
-  <url>
-    <loc>https://nexmap.catzz.work/zh-CN</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW" />
-  </url>
-  <url>
-    <loc>https://nexmap.catzz.work/zh-TW</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW" />
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/pricing</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/pricing" />
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/pricing" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/zh/pricing</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/pricing" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/ja/pricing</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/pricing" />
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/pricing" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/ko/pricing</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/pricing" />
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/pricing" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/zh-CN/pricing</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://nexmap.catzz.work/gallery</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/pricing" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/gallery" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/zh-TW/pricing</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://nexmap.catzz.work/zh/gallery</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/pricing" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/pricing" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/pricing" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/pricing" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/gallery" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/history</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://nexmap.catzz.work/ja/gallery</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/history" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/history" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/gallery" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/ja/history</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://nexmap.catzz.work/ko/gallery</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/history" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/history" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/gallery" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/gallery" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/gallery" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/gallery" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/ko/history</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/history" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/history" />
+    <loc>https://nexmap.catzz.work/free-trial</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/free-trial" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/free-trial" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/zh-CN/history</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/history" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/history" />
+    <loc>https://nexmap.catzz.work/zh/free-trial</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/free-trial" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/free-trial" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/zh-TW/history</loc>
-    <lastmod>2026-01-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/history" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/history" />
+    <loc>https://nexmap.catzz.work/ja/free-trial</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/free-trial" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/free-trial" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/ko/free-trial</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/free-trial" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/free-trial" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/free-trial" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/feedback</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/feedback" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/feedback" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/feedback" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/feedback" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/zh/feedback</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/feedback" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/feedback" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/feedback" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/feedback" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/ja/feedback</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/feedback" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/feedback" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/feedback" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/feedback" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/ko/feedback</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/feedback" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/feedback" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/feedback" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/feedback" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/about</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/about" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/about" />
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/about" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/zh/about</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/about" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/ja/about</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/about" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/about" />
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/about" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
   </url>
   <url>
     <loc>https://nexmap.catzz.work/ko/about</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/about" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/about" />
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/about" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/zh-CN/about</loc>
-    <lastmod>2026-01-03</lastmod>
+    <loc>https://nexmap.catzz.work/history</loc>
+    <lastmod>2026-01-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/about" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/about" />
+    <priority>0.4</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/history" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
   </url>
   <url>
-    <loc>https://nexmap.catzz.work/zh-TW/about</loc>
-    <lastmod>2026-01-03</lastmod>
+    <loc>https://nexmap.catzz.work/zh/history</loc>
+    <lastmod>2026-01-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-      <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/about" />
-      <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/about" />
-      <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/about" />
-      <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nexmap.catzz.work/zh-CN/about" />
-      <xhtml:link rel="alternate" hreflang="zh-TW" href="https://nexmap.catzz.work/zh-TW/about" />
+    <priority>0.4</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/history" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/ja/history</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/history" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
+  </url>
+  <url>
+    <loc>https://nexmap.catzz.work/ko/history</loc>
+    <lastmod>2026-01-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nexmap.catzz.work/history" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://nexmap.catzz.work/zh/history" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://nexmap.catzz.work/ja/history" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://nexmap.catzz.work/ko/history" />
   </url>
 </urlset>

@@ -139,7 +139,7 @@ export default function useBoardBackground() {
                     }
 
                     const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
-                    finalImageUrl = await uploadImageToS3(file);
+                    finalImageUrl = await uploadImageToS3(file, 'backgrounds');
                     // console.log('[Background Gen] Successfully uploaded to S3:', finalImageUrl);
 
                 } catch (uploadError) {

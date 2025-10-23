@@ -545,5 +545,176 @@ export const en = {
         messageCount: "{count} Messages",
         colorPresets: "Presets",
         selectEmoji: "Select Icon"
+    },
+    about: {
+        backHome: "BACK TO HOME",
+        manifesto: "OUR MANIFESTO",
+        title: "Beyond the Chatbox.",
+        subtitle: "We believe that the current interface of Large Language Models—the chatbox—is a bottleneck for human creativity.",
+        builtFor: "BUILT FOR THE REBELS.",
+        s1: {
+            title: "The Cognitive Cage",
+            text: "Look at how we interact with the most powerful intelligence humanity has ever created. It's confined to a linear, text-based terminal. It feels like talking to a genius through a telegram wire. We are forcing multi-dimensional thoughts into a single dimension of text stream. This is not how our brains work. We think in connections, in spaces, in chaotic webs of related ideas."
+        },
+        s2: {
+            title: "Breaking the Linear Wall",
+            text: "MixBoard isn't just a canvas; it's a rebellion against the linearity of modern AI interfaces. We are building a space where your thoughts can explode, branch out, and reconnect. Where an AI response isn't the end of a conversation, but the seed of a new forest. We want to unleash the true potential of LLMs by giving them a spatial dimension to live in."
+        },
+        s3: {
+            title: "The Future is Infinite",
+            text: "We are just getting started. The future of AI interaction won't be scrolling through a history of 500 messages to find that one code snippet. It will be a living, breathing map of your intellect, augmented by an AI that understands context, structure, and intent. We are building the tools for the next generation of thinkers, creators, and dreamers.",
+            extra: "Welcome to the infinite canvas."
+        }
+    },
+    aboutPage: {
+        backToHome: "BACK TO HOME",
+        manifesto: "OUR MANIFESTO",
+        title: "Beyond the Chatbox.",
+        subtitle: "We believe that the current interface of Large Language Models—the chatbox—is a bottleneck for human creativity.",
+        section1: {
+            title: "The Cognitive Cage",
+            text: "Look at how we interact with the most powerful intelligence humanity has ever created. It's confined to a linear, text-based terminal. It feels like talking to a genius through a telegram wire. We are forcing multi-dimensional thoughts into a single dimension of text stream. This is not how our brains work. We think in connections, in spaces, in chaotic webs of related ideas."
+        },
+        section2: {
+            title: "Breaking the Linear Wall",
+            text: "MixBoard isn't just a canvas; it's a rebellion against the linearity of modern AI interfaces. We are building a space where your thoughts can explode, branch out, and reconnect. Where an AI response isn't the end of a conversation, but the seed of a new forest. We want to unleash the true potential of LLMs by giving them a spatial dimension to live in."
+        },
+        section3: {
+            title: "The Future is Infinite",
+            text: "We are just getting started. The future of AI interaction won't be scrolling through a history of 500 messages to find that one code snippet. It will be a living, breathing map of your intellect, augmented by an AI that understands context, structure, and intent. We are building the tools for the next generation of thinkers, creators, and dreamers.",
+            extra: "Welcome to the infinite canvas."
+        },
+        footer: "BUILT FOR THE REBELS."
+    },
+    historyPage: {
+        seoTitle: "Changelog",
+        seoDesc: "See what's new in NexMap. A transparent look at our development journey.",
+        backToHome: "BACK TO HOME",
+        label: "CHANGELOG",
+        titlePrefix: "Evolution of",
+        titleHighlight: "NexMap",
+        subtitle: "A transparent look at our journey from a rough prototype to a spatial thinking engine. We ship fast and iterate often.",
+        endOfRecords: "End of records. The journey continues.",
+        changes: [
+            {
+                date: "Jan 03, 2026",
+                version: "0.0.26",
+                title: "SEO & Accessibility",
+                items: [
+                    "Implemented dynamic SEO with per-page meta tags (react-helmet-async)",
+                    "Added proper favicon for Google Search display",
+                    "Fixed unclickable user menu buttons (CSS stacking context)",
+                    "Added free image generation for free users (20/week)",
+                    "Switched free tier conversation model to Kimi-K2-Thinking"
+                ]
+            },
+            {
+                date: "Jan 03, 2026",
+                version: "0.0.25",
+                title: "Internationalization & Sync",
+                items: [
+                    "Complete 4-language support (EN, ZH, JA, KO)",
+                    "Updated app icons with new NexMap mind map logo",
+                    "Fixed board prompts (tags) cloud sync issue",
+                    "Fixed Mac IME positioning issues in Sidebar"
+                ]
+            },
+            {
+                date: "Jan 03, 2026",
+                version: "0.0.24",
+                title: "Sidebar & Zone",
+                items: [
+                    "Redesigned Sidebar to floating Notion-style tags",
+                    "Added Zone button for quick card grouping",
+                    "Implemented Prompt Sidebar with Drag-and-Drop",
+                    "Fixed infinite loop bug in BoardPage"
+                ]
+            },
+            {
+                date: "Dec 31, 2025",
+                version: "0.0.23",
+                title: "Sprout & Branch",
+                items: [
+                    "Added Quick Sprout for one-click topic decomposition",
+                    "Implemented 'Curiosity Maximization' prompt strategy",
+                    "Standard mindmap layout for Sprout/Branch",
+                    "Added collision detection for new card placement"
+                ]
+            },
+            {
+                date: "Dec 31, 2025",
+                version: "0.0.22",
+                title: "Image & Export",
+                items: [
+                    "Refined image generation with Irasutoya style prompts",
+                    "Fixed iPad Safari image export issues",
+                    "Added user custom instructions support",
+                    "Modularized Gemini provider for better error handling"
+                ]
+            },
+            {
+                date: "Dec 30, 2025",
+                version: "0.0.21",
+                title: "Gallery Modernization",
+                items: [
+                    "Modernized Gallery UI with glassmorphism",
+                    "Resolved scrolling issues on mobile",
+                    "Added auto-retry (max 2) for API errors",
+                    "Enabled manual language switching via settings"
+                ]
+            },
+            {
+                date: "Dec 29, 2025",
+                version: "0.0.19",
+                title: "AI Manager",
+                items: [
+                    "Fixed Gemini 400 validation errors",
+                    "Resolved AIManager message loss issue",
+                    "Sanitized image data for API compatibility"
+                ]
+            },
+            {
+                date: "Dec 28, 2025",
+                version: "0.0.17",
+                title: "Security & Backup",
+                items: [
+                    "Added 5-day timed sync rollback feature",
+                    "Fixed data clearing bug on login",
+                    "Introduced logout safety lock",
+                    "Made manual JSON import always visible for recovery"
+                ]
+            },
+            {
+                date: "Dec 28, 2025",
+                version: "0.0.16",
+                title: "Localization",
+                items: [
+                    "Localized Pricing page content (EN, ZH, JA)",
+                    "Added Tokushoho and Privacy Policy pages",
+                    "Implemented region-based access restriction"
+                ]
+            },
+            {
+                date: "Dec 27, 2025",
+                version: "0.0.15",
+                title: "Stability",
+                items: [
+                    "Fixed ghost logout issues",
+                    "Prevented welcome popup from reappearing",
+                    "Optimized code structure"
+                ]
+            },
+            {
+                date: "Nov 2025",
+                version: "0.0.1",
+                title: "Initial Release",
+                items: [
+                    "Basic infinite canvas functionality",
+                    "Real-time Google Firebase sync",
+                    "Markdown support in cards",
+                    "Multi-modal AI chat integration"
+                ]
+            }
+        ]
     }
 };
