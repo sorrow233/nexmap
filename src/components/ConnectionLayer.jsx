@@ -60,8 +60,9 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
         const prevCardsMap = prevCardsMapRef.current;
         const nextCardsMap = new Map();
 
-        // Index current cards for O(1) lookup
+        // Index current cards for O(1) lookup - skip soft deleted cards
         for (const c of cards) {
+            if (c.deletedAt) continue; // Skip soft-deleted cards
             nextCardsMap.set(c.id, c);
         }
 

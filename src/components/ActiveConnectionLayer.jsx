@@ -26,8 +26,8 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
 
     if (activeConnections.length === 0) return null;
 
-    // Helper to find card by ID
-    const cardMap = new Map(cards.map(c => [c.id, c]));
+    // Helper to find card by ID - filter out soft-deleted cards
+    const cardMap = new Map(cards.filter(c => !c.deletedAt).map(c => [c.id, c]));
 
     return (
         <svg

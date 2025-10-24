@@ -210,6 +210,9 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         };
 
         return cards.filter(card => {
+            // SOFT DELETE: Hide cards that are deleted
+            if (card.deletedAt) return false;
+
             // Guard: Always show cards with invalid coordinates (they need to be visible for debugging/fixing)
             if (!Number.isFinite(card.x) || !Number.isFinite(card.y)) return true;
             if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;

@@ -88,20 +88,43 @@ export const createCardSlice = (set, get) => ({
         }));
     },
 
+    // Soft delete: mark card as deleted instead of removing
     deleteCard: (id) => {
-        debugLog.store(`Deleting card: ${id}`);
+        debugLog.store(`Soft deleting card: ${id}`);
         set((state) => {
             const nextGenerating = new Set(state.generatingCardIds);
             nextGenerating.delete(id);
             const nextSelected = state.selectedIds ? state.selectedIds.filter(sid => sid !== id) : [];
             return {
-                cards: state.cards.filter(c => c.id !== id),
+                // Mark card as deleted instead of removing
+                cards: state.cards.map(c =>
+                    c.id === id ? { ...c, deletedAt: Date.now() } : c
+                ),
+                // Still remove connections for soft-deleted cards (they'll be restored if card is restored)
                 connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
                 generatingCardIds: nextGenerating,
                 selectedIds: nextSelected,
                 expandedCardId: state.expandedCardId === id ? null : state.expandedCardId
             };
         });
+    },
+
+    // Restore a soft-deleted card
+    restoreCard: (id) => {
+        debugLog.store(`Restoring card: ${id}`);
+        set((state) => ({
+            cards: state.cards.map(c =>
+                c.id === id ? { ...c, deletedAt: undefined } : c
+            )
+        }));
+    },
+
+    // Permanently delete a card (used for cleanup after retention period)
+    permanentlyDeleteCard: (id) => {
+        debugLog.store(`Permanently deleting card: ${id}`);
+        set((state) => ({
+            cards: state.cards.filter(c => c.id !== id)
+        }));
     },
 
     arrangeCards: () => {
