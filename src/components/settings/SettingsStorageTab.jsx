@@ -178,7 +178,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
 
     // Scheduled Backup Handlers
     const handleRestoreScheduledBackup = async (backupId) => {
-        if (!window.confirm('Are you sure you want to restore from this backup? Current local data will be overwritten.')) {
+        if (!window.confirm(t.settings.storageConfig?.restoreConfirm || 'Restore missing boards from this backup? Only boards you don\'t currently have will be added.')) {
             return;
         }
         setBackupActionStatus('loading');
@@ -187,8 +187,13 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState, onShowW
             const result = await restoreFromBackup(backupId);
             if (result.success) {
                 setBackupActionStatus('success');
-                setBackupActionMsg(`Restored ${result.boardCount} boards from backup. Reloading...`);
-                setTimeout(() => window.location.reload(), 1500);
+                const msg = result.message || (result.boardCount > 0
+                    ? `Restored ${result.boardCount} missing boards. Reloading...`
+                    : 'No new boards to restore - all boards already exist');
+                setBackupActionMsg(msg);
+                if (result.boardCount > 0) {
+                    setTimeout(() => window.location.reload(), 1500);
+                }
             } else {
                 throw new Error(result.error || 'Restore failed');
             }

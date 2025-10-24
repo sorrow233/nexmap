@@ -695,7 +695,7 @@ body,
     }
 
     .animate-scale-in {
-        animation: scale-in 0.15s ease-out;
+        animation: scale-in 0.15s ease-out forwards;
     }
 
     @keyframes shimmer {

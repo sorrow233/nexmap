@@ -1,8 +1,8 @@
 /**
  * Scheduled Backup Service
  * 
- * Provides automatic local backups at fixed times (3:00 AM and 4:00 PM daily).
- * Keeps backups for 5 days (max 10 snapshots).
+ * Provides automatic local backups every 30 minutes while the user is online.
+ * Keeps backups for 7 days.
  * 
  * This is INDEPENDENT of cloud sync - cloud operations do not affect these backups.
  */
@@ -13,11 +13,10 @@ import { debugLog } from '../utils/debugLogger';
 
 const BACKUP_KEY_PREFIX = 'scheduled_backup_';
 const BACKUP_INDEX_KEY = 'scheduled_backup_index';
-const MAX_BACKUP_DAYS = 5;
-const MAX_BACKUPS = MAX_BACKUP_DAYS * 2; // 2 backups per day
-
-// Backup schedule: 3:00 and 16:00 (4PM)
-const BACKUP_HOURS = [3, 16];
+const LAST_BACKUP_TIME_KEY = 'scheduled_backup_last_time';
+const MAX_BACKUP_DAYS = 7;
+const BACKUP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_BACKUPS = MAX_BACKUP_DAYS * 24 * 2; // Max possible backups in 7 days at 30min intervals (theoretical max)
 
 let checkIntervalId = null;
 
@@ -32,42 +31,30 @@ const generateBackupId = (timestamp = Date.now()) => {
 };
 
 /**
- * Get the next scheduled backup time
+ * Get the next scheduled backup time (30 minutes from last backup)
  */
 export const getNextBackupTime = () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // Find the next backup hour
-    for (const hour of BACKUP_HOURS) {
-        const backupTime = new Date(today.getTime() + hour * 60 * 60 * 1000);
-        if (backupTime > now) {
-            return backupTime;
-        }
-    }
-
-    // If all today's backup times passed, return first backup time tomorrow
-    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-    return new Date(tomorrow.getTime() + BACKUP_HOURS[0] * 60 * 60 * 1000);
+    const lastBackupTime = localStorage.getItem(LAST_BACKUP_TIME_KEY);
+    const lastTime = lastBackupTime ? parseInt(lastBackupTime, 10) : Date.now();
+    return new Date(lastTime + BACKUP_INTERVAL_MS);
 };
 
 /**
- * Check if a backup should be performed now
+ * Check if a backup should be performed now (every 30 minutes)
  */
 const shouldBackupNow = async () => {
-    const now = new Date();
-    const currentHour = now.getHours();
+    const lastBackupTime = localStorage.getItem(LAST_BACKUP_TIME_KEY);
 
-    // Only backup at scheduled hours
-    if (!BACKUP_HOURS.includes(currentHour)) {
-        return false;
+    // If no backup has been performed yet, we should backup
+    if (!lastBackupTime) {
+        return true;
     }
 
-    // Check if we already have a backup for this time slot
-    const backupId = generateBackupId();
-    const index = await getBackupIndex();
+    const lastTime = parseInt(lastBackupTime, 10);
+    const elapsed = Date.now() - lastTime;
 
-    return !index.includes(backupId);
+    // Backup if 30 minutes have passed since the last backup
+    return elapsed >= BACKUP_INTERVAL_MS;
 };
 
 /**
@@ -142,7 +129,10 @@ export const performScheduledBackup = async () => {
         // 5. Save backup
         await idbSet(backupId, backup);
 
-        // 6. Update index
+        // 6. Update last backup time
+        localStorage.setItem(LAST_BACKUP_TIME_KEY, Date.now().toString());
+
+        // 7. Update index
         let index = await getBackupIndex();
         if (!index.includes(backupId)) {
             index.push(backupId);
@@ -150,7 +140,7 @@ export const performScheduledBackup = async () => {
         }
         await saveBackupIndex(index);
 
-        // 7. Cleanup old backups
+        // 8. Cleanup old backups
         await cleanupOldBackups();
 
         debugLog.storage(`[ScheduledBackup] Backup complete: ${backupId}, boards: ${boardsList.length}`);
@@ -176,14 +166,14 @@ const cleanupOldBackups = async () => {
             debugLog.storage(`[ScheduledBackup] Removed old backup: ${oldestId}`);
         }
 
-        // Also remove backups older than 5 days
-        const fiveDaysAgo = Date.now() - (MAX_BACKUP_DAYS * 24 * 60 * 60 * 1000);
+        // Also remove backups older than 7 days
+        const sevenDaysAgo = Date.now() - (MAX_BACKUP_DAYS * 24 * 60 * 60 * 1000);
         const validBackups = [];
 
         for (const backupId of index) {
             try {
                 const backup = await idbGet(backupId);
-                if (backup && backup.timestamp && backup.timestamp >= fiveDaysAgo) {
+                if (backup && backup.timestamp && backup.timestamp >= sevenDaysAgo) {
                     validBackups.push(backupId);
                 } else {
                     await idbDel(backupId);
@@ -235,6 +225,7 @@ export const getBackupHistory = async () => {
 
 /**
  * Restore data from a specific backup
+ * Only restores boards that the user doesn't currently have (non-destructive merge)
  */
 export const restoreFromBackup = async (backupId) => {
     try {
@@ -245,24 +236,52 @@ export const restoreFromBackup = async (backupId) => {
             throw new Error('Backup not found');
         }
 
-        // 1. Restore boards list
-        if (backup.boardsList) {
-            localStorage.setItem('mixboard_boards_list', JSON.stringify(backup.boardsList));
-        }
+        // Get current boards list
+        const currentBoardsStr = localStorage.getItem('mixboard_boards_list');
+        const currentBoards = currentBoardsStr ? JSON.parse(currentBoardsStr) : [];
+        const currentBoardIds = new Set(currentBoards.map(b => String(b.id)));
 
-        // 2. Restore each board's content
-        if (backup.boardsData) {
-            for (const [boardId, content] of Object.entries(backup.boardsData)) {
-                await idbSet(`mixboard_board_${boardId}`, content);
+        let restoredCount = 0;
+        const restoredBoards = [];
+
+        // 1. Only add boards that don't exist in current list
+        if (backup.boardsList) {
+            for (const board of backup.boardsList) {
+                const boardId = String(board.id);
+                if (!currentBoardIds.has(boardId)) {
+                    // This board doesn't exist in current data, restore it
+                    restoredBoards.push(board);
+                    currentBoardIds.add(boardId);
+                    restoredCount++;
+                }
+            }
+
+            // Merge and save boards list
+            if (restoredBoards.length > 0) {
+                const mergedBoards = [...currentBoards, ...restoredBoards];
+                localStorage.setItem('mixboard_boards_list', JSON.stringify(mergedBoards));
             }
         }
 
-        debugLog.storage(`[ScheduledBackup] Restore complete: ${backup.boardsList?.length || 0} boards`);
+        // 2. Restore board content only for newly restored boards
+        if (backup.boardsData && restoredBoards.length > 0) {
+            for (const board of restoredBoards) {
+                const boardId = String(board.id);
+                if (backup.boardsData[boardId]) {
+                    await idbSet(`mixboard_board_${boardId}`, backup.boardsData[boardId]);
+                }
+            }
+        }
+
+        debugLog.storage(`[ScheduledBackup] Restore complete: ${restoredCount} boards restored (non-destructive merge)`);
 
         return {
             success: true,
-            boardCount: backup.boardsList?.length || 0,
-            timestamp: backup.timestamp
+            boardCount: restoredCount,
+            timestamp: backup.timestamp,
+            message: restoredCount > 0
+                ? `Restored ${restoredCount} missing boards`
+                : 'No new boards to restore - all boards already exist'
         };
     } catch (e) {
         console.error('[ScheduledBackup] Restore failed:', e);
@@ -321,15 +340,16 @@ export const initScheduledBackup = () => {
     // Perform initial check
     checkAndPerformBackup();
 
-    // Check every 5 minutes if we need to backup
+    // Check every 5 minutes if we need to backup (every 30 mins actual backup)
     // This is more reliable than scheduling exact times (handles sleep/wake, tab focus, etc.)
     checkIntervalId = setInterval(() => {
         checkAndPerformBackup();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 5 * 60 * 1000); // Check every 5 minutes, backup every 30 minutes
 
     return {
         nextBackupTime: nextBackup,
-        checkIntervalMs: 5 * 60 * 1000
+        checkIntervalMs: 5 * 60 * 1000,
+        backupIntervalMs: BACKUP_INTERVAL_MS
     };
 };
 
