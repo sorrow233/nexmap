@@ -36,7 +36,7 @@ export default function useBoardBackground() {
             // 1. Load board content
             const boardData = await loadBoard(boardId);
             if (!boardData || !boardData.cards || boardData.cards.length === 0) {
-                toast.warning('Board is empty. Add some content first to generate a background!');
+                // Silently return - UI should prevent this from being called on empty boards
                 setGeneratingBoardId(null);
                 return;
             }
@@ -56,7 +56,7 @@ export default function useBoardBackground() {
             // console.log('[Background Gen] Extracted context length:', boardContext.length);
 
             if (!boardContext.trim()) {
-                toast.warning('No text found on board. Add some text first!');
+                // Silently return - should not happen if cards >= 10 and have content
                 setGeneratingBoardId(null);
                 return;
             }
