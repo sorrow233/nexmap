@@ -128,7 +128,9 @@ export const createCardSlice = (set, get) => ({
     },
 
     arrangeCards: () => {
-        const { cards, connections, groups } = get();
+        const { cards: allCards, connections, groups } = get();
+        // Filter out soft-deleted cards for layout calculations
+        const cards = allCards.filter(c => !c.deletedAt);
         debugLog.ui('Arranging cards layout...', { hasGroups: groups?.length > 0, hasConnections: connections?.length > 0 });
 
         // 1. If Groups Exist: Respect them, Grid the rest

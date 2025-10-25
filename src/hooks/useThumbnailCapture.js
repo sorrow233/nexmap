@@ -247,13 +247,19 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
             return null;
         }
 
+        // Filter out soft-deleted cards
+        const activeCards = cards.filter(c => !c.deletedAt);
+        if (activeCards.length === 0) {
+            return null;
+        }
+
         const now = Date.now();
         if (now - lastCaptureRef.current < MIN_CAPTURE_INTERVAL) {
             return null;
         }
 
         try {
-            const thumbnail = renderCardsThumbnail(cards, connections);
+            const thumbnail = renderCardsThumbnail(activeCards, connections);
             if (thumbnail) {
                 lastCaptureRef.current = now;
             }
@@ -285,7 +291,9 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
             clearTimeout(captureTimeoutRef.current);
         }
 
-        if (hasBackgroundImage || !cards || cards.length < 1) {
+        // Filter out soft-deleted cards
+        const activeCards = cards?.filter(c => !c.deletedAt) || [];
+        if (hasBackgroundImage || activeCards.length < 1) {
             return;
         }
 
@@ -298,7 +306,9 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
 
     // Trigger capture when card count changes
     useEffect(() => {
-        if (cards && cards.length >= 1 && !hasBackgroundImage && currentBoardId) {
+        // Filter out soft-deleted cards
+        const activeCards = cards?.filter(c => !c.deletedAt) || [];
+        if (activeCards.length >= 1 && !hasBackgroundImage && currentBoardId) {
             scheduleAutoCapture();
         }
 
@@ -312,9 +322,11 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
     // Force capture on page visibility change (user leaving)
     useEffect(() => {
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'hidden' && cards && cards.length > 0 && !hasBackgroundImage && currentBoardId) {
+            // Filter out soft-deleted cards
+            const activeCards = cards?.filter(c => !c.deletedAt) || [];
+            if (document.visibilityState === 'hidden' && activeCards.length > 0 && !hasBackgroundImage && currentBoardId) {
                 // Immediate capture when user leaves
-                const thumbnail = renderCardsThumbnail(cards, connections);
+                const thumbnail = renderCardsThumbnail(activeCards, connections);
                 if (thumbnail) {
                     try {
                         updateBoardMetadata(currentBoardId, { thumbnail });
