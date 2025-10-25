@@ -6,10 +6,12 @@ import { uploadImageToS3, getS3Config } from '../services/s3';
 import { DEFAULT_ROLES } from '../services/llm/registry';
 import { useStore } from '../store/useStore';
 import { getAnalysisPrompt, getPromptGeneratorPrompt, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
+import { useToast } from '../components/Toast';
 
 export default function useBoardBackground() {
     const [generatingBoardId, setGeneratingBoardId] = useState(null);
     const { providers, activeId, getRoleModel } = useStore();
+    const toast = useToast();
 
     // Helper to get active config for LLM calls
     const getLlmConfig = () => {
@@ -34,7 +36,7 @@ export default function useBoardBackground() {
             // 1. Load board content
             const boardData = await loadBoard(boardId);
             if (!boardData || !boardData.cards || boardData.cards.length === 0) {
-                alert("Board is empty. Add some content first to generate a background!");
+                toast.warning('Board is empty. Add some content first to generate a background!');
                 setGeneratingBoardId(null);
                 return;
             }
@@ -54,7 +56,7 @@ export default function useBoardBackground() {
             // console.log('[Background Gen] Extracted context length:', boardContext.length);
 
             if (!boardContext.trim()) {
-                alert("No text found on board. Add some text first!");
+                toast.warning('No text found on board. Add some text first!');
                 setGeneratingBoardId(null);
                 return;
             }
@@ -158,7 +160,7 @@ export default function useBoardBackground() {
 
         } catch (error) {
             // console.error("Background generation failed:", error);
-            alert("Failed to generate background. Check your 'Image Generation' settings or try again.");
+            toast.error("Failed to generate background. Check your 'Image Generation' settings or try again.");
         } finally {
             setGeneratingBoardId(null);
         }
