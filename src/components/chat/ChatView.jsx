@@ -430,22 +430,41 @@ export default function ChatView({
                 onConfirm={handleConfirmSprout}
             />
 
-            {/* Reader Layout Area */}
-            <MessageList
-                card={card}
-                messagesEndRef={messagesEndRef}
-                scrollContainerRef={scrollContainerRef}
-                handleScroll={handleScroll}
-                isStreaming={isStreaming}
-                handleRetry={handleRetry}
-                parseModelOutput={parseModelOutput}
-                onUpdate={onUpdate}
-                onShare={(content) => setShareContent(content)}
-                onToggleFavorite={onToggleFavorite}
-                pendingCount={pendingCount}
-                onContinueTopic={() => handleContinueTopic(card.id, handleSendMessageFromSprout)}
-                onBranch={() => handleBranch(card.id)}
-            />
+            {/* Reader Layout Area - Flex container for content + sidebar */}
+            <div className="flex flex-grow overflow-hidden">
+                {/* Left spacer for balance (hidden on smaller screens) */}
+                <div className="hidden xl:block w-36 shrink-0" />
+
+                {/* Main Content Area */}
+                <MessageList
+                    card={card}
+                    messagesEndRef={messagesEndRef}
+                    scrollContainerRef={scrollContainerRef}
+                    handleScroll={handleScroll}
+                    isStreaming={isStreaming}
+                    handleRetry={handleRetry}
+                    parseModelOutput={parseModelOutput}
+                    onUpdate={onUpdate}
+                    onShare={(content) => setShareContent(content)}
+                    onToggleFavorite={onToggleFavorite}
+                    pendingCount={pendingCount}
+                    onContinueTopic={() => handleContinueTopic(card.id, handleSendMessageFromSprout)}
+                    onBranch={() => handleBranch(card.id)}
+                />
+
+                {/* Sidebar Index for Quick Navigation */}
+                {card.type !== 'note' && (
+                    <ChatIndexSidebar
+                        messages={card.data.messages || []}
+                        onScrollTo={(index) => {
+                            const el = document.getElementById(`message-${index}`);
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }}
+                    />
+                )}
+            </div>
 
             {/* Premium Input Bar */}
             <ChatInput
@@ -461,19 +480,6 @@ export default function ChatView({
                 onStop={handleStop}
                 placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
             />
-
-            {/* Sidebar Index for Quick Navigation */}
-            {card.type !== 'note' && (
-                <ChatIndexSidebar
-                    messages={card.data.messages || []}
-                    onScrollTo={(index) => {
-                        const el = document.getElementById(`message-${index}`);
-                        if (el) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }}
-                />
-            )}
 
             {/* Share Modal */}
             <ShareModal
