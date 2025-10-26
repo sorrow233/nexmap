@@ -30,8 +30,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         cloudSyncStatus,
         globalImages,
         isSettingsOpen,
-        isGlobalChatOpen,
-        globalChatMessages,
         quickPrompt,
         tempInstructions,
         t,
@@ -43,8 +41,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
         // Actions
         setIsSettingsOpen,
-        setIsGlobalChatOpen,
-        setGlobalChatMessages,
         setGlobalImages,
         setQuickPrompt,
         setExpandedCardId,
@@ -210,42 +206,18 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     </div>
                 )}
 
-                {/* Chat Modal - Handles both Card-specific and Global Chat */}
-                {(expandedCardId || isGlobalChatOpen) && (
+                {expandedCardId && (
                     <Suspense fallback={null}>
                         <ChatModal
-                            card={isGlobalChatOpen ? {
-                                id: 'global',
-                                type: 'global',
-                                data: {
-                                    title: t.chat?.globalAssistant || 'Global Assistant',
-                                    messages: globalChatMessages || [],
-                                    marks: []
-                                }
-                            } : cards.find(c => c.id === expandedCardId)}
-                            isOpen={!!expandedCardId || isGlobalChatOpen}
-                            onClose={() => {
-                                setExpandedCardId(null);
-                                setIsGlobalChatOpen(false);
-                            }}
-                            onUpdate={(id, updater) => {
-                                if (id === 'global') {
-                                    // Handle local state update for global chat (mostly for messages)
-                                    setGlobalChatMessages(prev => {
-                                        const currentData = { messages: prev };
-                                        const newData = updater(currentData);
-                                        return newData.messages || prev;
-                                    });
-                                } else {
-                                    updateCardFull(id, updater);
-                                }
-                            }}
+                            card={cards.find(c => c.id === expandedCardId)}
+                            isOpen={!!expandedCardId}
+                            onClose={() => setExpandedCardId(null)}
+                            onUpdate={updateCardFull}
                             onGenerateResponse={handleChatModalGenerate}
-                            isGenerating={isGlobalChatOpen ? false : generatingCardIds.has(expandedCardId)} // TODO: Add global generating state if needed
+                            isGenerating={generatingCardIds.has(expandedCardId)}
                             onCreateNote={handleCreateNote}
                             onSprout={handleSprout}
                             onToggleFavorite={toggleFavorite}
-                            mode={isGlobalChatOpen ? 'global' : 'card'}
                         />
                     </Suspense>
                 )}

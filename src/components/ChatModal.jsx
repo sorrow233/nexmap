@@ -3,8 +3,8 @@ import { isSafari, isIOS } from '../utils/browser';
 import ChatView from './chat/ChatView';
 
 export default function ChatModal(props) {
-    const { card, isOpen, onClose, mode } = props;
-    if (!isOpen || (!card && mode !== 'global')) return null;
+    const { card, isOpen, onClose } = props;
+    if (!isOpen || !card) return null;
 
     return (
         <div
