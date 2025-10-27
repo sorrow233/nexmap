@@ -14,7 +14,7 @@ export default function ChatIndexSidebar({ messages, onScrollTo }) {
     if (userMessages.length === 0) return null;
 
     return (
-        <div className="hidden xl:flex flex-col gap-1 w-36 shrink-0 opacity-0 animate-fade-in" style={{ animationFillMode: 'forwards' }}>
+        <div className="hidden xl:flex flex-col gap-1 w-36 shrink-0 opacity-20 hover:opacity-100 transition-all duration-700 animate-fade-in" style={{ animationFillMode: 'forwards' }}>
             <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-slate-600 select-none">
                 <Hash size={10} />
                 <span>INDEX</span>
