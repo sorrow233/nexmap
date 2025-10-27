@@ -2,16 +2,146 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, GitCommit, Calendar, Tag, Activity } from 'lucide-react';
 import SEO from '../components/SEO';
-import { useLanguage } from '../contexts/LanguageContext';
 
 export default function HistoryPage() {
-    const { t } = useLanguage();
-    // Real changelog from translations
-    const changes = t.historyPage?.changes || [];
+    // Real changelog derived from actual git history
+    const changes = [
+        {
+            date: "Jan 06, 2026",
+            version: "0.0.27",
+            title: "Performance & Refactor",
+            items: [
+                "Implemented intelligent 'Branch' card splitting (AI-driven segmentation)",
+                "Added chat message previews in sidebar for quick navigation",
+                "Fixed StickyNote bugs (deletion, editing, single-instance)",
+                "Refactored Landing Page visuals (bento grid animations)",
+                "Client-side token limit tracking & statistics"
+            ]
+        },
+        {
+            date: "Jan 05, 2026",
+            version: "0.0.26",
+            title: "Infrastructure & SEO",
+            items: [
+                "Implemented dynamic SEO with per-page meta tags (react-helmet-async)",
+                "Added proper favicon for Google Search display",
+                "Centralized S3 configuration & error handling",
+                "Added free image generation for free users (20/week)",
+                "Switched free tier conversation model to Kimi-K2-Thinking"
+            ]
+        },
+        {
+            date: "Jan 03, 2026",
+            version: "0.0.25",
+            title: "Internationalization & Sync",
+            items: [
+                "Complete 4-language support (EN, ZH, JA, KO)",
+                "Updated app icons with new NexMap mind map logo",
+                "Fixed board prompts (tags) cloud sync issue",
+                "Fixed Mac IME positioning issues in Sidebar"
+            ]
+        },
+        {
+            date: "Jan 03, 2026",
+            version: "0.0.24",
+            title: "Sidebar & Zone",
+            items: [
+                "Redesigned Sidebar to floating Notion-style tags",
+                "Added Zone button for quick card grouping",
+                "Implemented Prompt Sidebar with Drag-and-Drop",
+                "Fixed infinite loop bug in BoardPage"
+            ]
+        },
+        {
+            date: "Dec 31, 2025",
+            version: "0.0.23",
+            title: "Sprout & Branch",
+            items: [
+                "Added Quick Sprout for one-click topic decomposition",
+                "Implemented 'Curiosity Maximization' prompt strategy",
+                "Standard mindmap layout for Sprout/Branch",
+                "Added collision detection for new card placement"
+            ]
+        },
+        {
+            date: "Dec 31, 2025",
+            version: "0.0.22",
+            title: "Image & Export",
+            items: [
+                "Refined image generation with Irasutoya style prompts",
+                "Fixed iPad Safari image export issues",
+                "Added user custom instructions support",
+                "Modularized Gemini provider for better error handling"
+            ]
+        },
+        {
+            date: "Dec 30, 2025",
+            version: "0.0.21",
+            title: "Gallery Modernization",
+            items: [
+                "Modernized Gallery UI with glassmorphism",
+                "Resolved scrolling issues on mobile",
+                "Added auto-retry (max 2) for API errors",
+                "Enabled manual language switching via settings"
+            ]
+        },
+        {
+            date: "Dec 29, 2025",
+            version: "0.0.19",
+            title: "AI Manager",
+            items: [
+                "Fixed Gemini 400 validation errors",
+                "Resolved AIManager message loss issue",
+                "Sanitized image data for API compatibility"
+            ]
+        },
+        {
+            date: "Dec 28, 2025",
+            version: "0.0.17",
+            title: "Security & Backup",
+            items: [
+                "Added 5-day timed sync rollback feature",
+                "Fixed data clearing bug on login",
+                "Introduced logout safety lock",
+                "Made manual JSON import always visible for recovery"
+            ]
+        },
+        {
+            date: "Dec 28, 2025",
+            version: "0.0.16",
+            title: "Localization",
+            items: [
+                "Localized Pricing page content (EN, ZH, JA)",
+                "Added Tokushoho and Privacy Policy pages",
+                "Implemented region-based access restriction"
+            ]
+        },
+        {
+            date: "Dec 27, 2025",
+            version: "0.0.15",
+            title: "Stability",
+            items: [
+                "Fixed ghost logout issues",
+                "Prevented welcome popup from reappearing",
+                "Optimized code structure"
+            ]
+        },
+        {
+            date: "Nov 2025",
+            version: "0.0.1",
+            title: "Initial Release",
+            items: [
+                "Basic infinite canvas functionality",
+                "Real-time Google Firebase sync",
+                "Markdown support in cards",
+                "Multi-modal AI chat integration"
+            ]
+        }
+    ];
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-indigo-500/30">
-            <SEO title={t.historyPage.seoTitle} description={t.historyPage.seoDesc} />
+            <SEO title="Changelog" description="See what's new in NexMap. A transparent look at our development journey." />
 
             {/* Background Effects */}
             <div className="fixed inset-0 z-0 pointer-events-none">
@@ -24,20 +154,20 @@ export default function HistoryPage() {
                 <div className="flex items-center justify-between mb-20">
                     <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors group">
                         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                        <span className="text-sm font-medium tracking-wide">{t.historyPage.backToHome}</span>
+                        <span className="text-sm font-medium tracking-wide">BACK TO HOME</span>
                     </Link>
                     <div className="flex items-center gap-2 text-white/20 text-sm font-mono">
                         <Activity size={14} />
-                        <span>{t.historyPage.label}</span>
+                        <span>CHANGELOG</span>
                     </div>
                 </div>
 
                 <div className="mb-24">
                     <h1 className="text-5xl font-bold tracking-tight mb-6">
-                        {t.historyPage.titlePrefix} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">{t.historyPage.titleHighlight}</span>
+                        Evolution of <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">NexMap</span>
                     </h1>
                     <p className="text-xl text-white/50 max-w-2xl">
-                        {t.historyPage.subtitle}
+                        A transparent look at our journey from a rough prototype to a spatial thinking engine. We ship fast and iterate often.
                     </p>
                 </div>
 
@@ -81,7 +211,7 @@ export default function HistoryPage() {
                 </div>
 
                 <div className="mt-24 pt-12 border-t border-white/5 text-center text-white/20 text-sm">
-                    <p>{t.historyPage.endOfRecords}</p>
+                    <p>End of records. The journey continues.</p>
                 </div>
             </div>
         </div>
