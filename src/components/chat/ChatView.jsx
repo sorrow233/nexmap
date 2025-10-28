@@ -374,7 +374,7 @@ export default function ChatView({
                 lg:w-16 lg:h-full lg:flex-col lg:justify-between lg:py-8 lg:px-0 lg:border-b-0 lg:border-r lg:border-transparent transition-all group/sidebar">
 
                 {/* Top/Left Section: Icon & Title */}
-                <div className="flex items-center gap-4 lg:flex-col lg:gap-8">
+                <div className="flex items-center gap-4 lg:flex-col lg:gap-8 opacity-40 group-hover/sidebar:opacity-100 transition-all duration-500">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 shrink-0 ${card.type === 'note' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-br from-brand-600 to-brand-700 shadow-brand-500/20'}`}>
                         {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : <Sparkles size={24} className="text-white" />}
                     </div>
@@ -397,7 +397,7 @@ export default function ChatView({
                 </div>
 
                 {/* Bottom/Right Section: Actions */}
-                <div className="flex items-center gap-3 lg:flex-col lg:gap-4 lg:mb-2">
+                <div className="flex items-center gap-3 lg:flex-col lg:gap-4 lg:mb-2 opacity-30 group-hover/sidebar:opacity-100 transition-all duration-500">
                     {card.data.marks?.length > 0 && (
                         <button
                             onClick={() => onUpdate(card.id, (currentData) => ({ ...currentData, marks: [] }))}
