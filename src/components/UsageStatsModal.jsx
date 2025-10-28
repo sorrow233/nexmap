@@ -100,152 +100,148 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
                 </div>
 
                 {/* Bento Grid Content */}
-                <div className="p-8 pt-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="p-8 pt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                    {/* Left Column: Stats Cards */}
-                    <div className="space-y-5">
-                        {/* Boards & Cards Row */}
-                        <div className="grid grid-cols-2 gap-5">
-                            {/* Boards Card */}
-                            <div className="p-5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all group duration-300">
-                                <div className="flex items-center gap-2 text-indigo-500 dark:text-indigo-400 mb-3 group-hover:scale-105 transition-transform origin-left">
-                                    <Database size={18} />
-                                </div>
-                                <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
-                                    {stats.totalBoards}
-                                </div>
-                                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                    {t.stats?.totalBoards || "Boards"}
-                                </div>
-                            </div>
-
-                            {/* Cards Card */}
-                            <div className="p-5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all group duration-300">
-                                <div className="flex items-center gap-2 text-fuchsia-500 dark:text-fuchsia-400 mb-3 group-hover:scale-105 transition-transform origin-left">
-                                    <Layers size={18} />
-                                </div>
-                                <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
-                                    {stats.totalCards}
-                                </div>
-                                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                    {t.stats?.totalCards || "Cards"}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Daily Activity Card - Enhanced */}
-                        <div className="p-5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100/80 dark:hover:bg-white/[0.04] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all relative overflow-hidden group">
+                    {/* Top Row: Daily Activity (Hero Section) */}
+                    <div className="md:col-span-2 lg:col-span-3">
+                        <div className="p-6 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100/80 dark:hover:bg-white/[0.04] rounded-[24px] border border-slate-200/50 dark:border-white/5 transition-all relative overflow-hidden group">
                             {/* Decorative blurred blob */}
-                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-orange-400/10 dark:bg-orange-400/20 blur-2xl rounded-full group-hover:bg-orange-400/20 transition-colors"></div>
+                            <div className="absolute -right-10 -top-10 w-40 h-40 bg-orange-400/10 dark:bg-orange-400/20 blur-[60px] rounded-full group-hover:bg-orange-400/15 transition-colors pointer-events-none"></div>
 
                             <div className="relative z-10">
                                 {/* Header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2 text-orange-500">
-                                        <div className="p-1.5 bg-orange-500/10 rounded-lg">
-                                            <Activity size={16} />
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-orange-500/10 rounded-xl text-orange-500">
+                                            <Activity size={20} />
                                         </div>
-                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.stats?.dailyActivity || "Daily Activity"}</span>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                                                {t.stats?.dailyActivity || "Daily Activity"}
+                                            </h3>
+                                            <div className="flex items-baseline gap-1.5 mt-0.5">
+                                                <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                                    {fmt(stats.tokenStats.todayChars)}
+                                                </span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chars Today</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold flex items-center gap-1">
-                                        <TrendingUp size={10} />
-                                        Today
+
+                                    {/* Quick Summary Pills */}
+                                    <div className="flex gap-2">
+                                        <div className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                            Total: {fmt(stats.tokenStats.totalChars)}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Today's Stats */}
-                                <div className="flex items-baseline gap-1 mb-4">
-                                    <span className="text-lg font-bold text-orange-500/80 mr-1">+</span>
-                                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
-                                        {fmt(stats.tokenStats.todayChars)}
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Chars</span>
-                                </div>
-
-                                {/* Activity Chart Component */}
-                                <ActivityChart
-                                    weeklyHistory={stats.tokenStats.weeklyHistory || []}
-                                    timeDistribution={stats.tokenStats.timeDistribution || { morning: 0, afternoon: 0, evening: 0, night: 0 }}
-                                    streakDays={stats.tokenStats.streakDays || 0}
-                                    todaySessions={stats.tokenStats.todaySessions || 0}
-                                    t={t}
-                                />
-
-                                {/* Footer stats */}
-                                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-200 dark:border-white/5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                    <div>Yesterday: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.yesterdayChars)}</span></div>
-                                    <div>{t.stats?.globalChars || 'Total'}: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.totalChars)}</span></div>
+                                {/* Activity Chart Component (Full Width) */}
+                                <div className="mt-2">
+                                    <ActivityChart
+                                        weeklyHistory={stats.tokenStats.weeklyHistory || []}
+                                        timeDistribution={stats.tokenStats.timeDistribution || { morning: 0, afternoon: 0, evening: 0, night: 0 }}
+                                        streakDays={stats.tokenStats.streakDays || 0}
+                                        todaySessions={stats.tokenStats.todaySessions || 0}
+                                        t={t}
+                                    />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Column: AI Energy */}
-                    <div className="flex flex-col gap-5">
-                        <div className="flex-1 p-7 bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 dark:from-violet-600 dark:via-indigo-600 dark:to-purple-700 rounded-[30px] text-white shadow-xl shadow-indigo-500/25 relative overflow-hidden group">
+                    {/* Bottom Row: Stats & Credits */}
 
-                            {/* Animated Background Mesh */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/3 group-hover:scale-110 transition-transform duration-1000 ease-out pointer-events-none"></div>
-                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-fuchsia-500/20 blur-[50px] rounded-full -translate-x-1/3 translate-y-1/3 group-hover:scale-110 transition-transform duration-1000 ease-out pointer-events-none"></div>
-
-                            {/* Icon overlay */}
-                            <div className="absolute top-6 right-6 p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 shadow-inner group-hover:rotate-12 transition-transform duration-500">
-                                <Sparkles size={24} className="text-yellow-300" />
+                    {/* Left: Basic Stats (Compact) */}
+                    <div className="space-y-4">
+                        {/* Boards Card */}
+                        <div className="p-4 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-2xl border border-slate-200/50 dark:border-white/5 transition-all group duration-300 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                                    <Database size={18} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none mb-0.5">{stats.totalBoards}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t.stats?.totalBoards || "Boards"}</span>
+                                </div>
                             </div>
+                        </div>
 
-                            <div className="flex flex-col h-full relative z-10 justify-between min-h-[220px]">
-                                <div>
+                        {/* Cards Card */}
+                        <div className="p-4 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-2xl border border-slate-200/50 dark:border-white/5 transition-all group duration-300 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-fuchsia-500/10 rounded-lg text-fuchsia-500 dark:text-fuchsia-400 group-hover:scale-110 transition-transform">
+                                    <Layers size={18} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none mb-0.5">{stats.totalCards}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t.stats?.totalCards || "Cards"}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right: AI Energy (Compact & Premium) */}
+                    <div className="md:col-span-1 lg:col-span-2">
+                        <div className="h-full p-5 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-white/[0.08] dark:to-white/[0.02] rounded-[24px] text-white shadow-lg relative overflow-hidden group border border-slate-800 dark:border-white/10">
+
+                            {/* Animated Background Mesh (Subtle) */}
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 blur-[50px] rounded-full translate-x-1/2 -translate-y-1/3 group-hover:bg-indigo-500/30 transition-colors duration-700 pointer-events-none"></div>
+
+                            <div className="flex flex-col h-full relative z-10 justify-between">
+                                <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-2 mb-2 opacity-90">
-                                        <Zap size={18} className="text-yellow-300" fill="currentColor" />
-                                        <span className="text-sm font-bold uppercase tracking-wider opacity-80">{t.stats?.aiCredits || "Neural Energy"}</span>
+                                        <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-sm">
+                                            <Zap size={16} className="text-yellow-300" fill="currentColor" />
+                                        </div>
+                                        <div>
+                                            <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">{t.stats?.aiCredits || "Neural Energy"}</span>
+                                            <span className="text-sm font-medium text-white/90">{t.stats?.cardsSubtitle || "Creative Power"}</span>
+                                        </div>
                                     </div>
-                                    <h3 className="text-lg font-medium text-white/80 leading-relaxed max-w-[80%]">
-                                        {t.stats?.cardsSubtitle || "Powering your creative engine"}
-                                    </h3>
+
+                                    {/* Action Button (Optional placeholder) */}
+                                    {/* <button className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white">
+                                        <CreditCard size={14} />
+                                    </button> */}
                                 </div>
 
-                                {user ? (
-                                    stats.loadingCredits ? (
-                                        <div className="animate-pulse space-y-3">
-                                            <div className="h-10 w-32 bg-white/20 rounded-xl"></div>
-                                            <div className="h-2 w-full bg-white/10 rounded-full"></div>
-                                        </div>
-                                    ) : stats.credits ? (
-                                        <div className="space-y-6">
-                                            <div>
-                                                <div className="text-5xl font-black tracking-tighter flex items-baseline gap-2 text-white drop-shadow-sm">
-                                                    {stats.credits.credits?.toLocaleString()}
-                                                </div>
-                                                <div className="text-sm font-medium text-indigo-100 mt-1">
-                                                    {t.stats?.creditsRemaining || "Remaining available credits"}
-                                                </div>
+                                <div className="mt-4">
+                                    {user ? (
+                                        stats.loadingCredits ? (
+                                            <div className="animate-pulse space-y-2">
+                                                <div className="h-8 w-24 bg-white/20 rounded-lg"></div>
+                                                <div className="h-1.5 w-full bg-white/10 rounded-full"></div>
                                             </div>
+                                        ) : stats.credits ? (
+                                            <div className="space-y-4">
+                                                <div className="flex items-baseline justify-between">
+                                                    <div className="text-3xl font-black tracking-tight text-white drop-shadow-sm">
+                                                        {stats.credits.credits?.toLocaleString()}
+                                                    </div>
+                                                    <div className="text-[10px] font-bold uppercase tracking-wider text-white/50">
+                                                        {Math.round((stats.credits.credits / stats.credits.initialCredits) * 100)}% Left
+                                                    </div>
+                                                </div>
 
-                                            {/* Modern Progress Bar */}
-                                            <div className="space-y-2">
-                                                <div className="h-3 w-full bg-black/20 rounded-full overflow-hidden backdrop-blur-sm border border-white/5 ring-1 ring-white/10">
+                                                {/* Modern Progress Bar */}
+                                                <div className="h-2 w-full bg-black/30 rounded-full overflow-hidden backdrop-blur-sm ring-1 ring-white/10">
                                                     <div
-                                                        className="h-full bg-gradient-to-r from-yellow-300 to-orange-400 rounded-full shadow-[0_0_15px_rgba(253,224,71,0.5)] transition-all duration-1000 ease-out"
+                                                        className="h-full bg-gradient-to-r from-yellow-300 to-amber-500 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.3)] transition-all duration-1000 ease-out"
                                                         style={{ width: `${Math.min(100, (stats.credits.credits / stats.credits.initialCredits) * 100)}%` }}
                                                     />
                                                 </div>
-                                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/60">
-                                                    <span>Used: {Math.round(100 - (stats.credits.credits / stats.credits.initialCredits) * 100)}%</span>
-                                                    <span>Max: {stats.credits.initialCredits?.toLocaleString()}</span>
-                                                </div>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="text-xs text-white/50 bg-white/5 p-2 rounded-lg">Unable to sync</div>
+                                        )
                                     ) : (
-                                        <div className="p-4 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md text-sm">
-                                            Unable to sync credits.
+                                        <div className="text-xs font-medium text-center py-2 bg-white/10 rounded-xl cursor-default">
+                                            {t.stats?.signIn || "Sign In"}
                                         </div>
-                                    )
-                                ) : (
-                                    <div className="p-6 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md text-center">
-                                        <p className="font-semibold">{t.stats?.signIn || "Sign In"}</p>
-                                        <p className="text-xs opacity-70 mt-1">View your energy stats</p>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
