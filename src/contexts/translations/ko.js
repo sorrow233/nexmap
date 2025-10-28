@@ -417,7 +417,18 @@ export const ko = {
         loading: "신경 지표 로딩 중...",
         dailyActivity: "일일 활동",
         today: "오늘",
-        yesterday: "어제"
+        yesterday: "어제",
+        weeklyTrend: "7일 트렌드",
+        streakDays: "연속",
+        days: "일",
+        sessions: "세션",
+        times: "회",
+        activeTime: "피크",
+        timeDistribution: "시간 분포",
+        morning: "아침",
+        afternoon: "오후",
+        evening: "저녁",
+        night: "심야"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

@@ -152,6 +152,17 @@ export const app = {
         dailyActivity: "神经突触活动",
         today: "今日生成",
         yesterday: "昨日",
-        globalChars: "总生成字符"
+        globalChars: "总生成字符",
+        weeklyTrend: "7日趋势",
+        streakDays: "连续",
+        days: "天",
+        sessions: "会话",
+        times: "次",
+        activeTime: "活跃",
+        timeDistribution: "时间分布",
+        morning: "早晨",
+        afternoon: "下午",
+        evening: "晚上",
+        night: "深夜"
     }
 };

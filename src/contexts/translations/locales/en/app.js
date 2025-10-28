@@ -152,6 +152,17 @@ export const app = {
         dailyActivity: "Neural Activity",
         today: "Today Generated",
         yesterday: "Yesterday",
-        globalChars: "Total Characters"
+        globalChars: "Total Characters",
+        weeklyTrend: "7-Day Trend",
+        streakDays: "Streak",
+        days: "days",
+        sessions: "Sessions",
+        times: "×",
+        activeTime: "Peak",
+        timeDistribution: "Time Distribution",
+        morning: "Morning",
+        afternoon: "Afternoon",
+        evening: "Evening",
+        night: "Night"
     }
 };

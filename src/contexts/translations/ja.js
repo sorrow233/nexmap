@@ -417,7 +417,18 @@ export const ja = {
         loading: "ニューラル指標を読み込み中...",
         dailyActivity: "毎日の活動",
         today: "今日",
-        yesterday: "昨日"
+        yesterday: "昨日",
+        weeklyTrend: "7日間のトレンド",
+        streakDays: "連続",
+        days: "日",
+        sessions: "セッション",
+        times: "回",
+        activeTime: "ピーク",
+        timeDistribution: "時間分布",
+        morning: "朝",
+        afternoon: "午後",
+        evening: "夜",
+        night: "深夜"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

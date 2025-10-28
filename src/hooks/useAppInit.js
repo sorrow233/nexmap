@@ -19,6 +19,7 @@ import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
 import { useLocation } from 'react-router-dom';
 import { debugLog } from '../utils/debugLogger';
+import { userStatsService } from '../services/stats/userStatsService';
 
 // --- Timestamp-aware localStorage utilities for smart sync ---
 const loadWithTimestamp = (key) => {
@@ -185,6 +186,14 @@ export function useAppInit() {
                     originalUnsubDb();
                     unsubFav();
                 };
+
+                // Load user stats from cloud
+                debugLog.auth('Loading user stats from cloud...');
+                userStatsService.loadFromCloud().then(loaded => {
+                    if (loaded) {
+                        debugLog.auth('User stats merged from cloud');
+                    }
+                });
 
                 debugLog.auth('Loading user settings from cloud...');
                 loadUserSettings(u.uid).then(settings => {
