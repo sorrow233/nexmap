@@ -92,7 +92,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 2; // Allow 2 retries (3 total attempts)
+        let retries = 5; // Allow 5 retries (6 total attempts) - GMI Cloud can be unstable
 
         while (retries >= 0) {
             try {
@@ -201,8 +201,8 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 2; // Allow 2 retries (3 total attempts)
-        let delay = 3000; // Start with 3 seconds, will double each retry
+        let retries = 5; // Allow 5 retries (6 total attempts) - GMI Cloud can be unstable
+        let delay = 2000; // Start with 2 seconds, will increase each retry
 
         while (retries >= 0) {
             try {
