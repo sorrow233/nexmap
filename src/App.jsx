@@ -182,6 +182,10 @@ function AppContent() {
     const currentBoardId = boardMatch ? boardMatch[1] : null;
 
     useEffect(() => {
+        // Use AbortController pattern to handle race conditions
+        let isCancelled = false;
+        const boardIdAtStart = currentBoardId; // Capture the ID at effect start
+
         const load = async () => {
             if (currentBoardId) {
                 // 1. Start loading state & clear existing data to prevent bleed-over
@@ -193,6 +197,14 @@ function AppContent() {
                 try {
                     // 2. Load new data
                     const data = await loadBoard(currentBoardId);
+
+                    // CRITICAL: Check if user has navigated away during load
+                    // If so, discard this result to prevent data bleed-over
+                    if (isCancelled || boardIdAtStart !== currentBoardId) {
+                        console.log(`[Board] Load cancelled: user navigated from ${boardIdAtStart} to ${currentBoardId}`);
+                        return;
+                    }
+
                     setCards(data.cards || []);
                     setConnections(data.connections || []);
                     setGroups(data.groups || []);
@@ -203,12 +215,19 @@ function AppContent() {
                     const viewport = loadViewportState(currentBoardId);
                     useStore.getState().restoreViewport(viewport);
                 } finally {
-                    // 4. End loading state
-                    useStore.getState().setIsBoardLoading(false);
+                    // 4. End loading state only if not cancelled
+                    if (!isCancelled) {
+                        useStore.getState().setIsBoardLoading(false);
+                    }
                 }
             }
         };
         load();
+
+        // Cleanup function - mark as cancelled if effect re-runs
+        return () => {
+            isCancelled = true;
+        };
     }, [currentBoardId]); // Rely on currentBoardId changing
 
     // Soft Delete (Move to Trash)
