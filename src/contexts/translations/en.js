@@ -597,122 +597,83 @@ export const en = {
         endOfRecords: "End of records. The journey continues.",
         changes: [
             {
-                date: "Jan 03, 2026",
-                version: "0.0.26",
-                title: "SEO & Accessibility",
+                date: "Jan 06, 2026",
+                version: "2.2.8",
+                title: "Global Intelligence & SEO",
                 items: [
-                    "Implemented dynamic SEO with per-page meta tags (react-helmet-async)",
-                    "Added proper favicon for Google Search display",
-                    "Fixed unclickable user menu buttons (CSS stacking context)",
-                    "Added free image generation for free users (20/week)",
-                    "Switched free tier conversation model to Kimi-K2-Thinking"
+                    "Implemented full-stack localized SEO (Hreflang) for EN/ZH/JA/KO/TW",
+                    "Launched 'Manifesto' About page with bilingual support",
+                    "Added neural usage analytics: Client-side token/character tracking & daily stats",
+                    "Refined 'Branch' engine: Now uses AI to intelligently segment topics instead of regex",
+                    "Visual Overhaul: New Bento Grid landing animations & simplified pricing flow"
+                ]
+            },
+            {
+                date: "Jan 06, 2026",
+                version: "2.2.7",
+                title: "Core Experience",
+                items: [
+                    "Feature: Added 'Reference Index' sidebar for quick chat navigation",
+                    "Fix: Resolved StickyNote persistence issues (delete/edit/duplicate bugs)",
+                    "Performance: Auto-background generation for large boards (>10 cards)",
+                    "AI: Enhanced Irasutoya prompt engineering for complex scene composition",
+                    "UX: Decoupled 'New Note' creation for faster ideation"
+                ]
+            },
+            {
+                date: "Jan 05, 2026",
+                version: "2.2.1",
+                title: "Mobile & Infrastructure",
+                items: [
+                    "Mobile: Implemented long-press multi-select for touch interfaces",
+                    "Layout: Optimized mobile bottom bar to prevent overlapping",
+                    "Commerce: Added Order Number system & validated Payment Success modal",
+                    "Security: Audit & removal of sensitive logs from settings",
+                    "Bumped core version to 2.2 series"
+                ]
+            },
+            {
+                date: "Jan 04, 2026",
+                version: "2.1.4",
+                title: "Stability Protocol",
+                items: [
+                    "Core: Removed artificial context truncation limits for larger models",
+                    "Fix: Model switching now correctly applies to pre-existing cards",
+                    "Fix: 'Edit Prompt' persistence issues resolved",
+                    "Fix: React error #310 in Zone component resolved during high-concurrency"
                 ]
             },
             {
                 date: "Jan 03, 2026",
-                version: "0.0.25",
-                title: "Internationalization & Sync",
+                version: "2.1.1",
+                title: "Identity & Sync",
                 items: [
-                    "Complete 4-language support (EN, ZH, JA, KO)",
-                    "Updated app icons with new NexMap mind map logo",
-                    "Fixed board prompts (tags) cloud sync issue",
-                    "Fixed Mac IME positioning issues in Sidebar"
+                    "Rebranding: Updated all app icons to new NexMap visual identity",
+                    "Sync: Fixed Board Prompts (tags) cloud synchronization",
+                    "Localization: Fixed Mac IME positioning bugs in Sidebar inputs",
+                    "Export: Corrected logo watermark in exported images"
                 ]
             },
             {
                 date: "Jan 03, 2026",
-                version: "0.0.24",
-                title: "Sidebar & Zone",
+                version: "2.1.0",
+                title: "The Spatial Update",
                 items: [
-                    "Redesigned Sidebar to floating Notion-style tags",
-                    "Added Zone button for quick card grouping",
-                    "Implemented Prompt Sidebar with Drag-and-Drop",
-                    "Fixed infinite loop bug in BoardPage"
+                    "Major: Redesigned Sidebar to floating Notion-style tags",
+                    "Feature: Added 'Zone' for semantic spatial grouping",
+                    "Feature: Prompt Sidebar with Drag-and-Drop capability",
+                    "Fix: Resolved infinite render loop in BoardPage"
                 ]
             },
             {
                 date: "Dec 31, 2025",
-                version: "0.0.23",
-                title: "Sprout & Branch",
+                version: "2.0.0",
+                title: "NexMap 2.0: Sprout",
                 items: [
-                    "Added Quick Sprout for one-click topic decomposition",
-                    "Implemented 'Curiosity Maximization' prompt strategy",
-                    "Standard mindmap layout for Sprout/Branch",
-                    "Added collision detection for new card placement"
-                ]
-            },
-            {
-                date: "Dec 31, 2025",
-                version: "0.0.22",
-                title: "Image & Export",
-                items: [
-                    "Refined image generation with Irasutoya style prompts",
-                    "Fixed iPad Safari image export issues",
-                    "Added user custom instructions support",
-                    "Modularized Gemini provider for better error handling"
-                ]
-            },
-            {
-                date: "Dec 30, 2025",
-                version: "0.0.21",
-                title: "Gallery Modernization",
-                items: [
-                    "Modernized Gallery UI with glassmorphism",
-                    "Resolved scrolling issues on mobile",
-                    "Added auto-retry (max 2) for API errors",
-                    "Enabled manual language switching via settings"
-                ]
-            },
-            {
-                date: "Dec 29, 2025",
-                version: "0.0.19",
-                title: "AI Manager",
-                items: [
-                    "Fixed Gemini 400 validation errors",
-                    "Resolved AIManager message loss issue",
-                    "Sanitized image data for API compatibility"
-                ]
-            },
-            {
-                date: "Dec 28, 2025",
-                version: "0.0.17",
-                title: "Security & Backup",
-                items: [
-                    "Added 5-day timed sync rollback feature",
-                    "Fixed data clearing bug on login",
-                    "Introduced logout safety lock",
-                    "Made manual JSON import always visible for recovery"
-                ]
-            },
-            {
-                date: "Dec 28, 2025",
-                version: "0.0.16",
-                title: "Localization",
-                items: [
-                    "Localized Pricing page content (EN, ZH, JA)",
-                    "Added Tokushoho and Privacy Policy pages",
-                    "Implemented region-based access restriction"
-                ]
-            },
-            {
-                date: "Dec 27, 2025",
-                version: "0.0.15",
-                title: "Stability",
-                items: [
-                    "Fixed ghost logout issues",
-                    "Prevented welcome popup from reappearing",
-                    "Optimized code structure"
-                ]
-            },
-            {
-                date: "Nov 2025",
-                version: "0.0.1",
-                title: "Initial Release",
-                items: [
-                    "Basic infinite canvas functionality",
-                    "Real-time Google Firebase sync",
-                    "Markdown support in cards",
-                    "Multi-modal AI chat integration"
+                    "New Feature: Quick Sprout for one-click recursive topic decomposition",
+                    "AI Strategy: Implemented 'Curiosity Maximization' prompt chains",
+                    "Layout: Standardized mindmap auto-layout for Sprout/Branch",
+                    "Physics: Added collision detection for non-overlapping card placement"
                 ]
             }
         ]
