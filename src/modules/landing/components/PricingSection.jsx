@@ -121,8 +121,110 @@ export default function PricingSection({ showTitle = true }) {
                 </div>
             )}
 
-            {/* Pro Plan - Primary Focus */}
-            <div className="max-w-5xl mx-auto mb-32">
+            {/* Free + Credits Section */}
+            <div>
+                <div className="text-center mb-12">
+                    <h3 className="text-2xl font-bold text-white mb-2">{pricing.casualUser || "Start Free, Upgrade When Ready"}</h3>
+                    <p className="text-white/50">{pricing.casualUserDesc || "Everyone gets generous free credits. Buy more when you need them."}</p>
+                </div>
+
+                {/* Free Tier Banner */}
+                <div className="max-w-5xl mx-auto mb-8">
+                    <div className="relative bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-6 md:p-8">
+                        <div className="absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white bg-emerald-600 shadow-lg shadow-emerald-500/20">
+                            {pricing.freeTierBadge || "FREE FOREVER"}
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="text-center md:text-left">
+                                <h4 className="text-xl font-bold text-white mb-2">{pricing.freeTierTitle || "Free Tier"}</h4>
+                                <p className="text-white/60 text-sm max-w-md">
+                                    {pricing.freeTierDesc || "No credit card required. Resets every Monday."}
+                                </p>
+                            </div>
+
+                            <div className="flex gap-6 flex-wrap justify-center">
+                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
+                                    <div className="text-2xl font-bold text-emerald-400">200</div>
+                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.chatsPerWeek || "Chats/Week"}</div>
+                                </div>
+                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
+                                    <div className="text-2xl font-bold text-emerald-400">20</div>
+                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.imagesPerWeek || "Images/Week"}</div>
+                                </div>
+                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
+                                    <div className="text-2xl font-bold text-emerald-400">∞</div>
+                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.boards || "Boards"}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-20">
+                    {chatPlans.map((plan) => (
+                        <div
+                            key={plan.id}
+                            className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
+                                'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
+                                }`}
+                        >
+                            {plan.popular && (
+                                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg ${isBlocked ? 'bg-slate-700' : 'bg-indigo-600 shadow-indigo-500/20'}`}>
+                                    {pricing.bestValue}
+                                </div>
+                            )}
+
+                            <div className="mb-6">
+                                <h4 className="text-white/80 font-bold mb-1">{plan.name}</h4>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-bold text-white">
+                                        {plan.price}
+                                    </span>
+                                    <span className="text-sm text-white/40">/ pack</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 mb-6">
+                                <div className="text-indigo-400 font-bold">{plan.chats}</div>
+                                <div className="text-[10px] uppercase font-bold text-white/30">{pricing.chats || "Chats"}</div>
+                            </div>
+
+                            <ul className="space-y-3 mb-8 min-h-[80px]">
+                                {plan.features.map((feature, i) => (
+                                    <li key={i} className="flex items-center gap-2 text-sm text-white/50">
+                                        <Check size={14} className="text-indigo-400" />
+                                        {feature}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <button
+                                onClick={() => handleCheckout(plan.id)}
+                                disabled={loadingProduct === plan.id || isBlocked}
+                                className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${isBlocked
+                                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                                    : plan.popular
+                                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                        : 'bg-white/10 hover:bg-white/20 text-white'
+                                    }`}
+                            >
+                                {isBlocked ? pricing.regionBlocked : loadingProduct === plan.id ? pricing.redirecting : pricing.getStarted}
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 max-w-2xl mx-auto mb-20 opacity-30">
+                <div className="h-px bg-white flex-1" />
+                <span className="text-sm font-medium uppercase tracking-widest text-white">OR</span>
+                <div className="h-px bg-white flex-1" />
+            </div>
+
+            {/* Pro Plan - Primary Focus (Moved to Bottom) */}
+            <div className="max-w-5xl mx-auto mb-16">
                 <div className="relative group">
                     {/* Glow Effect */}
                     <div className={`absolute -inset-1 bg-gradient-to-r from-amber-500 via-orange-600 to-yellow-500 rounded-[2.5rem] blur opacity-20 ${isBlocked ? 'opacity-10' : 'group-hover:opacity-40'} transition duration-1000`} />
@@ -210,108 +312,6 @@ export default function PricingSection({ showTitle = true }) {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 max-w-2xl mx-auto mb-20 opacity-30">
-                <div className="h-px bg-white flex-1" />
-                <span className="text-sm font-medium uppercase tracking-widest text-white">OR</span>
-                <div className="h-px bg-white flex-1" />
-            </div>
-
-            {/* Free + Credits Section */}
-            <div>
-                <div className="text-center mb-12">
-                    <h3 className="text-2xl font-bold text-white mb-2">{pricing.casualUser || "Start Free, Upgrade When Ready"}</h3>
-                    <p className="text-white/50">{pricing.casualUserDesc || "Everyone gets generous free credits. Buy more when you need them."}</p>
-                </div>
-
-                {/* Free Tier Banner */}
-                <div className="max-w-5xl mx-auto mb-8">
-                    <div className="relative bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-6 md:p-8">
-                        <div className="absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white bg-emerald-600 shadow-lg shadow-emerald-500/20">
-                            {pricing.freeTierBadge || "FREE FOREVER"}
-                        </div>
-
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="text-center md:text-left">
-                                <h4 className="text-xl font-bold text-white mb-2">{pricing.freeTierTitle || "Free Tier"}</h4>
-                                <p className="text-white/60 text-sm max-w-md">
-                                    {pricing.freeTierDesc || "No credit card required. Resets every Monday."}
-                                </p>
-                            </div>
-
-                            <div className="flex gap-6 flex-wrap justify-center">
-                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
-                                    <div className="text-2xl font-bold text-emerald-400">200</div>
-                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.chatsPerWeek || "Chats/Week"}</div>
-                                </div>
-                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
-                                    <div className="text-2xl font-bold text-emerald-400">20</div>
-                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.imagesPerWeek || "Images/Week"}</div>
-                                </div>
-                                <div className="text-center px-4 py-2 bg-white/5 rounded-xl">
-                                    <div className="text-2xl font-bold text-emerald-400">∞</div>
-                                    <div className="text-xs text-white/40 uppercase font-medium">{pricing.boards || "Boards"}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                    {chatPlans.map((plan) => (
-                        <div
-                            key={plan.id}
-                            className={`relative group bg-white/5 border transition-all duration-300 rounded-2xl p-6 ${isBlocked ? 'opacity-50 grayscale border-white/5' :
-                                'hover:bg-white/[0.07] ' + (plan.popular ? 'border-indigo-500/50 hover:border-indigo-500 ring-1 ring-indigo-500/20' : 'border-white/5 hover:border-white/10')
-                                }`}
-                        >
-                            {plan.popular && (
-                                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg ${isBlocked ? 'bg-slate-700' : 'bg-indigo-600 shadow-indigo-500/20'}`}>
-                                    {pricing.bestValue}
-                                </div>
-                            )}
-
-                            <div className="mb-6">
-                                <h4 className="text-white/80 font-bold mb-1">{plan.name}</h4>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-2xl font-bold text-white">
-                                        {plan.price}
-                                    </span>
-                                    <span className="text-sm text-white/40">/ pack</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 mb-6">
-                                <div className="text-indigo-400 font-bold">{plan.chats}</div>
-                                <div className="text-[10px] uppercase font-bold text-white/30">{pricing.chats || "Chats"}</div>
-                            </div>
-
-                            <ul className="space-y-3 mb-8 min-h-[80px]">
-                                {plan.features.map((feature, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-sm text-white/50">
-                                        <Check size={14} className="text-indigo-400" />
-                                        {feature}
-                                    </li>
-                                ))}
-                            </ul>
-
-                            <button
-                                onClick={() => handleCheckout(plan.id)}
-                                disabled={loadingProduct === plan.id || isBlocked}
-                                className={`w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${isBlocked
-                                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                                    : plan.popular
-                                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                        : 'bg-white/10 hover:bg-white/20 text-white'
-                                    }`}
-                            >
-                                {isBlocked ? pricing.regionBlocked : loadingProduct === plan.id ? pricing.redirecting : pricing.getStarted}
-                            </button>
-                        </div>
-                    ))}
                 </div>
             </div>
         </section>
