@@ -393,7 +393,6 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                 : 'cursor-default'
                 }`}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove} // Correction: this should be handleMouseMove, but keeping original code's variable if it was handleMouseMove
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
