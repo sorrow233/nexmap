@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
 export default function ModernDialog({
@@ -34,10 +35,13 @@ export default function ModernDialog({
         success: 'bg-emerald-600 hover:bg-emerald-500'
     };
 
-    return (
+    const dialogContent = (
         <div style={{
             position: 'fixed',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.6)',
             backdropFilter: 'blur(4px)',
             zIndex: 99999,
@@ -102,4 +106,7 @@ export default function ModernDialog({
             </div>
         </div>
     );
+
+    // Use Portal to render directly to document.body - this bypasses parent transform/overflow issues
+    return createPortal(dialogContent, document.body);
 }
