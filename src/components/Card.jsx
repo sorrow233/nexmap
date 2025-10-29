@@ -304,6 +304,30 @@ const Card = React.memo(function Card({
                     {cardContent.model?.split('/').pop() || 'AI'}
                 </span>
             </div>
+
+            {/* AI Summary Label - Floating Left */}
+            {data.summary && (
+                <div
+                    className="absolute right-full top-0 mr-4 w-64 pointer-events-none select-none transition-opacity duration-500 animate-slide-up"
+                    style={{ opacity: isDragging ? 0 : 1 }}
+                >
+                    <div className="flex flex-col items-end text-right">
+                        {/* Title - Large, Non-bold, Occupies visual space */}
+                        <div className="text-3xl text-slate-800 dark:text-slate-100/90 font-light tracking-wide leading-tight mb-3 opacity-90 font-lxgw">
+                            {data.summary.title}
+                        </div>
+
+                        {/* Summary Lines - Faded, Small, Precise */}
+                        <div className="space-y-1.5 border-r-2 border-slate-200 dark:border-white/10 pr-4 bg-gradient-to-l from-white/50 to-transparent dark:from-black/20 backdrop-blur-sm rounded-l-xl py-2">
+                            {data.summary.summary.split('\n').map((line, i) => (
+                                <div key={i} className="text-xs text-slate-500 dark:text-slate-400/60 font-medium tracking-wide">
+                                    {line.replace(/^[•-]\s*/, '')}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 });
