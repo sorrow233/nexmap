@@ -24,7 +24,9 @@ const Card = React.memo(function Card({
     onUpdate,
     onCreateNote,
     onPromptDrop,
-    onCustomSprout // NEW
+    onPromptDrop,
+    onCustomSprout, // NEW,
+    onSummarize // NEW: Manual trigger for testing
 }) {
     const [isDragOver, setIsDragOver] = useState(false);
     const cardRef = useRef(null);
@@ -211,6 +213,13 @@ const Card = React.memo(function Card({
             {/* Quick Actions (Absolute Top Right) - Fade in on hover */}
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
+                    onClick={(e) => { e.stopPropagation(); onSummarize && onSummarize(data.id); }}
+                    className="p-1.5 text-slate-400 hover:text-violet-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
+                    title="Generate AI Summary"
+                >
+                    <Sparkles size={14} />
+                </button>
+                <button
                     onClick={handleCopy}
                     className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
                     title="Copy response"
@@ -238,12 +247,17 @@ const Card = React.memo(function Card({
 
                 {/* 1. HERO TITLE (Top ~1/3) */}
                 {/* Use AI Title if available, else Card Title */}
-                <div className="mb-4 pr-16 relative z-10">
+                <div className="mb-4 pr-4 relative z-10 w-full">
                     <div className="text-[10px] font-bold text-slate-400/70 uppercase tracking-widest mb-1">
-                        {data.summary ? 'Analysis' : 'Conversation'}
+                        {data.summary ? 'Topic' : 'Conversation'}
                     </div>
-                    <h3 className="text-3xl font-thin leading-none tracking-wide text-slate-800 dark:text-slate-100 font-sans">
-                        {data.summary?.title || cardContent.title || 'Untitled'}
+                    <h3 className="text-3xl font-thin leading-none tracking-wide text-slate-800 dark:text-slate-100 font-sans break-words">
+                        {(data.summary?.title || cardContent.title || 'Untitled')
+                            .replace(/^#+\s*/, '')
+                            .replace(/\*\*/g, '')
+                            .replace(/__/, '')
+                            .replace(/^\d+\.\s*/, '') // Remove numbering for cleaner look
+                            .trim()}
                     </h3>
                 </div>
 
