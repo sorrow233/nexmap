@@ -303,7 +303,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
         try {
             const cards = useStore.getState().cards;
-            const config = useStore.getState().apiKeyConfig; // Adjust based on store structure
+            const config = useStore.getState().getActiveConfig();
 
             // define simple chunk helper
             const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
