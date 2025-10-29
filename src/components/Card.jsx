@@ -305,26 +305,42 @@ const Card = React.memo(function Card({
                 </span>
             </div>
 
-            {/* AI Summary Label - Floating Left */}
+            {/* AI Summary Label - Floating Left with Connector */}
             {data.summary && (
                 <div
-                    className="absolute right-full top-0 mr-4 w-64 pointer-events-none select-none transition-opacity duration-500 animate-slide-up"
+                    className="absolute right-full top-6 mr-6 w-72 pointer-events-none select-none transition-opacity duration-500 animate-slide-up group-hover:opacity-100"
                     style={{ opacity: isDragging ? 0 : 1 }}
                 >
-                    <div className="flex flex-col items-end text-right">
-                        {/* Title - Large, Non-bold, Occupies visual space */}
-                        <div className="text-3xl text-slate-800 dark:text-slate-100/90 font-light tracking-wide leading-tight mb-3 opacity-90 font-lxgw">
-                            {data.summary.title}
+                    <div className="flex items-start justify-end relative">
+                        {/* Text Container */}
+                        <div className="flex flex-col items-end text-right">
+                            {/* Title - Large, Thin, Elegant - Intent Focus */}
+                            <div className="text-4xl text-slate-800 dark:text-slate-100 font-thin tracking-wide leading-none mb-4 opacity-90 font-sans whitespace-nowrap">
+                                {data.summary.title}
+                            </div>
+
+                            {/* Summary Lines - Precise, Mono, Technical feel */}
+                            <div className="space-y-2 py-3 pr-2 border-r-[0.5px] border-slate-300 dark:border-white/20 ">
+                                {data.summary.summary.split('\n').map((line, i) => (
+                                    <div key={i} className="text-[11px] text-slate-500 dark:text-slate-400 font-mono leading-tight flex justify-end gap-2 opacity-80">
+                                        <span>{line.replace(/^[•-]\s*/, '')}</span>
+                                        {/* <span className="text-brand-300 dark:text-brand-700 select-none">•</span> */}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* Summary Lines - Faded, Small, Precise */}
-                        <div className="space-y-1.5 border-r-2 border-slate-200 dark:border-white/10 pr-4 bg-gradient-to-l from-white/50 to-transparent dark:from-black/20 backdrop-blur-sm rounded-l-xl py-2">
-                            {data.summary.summary.split('\n').map((line, i) => (
-                                <div key={i} className="text-xs text-slate-500 dark:text-slate-400/60 font-medium tracking-wide">
-                                    {line.replace(/^[•-]\s*/, '')}
-                                </div>
-                            ))}
-                        </div>
+                        {/* Visual Connector - Curved Line to Card */}
+                        <svg className="absolute -right-6 top-6 w-6 h-12 pointer-events-none overflow-visible" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M -20 10 C 0 10, 0 10, 24 10" // Simple straight connector for cleaner look, or curve
+                                stroke="currentColor"
+                                strokeWidth="0.5"
+                                fill="none"
+                                className="text-slate-300 dark:text-white/20"
+                            />
+                            <circle cx="-20" cy="10" r="1.5" className="fill-brand-500" />
+                        </svg>
                     </div>
                 </div>
             )}
