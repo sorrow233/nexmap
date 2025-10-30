@@ -5,6 +5,7 @@ import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
 import SettingsModal from '../components/SettingsModal';
 import UsageStatsModal from '../components/UsageStatsModal';
+import StatisticsView from '../components/StatisticsView';
 import SEO from '../components/SEO';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
@@ -166,6 +167,7 @@ export default function GalleryPage({
                             {[
                                 { id: 'active', label: t.gallery.gallery },
                                 { id: 'favorites', label: t.gallery.favorites, icon: Star },
+                                { id: 'statistics', label: t.stats?.title || "Data", icon: BarChart3 },
                                 { id: 'trash', label: t.gallery.trash },
                                 { id: 'feedback', label: t.feedback?.title || 'Feedback', icon: MessageSquare }
                             ].map(tab => (
@@ -194,14 +196,14 @@ export default function GalleryPage({
                             {/* Mobile tabs would go here if needed, keeping it simple for now */}
                         </div>
 
-                        {/* Usage Stats (Desktop) */}
-                        <button
+                        {/* Usage Stats Button REMOVED (integrated into main tabs) */}
+                        {/* <button
                             onClick={() => setIsStatsOpen(true)}
                             className="hidden md:flex p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors text-slate-500 dark:text-slate-400"
                             title={t.gallery?.stats || "Statistics"}
                         >
                             <BarChart3 size={20} />
-                        </button>
+                        </button> */}
 
                         {viewMode === 'active' && (
                             <button
@@ -264,6 +266,7 @@ export default function GalleryPage({
                     {[
                         { id: 'active', label: t.gallery.gallery },
                         { id: 'favorites', label: t.gallery.favorites },
+                        { id: 'statistics', label: t.stats?.title || "Data" },
                         { id: 'trash', label: t.gallery.trash },
                         { id: 'feedback', label: t.feedback?.title || 'Feedback' }
                     ].map(tab => (
@@ -288,6 +291,8 @@ export default function GalleryPage({
                         <FeedbackView user={user} onLogin={onLogin} />
                     ) : viewMode === 'favorites' ? (
                         <FavoritesGallery />
+                    ) : viewMode === 'statistics' ? (
+                        <StatisticsView boardsList={boardsList} user={user} />
                     ) : (
                         <BoardGallery
                             boards={displayBoards}
