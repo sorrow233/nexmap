@@ -99,7 +99,8 @@ export const app = {
         thinking: "思考中...",
         messages: "条消息",
         generating: "生成中...",
-        noImage: "暂无图片"
+        noImage: "暂无图片",
+        aiSummary: "生成 AI 摘要"
     },
     toolbar: {
         items: "个项目",
