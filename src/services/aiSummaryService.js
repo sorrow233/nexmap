@@ -62,10 +62,16 @@ OUTPUT FORMAT:
 `;
 
         try {
+            // Get the 'sprouting' role model (🌱 想法发芽 / Analysis)
+            const sproutingModel = config?.model; // Fallback from config for now
+
+            console.log('[AI Summary] Initiating with config:', config);
+            console.log('[AI Summary] Model for summarization:', sproutingModel);
+
             const response = await chatCompletion(
                 [{ role: 'user', content: prompt }],
                 config,
-                null, // Use default model
+                sproutingModel, // Use 'sprouting' model
                 { temperature: 0.3 } // Lower temperature for consistent formatting
             );
 

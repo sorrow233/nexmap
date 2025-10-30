@@ -354,7 +354,18 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
         setIsSummarizing(true);
         try {
-            const config = useStore.getState().getActiveConfig();
+            const baseConfig = useStore.getState().getActiveConfig();
+            // Get the 'sprouting' role model (🌱 想法发芽 / Analysis)
+            const sproutingModel = useStore.getState().getRoleModel('sprouting');
+
+            // Merge the specific model into the config for the AI service
+            const config = {
+                ...baseConfig,
+                model: sproutingModel || baseConfig?.model // Ensure model is set
+            };
+
+            console.log('[Canvas] AI Summary with config:', config);
+            console.log('[Canvas] Using Sprouting Model:', sproutingModel);
 
             // Reuse service, passing single card as array
             const summaries = await aiSummaryService.generateBatchSummaries([card], config);
