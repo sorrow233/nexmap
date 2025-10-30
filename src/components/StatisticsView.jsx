@@ -178,6 +178,7 @@ export default function StatisticsView({ boardsList, user }) {
                                 streakDays={stats.tokenStats.streakDays || 0}
                                 todaySessions={stats.tokenStats.todaySessions || 0}
                                 t={t}
+                                language={useLanguage().language}
                             />
                         </div>
 

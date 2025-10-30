@@ -5,7 +5,7 @@ import { Sun, Sunset, Moon, CloudMoon, Flame, Zap, Trophy } from 'lucide-react';
  * Premium Activity Chart Component
  * Uses SVG for pixel-perfect rendering and React state for precise interactions.
  */
-export default function ActivityChart({ weeklyHistory, timeDistribution, streakDays, todaySessions, t }) {
+export default function ActivityChart({ weeklyHistory, timeDistribution, streakDays, todaySessions, t, language = 'en' }) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
 
     // Calculate chart dimensions and data scaling
@@ -17,8 +17,17 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
     // Find max value for scaling (min 10 to avoid flat lines for low data)
     const maxChars = Math.max(...weeklyHistory.map(d => d.chars), 10);
 
-    // Day labels
-    const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+    // Dynamic localized day labels (Sun, Mon / 日, 月)
+    const dayLabels = useMemo(() => {
+        const labels = [];
+        const baseDate = new Date('2024-01-07'); // A known Sunday
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(baseDate);
+            d.setDate(baseDate.getDate() + i);
+            labels.push(new Intl.DateTimeFormat(language, { weekday: 'short' }).format(d));
+        }
+        return labels;
+    }, [language]);
 
     // Most active time calculation
     const mostActive = useMemo(() => {
