@@ -139,7 +139,8 @@ const Zone = ({ group, isSelected }) => {
 
     // Calculate Bounding Box
     const rect = useMemo(() => {
-        const groupCards = cards.filter(c => group.cardIds.includes(c.id));
+        // Filter out soft-deleted cards
+        const groupCards = cards.filter(c => group.cardIds.includes(c.id) && !c.deletedAt);
         if (groupCards.length === 0) return null;
 
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -178,7 +179,8 @@ const Zone = ({ group, isSelected }) => {
 
     // Calculate stats
     const stats = useMemo(() => {
-        const groupCards = cards.filter(c => group.cardIds.includes(c.id));
+        // Filter out soft-deleted cards
+        const groupCards = cards.filter(c => group.cardIds.includes(c.id) && !c.deletedAt);
         const cardCount = groupCards.length;
         let messageCount = 0;
         groupCards.forEach(c => {

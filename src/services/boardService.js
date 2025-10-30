@@ -213,6 +213,38 @@ export const cleanupExpiredTrash = async () => {
     }
 };
 
+/**
+ * Cleanup soft-deleted cards from a board that are older than retention period.
+ * Call this during board load to keep data clean.
+ * 
+ * @param {string} boardId - The board ID to clean up
+ * @param {object} boardData - The board data object with cards array
+ * @param {number} retentionDays - Number of days to retain soft-deleted cards (default: 30)
+ * @returns {object} - Cleaned board data
+ */
+export const cleanupExpiredCards = (boardData, retentionDays = 30) => {
+    if (!boardData?.cards) return boardData;
+
+    const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+    const originalCount = boardData.cards.length;
+
+    // Permanently remove cards deleted more than retentionDays ago
+    const cleanedCards = boardData.cards.filter(card => {
+        if (!card.deletedAt) return true; // Keep active cards
+        if (card.deletedAt > cutoffTime) return true; // Keep recently deleted (for sync)
+        // Card was deleted more than retentionDays ago - remove permanently
+        debugLog.storage(`Card ${card.id} expired (deleted > ${retentionDays} days ago). Permanently removing.`);
+        return false;
+    });
+
+    const removedCount = originalCount - cleanedCards.length;
+    if (removedCount > 0) {
+        debugLog.storage(`Cleanup removed ${removedCount} expired cards from board.`);
+    }
+
+    return { ...boardData, cards: cleanedCards };
+};
+
 // Soft Delete (Rename original function to prevent breaking API but change behavior)
 export const deleteBoard = async (id) => {
     debugLog.storage(`Soft deleting board: ${id}`);
