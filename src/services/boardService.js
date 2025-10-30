@@ -16,7 +16,14 @@ export const setCurrentBoardId = (id) => {
 // Shared helper to get ALL boards (Active + Trash)
 export const getRawBoardsList = () => {
     const list = localStorage.getItem(BOARDS_LIST_KEY);
-    return list ? JSON.parse(list) : [];
+    try {
+        const parsed = list ? JSON.parse(list) : [];
+        // CRITICAL DEFENSIVE CODING: Filter out corrupt data at source
+        return Array.isArray(parsed) ? parsed.filter(b => b && b.id && b.name) : [];
+    } catch (e) {
+        console.error("Failed to parse boards list", e);
+        return [];
+    }
 };
 
 export const getBoardsList = () => {
