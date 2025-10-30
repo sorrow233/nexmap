@@ -112,45 +112,45 @@ export default function StatisticsView({ boardsList, user }) {
             {/* Main Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
-                {/* KPI Cards */}
+                {/* KPI Cards - Staggered Entry */}
                 <div className="md:col-span-1 space-y-4">
                     {/* Boards KPI */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-indigo-500/30 transition-all">
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 animate-slide-in" style={{ animationDelay: '0ms' }}>
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.stats?.totalBoards || "Total Boards"}</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalBoards}</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-indigo-500/70">{t.stats?.totalBoards || "Total Boards"}</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">{stats.totalBoards}</h3>
                         </div>
-                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-2xl group-hover:scale-110 transition-transform">
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-2xl group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
                             <Database size={24} />
                         </div>
                     </div>
 
                     {/* Cards KPI */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-fuchsia-500/30 transition-all">
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-fuchsia-500/30 hover:shadow-lg hover:shadow-fuchsia-500/10 transition-all duration-300 animate-slide-in" style={{ animationDelay: '100ms' }}>
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.stats?.totalElements || "Total Elements"}</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalCards}</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-fuchsia-500/70">{t.stats?.totalElements || "Total Elements"}</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">{stats.totalCards}</h3>
                         </div>
-                        <div className="p-3 bg-fuchsia-50 dark:bg-fuchsia-500/10 text-fuchsia-500 rounded-2xl group-hover:scale-110 transition-transform">
+                        <div className="p-3 bg-fuchsia-50 dark:bg-fuchsia-500/10 text-fuchsia-500 rounded-2xl group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
                             <Layers size={24} />
                         </div>
                     </div>
 
                     {/* Activity KPI */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-orange-500/30 transition-all">
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/10 transition-all duration-300 animate-slide-in" style={{ animationDelay: '200ms' }}>
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.stats?.currentStreak || "Current Streak"}</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.tokenStats.streakDays} <span className="text-sm font-medium text-slate-400 font-sans">{t.stats?.days || "days"}</span></h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-orange-500/70">{t.stats?.currentStreak || "Current Streak"}</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">{stats.tokenStats.streakDays} <span className="text-sm font-medium text-slate-400 font-sans">{t.stats?.days || "days"}</span></h3>
                         </div>
-                        <div className="p-3 bg-orange-50 dark:bg-orange-500/10 text-orange-500 rounded-2xl group-hover:scale-110 transition-transform">
+                        <div className="p-3 bg-orange-50 dark:bg-orange-500/10 text-orange-500 rounded-2xl group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
                             <Activity size={24} />
                         </div>
                     </div>
                 </div>
 
                 {/* Chart Section (Spans 2 cols usually) */}
-                <div className="md:col-span-2 lg:col-span-2">
-                    <div className="h-full p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden">
+                <div className="md:col-span-2 lg:col-span-2 animate-slide-in" style={{ animationDelay: '300ms' }}>
+                    <div className="h-full p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden flex flex-col">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-6 relative z-10">
                             <div className="flex items-center gap-3">
@@ -187,8 +187,8 @@ export default function StatisticsView({ boardsList, user }) {
                 </div>
 
                 {/* Credits / Cloud Section (Right Col) */}
-                <div className="md:col-span-3 lg:col-span-1">
-                    <div className="h-full p-6 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-[#1a1a1a] dark:to-black rounded-3xl text-white shadow-xl relative overflow-hidden group border border-slate-800 dark:border-white/10">
+                <div className="md:col-span-3 lg:col-span-1 animate-slide-in" style={{ animationDelay: '400ms' }}>
+                    <div className="h-full p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-black dark:from-[#1a1a1a] dark:via-[#111] dark:to-black rounded-3xl text-white shadow-2xl relative overflow-hidden group border border-slate-800 dark:border-white/10 hover:border-yellow-500/20 transition-all duration-500">
 
                         {/* Decor */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/3 group-hover:bg-indigo-500/30 transition-colors duration-700 pointer-events-none"></div>
