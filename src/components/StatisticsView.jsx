@@ -90,7 +90,10 @@ export default function StatisticsView({ boardsList, user }) {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t.stats?.dataInsights || "Data & Insights"}</h2>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t.stats?.dataInsights || "Data & Insights"}</h2>
+                        <span className="mb-2 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wider dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-500/20">Local First</span>
+                    </div>
                     <p className="text-slate-500 dark:text-slate-400 max-w-2xl">
                         {t.stats?.description || "Analyze your creative habits and resource usage."}
                     </p>
@@ -189,10 +192,10 @@ export default function StatisticsView({ boardsList, user }) {
 
                 {/* Credits / Cloud Section (Right Col) */}
                 <div className="md:col-span-3 lg:col-span-1 animate-slide-in" style={{ animationDelay: '400ms' }}>
-                    <div className="h-full p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-black dark:from-[#1a1a1a] dark:via-[#111] dark:to-black rounded-3xl text-white shadow-2xl relative overflow-hidden group border border-slate-800 dark:border-white/10 hover:border-yellow-500/20 transition-all duration-500">
+                    <div className="h-full p-6 bg-gradient-to-br from-indigo-500 to-violet-600 dark:from-indigo-900 dark:to-violet-950 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10 transition-all duration-500 hover:scale-[1.02]">
 
                         {/* Decor */}
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/3 group-hover:bg-indigo-500/30 transition-colors duration-700 pointer-events-none"></div>
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/3 transition-colors duration-700 pointer-events-none"></div>
 
                         <div className="flex flex-col h-full relative z-10 justify-between gap-8">
                             <div>
@@ -220,24 +223,24 @@ export default function StatisticsView({ boardsList, user }) {
                                     ) : stats.credits ? (
                                         <div className="space-y-4">
                                             <div className="flex items-end gap-2">
-                                                <div className="text-4xl font-black tracking-tight text-white drop-shadow-lg">
+                                                <div className="text-4xl font-black tracking-tight text-white drop-shadow-sm">
                                                     {stats.credits.credits?.toLocaleString()}
                                                 </div>
-                                                <div className="text-sm font-bold text-white/50 mb-1.5">{t.stats?.creditsRemaining || "credits left"}</div>
+                                                <div className="text-sm font-bold text-white/60 mb-1.5">{t.stats?.creditsRemaining || "credits left"}</div>
                                             </div>
 
                                             <div className="space-y-1.5">
-                                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/40">
+                                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/50">
                                                     <span>{t.stats?.creditsUsed || "Used"}</span>
                                                     <span>{Math.round((stats.credits.credits / stats.credits.initialCredits) * 100)}% {t.stats?.creditsRemaining || "Left"}</span>
                                                 </div>
                                                 {/* Modern Progress Bar */}
-                                                <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden backdrop-blur-md ring-1 ring-white/10 p-0.5">
+                                                <div className="h-3 w-full bg-black/20 rounded-full overflow-hidden backdrop-blur-md ring-1 ring-white/10 p-0.5">
                                                     <div
-                                                        className="h-full bg-gradient-to-r from-yellow-300 to-amber-500 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.4)] transition-all duration-1000 ease-out relative"
+                                                        className="h-full bg-gradient-to-r from-white to-indigo-100 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all duration-1000 ease-out relative"
                                                         style={{ width: `${Math.min(100, (stats.credits.credits / stats.credits.initialCredits) * 100)}%` }}
                                                     >
-                                                        <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                                                        <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>
                                                     </div>
                                                 </div>
                                             </div>
