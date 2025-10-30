@@ -92,14 +92,16 @@ const ChatBar = React.memo(function ChatBar({
         e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
     };
 
-    const placeholderText = cards.length === 0
+    // Filter out soft-deleted cards for UI calculations
+    const activeCards = cards.filter(c => !c.deletedAt);
+    const placeholderText = activeCards.length === 0
         ? t.chatBar.startNewBoard
         : selectedIds.length > 0
             ? t.chatBar.askAboutSelected.replace('{count}', selectedIds.length)
             : t.chatBar.typeToCreate;
 
     const hasMarkedTopics = selectedIds.length === 1 &&
-        cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0;
+        activeCards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0;
 
     return (
         <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom">
