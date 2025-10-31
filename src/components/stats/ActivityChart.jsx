@@ -211,20 +211,20 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
 
 // Sub-components for cleaner code
 const StatBox = ({ icon: Icon, label, value, unit, color, bg, border }) => (
-    <div className={`rounded-2xl p-4 border bg-gradient-to-br ${bg} ${border} transition-transform hover:scale-[1.02]`}>
-        <div className="flex flex-col h-full justify-between gap-2">
-            <div className="flex items-center gap-1.5 opacity-80">
+    <div className={`rounded-2xl p-4 border bg-gradient-to-br ${bg} ${border} transition-transform hover:scale-[1.02] flex flex-col justify-between min-h-[90px]`}>
+        <div className="flex items-center gap-1.5 opacity-90">
+            <div className={`p-1 rounded-md ${color.replace('text-', 'bg-').replace('500', '500/10')}`}>
                 <Icon size={14} className={color} />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    {label}
-                </span>
             </div>
-            <div className="flex items-baseline gap-1">
-                <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {value}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400">{unit}</span>
-            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {label}
+            </span>
+        </div>
+        <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">
+                {value}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">{unit}</span>
         </div>
     </div>
 );
