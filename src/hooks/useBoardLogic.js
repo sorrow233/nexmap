@@ -60,6 +60,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     const [globalImages, setGlobalImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+    const [globalChatMessages, setGlobalChatMessages] = useState([]); // [NEW] Global Chat State
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
     const [tempInstructions, setTempInstructions] = useState([]);
 
@@ -186,13 +188,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handleCanvasDoubleClick = (e) => {
-        setQuickPrompt({
-            isOpen: true,
-            x: e.screenX,
-            y: e.screenY,
-            canvasX: e.canvasX,
-            canvasY: e.canvasY
-        });
+        // Double click now opens the Global Chat Assistant
+        setIsGlobalChatOpen(true);
     };
 
     const handleQuickPromptSubmit = (text) => {
@@ -205,6 +202,12 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handleChatModalGenerate = async (cardId, text, images = []) => {
+        // [NEW] Global Chat Handler
+        if (cardId === 'global') {
+            handleGlobalChatGenerate(text, images);
+            return;
+        }
+
         const freshCards = useStore.getState().cards;
         const card = freshCards.find(c => c.id === cardId);
 
@@ -246,6 +249,61 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         } catch (error) {
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
             updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);
+        }
+    };
+
+    // [NEW] Helper for Global Chat Generation
+    const handleGlobalChatGenerate = async (text, images = []) => {
+        let userContent;
+        if (images.length > 0) {
+            const imageParts = images.map(img => ({
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: img.mimeType,
+                    data: img.base64
+                }
+            }));
+            userContent = [
+                { type: 'text', text },
+                ...imageParts
+            ];
+        } else {
+            userContent = text;
+        }
+
+        const userMsg = { role: 'user', content: userContent };
+        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
+
+        // 1. Optimistic Update
+        setGlobalChatMessages(prev => [...prev, userMsg, assistantMsg]);
+
+        const history = [...globalChatMessages, userMsg];
+
+        try {
+            // Use 'global' as ID for cancellation tags
+            await handleChatGenerate('global', history, (chunk) => {
+                // Custom updater for local state
+                setGlobalChatMessages(prev => {
+                    const newMsgs = [...prev];
+                    const targetMsg = newMsgs.find(m => m.id === assistantMsgId);
+                    if (targetMsg) {
+                        targetMsg.content = (targetMsg.content || '') + chunk;
+                    }
+                    return newMsgs;
+                });
+            });
+        } catch (error) {
+            console.error('[Global Chat] Generation failed:', error);
+            setGlobalChatMessages(prev => {
+                const newMsgs = [...prev];
+                const targetMsg = newMsgs.find(m => m.id === assistantMsgId);
+                if (targetMsg) {
+                    targetMsg.content += `\n\n[System Error: ${error.message}]`;
+                }
+                return newMsgs;
+            });
         }
     };
 
@@ -326,6 +384,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         globalImages,
         clipboard,
         isSettingsOpen,
+        isGlobalChatOpen,
+        globalChatMessages, // Export
         quickPrompt,
         customSproutPrompt, // Exported State
         tempInstructions,
@@ -338,6 +398,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
 
         // Actions & Handlers
         setIsSettingsOpen,
+        setIsGlobalChatOpen,
+        setGlobalChatMessages, // Export
         setGlobalImages,
         setQuickPrompt,
         setCustomSproutPrompt,
