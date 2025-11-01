@@ -92,5 +92,71 @@ OUTPUT FORMAT:
             console.error('[AI Summary] Failed to generate summaries:', error);
             return {};
         }
+    },
+
+    /**
+     * Generate a rich summary for a specific board context
+     * Used for the "Text Card" visualization when no image is present
+     * @param {Object} boardData - Board object
+     * @param {Array} cards - All cards on board
+     * @param {Object} config - AI Provider config
+     * @reutrns {Promise<Object>} - { title, summary, moodColor }
+     */
+    async generateBoardSummary(boardData, cards, config) {
+        if (!cards || cards.length === 0) return null;
+
+        // Prepare context
+        const context = cards.slice(0, 5).map(c => {
+            const content = c.data?.messages
+                ? c.data.messages.map(m => m.content).join(' ')
+                : (c.data?.content || '');
+            return content.substring(0, 300);
+        }).join('\n---\n');
+
+        const prompt = `
+ANALYZE THIS BOARD CONTENT:
+${context}
+
+TASK: Create a "Content Cover" for this board.
+1. "title": A very short, punchy, inspiring title (max 6 words). English or the language of the content.
+2. "summary": A 2-sentence summary of the core ideas or questions being explored.
+3. "theme": Pick a color theme name (one of: "blue", "purple", "emerald", "orange", "pink", "slate").
+
+OUTPUT JSON:
+{
+    "title": "...",
+    "summary": "...",
+    "theme": "..."
+}
+`;
+
+        try {
+            // Use 'analysis' model if available, otherwise default
+            // The caller should ideally resolve this, but we'll try to use the passed config directly
+            // or assume config has the right model info. 
+            // We'll use chatCompletion which handles the provider.
+
+            const response = await chatCompletion(
+                [{ role: 'user', content: prompt }],
+                config,
+                config.model, // Use the active model
+                { temperature: 0.7 }
+            );
+
+            if (!response) return null;
+
+            let cleanResponse = response.trim();
+            if (cleanResponse.startsWith('```json')) {
+                cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanResponse.startsWith('```')) {
+                cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            return JSON.parse(cleanResponse);
+
+        } catch (error) {
+            console.error('[AI Summary] Board summary generation failed:', error);
+            return null;
+        }
     }
 };
