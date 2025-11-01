@@ -12,6 +12,7 @@ import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
 import { useContextMenu } from './ContextMenu';
+import InstantTooltip from './InstantTooltip';
 
 export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     // Granular selectors to prevent unnecessary re-renders
@@ -376,43 +377,48 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
             <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
                 {/* Canvas Mode Toggle - Modern canvas standard */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        toggleCanvasMode();
-                    }}
-                    className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group ${canvasMode === 'pan'
-                        ? 'bg-brand-500 border-brand-600 text-white hover:bg-brand-600'
-                        : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-brand-500 hover:scale-110'
-                        } active:scale-95`}
-                    title={canvasMode === 'pan' ? '拖动模式 (V) - 点击切换到选择' : '选择模式 (V) - 点击切换到拖动'}
-                >
-                    {canvasMode === 'pan' ? (
-                        <Hand size={16} className="group-hover:animate-pulse" />
-                    ) : (
-                        <MousePointer2 size={16} className="group-hover:animate-pulse" />
-                    )}
-                </button>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        useStore.getState().focusOnNearestCard();
-                    }}
-                    className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
-                    title="定位到最近的卡片 / Locate Nearest Card"
-                >
-                    <Crosshair size={16} className="group-hover:animate-pulse" />
-                </button>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation(); // Prevent canvas click
-                        useStore.getState().arrangeCards();
-                    }}
-                    className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
-                    title="Auto Layout"
-                >
-                    <Sparkles size={16} className="group-hover:animate-pulse" />
-                </button>
+                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (V)' : 'Switch to Pan Mode (V)'}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCanvasMode();
+                        }}
+                        className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group ${canvasMode === 'pan'
+                            ? 'bg-brand-500 border-brand-600 text-white hover:bg-brand-600'
+                            : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-brand-500 hover:scale-110'
+                            } active:scale-95`}
+                    >
+                        {canvasMode === 'pan' ? (
+                            <Hand size={16} className="group-hover:animate-pulse" />
+                        ) : (
+                            <MousePointer2 size={16} className="group-hover:animate-pulse" />
+                        )}
+                    </button>
+                </InstantTooltip>
+
+                <InstantTooltip content="Locate Nearest Card">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            useStore.getState().focusOnNearestCard();
+                        }}
+                        className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
+                    >
+                        <Crosshair size={16} className="group-hover:animate-pulse" />
+                    </button>
+                </InstantTooltip>
+
+                <InstantTooltip content="Auto Layout">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation(); // Prevent canvas click
+                            useStore.getState().arrangeCards();
+                        }}
+                        className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
+                    >
+                        <Sparkles size={16} className="group-hover:animate-pulse" />
+                    </button>
+                </InstantTooltip>
             </div>
 
             {/* Rubber Band Selection Rect */}
