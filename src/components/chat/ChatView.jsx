@@ -371,7 +371,7 @@ export default function ChatView({
 
             {/* Minimal Header (Top on Mobile, Left Sidebar on Desktop) */}
             <div className="shrink-0 z-20 w-full h-20 px-6 flex flex-row items-center justify-between border-b border-slate-100 dark:border-white/5
-                lg:w-16 lg:h-full lg:flex-col lg:justify-between lg:py-8 lg:px-0 lg:border-b-0 lg:border-r lg:border-transparent transition-all group/sidebar">
+                lg:w-16 lg:h-full lg:flex-col lg:justify-between lg:py-8 lg:px-0 lg:border-none transition-all group/sidebar">
 
                 {/* Top/Left Section: Icon & Title */}
                 <div className="flex items-center gap-4 lg:flex-col lg:gap-8 opacity-40 group-hover/sidebar:opacity-100 transition-all duration-500">
@@ -391,7 +391,7 @@ export default function ChatView({
                     </div>
 
                     {/* Desktop Vertical Title */}
-                    <div className="hidden lg:block [writing-mode:vertical-rl] text-center font-medium text-slate-300 dark:text-slate-600 tracking-[0.4em] text-[10px] select-none cursor-default opacity-0 group-hover/sidebar:opacity-100 transition-all duration-700 max-h-[50vh] overflow-hidden whitespace-nowrap">
+                    <div className="hidden lg:block [writing-mode:vertical-rl] text-center font-bold text-slate-300 dark:text-slate-600 tracking-[0.4em] text-xs select-none cursor-default opacity-0 group-hover/sidebar:opacity-100 transition-all duration-700 max-h-[50vh] overflow-hidden whitespace-nowrap">
                         {card.data.title || (card.type === 'note' ? t.chat.insightArchive : t.chat.conversation)}
                     </div>
                 </div>
