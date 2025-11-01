@@ -3,6 +3,7 @@ import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap, Activity, Spark
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
+import ActivityChart from './stats/ActivityChart';
 
 export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
     if (!isOpen) return null;
@@ -20,7 +21,11 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
         tokenStats: {
             totalChars: 0,
             todayChars: 0,
-            yesterdayChars: 0
+            yesterdayChars: 0,
+            weeklyHistory: [],
+            timeDistribution: { morning: 0, afternoon: 0, evening: 0, night: 0 },
+            todaySessions: 0,
+            streakDays: 0
         }
     });
 
@@ -40,8 +45,8 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
             }
         }
 
-        // Get local token stats
-        const tokenStats = userStatsService.getStats();
+        // Get local token stats (extended)
+        const tokenStats = userStatsService.getExtendedStats();
 
         setStats(prev => ({
             ...prev,
@@ -128,14 +133,15 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
                             </div>
                         </div>
 
-                        {/* Daily Activity Card - Modernized */}
-                        <div className="p-6 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all flex flex-col justify-between h-auto min-h-[160px] relative overflow-hidden group">
+                        {/* Daily Activity Card - Enhanced */}
+                        <div className="p-5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100/80 dark:hover:bg-white/[0.04] rounded-3xl border border-slate-200/50 dark:border-white/5 transition-all relative overflow-hidden group">
                             {/* Decorative blurred blob */}
                             <div className="absolute -right-4 -top-4 w-24 h-24 bg-orange-400/10 dark:bg-orange-400/20 blur-2xl rounded-full group-hover:bg-orange-400/20 transition-colors"></div>
 
                             <div className="relative z-10">
+                                {/* Header */}
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2 text-orange-500 mb-1">
+                                    <div className="flex items-center gap-2 text-orange-500">
                                         <div className="p-1.5 bg-orange-500/10 rounded-lg">
                                             <Activity size={16} />
                                         </div>
@@ -147,18 +153,29 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-baseline gap-1 mt-1">
+                                {/* Today's Stats */}
+                                <div className="flex items-baseline gap-1 mb-4">
                                     <span className="text-lg font-bold text-orange-500/80 mr-1">+</span>
-                                    <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
                                         {fmt(stats.tokenStats.todayChars)}
                                     </span>
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Chars</span>
                                 </div>
-                            </div>
 
-                            <div className="relative z-10 mt-4 flex items-center justify-between pt-4 border-t border-slate-200 dark:border-white/5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                <div>Yesterday: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.yesterdayChars)}</span></div>
-                                <div>{t.stats?.globalChars}: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.totalChars)}</span></div>
+                                {/* Activity Chart Component */}
+                                <ActivityChart
+                                    weeklyHistory={stats.tokenStats.weeklyHistory || []}
+                                    timeDistribution={stats.tokenStats.timeDistribution || { morning: 0, afternoon: 0, evening: 0, night: 0 }}
+                                    streakDays={stats.tokenStats.streakDays || 0}
+                                    todaySessions={stats.tokenStats.todaySessions || 0}
+                                    t={t}
+                                />
+
+                                {/* Footer stats */}
+                                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-200 dark:border-white/5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    <div>Yesterday: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.yesterdayChars)}</span></div>
+                                    <div>{t.stats?.globalChars || 'Total'}: <span className="text-slate-700 dark:text-slate-300">{fmt(stats.tokenStats.totalChars)}</span></div>
+                                </div>
                             </div>
                         </div>
                     </div>
