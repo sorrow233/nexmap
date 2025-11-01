@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, StickyNote, Sprout, Command } from 'lucide-react'; // [Modified] Added Command icon
+import { X, Sparkles, Loader2, StickyNote, Sprout } from 'lucide-react';
 // import { generateFollowUpTopics } from '../../services/llm'; // Converted to dynamic import
 import { parseModelOutput } from '../../services/llm/parser';
 import { isSafari, isIOS } from '../../utils/browser';
@@ -372,8 +372,8 @@ export default function ChatView({
             {/* Minimal Header */}
             <div className="h-20 px-10 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-6 flex-grow">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 ${card.type === 'note' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/20' : card.type === 'global' ? 'bg-gradient-to-br from-slate-700 to-slate-800 shadow-slate-500/20' : 'bg-gradient-to-br from-brand-600 to-brand-700 shadow-brand-500/20'}`}>
-                        {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : card.type === 'global' ? <Command size={24} className="text-white" /> : <Sparkles size={24} className="text-white" />}
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 ${card.type === 'note' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-br from-brand-600 to-brand-700 shadow-brand-500/20'}`}>
+                        {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : <Sparkles size={24} className="text-white" />}
                     </div>
                     <div className="flex-grow min-w-0">
                         <h3 className="font-bold text-slate-800 dark:text-slate-100 text-2xl tracking-tight leading-tight truncate font-sans">
@@ -381,7 +381,7 @@ export default function ChatView({
                         </h3>
                         <div className="flex items-center gap-4 mt-1">
                             <span className="text-[10px] uppercase tracking-[0.2em] font-black text-brand-600 dark:text-brand-400">
-                                {card.type === 'note' ? t.chat.neuralNotepad : card.type === 'global' ? 'Global Assistant' : t.chat.neuralReader}
+                                {card.type === 'note' ? t.chat.neuralNotepad : t.chat.neuralReader}
                             </span>
                             {card.type === 'note' && (
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.chat.capturedInsight}</span>
@@ -398,21 +398,19 @@ export default function ChatView({
                             Clear Marks ({card.data.marks.length})
                         </button>
                     )}
-                    {/* Sprout Button - Disable for Global Chat for now */}
-                    {card.type !== 'global' && (
-                        <button
-                            onClick={handleSproutClick}
-                            disabled={isSprouting || isStreaming}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest transition-all
+                    {/* Sprout Button */}
+                    <button
+                        onClick={handleSproutClick}
+                        disabled={isSprouting || isStreaming}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest transition-all
                             ${isSprouting
-                                    ? 'bg-slate-100 text-slate-400 dark:bg-slate-800'
-                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20'
-                                }`}
-                        >
-                            {isSprouting ? <Loader2 size={14} className="animate-spin" /> : <Sprout size={14} />}
-                            {isSprouting ? 'Thinking...' : 'Sprout Ideas'}
-                        </button>
-                    )}
+                                ? 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+                                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20'
+                            }`}
+                    >
+                        {isSprouting ? <Loader2 size={14} className="animate-spin" /> : <Sprout size={14} />}
+                        {isSprouting ? 'Thinking...' : 'Sprout Ideas'}
+                    </button>
                     <button
                         onClick={onClose}
                         className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all"

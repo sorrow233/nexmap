@@ -255,7 +255,7 @@ export const createAISlice = (set, get) => {
                         protocol: AI_PROVIDERS.SYSTEM_CREDITS // Special protocol handled by ModelFactory
                     };
                     // Ensure the card data reflects the actual model used
-                    if (card && card.data.model !== AI_MODELS.FREE_TIER) {
+                    if (card.data.model !== AI_MODELS.FREE_TIER) {
                         console.log('[AI] Correcting card model to Kimi-K2-Thinking (System Credits)');
                         // We don't await this state update, it just fixes the UI for next time
                         updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.FREE_TIER }));
