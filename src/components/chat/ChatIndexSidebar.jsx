@@ -14,13 +14,13 @@ export default function ChatIndexSidebar({ messages, onScrollTo }) {
     if (userMessages.length === 0) return null;
 
     return (
-        <div className="absolute right-2 top-24 bottom-32 w-32 hidden xl:flex flex-col gap-1 pointer-events-none opacity-0 animate-fade-in animation-delay-500" style={{ animationFillMode: 'forwards' }}>
+        <div className="hidden xl:flex flex-col gap-1 w-36 shrink-0 opacity-0 animate-fade-in" style={{ animationFillMode: 'forwards' }}>
             <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-slate-600 select-none">
                 <Hash size={10} />
                 <span>INDEX</span>
             </div>
 
-            <div className="flex-grow overflow-y-auto custom-scrollbar pr-1 pointer-events-auto space-y-1">
+            <div className="flex-grow overflow-y-auto custom-scrollbar pr-1 space-y-1">
                 {userMessages.map(({ m, i }) => {
                     let preview = '';
                     if (typeof m.content === 'string') {

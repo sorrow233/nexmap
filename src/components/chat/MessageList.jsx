@@ -33,9 +33,9 @@ export default function MessageList({
         <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y"
+            className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y min-w-0"
         >
-            <div className="reader-width">
+            <div className="max-w-3xl mx-auto">
                 {card.type === 'note' ? (
                     <div className="animate-fade-in">
                         <textarea
