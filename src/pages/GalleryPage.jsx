@@ -16,6 +16,7 @@ import { useStore } from '../store/useStore';
 import ProBadge from '../components/ProBadge';
 import PaymentSuccessModal from '../components/PaymentSuccessModal';
 import { auth } from '../services/firebase';
+import { useAutoBoardSummaries } from '../hooks/useAutoBoardSummaries';
 
 export default function GalleryPage({
     boardsList,
@@ -42,6 +43,10 @@ export default function GalleryPage({
     const [searchParams, setSearchParams] = useSearchParams();
     const isPro = useStore(state => state.isPro);
     const refreshCredits = useStore(state => state.fetchSystemCredits);
+
+    // Auto-generate summaries for eligible boards
+    useAutoBoardSummaries(boardsList, onUpdateBoardMetadata);
+
 
     // Detect payment success from URL
     useEffect(() => {
