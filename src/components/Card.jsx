@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Maximize2, Link, ArrowRight, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { isSafari, isIOS } from '../utils/browser';
 
 import { useStore } from '../store/useStore';
@@ -84,8 +85,6 @@ const Card = React.memo(function Card({
 
     // Generate preview text (last message from assistant or user)
     const lastMessage = messages[messages.length - 1];
-
-    import DOMPurify from 'dompurify'; // Ensure this is imported
 
     // ... (rest of imports)
 
