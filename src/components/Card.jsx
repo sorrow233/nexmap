@@ -85,6 +85,10 @@ const Card = React.memo(function Card({
     // Generate preview text (last message from assistant or user)
     const lastMessage = messages[messages.length - 1];
 
+    import DOMPurify from 'dompurify'; // Ensure this is imported
+
+    // ... (rest of imports)
+
     // Helper to extract text from multimodal content
     const getPreviewContent = (content) => {
         if (!content) return "No messages yet";
@@ -102,7 +106,8 @@ const Card = React.memo(function Card({
 
     if (marks.length > 0) {
         // If there are marks, show them joined by "..."
-        previewText = marks.join(' ... ');
+        // Format as markdown list for better visual
+        previewText = marks.map(m => `- **${m}**`).join('\n');
     } else {
         // Fallback to existing last message logic
         previewText = getPreviewContent(lastMessage?.content);
@@ -110,14 +115,28 @@ const Card = React.memo(function Card({
         previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
     }
 
-    if (!previewText) previewText = "Thinking...";
+    if (!previewText) previewText = "_Thinking..._";
 
-    // Show truncated preview (END of content)
-    if (previewText.length > 150) {
-        previewText = marks.length > 0
-            ? previewText.slice(0, 150) + "..."
-            : "..." + previewText.slice(-120);
+    // Truncate logic - but keep it markdown friendly if possible
+    // Simple slice might break markdown syntax, but for preview it's acceptable trade-off
+    // or we render first then truncate visual height (CSS line-clamp).
+    // Let's stick to CSS line-clamp for safer rich text truncation usually, 
+    // but here we are rendering HTML. 
+    // Let's truncate source text to a reasonable length to avoid huge parsing overhead, 
+    // then let CSS handle the visual overflow.
+    if (previewText.length > 300) {
+        previewText = previewText.slice(0, 300) + "...";
     }
+
+    // Render Markdown
+    const renderMarkdown = () => {
+        try {
+            const rawHtml = marked.parse(previewText, { breaks: true, gfm: true });
+            return { __html: DOMPurify.sanitize(rawHtml) };
+        } catch (e) {
+            return { __html: previewText };
+        }
+    };
 
     // Copy handler
     const handleCopy = async (e) => {
@@ -167,17 +186,18 @@ const Card = React.memo(function Card({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[calc(100vw-2rem)] xs:w-[300px] sm:w-[320px] rounded-2xl flex flex-col select-none pointer-events-auto group shadow-xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] border
-                ${isSafari || isIOS ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-white/20' : 'bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-300 dark:border-white/10'}
-                ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 cursor-grab'}
-                ${isSelected ? 'card-sharp-selected' : 'hover:scale-[1.01] hover:border-brand-300 dark:hover:border-white/20'}
-                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
-                ${isDragOver ? 'ring-2 ring-brand-500 scale-[1.02] bg-brand-50/50 dark:bg-brand-900/10' : ''}`}
+            className={`absolute w-[calc(100vw-2rem)] xs:w-[300px] sm:w-[320px] rounded-3xl flex flex-col select-none pointer-events-auto group transition-all duration-300
+                glass-card
+                ${isSafari || isIOS ? 'bg-white/90 dark:bg-slate-900/90' : ''}
+                ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing z-[100]' : 'cursor-grab hover:glass-card-hover'}
+                ${isSelected ? 'card-sharp-selected ring-2 ring-brand-500/50' : 'hover:border-brand-300/50 dark:hover:border-white/20'}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-4 hover:ring-green-400/30 hover:cursor-crosshair' : ''}
+                ${isDragOver ? 'ring-2 ring-brand-500 scale-[1.02] bg-brand-50/80 dark:bg-brand-900/20' : ''}`}
             style={{
                 left: data.x,
                 top: data.y,
                 zIndex: zIndex,
-                willChange: isDragging ? 'left, top' : 'auto' // Hint to browser
+                willChange: isDragging ? 'left, top' : 'auto'
             }}
             onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
@@ -190,46 +210,49 @@ const Card = React.memo(function Card({
             onDragLeave={() => setIsDragOver(false)}
         >
             {/* Top Bar - Model + Buttons */}
-            < div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5" >
+            <div className="px-5 pt-4 pb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2 max-w-[60%]">
-                    <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
-                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={cardContent.title}>
+                    <div className={`w-2 h-2 rounded-full animate-pulse ${isSelected ? 'bg-brand-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate font-sans tracking-wide" title={cardContent.title}>
                         {cardContent.title || 'New Conversation'}
                     </div>
                 </div>
                 <div className="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                         onClick={handleCopy}
-                        className="p-1.5 text-slate-500 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Copy response"
                     >
-                        <Copy size={14} />
+                        <Copy size={13} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
-                        className="p-1.5 text-slate-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-white/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Create connection"
                     >
-                        <Link size={14} />
+                        <Link size={13} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
-                        className="p-1.5 text-slate-500 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-white/5 rounded-lg transition-all"
                         title="Expand"
                     >
-                        <Maximize2 size={14} />
+                        <Maximize2 size={13} />
                     </button>
                 </div>
-            </div >
+            </div>
 
-            <div className="p-4 h-48 overflow-hidden relative transition-colors">
-                <p
-                    className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-lxgw select-none cursor-grab card-content-text"
-                    style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+            <div className="px-5 py-3 h-40 overflow-hidden relative">
+                <div
+                    className="prose prose-xs dark:prose-invert max-w-none 
+                        text-slate-600 dark:text-slate-300 
+                        leading-relaxed 
+                        prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0
+                        font-sans select-none pointer-events-none" // pointer-events-none ensures drag works over text
+                    dangerouslySetInnerHTML={renderMarkdown()}
                 >
-                    {previewText}
-                </p>
-                <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-white via-white/40 dark:from-slate-900/90 dark:via-slate-900/40 to-transparent pointer-events-none"></div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-white via-white/80 dark:from-slate-900 dark:via-slate-900/80 to-transparent pointer-events-none rounded-b-3xl"></div>
             </div>
 
             {
