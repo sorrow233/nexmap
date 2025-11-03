@@ -48,8 +48,8 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                 <div className="p-4 border border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex justify-between items-start mb-3">
                         <div>
-                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🌱 {t.settings.roles?.analysisTitle || 'Sprout Ideas (Analysis)'}</h4>
-                            <p className="text-xs text-slate-500 mt-1">{t.settings.roles?.analysisDesc || 'Model for generating follow-up questions'}</p>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100">🌱 {t.settings.roles?.analysisTitle || 'Functional Model'}</h4>
+                            <p className="text-xs text-slate-500 mt-1">{t.settings.roles?.analysisDesc || 'Handles summaries, analysis, and functional tasks'}</p>
                         </div>
                         <div className="px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded text-xs font-mono text-slate-600 dark:text-slate-400">
                             analysis
