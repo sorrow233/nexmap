@@ -273,6 +273,26 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [toggleCanvasMode]);
 
+    // Handle Drop on Canvas (similar to Paste)
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const canvasX = (e.clientX - offset.x) / scale;
+        const canvasY = (e.clientY - offset.y) / scale;
+
+        // Try to get text/url data
+        const text = e.dataTransfer.getData('text/plain');
+        if (text && props.onCanvasDoubleClick) {
+            props.onCanvasDoubleClick({
+                screenX: e.clientX,
+                screenY: e.clientY,
+                canvasX,
+                canvasY,
+                pastedText: text
+            });
+        }
+    };
 
     // AI Batch Summary Handler
     const [isSummarizing, setIsSummarizing] = React.useState(false);
