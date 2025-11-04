@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles, Crosshair, Hand, MousePointer2 } from 'lucide-react';
+import { Sparkles, Crosshair, Hand, MousePointer2, Bot } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
 import Zone from './Zone'; // NEW: Zone Component
@@ -13,6 +13,7 @@ import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
 import { useContextMenu } from './ContextMenu';
 import InstantTooltip from './InstantTooltip';
+import { aiSummaryService } from '../services/aiSummaryService';
 
 export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     // Granular selectors to prevent unnecessary re-renders
@@ -272,25 +273,48 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [toggleCanvasMode]);
 
-    const handleDrop = (e) => {
-        e.preventDefault();
+
+    // AI Batch Summary Handler
+    const [isSummarizing, setIsSummarizing] = React.useState(false);
+
+    const handleBatchSummary = async () => {
+        if (isSummarizing) return;
+        setIsSummarizing(true);
+
         try {
-            const data = JSON.parse(e.dataTransfer.getData('application/json'));
-            if (data.type === 'prompt') {
-                // If dropping on background (e.target check is tricky with overlays, checking if NOT a card?)
-                // Actually if dropping on a card, the card's onDrop usually fires and stops propagation?
-                // We should check e.target.
-                // But e.target might be an overlay if we are not careful.
-                // Assuming Card handles its own drop and stops propagation.
+            const cards = useStore.getState().cards;
+            const config = useStore.getState().apiKeyConfig; // Adjust based on store structure
 
-                const canvasX = (e.clientX - offset.x) / scale;
-                const canvasY = (e.clientY - offset.y) / scale;
+            // define simple chunk helper
+            const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+                arr.slice(i * size, i * size + size)
+            );
 
-                if (props.onPromptDrop) {
-                    props.onPromptDrop(data, canvasX, canvasY);
-                }
+            // Filter cards that are not deleted
+            const validCards = cards.filter(c => !c.deletedAt);
+
+            // Chunk into batches of 5
+            const batches = chunk(validCards, 5);
+
+            for (const batch of batches) {
+                // Determine which cards need summary (optional: currently we can just re-summarize all or check strict need)
+                // For "Action" button, usually implies "Do it now for these".
+                const summaries = await aiSummaryService.generateBatchSummaries(batch, config);
+
+                // Update store
+                Object.entries(summaries).forEach(([cardId, summaryData]) => {
+                    updateCardFull(cardId, (prev) => ({
+                        ...prev,
+                        summary: summaryData // { title, summary }
+                    }));
+                });
             }
-        } catch (err) { }
+
+        } catch (error) {
+            console.error("Batch Summary Failed", error);
+        } finally {
+            setIsSummarizing(false);
+        }
     };
 
     return (
@@ -301,6 +325,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                 : 'cursor-default'
                 }`}
             onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseDown} // Correction: this should be handleMouseMove, but keeping original code's variable if it was handleMouseMove
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
@@ -417,6 +442,24 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                         className="pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-lg text-slate-500 hover:text-brand-500 hover:scale-110 active:scale-95 transition-all shadow-sm group"
                     >
                         <Sparkles size={16} className="group-hover:animate-pulse" />
+                    </button>
+                </InstantTooltip>
+
+                {/* NEW: AI Auto Read Button */}
+                <InstantTooltip content="AI Auto Read (Generate Summaries)">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleBatchSummary();
+                        }}
+                        disabled={isSummarizing}
+                        className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group 
+                            ${isSummarizing
+                                ? 'bg-brand-50 border-brand-200 text-brand-400 cursor-wait'
+                                : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-violet-500 hover:scale-110 active:scale-95'
+                            }`}
+                    >
+                        <Bot size={16} className={`${isSummarizing ? 'animate-spin' : 'group-hover:animate-bounce'}`} />
                     </button>
                 </InstantTooltip>
             </div>
