@@ -310,6 +310,13 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                 });
             }
 
+            // Simple Success Toast (can be replaced by formal Toast component if available)
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium z-[9999] animate-fade-in-up';
+            toast.textContent = `✨ Analyzed ${validCards.length} cards`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+
         } catch (error) {
             console.error("Batch Summary Failed", error);
         } finally {
@@ -325,7 +332,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                 : 'cursor-default'
                 }`}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseDown} // Correction: this should be handleMouseMove, but keeping original code's variable if it was handleMouseMove
+            onMouseMove={handleMouseMove} // Correction: this should be handleMouseMove, but keeping original code's variable if it was handleMouseMove
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
@@ -445,21 +452,23 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                     </button>
                 </InstantTooltip>
 
-                {/* NEW: AI Auto Read Button */}
-                <InstantTooltip content="AI Auto Read (Generate Summaries)">
+                {/* NEW: AI Auto Read Button - Optimized */}
+                <InstantTooltip content="Generate AI Summaries">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             handleBatchSummary();
                         }}
                         disabled={isSummarizing}
-                        className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group 
+                        className={`pointer-events-auto p-2 backdrop-blur-md border rounded-lg transition-all shadow-sm group relative overflow-hidden
                             ${isSummarizing
                                 ? 'bg-brand-50 border-brand-200 text-brand-400 cursor-wait'
-                                : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-violet-500 hover:scale-110 active:scale-95'
+                                : 'bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-white/10 text-slate-500 hover:text-violet-500 hover:border-violet-200 hover:scale-110 active:scale-95'
                             }`}
                     >
                         <Bot size={16} className={`${isSummarizing ? 'animate-spin' : 'group-hover:animate-bounce'}`} />
+                        {/* Shimmer effect on hover */}
+                        {!isSummarizing && <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>}
                     </button>
                 </InstantTooltip>
             </div>

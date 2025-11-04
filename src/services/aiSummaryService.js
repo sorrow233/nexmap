@@ -25,26 +25,33 @@ export const aiSummaryService = {
         }).join('\n\n');
 
         const prompt = `
-You are an objective observer of a creative workspace.
-Analyze the provided user content and generate a precise, high-level summary.
+You are an expert design & engineering lead analyzing a team's workspace.
+Your goal is to distill complex cards into "Actionable Intent" & "Critical Context".
 
 INPUT CARDS:
 ${cardContexts}
 
 REQUIREMENTS:
-1. "title": A prominent, high-level keyword or phrase (e.g., "Navigation Logic", "API Debugging"). Max 4 words.
-2. "summary": Exactly 3 short, objective bullet points describing specific actions or topics.
-   - Point 1: What is the main subject?
-   - Point 2: What is the specific problem or discussion?
-   - Point 3: What is the current status or action?
-3. Tone: Clinical, precise, objective. No fluff.
-4. Output MUST be valid JSON object keyed by CARD_ID.
+1. "title": 
+   - MUST be a high-impact, 2-4 word noun phrase. 
+   - Focus on the *Intent* or *Topic* (e.g., "Auth State Logic", "API Schema Refactor", "User Journey Map").
+   - NO verbs at start if possible (e.g., use "Navigation Fix" instead of "Fixing Navigation").
+
+2. "summary": 
+   - EXACTLY 3 lines.
+   - Line 1: 🎯 CORE SUBJECT (What is this about?)
+   - Line 2: 🚧 PROBLEM/CONTEXT (What is the challenge/discussion?)
+   - Line 3: ✅ ACTION/STATUS (What is being done or decided?)
+   - Style: Telegraphic, precise, engineering/design shorthand. No "User is talking about...".
+
+3. Tone:
+   - Professional, minimal, high-signal-to-noise ratio.
 
 OUTPUT FORMAT:
 {
   "card_id_1": {
-    "title": "Navigation State",
-    "summary": "• Discussing global router configuration\n• Fixing circular dependency in Auth\n• Proposed solution using events"
+    "title": "Global State Sync",
+    "summary": "• Redux store persistence issues\n• Conflict between local vs cloud state\n• Implementing CRDT strategy"
   }
 }
 `;
