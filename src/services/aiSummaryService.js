@@ -159,23 +159,46 @@ OUTPUT FORMAT (JSON ONLY):
             if (!response) return null;
 
             let cleanResponse = response.trim();
+
+            // Step 1: Strip markdown code blocks
             if (cleanResponse.startsWith('```json')) {
                 cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
             } else if (cleanResponse.startsWith('```')) {
                 cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
             }
 
-            // Sanitize: Replace raw control characters inside JSON strings with escaped versions.
-            // This fixes "Bad control character in string literal" errors.
-            // We carefully replace unescaped newlines/tabs within string values.
+            // Step 2: Try to extract JSON object using regex if response isn't clean JSON
+            if (!cleanResponse.startsWith('{')) {
+                const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    cleanResponse = jsonMatch[0];
+                } else {
+                    console.warn('[AI Summary] No valid JSON object found in response:', cleanResponse.substring(0, 100));
+                    return null;
+                }
+            }
+
+            // Step 3: Sanitize control characters
             cleanResponse = cleanResponse
                 .replace(/[\x00-\x1f]/g, (char) => {
-                    // Replace control characters with their escaped equivalents
                     const escapes = { '\n': '\\n', '\r': '\\r', '\t': '\\t' };
                     return escapes[char] || '';
                 });
 
-            return JSON.parse(cleanResponse);
+            // Step 4: Parse and validate
+            const parsed = JSON.parse(cleanResponse);
+
+            // Validate required fields
+            if (!parsed.summary || !parsed.theme) {
+                console.warn('[AI Summary] Parsed JSON missing required fields:', parsed);
+                // Try to provide defaults if partially valid
+                return {
+                    summary: parsed.summary || 'Summary unavailable.',
+                    theme: parsed.theme || 'slate'
+                };
+            }
+
+            return parsed;
 
         } catch (error) {
             console.error('[AI Summary] Board summary generation failed:', error);
