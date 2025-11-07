@@ -56,19 +56,62 @@ export default function BoardCard({
                 `}
                 style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
 
-                {/* Image Section (Top Half) */}
+                {/* Image Section (Top Half) - WITH AI SUMMARY SUPPORT */}
                 <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-[#111]">
-                    {hasImage ? (
+                    {hasImage && !board.summary ? (
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
+                    ) : board.summary ? (
+                        /* AI Summary Text Cover for Stacked Variant */
+                        <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.02] bg-[#050505]">
+                            {/* Dynamic Ambient Background */}
+                            <div className={`absolute inset-0 opacity-40 bg-gradient-to-br ${{
+                                'blue': 'from-blue-900/40 via-slate-950 to-black',
+                                'purple': 'from-purple-900/40 via-slate-950 to-black',
+                                'emerald': 'from-emerald-900/40 via-slate-950 to-black',
+                                'orange': 'from-orange-900/40 via-slate-950 to-black',
+                                'pink': 'from-pink-900/40 via-slate-950 to-black',
+                                'slate': 'from-slate-800/40 via-slate-950 to-black',
+                            }[board.summary.theme || 'slate']}`} />
+
+                            {/* Spotlight Effect */}
+                            <div className={`absolute -top-1/2 -right-1/2 w-[200%] h-[200%] opacity-20 blur-[100px] bg-[conic-gradient(at_center,var(--tw-gradient-stops))] ${board.summary.theme === 'orange' ? 'from-orange-600 via-amber-900/20 to-transparent' :
+                                    board.summary.theme === 'emerald' ? 'from-emerald-600 via-teal-900/20 to-transparent' :
+                                        board.summary.theme === 'pink' ? 'from-pink-600 via-rose-900/20 to-transparent' :
+                                            board.summary.theme === 'purple' ? 'from-purple-600 via-violet-900/20 to-transparent' :
+                                                'from-blue-600 via-indigo-900/20 to-transparent'
+                                } animate-slow-spin-slower pointer-events-none group-hover:opacity-30 transition-opacity duration-700`} />
+
+                            {/* Noise Texture */}
+                            <div className="absolute inset-0 opacity-[0.04] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+
+                            {/* Glass Border */}
+                            <div className="absolute inset-0 ring-1 ring-white/10 rounded-xl pointer-events-none group-hover:ring-white/20 transition-all duration-500" />
+
+                            {/* Content */}
+                            <div className="relative z-10 flex flex-col h-full p-4">
+                                <p className="text-[11px] font-medium text-white/70 leading-[1.5] line-clamp-5 tracking-wide">
+                                    {board.summary.summary}
+                                </p>
+                                {/* Decorative Accent Line */}
+                                <div className={`mt-auto h-[2px] w-10 rounded-full bg-gradient-to-r opacity-80 ${board.summary.theme === 'orange' ? 'from-orange-400 to-amber-500' :
+                                        board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500' :
+                                            board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500' :
+                                                board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500' :
+                                                    'from-blue-400 to-indigo-500'
+                                    }`} />
+                            </div>
+                        </div>
                     ) : (
                         <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-50`} />
                     )}
 
-                    {/* Overlay Gradient for Text Readability or Style */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent dark:from-black/40" />
+                    {/* Overlay Gradient for Text Readability or Style (only for image cards) */}
+                    {hasImage && !board.summary && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent dark:from-black/40" />
+                    )}
 
                     {/* Quick Actions Overlay */}
                     {!isTrashView && (
