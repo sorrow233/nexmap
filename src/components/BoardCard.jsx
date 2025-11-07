@@ -44,6 +44,10 @@ export default function BoardCard({
     // Variant: Stacked (Modern Grid Item)
     if (variant === 'stacked') {
         const hasImage = board.backgroundImage || board.thumbnail;
+        if (board.summary) console.log('[BoardCard] Rendering with Summary:', board.name, board.summary);
+        // Debug usage: check if summary is present
+        // if (board.id === '1767809057777') console.log('[BoardCard] Rendering:', board.id, 'HasSummary:', !!board.summary, board.summary);
+
         return (
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
