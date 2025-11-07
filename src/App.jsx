@@ -335,7 +335,7 @@ function AppContent() {
                     {/* Admin (Hidden) */}
                     <Route path="/admin" element={<AdminPage />} />
 
-                    <Route path="/gallery" element={
+                    <Route path="/gallery/*" element={
                         <GalleryPage
                             boardsList={boardsList}
                             onCreateBoard={handleCreateBoard}

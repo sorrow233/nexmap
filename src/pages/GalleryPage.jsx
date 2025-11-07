@@ -9,7 +9,7 @@ import StatisticsView from '../components/StatisticsView';
 import SEO from '../components/SEO';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import InitialCreditsModal from '../components/InitialCreditsModal';
 import { useStore } from '../store/useStore';
@@ -35,11 +35,11 @@ export default function GalleryPage({
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
-    const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash' | 'favorites' | 'feedback'
     const [paymentSuccessOpen, setPaymentSuccessOpen] = useState(false);
     const [orderDetails, setOrderDetails] = useState(null);
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const isPro = useStore(state => state.isPro);
     const refreshCredits = useStore(state => state.fetchSystemCredits);
@@ -118,12 +118,33 @@ export default function GalleryPage({
 
     const activeBoards = validBoardsList.filter(b => !b.deletedAt);
     const trashBoards = validBoardsList.filter(b => b.deletedAt);
-    const displayBoards = viewMode === 'active' ? activeBoards : trashBoards;
+
+    // Helper to determine active tab for styling
+    // If path is exactly /gallery or /, active is 'active'
+    // If path includes /gallery/favorites, active is 'favorites' etc.
+    const getActiveTab = () => {
+        const path = location.pathname;
+        if (path.includes('/favorites')) return 'favorites';
+        if (path.includes('/statistics')) return 'statistics';
+        if (path.includes('/trash')) return 'trash';
+        if (path.includes('/feedback')) return 'feedback';
+        return 'active';
+    };
+
+    const activeTab = getActiveTab();
 
     // Show welcome screen for first-time visitors
     if (showWelcome) {
         return <InitialCreditsModal isOpen={true} onClose={handleDismissWelcome} />;
     }
+
+    const navItems = [
+        { id: 'active', label: t.gallery.gallery, path: '/gallery', end: true },
+        { id: 'favorites', label: t.gallery.favorites, icon: Star, path: '/gallery/favorites' },
+        { id: 'statistics', label: t.stats?.title || "Data", icon: BarChart3, path: '/gallery/statistics' },
+        { id: 'trash', label: t.gallery.trash, path: '/gallery/trash' },
+        { id: 'feedback', label: t.feedback?.title || 'Feedback', icon: MessageSquare, path: '/gallery/feedback' }
+    ];
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white font-inter-tight selection:bg-indigo-500/30">
@@ -159,7 +180,7 @@ export default function GalleryPage({
                     <div className="flex items-center gap-8">
                         <div
                             className="text-2xl font-bold tracking-tight cursor-pointer flex items-center gap-2 group"
-                            onClick={() => setViewMode('active')}
+                            onClick={() => navigate('/gallery')}
                         >
                             <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black transform transition-transform group-hover:rotate-12">
                                 <Sparkles size={16} fill="currentColor" />
@@ -169,27 +190,22 @@ export default function GalleryPage({
 
                         {/* Navigation Pills */}
                         <div className="hidden md:flex bg-slate-200/50 dark:bg-white/5 p-1 rounded-full border border-slate-200 dark:border-white/10">
-                            {[
-                                { id: 'active', label: t.gallery.gallery },
-                                { id: 'favorites', label: t.gallery.favorites, icon: Star },
-                                { id: 'statistics', label: t.stats?.title || "Data", icon: BarChart3 },
-                                { id: 'trash', label: t.gallery.trash },
-                                { id: 'feedback', label: t.feedback?.title || 'Feedback', icon: MessageSquare }
-                            ].map(tab => (
-                                <button
+                            {navItems.map(tab => (
+                                <NavLink
                                     key={tab.id}
-                                    onClick={() => setViewMode(tab.id)}
+                                    to={tab.path}
+                                    end={tab.end}
                                     aria-label={tab.label}
-                                    className={`
+                                    className={({ isActive }) => `
                                         px-5 py-2 rounded-full text-sm font-semibold transition-all relative overflow-hidden flex items-center gap-2
-                                        ${viewMode === tab.id
+                                        ${isActive
                                             ? 'text-white bg-black dark:bg-white dark:text-black shadow-lg'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'}
                                     `}
                                 >
-                                    {tab.icon && <tab.icon size={14} className={viewMode === tab.id ? (tab.id === 'favorites' ? 'fill-current' : '') : ''} />}
+                                    {tab.icon && <tab.icon size={14} className={activeTab === tab.id ? (tab.id === 'favorites' ? 'fill-current' : '') : ''} />}
                                     {tab.label}
-                                </button>
+                                </NavLink>
                             ))}
                         </div>
                     </div>
@@ -201,16 +217,7 @@ export default function GalleryPage({
                             {/* Mobile tabs would go here if needed, keeping it simple for now */}
                         </div>
 
-                        {/* Usage Stats Button REMOVED (integrated into main tabs) */}
-                        {/* <button
-                            onClick={() => setIsStatsOpen(true)}
-                            className="hidden md:flex p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors text-slate-500 dark:text-slate-400"
-                            title={t.gallery?.stats || "Statistics"}
-                        >
-                            <BarChart3 size={20} />
-                        </button> */}
-
-                        {viewMode === 'active' && (
+                        {activeTab === 'active' && (
                             <button
                                 onClick={() => onCreateBoard("New Board")}
                                 className="hidden md:flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold shadow-lg hover:shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5"
@@ -268,49 +275,56 @@ export default function GalleryPage({
 
                 {/* Mobile Tab Bar (Visible only on mobile) */}
                 <div className="md:hidden flex overflow-x-auto gap-2 mb-8 no-scrollbar pb-2">
-                    {[
-                        { id: 'active', label: t.gallery.gallery },
-                        { id: 'favorites', label: t.gallery.favorites },
-                        { id: 'statistics', label: t.stats?.title || "Data" },
-                        { id: 'trash', label: t.gallery.trash },
-                        { id: 'feedback', label: t.feedback?.title || 'Feedback' }
-                    ].map(tab => (
-                        <button
+                    {navItems.map(tab => (
+                        <NavLink
                             key={tab.id}
-                            onClick={() => setViewMode(tab.id)}
-                            className={`
+                            to={tab.path}
+                            end={tab.end}
+                            className={({ isActive }) => `
                                 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border
-                                ${viewMode === tab.id
+                                ${isActive
                                     ? 'bg-black dark:bg-white text-white dark:text-black border-transparent'
                                     : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10'}
                             `}
                         >
                             {tab.label}
-                        </button>
+                        </NavLink>
                     ))}
                 </div>
 
                 {/* Main Content Area */}
                 <main className="animate-fade-in-up duration-500 delay-100 min-h-[60vh] pb-32">
-                    {viewMode === 'feedback' ? (
-                        <FeedbackView user={user} onLogin={onLogin} />
-                    ) : viewMode === 'favorites' ? (
-                        <FavoritesGallery />
-                    ) : viewMode === 'statistics' ? (
-                        <StatisticsView boardsList={boardsList} user={user} />
-                    ) : (
-                        <BoardGallery
-                            boards={displayBoards}
-                            onCreateBoard={onCreateBoard}
-                            onSelectBoard={viewMode === 'active' ? onSelectBoard : () => { }}
-                            onDeleteBoard={onDeleteBoard}
-                            onRestoreBoard={onRestoreBoard}
-                            onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
-                            onUpdateBoardMetadata={onUpdateBoardMetadata}
-                            isTrashView={viewMode === 'trash'}
-                            onImportGuide={handleCreateGuide}
-                        />
-                    )}
+                    <Routes>
+                        <Route index element={
+                            <BoardGallery
+                                boards={activeBoards}
+                                onCreateBoard={onCreateBoard}
+                                onSelectBoard={onSelectBoard}
+                                onDeleteBoard={onDeleteBoard}
+                                onRestoreBoard={onRestoreBoard}
+                                onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
+                                onUpdateBoardMetadata={onUpdateBoardMetadata}
+                                isTrashView={false}
+                                onImportGuide={handleCreateGuide}
+                            />
+                        } />
+                        <Route path="favorites" element={<FavoritesGallery />} />
+                        <Route path="statistics" element={<StatisticsView boardsList={boardsList} user={user} />} />
+                        <Route path="trash" element={
+                            <BoardGallery
+                                boards={trashBoards}
+                                onCreateBoard={onCreateBoard}
+                                onSelectBoard={() => { }} // Cannot select trash items
+                                onDeleteBoard={onDeleteBoard}
+                                onRestoreBoard={onRestoreBoard}
+                                onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
+                                onUpdateBoardMetadata={onUpdateBoardMetadata}
+                                isTrashView={true}
+                                onImportGuide={handleCreateGuide}
+                            />
+                        } />
+                        <Route path="feedback" element={<FeedbackView user={user} onLogin={onLogin} />} />
+                    </Routes>
                 </main>
             </div>
 
