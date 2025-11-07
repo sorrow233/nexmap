@@ -139,8 +139,8 @@ export default function BoardCard({
                 group relative h-[180px] w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] transition-all duration-300 hover:shadow-xl hover:scale-[1.02]
             `}
         >
-            {/* Background */}
-            {board.backgroundImage || board.thumbnail ? (
+            {/* Background Image OR Thumbnail (but only if no AI summary exists, as summary > thumbnail) */}
+            {board.backgroundImage || (board.thumbnail && !board.summary) ? (
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
@@ -151,21 +151,21 @@ export default function BoardCard({
 
                     {/* 1. Dynamic Ambient Background */}
                     <div className={`absolute inset-0 opacity-40 bg-gradient-to-br ${{
-                            'blue': 'from-blue-900/40 via-slate-950 to-black',
-                            'purple': 'from-purple-900/40 via-slate-950 to-black',
-                            'emerald': 'from-emerald-900/40 via-slate-950 to-black',
-                            'orange': 'from-orange-900/40 via-slate-950 to-black',
-                            'pink': 'from-pink-900/40 via-slate-950 to-black',
-                            'slate': 'from-slate-800/40 via-slate-950 to-black',
-                        }[board.summary.theme || 'slate']
+                        'blue': 'from-blue-900/40 via-slate-950 to-black',
+                        'purple': 'from-purple-900/40 via-slate-950 to-black',
+                        'emerald': 'from-emerald-900/40 via-slate-950 to-black',
+                        'orange': 'from-orange-900/40 via-slate-950 to-black',
+                        'pink': 'from-pink-900/40 via-slate-950 to-black',
+                        'slate': 'from-slate-800/40 via-slate-950 to-black',
+                    }[board.summary.theme || 'slate']
                         }`} />
 
                     {/* 2. Spotlight / Northern Lights Effect */}
                     <div className={`absolute -top-1/2 -right-1/2 w-[200%] h-[200%] opacity-20 blur-[100px] bg-[conic-gradient(at_center,var(--tw-gradient-stops))] ${board.summary.theme === 'orange' ? 'from-orange-600 via-amber-900/20 to-transparent' :
-                            board.summary.theme === 'emerald' ? 'from-emerald-600 via-teal-900/20 to-transparent' :
-                                board.summary.theme === 'pink' ? 'from-pink-600 via-rose-900/20 to-transparent' :
-                                    board.summary.theme === 'purple' ? 'from-purple-600 via-violet-900/20 to-transparent' :
-                                        'from-blue-600 via-indigo-900/20 to-transparent'
+                        board.summary.theme === 'emerald' ? 'from-emerald-600 via-teal-900/20 to-transparent' :
+                            board.summary.theme === 'pink' ? 'from-pink-600 via-rose-900/20 to-transparent' :
+                                board.summary.theme === 'purple' ? 'from-purple-600 via-violet-900/20 to-transparent' :
+                                    'from-blue-600 via-indigo-900/20 to-transparent'
                         } animate-slow-spin-slower pointer-events-none group-hover:opacity-30 transition-opacity duration-700`} />
 
                     {/* 3. Noise Texture */}
@@ -174,10 +174,10 @@ export default function BoardCard({
                     {/* 4. Glass Surface & Border */}
                     <div className="absolute inset-0 ring-1 ring-white/10 rounded-2xl pointer-events-none group-hover:ring-white/20 transition-all duration-500" />
                     <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 box-shadow-inner ${board.summary.theme === 'orange' ? 'shadow-[inset_0_0_80px_rgba(249,115,22,0.1)]' :
-                            board.summary.theme === 'emerald' ? 'shadow-[inset_0_0_80px_rgba(16,185,129,0.1)]' :
-                                board.summary.theme === 'pink' ? 'shadow-[inset_0_0_80px_rgba(236,72,153,0.1)]' :
-                                    board.summary.theme === 'purple' ? 'shadow-[inset_0_0_80px_rgba(168,85,247,0.1)]' :
-                                        'shadow-[inset_0_0_80px_rgba(59,130,246,0.1)]'
+                        board.summary.theme === 'emerald' ? 'shadow-[inset_0_0_80px_rgba(16,185,129,0.1)]' :
+                            board.summary.theme === 'pink' ? 'shadow-[inset_0_0_80px_rgba(236,72,153,0.1)]' :
+                                board.summary.theme === 'purple' ? 'shadow-[inset_0_0_80px_rgba(168,85,247,0.1)]' :
+                                    'shadow-[inset_0_0_80px_rgba(59,130,246,0.1)]'
                         }`} />
 
                     {/* 5. Content Layout */}
@@ -190,10 +190,10 @@ export default function BoardCard({
                             </h3>
                             {/* Decorative Accent Line */}
                             <div className={`mt-4 h-[2px] w-12 rounded-full bg-gradient-to-r opacity-80 ${board.summary.theme === 'orange' ? 'from-orange-400 to-amber-500 shadow-[0_0_10px_rgba(251,146,60,0.5)]' :
-                                    board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(52,211,153,0.5)]' :
-                                        board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500 shadow-[0_0_10px_rgba(244,114,182,0.5)]' :
-                                            board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500 shadow-[0_0_10px_rgba(192,132,252,0.5)]' :
-                                                'from-blue-400 to-indigo-500 shadow-[0_0_10px_rgba(96,165,250,0.5)]'
+                                board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(52,211,153,0.5)]' :
+                                    board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500 shadow-[0_0_10px_rgba(244,114,182,0.5)]' :
+                                        board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500 shadow-[0_0_10px_rgba(192,132,252,0.5)]' :
+                                            'from-blue-400 to-indigo-500 shadow-[0_0_10px_rgba(96,165,250,0.5)]'
                                 }`} />
                         </div>
 
