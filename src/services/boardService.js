@@ -18,8 +18,7 @@ export const getRawBoardsList = () => {
     const list = localStorage.getItem(BOARDS_LIST_KEY);
     try {
         const parsed = list ? JSON.parse(list) : [];
-        // CRITICAL DEFENSIVE CODING: Filter out corrupt data at source
-        return Array.isArray(parsed) ? parsed.filter(b => b && b.id && b.name) : [];
+        return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
         console.error("Failed to parse boards list", e);
         return [];

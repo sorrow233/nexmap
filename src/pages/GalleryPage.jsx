@@ -58,8 +58,8 @@ export default function GalleryPage({
         onSelectBoard(newBoard.id);
     };
 
-    // DEFENSIVE: Ensure boardsList contains only valid objects
-    const validBoardsList = Array.isArray(boardsList) ? boardsList.filter(b => b && b.id && b.name) : [];
+    // DEFENSIVE: Ensure boardsList is an array
+    const validBoardsList = Array.isArray(boardsList) ? boardsList : [];
 
     const activeBoards = validBoardsList.filter(b => !b.deletedAt);
     const trashBoards = validBoardsList.filter(b => b.deletedAt);

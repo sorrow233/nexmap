@@ -20,8 +20,8 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         else setGreeting('Good evening');
     }, []);
 
-    // DEFENSIVE: Filter out invalid boards (no id or name)
-    const validBoards = boards.filter(b => b && b.id && b.name);
+    // Use boards directly
+    const validBoards = boards;
 
     const recentBoards = [...validBoards]
         .filter(b => b.lastAccessedAt)
