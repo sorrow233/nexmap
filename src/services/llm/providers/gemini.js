@@ -1,5 +1,5 @@
 import { LLMProvider } from './base';
-import { resolveRemoteImages, getAuthMethod } from '../utils';
+import { resolveAllImages, getAuthMethod } from '../utils';
 
 // Errors that are likely transient and worth retrying
 const RETRYABLE_ERRORS = [
@@ -72,7 +72,7 @@ export class GeminiProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const cleanModel = (baseUrl && baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
-        const resolvedMessages = await resolveRemoteImages(messages);
+        const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
 
         const requestBody = {
@@ -181,7 +181,7 @@ export class GeminiProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const cleanModel = (baseUrl && baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
-        const resolvedMessages = await resolveRemoteImages(messages);
+        const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
 
         const requestBody = {
@@ -215,7 +215,7 @@ export class GeminiProvider extends LLMProvider {
         }
 
         let retries = 2; // Allow 2 retries (3 total attempts)
-        let delay = 1500;
+        let delay = 3000; // Start with 3 seconds, will double each retry
 
         while (retries >= 0) {
             try {
@@ -385,18 +385,18 @@ export class GeminiProvider extends LLMProvider {
 
                 // Handle retryable errors (including our custom {retryable: true} objects)
                 if ((e.retryable || isRetryableError(e.message)) && retries > 0) {
-                    console.warn(`[Gemini] Retryable error: ${e.message}, retrying in ${delay}ms... (${retries} left)`);
+                    console.warn(`[Gemini] Retryable error: ${e.message}, retrying in ${delay / 1000}s... (${retries} left)`);
                     await new Promise(r => setTimeout(r, delay));
                     retries--;
-                    delay *= 1.5;
+                    delay *= 2; // Double the delay each retry
                     continue;
                 }
 
                 if (retries > 0) {
-                    console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay}ms... (${retries} left)`);
+                    console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay / 1000}s... (${retries} left)`);
                     await new Promise(r => setTimeout(r, delay));
                     retries--;
-                    delay *= 1.5;
+                    delay *= 2; // Double the delay each retry
                     continue;
                 }
 

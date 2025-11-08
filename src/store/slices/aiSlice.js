@@ -272,8 +272,36 @@ export const createAISlice = (set, get) => {
                     // Reload credits state
                     get().loadSystemCredits?.();
                 } else {
-                    // Append error message to the card content so user sees it
-                    updateCardContent(cardId, `\n\n[System Error: ${e.message || 'Generation failed'}]`);
+                    // Provide user-friendly error messages based on error type
+                    const errorMsg = e.message || 'Generation failed';
+                    let userMessage;
+
+                    if (errorMsg.toLowerCase().includes('upstream') ||
+                        errorMsg.toLowerCase().includes('unavailable') ||
+                        errorMsg.toLowerCase().includes('service')) {
+                        // Service unavailable - external API issue
+                        userMessage = `\n\n⚠️ **AI服务暂时不可用 / AI Service Temporarily Unavailable**\n\n` +
+                            `服务器繁忙或暂时离线，请稍后重试。\n` +
+                            `The AI service is busy or temporarily offline. Please try again in a moment.\n\n` +
+                            `💡 点击重新生成按钮再试一次 / Click regenerate to try again`;
+                    } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+                        // Rate limited
+                        userMessage = `\n\n⚠️ **请求过于频繁 / Rate Limited**\n\n` +
+                            `请等待几秒后再试。\n` +
+                            `Please wait a few seconds before trying again.`;
+                    } else if (errorMsg.includes('timeout')) {
+                        // Timeout
+                        userMessage = `\n\n⚠️ **请求超时 / Request Timeout**\n\n` +
+                            `服务器响应时间过长，请重试。\n` +
+                            `The server took too long to respond. Please try again.`;
+                    } else {
+                        // Generic error with technical details
+                        userMessage = `\n\n⚠️ **生成失败 / Generation Failed**\n\n` +
+                            `${errorMsg}\n\n` +
+                            `💡 请重试，如果问题持续请检查API设置`;
+                    }
+
+                    updateCardContent(cardId, userMessage);
                 }
             } finally {
                 setCardGenerating(cardId, false);
