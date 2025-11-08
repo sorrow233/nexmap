@@ -92,8 +92,14 @@ export default function useBoardBackground() {
             console.log('[Background Gen] Visual Concept:', visualConcept);
 
             if (summaryResult && onUpdateBoardMetadata) {
-                await onUpdateBoardMetadata(boardId, { summary: summaryResult });
-                toast.success("Board Summary Updated!");
+                // If summaryOnly is requested, we should also CLEAR the backgroundImage to ensure the text card shows
+                const updateData = { summary: summaryResult };
+                if (options.summaryOnly) {
+                    updateData.backgroundImage = null; // Clear image to show text card
+                    updateData.thumbnail = null; // Clear thumbnail too just in case
+                }
+                await onUpdateBoardMetadata(boardId, updateData);
+                toast.success(options.summaryOnly ? "Board Text Card Updated!" : "Board Summary Updated!");
             }
 
             // If summaryOnly is requested, stop here
