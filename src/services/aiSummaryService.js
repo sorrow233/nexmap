@@ -114,32 +114,19 @@ OUTPUT FORMAT:
         }).join('\n---\n');
 
         const prompt = `
-You are an expert design & engineering lead analyzing a team's workspace content.
-Your goal is to distill the *intent* of this board into a concise, high-signal summary.
-
-BOARD CONTEXT:
-Name: ${boardData.name}
-Cards Content:
+ANALYZE THIS BOARD CONTENT:
 ${context}
 
-TASK:
-1.  **Summary**: Write a powerful 2-sentence summary.
-    - Sentence 1: **Core Subject** (What is the main topic/project?)
-    - Sentence 2: **Current Action/State** (What is being discussed, solved, or planned?)
-    - Style: Professional, telegraphic, engineering shorthand. No "This board is about...".
-    
-2.  **Theme**: Select the most appropriate visual theme based on the content's mood:
-    - "blue": Technical, Architecture, Documentation, Systems
-    - "purple": Creative, Brainstorming, Design, Vision
-    - "emerald": Growth, Strategy, Finance, Results
-    - "orange": Urgent, Bugs, Critical Path, Warning
-    - "pink": Social, Community, Events, Playful
-    - "slate": General, Archive, Miscellaneous, Drafts
+TASK: Create a "Content Cover" for this board.
+1. "title": A very short, punchy, inspiring title (max 6 words). English or the language of the content.
+2. "summary": A 2-sentence summary of the core ideas or questions being explored.
+3. "theme": Pick a color theme name (one of: "blue", "purple", "emerald", "orange", "pink", "slate").
 
-OUTPUT FORMAT (JSON ONLY):
+OUTPUT JSON:
 {
-  "summary": "Redux state management refactor for V2.\nAddressing race conditions in user authentication flow.",
-  "theme": "color_name"
+    "title": "...",
+    "summary": "...",
+    "theme": "..."
 }
 `;
 
@@ -158,52 +145,14 @@ OUTPUT FORMAT (JSON ONLY):
 
             if (!response) return null;
 
-            console.log('[AI Summary] Raw AI response (first 300 chars):', response.substring(0, 300));
-
             let cleanResponse = response.trim();
-
-            // Step 1: Strip markdown code blocks
             if (cleanResponse.startsWith('```json')) {
                 cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
             } else if (cleanResponse.startsWith('```')) {
                 cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
             }
 
-            // Step 2: Try to extract JSON object using regex if response isn't clean JSON
-            if (!cleanResponse.startsWith('{')) {
-                const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    cleanResponse = jsonMatch[0];
-                } else {
-                    console.warn('[AI Summary] No valid JSON object found in response:', cleanResponse.substring(0, 100));
-                    return null;
-                }
-            }
-
-            // Step 3: Normalize whitespace and control characters.
-            // Replace newlines, returns, and tabs with a single space.
-            // This safely handles:
-            // 1. Structural formatting (newlines between tokens become spaces -> valid JSON)
-            // 2. Unescaped control chars in strings (newlines become spaces -> valid JSON)
-            // Correctly escaped literals (e.g. "\\n") are untouched because regex targets control bytes.
-            cleanResponse = cleanResponse.replace(/[\n\r\t]/g, ' ');
-
-            console.log('[AI Summary] Attempting to parse (first 200 chars):', cleanResponse.substring(0, 200));
-
-            // Step 4: Parse and validate
-            const parsed = JSON.parse(cleanResponse);
-
-            // Validate required fields
-            if (!parsed.summary || !parsed.theme) {
-                console.warn('[AI Summary] Parsed JSON missing required fields:', parsed);
-                // Try to provide defaults if partially valid
-                return {
-                    summary: parsed.summary || 'Summary unavailable.',
-                    theme: parsed.theme || 'slate'
-                };
-            }
-
-            return parsed;
+            return JSON.parse(cleanResponse);
 
         } catch (error) {
             console.error('[AI Summary] Board summary generation failed:', error);

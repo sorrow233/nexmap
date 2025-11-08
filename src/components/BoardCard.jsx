@@ -1,6 +1,5 @@
 import React from 'react';
 import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal } from 'lucide-react';
-import SummaryCard from './SummaryCard';
 
 export default function BoardCard({
     board,
@@ -45,10 +44,6 @@ export default function BoardCard({
     // Variant: Stacked (Modern Grid Item)
     if (variant === 'stacked') {
         const hasImage = board.backgroundImage || board.thumbnail;
-        if (board.summary) console.log('[BoardCard] Rendering with Summary:', board.name, board.summary);
-        // Debug usage: check if summary is present
-        // if (board.id === '1767809057777') console.log('[BoardCard] Rendering:', board.id, 'HasSummary:', !!board.summary, board.summary);
-
         return (
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
@@ -63,24 +58,17 @@ export default function BoardCard({
 
                 {/* Image Section (Top Half) */}
                 <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-[#111]">
-                    {/* Priority 1: AI Summary */}
-                    {board.summary ? (
-                        <SummaryCard summary={board.summary} />
-                    ) : hasImage ? (
-                        /* Priority 2: Background Image or Thumbnail */
+                    {hasImage ? (
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : (
-                        /* Priority 3: Random Gradient Fallback */
                         <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-50`} />
                     )}
 
-                    {/* Overlay Gradient for Text Readability or Style (only for image cards) */}
-                    {hasImage && !board.summary && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent dark:from-black/40" />
-                    )}
+                    {/* Overlay Gradient for Text Readability or Style */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent dark:from-black/40" />
 
                     {/* Quick Actions Overlay */}
                     {!isTrashView && (
@@ -151,80 +139,35 @@ export default function BoardCard({
                 group relative h-[180px] w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] transition-all duration-300 hover:shadow-xl hover:scale-[1.02]
             `}
         >
-            {/* Background Image OR Thumbnail (but only if no AI summary exists, as summary > thumbnail) */}
-            {board.backgroundImage || (board.thumbnail && !board.summary) ? (
+            {/* Background */}
+            {board.backgroundImage || board.thumbnail ? (
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                 />
             ) : board.summary ? (
-                /* AI Summary Text Cover - Simplified & Clean */
-                <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.02] bg-[#1a1a1a]">
-                    {/* Simple Ambient Background based on Theme */}
-                    <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${{
-                        'blue': 'from-blue-600 via-transparent to-black',
-                        'purple': 'from-purple-600 via-transparent to-black',
-                        'emerald': 'from-emerald-600 via-transparent to-black',
-                        'orange': 'from-orange-600 via-transparent to-black',
-                        'pink': 'from-pink-600 via-transparent to-black',
-                        'slate': 'from-slate-600 via-transparent to-black',
-                    }[board.summary.theme || 'slate']}`} />
+                // AI Text Cover Variant
+                <div className={`absolute inset-0 p-5 flex flex-col justify-between transition-transform duration-700 group-hover:scale-105 bg-slate-900 dark:bg-[#111]`}>
+                    {/* Decorative Background Elements */}
+                    <div className={`absolute top-0 right-0 w-32 h-32 bg-${board.summary.theme || 'indigo'}-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none`} />
+                    <div className={`absolute bottom-0 left-0 w-24 h-24 bg-${board.summary.theme || 'purple'}-500/10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none`} />
 
-                    {/* Content Container - Clean Layout */}
-                    <div className="relative z-10 flex flex-col h-full p-5">
-                        {/* Header: Title */}
-                        <div className="mb-3">
-                            <h3 className="text-xl font-bold text-white/90 leading-tight font-inter-tight line-clamp-2">
-                                {board.name}
+                    {/* Main Content */}
+                    <div className="relative z-10 flex flex-col gap-3 h-full">
+                        <div className="flex-1">
+                            <h3 className={`
+                                text-2xl font-bold leading-tight tracking-tight mb-2 font-inter-tight
+                                text-transparent bg-clip-text bg-gradient-to-br 
+                                ${board.summary.theme === 'orange' ? 'from-orange-100 to-amber-200' :
+                                    board.summary.theme === 'emerald' ? 'from-emerald-100 to-teal-200' :
+                                        board.summary.theme === 'pink' ? 'from-pink-100 to-rose-200' :
+                                            'from-white to-slate-300'}
+                            `}>
+                                {board.summary.title || board.name}
                             </h3>
-                            {/* Minimal Accent Line */}
-                            <div className={`mt-3 h-1 w-8 rounded-full opacity-80 ${{
-                                'blue': 'bg-blue-500',
-                                'purple': 'bg-purple-500',
-                                'emerald': 'bg-emerald-500',
-                                'orange': 'bg-orange-500',
-                                'pink': 'bg-pink-500',
-                                'slate': 'bg-slate-500',
-                            }[board.summary.theme || 'slate']}`} />
-                        </div>
-
-                        {/* Body: AI Summary */}
-                        <p className="text-xs font-medium text-white/50 leading-relaxed line-clamp-4">
-                            {board.summary.summary}
-                        </p>
-
-                        {/* Footer: Meta & Actions */}
-                        <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">
-                                    {board.cardCount || 0} ITEMS
-                                </span>
-                            </div>
-
-                            {/* Quick Actions */}
-                            {!isTrashView && (
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    {(board.cardCount || 0) >= 10 && (
-                                        <button
-                                            onClick={(e) => handleImageButtonClick(e, board.id)}
-                                            disabled={generatingBoardId === board.id}
-                                            title="Generate Image Background"
-                                            className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all"
-                                        >
-                                            {generatingBoardId === board.id ? <Loader2 size={12} className="animate-spin" /> : <ImageIcon size={12} />}
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(board.id);
-                                        }}
-                                        className="w-7 h-7 rounded-md bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 flex items-center justify-center transition-all"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
-                            )}
+                            <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 font-medium">
+                                {board.summary.summary}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -232,31 +175,27 @@ export default function BoardCard({
                 <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-30`} />
             )}
 
-            {/* Gradient Overlay - Only for Image or Gradient cards */}
+            {/* Gradient Overlay - Only for Image or Gradient cards, not Text Cards which have their own bg */}
             {(!board.summary) && (
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             )}
 
-            {/* Content (Title/Stats) - STANDARD footer for non-summary cards */}
-            {(!board.summary) && (
-                <div className={`absolute inset-x-0 bottom-0 p-4`}>
-                    <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
-                        {board.name}
-                    </h3>
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                        <span>•</span>
-                        <span>{board.cardCount || 0} items</span>
-                    </div>
+            {/* Content (Title/Stats) - Hide standard title if we have a summary title */}
+            <div className={`absolute inset-x-0 bottom-0 p-4 ${board.summary ? 'opacity-0' : ''}`}>
+                <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
+                    {board.name}
+                </h3>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
+                    <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                    <span>•</span>
+                    <span>{board.cardCount || 0} items</span>
                 </div>
-            )}
+            </div>
 
-            {/* Icon Overlay Top Right - Standard arrow for non-summary cards */}
-            {(!board.summary) && (
-                <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    <ArrowRight size={14} />
-                </div>
-            )}
+            {/* Icon Overlay Top Right */}
+            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <ArrowRight size={14} />
+            </div>
         </div>
     );
 }

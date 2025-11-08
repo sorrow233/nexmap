@@ -60,8 +60,7 @@ export const createBoard = async (name) => {
 
 // Update board metadata (name, etc.) in localStorage
 export const updateBoardMetadata = (id, metadata) => {
-    // debugLog.storage(`Updating metadata for board: ${id}`, metadata);
-    console.log('[boardService] updateBoardMetadata:', id, metadata);
+    debugLog.storage(`Updating metadata for board: ${id}`, metadata);
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
