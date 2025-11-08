@@ -158,6 +158,7 @@ export default function ChatView({
 
         const currentInput = input;
         const currentImages = [...images];
+        console.log('[ChatView] onSendClick - clearing', images.length, 'images');
         setInput(''); // Immediate UI clear
         clearImages();
 
