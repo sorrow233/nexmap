@@ -322,7 +322,7 @@ const Card = React.memo(function Card({
                             {/* Summary Lines - Precise, Mono, Technical feel */}
                             <div className="space-y-2 py-3 pr-2 border-r-[0.5px] border-slate-300 dark:border-white/20 ">
                                 {data.summary.summary.split('\n').map((line, i) => (
-                                    <div key={i} className="text-[11px] text-slate-500 dark:text-slate-400 font-mono leading-tight flex justify-end gap-2 opacity-80">
+                                    <div key={i} className="text-[11px] text-slate-500 dark:text-slate-400 font-mono leading-tight flex justify-end gap-2 opacity-60">
                                         <span>{line.replace(/^[•-]\s*/, '')}</span>
                                         {/* <span className="text-brand-300 dark:text-brand-700 select-none">•</span> */}
                                     </div>
