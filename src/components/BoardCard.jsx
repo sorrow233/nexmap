@@ -1,5 +1,4 @@
-import React from 'react';
-import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal, Sparkles } from 'lucide-react';
+import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal } from 'lucide-react';
 
 export default function BoardCard({
     board,
@@ -79,7 +78,7 @@ export default function BoardCard({
                                 disabled={generatingBoardId === board.id}
                                 className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-black transition-colors"
                             >
-                                {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                             </button>
 
                             <button
@@ -220,7 +219,7 @@ export default function BoardCard({
                                         title="Generate Text Summary"
                                         className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all border border-transparent hover:border-white/10"
                                     >
-                                        {generatingBoardId === board.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                        {generatingBoardId === board.id ? <Loader2 size={12} className="animate-spin" /> : <ImageIcon size={12} />}
                                     </button>
 
                                     <button
