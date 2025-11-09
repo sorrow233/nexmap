@@ -24,7 +24,6 @@ const Card = React.memo(function Card({
     onUpdate,
     onCreateNote,
     onPromptDrop,
-    onPromptDrop,
     onCustomSprout, // NEW,
     onSummarize // NEW: Manual trigger for testing
 }) {
