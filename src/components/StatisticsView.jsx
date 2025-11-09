@@ -90,9 +90,9 @@ export default function StatisticsView({ boardsList, user }) {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t.stats?.title || "Data & Insights"}</h2>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t.stats?.dataInsights || "Data & Insights"}</h2>
                     <p className="text-slate-500 dark:text-slate-400 max-w-2xl">
-                        {t.stats?.description || "Analyze your creative habits and resource usage. All processed locally."}
+                        {t.stats?.description || "Analyze your creative habits and resource usage."}
                     </p>
                 </div>
 
@@ -104,7 +104,7 @@ export default function StatisticsView({ boardsList, user }) {
                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
                     >
                         <RefreshCw size={14} className={stats.loadingCredits ? "animate-spin" : ""} />
-                        <span>{stats.loadingCredits ? "Syncing..." : "Refresh Cloud Data"}</span>
+                        <span>{stats.loadingCredits ? (t.stats?.syncing || "Syncing...") : (t.stats?.refreshCloud || "Refresh Cloud Data")}</span>
                     </button>
                 )}
             </div>
@@ -128,7 +128,7 @@ export default function StatisticsView({ boardsList, user }) {
                     {/* Cards KPI */}
                     <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-fuchsia-500/30 transition-all">
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.stats?.totalCards || "Total Elements"}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.stats?.totalElements || "Total Elements"}</p>
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalCards}</h3>
                         </div>
                         <div className="p-3 bg-fuchsia-50 dark:bg-fuchsia-500/10 text-fuchsia-500 rounded-2xl group-hover:scale-110 transition-transform">
@@ -139,8 +139,8 @@ export default function StatisticsView({ boardsList, user }) {
                     {/* Activity KPI */}
                     <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between group hover:border-orange-500/30 transition-all">
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Current Streak</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.tokenStats.streakDays} <span className="text-sm font-medium text-slate-400 font-sans">days</span></h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.stats?.currentStreak || "Current Streak"}</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stats.tokenStats.streakDays} <span className="text-sm font-medium text-slate-400 font-sans">{t.stats?.days || "days"}</span></h3>
                         </div>
                         <div className="p-3 bg-orange-50 dark:bg-orange-500/10 text-orange-500 rounded-2xl group-hover:scale-110 transition-transform">
                             <Activity size={24} />
@@ -161,12 +161,12 @@ export default function StatisticsView({ boardsList, user }) {
                                     <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight">
                                         {t.stats?.dailyActivity || "Activity Volume"}
                                     </h3>
-                                    <div className="text-xs text-slate-400 font-medium">Character Generation History</div>
+                                    <div className="text-xs text-slate-400 font-medium">{t.stats?.globalChars || "Character Generation"}</div>
                                 </div>
                             </div>
                             <div className="text-right">
                                 <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmt(stats.tokenStats.todayChars)}</div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase">Today</div>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase">{t.stats?.today || "Today"}</div>
                             </div>
                         </div>
 
@@ -200,12 +200,12 @@ export default function StatisticsView({ boardsList, user }) {
                                         <Zap size={20} className="text-yellow-300" fill="currentColor" />
                                     </div>
                                     <div>
-                                        <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">{t.stats?.aiCredits || "Neural Cloud"}</span>
-                                        <span className="text-lg font-bold text-white">AI Quota</span>
+                                        <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">{t.stats?.neuralCloud || "Neural Cloud"}</span>
+                                        <span className="text-lg font-bold text-white">{t.stats?.aiQuota || "AI Quota"}</span>
                                     </div>
                                 </div>
                                 <p className="text-sm text-white/50 leading-relaxed">
-                                    Your remaining capacity for high-performance AI models and cloud synchronization.
+                                    {t.stats?.cardsSubtitle || "Your capacity for high-performance AI models and cloud synchronization."}
                                 </p>
                             </div>
 
@@ -222,13 +222,13 @@ export default function StatisticsView({ boardsList, user }) {
                                                 <div className="text-4xl font-black tracking-tight text-white drop-shadow-lg">
                                                     {stats.credits.credits?.toLocaleString()}
                                                 </div>
-                                                <div className="text-sm font-bold text-white/50 mb-1.5">credits left</div>
+                                                <div className="text-sm font-bold text-white/50 mb-1.5">{t.stats?.creditsRemaining || "credits left"}</div>
                                             </div>
 
                                             <div className="space-y-1.5">
                                                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/40">
-                                                    <span>Usage</span>
-                                                    <span>{Math.round((stats.credits.credits / stats.credits.initialCredits) * 100)}% Remaining</span>
+                                                    <span>{t.stats?.creditsUsed || "Used"}</span>
+                                                    <span>{Math.round((stats.credits.credits / stats.credits.initialCredits) * 100)}% {t.stats?.creditsRemaining || "Left"}</span>
                                                 </div>
                                                 {/* Modern Progress Bar */}
                                                 <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden backdrop-blur-md ring-1 ring-white/10 p-0.5">
@@ -243,14 +243,14 @@ export default function StatisticsView({ boardsList, user }) {
                                         </div>
                                     ) : (
                                         <div className="text-sm text-white/50 bg-white/5 p-4 rounded-xl border border-white/5">
-                                            Sync status unknown. <br />
-                                            <span className="text-xs opacity-70">Click refresh to check quota.</span>
+                                            {t.stats?.syncUnknown || "Sync status unknown"}. <br />
+                                            <span className="text-xs opacity-70">{t.stats?.clickToRefresh || "Click refresh to check quota."}</span>
                                         </div>
                                     )
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-6 bg-white/5 rounded-2xl border border-white/5 border-dashed">
-                                        <span className="text-sm font-medium text-white/60 mb-2">Guest Mode</span>
-                                        <div className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold">Local Storage Only</div>
+                                        <span className="text-sm font-medium text-white/60 mb-2">{t.stats?.guestMode || "Guest Mode"}</span>
+                                        <div className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold">{t.stats?.localStorageOnly || "Local Storage Only"}</div>
                                     </div>
                                 )}
                             </div>
@@ -264,7 +264,7 @@ export default function StatisticsView({ boardsList, user }) {
             <div className="mt-8 flex justify-center opacity-40 hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                     <Clock size={12} />
-                    Last Data Snapshot: {stats.lastActive || "Just now"}
+                    {t.stats?.lastSnapshot || "Last Snapshot"}: {stats.lastActive || (t.stats?.today || "Just now")}
                 </div>
             </div>
         </div>
