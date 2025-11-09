@@ -65,14 +65,22 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
                 }
 
                 const config = getLlmConfig();
+                console.log('[AutoSummary] Calling AI with config:', config);
+
                 const summary = await aiSummaryService.generateBoardSummary(
                     fullBoardData,
                     fullBoardData.cards,
                     { ...config, model: getRoleModel('analysis') }
                 );
 
+                console.log('[AutoSummary] AI returned summary:', summary);
+
                 if (summary && onUpdateBoardMetadata) {
+                    console.log('[AutoSummary] Saving summary to metadata...');
                     await onUpdateBoardMetadata(candidate.id, { summary });
+                    console.log('[AutoSummary] Summary saved successfully!');
+                } else {
+                    console.warn('[AutoSummary] No summary returned or no update handler');
                 }
 
             } else if (cardCount >= 10) {
