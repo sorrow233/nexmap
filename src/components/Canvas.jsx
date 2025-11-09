@@ -344,6 +344,47 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         }
     };
 
+    // Single Card Summary Handler (for manual testing)
+    const handleSingleSummary = async (cardId) => {
+        if (isSummarizing) return;
+
+        // Find the card
+        const card = useStore.getState().cards.find(c => c.id === cardId);
+        if (!card) return;
+
+        setIsSummarizing(true);
+        try {
+            const config = useStore.getState().getActiveConfig();
+
+            // Reuse service, passing single card as array
+            const summaries = await aiSummaryService.generateBatchSummaries([card], config);
+
+            // Update store
+            if (summaries[cardId]) {
+                updateCardFull(cardId, (prev) => ({
+                    ...prev,
+                    summary: summaries[cardId]
+                }));
+                // Simple Toast
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium z-[9999] animate-fade-in-up';
+                toast.textContent = `✨ Summary Generated`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            }
+        } catch (error) {
+            console.error("Single Summary Failed", error);
+            // Error Toast
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium z-[9999] animate-fade-in-up';
+            toast.textContent = `⚠️ Summary Failed: ${error.message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        } finally {
+            setIsSummarizing(false);
+        }
+    }
+
     return (
         <div
             ref={canvasRef}
@@ -420,6 +461,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                                 onCardFullScreen={props.onCardFullScreen ? () => props.onCardFullScreen(card.id) : undefined}
                                 onPromptDrop={props.onCardPromptDrop}
                                 onCustomSprout={onCustomSprout}
+                                onSummarize={handleSingleSummary} // Pass the single summary handler
                             />
                         </ErrorBoundary>
                     );
@@ -472,8 +514,8 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                     </button>
                 </InstantTooltip>
 
-                {/* NEW: AI Auto Read Button - Optimized */}
-                <InstantTooltip content="Generate AI Summaries">
+                {/* NEW: AI Auto Read Button - Optimized (HIDDEN for testing phase) */}
+                {/* <InstantTooltip content="Generate AI Summaries">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -487,10 +529,9 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                             }`}
                     >
                         <Bot size={16} className={`${isSummarizing ? 'animate-spin' : 'group-hover:animate-bounce'}`} />
-                        {/* Shimmer effect on hover */}
                         {!isSummarizing && <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>}
                     </button>
-                </InstantTooltip>
+                </InstantTooltip> */}
             </div>
 
             {/* Rubber Band Selection Rect */}
