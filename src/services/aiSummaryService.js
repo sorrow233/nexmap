@@ -47,6 +47,11 @@ REQUIREMENTS:
 3. Tone:
    - Professional, minimal, high-signal-to-noise ratio.
 
+4. IMPORTANT: 
+   - The JSON keys MUST be the EXACT "CARD_ID" strings provided in the input. 
+   - Do not add prefixes like "card_" unless they are in the input.
+   - Do not hallucinate IDs.
+
 OUTPUT FORMAT:
 {
   "card_id_1": {

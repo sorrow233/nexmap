@@ -208,142 +208,98 @@ const Card = React.memo(function Card({
             onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
         >
-            {/* Top Bar - Model + Buttons */}
-            <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 max-w-[60%]">
-                    <div className={`w-2 h-2 rounded-full animate-pulse ${isSelected ? 'bg-brand-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate font-sans tracking-wide" title={cardContent.title}>
-                        {cardContent.title || 'New Conversation'}
-                    </div>
-                </div>
-                <div className="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <button
-                        onClick={handleCopy}
-                        className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-white/5 rounded-lg transition-all"
-                        title="Copy response"
-                    >
-                        <Copy size={13} />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
-                        className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-white/5 rounded-lg transition-all"
-                        title="Create connection"
-                    >
-                        <Link size={13} />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
-                        className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-white/5 rounded-lg transition-all"
-                        title="Expand"
-                    >
-                        <Maximize2 size={13} />
-                    </button>
-                </div>
-            </div>
-
-            <div className="px-5 py-3 h-40 overflow-hidden relative">
-                <div
-                    className="prose prose-xs dark:prose-invert max-w-none 
-                        text-slate-600 dark:text-slate-300 
-                        leading-relaxed 
-                        prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0
-                        font-sans select-none pointer-events-none" // pointer-events-none ensures drag works over text
-                    dangerouslySetInnerHTML={renderMarkdown()}
+            {/* Quick Actions (Absolute Top Right) - Fade in on hover */}
+            <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                    onClick={handleCopy}
+                    className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
+                    title="Copy response"
                 >
-                </div>
-                <div className="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-white via-white/80 dark:from-slate-900 dark:via-slate-900/80 to-transparent pointer-events-none rounded-b-3xl"></div>
-            </div>
-
-            {
-                data.type === 'image_gen' && (
-                    <div className="px-4 pb-4">
-                        <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 flex items-center justify-center relative group/image">
-                            {cardContent.loading ? (
-                                <div className="flex flex-col items-center gap-3">
-                                    <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Generating...</span>
-                                </div>
-                            ) : cardContent.error ? (
-                                <div className="flex flex-col items-center gap-2 p-4 text-center">
-                                    <AlertCircle className="w-8 h-8 text-red-500/50" />
-                                    <span className="text-xs text-red-500/70 font-medium">{cardContent.error}</span>
-                                </div>
-                            ) : cardContent.imageUrl ? (
-                                <>
-                                    <img
-                                        src={cardContent.imageUrl}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110"
-                                        alt={cardContent.prompt}
-                                        draggable="false"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); window.open(cardContent.imageUrl, '_blank'); }}
-                                            className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all transform hover:scale-110"
-                                        >
-                                            <Maximize2 size={16} />
-                                        </button>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex flex-col items-center gap-2 text-slate-400">
-                                    <ImageIcon size={24} className="opacity-20" />
-                                    <span className="text-[10px] uppercase font-bold tracking-tighter opacity-30">No Image</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )
-            }
-
-            <div className="px-4 py-2 text-[10px] text-slate-500 flex justify-between items-center border-t border-white/5">
-                <span className="font-medium bg-white/5 px-2 py-0.5 rounded-full">{messages.length} messages</span>
-                <span className="flex items-center gap-1 font-semibold text-brand-500/70 truncate max-w-[120px]" title={cardContent.model}>
-                    <Sparkles size={8} />
-                    {cardContent.model?.split('/').pop() || 'AI'}
-                </span>
-            </div>
-
-            {/* AI Summary Label - Floating Left with Connector */}
-            {data.summary && (
-                <div
-                    className="absolute right-full top-6 mr-6 w-72 pointer-events-none select-none transition-opacity duration-500 animate-slide-up group-hover:opacity-100"
-                    style={{ opacity: isDragging ? 0 : 1 }}
+                    <Copy size={14} />
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
+                    className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
+                    title="Create connection"
                 >
-                    <div className="flex items-start justify-end relative">
-                        {/* Text Container */}
-                        <div className="flex flex-col items-end text-right">
-                            {/* Title - Large, Thin, Elegant - Intent Focus */}
-                            <div className="text-4xl text-slate-800 dark:text-slate-100 font-thin tracking-wide leading-none mb-4 opacity-90 font-sans whitespace-nowrap">
-                                {data.summary.title}
-                            </div>
+                    <Link size={14} />
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
+                    className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
+                    title="Expand"
+                >
+                    <Maximize2 size={14} />
+                </button>
+            </div>
 
-                            {/* Summary Lines - Precise, Mono, Technical feel */}
-                            <div className="space-y-2 py-3 pr-2 border-r-[0.5px] border-slate-300 dark:border-white/20 ">
-                                {data.summary.summary.split('\n').map((line, i) => (
-                                    <div key={i} className="text-[11px] text-slate-500 dark:text-slate-400 font-mono leading-tight flex justify-end gap-2 opacity-60">
-                                        <span>{line.replace(/^[•-]\s*/, '')}</span>
-                                        {/* <span className="text-brand-300 dark:text-brand-700 select-none">•</span> */}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+            {/* MAIN CONTENT AREA */}
+            <div className="flex flex-col h-full relative overflow-hidden p-6 pb-4">
 
-                        {/* Visual Connector - Curved Line to Card */}
-                        <svg className="absolute -right-6 top-6 w-6 h-12 pointer-events-none overflow-visible" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M -20 10 C 0 10, 0 10, 24 10" // Simple straight connector for cleaner look, or curve
-                                stroke="currentColor"
-                                strokeWidth="0.5"
-                                fill="none"
-                                className="text-slate-300 dark:text-white/20"
-                            />
-                            <circle cx="-20" cy="10" r="1.5" className="fill-brand-500" />
-                        </svg>
+                {/* 1. HERO TITLE (Top ~1/3) */}
+                {/* Use AI Title if available, else Card Title */}
+                <div className="mb-4 pr-16 relative z-10">
+                    <div className="text-[10px] font-bold text-slate-400/70 uppercase tracking-widest mb-1">
+                        {data.summary ? 'Analysis' : 'Conversation'}
                     </div>
+                    <h3 className="text-3xl font-thin leading-none tracking-wide text-slate-800 dark:text-slate-100 font-sans">
+                        {data.summary?.title || cardContent.title || 'Untitled'}
+                    </h3>
+                </div>
+
+                {/* 2. FADED CONTENT (Bottom ~2/3) */}
+                {/* Use AI Summary lines if available, else PreviewText */}
+                <div className="flex-1 min-h-[80px] relative z-10">
+                    {data.summary ? (
+                        <div className="space-y-2">
+                            {data.summary.summary.split('\n').map((line, i) => (
+                                <div key={i} className="text-[11px] text-slate-600 dark:text-slate-400 font-mono leading-tight flex items-start gap-2 opacity-60">
+                                    <span className="mt-0.5 w-1 h-1 rounded-full bg-slate-400 shrink-0 opacity-50"></span>
+                                    <span>{line.replace(/^[•-]\s*/, '')}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div
+                            className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed opacity-60 line-clamp-4 font-sans"
+                            style={{ maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)' }}
+                        >
+                            {/* Render plain text preview but with better typography */}
+                            {previewText}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Info */}
+                <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/5 flex justify-between items-center text-[10px] text-slate-400/60 font-medium z-10">
+                    <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-brand-500' : 'bg-slate-300 dark:bg-slate-600'}`}></span>
+                        {formatTime(cardContent.timestamp || Date.now())}
+                    </span>
+                    <span className="flex items-center gap-1 uppercase tracking-wider">
+                        <Sparkles size={8} />
+                        {cardContent.model?.split('/').pop() || 'AI'}
+                    </span>
+                </div>
+
+                {/* Ambient Gradient Background for visual depth */}
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-brand-500/5 dark:bg-brand-400/5 blur-3xl rounded-full pointer-events-none"></div>
+
+            </div>
+
+            {/* Image Gen Handling (Special Case - Keep existing logic but integrated?) 
+                 For now, if it's image gen, we might want to overlay the image? 
+                 Let's keep text hierarchy first. If image exists, maybe show small thumbnail or background?
+                 User asked for text hierarchy. Let's stick to that. 
+                 If image card, the previewText usually describes prompt.
+             */}
+            {data.type === 'image_gen' && cardContent.imageUrl && (
+                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+                    <img src={cardContent.imageUrl} className="w-full h-full object-cover" alt="" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-white via-white/90 to-white/40 dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-900/40"></div>
                 </div>
             )}
+
         </div >
     );
 });
