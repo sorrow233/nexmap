@@ -165,6 +165,10 @@ OUTPUT FORMAT (JSON ONLY):
                 cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
             }
 
+            // Sanitize string to remove control characters that break JSON.parse (like newlines in strings)
+            // This regex preserves valid JSON characters but strips unescaped control chars
+            cleanResponse = cleanResponse.replace(/[\u0000-\u0019]+/g, "");
+
             return JSON.parse(cleanResponse);
 
         } catch (error) {
