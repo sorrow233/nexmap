@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal } from 'lucide-react';
+import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal, Sparkles } from 'lucide-react';
 
 export default function BoardCard({
     board,
@@ -73,16 +73,15 @@ export default function BoardCard({
                     {/* Quick Actions Overlay */}
                     {!isTrashView && (
                         <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
-                            {/* Only show generate background button if cardCount >= 10 */}
-                            {(board.cardCount || 0) >= 10 && (
-                                <button
-                                    onClick={(e) => handleImageButtonClick(e, board.id)}
-                                    disabled={generatingBoardId === board.id}
-                                    className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-black transition-colors"
-                                >
-                                    {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                </button>
-                            )}
+
+                            <button
+                                onClick={(e) => handleImageButtonClick(e, board.id)}
+                                disabled={generatingBoardId === board.id}
+                                className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-black transition-colors"
+                            >
+                                {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                            </button>
+
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -213,17 +212,17 @@ export default function BoardCard({
                             {/* Quick Actions (Visually integrated) */}
                             {!isTrashView && (
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                    {(board.cardCount || 0) >= 10 && (
-                                        <button
-                                            onClick={(e) => handleImageButtonClick(e, board.id)}
-                                            disabled={generatingBoardId === board.id}
-                                            aria-label="Generate Summary"
-                                            title="Generate Text Summary"
-                                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all border border-transparent hover:border-white/10"
-                                        >
-                                            {generatingBoardId === board.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                        </button>
-                                    )}
+
+                                    <button
+                                        onClick={(e) => handleImageButtonClick(e, board.id)}
+                                        disabled={generatingBoardId === board.id}
+                                        aria-label="Generate Summary"
+                                        title="Generate Text Summary"
+                                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all border border-transparent hover:border-white/10"
+                                    >
+                                        {generatingBoardId === board.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                    </button>
+
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
