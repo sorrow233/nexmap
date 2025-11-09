@@ -7,6 +7,7 @@ import { useStore } from '../../store/useStore';
 import useImageUpload from '../../hooks/useImageUpload';
 import { htmlToMarkdown } from '../../utils/htmlToMarkdown';
 import { aiManager } from '../../services/ai/AIManager';
+import { useAISprouting } from '../../hooks/useAISprouting';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 import SproutModal from '../chat/SproutModal';
@@ -67,6 +68,9 @@ export default function ChatView({
     // Text Selection State
     const [selection, setSelection] = useState(null);
     const { t } = useLanguage();
+
+    // Quick Sprout Hook (for one-click topic decomposition)
+    const { handleQuickSprout } = useAISprouting();
 
     const handleSproutClick = async () => {
         if (isSprouting) return;
@@ -414,6 +418,7 @@ export default function ChatView({
                 onShare={(content) => setShareContent(content)}
                 onToggleFavorite={onToggleFavorite}
                 pendingCount={pendingCount}
+                onQuickSprout={() => handleQuickSprout(card.id)}
             />
 
             {/* Premium Input Bar */}

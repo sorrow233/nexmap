@@ -127,3 +127,72 @@ Example: ["How does this compare to X?", "What is the pricing?", ...]`;
     }
 }
 
+/**
+ * Generate quick sprout topics - optimized for accuracy
+ * Uses topic decomposition strategy instead of user intent prediction
+ * This is INDEPENDENT from generateFollowUpTopics (original Sprout)
+ * Always returns exactly 3 topics
+ */
+export async function generateQuickSproutTopics(messages, config, model = null, options = {}) {
+    try {
+        // Take only the last 2 messages for focused context
+        const contextMessages = messages.slice(-2);
+        const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
+
+        // Optimized prompt: decompose topics instead of guessing user intent
+        const finalPrompt = `CONTEXT:
+${contextText}
+
+TASK: Analyze the conversation above and identify exactly 3 distinct sub-topics or key concepts that are worth exploring in depth.
+
+REQUIREMENTS:
+- Each sub-topic should be specific, independent, and directly related to the main topic
+- Focus on DECOMPOSING the knowledge structure, NOT guessing what the user might ask
+- Each sub-topic should be actionable - something that can be explained or discussed further
+- Keep each topic concise (under 15 words)
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON array with exactly 3 topic strings.
+Example: ["React Hooks internals", "Virtual DOM diffing algorithm", "State management patterns"]`;
+
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            config,
+            model,
+            options
+        );
+
+        if (!response || response.trim().length === 0) {
+            console.warn('[QuickSprout] Empty response from AI, using fallback');
+            return ["Core concepts", "Key details", "Practical applications"];
+        }
+
+        let cleanResponse = response.trim();
+
+        // Remove markdown code blocks
+        if (cleanResponse.startsWith('\`\`\`json')) {
+            cleanResponse = cleanResponse.replace(/^\`\`\`json\s*/, '').replace(/\s*\`\`\`$/, '');
+        } else if (cleanResponse.startsWith('\`\`\`')) {
+            cleanResponse = cleanResponse.replace(/^\`\`\`\s*/, '').replace(/\s*\`\`\`$/, '');
+        }
+
+        // Extract JSON array
+        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+            cleanResponse = arrayMatch[0];
+        }
+
+        const parsed = JSON.parse(cleanResponse);
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            console.warn('[QuickSprout] Invalid array, using fallback');
+            return ["Core concepts", "Key details", "Practical applications"];
+        }
+
+        // Ensure exactly 3 topics
+        return parsed.slice(0, 3);
+    } catch (e) {
+        console.error("[QuickSprout] Failed to generate topics:", e);
+        return ["Core concepts", "Key details", "Practical applications"];
+    }
+}
