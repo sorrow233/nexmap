@@ -8,6 +8,7 @@ import { isSafari, isIOS } from '../utils/browser';
 import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
 import { useContextMenu } from './ContextMenu';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Card = React.memo(function Card({
     data, // Now contains id, x, y, and actual data
@@ -27,6 +28,7 @@ const Card = React.memo(function Card({
     onCustomSprout, // NEW,
     onSummarize // NEW: Manual trigger for testing
 }) {
+    const { t } = useLanguage();
     const [isDragOver, setIsDragOver] = useState(false);
     const cardRef = useRef(null);
     const {
@@ -214,28 +216,28 @@ const Card = React.memo(function Card({
                 <button
                     onClick={(e) => { e.stopPropagation(); onSummarize && onSummarize(data.id); }}
                     className="p-1.5 text-slate-400 hover:text-violet-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title="Generate AI Summary"
+                    title={t.card?.aiSummary || "Generate AI Summary"}
                 >
                     <Sparkles size={14} />
                 </button>
                 <button
                     onClick={handleCopy}
                     className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title="Copy response"
+                    title={t.card?.copyResponse || "Copy response"}
                 >
                     <Copy size={14} />
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
                     className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title="Create connection"
+                    title={t.card?.createConnection || "Create connection"}
                 >
                     <Link size={14} />
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
                     className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title="Expand"
+                    title={t.card?.expand || "Expand"}
                 >
                     <Maximize2 size={14} />
                 </button>

@@ -99,7 +99,8 @@ export const app = {
         thinking: "Thinking...",
         messages: "messages",
         generating: "Generating...",
-        noImage: "No Image"
+        noImage: "No Image",
+        aiSummary: "Generate AI Summary"
     },
     toolbar: {
         items: "items",
@@ -136,6 +137,7 @@ export const app = {
     },
     stats: {
         title: "Your Creative Journey",
+        description: "Analyze your creative habits and resource usage. All processed locally.",
         totalBoards: "Creative Universe",
         activeBoards: "Active Projects",
         trashBoards: "Archived",
@@ -149,13 +151,13 @@ export const app = {
         never: "Not yet",
         signIn: "Sign in to view your neural stats",
         loading: "Loading neural metrics...",
-        dailyActivity: "Neural Activity",
-        today: "Today Generated",
+        dailyActivity: "Neural Synaptic Activity",
+        today: "Today",
         yesterday: "Yesterday",
         globalChars: "Total Characters",
         weeklyTrend: "7-Day Trend",
         streakDays: "Streak",
-        days: "days",
+        days: "Days",
         sessions: "Sessions",
         times: "×",
         activeTime: "Peak",
@@ -163,6 +165,21 @@ export const app = {
         morning: "Morning",
         afternoon: "Afternoon",
         evening: "Evening",
-        night: "Night"
+        night: "Night",
+        // New Keys
+        dataInsights: "Data & Insights",
+        refreshCloud: "Refresh Cloud Data",
+        syncing: "Syncing...",
+        refresh: "Refresh",
+        totalElements: "Total Elements",
+        creativePower: "Creative Power",
+        neuralCloud: "Neural Cloud",
+        aiQuota: "AI Quota",
+        syncUnknown: "Sync status unknown",
+        clickToRefresh: "Click refresh to check quota",
+        guestMode: "Guest Mode",
+        localStorageOnly: "Local Storage Only",
+        lastSnapshot: "Last Data Snapshot",
+        currentStreak: "Current Streak"
     }
 };
