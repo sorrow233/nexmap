@@ -20,6 +20,7 @@ const ChatBar = React.memo(function ChatBar({
     onImageUpload,
     globalImages,
     onRemoveImage,
+    onClearImages, // NEW: Clear images after submit
     onBatchChat,
 
     onGroup, // New prop
@@ -42,6 +43,8 @@ const ChatBar = React.memo(function ChatBar({
         if (globalPromptInputRef.current) {
             globalPromptInputRef.current.style.height = 'auto';
         }
+        // Clear images
+        if (onClearImages) onClearImages();
     };
 
     const handleBatchSubmit = () => {
@@ -53,6 +56,8 @@ const ChatBar = React.memo(function ChatBar({
         if (globalPromptInputRef.current) {
             globalPromptInputRef.current.style.height = 'auto';
         }
+        // Clear images
+        if (onClearImages) onClearImages();
     };
 
     const handleKeyDown = (e) => {
