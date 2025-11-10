@@ -266,10 +266,10 @@ const Card = React.memo(function Card({
                 {/* Use AI Summary lines if available, else PreviewText */}
                 <div className="flex-1 min-h-[80px] relative z-10">
                     {data.summary ? (
-                        <div className="space-y-2">
+                        <div className="space-y-2 p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-xl border border-violet-100/50 dark:border-violet-500/10 transition-all hover:bg-violet-50 dark:hover:bg-violet-900/20">
                             {data.summary.summary.split('\n').map((line, i) => (
-                                <div key={i} className="text-[11px] text-slate-600 dark:text-slate-400 font-mono leading-tight flex items-start gap-2 opacity-60">
-                                    <span className="mt-0.5 w-1 h-1 rounded-full bg-slate-400 shrink-0 opacity-50"></span>
+                                <div key={i} className="text-[11px] text-violet-900/70 dark:text-violet-200/70 font-mono leading-tight flex items-start gap-2">
+                                    <Sparkles size={10} className="mt-0.5 shrink-0 opacity-40 text-violet-500" />
                                     <span>{line.replace(/^[•-]\s*/, '')}</span>
                                 </div>
                             ))}
