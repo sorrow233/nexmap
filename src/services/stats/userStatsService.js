@@ -20,7 +20,14 @@ class UserStatsService {
     constructor() {
         this._initLocalStorage();
         this._pendingSync = null;
-        this._syncDebounceMs = 5000; // Sync to cloud every 5 seconds max
+        this._syncDebounceMs = 60000; // Sync to cloud every 60 seconds (optimized for quota)
+
+        // Sync on page exit
+        if (typeof window !== 'undefined') {
+            window.addEventListener('beforeunload', () => {
+                this.syncToCloud();
+            });
+        }
     }
 
     _initLocalStorage() {
