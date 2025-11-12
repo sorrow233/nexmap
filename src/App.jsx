@@ -305,11 +305,7 @@ function AppContent() {
         // 3. Update cloud
         if (user) updateBoardMetadataInCloud(user.uid, boardId, metadata);
 
-        // 4. Force reload boards to ensure UI updates
-        setTimeout(async () => {
-            const freshBoards = await getBoardsList();
-            setBoardsList(freshBoards);
-        }, 100);
+        // NOTE: Removed stale setTimeout reload - setBoardsList already provides immediate update
     }, [user, setBoardsList]);
 
     if (!isInitialized) return null;
