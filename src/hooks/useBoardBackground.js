@@ -67,11 +67,26 @@ export default function useBoardBackground() {
 
             // console.log('[Background Gen] Stage 1: Analyzing context...');
             const { chatCompletion, imageGeneration } = await import('../services/llm');
-            const visualConcept = await chatCompletion(
-                [{ role: 'user', content: analysisPrompt }],
-                config,
-                getModelForRole('analysis')
-            );
+            const { aiSummaryService } = await import('../services/aiSummaryService');
+
+            // PARALLEL GENERATION: Generate Text Summary (for Text Card fallback) & Visual Concept
+            const [visualConcept, summaryResult] = await Promise.all([
+                chatCompletion(
+                    [{ role: 'user', content: analysisPrompt }],
+                    config,
+                    getModelForRole('analysis')
+                ),
+                aiSummaryService.generateBoardSummary(boardData, boardData.cards, { ...config, model: getModelForRole('analysis') })
+            ]);
+
+            // Save summary immediately if available
+            if (summaryResult && onUpdateBoardMetadata) {
+                await onUpdateBoardMetadata(boardId, { summary: summaryResult });
+            }
+
+            // console.log('[Background Gen] Visual Concept:', visualConcept);
+
+            if (!visualConcept) throw new Error("Failed to analyze context");
 
             // console.log('[Background Gen] Visual Concept:', visualConcept);
 

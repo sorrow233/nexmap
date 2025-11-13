@@ -145,15 +145,43 @@ export default function BoardCard({
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                 />
+            ) : board.summary ? (
+                // AI Text Cover Variant
+                <div className={`absolute inset-0 p-5 flex flex-col justify-between transition-transform duration-700 group-hover:scale-105 bg-slate-900 dark:bg-[#111]`}>
+                    {/* Decorative Background Elements */}
+                    <div className={`absolute top-0 right-0 w-32 h-32 bg-${board.summary.theme || 'indigo'}-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none`} />
+                    <div className={`absolute bottom-0 left-0 w-24 h-24 bg-${board.summary.theme || 'purple'}-500/10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none`} />
+
+                    {/* Main Content */}
+                    <div className="relative z-10 flex flex-col gap-3 h-full">
+                        <div className="flex-1">
+                            <h3 className={`
+                                text-2xl font-bold leading-tight tracking-tight mb-2 font-inter-tight
+                                text-transparent bg-clip-text bg-gradient-to-br 
+                                ${board.summary.theme === 'orange' ? 'from-orange-100 to-amber-200' :
+                                    board.summary.theme === 'emerald' ? 'from-emerald-100 to-teal-200' :
+                                        board.summary.theme === 'pink' ? 'from-pink-100 to-rose-200' :
+                                            'from-white to-slate-300'}
+                            `}>
+                                {board.summary.title || board.name}
+                            </h3>
+                            <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 font-medium">
+                                {board.summary.summary}
+                            </p>
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-30`} />
             )}
 
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            {/* Gradient Overlay - Only for Image or Gradient cards, not Text Cards which have their own bg */}
+            {(!board.summary) && (
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            )}
 
-            {/* Content */}
-            <div className="absolute inset-x-0 bottom-0 p-4">
+            {/* Content (Title/Stats) - Hide standard title if we have a summary title */}
+            <div className={`absolute inset-x-0 bottom-0 p-4 ${board.summary ? 'opacity-0' : ''}`}>
                 <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
                     {board.name}
                 </h3>
@@ -165,7 +193,7 @@ export default function BoardCard({
             </div>
 
             {/* Icon Overlay Top Right */}
-            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <ArrowRight size={14} />
             </div>
         </div>
