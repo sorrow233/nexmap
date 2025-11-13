@@ -45,6 +45,39 @@ export const createCreditsSlice = (set, get) => ({
             return;
         }
 
+        // Check for Custom API Key (Store level check)
+        // Access settings slice via get() if slices are merged, or just rely on the fact 
+        // that we shouldn't be calling this if the UI knows there is a key.
+        // However, for robustness, let's check local storage directly here as a fallback,
+        // OR better yet, let's use the same logic as the UI.
+
+        // Since we don't have direct access to the settings slice state here (unless we use get() on the root store),
+        // we will check the persisted settings.
+        try {
+            const stored = localStorage.getItem('mixboard_providers_v3');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // The current structure is { state: { settings: { ... } } } usually if persisted by Zustand,
+                // BUT settingsSlice persists directly to 'mixboard_providers_v3' as { providers: ..., activeId: ... }
+                // Let's check that structure.
+
+                const activeId = parsed.activeId;
+                const activeProvider = parsed.providers?.[activeId];
+
+                if (activeProvider?.apiKey && activeProvider.apiKey.length > 0) {
+                    console.log('[Credits] Custom API Key detected, skipping system credits fetch.');
+                    set({
+                        systemCredits: 999999,
+                        isSystemCreditsUser: false,
+                        systemCreditsLoading: false
+                    });
+                    return;
+                }
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+
         set({ systemCreditsLoading: true, systemCreditsError: null });
 
         try {
