@@ -121,7 +121,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
                         console.error('[BoardPage] Cloud sync failed:', e);
                         toast.error('云同步失败');
                     }
-                }, 180000); // 3 minutes
+                }, 30000); // 30 seconds
             }
 
             return () => {
