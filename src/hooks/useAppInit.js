@@ -157,7 +157,24 @@ export function useAppInit() {
                 debugLog.sync('Starting cloud board sync...');
                 unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
                     debugLog.sync(`Received cloud update for ${cloudBoards.length} boards`, updatedIds);
-                    setBoardsList(cloudBoards);
+
+                    // MERGE with local state to preserve local-only fields like 'summary'
+                    // that may not have synced to cloud yet
+                    setBoardsList(prev => {
+                        const merged = cloudBoards.map(cloudBoard => {
+                            const localBoard = prev.find(b => b.id === cloudBoard.id);
+                            if (localBoard) {
+                                // Keep local summary if cloud doesn't have it
+                                return {
+                                    ...cloudBoard,
+                                    summary: cloudBoard.summary || localBoard.summary
+                                };
+                            }
+                            return cloudBoard;
+                        });
+                        return merged;
+                    });
+
                     const currentActiveId = localStorage.getItem('mixboard_current_board_id');
                     if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
                         debugLog.sync(`Active board ${currentActiveId} updated in cloud, rehydrating...`);
