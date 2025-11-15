@@ -140,6 +140,7 @@ export async function generateQuickSproutTopics(messages, config, model = null, 
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
         // Optimized prompt: decompose topics instead of guessing user intent
+        // Key: respond in the same language as the user's input
         const finalPrompt = `CONTEXT:
 ${contextText}
 
@@ -150,10 +151,12 @@ REQUIREMENTS:
 - Focus on DECOMPOSING the knowledge structure, NOT guessing what the user might ask
 - Each sub-topic should be actionable - something that can be explained or discussed further
 - Keep each topic concise (under 15 words)
+- IMPORTANT: Output topics in the SAME LANGUAGE as the context above. If context is in Chinese, output in Chinese. If in Japanese, output in Japanese.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON array with exactly 3 topic strings.
-Example: ["React Hooks internals", "Virtual DOM diffing algorithm", "State management patterns"]`;
+Example (English): ["React Hooks internals", "Virtual DOM diffing algorithm", "State management patterns"]
+Example (Chinese): ["React Hooks 内部机制", "虚拟DOM差分算法", "状态管理模式"]`;
 
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
