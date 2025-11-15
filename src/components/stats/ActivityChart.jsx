@@ -59,7 +59,7 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
                     {/* Dynamic Tooltip Display Area */}
                     <div className={`h-6 flex items-center justify-end transition-opacity duration-200 ${hoveredIndex !== null ? 'opacity-100' : 'opacity-0'}`}>
                         {hoveredIndex !== null && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[10px] font-bold shadow-xl animate-scale-in">
+                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[10px] font-bold shadow-xl">
                                 <span className="opacity-70">{weeklyHistory[hoveredIndex].date}</span>
                                 <div className="w-px h-3 bg-white/20 dark:bg-black/10"></div>
                                 <span>{weeklyHistory[hoveredIndex].chars.toLocaleString()} Chars</span>
@@ -105,7 +105,6 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
                                     onMouseEnter={() => setHoveredIndex(i)}
                                     onMouseLeave={() => setHoveredIndex(null)}
                                     className="transition-all duration-300 ease-out"
-                                    style={{ opacity: hoveredIndex !== null && !isHovered ? 0.4 : 1 }}
                                 >
                                     {/* Interaction Hit Area (Invisible but tall) */}
                                     <rect x="-3" y="0" width={BAR_WIDTH + 6} height={CHART_HEIGHT + 30} fill="transparent" />
@@ -118,24 +117,15 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
                                         height={height}
                                         rx="6"
                                         fill={isToday ? "url(#barGradient)" : "currentColor"}
-                                        className={`text-slate-300 dark:text-slate-600 transition-all duration-500 ease-spring ${isToday ? 'filter drop-shadow-lg shadow-orange-500/20' : ''}`}
-                                        style={{
-                                            transformOrigin: `center ${CHART_HEIGHT}px`,
-                                            transform: isHovered ? 'scaleY(1.05) scaleX(1.1)' : 'scaleY(1)',
-                                        }}
+                                        className={`text-slate-300 dark:text-slate-600 transition-all duration-500 ease-out ${isToday ? 'filter drop-shadow-lg shadow-orange-500/20' : ''}`}
                                     />
-
-                                    {/* Top Sparkle for active bars */}
-                                    {isHovered && day.chars > 0 && (
-                                        <circle cx={BAR_WIDTH / 2} cy={y} r="3" fill="white" className="animate-ping" />
-                                    )}
 
                                     {/* X-Axis Label */}
                                     <text
                                         x={BAR_WIDTH / 2}
                                         y={CHART_HEIGHT + 18}
                                         textAnchor="middle"
-                                        className={`text-[10px] font-bold fill-slate-400 dark:fill-slate-500 transition-colors ${isToday ? 'fill-orange-500' : ''} ${isHovered ? 'fill-slate-800 dark:fill-white scale-110' : ''}`}
+                                        className={`text-[10px] font-bold fill-slate-400 dark:fill-slate-500 transition-colors ${isToday ? 'fill-orange-500' : ''} ${isHovered ? 'fill-slate-800 dark:fill-white' : ''}`}
                                         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                                     >
                                         {dayLabels[day.dayOfWeek]}
