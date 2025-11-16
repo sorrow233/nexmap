@@ -74,8 +74,8 @@ export default function BoardCard({
                                 }`} />
 
                             {/* Content */}
-                            <div className="relative z-10 h-full flex flex-col justify-center p-5">
-                                <p className="text-[13px] font-medium text-white/85 leading-relaxed line-clamp-5 text-center">
+                            <div className="relative z-10 h-full flex flex-col justify-center px-4">
+                                <p className="text-lg font-semibold text-white/90 leading-relaxed text-center tracking-wide">
                                     {typeof board.summary === 'string'
                                         ? board.summary
                                         : board.summary.summary}
