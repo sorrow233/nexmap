@@ -10,8 +10,9 @@ import {
     saveBoard,
     cleanupExpiredTrash,
     getBoardsList, // New import
-    saveBoardToCloud // Ensure this is imported if not already, though it was in the file before? No wait, it wasn't used in this file before but I can import it.
+    saveBoardToCloud
 } from '../services/storage';
+import { getRawBoardsList } from '../services/boardService'; // Fix: Import directly to resolve ReferenceError
 import { listenForFavoriteUpdates, saveFavoriteToCloud as saveFavoritesToCloud } from '../services/syncService';
 import favoritesService from '../services/favoritesService';
 import { initScheduledBackup } from '../services/scheduledBackupService';

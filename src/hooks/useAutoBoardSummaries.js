@@ -54,27 +54,31 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
             // RULE: 3-9 cards = Text Summary, 10+ cards = Image Background
             if (cardCount >= 3 && cardCount < 10) {
                 // Generate TEXT summary only
-
+                console.warn('[AutoSummary] Starting TEXT summary generation for:', candidate.name); // Warn for visibility
                 const { aiSummaryService } = await import('../services/aiSummaryService');
                 const fullBoardData = await loadBoard(candidate.id);
 
-                if (!fullBoardData || !fullBoardData.cards || fullBoardData.cards.length === 0) {
-                    isProcessingRef.current = false;
+                if (!fullBoardData || !fullBoardData.cards) {
+                    console.warn('[AutoSummary] Board data empty, skipping:', candidate.name);
                     return;
                 }
 
-                const config = getLlmConfig();
+                const { summary, theme } = await aiSummaryService.generateBoardSummary(
+                    candidate,
+                    fullBoardData.cards
+                ) || {};
 
-                const summary = await aiSummaryService.generateBoardSummary(
-                    fullBoardData,
-                    fullBoardData.cards,
-                    { ...config, model: getRoleModel('analysis') }
-                );
-
-
-
-                if (summary && onUpdateBoardMetadata) {
-                    await onUpdateBoardMetadata(candidate.id, { summary });
+                if (summary) {
+                    console.warn('[AutoSummary] Generated stats:', { summaryLength: summary.length, theme });
+                    // Save explicitly
+                    if (onUpdateBoardMetadata) {
+                        await onUpdateBoardMetadata(candidate.id, {
+                            summary: { summary, theme }
+                        });
+                        console.warn('[AutoSummary] Saved summary to metadata');
+                    }
+                } else {
+                    console.warn('[AutoSummary] No summary generated (filtered or empty)');
                 }
 
             } else if (cardCount >= 10) {
