@@ -198,11 +198,20 @@ class UserStatsService {
      * @returns {Array} [{ date, chars, dayOfWeek }]
      */
     getWeeklyHistory() {
+        return this.getHistoryForDays(7);
+    }
+
+    /**
+     * Get history for specified number of days
+     * @param {number} days - Number of days to retrieve (7, 30, 365, etc.)
+     * @returns {Array} [{ date, chars, dayOfWeek }]
+     */
+    getHistoryForDays(days = 7) {
         const history = this._getHistory();
         const result = [];
         const now = new Date();
 
-        for (let i = 6; i >= 0; i--) {
+        for (let i = days - 1; i >= 0; i--) {
             const date = new Date(now);
             date.setDate(date.getDate() - i);
             const dateKey = date.toISOString().split('T')[0];
