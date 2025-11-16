@@ -63,9 +63,11 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
                     return;
                 }
 
+                const config = getLlmConfig();
                 const { summary, theme } = await aiSummaryService.generateBoardSummary(
                     candidate,
-                    fullBoardData.cards
+                    fullBoardData.cards,
+                    { ...config, model: getRoleModel('analysis') }
                 ) || {};
 
                 if (summary) {
