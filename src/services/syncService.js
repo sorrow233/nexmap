@@ -178,11 +178,19 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 
             // Sync Metadata List - FILTER OUT INVALID DOCS (no id or name)
             const allBoards = snapshot.docs.map(doc => doc.data()).filter(b => b && b.id);
+
+            // Get existing localStorage data to preserve local-only fields like 'summary'
+            const existingLocalBoards = getRawBoardsList();
+
             const metadataList = allBoards.map(b => {
                 // CRITICAL FIX: Recover createdAt from board ID (timestamp-based) if missing
                 // Board IDs are generated with Date.now().toString(), so we can extract the original creation time
                 const idAsTimestamp = parseInt(b.id, 10);
                 const recoveredCreatedAt = (!isNaN(idAsTimestamp) && idAsTimestamp > 1000000000000) ? idAsTimestamp : null;
+
+                // Preserve local summary if cloud doesn't have it
+                const existingLocal = existingLocalBoards.find(lb => lb.id === b.id);
+                const summaryToUse = b.summary || existingLocal?.summary;
 
                 return {
                     id: b.id,
@@ -193,7 +201,8 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                     lastAccessedAt: b.lastAccessedAt || b.updatedAt || recoveredCreatedAt || 0,
                     cardCount: b.cards?.length || 0,
                     deletedAt: b.deletedAt,
-                    backgroundImage: b.backgroundImage
+                    backgroundImage: b.backgroundImage,
+                    summary: summaryToUse // CRITICAL: Preserve summary field
                 };
             }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
