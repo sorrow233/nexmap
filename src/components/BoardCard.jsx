@@ -146,30 +146,51 @@ export default function BoardCard({
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                 />
             ) : board.summary ? (
-                // AI Text Cover Variant
-                <div className={`absolute inset-0 p-5 flex flex-col justify-between transition-transform duration-700 group-hover:scale-105 bg-slate-900 dark:bg-[#111]`}>
-                    {/* Decorative Background Elements */}
-                    <div className={`absolute top-0 right-0 w-32 h-32 bg-${board.summary.theme || 'indigo'}-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none`} />
-                    <div className={`absolute bottom-0 left-0 w-24 h-24 bg-${board.summary.theme || 'purple'}-500/10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none`} />
+                // AI Text Cover Variant (Premium Dark Glass Style)
+                <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105 bg-[#050505]">
+                    {/* 1. Base Gradient Layer (Deep & Rich) */}
+                    <div className={`absolute inset-0 opacity-50 bg-gradient-to-br ${{
+                            'blue': 'from-blue-900/60 via-slate-900 to-black',
+                            'purple': 'from-purple-900/60 via-slate-900 to-black',
+                            'emerald': 'from-emerald-900/60 via-slate-900 to-black',
+                            'orange': 'from-orange-900/60 via-slate-900 to-black',
+                            'pink': 'from-pink-900/60 via-slate-900 to-black',
+                            'slate': 'from-slate-800 via-slate-900 to-black',
+                        }[board.summary.theme || 'slate']
+                        }`} />
 
-                    {/* Main Content */}
-                    <div className="relative z-10 flex flex-col gap-3 h-full">
-                        <div className="flex-1">
-                            <h3 className={`
-                                text-2xl font-bold leading-tight tracking-tight mb-2 font-inter-tight
-                                text-transparent bg-clip-text bg-gradient-to-br 
-                                ${board.summary.theme === 'orange' ? 'from-orange-100 to-amber-200' :
-                                    board.summary.theme === 'emerald' ? 'from-emerald-100 to-teal-200' :
-                                        board.summary.theme === 'pink' ? 'from-pink-100 to-rose-200' :
-                                            'from-white to-slate-300'}
-                            `}>
+                    {/* 2. Abstract Orchestration (Glowing Orbs) */}
+                    <div className={`absolute top-[-50%] right-[-50%] w-[150%] h-[150%] rounded-full opacity-20 blur-3xl bg-[conic-gradient(at_center,var(--tw-gradient-stops))] ${board.summary.theme === 'orange' ? 'from-orange-500 via-amber-700 to-transparent' :
+                            board.summary.theme === 'emerald' ? 'from-emerald-500 via-teal-700 to-transparent' :
+                                board.summary.theme === 'pink' ? 'from-pink-500 via-rose-700 to-transparent' :
+                                    board.summary.theme === 'purple' ? 'from-purple-500 via-violet-700 to-transparent' :
+                                        'from-blue-500 via-indigo-700 to-transparent'
+                        } animate-slow-spin-slower pointer-events-none`} />
+
+                    {/* 3. Noise Texture (Optional, for realism) */}
+                    <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+
+                    {/* 4. Content Content */}
+                    <div className="relative z-10 flex flex-col justify-between h-full p-6">
+                        <div>
+                            <h3 className="text-[1.75rem] leading-[1.1] font-bold tracking-tight text-white/95 mb-4 font-inter-tight drop-shadow-lg line-clamp-3">
                                 {board.summary.title || board.name}
                             </h3>
-                            <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 font-medium">
-                                {board.summary.summary}
-                            </p>
+                            <div className={`h-1 w-12 rounded-full bg-gradient-to-r ${board.summary.theme === 'orange' ? 'from-orange-400 to-amber-500' :
+                                    board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500' :
+                                        board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500' :
+                                            board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500' :
+                                                'from-blue-400 to-indigo-500'
+                                }`} />
                         </div>
+
+                        <p className="text-sm font-medium text-white/70 leading-relaxed line-clamp-3 mix-blend-plus-lighter">
+                            {board.summary.summary}
+                        </p>
                     </div>
+
+                    {/* 5. Inner Border / Gloss */}
+                    <div className="absolute inset-0 border border-white/5 rounded-2xl pointer-events-none ring-1 ring-inset ring-white/5" />
                 </div>
             ) : (
                 <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-30`} />
