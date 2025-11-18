@@ -114,29 +114,31 @@ OUTPUT FORMAT:
         }).join('\n---\n');
 
         const prompt = `
-You are an expert content curator. Analyze the following board content and generate a visual theme and a concise summary context.
+You are an expert design & engineering lead analyzing a team's workspace content.
+Your goal is to distill the *intent* of this board into a concise, high-signal summary.
 
-BOARD DATA:
+BOARD CONTEXT:
 Name: ${boardData.name}
-Metadata: ${JSON.stringify(boardData.metadata || {})}
-Cards Context:
-${cardContext}
+Cards Content:
+${context}
 
 TASK:
-1.  **Summary**: Write a 2-sentence summary of what this board is about.
-2.  **Theme**: Choose the best color theme from the list below based on the mood.
-
-THEMES:
-- blue (Professional, Calm)
-- purple (Creative, Deep)
-- emerald (Growth, Fresh)
-- orange (Energetic, Warm)
-- pink (Playful, Vibrant)
-- slate (Neutral, Minimal)
+1.  **Summary**: Write a powerful 2-sentence summary.
+    - Sentence 1: **Core Subject** (What is the main topic/project?)
+    - Sentence 2: **Current Action/State** (What is being discussed, solved, or planned?)
+    - Style: Professional, telegraphic, engineering shorthand. No "This board is about...".
+    
+2.  **Theme**: Select the most appropriate visual theme based on the content's mood:
+    - "blue": Technical, Architecture, Documentation, Systems
+    - "purple": Creative, Brainstorming, Design, Vision
+    - "emerald": Growth, Strategy, Finance, Results
+    - "orange": Urgent, Bugs, Critical Path, Warning
+    - "pink": Social, Community, Events, Playful
+    - "slate": General, Archive, Miscellaneous, Drafts
 
 OUTPUT FORMAT (JSON ONLY):
 {
-  "summary": "This board explores...",
+  "summary": "Redux state management refactor for V2.\nAddressing race conditions in user authentication flow.",
   "theme": "color_name"
 }
 `;
