@@ -27,14 +27,16 @@ export default function BoardCard({
         return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
     };
 
-    // Helper for random gradient if no image
+    // Helper for random gradient if no image - Modern fresh colors with dark mode support
     const getRandomGradient = (id) => {
+        // Fresh, modern gradients - light mode friendly with dark mode variants
         const gradients = [
-            'from-blue-500/20 to-purple-500/20',
-            'from-emerald-500/20 to-teal-500/20',
-            'from-orange-500/20 to-red-500/20',
-            'from-pink-500/20 to-rose-500/20',
-            'from-indigo-500/20 to-cyan-500/20'
+            'from-sky-400/30 via-cyan-300/20 to-teal-400/30 dark:from-sky-600/25 dark:via-cyan-500/15 dark:to-teal-600/25',
+            'from-violet-400/30 via-purple-300/20 to-fuchsia-400/30 dark:from-violet-600/25 dark:via-purple-500/15 dark:to-fuchsia-600/25',
+            'from-rose-400/30 via-pink-300/20 to-orange-400/30 dark:from-rose-600/25 dark:via-pink-500/15 dark:to-orange-600/25',
+            'from-emerald-400/30 via-green-300/20 to-lime-400/30 dark:from-emerald-600/25 dark:via-green-500/15 dark:to-lime-600/25',
+            'from-amber-400/30 via-yellow-300/20 to-orange-400/30 dark:from-amber-600/25 dark:via-yellow-500/15 dark:to-orange-600/25',
+            'from-indigo-400/30 via-blue-300/20 to-cyan-400/30 dark:from-indigo-600/25 dark:via-blue-500/15 dark:to-cyan-600/25'
         ];
         const index = id.charCodeAt(0) % gradients.length;
         return gradients[index];
