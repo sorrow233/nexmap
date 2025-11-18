@@ -150,73 +150,102 @@ export default function BoardCard({
                 <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105 bg-[#050505]">
                     {/* 1. Base Gradient Layer (Deep & Rich) */}
                     <div className={`absolute inset-0 opacity-50 bg-gradient-to-br ${{
-                            'blue': 'from-blue-900/60 via-slate-900 to-black',
-                            'purple': 'from-purple-900/60 via-slate-900 to-black',
-                            'emerald': 'from-emerald-900/60 via-slate-900 to-black',
-                            'orange': 'from-orange-900/60 via-slate-900 to-black',
-                            'pink': 'from-pink-900/60 via-slate-900 to-black',
-                            'slate': 'from-slate-800 via-slate-900 to-black',
-                        }[board.summary.theme || 'slate']
+                        'blue': 'from-blue-900/60 via-slate-900 to-black',
+                        'purple': 'from-purple-900/60 via-slate-900 to-black',
+                        'emerald': 'from-emerald-900/60 via-slate-900 to-black',
+                        'orange': 'from-orange-900/60 via-slate-900 to-black',
+                        'pink': 'from-pink-900/60 via-slate-900 to-black',
+                        'slate': 'from-slate-800 via-slate-900 to-black',
+                    }[board.summary.theme || 'slate']
                         }`} />
 
                     {/* 2. Abstract Orchestration (Glowing Orbs) */}
                     <div className={`absolute top-[-50%] right-[-50%] w-[150%] h-[150%] rounded-full opacity-20 blur-3xl bg-[conic-gradient(at_center,var(--tw-gradient-stops))] ${board.summary.theme === 'orange' ? 'from-orange-500 via-amber-700 to-transparent' :
-                            board.summary.theme === 'emerald' ? 'from-emerald-500 via-teal-700 to-transparent' :
-                                board.summary.theme === 'pink' ? 'from-pink-500 via-rose-700 to-transparent' :
-                                    board.summary.theme === 'purple' ? 'from-purple-500 via-violet-700 to-transparent' :
-                                        'from-blue-500 via-indigo-700 to-transparent'
+                        board.summary.theme === 'emerald' ? 'from-emerald-500 via-teal-700 to-transparent' :
+                            board.summary.theme === 'pink' ? 'from-pink-500 via-rose-700 to-transparent' :
+                                board.summary.theme === 'purple' ? 'from-purple-500 via-violet-700 to-transparent' :
+                                    'from-blue-500 via-indigo-700 to-transparent'
                         } animate-slow-spin-slower pointer-events-none`} />
 
                     {/* 3. Noise Texture (Optional, for realism) */}
                     <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
 
                     {/* 4. Content Content */}
-                    <div className="relative z-10 flex flex-col justify-between h-full p-6">
-                        <div>
-                            <h3 className="text-[1.75rem] leading-[1.1] font-bold tracking-tight text-white/95 mb-4 font-inter-tight drop-shadow-lg line-clamp-3">
-                                {board.summary.title || board.name}
+                    <div className="relative z-10 flex flex-col h-full p-6">
+                        {/* Title at TOP */}
+                        <div className="mb-4">
+                            <h3 className="text-[1.5rem] leading-[1.2] font-bold tracking-tight text-white/95 font-inter-tight drop-shadow-lg line-clamp-2">
+                                {board.name}
                             </h3>
-                            <div className={`h-1 w-12 rounded-full bg-gradient-to-r ${board.summary.theme === 'orange' ? 'from-orange-400 to-amber-500' :
-                                    board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500' :
-                                        board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500' :
-                                            board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500' :
-                                                'from-blue-400 to-indigo-500'
+                            <div className={`mt-3 h-1 w-12 rounded-full bg-gradient-to-r ${board.summary.theme === 'orange' ? 'from-orange-400 to-amber-500' :
+                                board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500' :
+                                    board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500' :
+                                        board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500' :
+                                            'from-blue-400 to-indigo-500'
                                 }`} />
                         </div>
 
-                        <p className="text-sm font-medium text-white/70 leading-relaxed line-clamp-3 mix-blend-plus-lighter">
+                        {/* Summary as Background Context */}
+                        <p className="text-sm font-medium text-white/60 leading-relaxed line-clamp-4 mix-blend-plus-lighter mt-auto mb-2">
                             {board.summary.summary}
                         </p>
+
+                        {/* Standard Footer (Date/Count) - Integrated subtly */}
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase tracking-widest pt-4 border-t border-white/5">
+                            <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            <span>•</span>
+                            <span>{board.cardCount || 0} items</span>
+                        </div>
                     </div>
 
                     {/* 5. Inner Border / Gloss */}
                     <div className="absolute inset-0 border border-white/5 rounded-2xl pointer-events-none ring-1 ring-inset ring-white/5" />
+
+                    {/* Quick Delete Overlay (Top Right) similar to standard card but cleaner for this style */}
+                    {!isTrashView && (
+                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(board.id);
+                                }}
+                                aria-label="Delete Board"
+                                className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md text-white/70 hover:text-white flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-30`} />
             )}
 
-            {/* Gradient Overlay - Only for Image or Gradient cards, not Text Cards which have their own bg */}
+            {/* Gradient Overlay - Only for Image or Gradient cards */}
             {(!board.summary) && (
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             )}
 
-            {/* Content (Title/Stats) - Hide standard title if we have a summary title */}
-            <div className={`absolute inset-x-0 bottom-0 p-4 ${board.summary ? 'opacity-0' : ''}`}>
-                <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
-                    {board.name}
-                </h3>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                    <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                    <span>•</span>
-                    <span>{board.cardCount || 0} items</span>
+            {/* Content (Title/Stats) - STANDARD footer for non-summary cards */}
+            {(!board.summary) && (
+                <div className={`absolute inset-x-0 bottom-0 p-4`}>
+                    <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
+                        {board.name}
+                    </h3>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
+                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span>•</span>
+                        <span>{board.cardCount || 0} items</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {/* Icon Overlay Top Right */}
-            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                <ArrowRight size={14} />
-            </div>
+            {/* Icon Overlay Top Right - Standard arrow for non-summary cards */}
+            {(!board.summary) && (
+                <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <ArrowRight size={14} />
+                </div>
+            )}
         </div>
     );
 }

@@ -93,7 +93,7 @@ export default function useBoardBackground() {
 
             if (summaryResult && onUpdateBoardMetadata) {
                 await onUpdateBoardMetadata(boardId, { summary: summaryResult });
-                toast.success("Board Title & Summary Updated!");
+                toast.success("Board Summary Updated!");
             }
 
             if (!visualConcept) throw new Error("Failed to analyze context (AI returned empty)");

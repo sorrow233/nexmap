@@ -114,19 +114,30 @@ OUTPUT FORMAT:
         }).join('\n---\n');
 
         const prompt = `
-ANALYZE THIS BOARD CONTENT:
-${context}
+You are an expert content curator. Analyze the following board content and generate a visual theme and a concise summary context.
 
-TASK: Create a "Content Cover" for this board.
-1. "title": A very short, punchy, inspiring title (max 6 words). English or the language of the content.
-2. "summary": A 2-sentence summary of the core ideas or questions being explored.
-3. "theme": Pick a color theme name (one of: "blue", "purple", "emerald", "orange", "pink", "slate").
+BOARD DATA:
+Name: ${boardData.name}
+Metadata: ${JSON.stringify(boardData.metadata || {})}
+Cards Context:
+${cardContext}
 
-OUTPUT JSON:
+TASK:
+1.  **Summary**: Write a 2-sentence summary of what this board is about.
+2.  **Theme**: Choose the best color theme from the list below based on the mood.
+
+THEMES:
+- blue (Professional, Calm)
+- purple (Creative, Deep)
+- emerald (Growth, Fresh)
+- orange (Energetic, Warm)
+- pink (Playful, Vibrant)
+- slate (Neutral, Minimal)
+
+OUTPUT FORMAT (JSON ONLY):
 {
-    "title": "...",
-    "summary": "...",
-    "theme": "..."
+  "summary": "This board explores...",
+  "theme": "color_name"
 }
 `;
 
