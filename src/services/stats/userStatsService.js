@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
     DAILY_HISTORY: 'nexmap_stats_daily_history',
     ACTIVITY_LOG: 'nexmap_stats_activity_log',
     DAILY_SESSIONS: 'nexmap_stats_daily_sessions',
+    MODEL_USAGE: 'nexmap_stats_model_usage',
     LAST_SYNC: 'nexmap_stats_last_sync'
 };
 
@@ -42,6 +43,9 @@ class UserStatsService {
         }
         if (!localStorage.getItem(STORAGE_KEYS.DAILY_SESSIONS)) {
             localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, '{}');
+        }
+        if (!localStorage.getItem(STORAGE_KEYS.MODEL_USAGE)) {
+            localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, '{}');
         }
     }
 
@@ -85,6 +89,18 @@ class UserStatsService {
     }
 
     /**
+     * Increment usage count for a specific AI model
+     * @param {string} modelName
+     */
+    incrementModelUsage(modelName) {
+        if (!modelName) return;
+        const usage = this._getModelUsage();
+        usage[modelName] = (usage[modelName] || 0) + 1;
+        localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, JSON.stringify(usage));
+        this._debouncedSyncToCloud();
+    }
+
+    /**
      * Sync stats to Firebase (debounced)
      */
     _debouncedSyncToCloud() {
@@ -109,6 +125,7 @@ class UserStatsService {
                 totalChars: parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10),
                 dailyHistory: this._getHistory(),
                 dailySessions: this._getDailySessions(),
+                modelUsage: this._getModelUsage(),
                 lastUpdated: new Date().toISOString()
             };
 
@@ -159,10 +176,22 @@ class UserStatsService {
                     }
                 });
 
+                // Merge model usage
+                const localUsage = this._getModelUsage();
+                const cloudUsage = cloudData.modelUsage || {};
+                const mergedUsage = { ...localUsage };
+                Object.keys(cloudUsage).forEach(model => {
+                    if (!mergedUsage[model] || cloudUsage[model] > mergedUsage[model]) {
+                        mergedUsage[model] = cloudUsage[model];
+                    }
+                });
+
                 // Save merged data locally
                 localStorage.setItem(STORAGE_KEYS.TOTAL_CHARS, newTotal.toString());
                 localStorage.setItem(STORAGE_KEYS.DAILY_HISTORY, JSON.stringify(mergedHistory));
+                localStorage.setItem(STORAGE_KEYS.DAILY_HISTORY, JSON.stringify(mergedHistory));
                 localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, JSON.stringify(mergedSessions));
+                localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, JSON.stringify(mergedUsage));
 
                 console.log('[UserStats] Loaded and merged from cloud');
                 return true;
@@ -370,7 +399,75 @@ class UserStatsService {
         try {
             return JSON.parse(localStorage.getItem(STORAGE_KEYS.DAILY_SESSIONS) || '{}');
         } catch (e) {
-            console.error('Failed to parse daily sessions', e);
+            return {};
+        }
+    }
+
+    /**
+     * Get data for a specific month
+     * @param {number} year 
+     * @param {number} month (0-11)
+     * @returns {Array} Daily data for the month
+     */
+    getDataForMonth(year, month) {
+        const history = this._getHistory();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const result = [];
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(year, month, d);
+            const dateStr = date.toISOString().split('T')[0];
+            const dayOfWeek = date.getDay();
+
+            result.push({
+                date: dateStr,
+                chars: history[dateStr] || 0,
+                dayOfWeek,
+                day: d
+            });
+        }
+        return result;
+    }
+
+    /**
+     * Get data for a specific year (monthly aggregation)
+     * @param {number} year
+     * @returns {Array} Monthly data for the year
+     */
+    getDataForYear(year) {
+        const history = this._getHistory();
+        const months = [];
+
+        for (let m = 0; m < 12; m++) {
+            let totalChars = 0;
+            // Iterate all days in this month to sum up
+            const daysInMonth = new Date(year, m + 1, 0).getDate();
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = new Date(year, m, d).toISOString().split('T')[0];
+                totalChars += (history[dateStr] || 0);
+            }
+
+            months.push({
+                monthIndex: m, // 0-11
+                chars: totalChars,
+                year
+            });
+        }
+        return months;
+    }
+
+    /**
+     * Get model usage stats
+     */
+    getModelUsageStats() {
+        return this._getModelUsage();
+    }
+
+    _getModelUsage() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.MODEL_USAGE) || '{}');
+        } catch (e) {
+            console.error('Failed to parse model usage', e);
             return {};
         }
     }

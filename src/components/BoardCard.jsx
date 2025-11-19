@@ -66,26 +66,45 @@ export default function BoardCard({
                         />
                     ) : board.summary ? (
                         // Modern AI Text Card - Premium Dark Glass
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
-                            {/* Subtle gradient accent based on theme */}
-                            <div className={`absolute inset-0 opacity-30 bg-gradient-to-br ${board.summary.theme === 'purple' ? 'from-purple-600/20 to-transparent' :
-                                board.summary.theme === 'emerald' ? 'from-emerald-600/20 to-transparent' :
-                                    board.summary.theme === 'orange' ? 'from-orange-600/20 to-transparent' :
-                                        board.summary.theme === 'pink' ? 'from-pink-600/20 to-transparent' :
-                                            'from-blue-600/20 to-transparent'
-                                }`} />
+                        // Modern AI Text Card - Fresh Japanese Minimalist Style
+                        <div className={`absolute inset-0 overflow-hidden bg-gradient-to-br ${(() => {
+                            const t = board.summary.theme || 'slate';
+                            const styles = {
+                                blue: 'from-blue-50 via-indigo-50 to-white dark:from-blue-900/40 dark:via-slate-900 dark:to-indigo-900/40',
+                                purple: 'from-purple-50 via-fuchsia-50 to-white dark:from-purple-900/40 dark:via-slate-900 dark:to-fuchsia-900/40',
+                                emerald: 'from-emerald-50 via-teal-50 to-white dark:from-emerald-900/40 dark:via-slate-900 dark:to-teal-900/40',
+                                orange: 'from-orange-50 via-amber-50 to-white dark:from-orange-900/40 dark:via-slate-900 dark:to-amber-900/40',
+                                pink: 'from-pink-50 via-rose-50 to-white dark:from-pink-900/40 dark:via-slate-900 dark:to-rose-900/40',
+                                slate: 'from-slate-50 via-gray-50 to-white dark:from-slate-800/40 dark:via-slate-900 dark:to-gray-800/40',
+                            };
+                            return styles[t] || styles.slate;
+                        })()}`}>
+
+                            {/* Colorful accent blob for "Fresh" feel */}
+                            <div className={`absolute inset-0 opacity-10 dark:opacity-20 bg-gradient-to-tr ${(() => {
+                                const t = board.summary.theme || 'slate';
+                                const accents = {
+                                    blue: 'from-blue-400 to-transparent',
+                                    purple: 'from-purple-400 to-transparent',
+                                    emerald: 'from-emerald-400 to-transparent',
+                                    orange: 'from-orange-400 to-transparent',
+                                    pink: 'from-pink-400 to-transparent',
+                                    slate: 'from-slate-400 to-transparent',
+                                };
+                                return accents[t] || accents.slate;
+                            })()}`} />
 
                             {/* Content */}
                             <div className="relative z-10 h-full flex flex-col justify-center px-4">
-                                <p className="text-lg font-semibold text-white/90 leading-relaxed text-center tracking-wide">
+                                <p className={`text-lg font-semibold leading-relaxed text-center tracking-wide ${(board.summary.theme === 'slate' || !board.summary.theme)
+                                        ? 'text-slate-700 dark:text-slate-200'
+                                        : 'text-slate-800 dark:text-white'
+                                    }`}>
                                     {typeof board.summary === 'string'
                                         ? board.summary
                                         : board.summary.summary}
                                 </p>
                             </div>
-
-                            {/* Bottom fade */}
-                            <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-black/30 to-transparent" />
                         </div>
                     ) : (
                         <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-50`} />
