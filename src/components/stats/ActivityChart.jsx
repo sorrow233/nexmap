@@ -3,34 +3,49 @@ import { Sun, Sunset, Moon, CloudMoon, Flame, Zap, Trophy } from 'lucide-react';
 
 /**
  * Premium Activity Chart Component
- * Uses SVG for pixel-perfect rendering and React state for precise interactions.
+ * Supports Week, Month, and Year views with adaptive rendering.
  */
-export default function ActivityChart({ weeklyHistory, timeDistribution, streakDays, todaySessions, t, language = 'en' }) {
+export default function ActivityChart({
+    data = [],
+    viewMode = 'week', // 'week' | 'month' | 'year'
+    timeDistribution,
+    streakDays,
+    todaySessions,
+    t,
+    language = 'en'
+}) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
 
-    // Calculate chart dimensions and data scaling
-    const CHART_HEIGHT = 120;
-    const BAR_WIDTH = 24;
-    const GAP = 12;
-    const width = weeklyHistory.length * (BAR_WIDTH + GAP);
+    // Dynamic Chart Configuration based on view mode
+    const config = useMemo(() => {
+        const isYear = viewMode === 'year';
+        const isMonth = viewMode === 'month';
 
-    // Find max value for scaling (min 10 to avoid flat lines for low data)
-    const maxChars = Math.max(...weeklyHistory.map(d => d.chars), 10);
+        return {
+            height: 140,
+            barWidth: isYear ? 16 : isMonth ? 6 : 24,
+            gap: isYear ? 24 : isMonth ? 4 : 12,
+            radius: isMonth ? 2 : 6
+        };
+    }, [viewMode]);
 
-    // Dynamic localized day labels (Sun, Mon / 日, 月)
-    const dayLabels = useMemo(() => {
-        const labels = [];
-        const baseDate = new Date('2024-01-07'); // A known Sunday
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(baseDate);
-            d.setDate(baseDate.getDate() + i);
-            labels.push(new Intl.DateTimeFormat(language, { weekday: 'short' }).format(d));
-        }
-        return labels;
-    }, [language]);
+    // Calculate dimensions
+    // For Month view, we might have ~30 items. 
+    // width = (30 * 6) + (29 * 4) = 180 + 116 = ~300px
+    // For Week view: (7 * 24) + (6 * 12) = 168 + 72 = 240px
+    // For Year view: (12 * 16) + (11 * 24) = 192 + 264 = 456px
+    // We want to fit strictly within container, so we might need to distribute width evenly.
+
+    // Instead of fixed width, let's use percentage or viewBox mapping
+    const CHART_WIDTH = 1000; // Virtual width for calculation
+    const CHART_HEIGHT = config.height;
+
+    // Calculate max value for scaling (min 10)
+    const maxChars = Math.max(...data.map(d => d.chars), 10);
 
     // Most active time calculation
     const mostActive = useMemo(() => {
+        if (!timeDistribution) return null;
         const { morning, afternoon, evening, night } = timeDistribution;
         const total = morning + afternoon + evening + night;
         if (total === 0) return null;
@@ -45,90 +60,139 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
         return periods.reduce((a, b) => a.value > b.value ? a : b);
     }, [timeDistribution, t]);
 
-    const totalTimeChars = timeDistribution.morning + timeDistribution.afternoon + timeDistribution.evening + timeDistribution.night;
+    const totalTimeChars = timeDistribution ? (timeDistribution.morning + timeDistribution.afternoon + timeDistribution.evening + timeDistribution.night) : 0;
+
+    // Helper to get X position
+    const getX = (index, totalItems) => {
+        // Distribute bars evenly across CHART_WIDTH
+        // padding: usage 90% of width centered
+        const workingWidth = CHART_WIDTH * 0.95;
+        const startX = (CHART_WIDTH - workingWidth) / 2;
+        const step = workingWidth / totalItems;
+        return startX + (step * index) + (step - config.barWidth) / 2; // Center bar in slot
+    };
+
+    // Helper to get dynamic Bar Width
+    const getBarWidth = (totalItems) => {
+        const workingWidth = CHART_WIDTH * 0.95;
+        // Occupy 60% of slot width, max 40px
+        return Math.min(40, (workingWidth / totalItems) * 0.6);
+    };
+
+    const calculatedBarWidth = getBarWidth(data.length);
 
     return (
-        <div className="space-y-6 select-none">
+        <div className="space-y-6 select-none w-full h-full flex flex-col">
             {/* 1. Main Chart Area */}
-            <div className="bg-slate-50/50 dark:bg-white/[0.02] rounded-3xl p-5 border border-slate-200/60 dark:border-white/5 relative group/chart">
-                <div className="flex items-center justify-between mb-6 px-1">
+            <div className="bg-slate-50/50 dark:bg-white/[0.02] rounded-3xl p-5 border border-slate-200/60 dark:border-white/5 relative group/chart flex-1 min-h-[180px] flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-2 px-1 relative z-20">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
                         <Trophy size={12} />
-                        {t?.stats?.weeklyTrend || '7日趋势'}
+                        {viewMode === 'week' ? (t?.stats?.weeklyTrend || '7日趋势') :
+                            viewMode === 'month' ? (t?.stats?.monthlyTrend || '月度趋势') :
+                                (t?.stats?.yearlyTrend || '年度趋势')}
                     </span>
                     {/* Dynamic Tooltip Display Area */}
                     <div className={`h-6 flex items-center justify-end transition-opacity duration-200 ${hoveredIndex !== null ? 'opacity-100' : 'opacity-0'}`}>
-                        {hoveredIndex !== null && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[10px] font-bold shadow-xl">
-                                <span className="opacity-70">{weeklyHistory[hoveredIndex].date}</span>
+                        {hoveredIndex !== null && data[hoveredIndex] && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[10px] font-bold shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                <span className="opacity-70">
+                                    {viewMode === 'year'
+                                        ? `${data[hoveredIndex].year}-${data[hoveredIndex].monthIndex + 1}`
+                                        : data[hoveredIndex].date}
+                                </span>
                                 <div className="w-px h-3 bg-white/20 dark:bg-black/10"></div>
-                                <span>{weeklyHistory[hoveredIndex].chars.toLocaleString()} Chars</span>
+                                <span>{data[hoveredIndex].chars.toLocaleString()} Chars</span>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {/* SVG Chart */}
-                <div className="relative h-[140px] w-full flex justify-center cursor-crosshair">
-                    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${CHART_HEIGHT + 20}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+                <div className="relative w-full flex-1 flex items-end justify-center">
+                    <svg
+                        width="100%"
+                        height="100%"
+                        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 20}`}
+                        preserveAspectRatio="none"
+                        className="overflow-visible"
+                    >
                         {/* Define Gradients */}
                         <defs>
                             <linearGradient id="barGradient" x1="0" y1="1" x2="0" y2="0">
                                 <stop offset="0%" stopColor="rgb(249 115 22)" stopOpacity="0.6" />
                                 <stop offset="100%" stopColor="rgb(251 191 36)" stopOpacity="0.9" />
                             </linearGradient>
-                            <linearGradient id="barGradientInactive" x1="0" y1="1" x2="0" y2="0">
-                                <stop offset="0%" stopColor="currentColor" stopOpacity="0.1" />
-                                <stop offset="100%" stopColor="currentColor" stopOpacity="0.3" />
-                            </linearGradient>
-                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feGaussianBlur stdDeviation="4" result="blur" />
-                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                            </filter>
                         </defs>
 
-                        {/* Grid Lines (Optional, subtle) */}
-                        <line x1="0" y1={CHART_HEIGHT} x2={width} y2={CHART_HEIGHT} stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                        <line x1="0" y1="0" x2={width} y2="0" stroke="currentColor" strokeOpacity="0.05" strokeDasharray="4 4" strokeWidth="1" />
+                        {/* Dashed Guideline (Midpoint) */}
+                        <line x1="0" y1={CHART_HEIGHT / 2} x2={CHART_WIDTH} y2={CHART_HEIGHT / 2} stroke="currentColor" strokeOpacity="0.03" strokeDasharray="4 4" strokeWidth="1" />
 
-                        {weeklyHistory.map((day, i) => {
-                            const height = Math.max((day.chars / maxChars) * CHART_HEIGHT, 4); // Min height 4px
-                            const x = i * (BAR_WIDTH + GAP);
+                        {data.map((item, i) => {
+                            const height = Math.max((item.chars / maxChars) * CHART_HEIGHT, 4); // Min height 4px
+                            const x = getX(i, data.length);
+                            const width = calculatedBarWidth;
                             const y = CHART_HEIGHT - height;
-                            const isToday = i === weeklyHistory.length - 1;
+
+                            // Highlight logic
+                            const isToday = viewMode === 'week' && i === data.length - 1; // Simplified logic, ideally check exact date
                             const isHovered = hoveredIndex === i;
+
+                            // Label Logic
+                            let label = '';
+                            if (viewMode === 'week') {
+                                label = new Intl.DateTimeFormat(language, { weekday: 'short' }).format(new Date(item.date));
+                            } else if (viewMode === 'month') {
+                                // Show every 5th day label to avoid clutter
+                                if (item.day === 1 || item.day % 5 === 0) label = item.day;
+                            } else if (viewMode === 'year') {
+                                label = new Date(item.year, item.monthIndex).toLocaleDateString(language, { month: 'narrow' });
+                            }
 
                             return (
                                 <g
-                                    key={day.date}
-                                    transform={`translate(${x}, 0)`}
+                                    key={i}
                                     onMouseEnter={() => setHoveredIndex(i)}
                                     onMouseLeave={() => setHoveredIndex(null)}
-                                    className="transition-all duration-300 ease-out"
+                                    className="transition-all duration-300 ease-out cursor-crosshair"
                                 >
-                                    {/* Interaction Hit Area (Invisible but tall) */}
-                                    <rect x="-3" y="0" width={BAR_WIDTH + 6} height={CHART_HEIGHT + 30} fill="transparent" />
+                                    {/* Interaction Catchment Area */}
+                                    <rect
+                                        x={getX(i, data.length) - (width / 2)}
+                                        y="0"
+                                        width={CHART_WIDTH / data.length}
+                                        height={CHART_HEIGHT + 30}
+                                        fill="transparent"
+                                    />
 
                                     {/* The Bar */}
                                     <rect
-                                        x="0"
+                                        x={x}
                                         y={y}
-                                        width={BAR_WIDTH}
+                                        width={width}
                                         height={height}
-                                        rx="6"
+                                        rx={viewMode === 'month' ? 2 : 4}
                                         fill={isToday ? "url(#barGradient)" : "currentColor"}
-                                        className={`text-slate-300 dark:text-slate-600 transition-all duration-500 ease-out ${isToday ? 'filter drop-shadow-lg shadow-orange-500/20' : ''}`}
+                                        className={`
+                                            transition-all duration-500 ease-out
+                                            ${isToday ? 'filter drop-shadow-lg shadow-orange-500/20' : 'text-slate-300 dark:text-slate-700/50'}
+                                            ${isHovered ? 'opacity-100 text-slate-800 dark:text-slate-200' : ''}
+                                        `}
                                     />
 
-                                    {/* X-Axis Label */}
+                                    {/* Label */}
                                     <text
-                                        x={BAR_WIDTH / 2}
+                                        x={x + width / 2}
                                         y={CHART_HEIGHT + 18}
                                         textAnchor="middle"
-                                        className={`text-[10px] font-bold fill-slate-400 dark:fill-slate-500 transition-colors ${isToday ? 'fill-orange-500' : ''} ${isHovered ? 'fill-slate-800 dark:fill-white' : ''}`}
+                                        className={`
+                                            text-[10px] font-bold fill-slate-400/50 dark:fill-slate-600 transition-colors duration-300
+                                            ${isToday ? 'fill-orange-500' : ''}
+                                            ${isHovered ? 'fill-slate-800 dark:fill-white scale-110' : ''}
+                                        `}
                                         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                                     >
-                                        {dayLabels[day.dayOfWeek]}
+                                        {label}
                                     </text>
                                 </g>
                             );
@@ -177,7 +241,7 @@ export default function ActivityChart({ weeklyHistory, timeDistribution, streakD
                 </div>
             </div>
 
-            {/* 3. Time Distribution Bar (Enhanced) */}
+            {/* 3. Time Distribution Bar (Only show if we have data) */}
             {totalTimeChars > 0 && (
                 <div className="pt-2">
                     <div className="h-3 rounded-full overflow-hidden flex shadow-inner ring-1 ring-black/5 dark:ring-white/5">

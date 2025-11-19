@@ -214,13 +214,6 @@ const Card = React.memo(function Card({
             {/* Quick Actions (Absolute Top Right) - Fade in on hover */}
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
-                    onClick={(e) => { e.stopPropagation(); onSummarize && onSummarize(data.id); }}
-                    className="p-1.5 text-slate-400 hover:text-violet-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title={t.card?.aiSummary || "Generate AI Summary"}
-                >
-                    <Sparkles size={14} />
-                </button>
-                <button
                     onClick={handleCopy}
                     className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
                     title={t.card?.copyResponse || "Copy response"}
