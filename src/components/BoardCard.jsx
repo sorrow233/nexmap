@@ -97,8 +97,8 @@ export default function BoardCard({
                             {/* Content */}
                             <div className="relative z-10 h-full flex flex-col justify-center px-4">
                                 <p className={`text-lg font-semibold leading-relaxed text-center tracking-wide ${(board.summary.theme === 'slate' || !board.summary.theme)
-                                        ? 'text-slate-700 dark:text-slate-200'
-                                        : 'text-slate-800 dark:text-white'
+                                    ? 'text-slate-700 dark:text-slate-200'
+                                    : 'text-slate-800 dark:text-white'
                                     }`}>
                                     {typeof board.summary === 'string'
                                         ? board.summary
@@ -115,7 +115,7 @@ export default function BoardCard({
 
                     {/* Quick Actions Overlay */}
                     {!isTrashView && (
-                        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                        <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
 
                             <button
                                 onClick={(e) => handleImageButtonClick(e, board.id)}
