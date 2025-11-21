@@ -70,7 +70,14 @@ export default function ChatView({
     const { t } = useLanguage();
 
     // Quick Sprout Hook (for one-click topic decomposition)
-    const { handleQuickSprout } = useAISprouting();
+    const { handleContinueTopic, handleBranch } = useAISprouting();
+
+    // Helper to send a message from Sprout (continue topic in current card)
+    const handleSendMessageFromSprout = (text) => {
+        if (!text) return;
+        // Trigger the normal message flow
+        onGenerateResponse(card.id, text, []);
+    };
 
     const handleSproutClick = async () => {
         if (isSprouting) return;
@@ -418,7 +425,8 @@ export default function ChatView({
                 onShare={(content) => setShareContent(content)}
                 onToggleFavorite={onToggleFavorite}
                 pendingCount={pendingCount}
-                onQuickSprout={() => handleQuickSprout(card.id)}
+                onContinueTopic={() => handleContinueTopic(card.id, handleSendMessageFromSprout)}
+                onBranch={() => handleBranch(card.id)}
             />
 
             {/* Premium Input Bar */}

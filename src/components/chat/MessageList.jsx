@@ -16,7 +16,8 @@ export default function MessageList({
     onShare,
     onToggleFavorite,
     pendingCount = 0,
-    onQuickSprout
+    onContinueTopic,
+    onBranch
 }) {
 
     // Helper to identify if it's a note or chat
@@ -59,7 +60,8 @@ export default function MessageList({
                                     onShare={onShare}
                                     onToggleFavorite={(idx, content) => onToggleFavorite(card.id, idx, content)}
                                     isFavorite={favoritesService.isFavorite(card.id, i)}
-                                    onQuickSprout={onQuickSprout}
+                                    onContinueTopic={onContinueTopic}
+                                    onBranch={onBranch}
                                 />
                             </ErrorBoundary>
                         ))}
