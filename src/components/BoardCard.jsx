@@ -70,23 +70,22 @@ export default function BoardCard({
                         // Modern AI Text Card - Simple & Elegant
                         <div className={`absolute inset-0 overflow-hidden transition-colors duration-500 ${(() => {
                             const t = board.summary.theme || 'slate';
-                            // "Nice" simple colors - Japanese Traditional / Minimalist Palette
-                            // Flattened to solid colors for cleaner look
+                            // "July Color Palette" - JeyDesignShop Style (Japanese Fresh)
                             const styles = {
-                                blue: 'bg-[#E0F7FA] dark:bg-[#263238]', // Cyan / Blue Grey
-                                purple: 'bg-[#F3E5F5] dark:bg-[#4A148C]', // Purple
-                                emerald: 'bg-[#E8F5E9] dark:bg-[#1B5E20]', // Green
-                                orange: 'bg-[#FFF3E0] dark:bg-[#E65100]', // Orange
-                                pink: 'bg-[#FCE4EC] dark:bg-[#880E4F]', // Pink
-                                slate: 'bg-[#F5F5F5] dark:bg-[#212121]', // Grey
+                                // Palette colors mapped to themes
+                                pink: 'bg-[#FAE2DE] dark:bg-[#FAE2DE]',      // Light Pink
+                                orange: 'bg-[#F9E7D3] dark:bg-[#F9E7D3]',    // Peach
+                                slate: 'bg-[#FFF6D6] dark:bg-[#FFF6D6]',     // Cream/Yellow (Default)
+                                emerald: 'bg-[#E8F6DF] dark:bg-[#E8F6DF]',   // Light Green
+                                blue: 'bg-[#F0F6F5] dark:bg-[#F0F6F5]',      // Ice Blue
+                                purple: 'bg-[#E6E6FA] dark:bg-[#E6E6FA]',    // Lavender (Added to complete set using style)
                             };
                             return styles[t] || styles.slate;
                         })()}`}>
 
-                            {/* Content - Center aligned, simple typography */}
+                            {/* Content - Dark text always for these light backgrounds */}
                             <div className="relative z-10 h-full flex flex-col justify-center px-6">
-                                <p className={`text-lg font-bold leading-relaxed text-center tracking-wide ${'text-slate-800 dark:text-slate-100'
-                                    }`}>
+                                <p className="text-lg font-bold leading-relaxed text-center tracking-wide text-slate-700">
                                     {typeof board.summary === 'string'
                                         ? board.summary
                                         : board.summary.summary}
