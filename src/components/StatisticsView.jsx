@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu } from 'lucide-react';
+import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Sun, Sunset, Moon, CloudMoon } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -113,6 +113,27 @@ export default function StatisticsView({ boardsList, user }) {
         }
     };
 
+    // Most active time calculation (Moved from ActivityChart)
+    const timeDistribution = stats.tokenStats.timeDistribution;
+    const mostActive = React.useMemo(() => {
+        if (!timeDistribution) return null;
+        const { morning, afternoon, evening, night } = timeDistribution;
+        const total = morning + afternoon + evening + night;
+        if (total === 0) return null;
+
+        const periods = [
+            { key: 'morning', value: morning, label: t?.stats?.morning || '早晨', icon: Sun, color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' },
+            { key: 'afternoon', value: afternoon, label: t?.stats?.afternoon || '下午', icon: Sunset, color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
+            { key: 'evening', value: evening, label: t?.stats?.evening || '晚上', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+            { key: 'night', value: night, label: t?.stats?.night || '深夜', icon: CloudMoon, color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/20' }
+        ];
+        // Note: Dynamic imports for icons inside useMemo might be tricky if we want synchronous render.
+        // Simplified approach below reusing imported icons since we imported them at top level but let's check imports.
+        // We have Sun, Sunset, Moon, CloudMoon available from 'lucide-react'? 
+        // No, current imports are: BarChart3, Database, Layers, Zap, Activity, Clock, Cpu. 
+        // Need to add imports for Sun, Sunset, Moon, CloudMoon.
+    }, [timeDistribution, t]);
+
     return (
         <div className="w-full animate-fade-in-up">
             {/* Header Section */}
@@ -128,16 +149,16 @@ export default function StatisticsView({ boardsList, user }) {
                 </div>
             </div>
 
-            {/* Main Grid - Revised Layout to 3 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* Main Grid Layout */}
+            <div className="space-y-6">
 
-                {/* Left Column: KPI Stats (Stacked) */}
-                <div className="md:col-span-1 space-y-4">
-                    {/* Boards KPI -> "Canvas" */}
+                {/* 1. Top Row: Key Metrics (4 Cols) */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    {/* Boards KPI */}
                     <div className="p-5 bg-gradient-to-br from-white to-slate-50 dark:from-white/5 dark:to-white/0 rounded-3xl border border-slate-200/60 dark:border-white/10 flex items-center justify-between group hover:border-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-indigo-500">
-                                {t.stats?.totalBoards || "画布总数"} {/* Canvas */}
+                                {t.stats?.totalBoards || "画布总数"}
                             </p>
                             <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{stats.totalBoards}</h3>
                         </div>
@@ -146,11 +167,11 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
                     </div>
 
-                    {/* Cards KPI -> "Cards" */}
+                    {/* Cards KPI */}
                     <div className="p-5 bg-gradient-to-br from-white to-slate-50 dark:from-white/5 dark:to-white/0 rounded-3xl border border-slate-200/60 dark:border-white/10 flex items-center justify-between group hover:border-fuchsia-500/30 hover:shadow-xl hover:shadow-fuchsia-500/5 transition-all duration-300">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-fuchsia-500">
-                                {t.stats?.totalElements || "卡片总数"} {/* Cards */}
+                                {t.stats?.totalElements || "卡片总数"}
                             </p>
                             <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{stats.totalCards}</h3>
                         </div>
@@ -159,11 +180,11 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
                     </div>
 
-                    {/* Activity KPI -> "Consecutive Active Days" */}
+                    {/* Streak KPI */}
                     <div className="p-5 bg-gradient-to-br from-white to-slate-50 dark:from-white/5 dark:to-white/0 rounded-3xl border border-slate-200/60 dark:border-white/10 flex items-center justify-between group hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/5 transition-all duration-300">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-orange-500">
-                                {t.stats?.currentStreak || "连续在线天数"} {/* Consecutive Active Days */}
+                                {t.stats?.currentStreak || "连续活跃"}
                             </p>
                             <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{stats.tokenStats.streakDays} <span className="text-sm font-medium text-slate-400 font-sans tracking-normal">{t.stats?.days || "天"}</span></h3>
                         </div>
@@ -171,165 +192,144 @@ export default function StatisticsView({ boardsList, user }) {
                             <Activity size={20} strokeWidth={2.5} />
                         </div>
                     </div>
+
+                    {/* AI Quota KPI */}
+                    <div className="p-5 bg-gradient-to-br from-indigo-500 to-violet-600 dark:from-indigo-900 dark:to-violet-950 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10 transition-all duration-500 hover:scale-[1.02]">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[40px] rounded-full translate-x-1/2 -translate-y-1/3 transition-colors duration-700 pointer-events-none"></div>
+                        <div className="flex items-center justify-between mb-2">
+                            <div>
+                                <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">
+                                    {t.stats?.aiQuota || "AI 配额"}
+                                </p>
+                                <h3 className="text-3xl font-black text-white tracking-tight">{stats.credits?.credits?.toLocaleString() || 200}</h3>
+                            </div>
+                            <div className="w-12 h-12 flex items-center justify-center bg-white/10 rounded-2xl backdrop-blur-sm shadow-inner text-yellow-300">
+                                <Zap size={20} fill="currentColor" />
+                            </div>
+                        </div>
+                        {/* Mini Progress Bar */}
+                        <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                            <div
+                                className="h-full bg-white/80 rounded-full"
+                                style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                {/* Middle & Right: Main Content Area */}
-                <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                    {/* Activity Chart (Spans full width of this sub-grid, effectively 2 cols) */}
-                    <div className="lg:col-span-2 min-h-[400px]">
-                        <div className="h-full p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 relative overflow-hidden flex flex-col shadow-sm">
-                            {/* Header & Controls */}
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 relative z-10 gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/20 rounded-xl">
-                                        <BarChart3 size={18} strokeWidth={2.5} />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">
-                                            {t.stats?.dailyActivity || "Activity Volume"}
-                                        </h3>
-                                    </div>
-                                </div>
-
-                                {/* View Mode Switcher */}
-                                <div className="flex bg-slate-100 dark:bg-white/5 rounded-lg p-1">
-                                    {['week', 'month', 'year'].map(mode => (
-                                        <button
-                                            key={mode}
-                                            onClick={() => setChartViewMode(mode)}
-                                            className={`
-                                                px-3 py-1.5 text-xs font-bold rounded-md transition-all
-                                                ${chartViewMode === mode
-                                                    ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
-                                            `}
-                                        >
-                                            {mode === 'week' ? '本周' : mode === 'month' ? '本月' : '本年'}
-                                        </button>
-                                    ))}
-                                </div>
+                {/* 2. Middle Row: Activity Chart (Full Width) */}
+                <div className="min-h-[320px] bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 relative overflow-hidden flex flex-col shadow-sm group">
+                    {/* Header & Controls */}
+                    <div className="p-6 pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between relative z-10 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/20 rounded-xl">
+                                <BarChart3 size={18} strokeWidth={2.5} />
                             </div>
-
-                            {/* Chart */}
-                            <div className="relative z-10 flex-1 min-h-[240px]">
-                                <ActivityChart
-                                    data={getChartData()}
-                                    viewMode={chartViewMode}
-                                    timeDistribution={stats.tokenStats.timeDistribution || { morning: 0, afternoon: 0, evening: 0, night: 0 }}
-                                    streakDays={stats.tokenStats.streakDays || 0}
-                                    todaySessions={stats.tokenStats.todaySessions || 0}
-                                    t={t}
-                                    language={useLanguage().language}
-                                />
+                            <div>
+                                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                                    {t.stats?.dailyActivity || "Activity Volume"}
+                                </h3>
+                                {/* Total Count in Header removed as requested, now in Tooltip */}
                             </div>
+                        </div>
 
-                            {/* Decor */}
-                            <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                        {/* View Mode Switcher */}
+                        <div className="flex bg-slate-100 dark:bg-white/5 rounded-lg p-1">
+                            {['week', 'month', 'year'].map(mode => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setChartViewMode(mode)}
+                                    className={`
+                                        px-3 py-1.5 text-xs font-bold rounded-md transition-all
+                                        ${chartViewMode === mode
+                                            ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
+                                    `}
+                                >
+                                    {mode === 'week' ? '本周' : mode === 'month' ? '本月' : '本年'}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Bottom Row of Middle: Model Usage */}
-                    <div className="h-full p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 relative overflow-hidden flex flex-col shadow-sm">
-                        <div className="flex items-center gap-3 mb-6">
+                    <div className="relative z-10 flex-1 min-h-[240px] px-6 pb-6">
+                        <ActivityChart
+                            data={getChartData()}
+                            viewMode={chartViewMode}
+                            timeDistribution={stats.tokenStats.timeDistribution || { morning: 0, afternoon: 0, evening: 0, night: 0 }}
+                            t={t}
+                            language={useLanguage().language}
+                        />
+                    </div>
+                    {/* Decor */}
+                    <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                </div>
+
+                {/* 3. Bottom Row: Detailed Insights (3 Cols) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Sessions Card */}
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-blue-500/30 transition-all duration-300 relative overflow-hidden">
+                        <div className="flex items-center gap-3 mb-4 relative z-10">
                             <div className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-500 dark:bg-blue-500/20 rounded-xl">
+                                <Zap size={18} strokeWidth={2.5} />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t.stats?.sessions || '会话'}</span>
+                        </div>
+                        <div className="relative z-10">
+                            <h3 className="text-4xl font-black text-slate-900 dark:text-white mb-1">
+                                {stats.tokenStats.todaySessions || 0}
+                            </h3>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.today || "今日"}</span>
+                        </div>
+                        <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                    </div>
+
+                    {/* Active Time Card */}
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-amber-500/30 transition-all duration-300 relative overflow-hidden">
+                        <div className="flex items-center gap-3 mb-4 relative z-10">
+                            <div className="w-10 h-10 flex items-center justify-center bg-amber-50 text-amber-500 dark:bg-amber-500/20 rounded-xl">
+                                <Clock size={18} strokeWidth={2.5} />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t.stats?.activeTime || '活跃时段'}</span>
+                        </div>
+                        <div className="relative z-10">
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1 truncate">
+                                {/* Use mostActive logic or placeholders */}
+                                {mostActive?.label || '--'}
+                            </h3>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.timeDistribution || "分布"}</span>
+                        </div>
+                        <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                    </div>
+
+                    {/* Model Usage Card */}
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 relative overflow-hidden flex flex-col shadow-sm group hover:border-emerald-500/30 transition-all duration-300">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-500 dark:bg-emerald-500/20 rounded-xl">
                                 <Cpu size={18} strokeWidth={2.5} />
                             </div>
-                            <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">模型使用分布</h3>
-                                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Model Usage</div>
-                            </div>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">模型偏好</span>
                         </div>
-                        <div className="flex-1 space-y-3 overflow-y-auto max-h-[220px] custom-scrollbar">
+                        <div className="flex-1 space-y-2 overflow-y-auto max-h-[120px] custom-scrollbar">
                             {Object.entries(stats.tokenStats.modelUsage || {}).length === 0 ? (
-                                <div className="text-sm text-slate-400 text-center py-8 opacity-60">
-                                    暂无模型使用数据
-                                </div>
+                                <div className="text-xs text-slate-400 opacity-60">暂无数据</div>
                             ) : (
-                                Object.entries(stats.tokenStats.modelUsage).sort(([, a], [, b]) => b - a).map(([model, count], idx) => {
-                                    const maxVal = Math.max(...Object.values(stats.tokenStats.modelUsage));
-                                    const percent = (count / maxVal) * 100;
-                                    return (
-                                        <div key={model} className="space-y-1">
-                                            <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
-                                                <span>{model}</span>
-                                                <span>{count}</span>
+                                Object.entries(stats.tokenStats.modelUsage).sort(([, a], [, b]) => b - a).slice(0, 3).map(([model, count]) => (
+                                    <div key={model} className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-600 dark:text-slate-400 truncate max-w-[120px]" title={model}>{model}</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-16 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(count / Math.max(...Object.values(stats.tokenStats.modelUsage))) * 100}%` }}></div>
                                             </div>
-                                            <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-blue-500 rounded-full opacity-80"
-                                                    style={{ width: `${percent}%` }}
-                                                />
-                                            </div>
+                                            <span className="font-mono text-slate-500">{count}</span>
                                         </div>
-                                    )
-                                })
+                                    </div>
+                                ))
                             )}
                         </div>
                     </div>
-
-                    {/* Bottom Row of Middle: AI Quota (Resized to Medium) */}
-                    <div className="h-full p-6 bg-gradient-to-br from-indigo-500 to-violet-600 dark:from-indigo-900 dark:to-violet-950 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10 transition-all duration-500 hover:scale-[1.02]">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/3 transition-colors duration-700 pointer-events-none"></div>
-
-                        <div className="flex flex-col h-full relative z-10 justify-between gap-4">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm shadow-inner">
-                                        <Zap size={20} className="text-yellow-300" fill="currentColor" />
-                                    </div>
-                                    <div>
-                                        <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">{t.stats?.neuralCloud || "Cloud Sync"}</span>
-                                        <span className="text-lg font-bold text-white">{t.stats?.aiQuota || "AI Quota"}</span>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
-                                        {stats.credits?.credits?.toLocaleString() || 200}
-                                    </div>
-                                    <div className="text-[10px] font-bold text-white/60">{t.stats?.creditsRemaining || "剩余"}</div>
-                                </div>
-                            </div>
-
-                            <div className="">
-                                {user ? (
-                                    stats.loadingCredits ? (
-                                        <div className="animate-pulse space-y-2">
-                                            <div className="h-2 w-full bg-white/10 rounded-full"></div>
-                                        </div>
-                                    ) : stats.credits ? (
-                                        <div className="space-y-4">
-                                            <div className="space-y-1.5">
-                                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/50">
-                                                    <span>{t.stats?.creditsUsed || "已使用"}</span>
-                                                    <span>{Math.round((stats.credits.credits / stats.credits.initialCredits) * 100)}% {t.stats?.creditsRemaining || "剩余"}</span>
-                                                </div>
-                                                {/* Modern Progress Bar */}
-                                                <div className="h-3 w-full bg-black/20 rounded-full overflow-hidden backdrop-blur-md ring-1 ring-white/10 p-0.5">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-white to-indigo-100 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all duration-1000 ease-out relative"
-                                                        style={{ width: `${Math.min(100, (stats.credits.credits / stats.credits.initialCredits) * 100)}%` }}
-                                                    >
-                                                        <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-sm text-white/50 bg-white/5 p-4 rounded-xl border border-white/5">
-                                            {t.stats?.syncUnknown || "状态位置"}. <br />
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="flex items-center gap-2 py-2 px-3 bg-white/10 rounded-lg border border-white/5">
-                                        <span className="text-xs font-medium text-white/80">{t.stats?.localStorageOnly || "纯本地模式"}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
+
             </div>
 
             {/* Last Active Footer */}
