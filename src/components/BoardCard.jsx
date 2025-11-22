@@ -71,14 +71,14 @@ export default function BoardCard({
                         <div className={`absolute inset-0 overflow-hidden transition-colors duration-500 ${(() => {
                             const t = board.summary.theme || 'slate';
                             // "Nice" simple colors - Japanese Traditional / Minimalist Palette
-                            // Using slight gradients just to give depth, but keeping it looking "simple"
+                            // Flattened to solid colors for cleaner look
                             const styles = {
-                                blue: 'bg-gradient-to-br from-[#E0F2F1] to-[#B2DFDB] dark:from-[#37474F] dark:to-[#263238]', // Muted Teal/Blue
-                                purple: 'bg-gradient-to-br from-[#F3E5F5] to-[#E1BEE7] dark:from-[#4A148C] dark:to-[#311B92]', // Muted Purple
-                                emerald: 'bg-gradient-to-br from-[#E8F5E9] to-[#C8E6C9] dark:from-[#1B5E20] dark:to-[#004D40]', // Soft Green
-                                orange: 'bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] dark:from-[#E65100] dark:to-[#BF360C]', // Soft Orange
-                                pink: 'bg-gradient-to-br from-[#FCE4EC] to-[#F8BBD0] dark:from-[#880E4F] dark:to-[#4A148C]', // Soft Pink
-                                slate: 'bg-gradient-to-br from-[#F5F5F5] to-[#E0E0E0] dark:from-[#212121] dark:to-[#000000]', // Clean Grey
+                                blue: 'bg-[#E0F7FA] dark:bg-[#263238]', // Cyan / Blue Grey
+                                purple: 'bg-[#F3E5F5] dark:bg-[#4A148C]', // Purple
+                                emerald: 'bg-[#E8F5E9] dark:bg-[#1B5E20]', // Green
+                                orange: 'bg-[#FFF3E0] dark:bg-[#E65100]', // Orange
+                                pink: 'bg-[#FCE4EC] dark:bg-[#880E4F]', // Pink
+                                slate: 'bg-[#F5F5F5] dark:bg-[#212121]', // Grey
                             };
                             return styles[t] || styles.slate;
                         })()}`}>
