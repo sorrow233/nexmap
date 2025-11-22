@@ -42,6 +42,7 @@ export default function ActivityChart({
 
     // Calculate max value for scaling (min 10)
     const maxChars = Math.max(...data.map(d => d.chars), 10);
+    const totalChars = useMemo(() => data.reduce((acc, curr) => acc + (curr.chars || 0), 0), [data]);
 
     // Most active time calculation
     const mostActive = useMemo(() => {
@@ -86,12 +87,17 @@ export default function ActivityChart({
             {/* 1. Main Chart Area */}
             <div className="bg-slate-50/50 dark:bg-white/[0.02] rounded-3xl p-5 border border-slate-200/60 dark:border-white/5 relative group/chart flex-1 min-h-[180px] flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-2 px-1 relative z-20">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                        <Trophy size={12} />
-                        {viewMode === 'week' ? (t?.stats?.weeklyTrend || '7日趋势') :
-                            viewMode === 'month' ? (t?.stats?.monthlyTrend || '月度趋势') :
-                                (t?.stats?.yearlyTrend || '年度趋势')}
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                            <Trophy size={12} />
+                            {viewMode === 'week' ? (t?.stats?.weeklyTrend || '7日趋势') :
+                                viewMode === 'month' ? (t?.stats?.monthlyTrend || '月度趋势') :
+                                    (t?.stats?.yearlyTrend || '年度趋势')}
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 pl-[19px]">
+                            {t?.stats?.globalChars || '生成字符数'}: <span className="font-bold text-slate-700 dark:text-slate-300 font-mono">{totalChars.toLocaleString()}</span>
+                        </span>
+                    </div>
                     {/* Dynamic Tooltip Display Area */}
                     <div className={`h-6 flex items-center justify-end transition-opacity duration-200 ${hoveredIndex !== null ? 'opacity-100' : 'opacity-0'}`}>
                         {hoveredIndex !== null && data[hoveredIndex] && (
