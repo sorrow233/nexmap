@@ -156,18 +156,17 @@ export default function ActivityChart({
                                         fill="transparent"
                                     />
 
-                                    {/* The Bar */}
+                                    {/* The Bar - Zen Style */}
                                     <rect
                                         x={x}
                                         y={y}
                                         width={width}
                                         height={height}
                                         rx={viewMode === 'month' ? 2 : 4}
-                                        fill={isToday ? "url(#barGradient)" : "currentColor"}
                                         className={`
                                             transition-all duration-500 ease-out
-                                            ${isToday ? 'filter drop-shadow-lg shadow-orange-500/20' : 'text-slate-300 dark:text-slate-700/50'}
-                                            ${isHovered ? 'opacity-100 text-slate-800 dark:text-slate-200' : ''}
+                                            ${isToday ? 'fill-emerald-500 dark:fill-emerald-400' : 'fill-slate-200 dark:fill-white/10'}
+                                            ${isHovered ? 'opacity-80' : ''}
                                         `}
                                     />
 
@@ -177,9 +176,9 @@ export default function ActivityChart({
                                         y={CHART_HEIGHT + 18}
                                         textAnchor="middle"
                                         className={`
-                                            text-[10px] font-bold fill-slate-400/50 dark:fill-slate-600 transition-colors duration-300
-                                            ${isToday ? 'fill-orange-500' : ''}
-                                            ${isHovered ? 'fill-slate-800 dark:fill-white scale-110' : ''}
+                                            text-[10px] font-medium fill-slate-300 dark:fill-slate-600 transition-colors duration-300
+                                            ${isToday ? 'fill-emerald-600 font-bold' : ''}
+                                            ${isHovered ? 'fill-slate-800 dark:fill-white' : ''}
                                         `}
                                         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                                     >
@@ -197,18 +196,11 @@ export default function ActivityChart({
             {/* 3. Time Distribution Bar (Only show if we have data) */}
             {totalTimeChars > 0 && (
                 <div className="pt-2">
-                    <div className="h-3 rounded-full overflow-hidden flex shadow-inner ring-1 ring-black/5 dark:ring-white/5">
-                        <DistributionSegment value={timeDistribution.morning} total={totalTimeChars} color="bg-amber-400" />
-                        <DistributionSegment value={timeDistribution.afternoon} total={totalTimeChars} color="bg-orange-500" />
-                        <DistributionSegment value={timeDistribution.evening} total={totalTimeChars} color="bg-indigo-500" />
-                        <DistributionSegment value={timeDistribution.night} total={totalTimeChars} color="bg-purple-600" />
-                    </div>
-                    {/* Legend */}
-                    <div className="flex justify-between mt-3 px-1 text-[10px] font-medium text-slate-400">
-                        <LegendItem color="bg-amber-400" label={t?.stats?.morning || '早'} value={timeDistribution.morning} total={totalTimeChars} />
-                        <LegendItem color="bg-orange-500" label={t?.stats?.afternoon || '午'} value={timeDistribution.afternoon} total={totalTimeChars} />
-                        <LegendItem color="bg-indigo-500" label={t?.stats?.evening || '晚'} value={timeDistribution.evening} total={totalTimeChars} />
-                        <LegendItem color="bg-purple-600" label={t?.stats?.night || '夜'} value={timeDistribution.night} total={totalTimeChars} />
+                    <div className="h-2 rounded-full overflow-hidden flex bg-slate-100 dark:bg-white/5">
+                        <DistributionSegment value={timeDistribution.morning} total={totalTimeChars} color="bg-emerald-100/50" activeColor="bg-emerald-400" />
+                        <DistributionSegment value={timeDistribution.afternoon} total={totalTimeChars} color="bg-teal-100/50" activeColor="bg-teal-500" />
+                        <DistributionSegment value={timeDistribution.evening} total={totalTimeChars} color="bg-cyan-100/50" activeColor="bg-cyan-600" />
+                        <DistributionSegment value={timeDistribution.night} total={totalTimeChars} color="bg-indigo-100/50" activeColor="bg-indigo-400" />
                     </div>
                 </div>
             )}
@@ -216,45 +208,18 @@ export default function ActivityChart({
     );
 }
 
-// Sub-components for cleaner code
-const StatBox = ({ icon: Icon, label, value, unit, color, bg, border }) => (
-    <div className={`rounded-2xl p-4 border bg-gradient-to-br ${bg} ${border} transition-transform hover:scale-[1.02] flex flex-col justify-between min-h-[90px]`}>
-        <div className="flex items-center gap-1.5 opacity-90">
-            <div className={`p-1 rounded-md ${color.replace('text-', 'bg-').replace('500', '500/10')}`}>
-                <Icon size={14} className={color} />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                {label}
-            </span>
-        </div>
-        <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">
-                {value}
-            </span>
-            <span className="text-[10px] font-bold text-slate-400">{unit}</span>
-        </div>
-    </div>
-);
-
-const DistributionSegment = ({ value, total, color }) => {
+const DistributionSegment = ({ value, total, activeColor }) => {
     if (value <= 0) return null;
     const width = (value / total) * 100;
     return (
         <div
-            className={`h-full ${color} first:rounded-l-full last:rounded-r-full hover:brightness-110 transition-all cursor-crosshair relative group`}
+            className={`h-full ${activeColor} first:rounded-l-full last:rounded-r-full hover:brightness-110 transition-all cursor-crosshair relative group`}
             style={{ width: `${width}%` }}
         >
             {/* Simple tooltip on hover for segments */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-[10px] rounded px-2 py-1 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-20">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-800 text-white text-[10px] rounded px-2 py-1 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-20">
                 {Math.round(width)}%
             </div>
         </div>
     );
 };
-
-const LegendItem = ({ color, label, value, total }) => (
-    <div className="flex items-center gap-1.5 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-default" title={`${Math.round((value / total) * 100)}%`}>
-        <div className={`w-2 h-2 rounded-full ${color}`} />
-        <span>{label}</span>
-    </div>
-);
