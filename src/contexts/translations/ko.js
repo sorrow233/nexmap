@@ -436,7 +436,7 @@ export const ko = {
         refreshCloud: "쿼터 확인",
         syncing: "확인 중...",
         refresh: "새로고침",
-        totalElements: "총 요소",
+        totalElements: "총 카드",
         creativePower: "창작력",
         neuralCloud: "클라우드 동기화",
         aiQuota: "AI 할당량",
@@ -445,7 +445,8 @@ export const ko = {
         guestMode: "게스트 모드",
         localStorageOnly: "로컬 저장소 전용",
         lastSnapshot: "마지막 업데이트",
-        currentStreak: "현재 연속 기록"
+        currentStreak: "연속 활동",
+        hoverForDetails: "마우스 오버로 상세 보기"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

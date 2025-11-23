@@ -436,7 +436,7 @@ export const ja = {
         refreshCloud: "クォータ確認",
         syncing: "確認中...",
         refresh: "更新",
-        totalElements: "総要素数",
+        totalElements: "カード総数",
         creativePower: "創造力",
         neuralCloud: "クラウド同期",
         aiQuota: "AI割り当て",
@@ -445,7 +445,8 @@ export const ja = {
         guestMode: "ゲストモード",
         localStorageOnly: "ローカルのみ",
         lastSnapshot: "最終更新",
-        currentStreak: "現在の連続記録"
+        currentStreak: "連続アクティブ",
+        hoverForDetails: "ホバーで詳細を表示"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {
