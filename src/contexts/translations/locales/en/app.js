@@ -171,7 +171,7 @@ export const app = {
         syncing: "Checking...",
         refresh: "Refresh",
         totalElements: "Total Cards",
-        creativePower: "Creative Power",
+        creativePower: "Total Token Count",
         neuralCloud: "Cloud Sync",
         aiQuota: "AI Quota",
         syncUnknown: "Status Unknown",
