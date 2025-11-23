@@ -5,9 +5,12 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
 import ActivityChart from './stats/ActivityChart';
 import { useStore } from '../store/useStore';
+import AchievementModal from '../components/AchievementModal';
 
 export default function StatisticsView({ boardsList, user }) {
     const { t } = useLanguage();
+
+    const [showAchievements, setShowAchievements] = useState(false);
 
     // Use store for system credits if available (Local First strategy)
     const storedCredits = useStore(state => state.systemCredits);
@@ -132,6 +135,30 @@ export default function StatisticsView({ boardsList, user }) {
         return maxPeriod;
     }, [timeDistribution, t]);
 
+    // Planetary Logic (Lifted State)
+    const totalTokens = stats.tokenStats.totalChars;
+    const tiers = [
+        { name: 'Mercury', color: 'slate', limit: 100000, gradient: 'from-slate-400 via-stone-400 to-gray-500', shadow: 'shadow-slate-400' },
+        { name: 'Mars', color: 'orange', limit: 500000, gradient: 'from-orange-400 via-red-400 to-red-600', shadow: 'shadow-orange-400' },
+        { name: 'Terra', color: 'emerald', limit: 1000000, gradient: 'from-blue-400 via-teal-400 to-emerald-500', shadow: 'shadow-emerald-400' },
+        { name: 'Jupiter', color: 'amber', limit: 2500000, gradient: 'from-orange-200 via-amber-300 to-orange-400', shadow: 'shadow-amber-400' },
+        { name: 'Saturn', color: 'yellow', limit: 5000000, gradient: 'from-yellow-100 via-yellow-200 to-amber-200', shadow: 'shadow-yellow-400' },
+        { name: 'Uranus', color: 'cyan', limit: 10000000, gradient: 'from-cyan-200 via-sky-300 to-blue-300', shadow: 'shadow-cyan-400' },
+        { name: 'Neptune', color: 'indigo', limit: 20000000, gradient: 'from-blue-600 via-indigo-600 to-violet-700', shadow: 'shadow-indigo-500' },
+        { name: 'Sun', color: 'amber', limit: 1000000000, gradient: 'from-yellow-300 via-orange-500 to-red-500', shadow: 'shadow-amber-500' }
+    ];
+
+    const currentTierIndex = tiers.findIndex(t => totalTokens < t.limit);
+    const currentTier = tiers[currentTierIndex] || tiers[tiers.length - 1];
+
+    // Progress for Ring
+    const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
+    const nextLimit = currentTier.limit;
+    const progress = Math.min(100, Math.max(0, ((totalTokens - prevLimit) / (nextLimit - prevLimit)) * 100));
+    const radius = 140;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
     return (
         <div className="w-full relative min-h-screen text-slate-600 overflow-hidden font-sans">
             {/* Soft Pastel Background */}
@@ -200,98 +227,72 @@ export default function StatisticsView({ boardsList, user }) {
 
                     {/* Center: Planetary System (Token Evolution) */}
                     <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[400px]">
-                        {(() => {
-                            // Planetary Logic
-                            const total = stats.tokenStats.totalChars;
-                            const tiers = [
-                                { name: 'Mercury', color: 'slate', limit: 100000, gradient: 'from-slate-400 via-stone-400 to-gray-500', shadow: 'shadow-slate-400' },
-                                { name: 'Mars', color: 'orange', limit: 500000, gradient: 'from-orange-400 via-red-400 to-red-600', shadow: 'shadow-orange-400' },
-                                { name: 'Terra', color: 'emerald', limit: 1000000, gradient: 'from-blue-400 via-teal-400 to-emerald-500', shadow: 'shadow-emerald-400' },
-                                { name: 'Jupiter', color: 'amber', limit: 2500000, gradient: 'from-orange-200 via-amber-300 to-orange-400', shadow: 'shadow-amber-400' }, // Banded giant
-                                { name: 'Saturn', color: 'yellow', limit: 5000000, gradient: 'from-yellow-100 via-yellow-200 to-amber-200', shadow: 'shadow-yellow-400' }, // Ringed giant
-                                { name: 'Uranus', color: 'cyan', limit: 10000000, gradient: 'from-cyan-200 via-sky-300 to-blue-300', shadow: 'shadow-cyan-400' }, // Ice giant
-                                { name: 'Neptune', color: 'indigo', limit: 20000000, gradient: 'from-blue-600 via-indigo-600 to-violet-700', shadow: 'shadow-indigo-500' }, // Deep windy
-                                { name: 'Sun', color: 'amber', limit: 1000000000, gradient: 'from-yellow-300 via-orange-500 to-red-500', shadow: 'shadow-amber-500' } // Stellar
-                            ];
 
-                            const currentTierIndex = tiers.findIndex(t => total < t.limit);
-                            const currentTier = tiers[currentTierIndex] || tiers[tiers.length - 1];
-                            const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
-                            const nextLimit = currentTier.limit;
+                        {/* Orbital Rings Background */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute rotate-[15deg] opacity-60"></div>
+                            <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute -rotate-[15deg] opacity-60"></div>
+                        </div>
 
-                            // Progress Calculation
-                            const progress = Math.min(100, Math.max(0, ((total - prevLimit) / (nextLimit - prevLimit)) * 100));
-                            const radius = 140;
-                            const circumference = 2 * Math.PI * radius;
-                            const strokeDashoffset = circumference - (progress / 100) * circumference;
+                        {/* Planet Container */}
+                        <div
+                            onClick={() => setShowAchievements(true)}
+                            className="relative w-72 h-72 group cursor-pointer flex items-center justify-center transition-transform active:scale-95"
+                        >
 
-                            return (
-                                <>
-                                    {/* Orbital Rings Background */}
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute rotate-[15deg] opacity-60"></div>
-                                        <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute -rotate-[15deg] opacity-60"></div>
-                                    </div>
+                            {/* Progress Ring SVG */}
+                            <div className="absolute inset-0 -m-4">
+                                <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 300 300">
+                                    {/* Track */}
+                                    <circle cx="150" cy="150" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
+                                    {/* Progress */}
+                                    <circle
+                                        cx="150" cy="150" r={radius}
+                                        stroke="currentColor"
+                                        strokeWidth="6"
+                                        fill="none"
+                                        strokeDasharray={circumference}
+                                        strokeDashoffset={strokeDashoffset}
+                                        className={`transition-all duration-1000 ease-out text-${currentTier.color}-400 drop-shadow-md`}
+                                        strokeLinecap="round"
+                                    />
+                                </svg>
+                            </div>
 
-                                    {/* Planet Container */}
-                                    <div className="relative w-72 h-72 group cursor-pointer flex items-center justify-center">
+                            {/* The Planet (CSS 3D) */}
+                            <div className={`
+                                relative w-48 h-48 rounded-full shadow-[inset_-20px_-20px_60px_rgba(0,0,0,0.2),_inset_20px_20px_60px_rgba(255,255,255,0.8),_0_20px_60px_rgba(0,0,0,0.15)]
+                                bg-gradient-to-br ${currentTier.gradient}
+                                transition-all duration-1000 hover:scale-105 z-10 flex items-center justify-center
+                                ${currentTier.name === 'Sun' ? 'animate-pulse-slow shadow-amber-200' : ''}
+                            `}>
+                                {/* Surface Texture (Noise) */}
+                                <div className="absolute inset-0 rounded-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
 
-                                        {/* Progress Ring SVG */}
-                                        <div className="absolute inset-0 -m-4">
-                                            <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 300 300">
-                                                {/* Track */}
-                                                <circle cx="150" cy="150" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
-                                                {/* Progress */}
-                                                <circle
-                                                    cx="150" cy="150" r={radius}
-                                                    stroke="currentColor"
-                                                    strokeWidth="6"
-                                                    fill="none"
-                                                    strokeDasharray={circumference}
-                                                    strokeDashoffset={strokeDashoffset}
-                                                    className={`transition-all duration-1000 ease-out text-${currentTier.color}-400 drop-shadow-md`}
-                                                    strokeLinecap="round"
-                                                />
-                                            </svg>
-                                        </div>
+                                {/* Data Content inside Planet */}
+                                <div className="text-center relative z-20 text-white drop-shadow-md transform translate-z-10">
+                                    <span className="block text-xs font-bold opacity-80 uppercase tracking-widest mb-1">
+                                        {currentTier.name} Phase
+                                    </span>
+                                    <span className="block text-4xl font-black tracking-tighter">
+                                        {fmt(totalTokens)}
+                                    </span>
+                                    <span className="block text-[10px] font-bold opacity-60 mt-1 uppercase tracking-wider">
+                                        Total Tokens
+                                    </span>
+                                </div>
+                            </div>
 
-                                        {/* The Planet (CSS 3D) */}
-                                        <div className={`
-                                            relative w-48 h-48 rounded-full shadow-[inset_-20px_-20px_60px_rgba(0,0,0,0.2),_inset_20px_20px_60px_rgba(255,255,255,0.8),_0_20px_60px_rgba(0,0,0,0.15)]
-                                            bg-gradient-to-br ${currentTier.gradient}
-                                            transition-all duration-1000 hover:scale-105 z-10 flex items-center justify-center
-                                            ${currentTier.name === 'Sun' ? 'animate-pulse-slow shadow-amber-200' : ''}
-                                        `}>
-                                            {/* Surface Texture (Noise) */}
-                                            <div className="absolute inset-0 rounded-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+                            {/* Next Tier Tooltip/Label (Suspense Mode: No exact numbers) */}
+                            {currentTier.name !== 'Sun' && (
+                                <div className="absolute -bottom-12 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-lg text-xs font-bold text-slate-500 border border-white/50 animate-bounce-slow opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Next: <span className={`text-${tiers[currentTierIndex + 1].color}-500`}>{tiers[currentTierIndex + 1].name}</span>
+                                </div>
+                            )}
+                        </div>
 
-                                            {/* Data Content inside Planet */}
-                                            <div className="text-center relative z-20 text-white drop-shadow-md transform translate-z-10">
-                                                <span className="block text-xs font-bold opacity-80 uppercase tracking-widest mb-1">
-                                                    {currentTier.name} Phase
-                                                </span>
-                                                <span className="block text-4xl font-black tracking-tighter">
-                                                    {fmt(total)}
-                                                </span>
-                                                <span className="block text-[10px] font-bold opacity-60 mt-1 uppercase tracking-wider">
-                                                    Total Tokens
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Next Tier Tooltip/Label */}
-                                        {currentTier.name !== 'Sun' && (
-                                            <div className="absolute -bottom-12 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-lg text-xs font-bold text-slate-500 border border-white/50 animate-bounce-slow">
-                                                Next: <span className={`text-${tiers[currentTierIndex + 1].color}-500`}>{tiers[currentTierIndex + 1].name}</span> ({fmt(nextLimit - total)} to go)
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Base Pedestal reflection */}
-                                    <div className={`w-32 h-8 rounded-[100%] blur-xl mt-[-40px] opacity-40 bg-${currentTier.color}-400 transition-colors duration-1000`}></div>
-                                </>
-                            );
-                        })()}
+                        {/* Base Pedestal reflection */}
+                        <div className={`w-32 h-8 rounded-[100%] blur-xl mt-[-40px] opacity-40 bg-${currentTier.color}-400 transition-colors duration-1000`}></div>
                     </div>
 
                     {/* Right Column: Quota & Peak */}
@@ -374,6 +375,15 @@ export default function StatisticsView({ boardsList, user }) {
                     </div>
                 </div>
             </div>
+
+            {/* Achievement Modal */}
+            <AchievementModal
+                isOpen={showAchievements}
+                onClose={() => setShowAchievements(false)}
+                currentTierName={currentTier.name}
+                currentTotal={totalTokens}
+                tiers={tiers}
+            />
         </div>
     );
 }
