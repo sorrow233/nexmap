@@ -139,24 +139,28 @@ export async function generateQuickSproutTopics(messages, config, model = null, 
         const contextMessages = messages.slice(-2);
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        // Optimized prompt: decompose topics instead of guessing user intent
-        // Key: respond in the same language as the user's input
+        // Optimized prompt: find the 3 most irresistible rabbit holes
         const finalPrompt = `CONTEXT:
 ${contextText}
 
-TASK: Analyze the conversation above and identify exactly 3 distinct sub-topics or key concepts that are worth exploring in depth.
+ROLE: You are a Curiosity Designer. Your job is to find 3 irresistible "rabbit hole entrances" that branch out from this conversation.
+
+ANALYSIS:
+Read the conversation. Identify 3 elements that would make a curious reader think "I want to explore THAT separately". Look for:
+- Concepts that deserve their own deep dive
+- Counterintuitive implications worth investigating
+- Connections to other domains that could be fascinating
+- Edge cases or controversies that merit exploration
 
 REQUIREMENTS:
-- Each sub-topic should be specific, independent, and directly related to the main topic
-- Focus on DECOMPOSING the knowledge structure, NOT guessing what the user might ask
-- Each sub-topic should be actionable - something that can be explained or discussed further
+- Each topic should feel like a TEMPTATION to explore, not a homework assignment
+- Topics should be distinct from each other (different angles, not overlapping)
 - Keep each topic concise (under 15 words)
-- IMPORTANT: Output topics in the SAME LANGUAGE as the context above. If context is in Chinese, output in Chinese. If in Japanese, output in Japanese.
+- CRITICAL: Output in the SAME LANGUAGE as the context above
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON array with exactly 3 topic strings.
-Example (English): ["React Hooks internals", "Virtual DOM diffing algorithm", "State management patterns"]
-Example (Chinese): ["React Hooks 内部机制", "虚拟DOM差分算法", "状态管理模式"]`;
+Example: ["Virtual DOM 在十万节点下的性能极限", "Svelte 的'无Virtual DOM'策略是否更优", "React 并发渲染与传统模式的本质差异"]`;
 
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
@@ -212,21 +216,27 @@ export async function generateContinueTopic(messages, config, model = null, opti
         const finalPrompt = `CONTEXT:
 ${contextText}
 
-TASK: You are an expert conversation partner. Your goal is to predict the single most valuable follow-up question the user should ask next to deepen their mastery of this topic.
+ROLE: You are a Curiosity Designer. Your job is to find the most irresistible "rabbit hole entrance" in the conversation above.
 
-ANALYSIS INSTRUCTIONS:
-1. Analyze the last response from the assistant. What specific concepts, terms, or implications were mentioned but not fully explained?
-2. Identify the most interesting "hook" in the previous answer that invites further inquiry.
-3. Formulate a question that targets that specific hook.
+STEP 1 (Internal Analysis):
+Read the conversation. Identify ONE element that would make a curious reader think "wait, I need to know more about THAT". Look for:
+- A concept mentioned but not fully explained
+- A counterintuitive implication hiding in plain sight
+- An unexpected connection to another domain
+- An edge case that would reveal deeper truth
+- A hint of controversy or debate among experts
+
+STEP 2 (Output):
+Turn that element into a question that feels like a TEMPTATION, not a task.
 
 REQUIREMENTS:
-- The question must be a natural, logical next step in the learning process.
-- It should feel like "mind reading" - addressing exactly what a curious learner would wonder about next.
-- Avoid generic questions like "Tell me more" or "Explain this". Be specific.
-- IMPORTANT: Output in the SAME LANGUAGE as the context above.
+- The question should make the reader feel "I MUST know the answer to this"
+- It should promise unexpected depth or challenge existing assumptions
+- Avoid boring patterns like "Can you explain X?" or "Tell me more about Y"
+- CRITICAL: Output in the SAME LANGUAGE as the context above
 
 OUTPUT FORMAT:
-Return ONLY the question text, no quotes or extra formatting.`;
+Return ONLY the question text. No quotes, no preamble, no explanation.`;
 
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
