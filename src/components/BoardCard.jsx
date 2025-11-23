@@ -173,94 +173,87 @@ export default function BoardCard({
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                 />
             ) : board.summary ? (
-                // AI Text Cover Variant v2.0 (Premium Dark Glass)
-                <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.02] bg-[#050505]">
-
-                    {/* 1. Dynamic Ambient Background */}
-                    <div className={`absolute inset-0 opacity-40 bg-gradient-to-br ${{
-                        'blue': 'from-blue-900/40 via-slate-950 to-black',
-                        'purple': 'from-purple-900/40 via-slate-950 to-black',
-                        'emerald': 'from-emerald-900/40 via-slate-950 to-black',
-                        'orange': 'from-orange-900/40 via-slate-950 to-black',
-                        'pink': 'from-pink-900/40 via-slate-950 to-black',
-                        'slate': 'from-slate-800/40 via-slate-950 to-black',
+                // Neural Clay Text Card Variant v3.0 (Soft & Tactile)
+                <div className={`absolute inset-0 transition-all duration-500 group-hover:-translate-y-1 ${
+                    // Theme-based Pastel Backgrounds
+                    {
+                        'blue': 'bg-[#eff6ff]',    // blue-50
+                        'purple': 'bg-[#f5f3ff]',  // violet-50
+                        'emerald': 'bg-[#ecfdf5]', // emerald-50
+                        'orange': 'bg-[#fff7ed]',  // orange-50
+                        'pink': 'bg-[#fdf2f8]',    // pink-50
+                        'slate': 'bg-[#f8fafc]',   // slate-50
                     }[board.summary.theme || 'slate']
-                        }`} />
+                    }`}>
 
-                    {/* 2. Spotlight / Northern Lights Effect */}
-                    <div className={`absolute -top-1/2 -right-1/2 w-[200%] h-[200%] opacity-20 blur-[100px] bg-[conic-gradient(at_center,var(--tw-gradient-stops))] ${board.summary.theme === 'orange' ? 'from-orange-600 via-amber-900/20 to-transparent' :
-                        board.summary.theme === 'emerald' ? 'from-emerald-600 via-teal-900/20 to-transparent' :
-                            board.summary.theme === 'pink' ? 'from-pink-600 via-rose-900/20 to-transparent' :
-                                board.summary.theme === 'purple' ? 'from-purple-600 via-violet-900/20 to-transparent' :
-                                    'from-blue-600 via-indigo-900/20 to-transparent'
-                        } animate-slow-spin-slower pointer-events-none group-hover:opacity-30 transition-opacity duration-700`} />
+                    {/* Soft Inner Shadow (Clay Effect) */}
+                    <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_0_40px_rgba(0,0,0,0.02)] ring-1 ring-black/5" />
 
-                    {/* 3. Noise Texture */}
-                    <div className="absolute inset-0 opacity-[0.04] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-
-                    {/* 4. Glass Surface & Border */}
-                    <div className="absolute inset-0 ring-1 ring-white/10 rounded-2xl pointer-events-none group-hover:ring-white/20 transition-all duration-500" />
-                    <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 box-shadow-inner ${board.summary.theme === 'orange' ? 'shadow-[inset_0_0_80px_rgba(249,115,22,0.1)]' :
-                        board.summary.theme === 'emerald' ? 'shadow-[inset_0_0_80px_rgba(16,185,129,0.1)]' :
-                            board.summary.theme === 'pink' ? 'shadow-[inset_0_0_80px_rgba(236,72,153,0.1)]' :
-                                board.summary.theme === 'purple' ? 'shadow-[inset_0_0_80px_rgba(168,85,247,0.1)]' :
-                                    'shadow-[inset_0_0_80px_rgba(59,130,246,0.1)]'
-                        }`} />
-
-                    {/* 5. Content Layout */}
+                    {/* Content Layout */}
                     <div className="relative z-10 flex flex-col h-full p-6">
 
                         {/* Header: Title */}
                         <div className="mb-4">
-                            <h3 className="text-[1.6rem] leading-[1.1] font-bold tracking-tight text-white/95 font-inter-tight drop-shadow-md line-clamp-2">
+                            <h3 className="text-xl font-bold tracking-tight text-slate-800 leading-snug line-clamp-2">
                                 {board.name}
                             </h3>
-                            {/* Decorative Accent Line */}
-                            <div className={`mt-4 h-[2px] w-12 rounded-full bg-gradient-to-r opacity-80 ${board.summary.theme === 'orange' ? 'from-orange-400 to-amber-500 shadow-[0_0_10px_rgba(251,146,60,0.5)]' :
-                                board.summary.theme === 'emerald' ? 'from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(52,211,153,0.5)]' :
-                                    board.summary.theme === 'pink' ? 'from-pink-400 to-rose-500 shadow-[0_0_10px_rgba(244,114,182,0.5)]' :
-                                        board.summary.theme === 'purple' ? 'from-purple-400 to-violet-500 shadow-[0_0_10px_rgba(192,132,252,0.5)]' :
-                                            'from-blue-400 to-indigo-500 shadow-[0_0_10px_rgba(96,165,250,0.5)]'
+                            {/* Decorative underline */}
+                            <div className={`mt-3 h-1 w-8 rounded-full opacity-30 ${{
+                                    'blue': 'bg-blue-500',
+                                    'purple': 'bg-violet-500',
+                                    'emerald': 'bg-emerald-500',
+                                    'orange': 'bg-orange-500',
+                                    'pink': 'bg-pink-500',
+                                    'slate': 'bg-slate-500'
+                                }[board.summary.theme || 'slate']
                                 }`} />
                         </div>
 
-                        {/* Body: AI Summary */}
-                        <p className="text-[13px] font-medium text-white/70 leading-[1.6] line-clamp-4 mix-blend-plus-lighter tracking-wide">
-                            {board.summary.summary}
-                        </p>
+                        {/* Body: Concept Pills */}
+                        <div className="flex flex-wrap gap-2 content-start">
+                            {board.summary.summary.split(' · ').map((tag, i) => (
+                                <span key={i} className={`
+                                    px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm border border-black/5
+                                    ${{
+                                        'blue': 'bg-white text-blue-600',
+                                        'purple': 'bg-white text-violet-600',
+                                        'emerald': 'bg-white text-emerald-600',
+                                        'orange': 'bg-white text-orange-600',
+                                        'pink': 'bg-white text-pink-600',
+                                        'slate': 'bg-white text-slate-600'
+                                    }[board.summary.theme || 'slate']}
+                                `}>
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
 
                         {/* Footer: Meta & Actions */}
-                        <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
+                        <div className="mt-auto flex items-center justify-between pt-4">
                             <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                     {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                 </span>
-                                <span className="text-[10px] font-bold text-white/30 tracking-[0.2em]">{board.cardCount || 0} ITEMS</span>
                             </div>
 
-                            {/* Quick Actions (Visually integrated) */}
+                            {/* Quick Actions (Clay Buttons) */}
                             {!isTrashView && (
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-2 group-hover:translate-x-0">
-
+                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                                     <button
                                         onClick={(e) => handleImageButtonClick(e, board.id)}
                                         disabled={generatingBoardId === board.id}
-                                        aria-label="Generate Summary"
-                                        title="Generate Text Summary"
-                                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all border border-transparent hover:border-white/10"
+                                        className="w-8 h-8 rounded-xl bg-white text-slate-400 hover:text-indigo-500 shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-slate-100"
                                     >
-                                        {generatingBoardId === board.id ? <Loader2 size={12} className="animate-spin" /> : <ImageIcon size={12} />}
+                                        {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                                     </button>
-
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onDelete(board.id);
                                         }}
-                                        aria-label="Delete"
-                                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 flex items-center justify-center transition-all border border-transparent hover:border-red-500/20"
+                                        className="w-8 h-8 rounded-xl bg-white text-slate-400 hover:text-red-500 shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-slate-100"
                                     >
-                                        <Trash2 size={12} />
+                                        <Trash2 size={14} />
                                     </button>
                                 </div>
                             )}
