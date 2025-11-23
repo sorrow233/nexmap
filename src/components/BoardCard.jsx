@@ -65,31 +65,44 @@ export default function BoardCard({
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : board.summary ? (
-                        // Modern AI Text Card - Premium Dark Glass
-                        // Modern AI Text Card - Fresh Japanese Minimalist Style
-                        // Modern AI Text Card - Simple & Elegant
-                        <div className={`absolute inset-0 overflow-hidden transition-colors duration-500 ${(() => {
-                            const t = board.summary.theme || 'slate';
-                            // "July Color Palette" - JeyDesignShop Style (Japanese Fresh)
-                            const styles = {
-                                // Palette colors mapped to themes
-                                pink: 'bg-[#FAE2DE] dark:bg-[#FAE2DE]',      // Light Pink
-                                orange: 'bg-[#F9E7D3] dark:bg-[#F9E7D3]',    // Peach
-                                slate: 'bg-[#FFF6D6] dark:bg-[#FFF6D6]',     // Cream/Yellow (Default)
-                                emerald: 'bg-[#E8F6DF] dark:bg-[#E8F6DF]',   // Light Green
-                                blue: 'bg-[#F0F6F5] dark:bg-[#F0F6F5]',      // Ice Blue
-                                purple: 'bg-[#E6E6FA] dark:bg-[#E6E6FA]',    // Lavender (Added to complete set using style)
-                            };
-                            return styles[t] || styles.slate;
-                        })()}`}>
+                        // Neural Clay Text Card Variant v3.0 (Stacked)
+                        <div className={`absolute inset-0 transition-all duration-500 ${
+                            // Theme-based Pastel Backgrounds
+                            {
+                                'blue': 'bg-[#eff6ff]',    // blue-50
+                                'purple': 'bg-[#f5f3ff]',  // violet-50
+                                'emerald': 'bg-[#ecfdf5]', // emerald-50
+                                'orange': 'bg-[#fff7ed]',  // orange-50
+                                'pink': 'bg-[#fdf2f8]',    // pink-50
+                                'slate': 'bg-[#f8fafc]',   // slate-50
+                            }[board.summary.theme || 'slate']
+                            }`}>
 
-                            {/* Content - Dark text always for these light backgrounds */}
+                            {/* Soft Inner Shadow (Clay Effect) */}
+                            <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_0_40px_rgba(0,0,0,0.02)]" />
+
+                            {/* Content - Concept Pills */}
                             <div className="relative z-10 h-full flex flex-col justify-center px-6">
-                                <p className="text-lg font-bold leading-relaxed text-center tracking-wide text-slate-700">
-                                    {typeof board.summary === 'string'
-                                        ? board.summary
-                                        : board.summary.summary}
-                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {(typeof board.summary === 'string' ? board.summary : board.summary.summary)
+                                        .split(' · ')
+                                        .slice(0, 4) // Limit to top 4 tags for stacked/compact view
+                                        .map((tag, i) => (
+                                            <span key={i} className={`
+                                            px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-sm border border-black/5
+                                            ${{
+                                                    'blue': 'bg-white text-blue-600',
+                                                    'purple': 'bg-white text-violet-600',
+                                                    'emerald': 'bg-white text-emerald-600',
+                                                    'orange': 'bg-white text-orange-600',
+                                                    'pink': 'bg-white text-pink-600',
+                                                    'slate': 'bg-white text-slate-600'
+                                                }[board.summary.theme || 'slate']}
+                                        `}>
+                                                {tag}
+                                            </span>
+                                        ))}
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -199,13 +212,13 @@ export default function BoardCard({
                             </h3>
                             {/* Decorative underline */}
                             <div className={`mt-3 h-1 w-8 rounded-full opacity-30 ${{
-                                    'blue': 'bg-blue-500',
-                                    'purple': 'bg-violet-500',
-                                    'emerald': 'bg-emerald-500',
-                                    'orange': 'bg-orange-500',
-                                    'pink': 'bg-pink-500',
-                                    'slate': 'bg-slate-500'
-                                }[board.summary.theme || 'slate']
+                                'blue': 'bg-blue-500',
+                                'purple': 'bg-violet-500',
+                                'emerald': 'bg-emerald-500',
+                                'orange': 'bg-orange-500',
+                                'pink': 'bg-pink-500',
+                                'slate': 'bg-slate-500'
+                            }[board.summary.theme || 'slate']
                                 }`} />
                         </div>
 
