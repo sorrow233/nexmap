@@ -139,28 +139,22 @@ export async function generateQuickSproutTopics(messages, config, model = null, 
         const contextMessages = messages.slice(-2);
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        // Optimized prompt: find the 3 most irresistible rabbit holes
+        // Simple topic decomposition - split the conversation into 3 key sub-topics
         const finalPrompt = `CONTEXT:
 ${contextText}
 
-ROLE: You are a Curiosity Designer. Your job is to find 3 irresistible "rabbit hole entrances" that branch out from this conversation.
-
-ANALYSIS:
-Read the conversation. Identify 3 elements that would make a curious reader think "I want to explore THAT separately". Look for:
-- Concepts that deserve their own deep dive
-- Counterintuitive implications worth investigating
-- Connections to other domains that could be fascinating
-- Edge cases or controversies that merit exploration
+TASK: Analyze the conversation above and identify exactly 3 distinct sub-topics or key concepts that are worth exploring in depth.
 
 REQUIREMENTS:
-- Each topic should feel like a TEMPTATION to explore, not a homework assignment
-- Topics should be distinct from each other (different angles, not overlapping)
+- Each sub-topic should be specific, independent, and directly related to the main topic
+- Focus on DECOMPOSING the knowledge structure
+- Each sub-topic should be something that can be explained or discussed further
 - Keep each topic concise (under 15 words)
-- CRITICAL: Output in the SAME LANGUAGE as the context above
+- IMPORTANT: Output topics in the SAME LANGUAGE as the context above
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON array with exactly 3 topic strings.
-Example: ["Virtual DOM 在十万节点下的性能极限", "Svelte 的'无Virtual DOM'策略是否更优", "React 并发渲染与传统模式的本质差异"]`;
+Example: ["React Hooks 内部机制", "虚拟DOM差分算法", "状态管理模式"]`;
 
         const response = await chatCompletion(
             [{ role: 'user', content: finalPrompt }],
