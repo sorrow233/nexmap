@@ -180,6 +180,25 @@ export const app = {
         localStorageOnly: "Local Storage Only",
         lastSnapshot: "Last Updated",
         currentStreak: "Active Streak",
-        hoverForDetails: "Hover for details"
+        hoverForDetails: "Hover for details",
+        planets: {
+            mercury: { name: "Mercury", lore: "The Forge of Beginning. Where ideas are tempered." },
+            venus: { name: "Venus", lore: "The Veiled World. Beauty hidden in clouds of thought." },
+            terra: { name: "Terra", lore: "The Cradle of Life. A thriving ecosystem of thoughts." },
+            mars: { name: "Mars", lore: "The Red Frontier. First steps into the unknown." },
+            jupiter: { name: "Jupiter", lore: "The Gas Giant. Massive expansion of knowledge." },
+            saturn: { name: "Saturn", lore: "The Ringed Jewel. Complexity ordered into beauty." },
+            uranus: { name: "Uranus", lore: "The Ice Giant. Cold logic meets vast creativity." },
+            neptune: { name: "Neptune", lore: "The Mystic Blue. Deep wisdom and infinite seas." },
+            sun: { name: "Sun", lore: "The Solar Throne. A star born of million thoughts." },
+            mystery: { name: "???", lore: "A mystery waiting in the cosmic dark. Continue your journey." },
+            next: "Next",
+            currentPhase: "Current Phase",
+            unlocked: "Unlocked",
+            locked: "Locked",
+            requirement: "Requirement",
+            progress: "Progress",
+            tokens: "TOKENS"
+        }
     },
 };

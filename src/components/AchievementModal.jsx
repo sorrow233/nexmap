@@ -11,7 +11,8 @@ export default function AchievementModal({
     onClose,
     currentTierName,
     currentTotal,
-    tiers
+    tiers,
+    t
 }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [justOpened, setJustOpened] = useState(false);
@@ -165,15 +166,15 @@ export default function AchievementModal({
                             <div className="flex justify-center">
                                 {isCurrent ? (
                                     <span className="px-4 py-1.5 bg-indigo-500 text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-200 flex items-center gap-2">
-                                        <Sparkles size={12} fill="currentColor" /> Current Phase
+                                        <Sparkles size={12} fill="currentColor" /> {t?.stats?.planets?.currentPhase || 'Current Phase'}
                                     </span>
                                 ) : isUnlocked ? (
                                     <span className="px-4 py-1.5 bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold uppercase tracking-widest">
-                                        Unlocked
+                                        {t?.stats?.planets?.unlocked || 'Unlocked'}
                                     </span>
                                 ) : (
                                     <span className="px-4 py-1.5 bg-slate-200 text-slate-500 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-1">
-                                        <Lock size={12} /> Locked
+                                        <Lock size={12} /> {t?.stats?.planets?.locked || 'Locked'}
                                     </span>
                                 )}
                             </div>
@@ -189,10 +190,10 @@ export default function AchievementModal({
                             <div className="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-white/50 shadow-md">
                                 <div className="flex justify-between items-end mb-2">
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        {(isUnlocked || isNext) ? 'Progress' : 'Requirement'}
+                                        {(isUnlocked || isNext) ? (t?.stats?.planets?.progress || 'Progress') : (t?.stats?.planets?.requirement || 'Requirement')}
                                     </span>
                                     <span className="text-xl font-black text-slate-800 tabular-nums">
-                                        {isMystery ? '???,???' : fmt(tier.limit)} <span className="text-xs font-bold text-slate-400 align-middle">TOKENS</span>
+                                        {isMystery ? '???,???' : fmt(tier.limit)} <span className="text-xs font-bold text-slate-400 align-middle">{t?.stats?.planets?.tokens || 'TOKENS'}</span>
                                     </span>
                                 </div>
 

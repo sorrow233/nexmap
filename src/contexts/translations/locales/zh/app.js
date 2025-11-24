@@ -180,6 +180,25 @@ export const app = {
         localStorageOnly: "仅本地存储",
         lastSnapshot: "最后更新",
         currentStreak: "连续活跃",
-        hoverForDetails: "悬停查看详情"
+        hoverForDetails: "悬停查看详情",
+        planets: {
+            mercury: { name: "水星", lore: "起始之熔炉。思想在此经受淬炼。" },
+            venus: { name: "金星", lore: "朦胧之世。美隐藏在思想的云雾中。" },
+            terra: { name: "地球", lore: "生命摇篮。思想生态系统的繁荣之地。" },
+            mars: { name: "火星", lore: "红色边疆。迈向未知的第一步。" },
+            jupiter: { name: "木星", lore: "气态巨擘。知识的宏大扩张。" },
+            saturn: { name: "土星", lore: "环状瑰宝。复杂性在此汇聚成美。" },
+            uranus: { name: "天王星", lore: "冰巨星。冷峻逻辑与浩瀚创意的交汇。" },
+            neptune: { name: "海王星", lore: "神秘深蓝。深邃智慧与无尽之海。" },
+            sun: { name: "太阳", lore: "众星之座。亿万思想汇聚而成的恒星。" },
+            mystery: { name: "???", lore: "隐藏在宇宙深处的奥秘。继续你的旅程以揭晓。" },
+            next: "下一级",
+            currentPhase: "当前阶段",
+            unlocked: "已解锁",
+            locked: "未解锁",
+            requirement: "达成条件",
+            progress: "当前进度",
+            tokens: "TOKENS"
+        }
     }
 };
