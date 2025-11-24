@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { loadBoard } from '../services/storage';
 import { uploadImageToS3, getS3Config } from '../services/s3';
-// Dynamic import for LLM to avoid circular dependencies or heavy load if not needed immediately
+// Dynamic import for LLM to avoid circular dependencies
 // import { chatCompletion, imageGeneration, DEFAULT_ROLES } from '../services/llm'; 
 import { DEFAULT_ROLES } from '../services/llm/registry';
 import { useStore } from '../store/useStore';
@@ -15,7 +15,6 @@ export default function useBoardBackground() {
 
     // Helper to get active config for LLM calls
     const getLlmConfig = () => {
-        // Fallback if store is not yet loaded or empty
         const activeProvider = providers?.[activeId] || {
             baseUrl: 'https://api.gmi-serving.com/v1',
             apiKey: '',
@@ -28,90 +27,112 @@ export default function useBoardBackground() {
         return getRoleModel(role);
     };
 
-    const generateBackground = async (boardId, onUpdateBoardMetadata, options = {}) => {
+    // Shared Helper: Extract Text from Board
+    const extractBoardContext = async (boardId) => {
+        const boardData = await loadBoard(boardId);
+        if (!boardData) throw new Error("Board data could not be loaded");
+
+        if (!boardData.cards || boardData.cards.length === 0) {
+            return { boardData, context: "" };
+        }
+
+        const context = boardData.cards
+            .map(c => {
+                const parts = [];
+                if (c.data?.title) parts.push(c.data.title);
+                if (c.data?.text) parts.push(c.data.text);
+                if (c.data?.content) parts.push(c.data.content); // For Note cards
+                if (c.data?.messages) parts.push(c.data.messages.map(m => m.content).join(' ')); // Chat cards
+                return parts.join(' ');
+            })
+            .filter(text => text && text.trim().length > 0)
+            .join('\n');
+
+        return { boardData, context };
+    };
+
+    /**
+     * INDEPENDENT LOGIC 1: Generate Text Summary (Tags/Theme)
+     * Triggered when cards > 3
+     */
+    const generateBoardSummary = async (boardId, onUpdateBoardMetadata) => {
+        try {
+            // Quietly set loading state or handle externally if needed. 
+            // For summary, we often don't block the UI with a spinner primarily meant for images.
+            // But we can set it if we want the same spinner.
+            // setGeneratingBoardId(boardId); 
+
+            const config = getLlmConfig();
+            const { boardData, context } = await extractBoardContext(boardId);
+
+            if (!context.trim()) {
+                console.warn('[Summary Gen] No text content found');
+                return;
+            }
+
+            console.log('[Summary Gen] Generating summary for:', boardId);
+
+            // Dynamic import
+            const { aiSummaryService } = await import('../services/aiSummaryService');
+
+            const summaryResult = await aiSummaryService.generateBoardSummary(
+                boardData,
+                boardData.cards,
+                { ...config, model: getModelForRole('analysis') }
+            );
+
+            console.log('[Summary Gen] Result:', summaryResult);
+
+            if (summaryResult && onUpdateBoardMetadata) {
+                await onUpdateBoardMetadata(boardId, { summary: summaryResult });
+                toast.success("Board Tags Updated!");
+            }
+
+        } catch (error) {
+            console.error("[Summary Gen] Failed:", error);
+            // We usually don't toast error for auto-summary to avoid annoyance
+        } finally {
+            // setGeneratingBoardId(null);
+        }
+    };
+
+    /**
+     * INDEPENDENT LOGIC 2: Generate Visual Background (Image)
+     * Triggered manual or when cards > 10
+     */
+    const generateBoardImage = async (boardId, onUpdateBoardMetadata) => {
         try {
             setGeneratingBoardId(boardId);
             const config = getLlmConfig();
 
-            console.log('[Background Gen] Starting generation for board:', boardId, options);
+            console.log('[Image Gen] Starting generation for board:', boardId);
 
-            // 1. Load board content
-            const boardData = await loadBoard(boardId);
-            if (!boardData) {
-                console.error('[Background Gen] Board not found');
-                toast.error("Board data could not be loaded.");
-                setGeneratingBoardId(null);
-                return;
-            }
-            if (!boardData.cards || boardData.cards.length === 0) {
-                console.warn('[Background Gen] Board has no cards');
-                toast.error("Board has no cards to analyze.");
+            // 1. Context
+            const { context } = await extractBoardContext(boardId);
+            if (!context || !context.trim()) {
+                toast.error("No text content found to visualize.");
                 setGeneratingBoardId(null);
                 return;
             }
 
-            // 2. Extract text from cards
-            const boardContext = boardData.cards
-                .map(c => {
-                    const parts = [];
-                    if (c.data?.title) parts.push(c.data.title);
-                    if (c.data?.text) parts.push(c.data.text);
-                    if (c.data?.content) parts.push(c.data.content); // For Note cards
-                    if (c.data?.messages) parts.push(c.data.messages.map(m => m.content).join(' ')); // Chat cards
-                    return parts.join(' ');
-                })
-                .filter(text => text && text.trim().length > 0)
-                .join('\n');
+            console.log('[Image Gen] Context length:', context.length);
 
-            console.log('[Background Gen] Extracted context length:', boardContext.length);
+            // 2. Visual Concept Analysis
+            const analysisPrompt = getAnalysisPrompt(context, DEFAULT_STYLE);
+            console.log('[Image Gen] Analyzing Visual Concept...');
 
-            if (!boardContext.trim()) {
-                console.warn('[Background Gen] No text content found in cards');
-                toast.error("No text content found to analyze.");
-                setGeneratingBoardId(null);
-                return;
-            }
-
-            // 3. Stage 1: Context Analysis & Character/Scene Design
-            const analysisPrompt = getAnalysisPrompt(boardContext, DEFAULT_STYLE);
-
-            console.log('[Background Gen] Stage 1: Parallel Generation...');
             const { chatCompletion, imageGeneration } = await import('../services/llm');
-            const { aiSummaryService } = await import('../services/aiSummaryService');
 
-            const [visualConcept, summaryResult] = await Promise.all([
-                !options.summaryOnly ? chatCompletion(
-                    [{ role: 'user', content: analysisPrompt }],
-                    config,
-                    getModelForRole('analysis')
-                ) : Promise.resolve(null),
-                aiSummaryService.generateBoardSummary(boardData, boardData.cards, { ...config, model: getModelForRole('analysis') })
-            ]);
+            const visualConcept = await chatCompletion(
+                [{ role: 'user', content: analysisPrompt }],
+                config,
+                getModelForRole('analysis')
+            );
 
-            console.log('[Background Gen] Summary Result:', summaryResult);
-            console.log('[Background Gen] Visual Concept:', visualConcept);
+            console.log('[Image Gen] Visual Concept:', visualConcept);
+            if (!visualConcept) throw new Error("Failed to analyze context");
 
-            if (summaryResult && onUpdateBoardMetadata) {
-                // If summaryOnly is requested, we should also CLEAR the backgroundImage to ensure the text card shows
-                const updateData = { summary: summaryResult };
-                if (options.summaryOnly) {
-                    updateData.backgroundImage = null; // Clear image to show text card
-                    updateData.thumbnail = null; // Clear thumbnail too just in case
-                }
-                await onUpdateBoardMetadata(boardId, updateData);
-                toast.success(options.summaryOnly ? "Board Text Card Updated!" : "Board Summary Updated!");
-            }
-
-            // If summaryOnly is requested, stop here
-            if (options.summaryOnly) {
-                console.log('[Background Gen] Summary only requested. Skipping image generation.');
-                setGeneratingBoardId(null);
-                return;
-            }
-
-            if (!visualConcept) throw new Error("Failed to analyze context (AI returned empty)");
-
-            // Stage 2: Prompt Generation
+            // 3. Prompt Generation
             const promptGenPrompt = getPromptGeneratorPrompt(visualConcept, DEFAULT_STYLE);
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: promptGenPrompt }],
@@ -119,10 +140,10 @@ export default function useBoardBackground() {
                 getModelForRole('analysis')
             );
 
-            console.log('[Background Gen] Image Prompt:', imagePrompt);
+            console.log('[Image Gen] Final Image Prompt:', imagePrompt);
             if (!imagePrompt) throw new Error("Failed to generate final prompt");
 
-            // 4. Generate Image
+            // 4. Image Generation
             toast.success("Generating Visuals...");
             const imageUrl = await imageGeneration(
                 imagePrompt,
@@ -132,9 +153,8 @@ export default function useBoardBackground() {
 
             if (!imageUrl) throw new Error("Failed to generate image");
 
-            // ... (S3 logic same as before) ...
+            // 5. Processing & Upload
             let finalImageUrl = imageUrl;
-            // ... (Markdown cleaning) ...
             const markdownMatch = finalImageUrl.match(/\!\[.*?\]\((.*?)\)/);
             if (markdownMatch && markdownMatch[1]) {
                 finalImageUrl = markdownMatch[1];
@@ -163,26 +183,36 @@ export default function useBoardBackground() {
                     const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
                     finalImageUrl = await uploadImageToS3(file, 'backgrounds');
                 } catch (uploadError) {
-                    console.warn('[Background Gen] S3 Upload Failed:', uploadError);
+                    console.warn('[Image Gen] S3 Upload Failed:', uploadError);
                 }
             }
 
-            // 6. Save to board metadata via callback
+            // 6. Save
             if (onUpdateBoardMetadata) {
                 await onUpdateBoardMetadata(boardId, { backgroundImage: finalImageUrl });
                 toast.success("Board Background Updated!");
             }
 
         } catch (error) {
-            console.error("Background generation failed:", error);
+            console.error("[Image Gen] Failed:", error);
             toast.error(`Generation failed: ${error.message}`);
         } finally {
             setGeneratingBoardId(null);
         }
     };
 
+    // Backward compatibility wrapper (but we should migrate call sites)
+    const generateBackground = async (boardId, onUpdateBoardMetadata, options = {}) => {
+        // If summaryOnly was passed, call summary
+        // if (options.summaryOnly) return generateBoardSummary(boardId, onUpdateBoardMetadata);
+        // Default to Image
+        return generateBoardImage(boardId, onUpdateBoardMetadata);
+    };
+
     return {
         generatingBoardId,
-        generateBackground
+        generateBackground,      // Deprecated wrapper
+        generateBoardSummary,    // New Independent Summary Text
+        generateBoardImage       // New Independent Image Logic
     };
 }

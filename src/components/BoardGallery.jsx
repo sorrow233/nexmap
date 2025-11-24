@@ -8,7 +8,7 @@ import { useStore } from '../store/useStore';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
-    const { generatingBoardId, generateBackground } = useBoardBackground();
+    const { generatingBoardId, generateBoardImage } = useBoardBackground();
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null, isPermanent: false });
     // NOTE: freeUserDialog removed - free users now have 20 images/week quota
     const [greeting, setGreeting] = useState('morning');
@@ -98,7 +98,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                             isTrashView={false}
                                             onSelect={onSelectBoard}
                                             onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
-                                            onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
+                                            onGenerateBackground={(id) => generateBoardImage(id, onUpdateBoardMetadata)}
                                             generatingBoardId={generatingBoardId}
                                             variant="overlay"
                                             isSystemCreditsUser={isSystemCreditsUser}
@@ -136,7 +136,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
                                     onRestore={onRestoreBoard}
                                     onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: true })}
-                                    onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
+                                    onGenerateBackground={(id) => generateBoardImage(id, onUpdateBoardMetadata)}
                                     generatingBoardId={generatingBoardId}
                                     variant="stacked"
                                     isSystemCreditsUser={isSystemCreditsUser}

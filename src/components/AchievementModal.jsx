@@ -75,85 +75,130 @@ export default function AchievementModal({
     };
     const activeBgParams = bgColors[tier.color] || 'bg-slate-50';
 
-    // Dynamic Planet Textures (Pure CSS Procedural Generation)
+    // Dynamic Planet Textures (Ethereal / Abstract / Dreamy)
     const getPlanetTexture = (planetName) => {
-        const name = planetName.toLowerCase();
+        const id = (planetName || '').toLowerCase();
 
-        switch (name) {
+        // Common "Atmosphere" glow for all
+        const atmosphere = <div className="absolute inset-0 rounded-full shadow-[inset_0_0_80px_rgba(255,255,255,0.2)] mix-blend-overlay pointer-events-none"></div>;
+
+        switch (id) {
             case 'mercury':
-                // Craters and grey dust
+                // Silver Mist & Pale Violet - The Forge, but dreamy
                 return {
-                    background: 'radial-gradient(circle at 30% 30%, #e2e8f0 0%, #94a3b8 100%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-40 mix-blend-overlay',
-                    shadow: 'shadow-[inset_-20px_-20px_60px_rgba(0,0,0,0.5),_0_0_50px_rgba(148,163,184,0.3)]'
-                };
-            case 'venus':
-                // Thick atmosphere, swirling clouds
-                return {
-                    background: 'linear-gradient(45deg, #fbbf24 0%, #d97706 100%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-30 mix-blend-soft-light',
-                    detail: <div className="absolute inset-0 opacity-50 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,#fff2_25px,transparent_40px)] rotate-[25deg] filter blur-xl scale-150"></div>,
-                    shadow: 'shadow-[inset_-25px_-25px_60px_rgba(180,83,9,0.5),_0_0_60px_rgba(251,191,36,0.4)]'
-                };
-            case 'terra':
-                // Earth: Oceans, Land masses (noise), Atmosphere
-                return {
-                    background: 'radial-gradient(circle at 50% 50%, #3b82f6 0%, #1e3a8a 100%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-20 mix-blend-overlay',
+                    background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+                    shadow: 'shadow-[0_0_100px_rgba(203,213,225,0.4)]',
                     detail: (
                         <>
-                            {/* Clouds */}
-                            <div className="absolute inset-0 opacity-60 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-hard-light filter blur-[2px] animate-[spin_100s_linear_infinite]"></div>
-                            {/* Atmosphere Glow */}
-                            <div className="absolute inset-[-2px] rounded-full shadow-[inset_0_0_30px_rgba(191,219,254,0.6)]"></div>
+                            <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-purple-200/40 blur-[60px] rounded-full mix-blend-multiply animate-pulse-slow"></div>
+                            <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-slate-400/30 blur-[50px] rounded-full"></div>
+                            <div className="absolute top-[40%] left-[30%] w-[40%] h-[40%] bg-white/60 blur-[40px] rounded-full mix-blend-overlay"></div>
                         </>
-                    ),
-                    shadow: 'shadow-[inset_-20px_-20px_50px_rgba(0,0,0,0.6),_0_0_50px_rgba(59,130,246,0.5)]'
+                    )
+                };
+            case 'venus':
+                // Liquid Gold & Rose - The Morning Star
+                return {
+                    background: 'linear-gradient(to bottom right, #fef3c7, #fbbf24)',
+                    shadow: 'shadow-[0_0_100px_rgba(251,191,36,0.5)]',
+                    detail: (
+                        <>
+                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-300 via-transparent to-rose-300 opacity-80 mix-blend-overlay"></div>
+                            <div className="absolute top-0 right-0 w-[90%] h-[90%] bg-amber-200/50 blur-[70px] rounded-full animate-spin-slow"></div>
+                            <div className="absolute bottom-10 left-10 w-[60%] h-[60%] bg-rose-400/30 blur-[60px] rounded-full mix-blend-color-burn"></div>
+                        </>
+                    )
+                };
+            case 'terra':
+                // Deep Ocean & Aurora - Life
+                // NOT a map. A feeling of "Blue" and "Life".
+                return {
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+                    shadow: 'shadow-[0_0_120px_rgba(59,130,246,0.6)]',
+                    detail: (
+                        <>
+                            <div className="absolute top-[-10%] right-[-20%] w-[80%] h-[80%] bg-teal-300/40 blur-[80px] rounded-full mix-blend-screen animate-pulse-slow"></div>
+                            <div className="absolute bottom-[-10%] left-[-10%] w-[90%] h-[90%] bg-indigo-600/50 blur-[70px] rounded-full mix-blend-multiply"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-blue-400/20 to-transparent mix-blend-overlay"></div>
+                        </>
+                    )
                 };
             case 'mars':
-                // Red dust, craters
+                // Rust & Ember - War/Energy
                 return {
-                    background: 'radial-gradient(circle at 40% 40%, #fdba74 0%, #ea580c 100%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-40 mix-blend-multiply',
-                    detail: <div className="absolute top-[30%] left-[20%] w-10 h-10 bg-black/10 rounded-full blur-[2px]"></div>, // Olympus Monsish
-                    shadow: 'shadow-[inset_-25px_-25px_50px_rgba(124,45,18,0.6),_0_0_50px_rgba(234,88,12,0.5)]'
+                    background: 'linear-gradient(to bottom right, #fdba74, #ea580c)',
+                    shadow: 'shadow-[0_0_100px_rgba(234,88,12,0.5)]',
+                    detail: (
+                        <>
+                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-orange-500/0 via-red-500/20 to-red-900/40 mix-blend-multiply"></div>
+                            <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-orange-200/40 blur-[60px] rounded-full mix-blend-overlay"></div>
+                            <div className="absolute bottom-[10%] left-[10%] w-[50%] h-[50%] bg-rose-900/30 blur-[50px] rounded-full"></div>
+                        </>
+                    )
                 };
             case 'jupiter':
-                // Gas Giant Bands
+                // Storms & Bands - Expansion
+                // Abstracting the bands into soft horizontal washes
                 return {
-                    background: 'repeating-linear-gradient(-20deg, #92400e 0%, #b45309 8%, #78350f 16%, #d97706 24%, #fde047 30%, #b45309 36%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-20 mix-blend-overlay',
-                    detail: <div className="absolute top-[60%] right-[30%] w-20 h-20 bg-red-800/40 rounded-full blur-xl border border-red-900/20 shadow-inner"></div>, // Great Red Spot
-                    shadow: 'shadow-[inset_-30px_-30px_70px_rgba(0,0,0,0.5),_0_0_80px_rgba(217,119,6,0.4)]'
+                    background: 'linear-gradient(180deg, #d97706, #b45309, #92400e)',
+                    shadow: 'shadow-[0_0_110px_rgba(217,119,6,0.5)]',
+                    detail: (
+                        <>
+                            <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,0,0,0.1)_60px)] blur-[10px] mix-blend-multiply"></div>
+                            <div className="absolute top-[20%] left-[-20%] w-[100%] h-[60%] bg-amber-200/30 blur-[80px] rounded-full mix-blend-overlay"></div>
+                            <div className="absolute bottom-[20%] right-[-20%] w-[80%] h-[50%] bg-red-900/20 blur-[60px] rounded-full mix-blend-color-burn"></div>
+                        </>
+                    )
                 };
             case 'saturn':
-                // Pale Gold Bands + Ring
+                // Pale Gold & Rings - Structure
                 return {
-                    background: 'repeating-linear-gradient(0deg, #fef08a 0%, #fde047 10%, #eab308 20%, #fde047 30%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-10 mix-blend-soft-light',
-                    shadow: 'shadow-[inset_-25px_-25px_60px_rgba(161,98,7,0.4),_0_0_60px_rgba(250,204,21,0.3)]'
+                    background: 'linear-gradient(to bottom right, #fef08a, #eab308)',
+                    shadow: 'shadow-[0_0_100px_rgba(234,179,8,0.4)]',
+                    detail: (
+                        <>
+                            <div className="absolute inset-0 bg-gradient-to-tr from-yellow-200/0 via-yellow-100/40 to-white/60 mix-blend-overlay"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-300/20 blur-[50px] rounded-full"></div>
+                        </>
+                    )
                 };
             case 'uranus':
-                // Ice Giant Smooth
+                // Cyan Ice - Revolution
                 return {
-                    background: 'radial-gradient(circle at 30% 30%, #a5f3fc 0%, #0891b2 100%)',
-                    shadow: 'shadow-[inset_-25px_-25px_60px_rgba(21,94,117,0.5),_0_0_60px_rgba(34,211,238,0.4)]',
-                    detail: <div className="absolute inset-0 bg-white/10 blur-3xl opacity-50"></div>
+                    background: 'linear-gradient(135deg, #a5f3fc, #0891b2)',
+                    shadow: 'shadow-[0_0_110px_rgba(34,211,238,0.5)]',
+                    detail: (
+                        <>
+                            <div className="absolute inset-0 bg-white/20 blur-[40px] mix-blend-overlay"></div>
+                            <div className="absolute top-[-30%] left-0 w-[120%] h-[120%] bg-sky-200/30 blur-[80px] rounded-full mix-blend-soft-light animate-pulse-slow"></div>
+                        </>
+                    )
                 };
             case 'neptune':
-                // Deep Blue Storms
+                // Deep Indigo Dream - Mysticism
                 return {
-                    background: 'radial-gradient(circle at 60% 60%, #4338ca 0%, #312e81 100%)',
-                    detail: <div className="absolute top-[20%] left-[30%] w-16 h-8 bg-black/20 blur-lg rounded-full"></div>, // Dark spot
-                    shadow: 'shadow-[inset_-25px_-25px_60px_rgba(17,24,39,0.6),_0_0_60px_rgba(79,70,229,0.5)]'
+                    background: 'linear-gradient(to bottom right, #6366f1, #312e81)',
+                    shadow: 'shadow-[0_0_120px_rgba(79,70,229,0.6)]',
+                    detail: (
+                        <>
+                            <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-purple-500/30 blur-[70px] rounded-full mix-blend-screen"></div>
+                            <div className="absolute bottom-0 left-0 w-[70%] h-[70%] bg-blue-900/60 blur-[60px] rounded-full mix-blend-multiply"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/0 to-indigo-300/20 mix-blend-overlay"></div>
+                        </>
+                    )
                 };
             case 'sun':
-                // Star
+                // The Source - Pure Light
                 return {
-                    background: 'radial-gradient(circle, #fef3c7 10%, #f59e0b 40%, #b91c1c 100%)',
-                    overlay: 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-30 mix-blend-overlay',
-                    detail: <div className="absolute inset-[-20%] bg-orange-500/20 blur-3xl animate-pulse"></div>,
-                    shadow: 'shadow-[0_0_100px_rgba(245,158,11,0.8),_inset_0_0_40px_rgba(254,252,232,0.8)]'
+                    background: 'radial-gradient(circle at 40% 40%, #fff7ed, #f59e0b, #ea580c)',
+                    shadow: 'shadow-[0_0_150px_rgba(251,146,60,0.8)]',
+                    detail: (
+                        <>
+                            <div className="absolute inset-[-20%] bg-orange-400/30 blur-[80px] animate-pulse-slow mix-blend-screen"></div>
+                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+                            <div className="absolute top-[20%] left-[20%] w-[60%] h-[60%] bg-white/60 blur-[50px] rounded-full mix-blend-soft-light"></div>
+                        </>
+                    )
                 };
             default:
                 return { background: `bg-gradient-to-br ${tier.gradient}`, shadow: 'shadow-lg' };
