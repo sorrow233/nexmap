@@ -138,6 +138,11 @@ export const app = {
     stats: {
         title: "Statistics",
         description: "Overview of your creative projects and resource usage.",
+        activityFlow: "Activity Flow",
+        activityFlowDesc: "Your creative output over time",
+        mostActiveTime: "Most active time",
+        month: "Month",
+        year: "Year",
         totalBoards: "Total Boards",
         activeBoards: "Active Projects",
         trashBoards: "Archived",

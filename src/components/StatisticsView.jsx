@@ -288,10 +288,11 @@ export default function StatisticsView({ boardsList, user }) {
                                 </div>
                             </div>
 
-                            {/* Next Tier Tooltip/Label (Suspense Mode: No exact numbers) */}
+                            {/* Next Tier Tooltip/Label (Suspense Mode) */}
                             {currentTier.name !== 'Sun' && (
-                                <div className="absolute -bottom-12 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-lg text-xs font-bold text-slate-500 border border-white/50 animate-bounce-slow opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Next: <span className={`text-${tiers[currentTierIndex + 1].color}-500`}>{tiers[currentTierIndex + 1].name}</span>
+                                <div className="absolute -bottom-14 bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-full shadow-xl text-xs font-bold text-slate-500 border border-white/50 animate-bounce-slow opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                                    <span className="mr-1">{t.stats?.planets?.next || 'Next'}:</span>
+                                    <span className={`text-${tiers[currentTierIndex + 1].color}-500`}>{tiers[currentTierIndex + 1].name}</span>
                                 </div>
                             )}
                         </div>
@@ -335,7 +336,7 @@ export default function StatisticsView({ boardsList, user }) {
                                     <span className="text-2xl font-black block leading-none">
                                         {mostActive ? mostActive.label : "--"}
                                     </span>
-                                    <span className="text-xs text-indigo-200">Most active time</span>
+                                    <span className="text-xs text-indigo-200">{t.stats?.mostActiveTime || "Most active time"}</span>
                                 </div>
                             </div>
                         </div>
@@ -346,8 +347,8 @@ export default function StatisticsView({ boardsList, user }) {
                 <div className="w-full p-8 rounded-[3rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff]">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-xl font-bold text-slate-800">Activity Flow</h3>
-                            <p className="text-sm text-slate-400">Your creative output over time</p>
+                            <h3 className="text-xl font-bold text-slate-800">{t.stats?.activityFlow || "Activity Flow"}</h3>
+                            <p className="text-sm text-slate-400">{t.stats?.activityFlowDesc || "Your creative output over time"}</p>
                         </div>
 
                         {/* Soft Switch */}
@@ -363,7 +364,7 @@ export default function StatisticsView({ boardsList, user }) {
                                             : 'text-slate-400 hover:text-slate-600'}
                                     `}
                                 >
-                                    {mode === 'week' ? t.stats?.weeklyTrend || 'WEEK' : mode === 'month' ? 'MONTH' : 'YEAR'}
+                                    {mode === 'week' ? t.stats?.weeklyTrend || 'WEEK' : mode === 'month' ? t.stats?.month || 'MONTH' : t.stats?.year || 'YEAR'}
                                 </button>
                             ))}
                         </div>
@@ -388,6 +389,7 @@ export default function StatisticsView({ boardsList, user }) {
                 currentTierName={currentTier.name}
                 currentTotal={totalTokens}
                 tiers={tiers}
+                t={t}
             />
         </div>
     );
