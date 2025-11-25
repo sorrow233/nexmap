@@ -55,10 +55,11 @@ export default function AchievementModal({
 
     // Current Tier Data
     const tier = tiers[activeIndex];
-    const isUnlocked = activeIndex <= currentUserIndex;
+    // User Request: Unlock all for visual review
+    const isUnlocked = true; // activeIndex <= currentUserIndex;
     const isCurrent = activeIndex === currentUserIndex;
     const isNext = activeIndex === currentUserIndex + 1;
-    const isMystery = activeIndex > currentUserIndex + 1;
+    const isMystery = false; // activeIndex > currentUserIndex + 1;
 
     // Format helper
     const fmt = (n) => n?.toLocaleString() || '0';
