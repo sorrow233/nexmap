@@ -165,7 +165,7 @@ export function useAISprouting() {
 
             // Create cards using the same layout logic as handleSprout
             if (topics && topics.length > 0) {
-                const CARD_HEIGHT = 400;
+                const CARD_HEIGHT = 500; // Increased spacing to prevent overlap
                 const totalHeight = topics.length * CARD_HEIGHT;
                 const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
 
@@ -280,7 +280,7 @@ export function useAISprouting() {
             debugLog.ai(`Branch topics extracted:`, topics);
 
             if (topics && topics.length > 0) {
-                const CARD_HEIGHT = 400;
+                const CARD_HEIGHT = 500; // Increased spacing to prevent overlap
                 const totalHeight = topics.length * CARD_HEIGHT;
                 const startY = source.y - (totalHeight / 2) + (CARD_HEIGHT / 2);
 
