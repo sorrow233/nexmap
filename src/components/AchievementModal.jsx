@@ -237,19 +237,23 @@ export default function AchievementModal({
                         <div className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center perspective-[1000px] mb-12 group transition-transform duration-700 ease-out hover:scale-105">
 
                             {/* Texture Layer */}
-                            <div className={`
-                                absolute inset-0 rounded-full
-                                transition-all duration-1000 ease-in-out
-                                ${texture.shadow}
-                            `}
-                                style={{ background: texture.background }}
-                            >
-                                {/* Noise/Overlay */}
-                                {texture.overlay && <div className={`absolute inset-0 ${texture.overlay}`}></div>}
-                                {/* Procedural Details (Clouds, Bands, Spots) */}
-                                {texture.detail}
+                            <div className="absolute inset-0 rounded-full">
+                                {/* Planet Surface (Clipped to remove square artifacts) */}
+                                <div
+                                    className={`
+                                        absolute inset-0 rounded-full overflow-hidden
+                                        transition-all duration-1000 ease-in-out
+                                        ${texture.shadow}
+                                    `}
+                                    style={{ background: texture.background }}
+                                >
+                                    {/* Noise/Overlay */}
+                                    {texture.overlay && <div className={`absolute inset-0 ${texture.overlay}`}></div>}
+                                    {/* Procedural Details (Clouds, Bands, Spots) */}
+                                    {texture.detail}
+                                </div>
 
-                                {/* Saturn Ring Special Case */}
+                                {/* Saturn Ring Special Case (Unclipped) */}
                                 {(tier.id === 'saturn' || tier.name === 'Saturn') && (
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] h-[50%] border-[24px] border-[#fde047]/30 rounded-[100%] rotate-[-12deg] shadow-xl pointer-events-none mix-blend-plus-lighter blur-[1px]"></div>
                                 )}
