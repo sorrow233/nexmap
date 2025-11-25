@@ -139,14 +139,14 @@ export async function generateQuickSproutTopics(messages, config, model = null, 
         const contextMessages = messages.slice(-2);
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
-        // Let AI detect how many topics naturally exist
+        // Fixed 3 topics for toolbar Sprout
         const finalPrompt = `对话内容：
 ${contextText}
 
-分析上面的对话，提取出所有值得单独深入探讨的子话题或核心概念。
+分析上面的对话，提取 3 个值得深入探讨的子话题。
 
 要求：
-- 有多少个就输出多少个，不要强行凑数
+- 固定输出 3 个
 - 每个话题要具体、独立
 - 用对话中使用的语言输出
 
@@ -187,8 +187,8 @@ ${contextText}
             return ["Core concepts", "Key details", "Practical applications"];
         }
 
-        // Return all detected topics
-        return parsed;
+        // Return exactly 3 topics
+        return parsed.slice(0, 3);
     } catch (e) {
         console.error("[QuickSprout] Failed to generate topics:", e);
         return ["Core concepts", "Key details", "Practical applications"];
