@@ -95,8 +95,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         if (!currentBoardId) return;
 
         // 1. Text Summary (Cards > 3)
-        // Trigger if: Enough cards, not generated this session, and no existing summary
-        if (count > 3 && !hasAutoSummaryGeneratedRef.current && !currentBoard?.summary) {
+        // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
+        if (count > 3 && !hasAutoSummaryGeneratedRef.current && !currentBoard?.summary && !currentBoard?.backgroundImage) {
             console.log(`[AutoGen] Triggering Summary (Count: ${count})`);
             generateBoardSummary(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
