@@ -140,12 +140,31 @@ export default function StatisticsView({ boardsList, user }) {
 
     // ... inside the component
 
+    // DEV MODE: Manual Tier Override for Testing
+    const [devTierIndex, setDevTierIndex] = useState(null); // null = use real data, number = forced index
+
     // Planetary Logic (Lifted State & Localized)
     const totalTokens = stats.tokenStats.totalChars;
     const tiers = usePlanetTiers(t);
 
-    const currentTierIndex = tiers.findIndex(t => totalTokens < t.limit);
+    // Use override if set, otherwise calculate from tokens
+    const calculatedTierIndex = tiers.findIndex(t => totalTokens < t.limit);
+    const currentTierIndex = devTierIndex !== null ? devTierIndex : (calculatedTierIndex === -1 ? tiers.length - 1 : calculatedTierIndex);
     const currentTier = tiers[currentTierIndex] || tiers[tiers.length - 1];
+
+    // DEV MODE: Navigation handlers
+    const handlePrevTier = () => {
+        setDevTierIndex(prev => {
+            const current = prev !== null ? prev : currentTierIndex;
+            return Math.max(0, current - 1);
+        });
+    };
+    const handleNextTier = () => {
+        setDevTierIndex(prev => {
+            const current = prev !== null ? prev : currentTierIndex;
+            return Math.min(tiers.length - 1, current + 1);
+        });
+    };
 
     // Progress for Ring
     const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
@@ -301,13 +320,27 @@ export default function StatisticsView({ boardsList, user }) {
                                 </div>
                             </div>
 
-                            {/* Next Tier Tooltip/Label (Suspense Mode) */}
-                            {currentTier.name !== 'Sun' && (
-                                <div className="absolute -bottom-14 bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-full shadow-xl text-xs font-bold text-slate-500 border border-white/50 animate-bounce-slow opacity-0 group-hover:opacity-100 transition-opacity z-30">
-                                    <span className="mr-1">{t.stats?.planets?.next || 'Next'}:</span>
-                                    <span className={`text-${tiers[currentTierIndex + 1].color}-500`}>{tiers[currentTierIndex + 1].name}</span>
+                            {/* DEV MODE: Tier Navigation Controls */}
+                            <div className="absolute -bottom-16 flex items-center gap-3 z-40">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handlePrevTier(); }}
+                                    disabled={currentTierIndex === 0}
+                                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-200/50 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                </button>
+                                <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200/50 text-xs font-bold text-slate-600">
+                                    <span className={`text-${currentTier.color}-500`}>{currentTier.name}</span>
+                                    <span className="text-slate-400 ml-2">({currentTierIndex + 1}/{tiers.length})</span>
                                 </div>
-                            )}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleNextTier(); }}
+                                    disabled={currentTierIndex === tiers.length - 1}
+                                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-200/50 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Base Pedestal reflection */}
