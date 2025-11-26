@@ -16,32 +16,41 @@ export function useAISprouting() {
         setCardGenerating
     } = useStore();
 
-    // Helper: Check if a position overlaps with any existing card
-    const findNonOverlappingY = (baseX, baseY, existingCards, cardHeight = 400, margin = 50) => {
-        const CARD_WIDTH = CARD_GEOMETRY.standard.width;
-        let candidateY = baseY;
-        let attempts = 0;
-        const maxAttempts = 20;
+    /**
+     * Calculate standard mindmap layout for child cards.
+     * Children are positioned to the right of the parent, vertically centered.
+     * This is exactly how MindNode/XMind layout their nodes.
+     * 
+     * @param {Object} parent - Parent card {x, y}
+     * @param {number} childCount - Number of children to position
+     * @returns {Array} Array of {x, y} positions for each child
+     */
+    const calculateMindmapChildPositions = (parent, childCount) => {
+        const CARD_WIDTH = CARD_GEOMETRY.standard.width;   // 320
+        const CARD_HEIGHT = CARD_GEOMETRY.standard.height; // 300
+        const HORIZONTAL_GAP = 130; // Gap between parent and children
+        const VERTICAL_GAP = 50;    // Gap between siblings
 
-        while (attempts < maxAttempts) {
-            const hasOverlap = existingCards.some(c => {
-                const cHeight = CARD_GEOMETRY[c.type || 'standard']?.height || 300;
-                return (
-                    Math.abs(c.x - baseX) < CARD_WIDTH + margin &&
-                    candidateY < c.y + cHeight + margin &&
-                    candidateY + cardHeight > c.y - margin
-                );
+        // All children are at the same X (to the right of parent)
+        const childX = parent.x + CARD_WIDTH + HORIZONTAL_GAP;
+
+        // Total height taken by all children
+        const totalHeight = childCount * CARD_HEIGHT + (childCount - 1) * VERTICAL_GAP;
+
+        // Start Y: center children around parent's center
+        const parentCenterY = parent.y + CARD_HEIGHT / 2;
+        const startY = parentCenterY - totalHeight / 2;
+
+        // Generate positions for each child
+        const positions = [];
+        for (let i = 0; i < childCount; i++) {
+            positions.push({
+                x: childX,
+                y: startY + i * (CARD_HEIGHT + VERTICAL_GAP)
             });
-
-            if (!hasOverlap) {
-                return candidateY;
-            }
-
-            candidateY += cardHeight + margin;
-            attempts++;
         }
 
-        return candidateY; // Fallback after max attempts
+        return positions;
     };
 
     const handleExpandTopics = async (sourceId) => {
@@ -192,39 +201,27 @@ export function useAISprouting() {
 
             debugLog.ai(`Quick sprout topics generated:`, topics);
 
-            // Create cards using collision detection
+            // Create cards using standard mindmap layout
             if (topics && topics.length > 0) {
-                const CARD_HEIGHT = 400;
-                const baseX = source.x + 450;
-                let baseY = source.y;
-
-                // Get current cards plus track newly created ones
-                const currentCards = [...cards];
+                // Calculate positions using mindmap layout
+                const positions = calculateMindmapChildPositions(source, topics.length);
 
                 for (let i = 0; i < topics.length; i++) {
                     const topic = topics[i];
                     const newId = uuid();
+                    const pos = positions[i];
 
-                    // Find Y position that doesn't overlap with existing cards
-                    const newY = findNonOverlappingY(baseX, baseY, currentCards, CARD_HEIGHT, 50);
-
-                    debugLog.ai(`Creating quick sprouted card: ${newId} at y=${newY}`, { topic });
-
-                    // Add to tracking array to prevent next card from overlapping this one
-                    currentCards.push({ id: newId, x: baseX, y: newY, type: 'standard' });
+                    debugLog.ai(`Creating quick sprouted card: ${newId} at (${pos.x}, ${pos.y})`, { topic });
 
                     await createAICard({
                         id: newId,
                         text: topic,
-                        x: baseX,
-                        y: newY,
+                        x: pos.x,
+                        y: pos.y,
                         autoConnections: [{ from: sourceId, to: newId }],
                         model: chatModel,
                         providerId: activeConfig.id
                     });
-
-                    // Update baseY for next card
-                    baseY = newY + CARD_HEIGHT + 50;
 
                     try {
                         await aiManager.requestTask({
@@ -312,39 +309,27 @@ export function useAISprouting() {
 
             debugLog.ai(`Branch topics extracted:`, topics);
 
-            // Create cards using collision detection
+            // Create cards using standard mindmap layout
             if (topics && topics.length > 0) {
-                const CARD_HEIGHT = 400;
-                const baseX = source.x + 450;
-                let baseY = source.y;
-
-                // Get current cards plus track newly created ones
-                const currentCards = [...cards];
+                // Calculate positions using mindmap layout
+                const positions = calculateMindmapChildPositions(source, topics.length);
 
                 for (let i = 0; i < topics.length; i++) {
                     const topic = topics[i];
                     const newId = uuid();
+                    const pos = positions[i];
 
-                    // Find Y position that doesn't overlap with existing cards
-                    const newY = findNonOverlappingY(baseX, baseY, currentCards, CARD_HEIGHT, 50);
-
-                    debugLog.ai(`Creating branch card: ${newId} at y=${newY}`, { topic });
-
-                    // Add to tracking array to prevent next card from overlapping this one
-                    currentCards.push({ id: newId, x: baseX, y: newY, type: 'standard' });
+                    debugLog.ai(`Creating branch card: ${newId} at (${pos.x}, ${pos.y})`, { topic });
 
                     await createAICard({
                         id: newId,
                         text: topic,
-                        x: baseX,
-                        y: newY,
+                        x: pos.x,
+                        y: pos.y,
                         autoConnections: [{ from: sourceId, to: newId }],
                         model: chatModel,
                         providerId: activeConfig.id
                     });
-
-                    // Update baseY for next card
-                    baseY = newY + CARD_HEIGHT + 50;
 
                     try {
                         await aiManager.requestTask({
