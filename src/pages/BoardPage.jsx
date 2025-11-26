@@ -104,9 +104,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
             hasAutoSummaryGeneratedRef.current = true;
         }
 
-        // 2. Visual Background (Cards > 10) -> DISABLED for now to prevent unexpected credit usage
-        // Only Manual Trigger via Button
-        /*
+        // 2. Visual Background (Cards > 10)
+        // Trigger if: Enough cards, not generated this session, and no existing image
         if (count > 10 && !hasAutoImageGeneratedRef.current && !currentBoard?.backgroundImage) {
             console.log(`[AutoGen] Triggering Image (Count: ${count})`);
             generateBoardImage(currentBoardId, (id, updates) => {
@@ -114,7 +113,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
             });
             hasAutoImageGeneratedRef.current = true;
         }
-        */
     }, [cards, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage]);
 
 
