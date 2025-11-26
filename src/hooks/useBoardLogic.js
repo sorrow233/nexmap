@@ -6,7 +6,7 @@ import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
 import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/storage';
 import { debugLog } from '../utils/debugLogger';
 import { useToast } from '../components/Toast';
-import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
+// import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -52,8 +52,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     const currentBoard = boardsList.find(b => b.id === currentBoardId);
     const hasBackgroundImage = !!currentBoard?.backgroundImage;
 
-    // Thumbnail Capture
-    const { canvasContainerRef } = useThumbnailCapture(cards, connections, currentBoardId, hasBackgroundImage);
+    // Thumbnail Capture REMOVED per user request
+    const canvasContainerRef = useRef(null);
 
     // Local State
     const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
