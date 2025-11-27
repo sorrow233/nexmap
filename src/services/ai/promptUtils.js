@@ -6,7 +6,7 @@
  * Gets the current system prompt including time reference.
  * @returns {Object} System message object { role: 'system', content: string }
  */
-export function getSystemPrompt() {
+export function getSystemPrompt(customInstructions = '') {
     const now = new Date();
     const isoTime = now.toISOString();
 
@@ -23,9 +23,7 @@ export function getSystemPrompt() {
         weekday: 'long'
     }).format(now);
 
-    return {
-        role: 'system',
-        content: `[Current Time Awareness]
+    let content = `[Current Time Awareness]
 Current ISO 8601: ${isoTime}
 Current Local Time: ${localTime} (JST, UTC+9)
 
@@ -50,7 +48,19 @@ INCORRECT Example (Do NOT do this):
 INCORRECT Example (Do NOT do this):
 1. Item Name
 1.1 Attribute: Value
-1.2 Description: Text`
+1.2 Description: Text`;
+
+    // Append user's custom instructions if provided
+    if (customInstructions && customInstructions.trim()) {
+        content += `
+
+[User Custom Instructions]
+${customInstructions.trim()}`;
+    }
+
+    return {
+        role: 'system',
+        content
     };
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift, Globe } from 'lucide-react';
+import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift, Globe, FileText } from 'lucide-react';
 // import { chatCompletion } from '../services/llm'; // Converted to dynamic import
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
@@ -10,6 +10,7 @@ import SettingsLLMTab from './settings/SettingsLLMTab';
 import SettingsRolesTab from './settings/SettingsRolesTab';
 import SettingsStorageTab from './settings/SettingsStorageTab';
 import SettingsGeneralTab from './settings/SettingsGeneralTab';
+import SettingsInstructionsTab from './settings/SettingsInstructionsTab';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) {
@@ -43,6 +44,9 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
         publicDomain: ''
     });
 
+    // Custom Instructions State
+    const [customInstructions, setCustomInstructions] = useState('');
+
     // Load configuration on mount from Store
     useEffect(() => {
         const state = useStore.getState();
@@ -51,6 +55,10 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
         const s3 = getS3Config();
         if (s3) setS3ConfigState(s3);
+
+        // Load custom instructions
+        const savedInstructions = localStorage.getItem('mixboard_custom_instructions') || '';
+        setCustomInstructions(savedInstructions);
     }, [isOpen]);
 
     const handleUpdateProvider = (field, value) => {
@@ -64,7 +72,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     };
 
     const handleAddProvider = () => {
-        const newId = `custom-${Date.now()}`;
+        const newId = `custom - ${Date.now()} `;
         setProviders(prev => ({
             ...prev,
             [newId]: {
@@ -114,7 +122,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                 {}
             );
             setTestStatus('success');
-            setTestMessage(`Connection Successful! (${testModel || 'default model'})`);
+            setTestMessage(`Connection Successful!(${testModel || 'default model'})`);
         } catch (error) {
             setTestStatus('error');
             setTestMessage(error.message || 'Connection Failed');
@@ -129,12 +137,16 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
 
         saveS3Config(s3Config);
 
+        // Save custom instructions to localStorage
+        localStorage.setItem('mixboard_custom_instructions', customInstructions);
+
         if (user && user.uid) {
             try {
                 await saveUserSettings(user.uid, {
                     providers,
                     activeId,
-                    s3Config
+                    s3Config,
+                    customInstructions
                 });
             } catch (e) {
                 // console.error(e);
@@ -159,22 +171,22 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
     const TabButton = ({ id, icon: Icon, label, description }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group flex items-center gap-3 ${activeTab === id
+            className={`w - full text - left px - 4 py - 3 rounded - xl transition - all duration - 200 group flex items - center gap - 3 ${activeTab === id
                 ? 'bg-brand-50 dark:bg-brand-900/20 shadow-sm border border-brand-200 dark:border-brand-500/30'
                 : 'hover:bg-slate-50 dark:hover:bg-white/5 border border-transparent'
-                }`}
+                } `}
         >
-            <div className={`p-2 rounded-lg transition-colors ${activeTab === id
+            <div className={`p - 2 rounded - lg transition - colors ${activeTab === id
                 ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
-                }`}>
+                } `}>
                 <Icon size={18} />
             </div>
             <div>
-                <div className={`text-sm font-bold ${activeTab === id
+                <div className={`text - sm font - bold ${activeTab === id
                     ? 'text-brand-900 dark:text-brand-100'
                     : 'text-slate-700 dark:text-slate-300'
-                    }`}>{label}</div>
+                    } `}>{label}</div>
                 {description && (
                     <div className="text-[10px] text-slate-400 font-medium">{description}</div>
                 )}
@@ -203,6 +215,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             <div className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.settings.general}</div>
                             <TabButton id="credits" icon={Gift} label={t.settings.credits} description={t.settings.creditsDesc} />
                             <TabButton id="language" icon={Globe} label={t.settings.language} description={t.settings.language} />
+                            <TabButton id="instructions" icon={FileText} label={t.settings?.customInstructions || 'Custom Instructions'} description={t.settings?.customInstructionsDesc || 'Global AI behavior'} />
                         </div>
 
                         {/* Advanced Toggle */}
@@ -212,7 +225,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                                 className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors uppercase tracking-wider"
                             >
                                 <span>{t.settings.advancedSettings}</span>
-                                <Settings size={14} className={`transition-transform duration-300 ${showAdvanced ? 'rotate-90' : ''}`} />
+                                <Settings size={14} className={`transition - transform duration - 300 ${showAdvanced ? 'rotate-90' : ''} `} />
                             </button>
                         </div>
 
@@ -246,6 +259,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                             {activeTab === 'credits' && t.settings.creditsUsage}
                             {activeTab === 'language' && t.settings.language}
+                            {activeTab === 'instructions' && (t.settings?.customInstructions || 'Custom Instructions')}
                             {activeTab === 'llm' && t.settings.modelProvider}
                             {activeTab === 'roles' && t.settings.modelRoles}
                             {activeTab === 'storage' && t.settings.storageSettings}
@@ -277,6 +291,13 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                             )}
 
                             {activeTab === 'language' && <SettingsGeneralTab />}
+
+                            {activeTab === 'instructions' && (
+                                <SettingsInstructionsTab
+                                    customInstructions={customInstructions}
+                                    setCustomInstructions={setCustomInstructions}
+                                />
+                            )}
 
                             {activeTab === 'llm' && (
                                 <SettingsLLMTab
