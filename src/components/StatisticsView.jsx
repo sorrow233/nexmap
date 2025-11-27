@@ -170,7 +170,7 @@ export default function StatisticsView({ boardsList, user }) {
     const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
     const nextLimit = currentTier.limit;
     const progress = Math.min(100, Math.max(0, ((totalTokens - prevLimit) / (nextLimit - prevLimit)) * 100));
-    const radius = 150;
+    const radius = 185;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
 
@@ -244,7 +244,7 @@ export default function StatisticsView({ boardsList, user }) {
                     </div>
 
                     {/* Center: Planetary System (Token Evolution) */}
-                    <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[400px]">
+                    <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[500px]">
 
                         {/* Orbital Rings Background - Animated */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-visible">
@@ -259,17 +259,17 @@ export default function StatisticsView({ boardsList, user }) {
                         {/* Planet Container */}
                         <div
                             onClick={() => setShowAchievements(true)}
-                            className="relative w-80 h-80 group cursor-pointer flex items-center justify-center transition-transform active:scale-95"
+                            className="relative w-96 h-96 group cursor-pointer flex items-center justify-center transition-transform active:scale-95 aspect-square"
                         >
 
                             {/* Progress Ring SVG */}
-                            <div className="absolute inset-0 -m-4">
-                                <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 320 320">
+                            <div className="absolute inset-0 -m-6">
+                                <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 400 400">
                                     {/* Track */}
-                                    <circle cx="160" cy="160" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
+                                    <circle cx="200" cy="200" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
                                     {/* Progress */}
                                     <circle
-                                        cx="160" cy="160" r={radius}
+                                        cx="200" cy="200" r={radius}
                                         stroke="currentColor"
                                         strokeWidth="8"
                                         fill="none"
@@ -282,7 +282,7 @@ export default function StatisticsView({ boardsList, user }) {
                             </div>
 
                             {/* The Planet (Ethereal 3D) */}
-                            <div className="relative w-96 h-96 group transition-transform duration-700 ease-out hover:scale-105 z-10 flex items-center justify-center perspective-[1000px]">
+                            <div className="relative w-full h-full aspect-square group transition-transform duration-700 ease-out hover:scale-105 z-10 flex items-center justify-center perspective-[1000px]">
 
                                 {/* Texture Layer */}
                                 <div className="absolute inset-0 rounded-full">
