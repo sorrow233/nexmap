@@ -9,19 +9,25 @@ import React from 'react';
  * - Ring: Faint vertical ring hint.
  */
 export const uranusTexture = {
-    // Surface: Almost featureless Pale Cyan
-    background: 'radial-gradient(circle at 50% 50%, #ecfeff 0%, #cffafe 40%, #22d3ee 80%, #0891b2 100%)',
-    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(21,94,117,0.5),_0_0_50px_rgba(34,211,238,0.4)]',
+    // Surface: Featureless Pale Cyan (Smooth Ice Giant)
+    // Note: Uranus rolls on its side, so we use a vertical gradient if possible, or just a smooth radial.
+    background: 'radial-gradient(circle at 40% 40%, #cffafe 0%, #a5f3fc 30%, #22d3ee 70%, #0891b2 100%)',
+    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(8,145,178,0.8),_0_0_40px_rgba(165,243,252,0.4)]',
     detail: (
         <>
-            {/* 1. Vertical Emphasis (Simulating Tilt) */}
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_45%,rgba(255,255,255,0.2)_50%,transparent_55%)] blur-[20px]"></div>
+            {/* 1. Vertical Glow (The "Side-Roll" indicator) */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-50 blur-xl rotate-90"></div>
 
-            {/* 2. Cold Haze */}
-            <div className="absolute inset-0 bg-cyan-100/20 mix-blend-overlay"></div>
+            {/* 2. Ring Plane Hint (Very faint, vertical) */}
+            <div className="absolute top-0 left-[50%] w-[2%] h-full bg-white/10 blur-[1px]"></div>
 
-            {/* 3. Subtle Cloud Features (Infrared style) */}
-            <div className="absolute top-[30%] left-[20%] w-[20%] h-[20%] bg-white/30 blur-[15px] rounded-full"></div>
+            {/* 3. Deep Atmospheric Haze */}
+            <div className="absolute inset-0 bg-cyan-400/10 mix-blend-overlay"></div>
+
+            {/* 4. Polar Cap (Day side) */}
+            <div className="absolute top-[40%] left-[40%] w-[50%] h-[50%] bg-white/30 blur-[40px] rounded-full mix-blend-screen"></div>
         </>
     )
 };
+
+```
