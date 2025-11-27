@@ -1,22 +1,8 @@
 import { LLMProvider } from './base';
 import { resolveAllImages, getAuthMethod } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
-
-// Errors that are likely transient and worth retrying
-const RETRYABLE_ERRORS = [
-    'Upstream service unavailable',
-    'upstream connect error',
-    'Service Unavailable',
-    'temporarily unavailable',
-    'overloaded',
-    'rate limit'
-];
-
-function isRetryableError(errorMessage) {
-    if (!errorMessage) return false;
-    const lower = errorMessage.toLowerCase();
-    return RETRYABLE_ERRORS.some(e => lower.includes(e.toLowerCase()));
-}
+import { isRetryableError } from './gemini/errorUtils';
+import { parseGeminiStream } from './gemini/streamParser';
 
 export class GeminiProvider extends LLMProvider {
     /**
@@ -99,7 +85,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.generationConfig.mediaResolution = options.mediaResolution;
         }
 
-        console.log('[Gemini] Generation Config:', JSON.stringify(requestBody.generationConfig, null, 2));
+        // console.log('[Gemini] Generation Config:', JSON.stringify(requestBody.generationConfig, null, 2));
 
 
         if (systemInstruction) {
@@ -110,7 +96,7 @@ export class GeminiProvider extends LLMProvider {
 
         while (retries >= 0) {
             try {
-                console.log(`[Gemini] Sending chat request to /api/gmi-serving for model ${cleanModel}`);
+                // console.log(`[Gemini] Sending chat request to /api/gmi-serving for model ${cleanModel}`);
                 const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -123,7 +109,7 @@ export class GeminiProvider extends LLMProvider {
                     })
                 });
 
-                console.log(`[Gemini] Response status: ${response.status} ${response.statusText}`);
+                // console.log(`[Gemini] Response status: ${response.status} ${response.statusText}`);
 
                 if (response.ok) {
                     const data = await response.json();
@@ -208,7 +194,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.generationConfig.mediaResolution = options.mediaResolution;
         }
 
-        console.log('[Gemini] Stream Config:', JSON.stringify(requestBody.generationConfig, null, 2));
+        // console.log('[Gemini] Stream Config:', JSON.stringify(requestBody.generationConfig, null, 2));
 
 
         if (systemInstruction) {
@@ -220,7 +206,7 @@ export class GeminiProvider extends LLMProvider {
 
         while (retries >= 0) {
             try {
-                console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel} (attempts left: ${retries + 1})`);
+                // console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel} (attempts left: ${retries + 1})`);
                 const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -257,123 +243,13 @@ export class GeminiProvider extends LLMProvider {
                 }
 
                 const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let lastFullText = ''; // Track cumulative text
-                let buffer = '';
-
                 try {
-                    console.log('[Gemini] Stream response OK, processing chunks...');
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        const chunkText = decoder.decode(value, { stream: true });
-                        buffer += chunkText;
-
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop(); // Keep incomplete line in buffer
-
-                        for (const line of lines) {
-                            let cleanLine = line.trim();
-                            if (!cleanLine) continue;
-
-                            // Handle SSE prefix
-                            if (cleanLine.startsWith('data: ')) {
-                                cleanLine = cleanLine.substring(6).trim();
-                            }
-
-                            // Clean up Python byte string artifacts (common in some proxy responses)
-                            if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
-                                cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
-                                console.warn('[Gemini] Detected Python byte string, auto-cleaning:', cleanLine);
-                            }
-
-                            if (!cleanLine || cleanLine === '[DONE]') continue;
-
-                            try {
-                                const data = JSON.parse(cleanLine);
-
-                                // CRITICAL: Check for API errors that might be returned as JSON (even with 200 OK)
-                                if (data.error) {
-                                    const errMsg = data.error.message || JSON.stringify(data.error);
-
-                                    // Check if this is a retryable error
-                                    if (isRetryableError(errMsg) && retries > 0) {
-                                        console.warn(`[Gemini] Retryable upstream error: ${errMsg}, will retry... (${retries} left)`);
-                                        throw { retryable: true, message: errMsg };
-                                    }
-
-                                    throw new Error(errMsg);
-                                }
-
-                                const candidate = data.candidates?.[0];
-
-                                // Gemini stream format: candidate content parts
-                                const currentText = candidate?.content?.parts?.[0]?.text;
-
-                                if (currentText) {
-                                    // Robust Delta Calculation
-                                    let delta = '';
-                                    if (currentText.startsWith(lastFullText)) {
-                                        delta = currentText.substring(lastFullText.length);
-                                        lastFullText = currentText;
-                                    } else {
-                                        delta = currentText;
-                                        lastFullText += currentText;
-                                    }
-
-                                    if (delta) {
-                                        onToken(delta);
-                                    }
-                                }
-                            } catch (jsonErr) {
-                                // Handle retryable errors thrown above
-                                if (jsonErr.retryable) {
-                                    throw jsonErr;
-                                }
-
-                                // If parsing fails or we threw an error above, re-throw if it's our error
-                                if (jsonErr.message && !jsonErr.message.includes('JSON')) {
-                                    throw jsonErr;
-                                }
-                                // Try to handle partial JSON or weird provider formats
-                                console.warn('[Gemini] Line parse error:', cleanLine.substring(0, 50), jsonErr.message);
-                            }
-                        }
-                    }
-
-                    // Process remaining buffer
-                    if (buffer.trim()) {
-                        try {
-                            let cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
-                            if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
-                                cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
-                            }
-                            const data = JSON.parse(cleanLine);
-                            if (data.error) {
-                                const errMsg = data.error.message || JSON.stringify(data.error);
-                                if (isRetryableError(errMsg) && retries > 0) {
-                                    throw { retryable: true, message: errMsg };
-                                }
-                                throw new Error(errMsg);
-                            }
-
-                            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                            if (text) {
-                                const delta = text.startsWith(lastFullText) ? text.substring(lastFullText.length) : text;
-                                if (delta) {
-                                    onToken(delta);
-                                }
-                            }
-                        } catch (e) {
-                            if (e.retryable) throw e;
-                            if (e.message && !e.message.includes('JSON')) throw e;
-                        }
-                    }
-
-                    console.log('[Gemini] Stream finished normally.');
+                    await parseGeminiStream(reader, onToken, (msg) => {
+                        // Optional: suppress verbose logs or route elsewhere
+                        // console.log(msg); 
+                    });
+                    // console.log('[Gemini] Stream finished normally.');
                     return;
-
                 } finally {
                     reader.releaseLock();
                 }

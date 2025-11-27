@@ -1,54 +1,36 @@
-# FUTURE_BETA: Practical Improvements & Debt Paydown
+# FUTURE_BETA: Practical Evolution Roadmap
 
-> This document outlines realistic, high-impact improvements to the code base that can be implemented in the near term to improve stability, maintainability, and performance.
+Based on the current codebase (NexMap with Gemini integration), here are practical, high-value features that can be implemented to significantly enhance the user experience.
 
-## 1. Modularization & Architecture
+## 1. Smart Layout Engine
+**Current State**: Basic manual positioning with some helper functions (`calculateMindmapChildPositions`).
+**Feature**: Implement a dynamic auto-layout system.
+- **Force-Directed Graph**: Toggle to let nodes naturally repel/attract for organic organization.
+- **Auto-Tree**: One-click cleanup to align a messy brainstorming session into a strict hierarchy.
+- **Smart Collision**: Real-time prevention of card overlaps during "Sprout" generation (partially improved recently, but can be robust global constraints).
 
-### 1.1 Complete Component Decomposition
-We have started modularizing "God Files" (e.g., `FeedbackView.jsx`, `gemini.js`), but more work is needed:
-- **`Canvas.jsx`**: This is likely the largest and most complex component. It should be split into:
-    - `CanvasRenderer.jsx`: Handles direct canvas drawing/rendering.
-    - `CanvasInteraction.jsx`: Handles gestures and input.
-    - `CanvasState.jsx`: Manages local state if not fully in Zustand.
-- **`SettingsModal.jsx`**: Split tabs into separate files (partially done, ensure consistency).
+## 2. Multi-Modal Node Types
+**Current State**: Nodes are primarily text/markdown with image support.
+**Feature**: Richer interaction types within cards.
+- **Checklist Nodes**: Native tasks with progress bars that roll up to parent nodes.
+- **Embed Nodes**: YouTube, Website, or Figma embeds directly on the canvas.
+- **Code Execution**: Javascript/Python cells that run locally (like Jupyter on canvas) for quick calculations or data handling.
 
-### 1.2 TypeScript Migration
-The codebase is currently JavaScript. Migrating to TypeScript will prevent a class of bugs (undefined properties, type mismatches) especially in the complex data structures of `cards` and `connections`.
-- **Strategy**: Incremental migration. Start with `src/utils` and `src/services`, then move to leaf components (`Card.jsx`, `CommentItem.jsx`).
+## 3. AI "Gardener" Mode (Async Organization)
+**Current State**: AI interaction is user-initiated (Chat/Sprout).
+**Feature**: Background AI agent.
+- **Duplicate Detection**: AI suggests merging similar ideas across the board.
+- **Semantic Clustering**: "I noticed these 5 cards are about 'Marketing', shall I group them?"
+- **Auto-Tagging**: AI automatically applies tags/colors based on card content for visual filtering.
 
-## 2. Testing & Quality Assurance
+## 4. Enhanced Knowledge Export
+**Current State**: Likely JSON/Image export (inferred from `saveBoard`).
+**Feature**: Deep integration with PKM tools.
+- **Obsidian/Notion Sync**: Bi-directional sync where map nodes become pages and links become relations.
+- **PDF Report Generation**: Turn a mind map into a linear document/outline automatically.
 
-### 2.1 Unit Testing Framework
-Currently, there are no visible `.test.js` files.
-- **Action**: Install `vitest` and `react-testing-library`.
-- **Targets**: 
-    - `src/utils/format.js` (easy win).
-    - `src/services/image/geminiImageGenerator.js` (mock fetch).
-    - `src/components/feedback/FeedbackCard.jsx` (interaction testing).
-
-### 2.2 End-to-End (E2E) Testing
-- **Action**: Setup Playwright or Cypress.
-- **Critical Flows**: 
-    - Creating a new board.
-    - Sprouting a card.
-    - Switching models.
-
-## 3. Performance Optimization
-
-### 3.1 Virtualization
-As specific boards grow "infinite", rendering performance will degrade.
-- **Action**: Implement viewport culling (only render cards visible in the viewport + buffer).
-
-### 3.2 Bundle Size Analysis
-- **Action**: Run `vite-bundle-visualizer` to identify heavy dependencies.
-- **Potential**: Lazy load heavy components like `Canvas` or specific AI provider libraries.
-
-## 4. User Experience Polish
-
-### 4.1 Error Boundaries
-- **Action**: Wrap `Canvas` and critical modals in `ErrorBoundary` components to prevent white screens on crash.
-- **Action**: Improve "Service Unavailable" messages with retry actions (partially done in `gemini.js`).
-
-### 4.2 Accessibility (a11y)
-- **Action**: Audit `aria-labels` on icon-only buttons (Toolbar, ChatBar).
-- **Action**: Ensure keyboard navigation works for the Canvas (moving selection with arrows).
+## 5. Offline-First PWA with Realtime Sync
+**Current State**: IndexedDB (local) + Cloud Sync (snapshot based).
+**Feature**: Conflict-free Replicated Data Types (CRDTs).
+- **True Collaboration**: Multi-user cursor tracking and simultaneous editing.
+- **Robust Offline**: Edits verify against a local CRDT log and merge gracefully when online.
