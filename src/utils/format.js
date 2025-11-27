@@ -60,3 +60,20 @@ if (typeof window !== 'undefined') {
     window.parseModelOutput = parseModelOutput;
     window.formatTime = formatTime;
 }
+
+export const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+};
+
+export const formatSmartTime = (timestamp) => {
+    const date = new Date(timestamp);
+    if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+        return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+    return formatDate(timestamp);
+};

@@ -1,5 +1,6 @@
 import { LLMProvider } from './base';
 import { resolveAllImages, getAuthMethod } from '../utils';
+import { generateGeminiImage } from '../../image/geminiImageGenerator';
 
 // Errors that are likely transient and worth retrying
 const RETRYABLE_ERRORS = [
@@ -414,101 +415,6 @@ export class GeminiProvider extends LLMProvider {
      * Generate Image using GMI Cloud Async API
      */
     async generateImage(prompt, model, options = {}) {
-        const { apiKey } = this.config;
-        const modelToUse = model || 'gemini-3-pro-image-preview';
-
-        // Use Cloudflare Function proxy to bypass CORS
-        const proxyEndpoint = '/api/image-gen';
-
-        console.log('[Gemini] Starting image generation with model:', modelToUse);
-        console.log('[Gemini] API Key present:', !!apiKey, apiKey ? `(length: ${apiKey.length})` : '');
-
-        // 1. Submit Request
-        const payload = {
-            model: modelToUse,
-            payload: {
-                prompt: prompt,
-                image_size: "1K", // 1K (approx 1024px width) fits the "max 720p" requirement well enough for performance
-                aspect_ratio: "16:9" // Suitable for background
-            }
-        };
-
-        console.log('[Gemini] Submitting image request with payload:', JSON.stringify(payload, null, 2));
-
-        const submitResponse = await fetch(proxyEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'submit',
-                apiKey: apiKey,
-                payload: payload
-            })
-        });
-
-        console.log('[Gemini] Submit response status:', submitResponse.status);
-
-        if (!submitResponse.ok) {
-            const err = await submitResponse.json().catch(() => ({}));
-            console.error('[Gemini] Submit failed:', err);
-            throw new Error(`Image Request Failed: ${err.error?.message || err.error || JSON.stringify(err) || submitResponse.statusText}`);
-        }
-
-        const submitData = await submitResponse.json();
-        console.log('[Gemini] Submit response data:', JSON.stringify(submitData, null, 2));
-
-        const requestId = submitData.request_id;
-        if (!requestId) {
-            console.error('[Gemini] No request_id in response:', submitData);
-            throw new Error(`GMI API did not return a request_id. Response: ${JSON.stringify(submitData)}`);
-        }
-        console.log('[Gemini] Image request queued, ID:', requestId);
-
-        // 2. Poll for Status
-        let attempts = 0;
-        const maxAttempts = 30; // 60s timeout (2s interval)
-
-        while (attempts < maxAttempts) {
-            await new Promise(r => setTimeout(r, 2000));
-            attempts++;
-
-            const statusResponse = await fetch(proxyEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    action: 'poll',
-                    apiKey: apiKey,
-                    requestId: requestId
-                })
-            });
-
-            console.log(`[Gemini] Poll attempt ${attempts}/${maxAttempts}, response status:`, statusResponse.status);
-
-            if (!statusResponse.ok) {
-                console.warn(`[Gemini] Poll response not OK:`, statusResponse.status);
-                continue;
-            }
-
-            const statusData = await statusResponse.json();
-            console.log('[Gemini] Poll status:', statusData.status, statusData.error || '');
-
-            if (statusData.status === 'success') {
-                const imageUrl = statusData.outcome?.media_urls?.[0]?.url;
-                console.log('[Gemini] Image generation success! URL:', imageUrl?.substring(0, 100));
-                if (!imageUrl) throw new Error("Image generated but no URL found in response");
-                return imageUrl;
-            }
-
-            if (statusData.status === 'failed' || statusData.status === 'cancelled') {
-                console.error('[Gemini] Image generation failed with status:', statusData);
-                throw new Error(`Image Generation ${statusData.status}: ${statusData.error || statusData.message || 'Unknown error'}`);
-            }
-        }
-
-        console.error('[Gemini] Image generation timed out after', maxAttempts * 2, 'seconds');
-        throw new Error("Image generation timed out after 60 seconds");
+        return generateGeminiImage(this.config.apiKey, prompt, model, options);
     }
 }
