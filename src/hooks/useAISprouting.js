@@ -141,6 +141,11 @@ export function useAISprouting() {
                         providerId: activeConfig.id
                     });
 
+                    // Build context from source card's conversation (last 4 messages for context)
+                    const sourceContext = (source.data.messages || []).slice(-4)
+                        .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
+                        .join('\n');
+
                     try {
                         await aiManager.requestTask({
                             type: 'chat',
@@ -148,7 +153,7 @@ export function useAISprouting() {
                             payload: {
                                 messages: [{
                                     role: 'user',
-                                    content: question
+                                    content: `[Previous Context]\n${sourceContext}\n\n[New Topic to Explore]\n${question}\n\nBased on the previous context, please elaborate on this topic in detail.`
                                 }],
                                 model: chatModel,
                                 config: activeConfig
@@ -223,12 +228,20 @@ export function useAISprouting() {
                         providerId: activeConfig.id
                     });
 
+                    // Build context from source card's conversation (last 4 messages for context)
+                    const sourceContext = (source.data.messages || []).slice(-4)
+                        .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
+                        .join('\n');
+
                     try {
                         await aiManager.requestTask({
                             type: 'chat',
                             priority: PRIORITY.HIGH,
                             payload: {
-                                messages: [{ role: 'user', content: topic }],
+                                messages: [{
+                                    role: 'user',
+                                    content: `[Previous Context]\n${sourceContext}\n\n[Topic to Explore]\n${topic}\n\nBased on the previous context, please elaborate on this topic in detail.`
+                                }],
                                 model: chatModel,
                                 config: activeConfig
                             },
@@ -331,12 +344,20 @@ export function useAISprouting() {
                         providerId: activeConfig.id
                     });
 
+                    // Build context from source card's conversation
+                    const sourceContext = (source.data.messages || []).slice(-6)
+                        .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
+                        .join('\n');
+
                     try {
                         await aiManager.requestTask({
                             type: 'chat',
                             priority: PRIORITY.HIGH,
                             payload: {
-                                messages: [{ role: 'user', content: `请详细介绍: ${topic}` }],
+                                messages: [{
+                                    role: 'user',
+                                    content: `[Previous Context]\n${sourceContext}\n\n[Topic to Detail]\n${topic}\n\nBased on the previous context, please provide a detailed explanation of this specific topic.`
+                                }],
                                 model: chatModel,
                                 config: activeConfig
                             },
