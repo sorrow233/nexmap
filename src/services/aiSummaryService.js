@@ -165,6 +165,16 @@ OUTPUT FORMAT (JSON ONLY):
                 cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
             }
 
+            // Sanitize: Replace raw control characters inside JSON strings with escaped versions.
+            // This fixes "Bad control character in string literal" errors.
+            // We carefully replace unescaped newlines/tabs within string values.
+            cleanResponse = cleanResponse
+                .replace(/[\x00-\x1f]/g, (char) => {
+                    // Replace control characters with their escaped equivalents
+                    const escapes = { '\n': '\\n', '\r': '\\r', '\t': '\\t' };
+                    return escapes[char] || '';
+                });
+
             return JSON.parse(cleanResponse);
 
         } catch (error) {
