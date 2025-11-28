@@ -158,6 +158,8 @@ OUTPUT FORMAT (JSON ONLY):
 
             if (!response) return null;
 
+            console.log('[AI Summary] Raw AI response (first 300 chars):', response.substring(0, 300));
+
             let cleanResponse = response.trim();
 
             // Step 1: Strip markdown code blocks
@@ -184,6 +186,8 @@ OUTPUT FORMAT (JSON ONLY):
                     const escapes = { '\n': '\\n', '\r': '\\r', '\t': '\\t' };
                     return escapes[char] || '';
                 });
+
+            console.log('[AI Summary] Attempting to parse (first 200 chars):', cleanResponse.substring(0, 200));
 
             // Step 4: Parse and validate
             const parsed = JSON.parse(cleanResponse);
