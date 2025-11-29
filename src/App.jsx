@@ -296,11 +296,21 @@ function AppContent() {
     }, [currentBoardId, user, setBoardsList]);
 
     const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
+        console.log('[App] handleUpdateBoardMetadata called:', boardId, metadata);
         // 1. Update local storage
         updateBoardMetadata(boardId, metadata);
 
         // 2. Update in-memory state (immediate UI update)
-        setBoardsList(prev => prev.map(b => b.id === boardId ? { ...b, ...metadata } : b));
+        setBoardsList(prev => {
+            console.log('[App] Updating boardsList state. Prev size:', prev.length);
+            return prev.map(b => {
+                if (b.id === boardId) {
+                    console.log('[App] Updating board in state:', b.id, 'New Metadata:', metadata);
+                    return { ...b, ...metadata };
+                }
+                return b;
+            });
+        });
 
         // 3. Update cloud
         if (user) updateBoardMetadataInCloud(user.uid, boardId, metadata);
