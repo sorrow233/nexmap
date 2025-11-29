@@ -238,7 +238,7 @@ export default function StatisticsView({ boardsList, user }) {
                             </div>
                             <div>
                                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">{t.stats?.sessions || "SESSIONS"}</span>
-                                <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.tokenStats.todaySessions}</span>
+                                <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.tokenStats.totalSessions || stats.tokenStats.todaySessions}</span>
                             </div>
                         </div>
 
