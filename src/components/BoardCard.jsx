@@ -68,32 +68,14 @@ export default function BoardCard({
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : board.summary ? (
-                        /* AI Summary Text Cover for Stacked Variant - Simplified */
-                        <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.02] bg-[#1a1a1a]">
-                            {/* Simple Ambient Background based on Theme */}
-                            <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${{
-                                'blue': 'from-blue-600 via-transparent to-black',
-                                'purple': 'from-purple-600 via-transparent to-black',
-                                'emerald': 'from-emerald-600 via-transparent to-black',
-                                'orange': 'from-orange-600 via-transparent to-black',
-                                'pink': 'from-pink-600 via-transparent to-black',
-                                'slate': 'from-slate-600 via-transparent to-black',
-                            }[board.summary.theme || 'slate']}`} />
-
-                            {/* Content */}
-                            <div className="relative z-10 flex flex-col h-full p-4">
-                                <p className="text-xs font-bold text-white leading-relaxed tracking-wide shadow-black drop-shadow-md" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                                    {board.summary.summary || "No Summary Text Available"}
+                        /* AI Summary Text Cover for Stacked Variant - DEBUG VERSION */
+                        <div className="absolute inset-0 bg-red-500">
+                            {/* DEBUG: Red background to confirm this block renders */}
+                            <div className="absolute inset-0 flex flex-col p-4">
+                                <p className="text-lg font-bold text-yellow-300 bg-black/50 p-2">
+                                    DEBUG: {board.summary.summary || "NO TEXT"}
                                 </p>
-                                {/* Minimal Accent Line */}
-                                <div className={`mt-auto h-1 w-8 rounded-full opacity-80 ${{
-                                    'blue': 'bg-blue-500',
-                                    'purple': 'bg-purple-500',
-                                    'emerald': 'bg-emerald-500',
-                                    'orange': 'bg-orange-500',
-                                    'pink': 'bg-pink-500',
-                                    'slate': 'bg-slate-500',
-                                }[board.summary.theme || 'slate']}`} />
+                                <div className="mt-auto h-2 w-12 bg-yellow-400" />
                             </div>
                         </div>
                     ) : (
