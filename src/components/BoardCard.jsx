@@ -82,8 +82,8 @@ export default function BoardCard({
 
                             {/* Content */}
                             <div className="relative z-10 flex flex-col h-full p-4">
-                                <p className="text-[11px] font-medium text-white/50 leading-[1.6] line-clamp-5 tracking-wide">
-                                    {board.summary.summary}
+                                <p className="text-xs font-bold text-white leading-relaxed tracking-wide shadow-black drop-shadow-md" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                                    {board.summary.summary || "No Summary Text Available"}
                                 </p>
                                 {/* Minimal Accent Line */}
                                 <div className={`mt-auto h-1 w-8 rounded-full opacity-80 ${{
