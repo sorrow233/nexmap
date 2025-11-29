@@ -61,7 +61,7 @@ const SESSION_START_TIME = Date.now();
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, boardsList, setBoardsList, isInitialized, hasSeenWelcome, setHasSeenWelcome } = useAppInit();
+    const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
     const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
     const { createCardWithText } = useCardCreator();
 
@@ -343,8 +343,6 @@ function AppContent() {
                             user={user}
                             onLogin={handleLogin}
                             onLogout={handleLogout}
-                            hasSeenWelcome={hasSeenWelcome}
-                            setHasSeenWelcome={setHasSeenWelcome}
                         />
                     } />
                     <Route path="/board/:id" element={

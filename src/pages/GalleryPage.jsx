@@ -11,7 +11,7 @@ import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
 import { useNavigate, useSearchParams, NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
-import InitialCreditsModal from '../components/InitialCreditsModal';
+
 import { useStore } from '../store/useStore';
 import ProBadge from '../components/ProBadge';
 import PaymentSuccessModal from '../components/PaymentSuccessModal';
@@ -28,9 +28,7 @@ export default function GalleryPage({
     onUpdateBoardMetadata,
     user,
     onLogin,
-    onLogout,
-    hasSeenWelcome,
-    setHasSeenWelcome
+    onLogout
 }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
@@ -85,20 +83,7 @@ export default function GalleryPage({
         }
     }, [searchParams, user, setSearchParams, refreshCredits]);
 
-    // Determine if we should show welcome
-    const showWelcome = hasSeenWelcome === false;
 
-    const handleDismissWelcome = async () => {
-        setHasSeenWelcome(true);
-        localStorage.setItem('hasVisitedBefore', 'true');
-        if (user) {
-            try {
-                await updateUserSettings(user.uid, { hasSeenWelcome: true });
-            } catch (error) {
-                console.error('Failed to sync welcome status:', error);
-            }
-        }
-    };
 
     const handleCreateGuide = async () => {
         const guideTitle = "NexMap 使用指南 🚀";
@@ -133,10 +118,7 @@ export default function GalleryPage({
 
     const activeTab = getActiveTab();
 
-    // Show welcome screen for first-time visitors
-    if (showWelcome) {
-        return <InitialCreditsModal isOpen={true} onClose={handleDismissWelcome} />;
-    }
+
 
     const navItems = [
         { id: 'active', label: t.gallery.gallery, path: '/gallery', end: true },
@@ -343,18 +325,7 @@ export default function GalleryPage({
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
                 user={user}
-                onShowWelcome={async () => {
-                    setIsSettingsOpen(false);
-                    setHasSeenWelcome(false);
-                    localStorage.removeItem('hasVisitedBefore');
-                    if (user) {
-                        try {
-                            await updateUserSettings(user.uid, { hasSeenWelcome: false });
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    }
-                }}
+
             />
 
             <UsageStatsModal
