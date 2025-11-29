@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal } from 'lucide-react';
+import SummaryCard from './SummaryCard';
 
 export default function BoardCard({
     board,
@@ -60,25 +61,19 @@ export default function BoardCard({
                 `}
                 style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
 
-                {/* Image Section (Top Half) - WITH AI SUMMARY SUPPORT */}
+                {/* Image Section (Top Half) */}
                 <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-[#111]">
-                    {hasImage && !board.summary ? (
+                    {/* Priority 1: AI Summary */}
+                    {board.summary ? (
+                        <SummaryCard summary={board.summary} />
+                    ) : hasImage ? (
+                        /* Priority 2: Background Image or Thumbnail */
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
-                    ) : board.summary ? (
-                        /* AI Summary Text Cover for Stacked Variant - DEBUG VERSION */
-                        <div className="absolute inset-0 bg-red-500">
-                            {/* DEBUG: Red background to confirm this block renders */}
-                            <div className="absolute inset-0 flex flex-col p-4">
-                                <p className="text-lg font-bold text-yellow-300 bg-black/50 p-2">
-                                    DEBUG: {board.summary.summary || "NO TEXT"}
-                                </p>
-                                <div className="mt-auto h-2 w-12 bg-yellow-400" />
-                            </div>
-                        </div>
                     ) : (
+                        /* Priority 3: Random Gradient Fallback */
                         <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-50`} />
                     )}
 
