@@ -114,19 +114,32 @@ OUTPUT FORMAT:
         }).join('\n---\n');
 
         const prompt = `
-ANALYZE THIS BOARD CONTENT:
+You are an expert design & engineering lead analyzing a team's workspace content.
+Your goal is to distill the *intent* of this board into a concise, high-signal summary.
+
+BOARD CONTEXT:
+Name: ${boardData.name}
+Cards Content:
 ${context}
 
-TASK: Create a "Content Cover" for this board.
-1. "title": A very short, punchy, inspiring title (max 6 words). English or the language of the content.
-2. "summary": A 2-sentence summary of the core ideas or questions being explored.
-3. "theme": Pick a color theme name (one of: "blue", "purple", "emerald", "orange", "pink", "slate").
+TASK:
+1.  **Summary**: Write a powerful 2-sentence summary.
+    - Sentence 1: **Core Subject** (What is the main topic/project?)
+    - Sentence 2: **Current Action/State** (What is being discussed, solved, or planned?)
+    - Style: Professional, telegraphic, engineering shorthand. No "This board is about...".
+    
+2.  **Theme**: Select the most appropriate visual theme based on the content's mood:
+    - "blue": Technical, Architecture, Documentation, Systems
+    - "purple": Creative, Brainstorming, Design, Vision
+    - "emerald": Growth, Strategy, Finance, Results
+    - "orange": Urgent, Bugs, Critical Path, Warning
+    - "pink": Social, Community, Events, Playful
+    - "slate": General, Archive, Miscellaneous, Drafts
 
-OUTPUT JSON:
+OUTPUT FORMAT (JSON ONLY):
 {
-    "title": "...",
-    "summary": "...",
-    "theme": "..."
+  "summary": "Redux state management refactor for V2.\nAddressing race conditions in user authentication flow.",
+  "theme": "color_name"
 }
 `;
 
