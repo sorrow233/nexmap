@@ -47,21 +47,23 @@ export default function AchievementModal({
 
     if (!isOpen) return null;
 
-    // Navigation Handlers
+    // Navigation Handlers - Only allow navigation to unlocked tiers + next tier (preview)
+    const maxViewableIndex = currentUserIndex + 1; // Can see current + next (locked preview)
+
     const handlePrev = () => {
         setActiveIndex(prev => Math.max(0, prev - 1));
     };
     const handleNext = () => {
-        setActiveIndex(prev => Math.min(tiers.length - 1, prev + 1));
+        setActiveIndex(prev => Math.min(maxViewableIndex, prev + 1));
     };
 
     // Current Tier Data
     const tier = tiers[activeIndex];
-    // User Request: Unlock all for visual review
-    const isUnlocked = true; // activeIndex <= currentUserIndex;
+    // Unlock logic: User can see all tiers up to and including current, and preview next (locked)
+    const isUnlocked = activeIndex <= currentUserIndex;
     const isCurrent = activeIndex === currentUserIndex;
     const isNext = activeIndex === currentUserIndex + 1;
-    const isMystery = false; // activeIndex > currentUserIndex + 1;
+    const isMystery = activeIndex > currentUserIndex + 1; // Should never happen with navigation limit
 
     // Format helper
     const fmt = (n) => n?.toLocaleString() || '0';
@@ -121,8 +123,8 @@ export default function AchievementModal({
 
                     <button
                         onClick={handleNext}
-                        disabled={activeIndex === tiers.length - 1}
-                        className={`absolute right-4 sm:right-12 z-20 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${activeIndex === tiers.length - 1 ? 'opacity-0 scale-75 cursor-not-allowed' : 'opacity-40 hover:opacity-100 hover:bg-white/30 text-slate-800'}`}
+                        disabled={activeIndex >= maxViewableIndex}
+                        className={`absolute right-4 sm:right-12 z-20 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${activeIndex >= maxViewableIndex ? 'opacity-0 scale-75 cursor-not-allowed' : 'opacity-40 hover:opacity-100 hover:bg-white/30 text-slate-800'}`}
                     >
                         <ChevronRight size={40} strokeWidth={1.5} />
                     </button>
@@ -209,7 +211,7 @@ export default function AchievementModal({
 
                 {/* Footer Dots - Minimal */}
                 <div className="pb-12 flex justify-center gap-4 z-20">
-                    {tiers.map((_, i) => (
+                    {tiers.slice(0, maxViewableIndex + 1).map((_, i) => (
                         <button
                             key={i}
                             onClick={() => setActiveIndex(i)}
@@ -217,7 +219,9 @@ export default function AchievementModal({
                                 transition-all duration-500 rounded-full
                                 ${i === activeIndex
                                     ? `w-3 h-3 bg-slate-800 scale-125`
-                                    : 'w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400'}
+                                    : i <= currentUserIndex
+                                        ? 'w-1.5 h-1.5 bg-slate-400 hover:bg-slate-500'
+                                        : 'w-1.5 h-1.5 bg-slate-300/50'}
                             `}
                         />
                     ))}
