@@ -180,12 +180,13 @@ OUTPUT FORMAT (JSON ONLY):
                 }
             }
 
-            // Step 3: Sanitize control characters
-            cleanResponse = cleanResponse
-                .replace(/[\x00-\x1f]/g, (char) => {
-                    const escapes = { '\n': '\\n', '\r': '\\r', '\t': '\\t' };
-                    return escapes[char] || '';
-                });
+            // Step 3: Normalize whitespace and control characters.
+            // Replace newlines, returns, and tabs with a single space.
+            // This safely handles:
+            // 1. Structural formatting (newlines between tokens become spaces -> valid JSON)
+            // 2. Unescaped control chars in strings (newlines become spaces -> valid JSON)
+            // Correctly escaped literals (e.g. "\\n") are untouched because regex targets control bytes.
+            cleanResponse = cleanResponse.replace(/[\n\r\t]/g, ' ');
 
             console.log('[AI Summary] Attempting to parse (first 200 chars):', cleanResponse.substring(0, 200));
 
