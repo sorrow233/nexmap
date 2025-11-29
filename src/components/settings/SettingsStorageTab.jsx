@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AlertCircle, RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2, Download, Upload } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { saveBoardToCloud, updateBoardMetadataInCloud } from '../../services/storage';
 import { auth, db } from '../../services/firebase';
@@ -11,6 +11,13 @@ import {
     forceBackup,
     getNextBackupTime
 } from '../../services/scheduledBackupService';
+import {
+    exportAllData,
+    downloadDataAsFile,
+    importData,
+    readJsonFile,
+    validateImportData
+} from '../../services/dataExportService';
 
 export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const { t } = useLanguage();
@@ -28,6 +35,12 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const [nextBackupTime, setNextBackupTime] = useState(null);
     const [backupActionStatus, setBackupActionStatus] = useState('idle'); // idle, loading, success, error
     const [backupActionMsg, setBackupActionMsg] = useState('');
+
+    // Data Export/Import State
+    const [exportStatus, setExportStatus] = useState('idle'); // idle, exporting, success, error
+    const [importStatus, setImportStatus] = useState('idle'); // idle, importing, success, error
+    const [importMsg, setImportMsg] = useState('');
+    const fileInputRef = useRef(null);
 
     const hasBackup = !!localStorage.getItem('mixboard_safety_backup');
 
@@ -230,6 +243,56 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         } catch (e) {
             setBackupActionStatus('error');
             setBackupActionMsg(e.message);
+        }
+    };
+
+    // Data Export Handler
+    const handleExportData = async () => {
+        setExportStatus('exporting');
+        try {
+            const data = await exportAllData();
+            downloadDataAsFile(data);
+            setExportStatus('success');
+            setTimeout(() => setExportStatus('idle'), 3000);
+        } catch (e) {
+            console.error('[Export] Failed:', e);
+            setExportStatus('error');
+        }
+    };
+
+    // Data Import Handler
+    const handleImportFile = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Confirm before import
+        if (!window.confirm(t.settings.storageConfig?.dataExport?.confirmImport || 'This will overwrite your existing data. Continue?')) {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        setImportStatus('importing');
+        setImportMsg('');
+        try {
+            const data = await readJsonFile(file);
+            const validation = validateImportData(data);
+            if (!validation.valid) {
+                throw new Error(validation.error);
+            }
+            const result = await importData(data);
+            if (result.success) {
+                setImportStatus('success');
+                setImportMsg(result.message);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (err) {
+            console.error('[Import] Failed:', err);
+            setImportStatus('error');
+            setImportMsg(err.message);
+        } finally {
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -492,6 +555,77 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Data Export/Import Section */}
+            <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-2">{t.settings.storageConfig?.dataExport?.title || "Data Import/Export"}</h3>
+                <p className="text-xs text-slate-500 mb-4">{t.settings.storageConfig?.dataExport?.desc || "Export all your data to a file or import from a backup."}</p>
+
+                {/* Warning */}
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-lg text-xs mb-4 flex items-start gap-2">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <span>{t.settings.storageConfig?.dataExport?.sensitiveWarning || "Export contains sensitive data like API keys. Keep it safe."}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                    {/* Export Button */}
+                    <button
+                        onClick={handleExportData}
+                        disabled={exportStatus === 'exporting'}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        {exportStatus === 'exporting' ? (
+                            <>
+                                <RotateCcw size={16} className="animate-spin" />
+                                {t.settings.storageConfig?.dataExport?.exporting || "Exporting..."}
+                            </>
+                        ) : exportStatus === 'success' ? (
+                            <>
+                                <CheckCircle2 size={16} />
+                                {t.settings.storageConfig?.dataExport?.exportSuccess || "Exported!"}
+                            </>
+                        ) : (
+                            <>
+                                <Download size={16} />
+                                {t.settings.storageConfig?.dataExport?.exportButton || "Export Data"}
+                            </>
+                        )}
+                    </button>
+
+                    {/* Import Button */}
+                    <label className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all cursor-pointer shadow-sm">
+                        {importStatus === 'importing' ? (
+                            <>
+                                <RotateCcw size={16} className="animate-spin" />
+                                {t.settings.storageConfig?.dataExport?.importing || "Importing..."}
+                            </>
+                        ) : (
+                            <>
+                                <Upload size={16} />
+                                {t.settings.storageConfig?.dataExport?.importButton || "Import Data"}
+                            </>
+                        )}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".json"
+                            onChange={handleImportFile}
+                            disabled={importStatus === 'importing'}
+                            className="hidden"
+                        />
+                    </label>
+                </div>
+
+                {/* Import Status */}
+                {importStatus !== 'idle' && importMsg && (
+                    <div className={`mt-3 p-2 rounded-lg text-xs font-bold ${importStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
+                            importStatus === 'error' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' :
+                                'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                        }`}>
+                        {importMsg}
                     </div>
                 )}
             </div>
