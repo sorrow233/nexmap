@@ -28,12 +28,12 @@ export default function useBoardBackground() {
         return getRoleModel(role);
     };
 
-    const generateBackground = async (boardId, onUpdateBoardMetadata, options = {}) => {
+    const generateBackground = async (boardId, onUpdateBoardMetadata) => {
         try {
             setGeneratingBoardId(boardId);
             const config = getLlmConfig();
 
-            console.log('[Background Gen] Starting generation for board:', boardId, options);
+            console.log('[Background Gen] Starting generation for board:', boardId);
 
             // 1. Load board content
             const boardData = await loadBoard(boardId);
@@ -80,11 +80,11 @@ export default function useBoardBackground() {
             const { aiSummaryService } = await import('../services/aiSummaryService');
 
             const [visualConcept, summaryResult] = await Promise.all([
-                !options.summaryOnly ? chatCompletion(
+                chatCompletion(
                     [{ role: 'user', content: analysisPrompt }],
                     config,
                     getModelForRole('analysis')
-                ) : Promise.resolve(null),
+                ),
                 aiSummaryService.generateBoardSummary(boardData, boardData.cards, { ...config, model: getModelForRole('analysis') })
             ]);
 
@@ -93,14 +93,7 @@ export default function useBoardBackground() {
 
             if (summaryResult && onUpdateBoardMetadata) {
                 await onUpdateBoardMetadata(boardId, { summary: summaryResult });
-                toast.success("Board Summary Updated!");
-            }
-
-            // If summaryOnly is requested, stop here
-            if (options.summaryOnly) {
-                console.log('[Background Gen] Summary only requested. Skipping image generation.');
-                setGeneratingBoardId(null);
-                return;
+                toast.success("Board Title & Summary Updated!");
             }
 
             if (!visualConcept) throw new Error("Failed to analyze context (AI returned empty)");
