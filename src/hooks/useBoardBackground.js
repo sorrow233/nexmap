@@ -60,9 +60,9 @@ export default function useBoardBackground() {
 
             // 3. Stage 1: Context Analysis & Character/Scene Design
             // Use 'analysis' model (Gemini Flash) to understand the board and design flat illustration characters/scenes
-            const analysisPrompt = `You are an expert Japanese illustrator specializing in **Japanese cartoon/anime style** (日系卡通/动漫画风).
+            const analysisPrompt = `You are an expert Japanese illustrator specializing in **Irasutoya style** (いらすとや風).
             
-            **MANDATORY STYLE**: All images MUST use **Japanese cartoon style** (日系卡通人物) - cute, friendly characters, can be Q-version/Chibi (Q版/二头身), soft colors, charming aesthetics.
+            **MANDATORY STYLE**: images MUST use **Irasutoya style** (Mifune Takashi style) - soft colors, rounded shapes, hand-drawn feel, textureless or soft-textured, warm atmosphere.
             
             **CONTENT TO ANALYZE**:
             """
@@ -70,19 +70,21 @@ export default function useBoardBackground() {
             """
             
             **YOUR TASK**:
-            1. **Identify the Core Topic**:
-               - If it mentions a **specific person** (e.g., "Elon Musk"), design a cute/cartoon version of them.
-               - If it's about **generic topics**, design 1-2 cute characters interaction with the theme.
+            1. **Identify the Core Topic & Design Diverse Characters**:
+               - AVOID defaulting to a generic male office worker unless explicitly required.
+               - actively separate roles: use women, children, elderly, or animals (cat/dog/rabbit) where appropriate to increase variety.
+               - Example: For "testing", use a female engineer or a cat using a computer.
+               - Example: For "family", use a diverse group.
             
-            2. **Character Design**: Describe detailed cute/cartoon characters.
-               - Example for Musk: "Cute Q-version Elon Musk holding a rocket toy, big eyes, friendly smile"
-               - Example for testing: "Cute developer character with glasses, happy expression, fixing a bug"
+            2. **Character Design**: Describe the character(s) in Irasutoya style.
+               - "Soft rounded features, beady eyes (dot eyes), simple smile, pastel/warm clothing colors".
+               - "No sharp angles, no detailed noses, simple hands".
             
-            3. **Style**: Japanese anime/cartoon style, cel shading or soft painting, vibrant but harmonious colors.
+            3. **Style**: "Irasutoya style", "Mifune Takashi", "Flat but warm", "No outlines or soft colored outlines".
             
             **OUTPUT FORMAT** (1-2 sentences):
             Describe ONLY the character(s) and their action/setting.
-            FOCUS on "Cute", "Japanese Cartoon Style", "Charming".`;
+            FOCUS on identifying the subject as "Irasutoya style character".`;
 
             // console.log('[Background Gen] Stage 1: Analyzing context...');
             const { chatCompletion, imageGeneration } = await import('../services/llm');
@@ -98,22 +100,23 @@ export default function useBoardBackground() {
 
             // Stage 2: Prompt Generation for Flat Illustration Style
             // Convert the character concept into a simple, direct image prompt
-            const promptGenPrompt = `You are an expert prompt engineer for **Japanese Anime/Cartoon style** image generation.
+            const promptGenPrompt = `You are an expert prompt engineer for **Irasutoya / Mifune Takashi style** image generation.
             
             **CHARACTER CONCEPT**: "${visualConcept}"
             
             **CRITICAL RULES**:
-            1. **Style MUST be**: Japanese anime/cartoon style (日系卡通/动漫), cute, charming, high quality 2D illustration.
-            2. **Proportions**: Can be Q-version/Chibi or normal anime proportions - focus on CUTENESS and APPEAL.
-            3. **Background**: Simple, clean background (pastel colors or white dominant) - must have plenty of empty space for UI text readability.
-            4. **No Text**: The image must NOT contain any text, letters, numbers, or words.
-            5. **Quality**: "Masterpiece, best quality, super cute, very aesthetic, flat color or cel shading".
+            1. **Style MUST be**: "Irasutoya style" (いらすとや), by Takashi Mifune. Low saturation, warm pastel colors, soft rounded clean lines (or no lines).
+            2. **Faces**: Simple "dot eyes" (beady eyes), simple smiles, generic but expressive faces typical of Irasutoya.
+            3. **Proportions**: Soft, slightly rounded proportions (2-3 heads tall). NOT realistic, NOT standard anime.
+            4. **Background**: Minimal, solid or simple pattern background (white/beige dominant).
+            5. **No Text**: The image must NOT contain any text.
             
             **FORBIDDEN STYLE KEYWORDS**:
-            - NO "photorealistic", "3D render", "unreal engine", "realistic texture", "ugly", "deformed"
+            - NO "anime big eyes", "detailed shading", "cinematic lighting", "sharp outlines", "3D render".
+            - NO "Corporate Memphis" (flat vector art with exaggerated limbs).
             
             **ALLOWED STYLE KEYWORDS**:
-            - "Japanese anime style", "chibi", "kawaii", "Q-version", "cute illustration", "vibrant colors", "game art style", "character design"
+            - "Irasutoya style", "Takashi Mifune", "Japanese clip art", "soft illustration", "warm pastel colors", "cute simple character", "hand-drawn feel".
             
             **OUTPUT**: Return ONLY the final English image prompt (1-2 sentences maximum).
             
