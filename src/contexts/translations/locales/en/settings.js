@@ -100,18 +100,17 @@ export const settings = {
             noBackupsYet: "No backups yet. Auto saves every 30 minutes while online.",
             restoreConfirm: "Restore missing boards from this backup? Only boards you don't currently have will be added.",
             restoreSuccess: "Restored missing boards",
-            noNewBoards: "No new boards to restore - all boards already exist",
             dataExport: {
-                title: "Data Import/Export",
-                desc: "Export all your data to a file or import from a backup.",
-                exportButton: "Export Data",
-                exporting: "Exporting...",
-                exportSuccess: "Exported!",
-                importButton: "Import Data",
-                importing: "Importing...",
-                importSuccess: "Imported!",
-                confirmImport: "This will overwrite your existing data. Continue?",
-                sensitiveWarning: "Export contains sensitive data like API keys. Keep it safe."
+                title: "Data Migration Center",
+                desc: "Create full snapshots of your workspace or restore from backup files.",
+                exportButton: "Download Snapshot",
+                exporting: "Generating Snapshot...",
+                exportSuccess: "Snapshot Created!",
+                importButton: "Restore Data",
+                importing: "Analyzing File...",
+                importSuccess: "Restoration Complete!",
+                confirmImport: "Overwrite current workspace data? This cannot be undone.",
+                sensitiveWarning: "Snapshots include sensitive data (API Keys, etc). Store them securely."
             }
         },
         app: {
