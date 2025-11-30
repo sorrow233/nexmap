@@ -7,6 +7,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import Loading from '../components/Loading';
 import StatusBar from '../components/StatusBar';
 import BoardTopBar from '../components/board/BoardTopBar';
+import Sidebar from '../components/board/Sidebar';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
@@ -35,6 +36,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     const scale = useStore(state => state.scale);
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
+    const boardPrompts = useStore(state => state.boardPrompts);
 
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
     const updateCardFull = useStore(state => state.updateCardFull);
@@ -92,7 +94,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             const currentStateObj = {
                 cards: cards.map(c => ({ ...c, data: { ...c.data } })),
                 connections: connections || [],
-                groups: groups || []
+                groups: groups || [],
+                boardPrompts: boardPrompts || []
             };
             const currentState = JSON.stringify(currentStateObj);
 
@@ -101,7 +104,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
             const saveTimeout = setTimeout(() => {
                 try {
                     const now = Date.now();
-                    saveBoard(currentBoardId, { cards, connections, groups });
+                    saveBoard(currentBoardId, { cards, connections, groups, boardPrompts });
                     if (setLastSavedAt && typeof setLastSavedAt === 'function') {
                         setLastSavedAt(now);
                     }
@@ -118,7 +121,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 cloudTimeout = setTimeout(async () => {
                     setCloudSyncStatus('syncing');
                     try {
-                        await saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups });
+                        await saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups, boardPrompts });
                         setCloudSyncStatus('synced');
                         debugLog.sync(`Cloud autosave complete for board: ${currentBoardId}`);
                     } catch (e) {
@@ -134,7 +137,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, groups, currentBoardId, user, isBoardLoading]);
+    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading]);
 
     // Persist canvas state per board
     useEffect(() => {
@@ -281,115 +284,149 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
         setSelectedIds(uniqueIds);
     };
 
+    const [tempInstructions, setTempInstructions] = useState([]);
+
+    const handlePromptDropOnChat = (prompt) => {
+        setTempInstructions(prev => [...prev, prompt]);
+        toast.success(`Added instruction: ${prompt.text.substring(0, 20)}...`);
+    };
+
+    const handleChatSubmitWithInstructions = async (text, images) => {
+        let finalText = text;
+        if (tempInstructions.length > 0) {
+            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
+            finalText = `${contextStr}\n\n${text}`;
+        }
+        await handleCreateCard(finalText, images);
+        setTempInstructions([]);
+    };
+
+    const handlePromptDropOnCanvas = (prompt, x, y) => {
+        handleCreateCard(prompt.text, [], { x, y });
+    };
+
+    const handlePromptDropOnCard = (cardId, prompt) => {
+        handleChatModalGenerate(cardId, prompt.text, []);
+    };
+
     return (
-        <React.Fragment>
-            <ErrorBoundary level="canvas">
-                <div ref={canvasContainerRef} className="absolute inset-0">
-                    <Canvas
-                        onCreateNote={handleCreateNote}
-                        onCanvasDoubleClick={handleCanvasDoubleClick}
-                        onCardFullScreen={handleFullScreen}
-                    />
-                </div>
-            </ErrorBoundary>
+        <div className="h-screen w-screen flex overflow-hidden bg-slate-50 dark:bg-slate-950">
+            <Sidebar className="shrink-0 z-40 border-r border-slate-200 dark:border-white/5" />
 
-            {noteId && (
-                <div className="fixed inset-0 z-[200]">
-                    <Suspense fallback={<Loading message="Loading note..." />}>
-                        <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+            <div className="relative flex-1 h-full overflow-hidden">
+                <ErrorBoundary level="canvas">
+                    <div ref={canvasContainerRef} className="absolute inset-0">
+                        <Canvas
+                            onCreateNote={handleCreateNote}
+                            onCanvasDoubleClick={handleCanvasDoubleClick}
+                            onCardFullScreen={handleFullScreen}
+                            onPromptDrop={handlePromptDropOnCanvas}
+                            onCardPromptDrop={handlePromptDropOnCard}
+                        />
+                    </div>
+                </ErrorBoundary>
+
+                {noteId && (
+                    <div className="fixed inset-0 z-[200]">
+                        <Suspense fallback={<Loading message="Loading note..." />}>
+                            <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                        </Suspense>
+                    </div>
+                )}
+
+                {/* Quick Prompt Modal */}
+                <QuickPromptModal
+                    isOpen={quickPrompt.isOpen}
+                    onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
+                    onSubmit={handleQuickPromptSubmit}
+                    initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
+                />
+
+                {/* Top Bar */}
+                <BoardTopBar
+                    onBack={onBack}
+                    board={currentBoard}
+                    onUpdateTitle={onUpdateBoardTitle}
+                />
+
+                <ChatBar
+                    cards={cards}
+                    selectedIds={selectedIds}
+                    generatingCardIds={generatingCardIds}
+                    onSubmit={handleChatSubmitWithInstructions}
+                    onBatchChat={handleBatchChat}
+                    onCreateNote={handleCreateNote}
+                    onImageUpload={handleGlobalImageUpload}
+                    globalImages={globalImages}
+                    onRemoveImage={removeGlobalImage}
+                    onClearImages={() => setGlobalImages([])}
+                    onGroup={(ids) => createGroup(ids)}
+                    onSelectConnected={handleSelectConnected}
+                    onLayoutGrid={arrangeSelectionGrid}
+                    onPromptDrop={handlePromptDropOnChat}
+                    instructions={tempInstructions}
+                    onClearInstructions={() => setTempInstructions([])}
+                />
+
+                {selectedIds.length > 0 && (
+                    <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit glass-panel px-3 md:px-6 py-2 md:py-3 rounded-full flex items-center gap-2 md:gap-4 z-50 animate-slide-up shadow-2xl">
+                        <span className="text-xs md:text-sm font-semibold text-slate-300">{selectedIds.length} <span className="hidden sm:inline">items</span></span>
+                        {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
+                            <>
+                                <div className="h-4 w-px bg-slate-300"></div>
+                                <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
+                            </>
+                        )}
+                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
+                        <button onClick={handleRegenerate} className="flex items-center gap-1 md:gap-2 text-blue-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95">
+                            <RefreshCw size={14} className="md:w-4 md:h-4" />
+                            <span className="hidden sm:inline text-sm font-medium">Retry</span>
+                        </button>
+                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
+                        <button onClick={() => selectedIds.forEach(id => handleQuickSprout(id))} className="flex items-center gap-1 md:gap-2 text-emerald-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20 active:scale-95">
+                            <Sprout size={14} className="md:w-4 md:h-4" />
+                            <span className="hidden sm:inline text-sm font-medium">Sprout</span>
+                        </button>
+                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
+                        <button onClick={handleBatchDelete} className="flex items-center gap-1 md:gap-2 text-red-500 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95">
+                            <Trash2 size={14} className="md:w-4 md:h-4" />
+                            <span className="hidden sm:inline text-sm font-medium">Delete</span>
+                        </button>
+                    </div>
+                )}
+
+                {expandedCardId && (
+                    <Suspense fallback={null}>
+                        <ChatModal
+                            card={cards.find(c => c.id === expandedCardId)}
+                            isOpen={!!expandedCardId}
+                            onClose={() => setExpandedCardId(null)}
+                            onUpdate={updateCardFull}
+                            onGenerateResponse={handleChatModalGenerate}
+                            isGenerating={generatingCardIds.has(expandedCardId)}
+                            onCreateNote={handleCreateNote}
+                            onSprout={handleSprout}
+                            onToggleFavorite={toggleFavorite}
+                        />
                     </Suspense>
-                </div>
-            )}
+                )}
 
-            {/* Quick Prompt Modal */}
-            <QuickPromptModal
-                isOpen={quickPrompt.isOpen}
-                onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
-                onSubmit={handleQuickPromptSubmit}
-                initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
-            />
+                {/* Status Bar */}
+                <StatusBar
+                    boardName={boardsList.find(b => b.id === currentBoardId)?.name}
+                    syncStatus={cloudSyncStatus}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
+                />
 
-            {/* Top Bar */}
-            <BoardTopBar
-                onBack={onBack}
-                board={currentBoard}
-                onUpdateTitle={onUpdateBoardTitle}
-            />
-
-            <ChatBar
-                cards={cards}
-                selectedIds={selectedIds}
-                generatingCardIds={generatingCardIds}
-                onSubmit={handleCreateCard}
-                onBatchChat={handleBatchChat}
-                onCreateNote={handleCreateNote}
-                onImageUpload={handleGlobalImageUpload}
-                globalImages={globalImages}
-                onRemoveImage={removeGlobalImage}
-                onClearImages={() => setGlobalImages([])}
-                onGroup={(ids) => createGroup(ids)}
-                onSelectConnected={handleSelectConnected}
-                onLayoutGrid={arrangeSelectionGrid} // Wire up the action
-            />
-
-            {selectedIds.length > 0 && (
-                <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit glass-panel px-3 md:px-6 py-2 md:py-3 rounded-full flex items-center gap-2 md:gap-4 z-50 animate-slide-up shadow-2xl">
-                    <span className="text-xs md:text-sm font-semibold text-slate-300">{selectedIds.length} <span className="hidden sm:inline">items</span></span>
-                    {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
-                        <>
-                            <div className="h-4 w-px bg-slate-300"></div>
-                            <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">Expand</span></button>
-                        </>
-                    )}
-                    <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                    <button onClick={handleRegenerate} className="flex items-center gap-1 md:gap-2 text-blue-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95">
-                        <RefreshCw size={14} className="md:w-4 md:h-4" />
-                        <span className="hidden sm:inline text-sm font-medium">Retry</span>
-                    </button>
-                    <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                    <button onClick={() => selectedIds.forEach(id => handleQuickSprout(id))} className="flex items-center gap-1 md:gap-2 text-emerald-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20 active:scale-95">
-                        <Sprout size={14} className="md:w-4 md:h-4" />
-                        <span className="hidden sm:inline text-sm font-medium">Sprout</span>
-                    </button>
-                    <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                    <button onClick={handleBatchDelete} className="flex items-center gap-1 md:gap-2 text-red-500 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95">
-                        <Trash2 size={14} className="md:w-4 md:h-4" />
-                        <span className="hidden sm:inline text-sm font-medium">Delete</span>
-                    </button>
-                </div>
-            )}
-
-            {expandedCardId && (
+                {/* Settings Modal */}
                 <Suspense fallback={null}>
-                    <ChatModal
-                        card={cards.find(c => c.id === expandedCardId)}
-                        isOpen={!!expandedCardId}
-                        onClose={() => setExpandedCardId(null)}
-                        onUpdate={updateCardFull}
-                        onGenerateResponse={handleChatModalGenerate}
-                        isGenerating={generatingCardIds.has(expandedCardId)}
-                        onCreateNote={handleCreateNote}
-                        onSprout={handleSprout}
-                        onToggleFavorite={toggleFavorite}
+                    <SettingsModal
+                        isOpen={isSettingsOpen}
+                        onClose={() => setIsSettingsOpen(false)}
+                        user={user}
                     />
                 </Suspense>
-            )}
-
-            {/* Status Bar */}
-            <StatusBar
-                boardName={boardsList.find(b => b.id === currentBoardId)?.name}
-                syncStatus={cloudSyncStatus}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-            />
-
-            {/* Settings Modal */}
-            <Suspense fallback={null}>
-                <SettingsModal
-                    isOpen={isSettingsOpen}
-                    onClose={() => setIsSettingsOpen(false)}
-                    user={user}
-                />
-            </Suspense>
-        </React.Fragment>
+            </div>
+        </div>
     );
 }

@@ -21,8 +21,11 @@ const Card = React.memo(function Card({
     onDelete,
     onConnect,
     onUpdate,
-    onCreateNote
+    onUpdate,
+    onCreateNote,
+    onPromptDrop
 }) {
+    const [isDragOver, setIsDragOver] = useState(false);
     const cardRef = useRef(null);
     const {
         isDragging,
@@ -56,6 +59,23 @@ const Card = React.memo(function Card({
         }
         lastTouchTimeRef.current = now;
         handleTouchStart(e);
+    };
+
+
+    const handleCardDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        try {
+            const dropData = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (dropData.type === 'prompt') {
+                if (onPromptDrop) {
+                    onPromptDrop(data.id, dropData);
+                }
+            }
+        } catch (err) {
+            console.error("Card drop error", err);
+        }
     };
 
     // Safety access
@@ -150,9 +170,8 @@ const Card = React.memo(function Card({
                 ${isSafari || isIOS ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-white/20' : 'bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-300 dark:border-white/10'}
                 ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 cursor-grab'}
                 ${isSelected ? 'card-sharp-selected' : 'hover:scale-[1.01] hover:border-brand-300 dark:hover:border-white/20'}
-                ${isTarget ? 'card-target-breathing' : ''}
-                ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
-                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}`}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
+                ${isDragOver ? 'ring-2 ring-brand-500 scale-[1.02] bg-brand-50/50 dark:bg-brand-900/10' : ''}`}
             style={{
                 left: data.x,
                 top: data.y,
@@ -164,6 +183,10 @@ const Card = React.memo(function Card({
             onTouchStart={handleTouchStartWithDoubleTap}
             onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
             onContextMenu={handleContextMenu}
+
+            onDrop={handleCardDrop}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
         >
             {/* Top Bar - Model + Buttons */}
             < div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-white/5" >

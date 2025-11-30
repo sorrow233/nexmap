@@ -58,7 +58,7 @@ function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized, hasSeenWelcome, setHasSeenWelcome } = useAppInit();
-    const { setCards, setConnections, setGroups } = useStore();
+    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
     const { createCardWithText } = useCardCreator();
 
     // Dialog State
@@ -158,7 +158,7 @@ function AppContent() {
 
         const newBoard = await createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
-        if (user) saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [], groups: [] });
+        if (user) saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [], groups: [], boardPrompts: [] });
 
         navigate(`/board/${newBoard.id}`);
 
@@ -192,6 +192,7 @@ function AppContent() {
                     setCards(data.cards || []);
                     setConnections(data.connections || []);
                     setGroups(data.groups || []);
+                    setBoardPrompts(data.boardPrompts || []);
                     storageSetCurrentBoardId(currentBoardId);
 
                     // 3. Restore viewport state
@@ -245,8 +246,8 @@ function AppContent() {
 
     const handleBackToGallery = async () => {
         // Save handled by Autosave in BoardPage mostly
-        const { cards, connections, groups } = useStore.getState();
-        if (currentBoardId) await saveBoard(currentBoardId, { cards, connections, groups });
+        const { cards, connections, groups, boardPrompts } = useStore.getState();
+        if (currentBoardId) await saveBoard(currentBoardId, { cards, connections, groups, boardPrompts });
 
         // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
         const freshBoards = getBoardsList();

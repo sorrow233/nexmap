@@ -53,7 +53,7 @@ export const createBoard = async (name) => {
     const newList = [newBoard, ...list];
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
     // Init empty board in IDB with groups field
-    await saveBoard(newBoard.id, { cards: [], connections: [], groups: [] });
+    await saveBoard(newBoard.id, { cards: [], connections: [], groups: [], boardPrompts: [] });
     return newBoard;
 };
 
@@ -129,7 +129,7 @@ export const loadBoard = async (id) => {
 
     if (!stored) {
         debugLog.storage(`Board ${id} not found, returning empty template`);
-        return { cards: [], connections: [], groups: [] };
+        return { cards: [], connections: [], groups: [], boardPrompts: [] };
     }
 
     // Process S3 URL images: download and convert to base64

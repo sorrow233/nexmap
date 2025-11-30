@@ -19,7 +19,7 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle }) {
     };
 
     return (
-        <div className="fixed top-3 md:top-6 left-3 md:left-6 z-50 animate-slide-down">
+        <div className="absolute top-3 md:top-6 left-3 md:left-6 z-50 animate-slide-down">
             <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1 md:p-1.5 rounded-xl md:rounded-2xl shadow-xl">
                 <button onClick={onBack} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all">
                     <LayoutGrid size={16} className="md:w-[18px] md:h-[18px]" />

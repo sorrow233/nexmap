@@ -102,6 +102,17 @@ const translations = {
                 agile: "Agile"
             }
         },
+        sidebar: {
+            global: "Global",
+            board: "This Board",
+            myPrompts: "My Prompts",
+            addPrompt: "Add Prompt",
+            save: "Save",
+            cancel: "Cancel",
+            deleteConfirm: "Delete this prompt?",
+            instruction: "Instruction",
+            dragHelp: "Drag to chat or canvas"
+        },
         // ===== NEW TRANSLATIONS =====
         settings: {
             title: "Settings",
@@ -448,6 +459,17 @@ const translations = {
                 agile: "敏捷迭代"
             }
         },
+        sidebar: {
+            global: "全局",
+            board: "当前画布",
+            myPrompts: "我的提示词",
+            addPrompt: "新建提示词",
+            save: "保存",
+            cancel: "取消",
+            deleteConfirm: "确定删除此提示词吗？",
+            instruction: "指令",
+            dragHelp: "拖拽至对话框或画布"
+        },
         // ===== NEW TRANSLATIONS =====
         settings: {
             title: "设置",
@@ -793,6 +815,17 @@ const translations = {
                 sprints: "スプリント",
                 agile: "アジャイル"
             }
+        },
+        sidebar: {
+            global: "グローバル",
+            board: "このボード",
+            myPrompts: "マイプロンプト",
+            addPrompt: "プロンプト追加",
+            save: "保存",
+            cancel: "キャンセル",
+            deleteConfirm: "このプロンプトを削除しますか？",
+            instruction: "指示",
+            dragHelp: "チャットやキャンバスへドラッグ"
         },
         // ===== NEW TRANSLATIONS =====
         settings: {
