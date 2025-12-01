@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Database, Layers, Zap, Activity, Clock, RefreshCw } from 'lucide-react';
+import { BarChart3, Database, Layers, Zap, Activity, Clock } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -75,10 +75,10 @@ export default function StatisticsView({ boardsList, user }) {
             tokenStats: tokenStats
         }));
 
-        // Note: We do NOT auto-fetch credits here to save sync quota.
-        // We rely on storedCredits (passed to initial state).
-        // If storedCredits is empty and user is logged in, we might do a lazy fetch, 
-        // but user explicitly asked to be careful. Let's let them click refresh.
+        // Auto-fetch credits if user is logged in and we don't have cached data
+        if (user && !storedCredits) {
+            refreshCredentials();
+        }
 
     }, [boardsList, user]);
 
@@ -99,19 +99,7 @@ export default function StatisticsView({ boardsList, user }) {
                     </p>
                 </div>
 
-                {/* Manual Refresh for Cloud Data */}
-                {user && (
-                    <div className="flex flex-col items-end gap-1">
-                        <button
-                            onClick={refreshCredentials}
-                            disabled={stats.loadingCredits}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                            <RefreshCw size={12} className={stats.loadingCredits ? "animate-spin" : ""} />
-                            <span>{stats.loadingCredits ? (t.stats?.syncing || "Syncing...") : (t.stats?.refreshCloud || "Check Quota")}</span>
-                        </button>
-                    </div>
-                )}
+
             </div>
 
             {/* Main Grid */}
