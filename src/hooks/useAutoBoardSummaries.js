@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { loadBoard } from '../services/storage';
+import useBoardBackground from './useBoardBackground';
 
 export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
     const isProcessingRef = useRef(false);
     const processedBoardIdsRef = useRef(new Set());
     const { getRoleModel, activeId, providers } = useStore();
+    const { generateBackground } = useBoardBackground();
 
     useEffect(() => {
         // Debounce slightly to allow list to settle
@@ -30,13 +32,12 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
 
         // Filter candidates: 
         // 1. Not deleted
-        // 2. Has cards (cardCount > 0)
-        // 3. No background image
-        // 4. No summary exists
-        // 5. Not already processed in this session
+        // 2. Has at least 3 cards
+        // 3. No background image AND no summary (needs generation)
+        // 4. Not already processed in this session
         const candidate = boardsList.find(b =>
             !b.deletedAt &&
-            (b.cardCount > 0) &&
+            (b.cardCount >= 3) &&
             !b.backgroundImage &&
             !b.summary &&
             !processedBoardIdsRef.current.has(b.id)
@@ -46,42 +47,45 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
 
         try {
             isProcessingRef.current = true;
-            processedBoardIdsRef.current.add(candidate.id); // Mark as processed to avoid infinite loop on failure
+            processedBoardIdsRef.current.add(candidate.id);
 
-            // console.log('[AutoSummary] Processing board:', candidate.name, candidate.id);
+            const cardCount = candidate.cardCount || 0;
 
-            // Lazy load service to avoid circular deps
-            const { aiSummaryService } = await import('../services/aiSummaryService');
+            // RULE: 3-9 cards = Text Summary, 10+ cards = Image Background
+            if (cardCount >= 3 && cardCount < 10) {
+                // Generate TEXT summary only
+                console.log('[AutoSummary] Generating TEXT summary for:', candidate.name);
 
-            // Load full board data (we need cards content)
-            const fullBoardData = await loadBoard(candidate.id);
+                const { aiSummaryService } = await import('../services/aiSummaryService');
+                const fullBoardData = await loadBoard(candidate.id);
 
-            if (!fullBoardData || !fullBoardData.cards || fullBoardData.cards.length === 0) {
-                isProcessingRef.current = false;
-                return;
-            }
+                if (!fullBoardData || !fullBoardData.cards || fullBoardData.cards.length === 0) {
+                    isProcessingRef.current = false;
+                    return;
+                }
 
-            const config = getLlmConfig();
+                const config = getLlmConfig();
+                const summary = await aiSummaryService.generateBoardSummary(
+                    fullBoardData,
+                    fullBoardData.cards,
+                    { ...config, model: getRoleModel('analysis') }
+                );
 
-            // Generate Summary
-            // Use 'analysis' model as it's typically faster/cheaper for this background task
-            const summary = await aiSummaryService.generateBoardSummary(
-                fullBoardData,
-                fullBoardData.cards,
-                { ...config, model: getRoleModel('analysis') }
-            );
+                if (summary && onUpdateBoardMetadata) {
+                    await onUpdateBoardMetadata(candidate.id, { summary });
+                }
 
-            if (summary && onUpdateBoardMetadata) {
-                // console.log('[AutoSummary] Generated summary:', summary);
-                await onUpdateBoardMetadata(candidate.id, { summary });
+            } else if (cardCount >= 10) {
+                // Generate IMAGE background
+                console.log('[AutoSummary] Generating IMAGE background for:', candidate.name);
+                await generateBackground(candidate.id, onUpdateBoardMetadata);
             }
 
         } catch (error) {
-            console.error('[AutoSummary] Failed to auto-generate summary for', candidate.id, error);
+            console.error('[AutoSummary] Failed to auto-generate for', candidate.id, error);
         } finally {
             isProcessingRef.current = false;
-            // Trigger next check immediately to process queue faster, 
-            // but with a small delay to yield to UI
+            // Trigger next check
             setTimeout(processNextBoard, 1000);
         }
     };
