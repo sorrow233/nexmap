@@ -21,7 +21,6 @@ const Card = React.memo(function Card({
     onDelete,
     onConnect,
     onUpdate,
-    onUpdate,
     onCreateNote,
     onPromptDrop
 }) {
