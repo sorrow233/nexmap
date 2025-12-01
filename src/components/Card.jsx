@@ -31,25 +31,6 @@ const Card = React.memo(function Card({
     const { t } = useLanguage();
     const [isDragOver, setIsDragOver] = useState(false);
     const cardRef = useRef(null);
-    // Transient Update Logic: Bypass global store for smooth single-card dragging
-    const handleLocalMove = useCallback((draggedId, newX, newY, withConnections) => {
-        // Check if we need the slow path (multi-select or connections)
-        const store = useStore.getState();
-        const selectedCount = store.selectedIds ? store.selectedIds.length : 0;
-
-        // If this is a complex drag operation, use the store (preserves existing logic)
-        if (withConnections || (isSelected && selectedCount > 1)) {
-            onMove(draggedId, newX, newY, withConnections);
-        } else {
-            // FAST PATH: Direct DOM manipulation
-            // This avoids O(N) re-renders causing the "lag"
-            if (cardRef.current) {
-                cardRef.current.style.left = `${newX}px`;
-                cardRef.current.style.top = `${newY}px`;
-            }
-        }
-    }, [onMove, isSelected]);
-
     const {
         isDragging,
         handleMouseDown,
@@ -60,7 +41,7 @@ const Card = React.memo(function Card({
         y: data.y,
         isSelected,
         onSelect,
-        onMove: handleLocalMove, // Use our optimized wrapper
+        onMove,
         onDragEnd,
         disabled: false // Can add more logic here if needed
     });
