@@ -27,11 +27,8 @@ export default function BoardCard({
         return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
     };
 
-
-
     // Helper for random gradient if no image - Modern fresh colors with dark mode support
     const getRandomGradient = (id) => {
-        // Fresh, modern gradients - light mode friendly with dark mode variants
         const gradients = [
             'from-sky-400/30 via-cyan-300/20 to-teal-400/30 dark:from-sky-600/25 dark:via-cyan-500/15 dark:to-teal-600/25',
             'from-violet-400/30 via-purple-300/20 to-fuchsia-400/30 dark:from-violet-600/25 dark:via-purple-500/15 dark:to-fuchsia-600/25',
@@ -44,24 +41,20 @@ export default function BoardCard({
         return gradients[index];
     };
 
-    // Helper for diverse tag colors (Modern, Fresh, Elegant)
+    // Helper for glass tag colors
     const getTagColor = (tag) => {
-        const colors = [
-            'bg-sky-50 text-sky-700 border-sky-200/50',       // Fresh Sky
-            'bg-indigo-50 text-indigo-700 border-indigo-200/50', // Elegant Indigo
-            'bg-emerald-50 text-emerald-700 border-emerald-200/50', // Nature Emerald
-            'bg-rose-50 text-rose-700 border-rose-200/50',    // Soft Rose
-            'bg-violet-50 text-violet-700 border-violet-200/50', // Deep Violet
-            'bg-amber-50 text-amber-700 border-amber-200/50',  // Warm Amber
-            'bg-teal-50 text-teal-700 border-teal-200/50',    // Clean Teal
-        ];
-        // Simple hash to generate consistent color for same tag
-        let hash = 0;
-        for (let i = 0; i < tag.length; i++) {
-            hash = tag.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return colors[Math.abs(hash) % colors.length];
+        // Minimal glass style for tags
+        return 'bg-white/40 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-white/40 dark:border-white/10';
     };
+
+    // Common container classes for Glassmorphism
+    const containerClasses = `
+        group relative cursor-pointer overflow-hidden
+        rounded-3xl border border-white/40 dark:border-white/10
+        bg-white/60 dark:bg-white/5 backdrop-blur-xl
+        shadow-lg hover:shadow-2xl transition-all duration-500
+        hover:-translate-y-1 hover:border-white/60 dark:hover:border-white/20
+    `;
 
     // Variant: Stacked (Modern Grid Item)
     if (variant === 'stacked') {
@@ -70,47 +63,36 @@ export default function BoardCard({
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
                 className={`
-                    group relative flex flex-col cursor-pointer transition-all duration-300 ${shouldAnimate ? 'animate-fade-in-up' : ''}
-                    rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden
-                    hover:shadow-2xl hover:border-indigo-500/30 dark:hover:border-indigo-400/30 hover:-translate-y-1
-                    bg-white dark:bg-[#0A0A0A]
+                    ${containerClasses}
+                    flex flex-col h-full
+                    ${shouldAnimate ? 'animate-fade-in-up' : ''}
                     ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
                 `}
                 style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
 
-                {/* Image Section (Top Half) */}
-                <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-[#111]">
+                {/* Top Half - Visual/Image Area */}
+                <div className="relative w-full aspect-[16/10] overflow-hidden rounded-t-3xl border-b border-white/10">
                     {hasImage ? (
                         <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : board.summary ? (
-                        // Neural Clay Text Card Variant v3.0 (Stacked)
-                        <div className={`absolute inset-0 transition-all duration-500 ${
-                            // Theme-based Pastel Backgrounds
-                            {
-                                'blue': 'bg-[#eff6ff]',    // blue-50
-                                'purple': 'bg-[#f5f3ff]',  // violet-50
-                                'emerald': 'bg-[#ecfdf5]', // emerald-50
-                                'orange': 'bg-[#fff7ed]',  // orange-50
-                                'pink': 'bg-[#fdf2f8]',    // pink-50
-                                'slate': 'bg-[#f8fafc]',   // slate-50
-                            }[board.summary.theme || 'slate']
-                            }`}>
+                        // Glass Gradient Variant for Summary Cards
+                        <div className={`absolute inset-0 transition-all duration-500 bg-gradient-to-br from-indigo-50/50 via-white/50 to-pink-50/50 dark:from-indigo-900/30 dark:via-purple-900/20 dark:to-pink-900/30`}>
+                            {/* Abstract decorative shapes */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-                            {/* Soft Inner Shadow (Clay Effect) */}
-                            <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_0_40px_rgba(0,0,0,0.02)]" />
-
-                            {/* Content - Concept Pills */}
-                            <div className="relative z-10 h-full flex flex-col justify-center px-6">
-                                <div className="flex flex-wrap justify-center gap-2">
+                            {/* Summary Content Center */}
+                            <div className="relative z-10 h-full flex flex-col justify-center items-center px-6">
+                                <div className="flex flex-wrap justify-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
                                     {(typeof board.summary === 'string' ? board.summary : board.summary.summary)
                                         .split(' · ')
-                                        .slice(0, 4) // Limit to top 4 tags for stacked/compact view
+                                        .slice(0, 3)
                                         .map((tag, i) => (
                                             <span key={i} className={`
-                                            px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-sm border
+                                            px-2.5 py-1 rounded-lg text-[10px] font-medium tracking-wide border backdrop-blur-sm
                                             ${getTagColor(tag)}
                                         `}>
                                                 {tag}
@@ -120,20 +102,19 @@ export default function BoardCard({
                             </div>
                         </div>
                     ) : (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-50`} />
+                        <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-40`} />
                     )}
 
-                    {/* Overlay Gradient for Text Readability or Style */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent dark:from-black/40" />
+                    {/* Subtle Overlay */}
+                    <div className="absolute inset-0 bg-white/10 dark:bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
 
-                    {/* Quick Actions Overlay */}
+                    {/* Actions Overlay */}
                     {!isTrashView && (
                         <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
-
                             <button
                                 onClick={(e) => handleImageButtonClick(e, board.id)}
                                 disabled={generatingBoardId === board.id}
-                                className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-black transition-colors"
+                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:bg-white/40 transition-colors"
                             >
                                 {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                             </button>
@@ -143,8 +124,7 @@ export default function BoardCard({
                                     e.stopPropagation();
                                     onDelete(board.id);
                                 }}
-                                aria-label="Delete Board"
-                                className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:bg-red-500/80 transition-colors"
                             >
                                 <Trash2 size={14} />
                             </button>
@@ -152,162 +132,128 @@ export default function BoardCard({
                     )}
                 </div>
 
-                {/* Content Section (Bottom Half) */}
-                <div className="p-5 flex flex-col gap-3">
-                    <div className="flex items-start justify-between gap-2 h-12">
-                        <h3 className="font-bold text-lg text-slate-900 dark:text-gray-100 leading-tight line-clamp-2 font-inter-tight">
+                {/* Bottom Half - Info */}
+                <div className="p-5 flex flex-col gap-2 relative bg-white/40 dark:bg-black/5 h-full">
+                    <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 leading-tight line-clamp-2 font-inter-tight tracking-tight">
                             {board.name}
                         </h3>
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between text-xs font-semibold text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
-                        <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-700'}`} />
+                    <div className="mt-auto pt-4 flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-neutral-400">
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 dark:bg-white/5 border border-white/20">
+                            <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
                             <span>{board.cardCount || 0} Cards</span>
                         </div>
-                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span className="opacity-70">{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                     </div>
-
-                    {isTrashView && (
-                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex justify-between items-center">
-                            <span className="text-xs font-bold text-red-500 flex items-center gap-1">
-                                <Clock size={12} /> {getDaysRemaining(board.deletedAt)} days left
-                            </span>
-                            <div className="flex gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} aria-label="Restore Board" className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 rounded-md transition-colors"><RotateCcw size={14} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} aria-label="Permanently Delete Board" className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 rounded-md transition-colors"><Trash2 size={14} /></button>
-                            </div>
-                        </div>
-                    )}
                 </div>
+
+                {/* Trash View Footer */}
+                {isTrashView && (
+                    <div className="absolute bottom-0 inset-x-0 bg-red-50/90 dark:bg-red-900/90 backdrop-blur-sm p-2 flex justify-between items-center z-30">
+                        <span className="text-[10px] font-bold text-red-600 dark:text-red-200 flex items-center gap-1 ml-2">
+                            <Clock size={10} /> {getDaysRemaining(board.deletedAt)}d left
+                        </span>
+                        <div className="flex gap-1">
+                            <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} className="p-1.5 hover:bg-white/50 rounded-md text-emerald-600"><RotateCcw size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} className="p-1.5 hover:bg-white/50 rounded-md text-red-600"><Trash2 size={14} /></button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
 
-    // Variant: Overlay (Recently Visited)
+    // Variant: Overlay (Recently Visited) - Streamlined Glass
     return (
         <div
             onClick={() => !isTrashView && onSelect(board.id)}
             style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}
             className={`
-                group relative h-[180px] w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] transition-all duration-300 hover:shadow-xl hover:scale-[1.02]
+                ${containerClasses}
+                h-[200px] w-full
             `}
         >
-            {/* Background */}
+            {/* Background Layer */}
             {board.backgroundImage || board.thumbnail ? (
                 <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-90"
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                 />
             ) : board.summary ? (
-                // Neural Clay Text Card Variant v3.0 (Soft & Tactile)
-                <div className={`absolute inset-0 transition-all duration-500 group-hover:-translate-y-1 ${
-                    // Theme-based Pastel Backgrounds
-                    {
-                        'blue': 'bg-[#eff6ff]',    // blue-50
-                        'purple': 'bg-[#f5f3ff]',  // violet-50
-                        'emerald': 'bg-[#ecfdf5]', // emerald-50
-                        'orange': 'bg-[#fff7ed]',  // orange-50
-                        'pink': 'bg-[#fdf2f8]',    // pink-50
-                        'slate': 'bg-[#f8fafc]',   // slate-50
-                    }[board.summary.theme || 'slate']
-                    }`}>
-
-                    {/* Soft Inner Shadow (Clay Effect) */}
-                    <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_0_40px_rgba(0,0,0,0.02)] ring-1 ring-black/5" />
-
-                    {/* Content Layout */}
-                    <div className="relative z-10 flex flex-col h-full p-6">
-
-                        {/* Header: Title */}
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold tracking-tight text-slate-800 leading-snug line-clamp-2">
-                                {board.name}
-                            </h3>
-                            {/* Decorative underline */}
-                            <div className={`mt-3 h-1 w-8 rounded-full opacity-30 ${{
-                                'blue': 'bg-blue-500',
-                                'purple': 'bg-violet-500',
-                                'emerald': 'bg-emerald-500',
-                                'orange': 'bg-orange-500',
-                                'pink': 'bg-pink-500',
-                                'slate': 'bg-slate-500'
-                            }[board.summary.theme || 'slate']
-                                }`} />
-                        </div>
-
-                        {/* Body: Concept Pills */}
-                        <div className="flex flex-wrap gap-2 content-start">
-                            {board.summary.summary.split(' · ').map((tag, i) => (
-                                <span key={i} className={`
-                                    px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm border
-                                    ${getTagColor(tag)}
-                                `}>
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
-
-                        {/* Footer: Meta & Actions */}
-                        <div className="mt-auto flex items-center justify-between pt-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                </span>
-                            </div>
-
-                            {/* Quick Actions (Clay Buttons) */}
-                            {!isTrashView && (
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                                    <button
-                                        onClick={(e) => handleImageButtonClick(e, board.id)}
-                                        disabled={generatingBoardId === board.id}
-                                        className="w-8 h-8 rounded-xl bg-white text-slate-400 hover:text-indigo-500 shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-slate-100"
-                                    >
-                                        {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(board.id);
-                                        }}
-                                        className="w-8 h-8 rounded-xl bg-white text-slate-400 hover:text-red-500 shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-slate-100"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                // Soft Abstract Gradient for Summary
+                <div className={`absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20`}>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
                 </div>
             ) : (
-                <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-30`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-40`} />
             )}
 
-            {/* Gradient Overlay - Only for Image or Gradient cards */}
-            {(!board.summary) && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            )}
+            {/* Glass Overlay Content */}
+            <div className="absolute inset-0 flex flex-col p-6 z-10">
+                {/* Header */}
+                <div className="flex justify-between items-start">
+                    <div className="flex-1 pr-4">
+                        <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-snug line-clamp-2 drop-shadow-sm mix-blend-hard-light">
+                            {board.name}
+                        </h3>
+                        {/* Decorative Underline */}
+                        <div className="mt-2 h-1 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-60" />
+                    </div>
 
-            {/* Content (Title/Stats) - STANDARD footer for non-summary cards */}
-            {(!board.summary) && (
-                <div className={`absolute inset-x-0 bottom-0 p-4`}>
-                    <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
-                        {board.name}
-                    </h3>
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                        <span>•</span>
-                        <span>{board.cardCount || 0} items</span>
+                    {/* Action Icon */}
+                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-slate-800 dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:rotate-[-45deg] hover:bg-white/40">
+                        <ArrowRight size={16} />
                     </div>
                 </div>
-            )}
 
-            {/* Icon Overlay Top Right - Standard arrow for non-summary cards */}
-            {(!board.summary) && (
-                <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    <ArrowRight size={14} />
+                {/* Body - Tags (if summary) */}
+                {board.summary && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        {board.summary.summary.split(' · ').slice(0, 3).map((tag, i) => (
+                            <span key={i} className={`
+                                    px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md
+                                    bg-white/30 border-white/30 text-slate-800 dark:text-white dark:bg-white/10
+                                `}>
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                {/* Footer Meta */}
+                <div className="mt-auto flex items-center justify-between pt-4">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest bg-white/30 dark:bg-black/20 px-2 py-1 rounded-md backdrop-blur-sm">
+                        {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+
+                    {!isTrashView && (
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                            <button
+                                onClick={(e) => handleImageButtonClick(e, board.id)}
+                                disabled={generatingBoardId === board.id}
+                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-white/40 transition-colors"
+                            >
+                                {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(board.id);
+                                }}
+                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-red-500/80 hover:text-white transition-colors"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    )}
                 </div>
+            </div>
+
+            {/* Gradient Overlay for text readability on images */}
+            {(board.backgroundImage || board.thumbnail) && (
+                <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/20 to-transparent dark:from-black/80 dark:via-black/20 pointer-events-none" />
             )}
         </div>
     );
