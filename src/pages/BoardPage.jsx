@@ -310,10 +310,10 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onBack
     };
 
     return (
-        <div className="h-screen w-screen flex overflow-hidden bg-slate-50 dark:bg-slate-950">
-            <Sidebar className="shrink-0 z-40 border-r border-slate-200 dark:border-white/5" />
+        <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative">
+            <Sidebar className="absolute left-4 top-24 z-40" />
 
-            <div className="relative flex-1 h-full overflow-hidden">
+            <div className="absolute inset-0 h-full overflow-hidden">
                 <ErrorBoundary level="canvas">
                     <div ref={canvasContainerRef} className="absolute inset-0">
                         <Canvas
