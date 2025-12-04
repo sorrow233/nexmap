@@ -14,8 +14,6 @@ export default function BoardCard({
     isSystemCreditsUser = false,
     shouldAnimate = true
 }) {
-    // DEBUG: Log board.summary to see what value is passed
-    console.log(`[BoardCard] ${board.name} | summary:`, board.summary, '| variant:', variant);
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
         // Free users now have 20 images/week quota, no restriction needed
@@ -65,13 +63,27 @@ export default function BoardCard({
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : board.summary ? (
-                        // DEBUG: Bright colors to test visibility
-                        <div className="absolute inset-0 bg-yellow-400 flex items-center justify-center p-4 z-50">
-                            <p className="text-lg text-red-600 font-bold text-center">
-                                {typeof board.summary === 'string'
-                                    ? board.summary
-                                    : (board.summary.summary || `RAW: ${JSON.stringify(board.summary).slice(0, 80)}`)}
-                            </p>
+                        // Modern AI Text Card - Premium Dark Glass
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+                            {/* Subtle gradient accent based on theme */}
+                            <div className={`absolute inset-0 opacity-30 bg-gradient-to-br ${board.summary.theme === 'purple' ? 'from-purple-600/20 to-transparent' :
+                                board.summary.theme === 'emerald' ? 'from-emerald-600/20 to-transparent' :
+                                    board.summary.theme === 'orange' ? 'from-orange-600/20 to-transparent' :
+                                        board.summary.theme === 'pink' ? 'from-pink-600/20 to-transparent' :
+                                            'from-blue-600/20 to-transparent'
+                                }`} />
+
+                            {/* Content */}
+                            <div className="relative z-10 h-full flex flex-col justify-center p-5">
+                                <p className="text-[13px] font-medium text-white/85 leading-relaxed line-clamp-5 text-center">
+                                    {typeof board.summary === 'string'
+                                        ? board.summary
+                                        : board.summary.summary}
+                                </p>
+                            </div>
+
+                            {/* Bottom fade */}
+                            <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-black/30 to-transparent" />
                         </div>
                     ) : (
                         <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-50`} />

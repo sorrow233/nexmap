@@ -54,7 +54,6 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
             // RULE: 3-9 cards = Text Summary, 10+ cards = Image Background
             if (cardCount >= 3 && cardCount < 10) {
                 // Generate TEXT summary only
-                console.log('[AutoSummary] Generating TEXT summary for:', candidate.name);
 
                 const { aiSummaryService } = await import('../services/aiSummaryService');
                 const fullBoardData = await loadBoard(candidate.id);
@@ -65,7 +64,6 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
                 }
 
                 const config = getLlmConfig();
-                console.log('[AutoSummary] Calling AI with config:', config);
 
                 const summary = await aiSummaryService.generateBoardSummary(
                     fullBoardData,
@@ -73,19 +71,14 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
                     { ...config, model: getRoleModel('analysis') }
                 );
 
-                console.log('[AutoSummary] AI returned summary:', summary);
+
 
                 if (summary && onUpdateBoardMetadata) {
-                    console.log('[AutoSummary] Saving summary to metadata...');
                     await onUpdateBoardMetadata(candidate.id, { summary });
-                    console.log('[AutoSummary] Summary saved successfully!');
-                } else {
-                    console.warn('[AutoSummary] No summary returned or no update handler');
                 }
 
             } else if (cardCount >= 10) {
                 // Generate IMAGE background
-                console.log('[AutoSummary] Generating IMAGE background for:', candidate.name);
                 await generateBackground(candidate.id, onUpdateBoardMetadata);
             }
 
