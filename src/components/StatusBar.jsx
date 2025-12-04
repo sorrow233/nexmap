@@ -7,7 +7,7 @@ import { useStore } from '../store/useStore';
  * StatusBar - 底部状态栏组件
  * 显示当前画板名称、同步状态和 AI 额度
  */
-export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettings }) {
+export default function StatusBar({ boardName, syncStatus = 'idle' }) {
     // Use individual selectors to avoid object reference issues
     const systemCredits = useStore(state => state.systemCredits);
     const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
@@ -47,19 +47,18 @@ export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettin
                 </div>
 
                 {isSystemCreditsUser && typeof systemCredits === 'number' && (
-                    <button
-                        onClick={onOpenSettings}
+                    <div
                         className={`
                             flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
                             bg-white/80 dark:bg-slate-800/80 backdrop-blur-md
                             border border-slate-200 dark:border-slate-700
-                            shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer
+                            shadow-sm
                             ${systemCredits > 20 ? 'text-amber-600' : systemCredits > 0 ? 'text-orange-500' : 'text-red-500'}
                         `}
                     >
                         <Coins size={14} />
                         <span>{systemCredits.toFixed(1)} 积分</span>
-                    </button>
+                    </div>
                 )}
             </div>
 

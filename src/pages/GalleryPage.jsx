@@ -3,7 +3,7 @@ import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, U
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
-import SettingsModal from '../components/SettingsModal';
+import ModernSettingsModal from '../components/settings/ModernSettingsModal';
 import UsageStatsModal from '../components/UsageStatsModal';
 import StatisticsView from '../components/StatisticsView';
 import SEO from '../components/SEO';
@@ -310,22 +310,12 @@ export default function GalleryPage({
                 </main>
             </div>
 
-            {/* Quick Settings Action (Floating) */}
-            <div className="fixed bottom-8 right-8 z-40 hidden md:block">
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    aria-label="Open Settings"
-                    className="w-12 h-12 rounded-full bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 shadow-xl flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:scale-110 transition-all"
-                >
-                    <Settings size={20} />
-                </button>
-            </div>
 
-            <SettingsModal
+
+            <ModernSettingsModal
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
                 user={user}
-
             />
 
             <UsageStatsModal

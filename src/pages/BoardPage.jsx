@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
-const SettingsModal = lazy(() => import('../components/SettingsModal'));
+const ModernSettingsModal = lazy(() => import('../components/settings/ModernSettingsModal'));
 
 import { useBoardLogic } from '../hooks/useBoardLogic';
 
@@ -166,6 +166,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onBack={onBack}
                     board={currentBoard}
                     onUpdateTitle={onUpdateBoardTitle}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
                 />
 
                 <ChatBar
@@ -242,9 +243,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onOpenSettings={() => setIsSettingsOpen(true)}
                 />
 
-                {/* Settings Modal */}
                 <Suspense fallback={null}>
-                    <SettingsModal
+                    <ModernSettingsModal
                         isOpen={isSettingsOpen}
                         onClose={() => setIsSettingsOpen(false)}
                         user={user}

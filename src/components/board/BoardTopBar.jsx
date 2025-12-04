@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { LayoutGrid, Undo2, Redo2 } from 'lucide-react';
+import { LayoutGrid, Undo2, Redo2, Settings } from 'lucide-react';
 import { useTemporalStore } from '../../store/useStore';
 
-export default function BoardTopBar({ onBack, board, onUpdateTitle }) {
+export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenSettings }) {
     const undo = useTemporalStore((state) => state.undo);
     const redo = useTemporalStore((state) => state.redo);
     const pastStates = useTemporalStore((state) => state.pastStates);
@@ -80,6 +80,19 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle }) {
                         </svg>
                     )}
                 </div>
+
+                {/* Settings Button */}
+                <div className="h-5 md:h-6 w-[1px] bg-slate-200 mx-1 md:mx-2" />
+                <button
+                    onClick={onOpenSettings}
+                    className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 md:py-2 rounded-lg md:rounded-xl text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    title="Settings"
+                >
+                    <Settings
+                        size={18}
+                        className="md:w-[18px] md:h-[18px]"
+                    />
+                </button>
             </div>
         </div>
     );

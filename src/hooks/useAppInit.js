@@ -67,7 +67,7 @@ export function useAppInit() {
             setBoardsList(list);
 
             // Onboarding check - Show sample boards for new users
-            if (location.pathname === '/' && list.length === 0) {
+            if (list.length === 0) {
                 debugLog.auth('No boards found, loading sample boards for new user...');
                 const sampleBoards = getSampleBoardsList();
                 setBoardsList(sampleBoards);
@@ -305,28 +305,21 @@ export function useAppInit() {
                             useStore.getState().loadSystemCredits?.();
                         }
 
-                        // NEW: Auto-create guide for truly new cloud users
-                        // Only if we just finished loading settings and found no boards
+                        // Show sample boards for new cloud users
                         const currentBoards = loadBoardsMetadata();
                         if (currentBoards.length === 0) {
-                            debugLog.auth('New cloud user with no boards, creating guide...');
-                            createBoard("NexMap 使用指南 🚀").then(async (newBoard) => {
-                                const { getGuideBoardData } = await import('../utils/guideBoardData');
-                                await saveBoard(newBoard.id, getGuideBoardData());
-                                setBoardsList([newBoard]);
-                            });
+                            debugLog.auth('New cloud user with no boards, loading sample boards...');
+                            const sampleBoards = getSampleBoardsList();
+                            setBoardsList(sampleBoards);
                         }
                     } else {
-                        // No cloud settings = new user (or just created)
-                        debugLog.auth('No cloud settings found, checking for onboarding...');
+                        // No cloud settings = new user, show sample boards
+                        debugLog.auth('No cloud settings found, loading sample boards...');
 
                         const currentBoards = loadBoardsMetadata();
                         if (currentBoards.length === 0) {
-                            createBoard("NexMap 使用指南 🚀").then(async (newBoard) => {
-                                const { getGuideBoardData } = await import('../utils/guideBoardData');
-                                await saveBoard(newBoard.id, getGuideBoardData());
-                                setBoardsList([newBoard]);
-                            });
+                            const sampleBoards = getSampleBoardsList();
+                            setBoardsList(sampleBoards);
                         }
 
                         // Check if we should load credits
