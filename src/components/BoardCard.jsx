@@ -66,7 +66,9 @@ export default function BoardCard({
                         // Simple AI Text Card - Clean and Minimal
                         <div className="absolute inset-0 bg-slate-900 dark:bg-[#111] flex items-center justify-center p-4">
                             <p className="text-sm text-white/90 leading-relaxed line-clamp-5 text-center">
-                                {board.summary.summary}
+                                {typeof board.summary === 'string'
+                                    ? board.summary
+                                    : (board.summary.summary || JSON.stringify(board.summary))}
                             </p>
                         </div>
                     ) : (
