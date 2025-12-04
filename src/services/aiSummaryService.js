@@ -114,33 +114,35 @@ OUTPUT FORMAT:
         }).join('\n---\n');
 
         const prompt = `
-You are an expert design & engineering lead analyzing a team's workspace content.
-Your goal is to distill the *intent* of this board into a concise, high-signal summary.
+Analyze the content and extract 2-4 core keywords that best represent the main topic.
+
+CRITICAL RULES:
+1. **Output Language**: MUST match the language of the input content. If content is in Chinese, output Chinese keywords. If English, output English.
+2. **Keywords Only**: Output short, punchy keywords or phrases (2-4 words max each). NO full sentences.
+3. **Separator**: Use " · " (middle dot with spaces) to separate keywords.
 
 BOARD CONTEXT:
 Name: ${boardData.name}
 Cards Content:
 ${context}
 
-TASK:
-1.  **Summary**: Write a powerful 2-sentence summary.
-    - Sentence 1: **Core Subject** (What is the main topic/project?)
-    - Sentence 2: **Current Action/State** (What is being discussed, solved, or planned?)
-    - Style: Professional, telegraphic, engineering shorthand. No "This board is about...".
-    
-2.  **Theme**: Select the most appropriate visual theme based on the content's mood:
-    - "blue": Technical, Architecture, Documentation, Systems
-    - "purple": Creative, Brainstorming, Design, Vision
-    - "emerald": Growth, Strategy, Finance, Results
-    - "orange": Urgent, Bugs, Critical Path, Warning
-    - "pink": Social, Community, Events, Playful
-    - "slate": General, Archive, Miscellaneous, Drafts
+THEME SELECTION:
+- "blue": Technical, Systems, Code
+- "purple": Creative, Design, Ideas
+- "emerald": Growth, Strategy, Business
+- "orange": Urgent, Bugs, Priority
+- "pink": Social, Community, Fun
+- "slate": General, Misc
 
 OUTPUT FORMAT (JSON ONLY):
 {
-  "summary": "Redux state management refactor for V2.\nAddressing race conditions in user authentication flow.",
+  "summary": "关键词一 · 关键词二 · 关键词三",
   "theme": "color_name"
 }
+
+Example outputs:
+- Chinese content: {"summary": "React 架构 · 状态管理 · 性能优化", "theme": "blue"}
+- English content: {"summary": "API Design · Auth Flow · MVP", "theme": "purple"}
 `;
 
         try {
