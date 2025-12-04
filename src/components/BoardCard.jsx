@@ -63,12 +63,12 @@ export default function BoardCard({
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : board.summary ? (
-                        // Simple AI Text Card - Clean and Minimal
-                        <div className="absolute inset-0 bg-slate-900 dark:bg-[#111] flex items-center justify-center p-4">
-                            <p className="text-sm text-white/90 leading-relaxed line-clamp-5 text-center">
+                        // DEBUG: Bright colors to test visibility
+                        <div className="absolute inset-0 bg-yellow-400 flex items-center justify-center p-4 z-50">
+                            <p className="text-lg text-red-600 font-bold text-center">
                                 {typeof board.summary === 'string'
                                     ? board.summary
-                                    : (board.summary.summary || JSON.stringify(board.summary))}
+                                    : (board.summary.summary || `RAW: ${JSON.stringify(board.summary).slice(0, 80)}`)}
                             </p>
                         </div>
                     ) : (
