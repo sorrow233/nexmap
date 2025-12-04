@@ -14,6 +14,8 @@ export default function BoardCard({
     isSystemCreditsUser = false,
     shouldAnimate = true
 }) {
+    // DEBUG: Log board.summary to see what value is passed
+    console.log(`[BoardCard] ${board.name} | summary:`, board.summary, '| variant:', variant);
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
         // Free users now have 20 images/week quota, no restriction needed
