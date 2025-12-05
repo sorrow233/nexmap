@@ -105,13 +105,27 @@ OUTPUT FORMAT:
     async generateBoardSummary(boardData, cards, config) {
         if (!cards || cards.length === 0) return null;
 
-        // Prepare context
+        // Get user's custom instructions to filter them out
+        const customInstructions = localStorage.getItem('mixboard_custom_instructions') || '';
+        const customInstructionsText = customInstructions ?
+            (JSON.parse(customInstructions)?.value || customInstructions) : '';
+
+        // Prepare context - filter out custom instructions content
         const context = cards.slice(0, 5).map(c => {
-            const content = c.data?.messages
+            let content = c.data?.messages
                 ? c.data.messages.map(m => m.content).join(' ')
                 : (c.data?.content || '');
+
+            // Remove custom instructions text if present
+            if (customInstructionsText && content.includes(customInstructionsText)) {
+                content = content.replace(customInstructionsText, '').trim();
+            }
+
             return content.substring(0, 300);
-        }).join('\n---\n');
+        }).filter(c => c.length > 10).join('\n---\n'); // Also filter out very short/empty content
+
+        // If no meaningful content after filtering, don't generate
+        if (!context || context.length < 20) return null;
 
         const prompt = `
 Analyze the content and extract 2-4 core keywords that best represent the main topic.
