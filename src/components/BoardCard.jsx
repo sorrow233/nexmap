@@ -67,38 +67,25 @@ export default function BoardCard({
                     ) : board.summary ? (
                         // Modern AI Text Card - Premium Dark Glass
                         // Modern AI Text Card - Fresh Japanese Minimalist Style
-                        <div className={`absolute inset-0 overflow-hidden bg-gradient-to-br ${(() => {
+                        // Modern AI Text Card - Simple & Elegant
+                        <div className={`absolute inset-0 overflow-hidden transition-colors duration-500 ${(() => {
                             const t = board.summary.theme || 'slate';
+                            // "Nice" simple colors - Japanese Traditional / Minimalist Palette
+                            // Using slight gradients just to give depth, but keeping it looking "simple"
                             const styles = {
-                                blue: 'from-blue-50 via-indigo-50 to-white dark:from-blue-900/40 dark:via-slate-900 dark:to-indigo-900/40',
-                                purple: 'from-purple-50 via-fuchsia-50 to-white dark:from-purple-900/40 dark:via-slate-900 dark:to-fuchsia-900/40',
-                                emerald: 'from-emerald-50 via-teal-50 to-white dark:from-emerald-900/40 dark:via-slate-900 dark:to-teal-900/40',
-                                orange: 'from-orange-50 via-amber-50 to-white dark:from-orange-900/40 dark:via-slate-900 dark:to-amber-900/40',
-                                pink: 'from-pink-50 via-rose-50 to-white dark:from-pink-900/40 dark:via-slate-900 dark:to-rose-900/40',
-                                slate: 'from-slate-50 via-gray-50 to-white dark:from-slate-800/40 dark:via-slate-900 dark:to-gray-800/40',
+                                blue: 'bg-gradient-to-br from-[#E0F2F1] to-[#B2DFDB] dark:from-[#37474F] dark:to-[#263238]', // Muted Teal/Blue
+                                purple: 'bg-gradient-to-br from-[#F3E5F5] to-[#E1BEE7] dark:from-[#4A148C] dark:to-[#311B92]', // Muted Purple
+                                emerald: 'bg-gradient-to-br from-[#E8F5E9] to-[#C8E6C9] dark:from-[#1B5E20] dark:to-[#004D40]', // Soft Green
+                                orange: 'bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] dark:from-[#E65100] dark:to-[#BF360C]', // Soft Orange
+                                pink: 'bg-gradient-to-br from-[#FCE4EC] to-[#F8BBD0] dark:from-[#880E4F] dark:to-[#4A148C]', // Soft Pink
+                                slate: 'bg-gradient-to-br from-[#F5F5F5] to-[#E0E0E0] dark:from-[#212121] dark:to-[#000000]', // Clean Grey
                             };
                             return styles[t] || styles.slate;
                         })()}`}>
 
-                            {/* Colorful accent blob for "Fresh" feel */}
-                            <div className={`absolute inset-0 opacity-10 dark:opacity-20 bg-gradient-to-tr ${(() => {
-                                const t = board.summary.theme || 'slate';
-                                const accents = {
-                                    blue: 'from-blue-400 to-transparent',
-                                    purple: 'from-purple-400 to-transparent',
-                                    emerald: 'from-emerald-400 to-transparent',
-                                    orange: 'from-orange-400 to-transparent',
-                                    pink: 'from-pink-400 to-transparent',
-                                    slate: 'from-slate-400 to-transparent',
-                                };
-                                return accents[t] || accents.slate;
-                            })()}`} />
-
-                            {/* Content */}
-                            <div className="relative z-10 h-full flex flex-col justify-center px-4">
-                                <p className={`text-lg font-semibold leading-relaxed text-center tracking-wide ${(board.summary.theme === 'slate' || !board.summary.theme)
-                                    ? 'text-slate-700 dark:text-slate-200'
-                                    : 'text-slate-800 dark:text-white'
+                            {/* Content - Center aligned, simple typography */}
+                            <div className="relative z-10 h-full flex flex-col justify-center px-6">
+                                <p className={`text-lg font-bold leading-relaxed text-center tracking-wide ${'text-slate-800 dark:text-slate-100'
                                     }`}>
                                     {typeof board.summary === 'string'
                                         ? board.summary
