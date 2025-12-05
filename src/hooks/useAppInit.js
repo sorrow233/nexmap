@@ -158,19 +158,26 @@ export function useAppInit() {
                 unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
                     debugLog.sync(`Received cloud update for ${cloudBoards.length} boards`, updatedIds);
 
-                    // MERGE with local state to preserve local-only fields like 'summary'
+                    // MERGE with local state AND localStorage to preserve local-only fields like 'summary'
                     // that may not have synced to cloud yet
+                    const localStorageBoards = getRawBoardsList(); // Also check localStorage directly
+
                     setBoardsList(prev => {
                         const merged = cloudBoards.map(cloudBoard => {
-                            const localBoard = prev.find(b => b.id === cloudBoard.id);
-                            if (localBoard) {
-                                // Keep local summary if cloud doesn't have it
-                                return {
-                                    ...cloudBoard,
-                                    summary: cloudBoard.summary || localBoard.summary
-                                };
-                            }
-                            return cloudBoard;
+                            // Check React state first
+                            const localStateBoard = prev.find(b => b.id === cloudBoard.id);
+                            // Then check localStorage as fallback
+                            const localStorageBoard = localStorageBoards.find(b => b.id === cloudBoard.id);
+
+                            // Prefer cloud summary, then local state summary, then localStorage summary
+                            const existingSummary = cloudBoard.summary ||
+                                localStateBoard?.summary ||
+                                localStorageBoard?.summary;
+
+                            return {
+                                ...cloudBoard,
+                                summary: existingSummary
+                            };
                         });
                         return merged;
                     });
