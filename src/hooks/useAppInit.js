@@ -339,9 +339,21 @@ export function useAppInit() {
                     }
                 });
             } else {
-                // User logged out - clear user-specific state to prevent data leakage
-                debugLog.auth('User logged out, clearing user-specific state...');
-                setBoardsList([]);
+                // User logged out or not logged in
+                // CRITICAL FIX: Don't clear sample boards for guest users
+                // Only clear when user actively logs out (had a previous user state)
+                debugLog.auth('User not logged in, checking if sample boards should be preserved...');
+                setBoardsList(prev => {
+                    // If we have sample boards, keep them for guest users
+                    const hasSampleBoards = prev.some(b => b.isSample === true);
+                    if (hasSampleBoards) {
+                        debugLog.auth('Preserving sample boards for guest user');
+                        return prev;
+                    }
+                    // Otherwise clear (this handles actual logout case where user had real boards)
+                    debugLog.auth('No sample boards, clearing state (user logout)');
+                    return [];
+                });
             }
         });
 
