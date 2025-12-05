@@ -1,5 +1,6 @@
 import { ModelFactory } from './llm/factory';
 import { DEFAULT_ROLES } from './llm/registry';
+import { userStatsService } from './stats/userStatsService';
 
 
 export { DEFAULT_ROLES };
@@ -13,6 +14,7 @@ export async function chatCompletion(messages, config, model = null, options = {
         throw new Error("ChatCompletion: Config must be provided");
     }
     const provider = ModelFactory.getProvider(config);
+    if (model) userStatsService.incrementModelUsage(model);
     return provider.chat(messages, model, options);
 }
 
@@ -36,6 +38,7 @@ export async function streamChatCompletion(messages, config, onToken, model = nu
     // However, to keep it simple for now, we'll rely on the passed model.
 
     const provider = ModelFactory.getProvider(config);
+    if (model) userStatsService.incrementModelUsage(model);
     return provider.stream(messages, onToken, model, options);
 }
 
@@ -50,6 +53,8 @@ export async function imageGeneration(prompt, config, model = null, options = {}
     }
 
     const provider = ModelFactory.getProvider(config);
+    // Track image generation as "dall-e-3" (or general image model) usage
+    userStatsService.incrementModelUsage('dall-e-3');
     return provider.generateImage(prompt, model, options);
 }
 
