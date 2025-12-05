@@ -274,7 +274,27 @@ function AppContent() {
 
         // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
         const freshBoards = getBoardsList();
-        setBoardsList(freshBoards);
+
+        setBoardsList(prev => {
+            // CRITICAL FIX: Preserve sample boards (memory-only) when refreshing from storage
+            // Storage only contains user-created boards, not sample boards
+            const sampleBoards = prev.filter(b => b.isSample);
+
+            // If fresh boards from storage already contain these IDs (unlikely for samples), dedupe
+            const freshIds = new Set(freshBoards.map(b => b.id));
+            const uniqueSamples = sampleBoards.filter(b => !freshIds.has(b.id));
+
+            // Combine: stored boards + sample boards
+            // Sort by createdAt desc to keep consistent (or keep samples at end? usually samples are old)
+            // Actually samples structure has recent dates, let's just append or prepend
+            // Based on loadBoardsMetadata, it sorts by createdAt. Let's let the list be, just merge.
+            // If validBoardsList in App sorts them, we are good. 
+            // Actually App doesn't sort, loadBoardsMetadata does.
+            // Let's just return combined list, UI sorts usually?
+            // GalleryPage sorts: recentBoards sorts by lastAccessedAt.
+
+            return [...freshBoards, ...uniqueSamples];
+        });
 
         navigate('/gallery');
         setCards([]);
