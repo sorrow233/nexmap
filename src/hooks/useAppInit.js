@@ -156,6 +156,14 @@ export function useAppInit() {
                     const localStorageBoards = getRawBoardsList(); // Also check localStorage directly
 
                     setBoardsList(prev => {
+                        // CRITICAL FIX: If cloud returns empty but we have sample boards, keep them
+                        // This prevents sample boards from being cleared during initial cloud sync for new users
+                        const hasSampleBoards = prev.some(b => b.isSample === true);
+                        if (cloudBoards.length === 0 && hasSampleBoards) {
+                            debugLog.sync('Cloud is empty but sample boards exist, preserving sample boards');
+                            return prev;
+                        }
+
                         const merged = cloudBoards.map(cloudBoard => {
                             // Check React state first
                             const localStateBoard = prev.find(b => b.id === cloudBoard.id);
