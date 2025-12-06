@@ -149,178 +149,151 @@ export default function StatisticsView({ boardsList, user }) {
                 </div>
             </div>
 
-            {/* Main Grid Layout */}
+            {/* Main Grid Layout - Zen Style */}
             <div className="space-y-6">
 
-                {/* 1. Top Row: Mixed Grid */}
+                {/* 1. Top Row: Hero & Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
-                    {/* Hero Card: Creative Power (Total Tokens/Chars) - Spans 2 cols on md, full on mobile if needed */}
-                    <div className="md:col-span-2 p-6 bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 dark:from-indigo-600 dark:via-purple-700 dark:to-indigo-900 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10 flex flex-col justify-between min-h-[160px]">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/2 transition-all duration-700 group-hover:scale-110 pointer-events-none"></div>
-                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-fuchsia-500/20 blur-[50px] rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
+                    {/* Hero Card: Creative Power (Total Tokens/Chars) - Minimalist Typographic */}
+                    <div className="md:col-span-2 p-8 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)] relative overflow-hidden group flex flex-col justify-between min-h-[180px]">
+                        {/* Subtle background decoration - Zen Circle/Enso hint */}
+                        <div className="absolute -right-10 -top-10 w-64 h-64 bg-slate-50 dark:bg-white/5 rounded-full blur-3xl pointer-events-none transition-transform duration-700 group-hover:scale-110"></div>
 
-                        <div className="relative z-10 flex justify-between items-start">
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                                        <Zap size={16} fill="currentColor" className="text-yellow-300" />
-                                    </div>
-                                    <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest text-shadow-sm">
-                                        {t.stats?.creativePower || "Creative Power"}
-                                    </p>
-                                </div>
-                                <h3 className="text-5xl sm:text-6xl font-black text-white tracking-tighter drop-shadow-md">
+                        <div className="relative z-10 flex flex-col h-full justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-800 dark:bg-slate-200"></span>
+                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                    {t.stats?.creativePower || "Creative Power"}
+                                </p>
+                            </div>
+
+                            <div className="mt-2">
+                                <h3 className="text-6xl sm:text-7xl font-light text-slate-800 dark:text-slate-100 tracking-tighter tabular-nums text-shadow-none">
                                     {fmt(stats.tokenStats.totalChars)}
                                 </h3>
                             </div>
-                        </div>
 
-                        <div className="relative z-10 mt-4 flex items-center gap-2 text-indigo-100/80 text-xs font-medium">
-                            <span className="bg-white/10 px-2 py-0.5 rounded text-white border border-white/10">
-                                {t.stats?.globalChars || "Characters Generated"}
-                            </span>
-                            <span>across all projects</span>
+                            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs mt-1">
+                                <Layers size={12} strokeWidth={2} />
+                                <span>{t.stats?.totalElements || "Total Cards"} generated across all projects</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Right Side Grid of 4 small cards (2x2) occupying the other 2 cols? No, let's do 2 big cards or 1 big + 2 small. */}
-                    {/* Let's try: Hero (2 cols) + Stroke/AI Quota (2 cols vertical or horizontal?) */}
-                    {/* Actually, let's keep the row height consistent. */}
-
-                    {/* Column 3: Stats Group 1 (Boards & Cards) - Stacked vertically or just one card? */}
-                    {/* Let's put Streak and AI Quota here as significant metrics */}
-
-                    {/* Streak Card */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-orange-500/30 transition-all duration-300 relative overflow-hidden">
-                        <div className="relative z-10 flex justify-between items-start">
+                    {/* Streak Card - Zen */}
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover:text-orange-500 transition-colors">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-orange-900/60 dark:group-hover:text-orange-400 transition-colors">
                                     {t.stats?.currentStreak || "Active Streak"}
                                 </p>
-                                <h3 className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-                                    {stats.tokenStats.streakDays}
-                                    <span className="text-sm ml-1 text-slate-400 font-medium tracking-normal opacity-60"> {t.stats?.days || "days"}</span>
-                                </h3>
+                                <div className="flex items-baseline gap-1">
+                                    <h3 className="text-4xl font-light text-slate-800 dark:text-slate-100 tracking-tight">
+                                        {stats.tokenStats.streakDays}
+                                    </h3>
+                                    <span className="text-sm text-slate-400 font-medium">{t.stats?.days || "days"}</span>
+                                </div>
                             </div>
-                            <div className="w-10 h-10 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/20 rounded-xl group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
-                                <Activity size={20} strokeWidth={2.5} />
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-orange-50 text-orange-400 dark:bg-orange-500/10 dark:text-orange-400 group-hover:bg-orange-100 transition-colors">
+                                <Activity size={16} strokeWidth={2} />
                             </div>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-400">
-                            <span>Best: 12 days</span>
-                            <span className="text-orange-500 font-bold">Keep it up!</span>
+                        <div className="w-full bg-slate-50 dark:bg-white/5 h-1 mt-4 rounded-full overflow-hidden">
+                            <div className="h-full bg-orange-400/80 rounded-full w-1/3"></div> {/* Placeholder progress */}
                         </div>
                     </div>
 
-                    {/* AI Quota Card */}
-                    <div className="p-6 bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-900 dark:to-teal-950 rounded-3xl text-white shadow-lg shadow-emerald-500/10 relative overflow-hidden group border border-white/10 flex flex-col justify-between">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[30px] rounded-full translate-x-1/2 -translate-y-1/3 transition-colors duration-700 pointer-events-none"></div>
-
-                        <div className="relative z-10 flex justify-between items-start">
+                    {/* AI Quota Card - Zen */}
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-900/60 dark:group-hover:text-emerald-400 transition-colors">
                                     {t.stats?.aiQuota || "AI Quota"}
                                 </p>
-                                <h3 className="text-3xl font-black text-white tracking-tight">
+                                <h3 className="text-4xl font-light text-slate-800 dark:text-slate-100 tracking-tight">
                                     {stats.credits?.credits?.toLocaleString() || 200}
                                 </h3>
                             </div>
-                            <div className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-xl backdrop-blur-md">
-                                <Database size={18} className="text-white" />
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400 group-hover:bg-emerald-100 transition-colors">
+                                <Zap size={16} fill="currentColor" className="opacity-80" />
                             </div>
                         </div>
 
-                        <div className="relative z-10 mt-4">
-                            <div className="flex justify-between text-[10px] font-bold text-emerald-100 mb-1">
-                                <span>Used</span>
-                                <span>{Math.min(100, Math.round(((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100))}%</span>
-                            </div>
-                            <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                        <div className="mt-4 flex items-center gap-2">
+                            <div className="flex-1 h-1 bg-slate-50 dark:bg-white/5 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-white/90 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                                    className="h-full bg-slate-800 dark:bg-slate-200 rounded-full"
                                     style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
                                 />
                             </div>
+                            <span className="text-[10px] font-bold text-slate-300">{Math.min(100, Math.round(((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100))}%</span>
                         </div>
                     </div>
-
-                    {/* Row 2: Secondary Stats (Boards & Cards) - Now integrated or a thin row? */}
-                    {/* Let's just add them as 2 more cards in this grid, making it a 2-row grid for the 'Top Section'? */}
-                    {/* Actually, user said 'Generated Token' is THE stimulus. So it should be HUGE. */}
-                    {/* Let's make the 'Creative Power' card HUGE and maybe push others to a smaller row below. */}
                 </div>
 
-                {/* Secondary Metrics Row (Boards, Cards) */}
+                {/* Secondary Metrics Row (Boards, Cards) - Tiny Zen Cards */}
                 <div className="grid grid-cols-2 gap-6">
                     {/* Boards KPI */}
-                    <div className="p-5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200/60 dark:border-white/5 flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
+                    <div className="px-6 py-4 bg-white dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-slate-200 transition-all duration-300">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 dark:bg-white/5 dark:text-slate-500 rounded-2xl group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors duration-300">
-                                <Layers size={22} strokeWidth={2} />
+                            <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-lg text-slate-400">
+                                <Database size={18} strokeWidth={1.5} />
                             </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats.totalBoards}</h3>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.totalBoards || "Files"}</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">{stats.totalBoards}</h3>
+                                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t.stats?.totalBoards || "Zenvases"}</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Cards KPI */}
-                    <div className="p-5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200/60 dark:border-white/5 flex items-center justify-between group hover:border-fuchsia-500/30 transition-all duration-300">
+                    <div className="px-6 py-4 bg-white dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-slate-200 transition-all duration-300">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 dark:bg-white/5 dark:text-slate-500 rounded-2xl group-hover:bg-fuchsia-50 group-hover:text-fuchsia-500 transition-colors duration-300">
-                                <Database size={22} strokeWidth={2} />
+                            <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-lg text-slate-400">
+                                <Layers size={18} strokeWidth={1.5} />
                             </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats.totalCards}</h3>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.totalElements || "Nodes"}</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">{stats.totalCards}</h3>
+                                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t.stats?.totalElements || "Nodes"}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. Middle Row: Activity Chart (Full Width) */}
-                <div className="min-h-[320px] bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 relative overflow-hidden flex flex-col shadow-sm group">
-                    {/* Header & Controls */}
-                    <div className="p-6 pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between relative z-10 gap-4">
+                {/* 2. Middle Row: Activity Chart - Zen Clean */}
+                <div className="min-h-[320px] bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 relative overflow-hidden flex flex-col shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)]">
+                    <div className="p-8 pb-0 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/20 rounded-xl">
-                                <BarChart3 size={18} strokeWidth={2.5} />
+                            {/* Minimal Icon */}
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 dark:bg-white/5">
+                                <BarChart3 size={16} strokeWidth={2} />
                             </div>
-                            <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">
-                                    {t.stats?.dailyActivity || "Activity Volume"}
-                                </h3>
-                                {/* Total Count is now in the tooltip area */}
-                            </div>
+                            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-wide uppercase">
+                                {t.stats?.dailyActivity || "Activity Flow"}
+                            </h3>
                         </div>
 
-                        {/* Legend / Helper Text */}
-                        <div className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
-                            {t.stats?.hoverForDetails || "Hover for details"}
-                        </div>
-
-                        {/* View Mode Switcher */}
-                        <div className="flex bg-slate-100 dark:bg-white/5 rounded-lg p-1">
+                        {/* Minimal Toggle */}
+                        <div className="flex bg-slate-50 dark:bg-white/5 rounded-full p-1">
                             {['week', 'month', 'year'].map(mode => (
                                 <button
                                     key={mode}
                                     onClick={() => setChartViewMode(mode)}
                                     className={`
-                                        px-3 py-1.5 text-xs font-bold rounded-md transition-all
+                                        px-4 py-1.5 text-[10px] font-bold rounded-full transition-all
                                         ${chartViewMode === mode
-                                            ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
+                                            ? 'bg-white dark:bg-white/10 text-slate-800 dark:text-white shadow-sm'
                                             : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
                                     `}
                                 >
-                                    {mode === 'week' ? '本周' : mode === 'month' ? '本月' : '本年'}
+                                    {mode === 'week' ? (t.stats?.weeklyTrend || '本周') : mode === 'month' ? '本月' : '本年'}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="relative z-10 flex-1 min-h-[240px] px-6 pb-6">
+                    <div className="relative z-10 flex-1 min-h-[240px] px-6 pb-6 mt-4">
                         <ActivityChart
                             data={getChartData()}
                             viewMode={chartViewMode}
@@ -329,72 +302,61 @@ export default function StatisticsView({ boardsList, user }) {
                             language={useLanguage().language}
                         />
                     </div>
-                    {/* Decor */}
-                    <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl pointer-events-none"></div>
                 </div>
 
-                {/* 3. Bottom Row: Detailed Insights (3 Cols) */}
+                {/* 3. Bottom Row: Detailed Insights - Zen Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Sessions Card */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-blue-500/30 transition-all duration-300 relative overflow-hidden">
-                        <div className="flex items-center gap-3 mb-4 relative z-10">
-                            <div className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-500 dark:bg-blue-500/20 rounded-xl">
-                                <Zap size={18} strokeWidth={2.5} />
-                            </div>
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t.stats?.sessions || '会话'}</span>
+                    <div className="p-8 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col justify-center items-center gap-2 group hover:shadow-lg transition-all duration-300">
+                        <div className="w-10 h-10 flex items-center justify-center bg-blue-50/50 text-blue-400 dark:bg-blue-500/10 rounded-full mb-1">
+                            <Zap size={18} strokeWidth={2} />
                         </div>
-                        <div className="relative z-10">
-                            <h3 className="text-4xl font-black text-slate-900 dark:text-white mb-1">
-                                {stats.tokenStats.todaySessions || 0}
-                            </h3>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.today || "今日"}</span>
-                        </div>
-                        <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <h3 className="text-4xl font-light text-slate-800 dark:text-slate-100">
+                            {stats.tokenStats.todaySessions || 0}
+                        </h3>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.stats?.sessions || "Sessions"}</span>
                     </div>
 
                     {/* Active Time Card */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-amber-500/30 transition-all duration-300 relative overflow-hidden">
-                        <div className="flex items-center gap-3 mb-4 relative z-10">
-                            <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors duration-300 ${mostActive ? mostActive.bg.replace('border-', '') : 'bg-amber-50 text-amber-500 dark:bg-amber-500/20'}`}>
-                                {mostActive ? (
-                                    <mostActive.icon size={18} strokeWidth={2.5} className={mostActive.color} />
-                                ) : (
-                                    <Clock size={18} strokeWidth={2.5} />
-                                )}
-                            </div>
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t.stats?.activeTime || '活跃时段'}</span>
+                    <div className="p-8 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col justify-center items-center gap-2 group hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-700 ${mostActive?.bg || 'bg-slate-50'}`}></div>
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full mb-1 transition-colors duration-300 ${mostActive ? mostActive.bg.replace('border-', '').replace('/10', '/30') : 'bg-slate-50 text-slate-400'}`}>
+                            {mostActive ? (
+                                <mostActive.icon size={18} strokeWidth={2} className={mostActive.color} />
+                            ) : (
+                                <Clock size={18} strokeWidth={2} />
+                            )}
                         </div>
-                        <div className="relative z-10">
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1 truncate">
-                                {mostActive ? mostActive.label : (
-                                    <span className="text-slate-300 dark:text-slate-700 text-2xl">--</span>
-                                )}
-                            </h3>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.timeDistribution || "分布"}</span>
-                        </div>
-                        <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-2xl pointer-events-none transition-colors duration-500 ${mostActive ? mostActive.bg.split(' ')[0].replace('/10', '/20') : 'bg-amber-500/10'}`}></div>
+
+                        <h3 className="text-2xl font-medium text-slate-800 dark:text-slate-100">
+                            {mostActive ? mostActive.label : (
+                                <span className="text-slate-300">--</span>
+                            )}
+                        </h3>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.stats?.activeTime || "Peak Time"}</span>
                     </div>
 
                     {/* Model Usage Card */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 relative overflow-hidden flex flex-col shadow-sm group hover:border-emerald-500/30 transition-all duration-300">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-500 dark:bg-emerald-500/20 rounded-xl">
-                                <Cpu size={18} strokeWidth={2.5} />
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col group hover:shadow-lg transition-all duration-300">
+                        <div className="flex items-center gap-2 mb-6">
+                            <div className="w-6 h-6 flex items-center justify-center bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10 rounded-full">
+                                <Cpu size={12} strokeWidth={2} />
                             </div>
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">模型偏好</span>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Models</span>
                         </div>
-                        <div className="flex-1 space-y-2 overflow-y-auto max-h-[120px] custom-scrollbar">
+
+                        <div className="flex-1 space-y-3">
                             {Object.entries(stats.tokenStats.modelUsage || {}).length === 0 ? (
-                                <div className="text-xs text-slate-400 opacity-60">暂无数据</div>
+                                <div className="text-xs text-slate-300 text-center py-4 italic">No data yet</div>
                             ) : (
                                 Object.entries(stats.tokenStats.modelUsage).sort(([, a], [, b]) => b - a).slice(0, 3).map(([model, count]) => (
                                     <div key={model} className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-600 dark:text-slate-400 truncate max-w-[120px]" title={model}>{model}</span>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(count / Math.max(...Object.values(stats.tokenStats.modelUsage))) * 100}%` }}></div>
+                                        <span className="text-slate-600 dark:text-slate-400 truncate max-w-[100px] font-medium" title={model}>{model}</span>
+                                        <div className="flex items-center gap-3 flex-1 ml-4 justify-end">
+                                            <div className="w-16 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-slate-800 dark:bg-slate-400 rounded-full opacity-60" style={{ width: `${(count / Math.max(...Object.values(stats.tokenStats.modelUsage))) * 100}%` }}></div>
                                             </div>
-                                            <span className="font-mono text-slate-500">{count}</span>
+                                            <span className="font-mono text-slate-400 w-8 text-right">{count}</span>
                                         </div>
                                     </div>
                                 ))
@@ -402,7 +364,6 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
                     </div>
                 </div>
-
             </div>
 
             {/* Last Active Footer */}
