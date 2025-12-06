@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Sun, Sunset, Moon, CloudMoon } from 'lucide-react';
+import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -127,173 +127,183 @@ export default function StatisticsView({ boardsList, user }) {
             { key: 'evening', value: evening, label: t?.stats?.evening || '晚上', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-500/10 border-indigo-500/20' },
             { key: 'night', value: night, label: t?.stats?.night || '深夜', icon: CloudMoon, color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/20' }
         ];
-        // Note: Dynamic imports for icons inside useMemo might be tricky if we want synchronous render.
-        // Simplified approach below reusing imported icons since we imported them at top level but let's check imports.
-        // We have Sun, Sunset, Moon, CloudMoon available from 'lucide-react'? 
-        // No, current imports are: BarChart3, Database, Layers, Zap, Activity, Clock, Cpu. 
-        // Need to add imports for Sun, Sunset, Moon, CloudMoon.
+
+        const maxPeriod = periods.reduce((prev, current) => (prev.value > current.value ? prev : current));
+        return maxPeriod;
     }, [timeDistribution, t]);
 
     return (
-        <div className="w-full animate-fade-in-up">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t.stats?.dataInsights || "Data & Insights"}</h2>
-                        <span className="mb-2 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wider dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-500/20">Local First</span>
+        <div className="w-full relative min-h-screen text-slate-600 overflow-hidden font-sans">
+            {/* Soft Pastel Background */}
+            <div className="absolute inset-0 bg-[#f8fafc] -z-20"></div>
+            <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-indigo-100/40 blur-[120px] pointer-events-none mix-blend-multiply"></div>
+            <div className="absolute bottom-[-20%] left-[-10%] w-[800px] h-[800px] rounded-full bg-blue-100/40 blur-[120px] pointer-events-none mix-blend-multiply"></div>
+            <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] rounded-full bg-pink-100/40 blur-[100px] pointer-events-none mix-blend-multiply"></div>
+
+            {/* Content Container */}
+            <div className="relative z-10 p-6 sm:p-10 max-w-7xl mx-auto flex flex-col gap-12">
+
+                {/* Header - Clean & Minimal */}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">
+                            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {user?.displayName || 'Creator'}
+                        </h2>
+                        <p className="text-slate-500 font-medium mt-1">
+                            Here's your creative brain activity today.
+                        </p>
                     </div>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-2xl">
-                        {t.stats?.description || "Analyze your creative habits and resource usage."}
-                    </p>
+                    <div className="flex gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
+                            <Database size={20} className="group-hover:scale-110 transition-transform" />
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-white shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
+                            <Layers size={20} className="group-hover:scale-110 transition-transform" />
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            {/* Main Grid Layout - Zen Style */}
-            <div className="space-y-6">
+                {/* Main "Neural Core" Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
-                {/* 1. Top Row: Hero & Key Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-                    {/* Hero Card: Creative Power (Total Tokens/Chars) - Minimalist Typographic */}
-                    <div className="md:col-span-2 p-8 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)] relative overflow-hidden group flex flex-col justify-between min-h-[180px]">
-                        {/* Subtle background decoration - Zen Circle/Enso hint */}
-                        <div className="absolute -right-10 -top-10 w-64 h-64 bg-slate-50 dark:bg-white/5 rounded-full blur-3xl pointer-events-none transition-transform duration-700 group-hover:scale-110"></div>
-
-                        <div className="relative z-10 flex flex-col h-full justify-between">
-                            <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-800 dark:bg-slate-200"></span>
-                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                                    {t.stats?.creativePower || "Creative Power"}
-                                </p>
+                    {/* Left Column: Quick Stats */}
+                    <div className="lg:col-span-3 space-y-6">
+                        {/* Streak Card */}
+                        <div className="p-6 rounded-[2.5rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Flame size={64} className="text-orange-400" />
                             </div>
-
-                            <div className="mt-2">
-                                <h3 className="text-6xl sm:text-7xl font-light text-slate-800 dark:text-slate-100 tracking-tighter tabular-nums text-shadow-none">
-                                    {fmt(stats.tokenStats.totalChars)}
-                                </h3>
+                            <span className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">{t.stats?.currentStreak || "STREAK"}</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-5xl font-black text-slate-800">{stats.tokenStats.streakDays}</span>
+                                <span className="text-sm font-bold text-slate-400">Days</span>
                             </div>
+                            {/* Mini Sparkline */}
+                            <div className="h-12 mt-4 flex items-end gap-1 opacity-50">
+                                {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
+                                    <div key={i} className="flex-1 bg-orange-300 rounded-t-sm" style={{ height: `${h}%` }}></div>
+                                ))}
+                            </div>
+                        </div>
 
-                            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs mt-1">
-                                <Layers size={12} strokeWidth={2} />
-                                <span>{t.stats?.totalElements || "Total Cards"} generated across all projects</span>
+                        {/* Efficiency/Pulse Card */}
+                        <div className="p-6 rounded-[2.5rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] flex items-center gap-4 group hover:scale-[1.02] transition-transform duration-300">
+                            <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center shadow-inner">
+                                <Activity size={24} />
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">{t.stats?.sessions || "SESSIONS"}</span>
+                                <span className="text-2xl font-black text-slate-800">{stats.tokenStats.todaySessions}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Streak Card - Zen */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-orange-900/60 dark:group-hover:text-orange-400 transition-colors">
-                                    {t.stats?.currentStreak || "Active Streak"}
-                                </p>
-                                <div className="flex items-baseline gap-1">
-                                    <h3 className="text-4xl font-light text-slate-800 dark:text-slate-100 tracking-tight">
-                                        {stats.tokenStats.streakDays}
-                                    </h3>
-                                    <span className="text-sm text-slate-400 font-medium">{t.stats?.days || "days"}</span>
+                    {/* Center: The Neural Core (3D Brain Representation) */}
+                    <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[400px]">
+                        {/* Orbital Rings */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute rotate-[15deg] opacity-60"></div>
+                            <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute -rotate-[15deg] opacity-60"></div>
+                        </div>
+
+                        {/* 3D Sphere (CSS only) */}
+                        <div className="relative w-64 h-64 group cursor-pointer perspective-1000">
+                            {/* Glow behind */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-300 to-purple-300 blur-3xl opacity-40 animate-pulse-slow"></div>
+
+                            {/* The Sphere */}
+                            <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-100 via-white to-purple-100 shadow-[inset_-20px_-20px_60px_rgba(0,0,0,0.1),_inset_20px_20px_60px_rgba(255,255,255,1),_20px_20px_60px_rgba(0,0,0,0.1)] flex items-center justify-center relative z-10 transition-transform duration-700 hover:scale-105">
+                                {/* Surface Texture details */}
+                                <div className="absolute inset-0 rounded-full opacity-30 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48cmVjdCB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjY2NjIi8+PC9zdmc+')] mix-blend-overlay"></div>
+
+                                <div className="text-center transform translate-z-10">
+                                    <span className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">{t.stats?.creativePower || "TOTAL TOKENS"}</span>
+                                    <span className="block text-5xl sm:text-6xl font-black text-slate-800 tracking-tighter">
+                                        {fmt(stats.tokenStats.totalChars)}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-orange-50 text-orange-400 dark:bg-orange-500/10 dark:text-orange-400 group-hover:bg-orange-100 transition-colors">
-                                <Activity size={16} strokeWidth={2} />
-                            </div>
+
+                            {/* Floating Particles */}
+                            <div className="absolute top-0 right-10 w-8 h-8 rounded-full bg-blue-200 shadow-lg animate-float-slow"></div>
+                            <div className="absolute bottom-10 left-0 w-6 h-6 rounded-full bg-pink-200 shadow-lg animate-float-slow delay-700"></div>
+                            <div className="absolute top-1/2 -right-10 w-4 h-4 rounded-full bg-indigo-300 shadow-md animate-float-slow delay-300"></div>
                         </div>
-                        <div className="w-full bg-slate-50 dark:bg-white/5 h-1 mt-4 rounded-full overflow-hidden">
-                            <div className="h-full bg-orange-400/80 rounded-full w-1/3"></div> {/* Placeholder progress */}
-                        </div>
+
+                        {/* Base Pedestal */}
+                        <div className="w-48 h-12 bg-gradient-to-b from-slate-100 to-transparent rounded-[100%] blur-md mt-[-20px] opacity-50"></div>
                     </div>
 
-                    {/* AI Quota Card - Zen */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-900/60 dark:group-hover:text-emerald-400 transition-colors">
-                                    {t.stats?.aiQuota || "AI Quota"}
-                                </p>
-                                <h3 className="text-4xl font-light text-slate-800 dark:text-slate-100 tracking-tight">
-                                    {stats.credits?.credits?.toLocaleString() || 200}
-                                </h3>
+                    {/* Right Column: Quota & Peak */}
+                    <div className="lg:col-span-3 space-y-6">
+                        {/* Token/Quota Card */}
+                        <div className="p-6 rounded-[2.5rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] hover:scale-[1.02] transition-transform duration-300">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t.stats?.aiQuota || "AI QUOTA"}</span>
+                                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-500">
+                                    <Zap size={18} fill="currentColor" />
+                                </div>
                             </div>
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400 group-hover:bg-emerald-100 transition-colors">
-                                <Zap size={16} fill="currentColor" className="opacity-80" />
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center gap-2">
-                            <div className="flex-1 h-1 bg-slate-50 dark:bg-white/5 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-slate-800 dark:bg-slate-200 rounded-full"
-                                    style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
-                                />
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-300">{Math.min(100, Math.round(((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100))}%</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Secondary Metrics Row (Boards, Cards) - Tiny Zen Cards */}
-                <div className="grid grid-cols-2 gap-6">
-                    {/* Boards KPI */}
-                    <div className="px-6 py-4 bg-white dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-slate-200 transition-all duration-300">
-                        <div className="flex items-center gap-4">
-                            <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-lg text-slate-400">
-                                <Database size={18} strokeWidth={1.5} />
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">{stats.totalBoards}</h3>
-                                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t.stats?.totalBoards || "Zenvases"}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Cards KPI */}
-                    <div className="px-6 py-4 bg-white dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-slate-200 transition-all duration-300">
-                        <div className="flex items-center gap-4">
-                            <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-lg text-slate-400">
-                                <Layers size={18} strokeWidth={1.5} />
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">{stats.totalCards}</h3>
-                                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t.stats?.totalElements || "Nodes"}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. Middle Row: Activity Chart - Zen Clean */}
-                <div className="min-h-[320px] bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 relative overflow-hidden flex flex-col shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)]">
-                    <div className="p-8 pb-0 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            {/* Minimal Icon */}
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 dark:bg-white/5">
-                                <BarChart3 size={16} strokeWidth={2} />
-                            </div>
-                            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-wide uppercase">
-                                {t.stats?.dailyActivity || "Activity Flow"}
+                            <h3 className="text-4xl font-black text-slate-800 mb-2">
+                                {Math.min(100, Math.round(((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100))}%
                             </h3>
+                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-300 to-emerald-400 rounded-full"
+                                    style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
+                                ></div>
+                            </div>
                         </div>
 
-                        {/* Minimal Toggle */}
-                        <div className="flex bg-slate-50 dark:bg-white/5 rounded-full p-1">
+                        {/* Peak Time - Circular Dial */}
+                        <div className="p-6 rounded-[2.5rem] bg-indigo-500 text-white shadow-[20px_20px_60px_#cbd5e1,-20px_-20px_60px_#ffffff] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                            <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
+
+                            <span className="text-xs font-bold text-indigo-200 uppercase tracking-widest block mb-4">{t.stats?.activeTime || "PEAK PERFORMANCE"}</span>
+
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full border-2 border-indigo-300 flex items-center justify-center">
+                                    {mostActive ? <mostActive.icon size={20} /> : <Clock size={20} />}
+                                </div>
+                                <div>
+                                    <span className="text-2xl font-black block leading-none">
+                                        {mostActive ? mostActive.label : "--"}
+                                    </span>
+                                    <span className="text-xs text-indigo-200">Most active time</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Section: Activity Chart (Soft dashboard) */}
+                <div className="w-full p-8 rounded-[3rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff]">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800">Activity Flow</h3>
+                            <p className="text-sm text-slate-400">Your creative output over time</p>
+                        </div>
+
+                        {/* Soft Switch */}
+                        <div className="flex p-1.5 bg-slate-100 rounded-2xl shadow-inner">
                             {['week', 'month', 'year'].map(mode => (
                                 <button
                                     key={mode}
                                     onClick={() => setChartViewMode(mode)}
                                     className={`
-                                        px-4 py-1.5 text-[10px] font-bold rounded-full transition-all
+                                        px-6 py-2 text-xs font-bold rounded-xl transition-all duration-300 uppercase tracking-wider
                                         ${chartViewMode === mode
-                                            ? 'bg-white dark:bg-white/10 text-slate-800 dark:text-white shadow-sm'
-                                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
+                                            ? 'bg-white text-slate-800 shadow-md'
+                                            : 'text-slate-400 hover:text-slate-600'}
                                     `}
                                 >
-                                    {mode === 'week' ? (t.stats?.weeklyTrend || '本周') : mode === 'month' ? '本月' : '本年'}
+                                    {mode === 'week' ? t.stats?.weeklyTrend || 'WEEK' : mode === 'month' ? 'MONTH' : 'YEAR'}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="relative z-10 flex-1 min-h-[240px] px-6 pb-6 mt-4">
+                    <div className="h-[280px]">
                         <ActivityChart
                             data={getChartData()}
                             viewMode={chartViewMode}
@@ -302,75 +312,6 @@ export default function StatisticsView({ boardsList, user }) {
                             language={useLanguage().language}
                         />
                     </div>
-                </div>
-
-                {/* 3. Bottom Row: Detailed Insights - Zen Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Sessions Card */}
-                    <div className="p-8 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col justify-center items-center gap-2 group hover:shadow-lg transition-all duration-300">
-                        <div className="w-10 h-10 flex items-center justify-center bg-blue-50/50 text-blue-400 dark:bg-blue-500/10 rounded-full mb-1">
-                            <Zap size={18} strokeWidth={2} />
-                        </div>
-                        <h3 className="text-4xl font-light text-slate-800 dark:text-slate-100">
-                            {stats.tokenStats.todaySessions || 0}
-                        </h3>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.stats?.sessions || "Sessions"}</span>
-                    </div>
-
-                    {/* Active Time Card */}
-                    <div className="p-8 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col justify-center items-center gap-2 group hover:shadow-lg transition-all duration-300 relative overflow-hidden">
-                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-700 ${mostActive?.bg || 'bg-slate-50'}`}></div>
-                        <div className={`w-10 h-10 flex items-center justify-center rounded-full mb-1 transition-colors duration-300 ${mostActive ? mostActive.bg.replace('border-', '').replace('/10', '/30') : 'bg-slate-50 text-slate-400'}`}>
-                            {mostActive ? (
-                                <mostActive.icon size={18} strokeWidth={2} className={mostActive.color} />
-                            ) : (
-                                <Clock size={18} strokeWidth={2} />
-                            )}
-                        </div>
-
-                        <h3 className="text-2xl font-medium text-slate-800 dark:text-slate-100">
-                            {mostActive ? mostActive.label : (
-                                <span className="text-slate-300">--</span>
-                            )}
-                        </h3>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.stats?.activeTime || "Peak Time"}</span>
-                    </div>
-
-                    {/* Model Usage Card */}
-                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col group hover:shadow-lg transition-all duration-300">
-                        <div className="flex items-center gap-2 mb-6">
-                            <div className="w-6 h-6 flex items-center justify-center bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10 rounded-full">
-                                <Cpu size={12} strokeWidth={2} />
-                            </div>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Models</span>
-                        </div>
-
-                        <div className="flex-1 space-y-3">
-                            {Object.entries(stats.tokenStats.modelUsage || {}).length === 0 ? (
-                                <div className="text-xs text-slate-300 text-center py-4 italic">No data yet</div>
-                            ) : (
-                                Object.entries(stats.tokenStats.modelUsage).sort(([, a], [, b]) => b - a).slice(0, 3).map(([model, count]) => (
-                                    <div key={model} className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-600 dark:text-slate-400 truncate max-w-[100px] font-medium" title={model}>{model}</span>
-                                        <div className="flex items-center gap-3 flex-1 ml-4 justify-end">
-                                            <div className="w-16 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                                <div className="h-full bg-slate-800 dark:bg-slate-400 rounded-full opacity-60" style={{ width: `${(count / Math.max(...Object.values(stats.tokenStats.modelUsage))) * 100}%` }}></div>
-                                            </div>
-                                            <span className="font-mono text-slate-400 w-8 text-right">{count}</span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Last Active Footer */}
-            <div className="mt-8 flex justify-center opacity-40 hover:opacity-100 transition-opacity">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    <Clock size={12} />
-                    {t.stats?.lastSnapshot || "最后更新"}: {stats.lastActive || (t.stats?.today || "刚刚")}
                 </div>
             </div>
         </div>

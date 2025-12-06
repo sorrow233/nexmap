@@ -437,7 +437,7 @@ export const ja = {
         syncing: "確認中...",
         refresh: "更新",
         totalElements: "カード総数",
-        creativePower: "創造力",
+        creativePower: "総トークン数",
         neuralCloud: "クラウド同期",
         aiQuota: "AI割り当て",
         syncUnknown: "状態不明",

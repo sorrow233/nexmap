@@ -437,7 +437,7 @@ export const ko = {
         syncing: "확인 중...",
         refresh: "새로고침",
         totalElements: "총 카드",
-        creativePower: "창작력",
+        creativePower: "총 토큰 수",
         neuralCloud: "클라우드 동기화",
         aiQuota: "AI 할당량",
         syncUnknown: "상태 알 수 없음",

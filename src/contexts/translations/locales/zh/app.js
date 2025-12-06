@@ -171,7 +171,7 @@ export const app = {
         syncing: "检查中...",
         refresh: "刷新",
         totalElements: "总卡片",
-        creativePower: "创作力",
+        creativePower: "总 Token 数",
         neuralCloud: "云端同步",
         aiQuota: "AI 配额",
         syncUnknown: "状态未知",
