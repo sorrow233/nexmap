@@ -179,6 +179,7 @@ export const app = {
         guestMode: "访客模式",
         localStorageOnly: "仅本地存储",
         lastSnapshot: "最后更新",
-        currentStreak: "连续活跃"
+        currentStreak: "连续活跃",
+        hoverForDetails: "悬停查看详情"
     }
 };

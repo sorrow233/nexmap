@@ -170,7 +170,7 @@ export const app = {
         refreshCloud: "Check Quota",
         syncing: "Checking...",
         refresh: "Refresh",
-        totalElements: "Total Elements",
+        totalElements: "Total Cards",
         creativePower: "Creative Power",
         neuralCloud: "Cloud Sync",
         aiQuota: "AI Quota",
@@ -179,6 +179,7 @@ export const app = {
         guestMode: "Guest Mode",
         localStorageOnly: "Local Storage Only",
         lastSnapshot: "Last Updated",
-        currentStreak: "Current Streak"
+        currentStreak: "Active Streak",
+        hoverForDetails: "Hover for details"
     },
 };

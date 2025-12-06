@@ -229,8 +229,13 @@ export default function StatisticsView({ boardsList, user }) {
                                 <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">
                                     {t.stats?.dailyActivity || "Activity Volume"}
                                 </h3>
-                                {/* Total Count in Header removed as requested, now in Tooltip */}
+                                {/* Total Count is now in the tooltip area */}
                             </div>
+                        </div>
+
+                        {/* Legend / Helper Text */}
+                        <div className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
+                            {t.stats?.hoverForDetails || "Hover for details"}
                         </div>
 
                         {/* View Mode Switcher */}
@@ -287,19 +292,24 @@ export default function StatisticsView({ boardsList, user }) {
                     {/* Active Time Card */}
                     <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-amber-500/30 transition-all duration-300 relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4 relative z-10">
-                            <div className="w-10 h-10 flex items-center justify-center bg-amber-50 text-amber-500 dark:bg-amber-500/20 rounded-xl">
-                                <Clock size={18} strokeWidth={2.5} />
+                            <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors duration-300 ${mostActive ? mostActive.bg.replace('border-', '') : 'bg-amber-50 text-amber-500 dark:bg-amber-500/20'}`}>
+                                {mostActive ? (
+                                    <mostActive.icon size={18} strokeWidth={2.5} className={mostActive.color} />
+                                ) : (
+                                    <Clock size={18} strokeWidth={2.5} />
+                                )}
                             </div>
                             <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t.stats?.activeTime || '活跃时段'}</span>
                         </div>
                         <div className="relative z-10">
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1 truncate">
-                                {/* Use mostActive logic or placeholders */}
-                                {mostActive?.label || '--'}
+                                {mostActive ? mostActive.label : (
+                                    <span className="text-slate-300 dark:text-slate-700 text-2xl">--</span>
+                                )}
                             </h3>
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.timeDistribution || "分布"}</span>
                         </div>
-                        <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-2xl pointer-events-none transition-colors duration-500 ${mostActive ? mostActive.bg.split(' ')[0].replace('/10', '/20') : 'bg-amber-500/10'}`}></div>
                     </div>
 
                     {/* Model Usage Card */}
