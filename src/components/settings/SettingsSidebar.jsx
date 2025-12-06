@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Globe, Cpu, Database, Info, Layers, User } from 'lucide-react';
+import { Settings, Globe, Cpu, Database, Info, Layers, User, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function SettingsSidebar({ activeSection, onSelectSection }) {
@@ -8,6 +8,7 @@ export default function SettingsSidebar({ activeSection, onSelectSection }) {
     const sections = [
         { id: 'general', label: t.settings.general || 'General', icon: Globe },
         { id: 'ai-models', label: t.settings.provider || 'AI Models', icon: Cpu },
+        { id: 'instructions', label: t.settings.customInstructions || 'Instructions', icon: Sparkles },
         { id: 'storage', label: t.settings.storage || 'Data & Storage', icon: Database },
         { id: 'about', label: t.settings.about || 'About', icon: Info },
     ];

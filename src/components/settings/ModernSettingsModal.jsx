@@ -6,6 +6,7 @@ import GeneralSection from './sections/GeneralSection';
 import AIModelSection from './sections/AIModelSection';
 import StorageSection from './sections/StorageSection';
 import AboutSection from './sections/AboutSection';
+import InstructionsSection from './sections/InstructionsSection';
 import { useStore } from '../../store/useStore';
 import { getS3Config, saveS3Config } from '../../services/s3';
 import { updateUserSettings } from '../../services/syncService';
@@ -135,6 +136,8 @@ export default function ModernSettingsModal({ isOpen, onClose, user }) {
                                     setS3ConfigState={setS3ConfigState}
                                 />
                             )}
+
+                            {activeSection === 'instructions' && <InstructionsSection />}
 
                             {activeSection === 'about' && <AboutSection />}
                         </div>

@@ -104,19 +104,50 @@ export const saveBoard = async (id, data) => {
 
 export const loadBoard = async (id) => {
     debugLog.storage(`Loading board: ${id}`);
+    let stored = null;
 
-    // Handle sample boards - return static sample data
+    // Handle sample boards
     if (id && id.startsWith('sample-')) {
         debugLog.storage(`Loading sample board: ${id}`);
-        const sampleData = getSampleBoardData(id);
-        return { ...sampleData, boardPrompts: [] };
+
+        // 1. Check IDB first to see if user has modified this sample board
+        try {
+            const userModified = await idbGet(BOARD_PREFIX + id);
+            if (userModified) {
+                debugLog.storage(`Found modified sample board in IDB: ${id}`);
+                // Process S3 images if needed (reuse logic below or extract)
+                // For sample boards, we can assume standard processing logic applies
+                // But to avoid code duplication, let's fall through to the main path if found?
+                // The main path expects "stored" variable to be set.
+                // Let's set stored = userModified and continue to main logic!
+
+                // NO, wait. Main logic enters "if (!stored)" blocks.
+                // If we set stored here, we naturally bypass fallbacks.
+                // Efficient reuse of S3 processing logic at the bottom.
+                stored = userModified;
+
+                // Jump out of this block to let execution flow to S3 processing
+            } else {
+                // 2. If no IDB data, return static sample data
+                const sampleData = getSampleBoardData(id);
+                // Return immediately as there are no images to process from IDB
+                return { ...sampleData, boardPrompts: [] };
+            }
+        } catch (e) {
+            debugLog.error(`Error checking IDB for sample board ${id}`, e);
+            // Fallback to static
+            const sampleData = getSampleBoardData(id);
+            return { ...sampleData, boardPrompts: [] };
+        }
     }
 
-    let stored = null;
-    try {
-        stored = await idbGet(BOARD_PREFIX + id);
-    } catch (e) {
-        debugLog.error(`IDB read failed for board ${id}`, e);
+    // Resume standard logic if not returned above...
+    if (!stored) {
+        try {
+            stored = await idbGet(BOARD_PREFIX + id);
+        } catch (e) {
+            debugLog.error(`IDB read failed for board ${id}`, e);
+        }
     }
 
     if (!stored) {
