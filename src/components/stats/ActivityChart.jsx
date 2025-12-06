@@ -169,15 +169,15 @@ export default function ActivityChart({
                                         style={{ transformOrigin: 'bottom' }}
                                     />
 
-                                    {/* Value Label (Visible on hover or if significant) */}
+                                    {/* Value Label (Always Visible) */}
                                     <text
                                         x={x + width / 2}
                                         y={y - 12}
                                         textAnchor="middle"
                                         className={`
-                                            text-[10px] font-bold fill-slate-400 transition-all duration-300
-                                            ${isToday ? 'fill-pink-400' : ''}
-                                            ${isHovered ? 'fill-indigo-500 scale-110' : 'opacity-0'}
+                                            text-[10px] font-bold transition-all duration-300
+                                            ${isToday ? 'fill-pink-500' : 'fill-slate-400'}
+                                            ${isHovered ? 'scale-110 fill-indigo-600' : ''}
                                         `}
                                         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                                     >
