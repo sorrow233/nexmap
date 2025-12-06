@@ -22,7 +22,7 @@ export default function AchievementModal({
     // Determine current user tier index
     // Determine current user tier index
     // const currentUserIndex = tiers.findIndex(t => t.name === currentTierName);
-    const currentUserIndex = tiers.length - 1; // UNLOCK ALL FOR REVIEW
+    const currentUserIndex = tiers.findIndex(t => t.name === currentTierName);
 
     // Initialize active index to current user tier when opening
     useEffect(() => {

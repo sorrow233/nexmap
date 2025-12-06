@@ -41,9 +41,72 @@ export default function BoardCard({
         return gradients[index];
     };
 
-    // Helper for glass tag colors
+    // Helper for Glass Theme Styles (Restored & Modernized)
+    const getThemeStyles = (themeName) => {
+        const theme = themeName || 'slate';
+
+        const styles = {
+            blue: {
+                bg: 'from-blue-50/80 via-white/50 to-indigo-50/80 dark:from-blue-900/30 dark:via-slate-900/20 dark:to-indigo-900/30',
+                border: 'border-blue-200/40 dark:border-blue-700/20',
+                blob1: 'bg-blue-400/20',
+                blob2: 'bg-indigo-400/20',
+                tag: 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-100 border-blue-200/50 dark:border-blue-700/30',
+                text: 'text-blue-900 dark:text-blue-50',
+                underline: 'bg-gradient-to-r from-blue-500 to-indigo-500'
+            },
+            purple: {
+                bg: 'from-violet-50/80 via-white/50 to-fuchsia-50/80 dark:from-violet-900/30 dark:via-slate-900/20 dark:to-fuchsia-900/30',
+                border: 'border-violet-200/40 dark:border-violet-700/20',
+                blob1: 'bg-violet-400/20',
+                blob2: 'bg-fuchsia-400/20',
+                tag: 'bg-violet-100/50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-100 border-violet-200/50 dark:border-violet-700/30',
+                text: 'text-violet-900 dark:text-violet-50',
+                underline: 'bg-gradient-to-r from-violet-500 to-fuchsia-500'
+            },
+            emerald: {
+                bg: 'from-emerald-50/80 via-white/50 to-teal-50/80 dark:from-emerald-900/30 dark:via-slate-900/20 dark:to-teal-900/30',
+                border: 'border-emerald-200/40 dark:border-emerald-700/20',
+                blob1: 'bg-emerald-400/20',
+                blob2: 'bg-teal-400/20',
+                tag: 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-100 border-emerald-200/50 dark:border-emerald-700/30',
+                text: 'text-emerald-900 dark:text-emerald-50',
+                underline: 'bg-gradient-to-r from-emerald-500 to-teal-500'
+            },
+            orange: {
+                bg: 'from-orange-50/80 via-white/50 to-amber-50/80 dark:from-orange-900/30 dark:via-slate-900/20 dark:to-amber-900/30',
+                border: 'border-orange-200/40 dark:border-orange-700/20',
+                blob1: 'bg-orange-400/20',
+                blob2: 'bg-amber-400/20',
+                tag: 'bg-orange-100/50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-100 border-orange-200/50 dark:border-orange-700/30',
+                text: 'text-orange-900 dark:text-orange-50',
+                underline: 'bg-gradient-to-r from-orange-500 to-amber-500'
+            },
+            pink: {
+                bg: 'from-pink-50/80 via-white/50 to-rose-50/80 dark:from-pink-900/30 dark:via-slate-900/20 dark:to-rose-900/30',
+                border: 'border-pink-200/40 dark:border-pink-700/20',
+                blob1: 'bg-pink-400/20',
+                blob2: 'bg-rose-400/20',
+                tag: 'bg-pink-100/50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-100 border-pink-200/50 dark:border-pink-700/30',
+                text: 'text-pink-900 dark:text-pink-50',
+                underline: 'bg-gradient-to-r from-pink-500 to-rose-500'
+            },
+            slate: {
+                bg: 'from-slate-50/80 via-white/50 to-gray-50/80 dark:from-slate-800/40 dark:via-slate-900/20 dark:to-gray-800/40',
+                border: 'border-slate-200/40 dark:border-slate-600/20',
+                blob1: 'bg-slate-400/20',
+                blob2: 'bg-gray-400/20',
+                tag: 'bg-slate-100/50 dark:bg-slate-800/30 text-slate-700 dark:text-slate-100 border-slate-200/50 dark:border-slate-600/30',
+                text: 'text-slate-900 dark:text-slate-100',
+                underline: 'bg-gradient-to-r from-slate-500 to-gray-500'
+            }
+        };
+
+        return styles[theme] || styles.slate;
+    };
+
+    // Helper for glass tag colors (Fallback)
     const getTagColor = (tag) => {
-        // Minimal glass style for tags
         return 'bg-white/40 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-white/40 dark:border-white/10';
     };
 
@@ -59,6 +122,8 @@ export default function BoardCard({
     // Variant: Stacked (Modern Grid Item)
     if (variant === 'stacked') {
         const hasImage = board.backgroundImage || board.thumbnail;
+        const themeStyles = board.summary ? getThemeStyles(board.summary.theme) : null;
+
         return (
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
@@ -67,22 +132,23 @@ export default function BoardCard({
                     flex flex-col h-full
                     ${shouldAnimate ? 'animate-fade-in-up' : ''}
                     ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
+                    ${themeStyles ? themeStyles.border : ''}
                 `}
                 style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
 
                 {/* Top Half - Visual/Image Area */}
-                <div className="relative w-full aspect-[16/10] overflow-hidden rounded-t-3xl border-b border-white/10">
+                <div className={`relative w-full aspect-[16/10] overflow-hidden rounded-t-3xl border-b border-white/10`}>
                     {hasImage ? (
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                             style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                         />
                     ) : board.summary ? (
-                        // Glass Gradient Variant for Summary Cards
-                        <div className={`absolute inset-0 transition-all duration-500 bg-gradient-to-br from-indigo-50/50 via-white/50 to-pink-50/50 dark:from-indigo-900/30 dark:via-purple-900/20 dark:to-pink-900/30`}>
-                            {/* Abstract decorative shapes */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+                        // Custom Themed Glass Gradient for Summary Cards
+                        <div className={`absolute inset-0 transition-all duration-500 bg-gradient-to-br ${themeStyles.bg}`}>
+                            {/* Abstract themed decorative shapes */}
+                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 ${themeStyles.blob1}`} />
+                            <div className={`absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 ${themeStyles.blob2}`} />
 
                             {/* Summary Content Center */}
                             <div className="relative z-10 h-full flex flex-col justify-center items-center px-6">
@@ -93,7 +159,7 @@ export default function BoardCard({
                                         .map((tag, i) => (
                                             <span key={i} className={`
                                             px-2.5 py-1 rounded-lg text-[10px] font-medium tracking-wide border backdrop-blur-sm
-                                            ${getTagColor(tag)}
+                                            ${themeStyles.tag}
                                         `}>
                                                 {tag}
                                             </span>
@@ -135,7 +201,7 @@ export default function BoardCard({
                 {/* Bottom Half - Info */}
                 <div className="p-5 flex flex-col gap-2 relative bg-white/40 dark:bg-black/5 h-full">
                     <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 leading-tight line-clamp-2 font-inter-tight tracking-tight">
+                        <h3 className={`font-bold text-lg leading-tight line-clamp-2 font-inter-tight tracking-tight ${themeStyles ? themeStyles.text : 'text-slate-800 dark:text-slate-100'}`}>
                             {board.name}
                         </h3>
                     </div>
@@ -166,6 +232,8 @@ export default function BoardCard({
     }
 
     // Variant: Overlay (Recently Visited) - Streamlined Glass
+    const themeStyles = (board.summary) ? getThemeStyles(board.summary.theme) : null;
+
     return (
         <div
             onClick={() => !isTrashView && onSelect(board.id)}
@@ -173,6 +241,7 @@ export default function BoardCard({
             className={`
                 ${containerClasses}
                 h-[200px] w-full
+                ${themeStyles ? themeStyles.border : ''}
             `}
         >
             {/* Background Layer */}
@@ -182,9 +251,10 @@ export default function BoardCard({
                     style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                 />
             ) : board.summary ? (
-                // Soft Abstract Gradient for Summary
-                <div className={`absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20`}>
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+                // Themed Abstract Gradient for Summary
+                <div className={`absolute inset-0 bg-gradient-to-br ${themeStyles.bg}`}>
+                    <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 ${themeStyles.blob1}`} />
+                    <div className={`absolute bottom-0 left-0 w-64 h-64 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 ${themeStyles.blob2}`} />
                 </div>
             ) : (
                 <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-40`} />
@@ -195,11 +265,11 @@ export default function BoardCard({
                 {/* Header */}
                 <div className="flex justify-between items-start">
                     <div className="flex-1 pr-4">
-                        <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-snug line-clamp-2 drop-shadow-sm mix-blend-hard-light">
+                        <h3 className={`text-xl font-bold tracking-tight leading-snug line-clamp-2 drop-shadow-sm mix-blend-hard-light ${themeStyles ? themeStyles.text : 'text-slate-900 dark:text-white'}`}>
                             {board.name}
                         </h3>
                         {/* Decorative Underline */}
-                        <div className="mt-2 h-1 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-60" />
+                        <div className={`mt-2 h-1 w-12 rounded-full opacity-60 ${themeStyles ? themeStyles.underline : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} />
                     </div>
 
                     {/* Action Icon */}
@@ -214,7 +284,7 @@ export default function BoardCard({
                         {board.summary.summary.split(' · ').slice(0, 3).map((tag, i) => (
                             <span key={i} className={`
                                     px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md
-                                    bg-white/30 border-white/30 text-slate-800 dark:text-white dark:bg-white/10
+                                    ${themeStyles ? themeStyles.tag : 'bg-white/30 border-white/30 text-slate-800 dark:text-white dark:bg-white/10'}
                                 `}>
                                 {tag}
                             </span>
