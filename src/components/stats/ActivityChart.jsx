@@ -44,22 +44,7 @@ export default function ActivityChart({
     const maxChars = Math.max(...data.map(d => d.chars), 10);
     const totalChars = useMemo(() => data.reduce((acc, curr) => acc + (curr.chars || 0), 0), [data]);
 
-    // Most active time calculation
-    const mostActive = useMemo(() => {
-        if (!timeDistribution) return null;
-        const { morning, afternoon, evening, night } = timeDistribution;
-        const total = morning + afternoon + evening + night;
-        if (total === 0) return null;
 
-        const periods = [
-            { key: 'morning', value: morning, label: t?.stats?.morning || '早晨', icon: Sun, color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' },
-            { key: 'afternoon', value: afternoon, label: t?.stats?.afternoon || '下午', icon: Sunset, color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
-            { key: 'evening', value: evening, label: t?.stats?.evening || '晚上', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-            { key: 'night', value: night, label: t?.stats?.night || '深夜', icon: CloudMoon, color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/20' }
-        ];
-
-        return periods.reduce((a, b) => a.value > b.value ? a : b);
-    }, [timeDistribution, t]);
 
     const totalTimeChars = timeDistribution ? (timeDistribution.morning + timeDistribution.afternoon + timeDistribution.evening + timeDistribution.night) : 0;
 
@@ -207,45 +192,7 @@ export default function ActivityChart({
                 </div>
             </div>
 
-            {/* 2. Stats Cards Grid */}
-            <div className="grid grid-cols-3 gap-3">
-                <StatBox
-                    icon={Flame}
-                    label={t?.stats?.streakDays || '连续'}
-                    value={streakDays}
-                    unit={t?.stats?.days || '天'}
-                    color="text-orange-500"
-                    bg="from-orange-500/10 to-red-500/10"
-                    border="border-orange-500/10"
-                />
-                <StatBox
-                    icon={Zap}
-                    label={t?.stats?.sessions || '会话'}
-                    value={todaySessions}
-                    unit={t?.stats?.times || '次'}
-                    color="text-blue-500"
-                    bg="from-blue-500/10 to-indigo-500/10"
-                    border="border-blue-500/10"
-                />
-                {/* Most Active Time Box */}
-                <div className={`rounded-2xl p-4 border transition-all duration-300 bg-gradient-to-br ${mostActive ? mostActive.bg : 'from-slate-100 to-slate-200 dark:from-white/5 dark:to-white/10 border-slate-200 dark:border-white/5'}`}>
-                    <div className="flex flex-col h-full justify-between">
-                        <div className="flex items-center gap-2 mb-1">
-                            {mostActive ? (
-                                <mostActive.icon size={14} className={mostActive.color} />
-                            ) : (
-                                <Sun size={14} className="text-slate-400" />
-                            )}
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                {t?.stats?.activeTime || '活跃'}
-                            </span>
-                        </div>
-                        <div className="text-sm font-black text-slate-900 dark:text-white truncate">
-                            {mostActive ? mostActive.label : '--'}
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             {/* 3. Time Distribution Bar (Only show if we have data) */}
             {totalTimeChars > 0 && (

@@ -170,7 +170,7 @@ export const app = {
         refreshCloud: "检查额度",
         syncing: "检查中...",
         refresh: "刷新",
-        totalElements: "总元素",
+        totalElements: "总卡片",
         creativePower: "创作力",
         neuralCloud: "云端同步",
         aiQuota: "AI 配额",
@@ -179,6 +179,6 @@ export const app = {
         guestMode: "访客模式",
         localStorageOnly: "仅本地存储",
         lastSnapshot: "最后更新",
-        currentStreak: "当前连胜"
+        currentStreak: "连续活跃"
     }
 };
