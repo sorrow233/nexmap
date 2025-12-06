@@ -155,7 +155,7 @@ export default function StatisticsView({ boardsList, user }) {
     const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
     const nextLimit = currentTier.limit;
     const progress = Math.min(100, Math.max(0, ((totalTokens - prevLimit) / (nextLimit - prevLimit)) * 100));
-    const radius = 140;
+    const radius = 150;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
 
@@ -228,28 +228,32 @@ export default function StatisticsView({ boardsList, user }) {
                     {/* Center: Planetary System (Token Evolution) */}
                     <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[400px]">
 
-                        {/* Orbital Rings Background */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute rotate-[15deg] opacity-60"></div>
-                            <div className="w-[500px] h-[300px] border border-slate-200 rounded-[100%] absolute -rotate-[15deg] opacity-60"></div>
+                        {/* Orbital Rings Background - Animated */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-visible">
+                            {/* Ring 1 - Slow Clockwise */}
+                            <div className="w-[550px] h-[300px] border border-slate-300/40 rounded-[100%] absolute animate-[spin_60s_linear_infinite]"></div>
+                            {/* Ring 2 - Slow Counter-Clockwise */}
+                            <div className="w-[550px] h-[300px] border border-slate-300/40 rounded-[100%] absolute animate-[spin_80s_linear_infinite_reverse]"></div>
+                            {/* Ring 3 - Tilted & Slower */}
+                            <div className="w-[600px] h-[350px] border border-slate-200/30 rounded-[100%] absolute animate-[spin_100s_linear_infinite] delay-1000"></div>
                         </div>
 
                         {/* Planet Container */}
                         <div
                             onClick={() => setShowAchievements(true)}
-                            className="relative w-72 h-72 group cursor-pointer flex items-center justify-center transition-transform active:scale-95"
+                            className="relative w-80 h-80 group cursor-pointer flex items-center justify-center transition-transform active:scale-95"
                         >
 
                             {/* Progress Ring SVG */}
                             <div className="absolute inset-0 -m-4">
-                                <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 300 300">
+                                <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 320 320">
                                     {/* Track */}
-                                    <circle cx="150" cy="150" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
+                                    <circle cx="160" cy="160" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
                                     {/* Progress */}
                                     <circle
-                                        cx="150" cy="150" r={radius}
+                                        cx="160" cy="160" r={radius}
                                         stroke="currentColor"
-                                        strokeWidth="6"
+                                        strokeWidth="8"
                                         fill="none"
                                         strokeDasharray={circumference}
                                         strokeDashoffset={strokeDashoffset}
@@ -261,13 +265,13 @@ export default function StatisticsView({ boardsList, user }) {
 
                             {/* The Planet (CSS 3D) */}
                             <div className={`
-                                relative w-48 h-48 rounded-full shadow-[inset_-20px_-20px_60px_rgba(0,0,0,0.2),_inset_20px_20px_60px_rgba(255,255,255,0.8),_0_20px_60px_rgba(0,0,0,0.15)]
+                                relative w-56 h-56 rounded-full shadow-[inset_-24px_-24px_80px_rgba(0,0,0,0.2),_inset_24px_24px_80px_rgba(255,255,255,0.8),_0_30px_80px_rgba(0,0,0,0.2)]
                                 bg-gradient-to-br ${currentTier.gradient}
                                 transition-all duration-1000 hover:scale-105 z-10 flex items-center justify-center
                                 ${currentTier.name === 'Sun' ? 'animate-pulse-slow shadow-amber-200' : ''}
                             `}>
                                 {/* Surface Texture (Noise) */}
-                                <div className="absolute inset-0 rounded-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+                                <div className="absolute inset-[-50%] opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay animate-[spin_120s_linear_infinite]"></div>
 
                                 {/* Data Content inside Planet */}
                                 <div className="text-center relative z-20 text-white drop-shadow-md transform translate-z-10">
@@ -292,7 +296,7 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
 
                         {/* Base Pedestal reflection */}
-                        <div className={`w-32 h-8 rounded-[100%] blur-xl mt-[-40px] opacity-40 bg-${currentTier.color}-400 transition-colors duration-1000`}></div>
+                        <div className={`w-40 h-10 rounded-[100%] blur-2xl mt-[-50px] opacity-40 bg-${currentTier.color}-400 transition-colors duration-1000`}></div>
                     </div>
 
                     {/* Right Column: Quota & Peak */}
