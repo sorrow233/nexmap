@@ -128,35 +128,33 @@ OUTPUT FORMAT:
         if (!context || context.length < 20) return null;
 
         const prompt = `
-Analyze the content and extract 2-4 core keywords that best represent the main topic.
+ANALYZE the board content and extract 3-4 HIGH-IMPACT conceptual tags.
 
 CRITICAL RULES:
-1. **Output Language**: MUST match the language of the input content. If content is in Chinese, output Chinese keywords. If English, output English.
-2. **Keywords Only**: Output short, punchy keywords or phrases (2-4 words max each). NO full sentences.
-3. **Separator**: Use " · " (middle dot with spaces) to separate keywords.
+1. **Output Language**: MUST match the dominant language of the input content. (e.g. Input Chinese -> Output Chinese).
+2. **Format**: "Keyword 1 · Keyword 2 · Keyword 3". Use the middle dot (·) as separator.
+3. **Style**: 
+   - Conceptual Nouns (e.g., "Authentication", "User Journey", "Q3 Goals").
+   - NO Verbs/Sentences (Bad: "Fixing the bug", Good: "Bug Fixes").
+   - Max 2-3 words per tag.
+4. **Theme**: Select one color based on the vibe:
+   - "blue" (Tech/Code)
+   - "purple" (Design/Creative)
+   - "emerald" (Growth/Money)
+   - "orange" (Urgent/Bugs)
+   - "pink" (Personal/Fun)
+   - "slate" (Misc/Docs)
 
 BOARD CONTEXT:
 Name: ${boardData.name}
 Cards Content:
 ${context}
 
-THEME SELECTION:
-- "blue": Technical, Systems, Code
-- "purple": Creative, Design, Ideas
-- "emerald": Growth, Strategy, Business
-- "orange": Urgent, Bugs, Priority
-- "pink": Social, Community, Fun
-- "slate": General, Misc
-
 OUTPUT FORMAT (JSON ONLY):
 {
-  "summary": "关键词一 · 关键词二 · 关键词三",
+  "summary": "Tag 1 · Tag 2 · Tag 3",
   "theme": "color_name"
 }
-
-Example outputs:
-- Chinese content: {"summary": "React 架构 · 状态管理 · 性能优化", "theme": "blue"}
-- English content: {"summary": "API Design · Auth Flow · MVP", "theme": "purple"}
 `;
 
         try {
