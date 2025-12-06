@@ -138,14 +138,14 @@ export default function StatisticsView({ boardsList, user }) {
     // Planetary Logic (Lifted State)
     const totalTokens = stats.tokenStats.totalChars;
     const tiers = [
-        { name: 'Mercury', color: 'slate', limit: 100000, gradient: 'from-slate-400 via-stone-400 to-gray-500', shadow: 'shadow-slate-400' },
-        { name: 'Mars', color: 'orange', limit: 500000, gradient: 'from-orange-400 via-red-400 to-red-600', shadow: 'shadow-orange-400' },
-        { name: 'Terra', color: 'emerald', limit: 1000000, gradient: 'from-blue-400 via-teal-400 to-emerald-500', shadow: 'shadow-emerald-400' },
-        { name: 'Jupiter', color: 'amber', limit: 2500000, gradient: 'from-orange-200 via-amber-300 to-orange-400', shadow: 'shadow-amber-400' },
-        { name: 'Saturn', color: 'yellow', limit: 5000000, gradient: 'from-yellow-100 via-yellow-200 to-amber-200', shadow: 'shadow-yellow-400' },
-        { name: 'Uranus', color: 'cyan', limit: 10000000, gradient: 'from-cyan-200 via-sky-300 to-blue-300', shadow: 'shadow-cyan-400' },
-        { name: 'Neptune', color: 'indigo', limit: 20000000, gradient: 'from-blue-600 via-indigo-600 to-violet-700', shadow: 'shadow-indigo-500' },
-        { name: 'Sun', color: 'amber', limit: 1000000000, gradient: 'from-yellow-300 via-orange-500 to-red-500', shadow: 'shadow-amber-500' }
+        { name: 'Mercury', color: 'slate', limit: 100000, gradient: 'from-slate-400 via-stone-400 to-gray-500', shadow: 'shadow-slate-400', lore: "The Forge of Beginning. Where ideas are tempered." },
+        { name: 'Mars', color: 'orange', limit: 500000, gradient: 'from-orange-400 via-red-400 to-red-600', shadow: 'shadow-orange-400', lore: "The Red Frontier. First steps into the unknown." },
+        { name: 'Terra', color: 'emerald', limit: 1000000, gradient: 'from-blue-400 via-teal-400 to-emerald-500', shadow: 'shadow-emerald-400', lore: "The Cradle of Life. A thriving ecosystem of thoughts." },
+        { name: 'Jupiter', color: 'amber', limit: 2500000, gradient: 'from-orange-200 via-amber-300 to-orange-400', shadow: 'shadow-amber-400', lore: "The Gas Giant. A storm of infinite potential." },
+        { name: 'Saturn', color: 'yellow', limit: 5000000, gradient: 'from-yellow-100 via-yellow-200 to-amber-200', shadow: 'shadow-yellow-400', lore: "The Ringed Jewel. Structured beauty in chaos." },
+        { name: 'Uranus', color: 'cyan', limit: 10000000, gradient: 'from-cyan-200 via-sky-300 to-blue-300', shadow: 'shadow-cyan-400', lore: "The Ice Giant. Cold logic meets deep creativity." },
+        { name: 'Neptune', color: 'indigo', limit: 20000000, gradient: 'from-blue-600 via-indigo-600 to-violet-700', shadow: 'shadow-indigo-500', lore: "The Mystic Blue. Depth beyond measure." },
+        { name: 'Sun', color: 'amber', limit: 1000000000, gradient: 'from-yellow-300 via-orange-500 to-red-500', shadow: 'shadow-amber-500', lore: "The Solar Throne. A star born of million thoughts." }
     ];
 
     const currentTierIndex = tiers.findIndex(t => totalTokens < t.limit);
