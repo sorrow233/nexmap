@@ -189,9 +189,6 @@ export default function StatisticsView({ boardsList, user }) {
                                         <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">
                                             {t.stats?.dailyActivity || "Activity Volume"}
                                         </h3>
-                                        <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                                            {t.stats?.globalChars || "Character Generation"}: <span className="text-slate-600 dark:text-slate-300 font-bold">{getChartData().reduce((acc, item) => acc + (item.chars || 0), 0).toLocaleString()}</span>
-                                        </div>
                                     </div>
                                 </div>
 
