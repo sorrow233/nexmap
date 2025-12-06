@@ -152,67 +152,130 @@ export default function StatisticsView({ boardsList, user }) {
             {/* Main Grid Layout */}
             <div className="space-y-6">
 
-                {/* 1. Top Row: Key Metrics (4 Cols) */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {/* Boards KPI */}
-                    <div className="p-5 bg-gradient-to-br from-white to-slate-50 dark:from-white/5 dark:to-white/0 rounded-3xl border border-slate-200/60 dark:border-white/10 flex items-center justify-between group hover:border-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300">
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-indigo-500">
-                                {t.stats?.totalBoards || "画布总数"}
-                            </p>
-                            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{stats.totalBoards}</h3>
+                {/* 1. Top Row: Mixed Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+                    {/* Hero Card: Creative Power (Total Tokens/Chars) - Spans 2 cols on md, full on mobile if needed */}
+                    <div className="md:col-span-2 p-6 bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 dark:from-indigo-600 dark:via-purple-700 dark:to-indigo-900 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10 flex flex-col justify-between min-h-[160px]">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[60px] rounded-full translate-x-1/2 -translate-y-1/2 transition-all duration-700 group-hover:scale-110 pointer-events-none"></div>
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-fuchsia-500/20 blur-[50px] rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
+
+                        <div className="relative z-10 flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+                                        <Zap size={16} fill="currentColor" className="text-yellow-300" />
+                                    </div>
+                                    <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest text-shadow-sm">
+                                        {t.stats?.creativePower || "Creative Power"}
+                                    </p>
+                                </div>
+                                <h3 className="text-5xl sm:text-6xl font-black text-white tracking-tighter drop-shadow-md">
+                                    {fmt(stats.tokenStats.totalChars)}
+                                </h3>
+                            </div>
                         </div>
-                        <div className="w-12 h-12 flex items-center justify-center bg-indigo-50 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-2xl group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                            <Database size={20} strokeWidth={2.5} />
+
+                        <div className="relative z-10 mt-4 flex items-center gap-2 text-indigo-100/80 text-xs font-medium">
+                            <span className="bg-white/10 px-2 py-0.5 rounded text-white border border-white/10">
+                                {t.stats?.globalChars || "Characters Generated"}
+                            </span>
+                            <span>across all projects</span>
+                        </div>
+                    </div>
+
+                    {/* Right Side Grid of 4 small cards (2x2) occupying the other 2 cols? No, let's do 2 big cards or 1 big + 2 small. */}
+                    {/* Let's try: Hero (2 cols) + Stroke/AI Quota (2 cols vertical or horizontal?) */}
+                    {/* Actually, let's keep the row height consistent. */}
+
+                    {/* Column 3: Stats Group 1 (Boards & Cards) - Stacked vertically or just one card? */}
+                    {/* Let's put Streak and AI Quota here as significant metrics */}
+
+                    {/* Streak Card */}
+                    <div className="p-6 bg-white dark:bg-[#111] rounded-3xl border border-slate-200/60 dark:border-white/5 flex flex-col justify-between group hover:border-orange-500/30 transition-all duration-300 relative overflow-hidden">
+                        <div className="relative z-10 flex justify-between items-start">
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover:text-orange-500 transition-colors">
+                                    {t.stats?.currentStreak || "Active Streak"}
+                                </p>
+                                <h3 className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                    {stats.tokenStats.streakDays}
+                                    <span className="text-sm ml-1 text-slate-400 font-medium tracking-normal opacity-60"> {t.stats?.days || "days"}</span>
+                                </h3>
+                            </div>
+                            <div className="w-10 h-10 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/20 rounded-xl group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
+                                <Activity size={20} strokeWidth={2.5} />
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-400">
+                            <span>Best: 12 days</span>
+                            <span className="text-orange-500 font-bold">Keep it up!</span>
+                        </div>
+                    </div>
+
+                    {/* AI Quota Card */}
+                    <div className="p-6 bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-900 dark:to-teal-950 rounded-3xl text-white shadow-lg shadow-emerald-500/10 relative overflow-hidden group border border-white/10 flex flex-col justify-between">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[30px] rounded-full translate-x-1/2 -translate-y-1/3 transition-colors duration-700 pointer-events-none"></div>
+
+                        <div className="relative z-10 flex justify-between items-start">
+                            <div>
+                                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">
+                                    {t.stats?.aiQuota || "AI Quota"}
+                                </p>
+                                <h3 className="text-3xl font-black text-white tracking-tight">
+                                    {stats.credits?.credits?.toLocaleString() || 200}
+                                </h3>
+                            </div>
+                            <div className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-xl backdrop-blur-md">
+                                <Database size={18} className="text-white" />
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 mt-4">
+                            <div className="flex justify-between text-[10px] font-bold text-emerald-100 mb-1">
+                                <span>Used</span>
+                                <span>{Math.min(100, Math.round(((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100))}%</span>
+                            </div>
+                            <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                    className="h-full bg-white/90 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                                    style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Secondary Stats (Boards & Cards) - Now integrated or a thin row? */}
+                    {/* Let's just add them as 2 more cards in this grid, making it a 2-row grid for the 'Top Section'? */}
+                    {/* Actually, user said 'Generated Token' is THE stimulus. So it should be HUGE. */}
+                    {/* Let's make the 'Creative Power' card HUGE and maybe push others to a smaller row below. */}
+                </div>
+
+                {/* Secondary Metrics Row (Boards, Cards) */}
+                <div className="grid grid-cols-2 gap-6">
+                    {/* Boards KPI */}
+                    <div className="p-5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200/60 dark:border-white/5 flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 dark:bg-white/5 dark:text-slate-500 rounded-2xl group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors duration-300">
+                                <Layers size={22} strokeWidth={2} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats.totalBoards}</h3>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.totalBoards || "Files"}</p>
+                            </div>
                         </div>
                     </div>
 
                     {/* Cards KPI */}
-                    <div className="p-5 bg-gradient-to-br from-white to-slate-50 dark:from-white/5 dark:to-white/0 rounded-3xl border border-slate-200/60 dark:border-white/10 flex items-center justify-between group hover:border-fuchsia-500/30 hover:shadow-xl hover:shadow-fuchsia-500/5 transition-all duration-300">
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-fuchsia-500">
-                                {t.stats?.totalElements || "卡片总数"}
-                            </p>
-                            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{stats.totalCards}</h3>
-                        </div>
-                        <div className="w-12 h-12 flex items-center justify-center bg-fuchsia-50 text-fuchsia-500 dark:bg-fuchsia-500/20 dark:text-fuchsia-400 rounded-2xl group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
-                            <Layers size={20} strokeWidth={2.5} />
-                        </div>
-                    </div>
-
-                    {/* Streak KPI */}
-                    <div className="p-5 bg-gradient-to-br from-white to-slate-50 dark:from-white/5 dark:to-white/0 rounded-3xl border border-slate-200/60 dark:border-white/10 flex items-center justify-between group hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/5 transition-all duration-300">
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 transition-colors group-hover:text-orange-500">
-                                {t.stats?.currentStreak || "连续活跃"}
-                            </p>
-                            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{stats.tokenStats.streakDays} <span className="text-sm font-medium text-slate-400 font-sans tracking-normal">{t.stats?.days || "天"}</span></h3>
-                        </div>
-                        <div className="w-12 h-12 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/20 dark:text-orange-400 rounded-2xl group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
-                            <Activity size={20} strokeWidth={2.5} />
-                        </div>
-                    </div>
-
-                    {/* AI Quota KPI */}
-                    <div className="p-5 bg-gradient-to-br from-indigo-500 to-violet-600 dark:from-indigo-900 dark:to-violet-950 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10 transition-all duration-500 hover:scale-[1.02]">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[40px] rounded-full translate-x-1/2 -translate-y-1/3 transition-colors duration-700 pointer-events-none"></div>
-                        <div className="flex items-center justify-between mb-2">
+                    <div className="p-5 bg-white dark:bg-white/5 rounded-3xl border border-slate-200/60 dark:border-white/5 flex items-center justify-between group hover:border-fuchsia-500/30 transition-all duration-300">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 dark:bg-white/5 dark:text-slate-500 rounded-2xl group-hover:bg-fuchsia-50 group-hover:text-fuchsia-500 transition-colors duration-300">
+                                <Database size={22} strokeWidth={2} />
+                            </div>
                             <div>
-                                <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">
-                                    {t.stats?.aiQuota || "AI 配额"}
-                                </p>
-                                <h3 className="text-3xl font-black text-white tracking-tight">{stats.credits?.credits?.toLocaleString() || 200}</h3>
+                                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats.totalCards}</h3>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t.stats?.totalElements || "Nodes"}</p>
                             </div>
-                            <div className="w-12 h-12 flex items-center justify-center bg-white/10 rounded-2xl backdrop-blur-sm shadow-inner text-yellow-300">
-                                <Zap size={20} fill="currentColor" />
-                            </div>
-                        </div>
-                        {/* Mini Progress Bar */}
-                        <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
-                            <div
-                                className="h-full bg-white/80 rounded-full"
-                                style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
-                            />
                         </div>
                     </div>
                 </div>
