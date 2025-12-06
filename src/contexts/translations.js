@@ -343,6 +343,12 @@ const translations = {
             title: "Start Thinking in Connections.",
             cta: "Launch Alpha",
             rights: "© 2024 NexMap. All rights reserved."
+        },
+        sidebar: {
+            global: "Global Tags",
+            board: "Board Tags",
+            add: "Add Tag",
+            newPrompt: "New Tag"
         }
     },
     zh: {
@@ -689,6 +695,12 @@ const translations = {
             title: "开始用「连接」思考。",
             cta: "启动 Alpha 版",
             rights: "© 2024 NexMap. 保留所有权利。"
+        },
+        sidebar: {
+            global: "全局标签",
+            board: "画板标签",
+            add: "添加标签",
+            newPrompt: "新建标签"
         }
     },
     ja: {
@@ -801,37 +813,44 @@ const translations = {
             general: "一般",
             language: "言語",
             credits: "クレジット",
-            creditsDesc: "使用量と制限を管理",
+            creditsDesc: "使用量と制限の管理",
             advancedSettings: "詳細設定",
             aiConfiguration: "AI設定",
-            provider: "プロバイダー",
-            providerDesc: "モデル & APIキー",
-            modelRoles: "モデルロール",
-            modelRolesDesc: "専用モデルを割り当て",
-            dataStorage: "データ & ストレージ",
+            provider: "モデルプロバイダー",
+            providerDesc: "モデルとAPIキー",
+            modelRoles: "モデルの役割",
+            modelRolesDesc: "専用モデルの割り当て",
+            dataStorage: "データとストレージ",
             storage: "ストレージ",
-            storageDesc: "S3 & クラウド設定",
+            storageDesc: "S3とクラウド設定",
             cancel: "キャンセル",
             saveChanges: "変更を保存",
-            creditsUsage: "クレジット & 使用量",
+            creditsUsage: "クレジットと使用量",
             modelProvider: "モデルプロバイダー",
             storageSettings: "ストレージ設定",
             settingsSaved: "設定を保存しました！",
             applyingChanges: "変更を適用中...",
             resetConfiguration: "設定をリセット？",
-            resetWarning: "これにより、すべてのカスタムプロバイダーとAPIキーが削除されます。アプリはデフォルト状態に戻ります。",
+            resetWarning: "すべてのカスタムプロバイダーとAPIキーが削除されます。アプリは初期状態に戻ります。",
             yesReset: "リセットする",
             customInstructions: "カスタム指示",
-            customInstructionsDesc: "グローバルAI動作設定",
-            customInstructionsHelp: "ここで追加した指示は、すべてのカードとキャンバスでのAI対話に適用されます。",
-            customInstructionsPlaceholder: "例：親しみやすいカジュアルなトーンで回答してください。箇条書きを使用してください。簡潔に回答してください。",
+            customInstructionsDesc: "全体的なAIの振る舞い",
+            customInstructionsHelp: "ここに追加した指示は、すべてのカードとキャンバスでのAIとの対話に含まれます。",
+            customInstructionsPlaceholder: "例：常にフレンドリーでカジュアルな口調で返信してください。リストには箇条書きを使用してください。簡潔な回答を好みます。",
             customInstructionsNote: "仕組み",
-            customInstructionsInfo: "あなたの指示はすべてのAIリクエストの先頭に追加されます。言語設定、回答スタイル、ドメイン固有のコンテキストに使用できます。",
+            customInstructionsInfo: "あなたの指示は、すべてのAIリクエストの先頭に追加されます。言語設定、返信スタイル、または特定の分野のコンテキストを設定するために使用します。",
             exampleInstructions: "指示の例",
-            exampleInstruction1: "常に日本語で回答してください",
-            exampleInstruction2: "私はソフトウェアエンジニアです。専門用語をお使いください",
-            exampleInstruction3: "回答は200文字以内にしてください"
+            exampleInstruction1: "常に日本語で返信してください",
+            exampleInstruction2: "私はソフトウェアエンジニアです。専門用語を使用してください",
+            exampleInstruction3: "200文字以内で返信してください"
         },
+        sidebar: {
+            global: "グローバルタグ",
+            board: "ボードタグ",
+            add: "タグを追加",
+            newPrompt: "新規タグ"
+        },
+
         credits: {
             noConfigNeeded: "設定不要、すぐに使える",
             readyToUse: "最適なAIモデルを事前設定済み。無料クォータで約",
