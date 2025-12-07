@@ -27,6 +27,8 @@ export default function BoardCard({
         return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
     };
 
+
+
     // Helper for random gradient if no image - Modern fresh colors with dark mode support
     const getRandomGradient = (id) => {
         // Fresh, modern gradients - light mode friendly with dark mode variants
@@ -40,6 +42,25 @@ export default function BoardCard({
         ];
         const index = id.charCodeAt(0) % gradients.length;
         return gradients[index];
+    };
+
+    // Helper for diverse tag colors (Modern, Fresh, Elegant)
+    const getTagColor = (tag) => {
+        const colors = [
+            'bg-sky-50 text-sky-700 border-sky-200/50',       // Fresh Sky
+            'bg-indigo-50 text-indigo-700 border-indigo-200/50', // Elegant Indigo
+            'bg-emerald-50 text-emerald-700 border-emerald-200/50', // Nature Emerald
+            'bg-rose-50 text-rose-700 border-rose-200/50',    // Soft Rose
+            'bg-violet-50 text-violet-700 border-violet-200/50', // Deep Violet
+            'bg-amber-50 text-amber-700 border-amber-200/50',  // Warm Amber
+            'bg-teal-50 text-teal-700 border-teal-200/50',    // Clean Teal
+        ];
+        // Simple hash to generate consistent color for same tag
+        let hash = 0;
+        for (let i = 0; i < tag.length; i++) {
+            hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
     };
 
     // Variant: Stacked (Modern Grid Item)
@@ -89,15 +110,8 @@ export default function BoardCard({
                                         .slice(0, 4) // Limit to top 4 tags for stacked/compact view
                                         .map((tag, i) => (
                                             <span key={i} className={`
-                                            px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-sm border border-black/5
-                                            ${{
-                                                    'blue': 'bg-white text-blue-600',
-                                                    'purple': 'bg-white text-violet-600',
-                                                    'emerald': 'bg-white text-emerald-600',
-                                                    'orange': 'bg-white text-orange-600',
-                                                    'pink': 'bg-white text-pink-600',
-                                                    'slate': 'bg-white text-slate-600'
-                                                }[board.summary.theme || 'slate']}
+                                            px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-sm border
+                                            ${getTagColor(tag)}
                                         `}>
                                                 {tag}
                                             </span>
@@ -226,15 +240,8 @@ export default function BoardCard({
                         <div className="flex flex-wrap gap-2 content-start">
                             {board.summary.summary.split(' · ').map((tag, i) => (
                                 <span key={i} className={`
-                                    px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm border border-black/5
-                                    ${{
-                                        'blue': 'bg-white text-blue-600',
-                                        'purple': 'bg-white text-violet-600',
-                                        'emerald': 'bg-white text-emerald-600',
-                                        'orange': 'bg-white text-orange-600',
-                                        'pink': 'bg-white text-pink-600',
-                                        'slate': 'bg-white text-slate-600'
-                                    }[board.summary.theme || 'slate']}
+                                    px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm border
+                                    ${getTagColor(tag)}
                                 `}>
                                     {tag}
                                 </span>
