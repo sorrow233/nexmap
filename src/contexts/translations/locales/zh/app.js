@@ -138,6 +138,11 @@ export const app = {
     stats: {
         title: "统计数据",
         description: "您的创作项目和资源使用概览。",
+        activityFlow: "创作心流",
+        activityFlowDesc: "您的长期创作活动趋势",
+        mostActiveTime: "最活跃时间点",
+        month: "月视图",
+        year: "年视图",
         totalBoards: "项目总数",
         activeBoards: "活跃项目",
         trashBoards: "已归档",
