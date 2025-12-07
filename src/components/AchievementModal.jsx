@@ -79,124 +79,103 @@ export default function AchievementModal({
     const getPlanetTexture = (planetName) => {
         const id = (planetName || '').toLowerCase();
 
-        // Common "Atmosphere" glow for all
-        const atmosphere = <div className="absolute inset-0 rounded-full shadow-[inset_0_0_80px_rgba(255,255,255,0.2)] mix-blend-overlay pointer-events-none"></div>;
+        // Note: No external "Atmosphere" div anymore to avoid box artifacts.
+        // Everything must be clipped inside the main sphere.
 
         switch (id) {
             case 'mercury':
-                // Silver Mist & Pale Violet - The Forge, but dreamy
                 return {
-                    background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
-                    shadow: 'shadow-[0_0_100px_rgba(203,213,225,0.4)]',
+                    background: 'radial-gradient(circle at 30% 30%, #e2e8f0 0%, #94a3b8 100%)', // Pure sphere gradient
+                    shadow: 'shadow-[inset_-10px_-10px_30px_rgba(71,85,105,0.4)]', // Subtle internal shadow only
                     detail: (
                         <>
-                            <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-purple-200/40 blur-[60px] rounded-full mix-blend-multiply animate-pulse-slow"></div>
-                            <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-slate-400/30 blur-[50px] rounded-full"></div>
-                            <div className="absolute top-[40%] left-[30%] w-[40%] h-[40%] bg-white/60 blur-[40px] rounded-full mix-blend-overlay"></div>
+                            <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-purple-200/40 blur-[40px] rounded-full mix-blend-multiply animate-pulse-slow"></div>
+                            <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-slate-400/30 blur-[30px] rounded-full"></div>
                         </>
                     )
                 };
             case 'venus':
-                // Liquid Gold & Rose - The Morning Star
                 return {
-                    background: 'linear-gradient(to bottom right, #fef3c7, #fbbf24)',
-                    shadow: 'shadow-[0_0_100px_rgba(251,191,36,0.5)]',
+                    background: 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #fbbf24 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(180,83,9,0.3)]',
                     detail: (
                         <>
-                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-300 via-transparent to-rose-300 opacity-80 mix-blend-overlay"></div>
-                            <div className="absolute top-0 right-0 w-[90%] h-[90%] bg-amber-200/50 blur-[70px] rounded-full animate-spin-slow"></div>
-                            <div className="absolute bottom-10 left-10 w-[60%] h-[60%] bg-rose-400/30 blur-[60px] rounded-full mix-blend-color-burn"></div>
+                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-300 via-transparent to-rose-300 opacity-60 mix-blend-overlay"></div>
+                            <div className="absolute top-0 right-0 w-[90%] h-[90%] bg-amber-200/50 blur-[50px] rounded-full animate-spin-slow"></div>
                         </>
                     )
                 };
             case 'terra':
-                // Deep Ocean & Aurora - Life
-                // NOT a map. A feeling of "Blue" and "Life".
                 return {
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
-                    shadow: 'shadow-[0_0_120px_rgba(59,130,246,0.6)]',
+                    background: 'radial-gradient(circle at 40% 40%, #60a5fa 0%, #1e40af 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(30,58,138,0.5)]',
                     detail: (
                         <>
-                            <div className="absolute top-[-10%] right-[-20%] w-[80%] h-[80%] bg-teal-300/40 blur-[80px] rounded-full mix-blend-screen animate-pulse-slow"></div>
-                            <div className="absolute bottom-[-10%] left-[-10%] w-[90%] h-[90%] bg-indigo-600/50 blur-[70px] rounded-full mix-blend-multiply"></div>
-                            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-blue-400/20 to-transparent mix-blend-overlay"></div>
+                            <div className="absolute top-[-10%] right-[-20%] w-[80%] h-[80%] bg-teal-300/40 blur-[50px] rounded-full mix-blend-screen animate-pulse-slow"></div>
+                            <div className="absolute bottom-[-10%] left-[-10%] w-[90%] h-[90%] bg-indigo-600/50 blur-[40px] rounded-full mix-blend-multiply"></div>
                         </>
                     )
                 };
             case 'mars':
-                // Rust & Ember - War/Energy
                 return {
-                    background: 'linear-gradient(to bottom right, #fdba74, #ea580c)',
-                    shadow: 'shadow-[0_0_100px_rgba(234,88,12,0.5)]',
+                    background: 'radial-gradient(circle at 30% 30%, #fdba74 0%, #ea580c 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(124,45,18,0.4)]',
                     detail: (
                         <>
-                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-orange-500/0 via-red-500/20 to-red-900/40 mix-blend-multiply"></div>
-                            <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-orange-200/40 blur-[60px] rounded-full mix-blend-overlay"></div>
-                            <div className="absolute bottom-[10%] left-[10%] w-[50%] h-[50%] bg-rose-900/30 blur-[50px] rounded-full"></div>
+                            <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-orange-200/40 blur-[40px] rounded-full mix-blend-overlay"></div>
+                            <div className="absolute bottom-[10%] left-[10%] w-[50%] h-[50%] bg-rose-900/30 blur-[30px] rounded-full"></div>
                         </>
                     )
                 };
             case 'jupiter':
-                // Storms & Bands - Expansion
-                // Abstracting the bands into soft horizontal washes
                 return {
                     background: 'linear-gradient(180deg, #d97706, #b45309, #92400e)',
-                    shadow: 'shadow-[0_0_110px_rgba(217,119,6,0.5)]',
+                    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(146,64,14,0.4)]',
                     detail: (
                         <>
-                            <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,0,0,0.1)_60px)] blur-[10px] mix-blend-multiply"></div>
-                            <div className="absolute top-[20%] left-[-20%] w-[100%] h-[60%] bg-amber-200/30 blur-[80px] rounded-full mix-blend-overlay"></div>
-                            <div className="absolute bottom-[20%] right-[-20%] w-[80%] h-[50%] bg-red-900/20 blur-[60px] rounded-full mix-blend-color-burn"></div>
+                            <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,0,0,0.1)_60px)] blur-[8px] mix-blend-multiply rounded-full overflow-hidden"></div>
+                            <div className="absolute top-[20%] left-[-20%] w-[100%] h-[60%] bg-amber-200/30 blur-[50px] rounded-full mix-blend-overlay"></div>
                         </>
                     )
                 };
             case 'saturn':
-                // Pale Gold & Rings - Structure
                 return {
-                    background: 'linear-gradient(to bottom right, #fef08a, #eab308)',
-                    shadow: 'shadow-[0_0_100px_rgba(234,179,8,0.4)]',
+                    background: 'radial-gradient(circle at 40% 40%, #fef08a 0%, #eab308 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(161,98,7,0.3)]',
                     detail: (
                         <>
-                            <div className="absolute inset-0 bg-gradient-to-tr from-yellow-200/0 via-yellow-100/40 to-white/60 mix-blend-overlay"></div>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-300/20 blur-[50px] rounded-full"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-300/20 blur-[30px] rounded-full"></div>
                         </>
                     )
                 };
             case 'uranus':
-                // Cyan Ice - Revolution
                 return {
-                    background: 'linear-gradient(135deg, #a5f3fc, #0891b2)',
-                    shadow: 'shadow-[0_0_110px_rgba(34,211,238,0.5)]',
+                    background: 'radial-gradient(circle at 30% 30%, #a5f3fc 0%, #0891b2 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(21,94,117,0.4)]',
                     detail: (
                         <>
-                            <div className="absolute inset-0 bg-white/20 blur-[40px] mix-blend-overlay"></div>
-                            <div className="absolute top-[-30%] left-0 w-[120%] h-[120%] bg-sky-200/30 blur-[80px] rounded-full mix-blend-soft-light animate-pulse-slow"></div>
+                            <div className="absolute top-[-30%] left-0 w-[120%] h-[120%] bg-sky-200/30 blur-[40px] rounded-full mix-blend-soft-light animate-pulse-slow"></div>
                         </>
                     )
                 };
             case 'neptune':
-                // Deep Indigo Dream - Mysticism
                 return {
-                    background: 'linear-gradient(to bottom right, #6366f1, #312e81)',
-                    shadow: 'shadow-[0_0_120px_rgba(79,70,229,0.6)]',
+                    background: 'radial-gradient(circle at 30% 30%, #818cf8 0%, #312e81 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(49,46,129,0.5)]',
                     detail: (
                         <>
-                            <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-purple-500/30 blur-[70px] rounded-full mix-blend-screen"></div>
-                            <div className="absolute bottom-0 left-0 w-[70%] h-[70%] bg-blue-900/60 blur-[60px] rounded-full mix-blend-multiply"></div>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/0 to-indigo-300/20 mix-blend-overlay"></div>
+                            <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-purple-500/30 blur-[40px] rounded-full mix-blend-screen"></div>
+                            <div className="absolute bottom-0 left-0 w-[70%] h-[70%] bg-blue-900/60 blur-[40px] rounded-full mix-blend-multiply"></div>
                         </>
                     )
                 };
             case 'sun':
-                // The Source - Pure Light
                 return {
-                    background: 'radial-gradient(circle at 40% 40%, #fff7ed, #f59e0b, #ea580c)',
-                    shadow: 'shadow-[0_0_150px_rgba(251,146,60,0.8)]',
+                    background: 'radial-gradient(circle at 40% 40%, #fff7ed 0%, #f59e0b 40%, #ea580c 100%)',
+                    shadow: 'shadow-[0_0_80px_rgba(251,146,60,0.6)]', // Only the sun gets a glow, others are clean
                     detail: (
                         <>
-                            <div className="absolute inset-[-20%] bg-orange-400/30 blur-[80px] animate-pulse-slow mix-blend-screen"></div>
-                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-                            <div className="absolute top-[20%] left-[20%] w-[60%] h-[60%] bg-white/60 blur-[50px] rounded-full mix-blend-soft-light"></div>
+                            <div className="absolute inset-[-20%] bg-orange-400/30 blur-[50px] animate-pulse-slow mix-blend-screen"></div>
                         </>
                     )
                 };

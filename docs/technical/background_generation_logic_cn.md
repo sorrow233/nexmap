@@ -1,107 +1,73 @@
-# 画板背景生成 (Visualize) 功能技术逻辑文档
+# 画板背景生成 功能逻辑文档 (v2.2.71+)
 
-本文档详细说明了目前系统中的画板背景生成功能的代码逻辑、流程和关键文件。该功能旨在通过 AI 分析画板内容，自动生成符合语境的高质量背景图片。
+本文档详细说明了目前系统中的画板背景生成功能的代码逻辑、流程和关键文件。
+
+**更新说明 (v2.2.71)**: 本功能已完成**彻底重构**。文本摘要生成（免费/基础功能）与背景图片生成（高级功能）现在是两个完全独立的函数，互不依赖。
 
 ## 核心文件概览
 
-该功能主要涉及以下几个关键文件：
-
-1.  **逻辑核心**: `src/hooks/useBoardBackground.js` (自定义 Hook，封装了所有业务逻辑)
-2.  **UI 调用方 A**: `src/components/BoardGallery.jsx` (画板列表页，点击卡片按钮触发)
-3.  **UI 调用方 B**: `src/pages/BoardPage.jsx` (画板详情页，自动触发或手动触发)
+1.  **逻辑核心**: `src/hooks/useBoardBackground.js` (核心 Hook)
+2.  **UI 调用**: `src/components/BoardGallery.jsx` (手动触发) & `src/pages/BoardPage.jsx` (自动触发)
 
 ---
 
-## 1. 核心逻辑 (`useBoardBackground.js`)
+## 核心逻辑 (`useBoardBackground.js`)
 
-这是整个功能的"大脑"。它导出一个 `generateBackground` 函数，执行一个 2 阶段的 AI 流水线。
+该 Hook 现在导出两个独立的函数：`generateBoardSummary` 和 `generateBoardImage`。
 
-### 完整执行流程
+### 1. 通用辅助：上下文提取 (Context Extraction)
+两个功能都依赖于同一个辅助函数 `extractBoardContext`。
+*   **逻辑**：遍历画板上的所有卡片，提取 Title, Text, Content, Messages，拼接成一个长字符串。
+*   **日志**：`[Background Gen] Extracted context length: X`。
 
-当调用 `generateBackground(boardId, callback, options)` 时，系统按以下步骤执行：
+### 2. 功能 A：文本摘要生成 (`generateBoardSummary`)
+*   **用途**：生成画板的标签 (Tags) 和主题色 (Theme)，用于 Dashboard 卡片展示。
+*   **触发条件**：
+    *   自动：当画板卡片数 > 3 且从未生成过摘要时。
+*   **流程**：
+    1.  提取上下文。
+    2.  调用 `aiSummaryService` (文本模型)。
+    3.  返回摘要对象 `{ summary: "...", theme: "..." }`。
+    4.  更新数据库 `summary` 字段。
+*   **与其他功能的关系**：完全独立，**不会**触发图片生成。
 
-#### 第一步：上下文提取 (Context Extraction)
-*   **目的**：把画板上的所有卡片内容转换成 AI 能读懂的纯文本。
-*   **逻辑**：
-    1.  如果画板不存在或没有卡片，报错并中止。
-    2.  遍历画板上的所有卡片，提取以下字段：
-        *   `title` (标题)
-        *   `text` (文本内容)
-        *   `content` (便签内容)
-        *   `messages` (如果是对话卡片，提取对话记录)
-    3.  将提取到的内容拼接成一个长字符串 (`boardContext`)。
-    4.  **日志**：`[Background Gen] Extracted context length: X` (这里的 X 是字符数，如果很大，AI 处理会变慢)。
-
-#### 第二步：第一阶段 AI 并行处理 (Stage 1: Parallel)
-*   **目的**：同时进行"视觉概念分析"和"文本摘要生成"。
-*   **逻辑**：使用 `Promise.all` 并行发起两个请求：
-    1.  **视觉概念分析 (Visual Concept)**:
-        *   调用 LLM (文本模型)。
-        *   **Prompt**: 要求 AI 分析上下文，构思一个适合该画板的视觉主题、氛围、环境设置。
-        *   **注意**：如果传入了 `options.summaryOnly = true`，这一步会被跳过，返回 `null`。
-    2.  **画板摘要 (Board Summary)**:
-        *   调用 `aiSummaryService`。
-        *   生成用于在 UI 上显示的简短标签和装饰性主题（如 "Blue", "Tech" 等）。
-*   **日志**：`[Background Gen] Stage 1: Parallel Generation...`。
-
-#### 第三步：摘要更新 (Intermediate Update)
-*   **逻辑**：一旦摘要生成成功，立刻调用回调函数更新数据库中的画板元数据 (`summary` 字段)。
-*   **UI 反馈**：此时用户可能会看到 Toast 提示 "Board Summary Updated!"。
-*   **关键判断**：如果 `options.summaryOnly` 为 `true`，流程到此**直接结束**，不再生成图片。
-
-#### 第四步：第二阶段 Prompt 工程 (Stage 2: Prompt Gen)
-*   **前提**：必须有上一步生成的"视觉概念 (Visual Concept)"。
-*   **逻辑**：
-    *   调用 LLM (文本模型)。
-    *   **Prompt**: 将抽象的"视觉概念"转换为专门针对绘图模型（如 DALL-E 3 或 Flux）优化的详细英文提示词 (Image Prompt)。
-*   **日志**：`[Background Gen] Image Prompt: ...`。
-
-#### 第五步：图片生成 (Stage 3: Image Gen)
-*   **逻辑**：
-    *   调用绘图模型接口 (`imageGeneration`)。
-    *   传入上一步生成的详细 Prompt。
-    *   **等待**：这是最耗时的一步，通常需要 10-30 秒。
-
-#### 第六步：后续处理 (Finalization)
-*   **逻辑**：
-    1.  拿到图片 URL。
-    2.  (可选) 通过代理下载图片并上传到 S3 存储桶（如果配置了 S3），确保持久化。
-    3.  调用回调函数更新数据库中的画板元数据 (`backgroundImage` 字段)。
-*   **UI 反馈**：Toast 提示 "Board Background Updated!"。
+### 3. 功能 B：背景图片生成 (`generateBoardImage`)
+*   **用途**：分析画板内容，生成一张匹配意境的背景大图。
+*   **触发条件**：
+    *   手动：用户点击 Gallery 卡片上的图片按钮。
+    *   自动：当画板卡片数 > 10 且从未生成过背景图时。
+*   **流程**：
+    1.  提取上下文。
+    2.  **视觉概念分析**：调用 LLM 分析画板的"视觉主题" (Visual Concept)。
+    3.  **Prompt 工程**：调用 LLM 将概念转化为详细的英文绘图提示词 (Image Prompt)。
+    4.  **绘图**：调用绘图模型 (DALL-E/Flux) 生成图片。
+    5.  **上传**：上传至 S3。
+    6.  更新数据库 `backgroundImage` 字段。
+*   **日志关键点**：
+    *   `[Image Gen] Starting generation...`
+    *   `[Image Gen] Visual Concept: ...`
+    *   `[Image Gen] Final Image Prompt: ...`
+*   **与其他功能的关系**：完全独立，不需要依赖摘要生成的结果。
 
 ---
 
-## 2. 问题修复说明 (BUG Fix)
+## 自动触发逻辑 (`BoardPage.jsx`)
 
-**之前的 BUG 现象**：
-点击卡片上的图片生成按钮，控制台显示 "Summary only requested. Skipping image generation."，且只生成了文本摘要，没有生成图片。
+在画板详情页，我们使用两个独立的检测逻辑：
 
-**原因分析**：
-在 `BoardGallery.jsx` 和 `BoardPage.jsx` 中，调用 `generateBackground` 时被错误地硬编码了参数：
-```javascript
-// ❌ 错误代码 (v2.2.68 及以前)
-generateBackground(id, callback, { summaryOnly: true }) 
-```
-这相当于告诉核心逻辑："我只要文本摘要，不要生成图片"。
-
-**目前的逻辑 (v2.2.70)**：
-我们移除了所有硬编码的 `{ summaryOnly: true }`，现在调用方式为：
-```javascript
-// ✅ 修复后的代码 (v2.2.70)
-generateBackground(id, callback) 
-// 或者显式传入 false
-// generateBackground(id, callback, { summaryOnly: false })
-```
-这确保了默认行为是执行完整的流水线（生成摘要 + 生成图片）。
+1.  **摘要检测**：
+    *   如果 `activeCards > 3` 且没有摘要 -> 调用 `generateBoardSummary`。
+2.  **图片检测**：
+    *   如果 `activeCards > 10` 且没有背景图 -> 调用 `generateBoardImage`。
 
 ---
 
-## 3. 为什么有时候会"卡住"？
+## 常见问题 (FAQ)
 
-您在日志中看到停在 `[Background Gen] Stage 1: Parallel Generation...`，原因如下：
+**Q: 为什么点击生成图片按钮没有反应？**
+A: 请检查控制台日志。
+*   如果看到 `[Image Gen] Starting generation...`，说明请求已发送，正在等待 AI (可能需要 30 秒)。
+*   如果不显示任何日志，可能是组件未正确绑定事件。
 
-*   **大数据量**：您的日志显示 `Extracted context length: 36377`。这意味着您一次性发送了 **3.6 万个字符** 给 AI。
-*   **AI 处理时间**：AI 需要阅读理解这 3.6 万字，然后进行概括和构思。这个过程非常消耗算力。
-*   **网络等待**：前端必须保持 HTTP 连接打开，直到 AI 返回结果。如果时间超过 60 秒，浏览器或网络层可能会超时。
-
-**这不是代码逻辑错误**，而是因为输入内容过多导致的正常处理耗时。建议耐心等待 1-2 分钟，或者分拆画板内容。
+**Q: 为什么日志显示 Context length 很大 (例如 30k+)?**
+A: 这是正常的。我们将所有卡片内容都发给了 AI 以保证生成的准确性。处理大量文本需要时间，请耐心等待。
