@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Lock, Trophy, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
+import { getPlanetTexture } from '../utils/planetDefinitions';
+
 /**
  * Achievement Modal - "The Cosmic Journey" (Carousel Mode)
  * Features an immersive, single-view carousel with keyboard navigation.
@@ -74,153 +76,10 @@ export default function AchievementModal({
         cyan: 'bg-cyan-50',
         indigo: 'bg-indigo-50',
         fuchsia: 'bg-fuchsia-50',
-        purple: 'bg-purple-50'
+        purple: 'bg-purple-50',
+        red: 'bg-red-50'
     };
     const activeBgParams = bgColors[tier.color] || 'bg-slate-50';
-
-    // Dynamic Planet Textures (Ethereal / Abstract / Dreamy)
-    const getPlanetTexture = (planetName) => {
-        const id = (planetName || '').toLowerCase();
-
-        // Note: No external "Atmosphere" div anymore to avoid box artifacts.
-        // Everything must be clipped inside the main sphere.
-
-        switch (id) {
-            case 'mercury':
-                return {
-                    background: 'radial-gradient(circle at 30% 30%, #e2e8f0 0%, #94a3b8 100%)', // Pure sphere gradient
-                    shadow: 'shadow-[inset_-10px_-10px_30px_rgba(71,85,105,0.4),_0_0_60px_rgba(203,213,225,0.3)]', // Subtle internal shadow only
-                    detail: (
-                        <>
-                            <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-purple-200/40 blur-[40px] rounded-full mix-blend-multiply animate-pulse-slow"></div>
-                            <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-slate-400/30 blur-[30px] rounded-full"></div>
-                        </>
-                    )
-                };
-            case 'venus':
-                return {
-                    background: 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #fbbf24 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(180,83,9,0.3),_0_0_80px_rgba(251,191,36,0.4)]',
-                    detail: (
-                        <>
-                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-300 via-transparent to-rose-300 opacity-60 mix-blend-overlay"></div>
-                            <div className="absolute top-0 right-0 w-[90%] h-[90%] bg-amber-200/50 blur-[50px] rounded-full animate-spin-slow"></div>
-                        </>
-                    )
-                };
-            case 'terra':
-                return {
-                    background: 'radial-gradient(circle at 40% 40%, #60a5fa 0%, #1e40af 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(30,58,138,0.5),_0_0_100px_rgba(59,130,246,0.6)]',
-                    detail: (
-                        <>
-                            <div className="absolute top-[-10%] right-[-20%] w-[80%] h-[80%] bg-teal-300/40 blur-[50px] rounded-full mix-blend-screen animate-pulse-slow"></div>
-                            <div className="absolute bottom-[-10%] left-[-10%] w-[90%] h-[90%] bg-indigo-600/50 blur-[40px] rounded-full mix-blend-multiply"></div>
-                        </>
-                    )
-                };
-            case 'mars':
-                return {
-                    background: 'radial-gradient(circle at 30% 30%, #fdba74 0%, #ea580c 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(124,45,18,0.4),_0_0_80px_rgba(234,88,12,0.4)]',
-                    detail: (
-                        <>
-                            <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-orange-200/40 blur-[40px] rounded-full mix-blend-overlay"></div>
-                            <div className="absolute bottom-[10%] left-[10%] w-[50%] h-[50%] bg-rose-900/30 blur-[30px] rounded-full"></div>
-                        </>
-                    )
-                };
-            case 'jupiter':
-                return {
-                    background: 'linear-gradient(180deg, #d97706, #b45309, #92400e)',
-                    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(146,64,14,0.4),_0_0_100px_rgba(217,119,6,0.4)]',
-                    detail: (
-                        <>
-                            <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,0,0,0.1)_60px)] blur-[8px] mix-blend-multiply rounded-full overflow-hidden"></div>
-                            <div className="absolute top-[20%] left-[-20%] w-[100%] h-[60%] bg-amber-200/30 blur-[50px] rounded-full mix-blend-overlay"></div>
-                        </>
-                    )
-                };
-            case 'saturn':
-                return {
-                    background: 'radial-gradient(circle at 40% 40%, #fef08a 0%, #eab308 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(161,98,7,0.3),_0_0_80px_rgba(234,179,8,0.4)]',
-                    detail: (
-                        <>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-300/20 blur-[30px] rounded-full"></div>
-                        </>
-                    )
-                };
-            case 'uranus':
-                return {
-                    background: 'radial-gradient(circle at 30% 30%, #a5f3fc 0%, #0891b2 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(21,94,117,0.4),_0_0_80px_rgba(34,211,238,0.4)]',
-                    detail: (
-                        <>
-                            <div className="absolute top-[-30%] left-0 w-[120%] h-[120%] bg-sky-200/30 blur-[40px] rounded-full mix-blend-soft-light animate-pulse-slow"></div>
-                        </>
-                    )
-                };
-            case 'neptune':
-                return {
-                    background: 'radial-gradient(circle at 30% 30%, #818cf8 0%, #312e81 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(49,46,129,0.5),_0_0_100px_rgba(79,70,229,0.5)]',
-                    detail: (
-                        <>
-                            <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-purple-500/30 blur-[40px] rounded-full mix-blend-screen"></div>
-                            <div className="absolute bottom-0 left-0 w-[70%] h-[70%] bg-blue-900/60 blur-[40px] rounded-full mix-blend-multiply"></div>
-                        </>
-                    )
-                };
-            case 'sun':
-                return {
-                    background: 'radial-gradient(circle at 40% 40%, #fff7ed 0%, #f59e0b 40%, #ea580c 100%)',
-                    shadow: 'shadow-[0_0_80px_rgba(251,146,60,0.6)]', // Only the sun gets a glow, others are clean
-                    detail: (
-                        <>
-                            <div className="absolute inset-[-20%] bg-orange-400/30 blur-[50px] animate-pulse-slow mix-blend-screen"></div>
-                        </>
-                    )
-                };
-            case 'supernova':
-                return {
-                    background: 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f0abfc 20%, #a855f7 60%, #4c1d95 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_60px_rgba(76,29,149,0.5),_0_0_100px_rgba(192,132,252,0.6)]',
-                    detail: (
-                        <>
-                            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,rgba(255,255,255,0.4),transparent)] animate-spin-slow opacity-50 mix-blend-overlay"></div>
-                            <div className="absolute inset-[-10%] bg-fuchsia-400/30 blur-[60px] animate-pulse-fast rounded-full"></div>
-                        </>
-                    )
-                };
-            case 'neutron': // Neutron Star
-                return {
-                    background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #22d3ee 40%, #0369a1 100%)',
-                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(8,145,178,0.5),_0_0_120px_rgba(34,211,238,0.8)]',
-                    detail: (
-                        <>
-                            {/* Pulsar Beams Effect */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[10%] bg-cyan-100/50 blur-[20px] rotate-[45deg] animate-pulse-fast"></div>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[10%] bg-cyan-100/50 blur-[20px] rotate-[-45deg] animate-pulse-fast"></div>
-                        </>
-                    )
-                };
-            case 'blackhole':
-                return {
-                    background: 'radial-gradient(circle at 50% 50%, #000000 0%, #0f172a 70%, #312e81 100%)',
-                    shadow: 'shadow-[inset_0_0_60px_rgba(0,0,0,1),_0_0_80px_rgba(99,102,241,0.5)]', // Event horizon glow
-                    detail: (
-                        <>
-                            {/* Accretion Disk */}
-                            <div className="absolute inset-[-10%] border-[2px] border-indigo-400/30 rounded-full blur-[2px]"></div>
-                            <div className="absolute inset-[10%] bg-black rounded-full shadow-[0_0_30px_#4f46e5]"></div>
-                        </>
-                    )
-                };
-            default:
-                return { background: `bg-gradient-to-br ${tier.gradient}`, shadow: 'shadow-lg' };
-        }
-    };
 
     const texture = getPlanetTexture(tier.id || tier.name);
 
