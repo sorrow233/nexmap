@@ -74,14 +74,53 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         return () => { document.title = 'NexMap'; };
     }, [currentBoardId, boardsList]);
 
-    // Autosave Logic
+    // Keep a ref of the latest data for unmount saving
+    const latestBoardDataRef = useRef({ cards, connections, groups, boardPrompts });
+    useEffect(() => {
+        latestBoardDataRef.current = { cards, connections, groups, boardPrompts };
+    }, [cards, connections, groups, boardPrompts]);
+
+    // Autosave Logic (Debounced)
     const lastSavedState = useRef('');
+
+    // Save function reused for both debounce and unmount
+    const performSave = useCallback((data, isUnmount = false) => {
+        if (!currentBoardId) return;
+
+        try {
+            const now = Date.now();
+            // Synchronous LocalStorage update happens inside here
+            saveBoard(currentBoardId, data);
+
+            if (setLastSavedAt && typeof setLastSavedAt === 'function') {
+                setLastSavedAt(now);
+            }
+
+            // Update ref
+            const stateCustom = {
+                cards: data.cards.map(c => ({ ...c, data: { ...c.data } })),
+                connections: data.connections || [],
+                groups: data.groups || [],
+                boardPrompts: data.boardPrompts || []
+            };
+            lastSavedState.current = JSON.stringify(stateCustom);
+
+            if (!isUnmount) {
+                debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
+            } else {
+                debugLog.storage(`Unmount save complete for board: ${currentBoardId}`);
+            }
+        } catch (e) {
+            console.error("[BoardPage] Save failed", e);
+            if (!isUnmount) toast.error('保存失败，请检查存储空间');
+        }
+    }, [currentBoardId, setLastSavedAt, toast]);
+
+    // 1. Debounced Autosave Effect
     useEffect(() => {
         if (isBoardLoading) return;
-        if (isHydratingFromCloud) {
-            debugLog.sync('Skipping autosave: hydrating from cloud');
-            return;
-        }
+        if (isHydratingFromCloud) return;
+
         if (currentBoardId && cards.length > 0) {
             const currentStateObj = {
                 cards: cards.map(c => ({ ...c, data: { ...c.data } })),
@@ -94,20 +133,10 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
-                try {
-                    const now = Date.now();
-                    saveBoard(currentBoardId, { cards, connections, groups, boardPrompts });
-                    if (setLastSavedAt && typeof setLastSavedAt === 'function') {
-                        setLastSavedAt(now);
-                    }
-                    lastSavedState.current = currentState;
-                    debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
-                } catch (e) {
-                    console.error("[BoardPage] Autosave failed", e);
-                    toast.error('保存失败，请检查存储空间');
-                }
+                performSave({ cards, connections, groups, boardPrompts });
             }, 1000);
 
+            // Cloud sync (keep existing logic)
             let cloudTimeout;
             if (user) {
                 cloudTimeout = setTimeout(async () => {
@@ -121,7 +150,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
                         console.error('[BoardPage] Cloud sync failed:', e);
                         toast.error('云同步失败');
                     }
-                }, 30000); // 30 seconds
+                }, 30000);
             }
 
             return () => {
@@ -129,7 +158,34 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud, setLastSavedAt, toast]);
+    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud, performSave]);
+
+    // 2. Unmount / Navigation Save Effect
+    useEffect(() => {
+        return () => {
+            // Check if we have unsaved changes on unmount
+            const data = latestBoardDataRef.current;
+            const currentStateObj = {
+                cards: data.cards.map(c => ({ ...c, data: { ...c.data } })),
+                connections: data.connections || [],
+                groups: data.groups || [],
+                boardPrompts: data.boardPrompts || []
+            };
+            const currentState = JSON.stringify(currentStateObj);
+
+            // If strictly different from last saved, force save
+            if (currentState !== lastSavedState.current && data.cards.length > 0) {
+                console.log('[BoardLogic] Unmount detected with unsaved changes. Saving immediately.');
+                // We call the imported saveBoard directly or the helper. 
+                // Since performSave relies on closure variables that might be stale in cleanup if not careful,
+                // we use the data from the REF.
+                // Re-implementing the core synchronous part of save here to be 100% safe
+
+                // Note: We cannot execute async await here effectively, but saveBoard does synchronous LS update first.
+                saveBoard(currentBoardId, data);
+            }
+        };
+    }, [currentBoardId]);
 
     // Persist Viewport
     useEffect(() => {
