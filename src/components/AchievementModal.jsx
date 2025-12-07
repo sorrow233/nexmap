@@ -72,7 +72,9 @@ export default function AchievementModal({
         amber: 'bg-amber-50',
         yellow: 'bg-yellow-50',
         cyan: 'bg-cyan-50',
-        indigo: 'bg-indigo-50'
+        indigo: 'bg-indigo-50',
+        fuchsia: 'bg-fuchsia-50',
+        purple: 'bg-purple-50'
     };
     const activeBgParams = bgColors[tier.color] || 'bg-slate-50';
 
@@ -177,6 +179,41 @@ export default function AchievementModal({
                     detail: (
                         <>
                             <div className="absolute inset-[-20%] bg-orange-400/30 blur-[50px] animate-pulse-slow mix-blend-screen"></div>
+                        </>
+                    )
+                };
+            case 'supernova':
+                return {
+                    background: 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f0abfc 20%, #a855f7 60%, #4c1d95 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_60px_rgba(76,29,149,0.5),_0_0_100px_rgba(192,132,252,0.6)]',
+                    detail: (
+                        <>
+                            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,rgba(255,255,255,0.4),transparent)] animate-spin-slow opacity-50 mix-blend-overlay"></div>
+                            <div className="absolute inset-[-10%] bg-fuchsia-400/30 blur-[60px] animate-pulse-fast rounded-full"></div>
+                        </>
+                    )
+                };
+            case 'neutron': // Neutron Star
+                return {
+                    background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #22d3ee 40%, #0369a1 100%)',
+                    shadow: 'shadow-[inset_-10px_-10px_40px_rgba(8,145,178,0.5),_0_0_120px_rgba(34,211,238,0.8)]',
+                    detail: (
+                        <>
+                            {/* Pulsar Beams Effect */}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[10%] bg-cyan-100/50 blur-[20px] rotate-[45deg] animate-pulse-fast"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[10%] bg-cyan-100/50 blur-[20px] rotate-[-45deg] animate-pulse-fast"></div>
+                        </>
+                    )
+                };
+            case 'blackhole':
+                return {
+                    background: 'radial-gradient(circle at 50% 50%, #000000 0%, #0f172a 70%, #312e81 100%)',
+                    shadow: 'shadow-[inset_0_0_60px_rgba(0,0,0,1),_0_0_80px_rgba(99,102,241,0.5)]', // Event horizon glow
+                    detail: (
+                        <>
+                            {/* Accretion Disk */}
+                            <div className="absolute inset-[-10%] border-[2px] border-indigo-400/30 rounded-full blur-[2px]"></div>
+                            <div className="absolute inset-[10%] bg-black rounded-full shadow-[0_0_30px_#4f46e5]"></div>
                         </>
                     )
                 };
