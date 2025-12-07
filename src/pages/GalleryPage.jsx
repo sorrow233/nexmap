@@ -209,6 +209,14 @@ export default function GalleryPage({
                             </button>
                         )}
 
+                        <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="bg-white dark:bg-white/5 p-2 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all mr-2"
+                            aria-label="Settings"
+                        >
+                            <Settings size={20} />
+                        </button>
+
                         {user ? (
                             <div className="relative z-50">
                                 <button

@@ -1,8 +1,8 @@
 import { uuid } from '../utils/uuid';
 import { useStore } from '../store/useStore';
-import { aiManager, PRIORITY } from '../services/ai/AIManager';
 import { debugLog } from '../utils/debugLogger';
-import { CARD_GEOMETRY } from '../utils/geometry';
+import { calculateMindmapChildPositions } from '../utils/mindmapUtils';
+import { streamToCard } from '../services/ai/streamToCard';
 
 /**
  * Hook to handle AI branching operations like "sprouting" new ideas 
@@ -15,43 +15,6 @@ export function useAISprouting() {
         updateCardContent,
         setCardGenerating
     } = useStore();
-
-    /**
-     * Calculate standard mindmap layout for child cards.
-     * Children are positioned to the right of the parent, vertically centered.
-     * This is exactly how MindNode/XMind layout their nodes.
-     * 
-     * @param {Object} parent - Parent card {x, y}
-     * @param {number} childCount - Number of children to position
-     * @returns {Array} Array of {x, y} positions for each child
-     */
-    const calculateMindmapChildPositions = (parent, childCount) => {
-        const CARD_WIDTH = CARD_GEOMETRY.standard.width;   // 320
-        const CARD_HEIGHT = CARD_GEOMETRY.standard.height; // 300
-        const HORIZONTAL_GAP = 130; // Gap between parent and children
-        const VERTICAL_GAP = 50;    // Gap between siblings
-
-        // All children are at the same X (to the right of parent)
-        const childX = parent.x + CARD_WIDTH + HORIZONTAL_GAP;
-
-        // Total height taken by all children
-        const totalHeight = childCount * CARD_HEIGHT + (childCount - 1) * VERTICAL_GAP;
-
-        // Start Y: center children around parent's center
-        const parentCenterY = parent.y + CARD_HEIGHT / 2;
-        const startY = parentCenterY - totalHeight / 2;
-
-        // Generate positions for each child
-        const positions = [];
-        for (let i = 0; i < childCount; i++) {
-            positions.push({
-                x: childX,
-                y: startY + i * (CARD_HEIGHT + VERTICAL_GAP)
-            });
-        }
-
-        return positions;
-    };
 
     const handleExpandTopics = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
@@ -70,6 +33,7 @@ export function useAISprouting() {
 
                 debugLog.ai(`Creating expanded topic card: ${generatedId}`, { topic: mark });
 
+                // Create Card
                 const newId = await createAICard({
                     id: generatedId,
                     text: mark,
@@ -80,29 +44,16 @@ export function useAISprouting() {
                     providerId: activeConfig.id
                 });
 
-                try {
-                    await aiManager.requestTask({
-                        type: 'chat',
-                        priority: PRIORITY.HIGH,
-                        payload: {
-                            messages: [{ role: 'user', content: mark }],
-                            model: chatModel,
-                            config: activeConfig
-                        },
-                        tags: [`card:${generatedId}`],
-                        onProgress: (chunk) => updateCardContent(newId, chunk)
-                    });
-                    debugLog.ai(`Topic expansion complete for: ${generatedId}`);
-                } catch (innerError) {
-                    debugLog.error(`Expand topic failed for ${generatedId}`, innerError);
-                    const errMsg = innerError.message || 'Generation failed';
-                    const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                        ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                        : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                    updateCardContent(newId, userMessage);
-                } finally {
-                    setCardGenerating(newId, false);
-                }
+                // Stream Content
+                await streamToCard({
+                    cardId: newId,
+                    messages: [{ role: 'user', content: mark }],
+                    config: activeConfig,
+                    model: chatModel,
+                    updateCardContent,
+                    setCardGenerating
+                });
+
             } catch (e) {
                 debugLog.error(`Expand topic creation failed`, e);
             }
@@ -141,37 +92,24 @@ export function useAISprouting() {
                         providerId: activeConfig.id
                     });
 
-                    // Build context from source card's conversation (last 4 messages for context)
+                    // Build context
                     const sourceContext = (source.data.messages || []).slice(-4)
                         .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
                         .join('\n');
 
-                    try {
-                        await aiManager.requestTask({
-                            type: 'chat',
-                            priority: PRIORITY.HIGH,
-                            payload: {
-                                messages: [{
-                                    role: 'user',
-                                    content: `[Previous Context]\n${sourceContext}\n\n[New Topic to Explore]\n${question}\n\nBased on the previous context, please elaborate on this topic in detail.`
-                                }],
-                                model: chatModel,
-                                config: activeConfig
-                            },
-                            tags: [`card:${newId}`],
-                            onProgress: (chunk) => updateCardContent(newId, chunk)
-                        });
-                        debugLog.ai(`Sprout generation complete for: ${newId}`);
-                    } catch (innerError) {
-                        debugLog.error(`Sprout generation failed for ${newId}`, innerError);
-                        const errMsg = innerError.message || 'Generation failed';
-                        const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                            ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                            : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                        updateCardContent(newId, userMessage);
-                    } finally {
-                        setCardGenerating(newId, false);
-                    }
+                    // Stream Content
+                    await streamToCard({
+                        cardId: newId,
+                        messages: [{
+                            role: 'user',
+                            content: `[Previous Context]\n${sourceContext}\n\n[New Topic to Explore]\n${question}\n\nBased on the previous context, please elaborate on this topic in detail.`
+                        }],
+                        config: activeConfig,
+                        model: chatModel,
+                        updateCardContent,
+                        setCardGenerating
+                    });
+
                 } catch (e) {
                     debugLog.error(`Sprout creation failed`, e);
                 }
@@ -179,11 +117,6 @@ export function useAISprouting() {
         });
     };
 
-    /**
-     * Quick Sprout: Auto-generate 3 related cards without user selection
-     * Uses topic decomposition strategy for better accuracy
-     * This is a SEPARATE feature from the original Sprout
-     */
     const handleQuickSprout = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source) return;
@@ -196,7 +129,6 @@ export function useAISprouting() {
         const chatModel = state.getRoleModel('chat');
 
         try {
-            // Dynamic import to avoid circular dependency
             const { generateQuickSproutTopics } = await import('../services/llm');
             const topics = await generateQuickSproutTopics(
                 source.data.messages || [],
@@ -206,9 +138,7 @@ export function useAISprouting() {
 
             debugLog.ai(`Quick sprout topics generated:`, topics);
 
-            // Create cards using standard mindmap layout
             if (topics && topics.length > 0) {
-                // Calculate positions using mindmap layout
                 const positions = calculateMindmapChildPositions(source, topics.length);
 
                 topics.forEach((topic, i) => {
@@ -228,37 +158,21 @@ export function useAISprouting() {
                             providerId: activeConfig.id
                         });
 
-                        // Build context from source card's conversation (last 4 messages for context)
                         const sourceContext = (source.data.messages || []).slice(-4)
                             .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
                             .join('\n');
 
-                        try {
-                            await aiManager.requestTask({
-                                type: 'chat',
-                                priority: PRIORITY.HIGH,
-                                payload: {
-                                    messages: [{
-                                        role: 'user',
-                                        content: `[Previous Context]\n${sourceContext}\n\n[Topic to Explore]\n${topic}\n\nBased on the previous context, please elaborate on this topic in detail.`
-                                    }],
-                                    model: chatModel,
-                                    config: activeConfig
-                                },
-                                tags: [`card:${newId}`],
-                                onProgress: (chunk) => updateCardContent(newId, chunk)
-                            });
-                            debugLog.ai(`Quick sprout generation complete for: ${newId}`);
-                        } catch (innerError) {
-                            debugLog.error(`Quick sprout generation failed for ${newId}`, innerError);
-                            const errMsg = innerError.message || 'Generation failed';
-                            const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                                ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                                : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                            updateCardContent(newId, userMessage);
-                        } finally {
-                            setCardGenerating(newId, false);
-                        }
+                        await streamToCard({
+                            cardId: newId,
+                            messages: [{
+                                role: 'user',
+                                content: `[Previous Context]\n${sourceContext}\n\n[Topic to Explore]\n${topic}\n\nBased on the previous context, please elaborate on this topic in detail.`
+                            }],
+                            config: activeConfig,
+                            model: chatModel,
+                            updateCardContent,
+                            setCardGenerating
+                        });
                     })();
                 });
             }
@@ -267,10 +181,6 @@ export function useAISprouting() {
         }
     };
 
-    /**
-     * Continue Topic: Generate 1 follow-up question and add to current card's conversation
-     * Does NOT create new cards - stays in current conversation
-     */
     const handleContinueTopic = async (cardId, onSendMessage) => {
         const source = cards.find(c => c.id === cardId);
         if (!source) return;
@@ -288,10 +198,7 @@ export function useAISprouting() {
                 activeConfig,
                 analysisModel
             );
-
             debugLog.ai(`Continue topic generated:`, topic);
-
-            // Send the generated topic as a new message in the current card
             if (topic && onSendMessage) {
                 onSendMessage(topic);
             }
@@ -300,12 +207,6 @@ export function useAISprouting() {
         }
     };
 
-    /**
-     * Branch: Split the LAST assistant response into separate cards for deep dive
-     * 1. Uses AI to split text into logical sections / exact substrings
-     * 2. Creates new cards using these substrings as PROMPTS
-     * 3. AI generates detailed explanation for each substring
-     */
     const handleBranch = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source) return;
@@ -313,7 +214,6 @@ export function useAISprouting() {
         const messages = source.data.messages || [];
         if (messages.length === 0) return;
 
-        // 1. Get the last assistant message
         const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
         if (!lastAssistantMsg || !lastAssistantMsg.content) return;
 
@@ -322,20 +222,15 @@ export function useAISprouting() {
         const state = useStore.getState();
         const activeConfig = state.getActiveConfig();
         const chatModel = state.getRoleModel('chat');
-        // Use analysis model for splitting task if available
         const analysisModel = state.getRoleModel('analysis') || chatModel;
 
-        const content = typeof lastAssistantMsg.content === 'string'
-            ? lastAssistantMsg.content
-            : '';
+        const content = typeof lastAssistantMsg.content === 'string' ? lastAssistantMsg.content : '';
 
-        // 2. Split content using LLM
         debugLog.ai(`Requesting AI text split...`);
 
         let chunks = [];
         try {
             const { splitTextIntoSections } = await import('../services/llm');
-            // Reuse explicit splitting function
             chunks = await splitTextIntoSections(content, activeConfig, analysisModel);
         } catch (e) {
             console.error("AI split failed, falling back to basic split", e);
@@ -346,7 +241,6 @@ export function useAISprouting() {
 
         debugLog.ai(`Branch chunks to create:`, chunks.length);
 
-        // Calculate positions using mindmap layout
         const positions = calculateMindmapChildPositions(source, chunks.length);
 
         chunks.forEach((chunk, i) => {
@@ -354,56 +248,35 @@ export function useAISprouting() {
                 const newId = uuid();
                 const pos = positions[i];
                 const cleanChunk = chunk.trim();
-
-                // Use start of chunk as title (for UI)
                 const cardTitle = cleanChunk.slice(0, 40) + (cleanChunk.length > 40 ? '...' : '');
 
                 debugLog.ai(`Creating branch card: ${newId}`, { title: cardTitle });
 
-                // Create card: Use the CHUNK as the User's Prompt text
                 await createAICard({
                     id: newId,
-                    text: cleanChunk, // Full chunk as prompt
+                    text: cleanChunk,
                     x: pos.x,
                     y: pos.y,
                     autoConnections: [{ from: sourceId, to: newId }],
                     model: chatModel,
                     providerId: activeConfig.id
-                    // No initialMessages -> standard AI generation flow
                 });
 
-                // Build context from source card
                 const sourceContext = (source.data.messages || []).slice(-6)
                     .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
                     .join('\n');
 
-                try {
-                    // Trigger AI generation for "Deep Dive"
-                    await aiManager.requestTask({
-                        type: 'chat',
-                        priority: PRIORITY.HIGH,
-                        payload: {
-                            messages: [{
-                                role: 'user',
-                                content: `[Previous Context]\n${sourceContext}\n\n[Focus Topic]\n${cleanChunk}\n\nBased on the context, please provide a deeper explanation, analysis, or additional details about this specific point.`
-                            }],
-                            model: chatModel,
-                            config: activeConfig
-                        },
-                        tags: [`card:${newId}`],
-                        onProgress: (chunk) => updateCardContent(newId, chunk)
-                    });
-                    debugLog.ai(`Branch generation complete for: ${newId}`);
-                } catch (innerError) {
-                    debugLog.error(`Branch generation failed for ${newId}`, innerError);
-                    const errMsg = innerError.message || 'Generation failed';
-                    const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                        ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                        : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                    updateCardContent(newId, userMessage);
-                } finally {
-                    setCardGenerating(newId, false);
-                }
+                await streamToCard({
+                    cardId: newId,
+                    messages: [{
+                        role: 'user',
+                        content: `[Previous Context]\n${sourceContext}\n\n[Focus Topic]\n${cleanChunk}\n\nBased on the context, please provide a deeper explanation, analysis, or additional details about this specific point.`
+                    }],
+                    config: activeConfig,
+                    model: chatModel,
+                    updateCardContent,
+                    setCardGenerating
+                });
             })();
         });
     };
@@ -428,12 +301,10 @@ export function useAISprouting() {
             );
 
             if (!contents || contents.length === 0) {
-                // User feedback: AI didn't generate any content
                 console.warn('[DirectedSprout] No content generated by AI');
                 return;
             }
 
-            // Calculate positions using mindmap layout
             const positions = calculateMindmapChildPositions(source, contents.length);
 
             contents.forEach((content, i) => {
@@ -451,32 +322,21 @@ export function useAISprouting() {
                         providerId: activeConfig.id
                     });
 
-                    // Build context from source and trigger AI elaboration
                     const sourceContext = (source.data.messages || []).slice(-4)
                         .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
                         .join('\n');
 
-                    try {
-                        await aiManager.requestTask({
-                            type: 'chat',
-                            priority: PRIORITY.HIGH,
-                            payload: {
-                                messages: [{
-                                    role: 'user',
-                                    content: `[Previous Context]\n${sourceContext}\n\n[Topic/Instruction]\n${content}\n\nBased on this topic, please elaborate or fulfill the implied request.`
-                                }],
-                                model: chatModel,
-                                config: activeConfig
-                            },
-                            tags: [`card:${newId}`],
-                            onProgress: (chunk) => updateCardContent(newId, chunk)
-                        });
-                    } catch (innerError) {
-                        const errMsg = innerError.message || 'Generation failed';
-                        updateCardContent(newId, `\n\n⚠️ **Generation Failed**: ${errMsg}`);
-                    } finally {
-                        setCardGenerating(newId, false);
-                    }
+                    await streamToCard({
+                        cardId: newId,
+                        messages: [{
+                            role: 'user',
+                            content: `[Previous Context]\n${sourceContext}\n\n[Topic/Instruction]\n${content}\n\nBased on this topic, please elaborate or fulfill the implied request.`
+                        }],
+                        config: activeConfig,
+                        model: chatModel,
+                        updateCardContent,
+                        setCardGenerating
+                    });
                 })();
             });
 
