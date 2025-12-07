@@ -160,6 +160,26 @@ export default function StatisticsView({ boardsList, user }) {
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+    // Dynamic Planet Texture Logic (Mirrored from AchievementModal for consistency)
+    const getPlanetTexture = (planetName) => {
+        const id = (planetName || '').toLowerCase();
+        switch (id) {
+            case 'mercury': return { background: 'radial-gradient(circle at 30% 30%, #e2e8f0 0%, #94a3b8 100%)', shadow: 'shadow-[inset_-10px_-10px_30px_rgba(71,85,105,0.4),_0_0_60px_rgba(203,213,225,0.3)]', detail: (<><div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-purple-200/40 blur-[40px] rounded-full mix-blend-multiply animate-pulse-slow"></div><div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-slate-400/30 blur-[30px] rounded-full"></div></>) };
+            case 'venus': return { background: 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #fbbf24 100%)', shadow: 'shadow-[inset_-10px_-10px_40px_rgba(180,83,9,0.3),_0_0_80px_rgba(251,191,36,0.4)]', detail: (<><div className="absolute inset-0 bg-gradient-to-tr from-orange-300 via-transparent to-rose-300 opacity-60 mix-blend-overlay"></div><div className="absolute top-0 right-0 w-[90%] h-[90%] bg-amber-200/50 blur-[50px] rounded-full animate-spin-slow"></div></>) };
+            case 'terra': return { background: 'radial-gradient(circle at 40% 40%, #60a5fa 0%, #1e40af 100%)', shadow: 'shadow-[inset_-10px_-10px_50px_rgba(30,58,138,0.5),_0_0_100px_rgba(59,130,246,0.6)]', detail: (<><div className="absolute top-[-10%] right-[-20%] w-[80%] h-[80%] bg-teal-300/40 blur-[50px] rounded-full mix-blend-screen animate-pulse-slow"></div><div className="absolute bottom-[-10%] left-[-10%] w-[90%] h-[90%] bg-indigo-600/50 blur-[40px] rounded-full mix-blend-multiply"></div></>) };
+            case 'mars': return { background: 'radial-gradient(circle at 30% 30%, #fdba74 0%, #ea580c 100%)', shadow: 'shadow-[inset_-10px_-10px_40px_rgba(124,45,18,0.4),_0_0_80px_rgba(234,88,12,0.4)]', detail: (<><div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-orange-200/40 blur-[40px] rounded-full mix-blend-overlay"></div><div className="absolute bottom-[10%] left-[10%] w-[50%] h-[50%] bg-rose-900/30 blur-[30px] rounded-full"></div></>) };
+            case 'jupiter': return { background: 'linear-gradient(180deg, #d97706, #b45309, #92400e)', shadow: 'shadow-[inset_-10px_-10px_50px_rgba(146,64,14,0.4),_0_0_100px_rgba(217,119,6,0.4)]', detail: (<><div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,0,0,0.1)_60px)] blur-[8px] mix-blend-multiply rounded-full overflow-hidden"></div><div className="absolute top-[20%] left-[-20%] w-[100%] h-[60%] bg-amber-200/30 blur-[50px] rounded-full mix-blend-overlay"></div></>) };
+            case 'saturn': return { background: 'radial-gradient(circle at 40% 40%, #fef08a 0%, #eab308 100%)', shadow: 'shadow-[inset_-10px_-10px_40px_rgba(161,98,7,0.3),_0_0_80px_rgba(234,179,8,0.4)]', detail: (<><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-300/20 blur-[30px] rounded-full"></div></>) };
+            case 'uranus': return { background: 'radial-gradient(circle at 30% 30%, #a5f3fc 0%, #0891b2 100%)', shadow: 'shadow-[inset_-10px_-10px_40px_rgba(21,94,117,0.4),_0_0_80px_rgba(34,211,238,0.4)]', detail: (<><div className="absolute top-[-30%] left-0 w-[120%] h-[120%] bg-sky-200/30 blur-[40px] rounded-full mix-blend-soft-light animate-pulse-slow"></div></>) };
+            case 'neptune': return { background: 'radial-gradient(circle at 30% 30%, #818cf8 0%, #312e81 100%)', shadow: 'shadow-[inset_-10px_-10px_50px_rgba(49,46,129,0.5),_0_0_100px_rgba(79,70,229,0.5)]', detail: (<><div className="absolute top-0 right-0 w-[80%] h-[80%] bg-purple-500/30 blur-[40px] rounded-full mix-blend-screen"></div><div className="absolute bottom-0 left-0 w-[70%] h-[70%] bg-blue-900/60 blur-[40px] rounded-full mix-blend-multiply"></div></>) };
+            case 'sun': return { background: 'radial-gradient(circle at 40% 40%, #fff7ed 0%, #f59e0b 40%, #ea580c 100%)', shadow: 'shadow-[0_0_80px_rgba(251,146,60,0.6)]', detail: (<><div className="absolute inset-[-20%] bg-orange-400/30 blur-[50px] animate-pulse-slow mix-blend-screen"></div></>) };
+            default: return { background: `bg-gradient-to-br ${currentTier.gradient}`, shadow: 'shadow-lg' };
+        }
+    };
+
+    // Get texture for current tier
+    const texture = getPlanetTexture(currentTier.id || currentTier.name);
+
     return (
         <div className="w-full relative min-h-screen text-slate-600 overflow-hidden font-sans">
             {/* Soft Pastel Background */}
@@ -264,15 +284,30 @@ export default function StatisticsView({ boardsList, user }) {
                                 </svg>
                             </div>
 
-                            {/* The Planet (CSS 3D) */}
-                            <div className={`
-                                relative w-56 h-56 rounded-full shadow-[inset_-24px_-24px_80px_rgba(0,0,0,0.2),_inset_24px_24px_80px_rgba(255,255,255,0.8),_0_30px_80px_rgba(0,0,0,0.2)]
-                                bg-gradient-to-br ${currentTier.gradient}
-                                transition-all duration-1000 hover:scale-105 z-10 flex items-center justify-center
-                                ${currentTier.name === 'Sun' ? 'animate-pulse-slow shadow-amber-200' : ''}
-                            `}>
-                                {/* Surface Texture (Noise) */}
-                                <div className="absolute inset-[-50%] opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay animate-[spin_120s_linear_infinite]"></div>
+                            {/* The Planet (Ethereal 3D) */}
+                            <div className="relative w-56 h-56 group transition-transform duration-700 ease-out hover:scale-105 z-10 flex items-center justify-center perspective-[1000px]">
+
+                                {/* Texture Layer */}
+                                <div className="absolute inset-0 rounded-full">
+                                    {/* Planet Surface (Clipped for clean edges + Glow) */}
+                                    <div className={`
+                                        absolute inset-0 rounded-full overflow-hidden
+                                        transition-all duration-1000 ease-in-out
+                                        ${texture.shadow}
+                                    `}
+                                        style={{ background: texture.background }}
+                                    >
+                                        {/* Noise/Overlay */}
+                                        {texture.overlay && <div className={`absolute inset-0 ${texture.overlay}`}></div>}
+                                        {/* Ethereal Details */}
+                                        {texture.detail}
+                                    </div>
+
+                                    {/* Saturn Ring Special Case (Unclipped) */}
+                                    {(currentTier.id === 'saturn' || currentTier.name === 'Saturn') && (
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] h-[50%] border-[24px] border-[#fde047]/30 rounded-[100%] rotate-[-12deg] shadow-xl pointer-events-none mix-blend-plus-lighter blur-[1px]"></div>
+                                    )}
+                                </div>
 
                                 {/* Data Content inside Planet */}
                                 <div className="text-center relative z-20 text-white drop-shadow-md transform translate-z-10">
