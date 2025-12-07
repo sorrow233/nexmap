@@ -160,7 +160,7 @@ export default function AchievementModal({
         }
     };
 
-    const texture = getPlanetTexture(tier.name);
+    const texture = getPlanetTexture(tier.id || tier.name);
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -226,7 +226,7 @@ export default function AchievementModal({
                                 {texture.detail}
 
                                 {/* Saturn Ring Special Case */}
-                                {tier.name === 'Saturn' && (
+                                {(tier.id === 'saturn' || tier.name === 'Saturn') && (
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] h-[50%] border-[24px] border-[#fde047]/30 rounded-[100%] rotate-[-12deg] shadow-xl pointer-events-none mix-blend-plus-lighter blur-[1px]"></div>
                                 )}
                             </div>
