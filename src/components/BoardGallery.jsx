@@ -98,7 +98,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                             isTrashView={false}
                                             onSelect={onSelectBoard}
                                             onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
-                                            onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata, { summaryOnly: true })}
+                                            onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
                                             generatingBoardId={generatingBoardId}
                                             variant="overlay"
                                             isSystemCreditsUser={isSystemCreditsUser}
@@ -136,7 +136,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                                     onDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: false })}
                                     onRestore={onRestoreBoard}
                                     onRequestPermanentDelete={(id) => setDeleteDialog({ isOpen: true, boardId: id, isPermanent: true })}
-                                    onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata, { summaryOnly: true })}
+                                    onGenerateBackground={(id) => generateBackground(id, onUpdateBoardMetadata)}
                                     generatingBoardId={generatingBoardId}
                                     variant="stacked"
                                     isSystemCreditsUser={isSystemCreditsUser}
