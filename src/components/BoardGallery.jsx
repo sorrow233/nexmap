@@ -44,7 +44,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         .slice(0, 5);
 
     return (
-        <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
+        <div className="min-h-full animate-fade-in custom-scrollbar pb-40 bg-mesh-gradient">
             {/* Hero Section & Greeting */}
             {!isTrashView && (
                 <div className="relative pt-2 pb-8 px-2 max-w-[1800px] mx-auto">

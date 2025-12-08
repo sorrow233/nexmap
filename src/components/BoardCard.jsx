@@ -48,7 +48,7 @@ export default function BoardCard({
         const styles = {
             blue: {
                 bg: 'from-blue-50/80 via-white/50 to-indigo-50/80 dark:from-blue-900/30 dark:via-slate-900/20 dark:to-indigo-900/30',
-                border: 'border-blue-200/40 dark:border-blue-700/20',
+                border: 'border-blue-400/50 dark:border-blue-400/30 ring-1 ring-blue-400/20',
                 blob1: 'bg-blue-400/20',
                 blob2: 'bg-indigo-400/20',
                 tag: 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-100 border-blue-200/50 dark:border-blue-700/30',
@@ -57,7 +57,7 @@ export default function BoardCard({
             },
             purple: {
                 bg: 'from-violet-50/80 via-white/50 to-fuchsia-50/80 dark:from-violet-900/30 dark:via-slate-900/20 dark:to-fuchsia-900/30',
-                border: 'border-violet-200/40 dark:border-violet-700/20',
+                border: 'border-violet-400/50 dark:border-violet-400/30 ring-1 ring-violet-400/20',
                 blob1: 'bg-violet-400/20',
                 blob2: 'bg-fuchsia-400/20',
                 tag: 'bg-violet-100/50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-100 border-violet-200/50 dark:border-violet-700/30',
@@ -66,7 +66,7 @@ export default function BoardCard({
             },
             emerald: {
                 bg: 'from-emerald-50/80 via-white/50 to-teal-50/80 dark:from-emerald-900/30 dark:via-slate-900/20 dark:to-teal-900/30',
-                border: 'border-emerald-200/40 dark:border-emerald-700/20',
+                border: 'border-emerald-400/50 dark:border-emerald-400/30 ring-1 ring-emerald-400/20',
                 blob1: 'bg-emerald-400/20',
                 blob2: 'bg-teal-400/20',
                 tag: 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-100 border-emerald-200/50 dark:border-emerald-700/30',
@@ -75,7 +75,7 @@ export default function BoardCard({
             },
             orange: {
                 bg: 'from-orange-50/80 via-white/50 to-amber-50/80 dark:from-orange-900/30 dark:via-slate-900/20 dark:to-amber-900/30',
-                border: 'border-orange-200/40 dark:border-orange-700/20',
+                border: 'border-orange-400/50 dark:border-orange-400/30 ring-1 ring-orange-400/20',
                 blob1: 'bg-orange-400/20',
                 blob2: 'bg-amber-400/20',
                 tag: 'bg-orange-100/50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-100 border-orange-200/50 dark:border-orange-700/30',
@@ -84,7 +84,7 @@ export default function BoardCard({
             },
             pink: {
                 bg: 'from-pink-50/80 via-white/50 to-rose-50/80 dark:from-pink-900/30 dark:via-slate-900/20 dark:to-rose-900/30',
-                border: 'border-pink-200/40 dark:border-pink-700/20',
+                border: 'border-pink-400/50 dark:border-pink-400/30 ring-1 ring-pink-400/20',
                 blob1: 'bg-pink-400/20',
                 blob2: 'bg-rose-400/20',
                 tag: 'bg-pink-100/50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-100 border-pink-200/50 dark:border-pink-700/30',
@@ -93,7 +93,7 @@ export default function BoardCard({
             },
             slate: {
                 bg: 'from-slate-50/80 via-white/50 to-gray-50/80 dark:from-slate-800/40 dark:via-slate-900/20 dark:to-gray-800/40',
-                border: 'border-slate-200/40 dark:border-slate-600/20',
+                border: 'border-slate-300/50 dark:border-slate-500/30 ring-1 ring-slate-400/20',
                 blob1: 'bg-slate-400/20',
                 blob2: 'bg-gray-400/20',
                 tag: 'bg-slate-100/50 dark:bg-slate-800/30 text-slate-700 dark:text-slate-100 border-slate-200/50 dark:border-slate-600/30',
