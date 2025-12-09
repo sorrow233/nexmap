@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../store/useStore';
 import { Plus, X, GripVertical, Check } from 'lucide-react';
@@ -134,66 +135,69 @@ export default function Sidebar({ className = "" }) {
         );
     };
 
-    const AddInput = ({ type, onCancel }) => (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20" onClick={onCancel}>
-            <div
-                className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.sidebar.newPrompt || "NEW PROMPT"}</div>
+    const AddInput = ({ type, onCancel }) => {
+        return createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 overflow-hidden" onClick={onCancel}>
+                <div
+                    className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.sidebar.newPrompt || "NEW PROMPT"}</div>
 
-                {/* Name Input */}
-                <div>
-                    <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                        <span>Label</span>
-                        <span>{newName.length}/{MAX_NAME_LENGTH}</span>
+                    {/* Name Input */}
+                    <div>
+                        <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                            <span>Label</span>
+                            <span>{newName.length}/{MAX_NAME_LENGTH}</span>
+                        </div>
+                        <input
+                            autoFocus
+                            type="text"
+                            value={newName}
+                            onChange={e => setNewName(e.target.value)}
+                            maxLength={MAX_NAME_LENGTH}
+                            placeholder="Tag Name"
+                            className="w-full px-2 py-1.5 text-xs rounded border border-brand-300 dark:border-brand-700 focus:ring-1 focus:ring-brand-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') document.getElementById('prompt-content-input')?.focus();
+                                if (e.key === 'Escape') onCancel();
+                            }}
+                        />
                     </div>
-                    <input
-                        autoFocus
-                        type="text"
-                        value={newName}
-                        onChange={e => setNewName(e.target.value)}
-                        maxLength={MAX_NAME_LENGTH}
-                        placeholder="Tag Name"
-                        className="w-full px-2 py-1.5 text-xs rounded border border-brand-300 dark:border-brand-700 focus:ring-1 focus:ring-brand-500 outline-none bg-slate-50 dark:bg-slate-900"
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') document.getElementById('prompt-content-input')?.focus();
-                            if (e.key === 'Escape') onCancel();
-                        }}
-                    />
-                </div>
 
-                {/* Content Input */}
-                <div>
-                    <div className="text-[10px] text-slate-400 mb-1">Prompt Content</div>
-                    <textarea
-                        id="prompt-content-input"
-                        value={newContent}
-                        onChange={e => setNewContent(e.target.value)}
-                        placeholder="Enter the full instruction..."
-                        className="w-full px-2 py-1.5 text-xs rounded border border-brand-300 dark:border-brand-700 focus:ring-1 focus:ring-brand-500 outline-none bg-slate-50 dark:bg-slate-900 min-h-[80px] resize-none"
-                        onKeyDown={e => {
-                            if (e.key === 'Enter' && e.metaKey) handleAdd(type);
-                            if (e.key === 'Escape') onCancel();
-                        }}
-                    />
-                </div>
+                    {/* Content Input */}
+                    <div>
+                        <div className="text-[10px] text-slate-400 mb-1">Prompt Content</div>
+                        <textarea
+                            id="prompt-content-input"
+                            value={newContent}
+                            onChange={e => setNewContent(e.target.value)}
+                            placeholder="Enter the full instruction..."
+                            className="w-full px-2 py-1.5 text-xs rounded border border-brand-300 dark:border-brand-700 focus:ring-1 focus:ring-brand-500 outline-none bg-slate-50 dark:bg-slate-900 min-h-[80px] resize-none text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && e.metaKey) handleAdd(type);
+                                if (e.key === 'Escape') onCancel();
+                            }}
+                        />
+                    </div>
 
-                <div className="flex justify-end gap-2 pt-1">
-                    <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
-                        <X size={14} />
-                    </button>
-                    <button
-                        onClick={() => handleAdd(type)}
-                        disabled={!newName.trim()}
-                        className="p-1.5 bg-brand-500 text-white rounded hover:bg-brand-600 disabled:opacity-50"
-                    >
-                        <Check size={14} />
-                    </button>
+                    <div className="flex justify-end gap-2 pt-1">
+                        <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+                            <X size={14} />
+                        </button>
+                        <button
+                            onClick={() => handleAdd(type)}
+                            disabled={!newName.trim()}
+                            className="p-1.5 bg-brand-500 text-white rounded hover:bg-brand-600 disabled:opacity-50"
+                        >
+                            <Check size={14} />
+                        </button>
+                    </div>
                 </div>
-            </div>
-        </div>
-    );
+            </div>,
+            document.body
+        );
+    };
 
     return (
         <div className={`flex flex-col gap-6 pointer-events-none select-none ${className}`} style={{ width: 'fit-content' }}>
