@@ -126,41 +126,56 @@ export const getPlanetTexture = (planetName) => {
             };
         case 'supernova':
             return {
-                background: 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f0abfc 20%, #a855f7 60%, #4c1d95 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_60px_rgba(76,29,149,0.5),_0_0_100px_rgba(192,132,252,0.6)]',
+                background: 'radial-gradient(circle at 50% 50%, #ffffff 0%, #fef08a 10%, #f0abfc 25%, #d946ef 50%, #4c1d95 100%)',
+                shadow: 'shadow-[0_0_60px_rgba(232,121,249,0.8),_inset_0_0_40px_rgba(255,255,255,0.8)]',
                 detail: (
                     <>
-                        {/* Shockwave - Enhanced */}
-                        <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,rgba(255,255,255,0.8),transparent)] animate-[spin_4s_linear_infinite] opacity-60 mix-blend-overlay"></div>
-                        <div className="absolute inset-[-20%] bg-fuchsia-400/20 blur-[80px] animate-pulse-fast rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[5px] bg-white/50 blur-[10px] rotate-45"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[5px] bg-white/50 blur-[10px] -rotate-45"></div>
+                        {/* Explosive Debris Field */}
+                        <div className="absolute inset-[-20%] bg-[radial-gradient(circle,transparent_20%,rgba(255,255,255,0.2)_21%,transparent_22%)] animate-[spin_3s_linear_infinite] opacity-70 mix-blend-overlay scale-150"></div>
+                        <div className="absolute inset-[-10%] bg-[radial-gradient(circle,transparent_40%,rgba(232,121,249,0.4)_41%,transparent_45%)] animate-pulse-fast scale-125 mix-blend-screen"></div>
+
+                        {/* Cross Flare */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[2px] bg-white blur-[2px] animate-pulse"></div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-[150%] bg-white blur-[2px] animate-pulse"></div>
+
+                        {/* Core Instability */}
+                        <div className="absolute inset-0 bg-white/30 animate-ping opacity-20 rounded-full"></div>
                     </>
                 )
             };
-        case 'neutron':
+        case 'neutron': // Neutron Star
             return {
-                background: 'radial-gradient(circle at 30% 30%, #ecfeff 0%, #22d3ee 50%, #164e63 100%)',
-                shadow: 'shadow-[inset_-5px_-5px_30px_rgba(8,145,178,0.8),_0_0_120px_rgba(34,211,238,0.8)]',
+                background: 'radial-gradient(circle at 40% 40%, #ffffff 0%, #cffafe 30%, #22d3ee 60%, #0891b2 100%)',
+                shadow: 'shadow-[0_0_80px_rgba(103,232,249,0.9),_inset_-4px_-4px_20px_rgba(8,145,178,0.8)]',
                 detail: (
                     <>
-                        {/* Magnetic Fields & Pulsar Jets */}
-                        <div className="absolute inset-0 border-[4px] border-cyan-200/30 rounded-full animate-[spin_1s_linear_infinite] opacity-50 blur-[1px]"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[15%] bg-cyan-100/60 blur-[15px] rotate-[60deg] animate-pulse-fast"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[15%] bg-cyan-100/60 blur-[15px] rotate-[-60deg] animate-pulse-fast"></div>
+                        {/* Ultra-fast Spin Blur */}
+                        <div className="absolute inset-[-5%] border-[2px] border-cyan-100/30 rounded-full animate-[spin_0.2s_linear_infinite] skew-x-12"></div>
+
+                        {/* Pulsar Beams (Conic) */}
+                        <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_45%,rgba(165,243,252,0.6)_50%,transparent_55%,transparent_95%,rgba(165,243,252,0.6)_100%)] animate-[spin_2s_linear_infinite] mix-blend-overlay pointer-events-none blur-[8px]"></div>
+
+                        {/* Magnetic Field Rings */}
+                        <div className="absolute inset-[-20%] border border-cyan-500/30 rounded-[100%] rotate-45 animate-pulse-fast"></div>
+                        <div className="absolute inset-[-20%] border border-cyan-500/30 rounded-[100%] -rotate-45 animate-pulse-fast animation-delay-500"></div>
                     </>
                 )
             };
         case 'blackhole':
             return {
-                background: 'radial-gradient(circle at 60% 40%, #000000 0%, #0a0a0a 60%, #1e1b4b 100%)',
-                shadow: 'shadow-[inset_0_0_80px_rgba(0,0,0,1),_0_0_100px_rgba(99,102,241,0.4)]',
+                background: 'black', // Vantablack base
+                shadow: 'shadow-[0_0_50px_rgba(79,70,229,0.5),_inset_0_0_20px_rgba(255,255,255,0.7)]', // Outer Glow + Photon Ring
                 detail: (
                     <>
-                        {/* Event Horizon & Accretion Halo */}
-                        <div className="absolute inset-[-5%] border-[3px] border-indigo-500/50 rounded-full blur-[4px] shadow-[0_0_40px_rgba(79,70,229,0.8)]"></div>
-                        {/* Lensing Distortion (Fake) */}
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_60%,rgba(255,255,255,0.1)_90%)] mix-blend-overlay"></div>
+                        {/* Accretion Disk (Swirling gradients) */}
+                        <div className="absolute inset-[-40%] bg-[conic-gradient(from_0deg,#312e81,#818cf8,#c084fc,#312e81)] rounded-full animate-[spin_8s_linear_infinite] opacity-60 mix-blend-screen blur-[10px]"></div>
+                        <div className="absolute inset-[-35%] bg-[conic-gradient(from_180deg,transparent,#4f46e5,transparent)] rounded-full animate-[spin_4s_linear_infinite] opacity-80 mix-blend-lighten blur-[5px]"></div>
+
+                        {/* The Void (Clipping mask to ensure center stays black over the accretion disk) */}
+                        <div className="absolute inset-[2%] bg-black rounded-full z-10 box-decoration-clone shadow-[0_0_30px_#000]"></div>
+
+                        {/* Event Horizon Sparkle */}
+                        <div className="absolute inset-0 border-[1px] border-white/20 rounded-full z-20 animate-pulse-slow"></div>
                     </>
                 )
             };
