@@ -185,16 +185,31 @@ export function useAppInit() {
 
                     const currentActiveId = localStorage.getItem('mixboard_current_board_id');
                     if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
-                        debugLog.sync(`Active board ${currentActiveId} updated in cloud, rehydrating...`);
-                        loadBoard(currentActiveId).then(data => {
+                        // CRITICAL FIX: Capture the active ID BEFORE the async operation
+                        // to prevent race condition when user switches boards during load
+                        const targetBoardId = currentActiveId;
+                        debugLog.sync(`Active board ${targetBoardId} updated in cloud, starting rehydration...`);
+
+                        loadBoard(targetBoardId).then(data => {
+                            // RACE CONDITION FIX: Verify the active board hasn't changed
+                            // during the async loadBoard operation
+                            const postLoadActiveId = localStorage.getItem('mixboard_current_board_id');
+                            if (postLoadActiveId !== targetBoardId) {
+                                debugLog.sync(`[REHYDRATION ABORTED] User navigated from ${targetBoardId} to ${postLoadActiveId} during load. Discarding stale data.`);
+                                return;
+                            }
+
                             if (data) {
+                                // Additional validation: log card count for debugging
+                                debugLog.sync(`Rehydrating board ${targetBoardId} with ${data.cards?.length || 0} cards`);
+
                                 // Use setCardsFromCloud to prevent save loop
                                 // This sets isHydratingFromCloud=true temporarily
                                 if (data.cards) useStore.getState().setCardsFromCloud?.(data.cards) || setCards(data.cards);
                                 if (data.connections) setConnections(data.connections);
                                 if (data.groups) setGroups(data.groups);
                                 if (data.boardPrompts) setBoardPrompts(data.boardPrompts);
-                                debugLog.sync('Rehydration complete');
+                                debugLog.sync(`Rehydration complete for board ${targetBoardId}`);
                             }
                         });
                     }

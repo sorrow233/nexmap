@@ -130,10 +130,16 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 return;
                             }
 
-                            debugLog.sync(`Merging cloud updates for board: ${boardData.id}`, { type: change.type });
+                            debugLog.sync(`Merging cloud updates for board: ${boardData.id}`, {
+                                type: change.type,
+                                cloudCards: (boardData.cards || []).length,
+                                localCards: localCards.length,
+                                isCurrentBoard
+                            });
                             hasChanges = true;
 
                             if (!localCards || localCards.length === 0) {
+                                debugLog.sync(`Board ${boardData.id} has no local cards, using cloud data directly (${(boardData.cards || []).length} cards)`);
                                 await saveBoard(boardData.id, {
                                     cards: boardData.cards || [],
                                     connections: boardData.connections || [],
@@ -154,6 +160,9 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 localUpdatedAt,
                                 boardData.updatedAt || 0
                             );
+
+                            // Log the merge result for debugging
+                            debugLog.sync(`Board ${boardData.id} merge result: ${localCards.length} local + ${(boardData.cards || []).length} cloud = ${finalCards.length} final`);
 
                             await saveBoard(boardData.id, {
                                 cards: finalCards,
