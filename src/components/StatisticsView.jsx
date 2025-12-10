@@ -282,7 +282,7 @@ export default function StatisticsView({ boardsList, user }) {
                             </div>
 
                             {/* The Planet (Ethereal 3D) */}
-                            <div className="relative w-56 h-56 group transition-transform duration-700 ease-out hover:scale-105 z-10 flex items-center justify-center perspective-[1000px]">
+                            <div className="relative w-80 h-80 group transition-transform duration-700 ease-out hover:scale-105 z-10 flex items-center justify-center perspective-[1000px]">
 
                                 {/* Texture Layer */}
                                 <div className="absolute inset-0 rounded-full">
