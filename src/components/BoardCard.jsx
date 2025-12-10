@@ -119,7 +119,7 @@ export default function BoardCard({
         hover:-translate-y-1 hover:border-white/60 dark:hover:border-white/20
     `;
 
-    // Variant: Stacked (Modern Grid Item)
+    // Variant: Stacked (Modern Grid Item) - Now unified with Premium Glass aesthetic
     if (variant === 'stacked') {
         const hasImage = board.backgroundImage || board.thumbnail;
         const themeStyles = board.summary ? getThemeStyles(board.summary.theme) : null;
@@ -129,91 +129,103 @@ export default function BoardCard({
                 onClick={() => !isTrashView && onSelect(board.id)}
                 className={`
                     ${containerClasses}
-                    flex flex-col h-full
+                    flex flex-col min-h-[300px]
                     ${shouldAnimate ? 'animate-fade-in-up' : ''}
                     ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
                     ${themeStyles ? themeStyles.border : ''}
                 `}
                 style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
 
-                {/* Top Half - Visual/Image Area */}
-                <div className={`relative w-full aspect-[16/10] overflow-hidden rounded-t-3xl border-b border-white/10`}>
-                    {hasImage ? (
-                        <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                            style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
-                        />
-                    ) : board.summary ? (
-                        // Custom Themed Glass Gradient for Summary Cards
-                        <div className={`absolute inset-0 transition-all duration-500 bg-gradient-to-br ${themeStyles.bg}`}>
-                            {/* Abstract themed decorative shapes */}
-                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 ${themeStyles.blob1}`} />
-                            <div className={`absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 ${themeStyles.blob2}`} />
-
-                            {/* Summary Content Center */}
-                            <div className="relative z-10 h-full flex flex-col justify-center items-center px-6">
-                                <div className="flex flex-wrap justify-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
-                                    {(typeof board.summary === 'string' ? board.summary : board.summary.summary)
-                                        .split(' · ')
-                                        .slice(0, 3)
-                                        .map((tag, i) => (
-                                            <span key={i} className={`
-                                            px-2.5 py-1 rounded-lg text-[10px] font-medium tracking-wide border backdrop-blur-sm
-                                            ${themeStyles.tag}
-                                        `}>
-                                                {tag}
-                                            </span>
-                                        ))}
+                {/* Background Layer - Full height for summary, split for image boards */}
+                {hasImage ? (
+                    <>
+                        <div className="relative w-full aspect-[16/10] overflow-hidden rounded-t-3xl border-b border-white/10">
+                            <div
+                                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                                style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
+                            />
+                            {/* Subtle Overlay */}
+                            <div className="absolute inset-0 bg-white/10 dark:bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
+                        </div>
+                        <div className="p-5 flex flex-col gap-2 relative bg-white/40 dark:bg-black/5 h-full flex-grow">
+                            <div className="flex items-start justify-between gap-2">
+                                <h3 className={`font-bold text-lg leading-tight line-clamp-2 font-inter-tight tracking-tight text-slate-800 dark:text-slate-100`}>
+                                    {board.name}
+                                </h3>
+                            </div>
+                            <div className="mt-auto pt-4 flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-neutral-400">
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 dark:bg-white/5 border border-white/20">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
+                                    <span>{board.cardCount || 0} Cards</span>
                                 </div>
+                                <span className="opacity-70">{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                             </div>
                         </div>
-                    ) : (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-40`} />
-                    )}
+                    </>
+                ) : (
+                    // Full Height Summary Card - Like a colored glass tile
+                    <div className={`absolute inset-0 flex flex-col p-6 transition-all duration-500 bg-gradient-to-br ${themeStyles ? themeStyles.bg : getRandomGradient(board.id)}`}>
+                        {themeStyles && (
+                            <>
+                                <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 ${themeStyles.blob1}`} />
+                                <div className={`absolute bottom-0 left-0 w-48 h-48 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3 ${themeStyles.blob2}`} />
+                            </>
+                        )}
 
-                    {/* Subtle Overlay */}
-                    <div className="absolute inset-0 bg-white/10 dark:bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
+                        <div className="relative z-10 flex flex-col h-full">
+                            <h3 className={`font-bold text-xl leading-tight line-clamp-3 font-inter-tight tracking-tight ${themeStyles ? themeStyles.text : 'text-slate-800 dark:text-slate-100'}`}>
+                                {board.name}
+                            </h3>
+                            {themeStyles && (
+                                <div className={`mt-3 h-1 w-12 rounded-full opacity-60 ${themeStyles.underline}`} />
+                            )}
 
-                    {/* Actions Overlay */}
-                    {!isTrashView && (
-                        <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
-                            <button
-                                onClick={(e) => handleImageButtonClick(e, board.id)}
-                                disabled={generatingBoardId === board.id}
-                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:bg-white/40 transition-colors"
-                            >
-                                {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
-                            </button>
+                            {board.summary && (
+                                <div className="mt-4 flex flex-wrap gap-1.5">
+                                    {board.summary.summary.split(' · ').slice(0, 3).map((tag, i) => (
+                                        <span key={i} className={`
+                                            px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md
+                                            ${themeStyles.tag}
+                                        `}>
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
 
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(board.id);
-                                }}
-                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:bg-red-500/80 transition-colors"
-                            >
-                                <Trash2 size={14} />
-                            </button>
+                            <div className="mt-auto flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-neutral-400 pt-4">
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 dark:bg-black/20 border border-white/20">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
+                                    <span>{board.cardCount || 0} Cards</span>
+                                </div>
+                                <span className="opacity-70">{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            </div>
                         </div>
-                    )}
-                </div>
-
-                {/* Bottom Half - Info */}
-                <div className="p-5 flex flex-col gap-2 relative bg-white/40 dark:bg-black/5 h-full">
-                    <div className="flex items-start justify-between gap-2">
-                        <h3 className={`font-bold text-lg leading-tight line-clamp-2 font-inter-tight tracking-tight ${themeStyles ? themeStyles.text : 'text-slate-800 dark:text-slate-100'}`}>
-                            {board.name}
-                        </h3>
                     </div>
+                )}
 
-                    <div className="mt-auto pt-4 flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-neutral-400">
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 dark:bg-white/5 border border-white/20">
-                            <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
-                            <span>{board.cardCount || 0} Cards</span>
-                        </div>
-                        <span className="opacity-70">{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                {/* Actions Overlay */}
+                {!isTrashView && (
+                    <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                        <button
+                            onClick={(e) => handleImageButtonClick(e, board.id)}
+                            disabled={generatingBoardId === board.id}
+                            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-white/40 transition-colors"
+                        >
+                            {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                        </button>
+
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(board.id);
+                            }}
+                            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-red-500/80 hover:text-white transition-colors"
+                        >
+                            <Trash2 size={14} />
+                        </button>
                     </div>
-                </div>
+                )}
 
                 {/* Trash View Footer */}
                 {isTrashView && (
