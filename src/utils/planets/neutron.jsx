@@ -5,26 +5,31 @@ export const neutronTexture = {
     shadow: 'shadow-[0_0_60px_rgba(34,211,238,0.8),_inset_-4px_-4px_20px_rgba(8,145,178,0.8)]',
     detail: (
         <>
-            {/* 1. Pulsar Beams (Dual Cones - Ultra Fast) */}
-            <div className="absolute inset-[-120%] bg-[conic-gradient(from_0deg,transparent_42%,rgba(165,243,252,0.9)_48%,rgba(255,255,255,0.8)_50%,rgba(165,243,252,0.9)_52%,transparent_58%,transparent_92%,rgba(165,243,252,0.9)_98%,rgba(255,255,255,0.8)_100%)] animate-[spin_0.3s_linear_infinite] mix-blend-screen pointer-events-none blur-[3px]"></div>
+            {/* 1. Pulsar Beams (Lighthouse effect - Extreme Velocity) */}
+            <div className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent_44%,rgba(165,243,252,1)_49%,rgba(255,255,255,1)_50%,rgba(165,243,252,1)_51%,transparent_56%,transparent_94%,rgba(165,243,252,1)_99%,rgba(255,255,255,1)_100%)] animate-[spin_0.15s_linear_infinite] mix-blend-screen pointer-events-none blur-[2px]"></div>
 
-            {/* 2. Secondary Beam (Offset axis) */}
-            <div className="absolute inset-[-80%] bg-[conic-gradient(from_90deg,transparent_45%,rgba(34,211,238,0.5)_50%,transparent_55%)] animate-[spin_0.4s_linear_infinite_reverse] mix-blend-screen blur-[6px] opacity-60"></div>
+            {/* 2. Magnetic Field Tori (Donut shaped fields) */}
+            <div className="absolute inset-[-20%] border-[2px] border-cyan-400/50 rounded-full animate-[pulse_0.4s_ease-in-out_infinite] scale-x-110"></div>
+            <div className="absolute inset-[-40%] border-[1px] border-cyan-500/30 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] scale-y-110 animation-delay-100"></div>
 
-            {/* 3. Magnetosphere (Magnetic Field Lines) */}
-            <div className="absolute inset-[-15%] border-[2px] border-cyan-300/40 rounded-full animate-[pulse_0.8s_ease-in-out_infinite]"></div>
-            <div className="absolute inset-[-25%] border border-cyan-400/30 rounded-full animate-[pulse_1s_ease-in-out_infinite] animation-delay-200"></div>
-            <div className="absolute inset-[-35%] border border-cyan-500/20 rounded-full animate-[pulse_1.2s_ease-in-out_infinite] animation-delay-400"></div>
+            {/* 3. Accretion Stream (Feeding from unseen companion) */}
+            <div className="absolute top-[-50%] right-[-30%] w-[80%] h-[2px] bg-white/40 blur-[1px] rotate-[45deg] mix-blend-screen"></div>
 
-            {/* 4. "Hot Spots" (Radio emission origins) */}
-            <div className="absolute top-[10%] left-[45%] w-[10%] h-[10%] bg-white blur-[3px] rounded-full shadow-[0_0_15px_white] animate-[pulse_0.2s_ease-in-out_infinite]"></div>
-            <div className="absolute bottom-[10%] left-[45%] w-[10%] h-[10%] bg-white blur-[3px] rounded-full shadow-[0_0_15px_white] animate-[pulse_0.2s_ease-in-out_infinite]"></div>
+            {/* 4. Gravitational Redshift (Surface Color Gradient) */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.9)_0%,rgba(34,211,238,0.8)_40%,rgba(8,145,178,0.9)_100%)] blur-[2px] rounded-full"></div>
 
-            {/* 5. Core (Extreme Density - Small & Intense) */}
-            <div className="absolute inset-[35%] bg-white blur-[4px] rounded-full shadow-[0_0_30px_white,_0_0_60px_cyan]"></div>
+            {/* 5. Crustal Plates / Starquakes (Cracking) */}
+            <div className="absolute inset-[10%] border-t border-l border-white/60 rounded-full animate-ping opacity-30"></div>
 
-            {/* 6. "Glitch" Effect (Starquake Pulse) */}
-            <div className="absolute inset-0 border-[1px] border-white/30 rounded-full animate-ping opacity-40"></div>
+            {/* 6. Hot Spots (Magnetic Pole impact zones) */}
+            <div className="absolute top-[15%] left-[45%] w-[10%] h-[10%] bg-white rounded-full shadow-[0_0_20px_white] animate-[pulse_0.15s_ease-in-out_infinite]"></div>
+            <div className="absolute bottom-[15%] left-[45%] w-[10%] h-[10%] bg-white rounded-full shadow-[0_0_20px_white] animate-[pulse_0.15s_ease-in-out_infinite]"></div>
+
+            {/* 7. Core Density (Singularity-like intensity) */}
+            <div className="absolute inset-[30%] bg-white blur-[5px] rounded-full shadow-[0_0_50px_white,_0_0_80px_cyan] mix-blend-screen"></div>
+
+            {/* 8. Synchrotron Radiation Halo */}
+            <div className="absolute inset-[-20%] bg-cyan-400/10 blur-[15px] rounded-full animate-pulse"></div>
         </>
     )
 };
