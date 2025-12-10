@@ -1,20 +1,22 @@
 import React from 'react';
 
 export const supernovaTexture = {
-    background: 'radial-gradient(circle at 50% 50%, #ffffff 0%, #fef08a 10%, #f0abfc 25%, #d946ef 50%, #4c1d95 100%)',
-    shadow: 'shadow-[0_0_60px_rgba(232,121,249,0.8),_inset_0_0_40px_rgba(255,255,255,0.8)]',
+    background: 'radial-gradient(circle at 50% 50%, #ffffff 0%, #fef08a 10%, #f0abfc 30%, #d946ef 60%, #4c1d95 100%)',
+    shadow: 'shadow-[0_0_80px_rgba(232,121,249,0.9),_inset_0_0_50px_rgba(255,255,255,0.9)]',
     detail: (
         <>
-            {/* Explosive Debris Field */}
-            <div className="absolute inset-[-20%] bg-[radial-gradient(circle,transparent_20%,rgba(255,255,255,0.2)_21%,transparent_22%)] animate-[spin_3s_linear_infinite] opacity-70 mix-blend-overlay scale-150"></div>
-            <div className="absolute inset-[-10%] bg-[radial-gradient(circle,transparent_40%,rgba(232,121,249,0.4)_41%,transparent_45%)] animate-pulse-fast scale-125 mix-blend-screen"></div>
+            {/* 1. Primary Shockwave (Expanding Ring) */}
+            <div className="absolute inset-[-10%] border-[2px] border-fuchsia-300/50 rounded-full animate-ping opacity-70"></div>
 
-            {/* Cross Flare */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[2px] bg-white blur-[2px] animate-pulse"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-[150%] bg-white blur-[2px] animate-pulse"></div>
+            {/* 2. Secondary Debris Cloud (Spinning) */}
+            <div className="absolute inset-[-20%] bg-[conic-gradient(from_0deg,transparent,rgba(232,121,249,0.3),transparent)] rounded-full animate-[spin_4s_linear_infinite] blur-md mix-blend-screen"></div>
 
-            {/* Core Instability */}
-            <div className="absolute inset-0 bg-white/30 animate-ping opacity-20 rounded-full"></div>
+            {/* 3. Core Collapse Flash */}
+            <div className="absolute inset-0 bg-white/80 blur-[20px] animate-pulse rounded-full mix-blend-overlay"></div>
+
+            {/* 4. Lens Flare Artifacts */}
+            <div className="absolute top-1/2 left-[-20%] w-[140%] h-[1px] bg-white blur-[1px] mix-blend-overlay"></div>
+            <div className="absolute left-1/2 top-[-20%] h-[140%] w-[1px] bg-white blur-[1px] mix-blend-overlay"></div>
         </>
     )
 };
