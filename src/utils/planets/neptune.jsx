@@ -1,13 +1,28 @@
 import React from 'react';
 
+/**
+ * Neptune - The Windy Giant
+ * Concept: Deep azure, fastest winds in solar system, Great Dark Spot.
+ * Optimization:
+ * - Color: Rich Royal Blue.
+ * - Storms: High-speed streaks.
+ * - Clouds: High altitude white cirrus clouds (Scooters).
+ */
 export const neptuneTexture = {
-    background: 'radial-gradient(circle at 30% 30%, #818cf8 0%, #4338ca 50%, #1e1b4b 100%)',
-    shadow: 'shadow-[inset_-10px_-10px_50px_rgba(30,27,75,0.8),_0_0_60px_rgba(99,102,241,0.4)]',
+    // Surface: Deep Royal Blue
+    background: 'radial-gradient(circle at 40% 40%, #6366f1 0%, #4338ca 40%, #312e81 70%, #1e1b4b 100%)',
+    shadow: 'shadow-[inset_-15px_-15px_50px_rgba(2,6,23,0.8),_0_0_60px_rgba(79,70,229,0.5)]',
     detail: (
         <>
-            {/* Dark Spot & Windy Atmosphere */}
-            <div className="absolute top-[20%] right-[20%] w-[30%] h-[20%] bg-indigo-950/60 blur-[15px] rounded-full mix-blend-multiply"></div>
-            <div className="absolute inset-[-20%] bg-blue-500/10 blur-[50px] mix-blend-screen animate-pulse-slow"></div>
+            {/* 1. Great Dark Spot */}
+            <div className="absolute top-[30%] right-[20%] w-[25%] h-[15%] bg-indigo-950/80 blur-[8px] rounded-full mix-blend-multiply"></div>
+
+            {/* 2. "Scooter" Clouds (High Altitude White Streaks) */}
+            <div className="absolute top-[25%] right-[25%] w-[15%] h-[2%] bg-white/60 blur-[2px] rounded-full shadow-[0_0_5px_white]"></div>
+            <div className="absolute bottom-[20%] left-[30%] w-[20%] h-[3%] bg-white/40 blur-[3px] rounded-full"></div>
+
+            {/* 3. Wind Streaks */}
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,rgba(255,255,255,0.02)_25px)] opacity-50"></div>
         </>
     )
 };
