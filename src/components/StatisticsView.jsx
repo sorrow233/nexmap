@@ -6,6 +6,8 @@ import { userStatsService } from '../services/stats/userStatsService';
 import ActivityChart from './stats/ActivityChart';
 import { useStore } from '../store/useStore';
 import AchievementModal from '../components/AchievementModal';
+import { getPlanetTexture, usePlanetTiers } from '../utils/planetDefinitions';
+
 
 export default function StatisticsView({ boardsList, user }) {
     const { t } = useLanguage();
@@ -135,9 +137,9 @@ export default function StatisticsView({ boardsList, user }) {
         return maxPeriod;
     }, [timeDistribution, t]);
 
-    import { getPlanetTexture, usePlanetTiers } from '../utils/planetDefinitions'; // Start of file
 
     // ... inside the component
+
     // Planetary Logic (Lifted State & Localized)
     const totalTokens = stats.tokenStats.totalChars;
     const tiers = usePlanetTiers(t);
