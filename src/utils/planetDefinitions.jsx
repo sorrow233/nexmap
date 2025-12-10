@@ -2,125 +2,127 @@ import React from 'react';
 
 /**
  * Planet Visual Definitions and Configuration
- * Centralizes the specialized "Ethereal" texture rendering and tier logic.
+ * Centralizes the specialized "Cinematic" texture rendering and tier logic.
+ * Now features High-Fidelity Atmosphere & Immersion for ALL planets.
  */
 
 // Dynamic Planet Texture Generator
-// Returns { background, shadow, detail, overlay? } based on planet ID
 export const getPlanetTexture = (planetName) => {
     const id = (planetName || '').toLowerCase();
-
-    // Note: External containers must provide 'rounded-full' and 'overflow-hidden' 
-    // to properly clip these internal effects.
 
     switch (id) {
         case 'mercury':
             return {
-                background: 'radial-gradient(circle at 30% 30%, #e2e8f0 0%, #94a3b8 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_30px_rgba(71,85,105,0.4),_0_0_60px_rgba(203,213,225,0.3)]',
+                background: 'radial-gradient(circle at 30% 30%, #f1f5f9 0%, #cbd5e1 40%, #64748b 100%)',
+                shadow: 'shadow-[inset_-10px_-10px_20px_rgba(30,41,59,0.5),_0_0_20px_rgba(255,255,255,0.2)]',
                 detail: (
                     <>
-                        {/* Craters / Dusty Atmosphere */}
-                        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-purple-200/40 blur-[40px] rounded-full mix-blend-multiply animate-pulse-slow"></div>
-                        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-slate-400/30 blur-[30px] rounded-full"></div>
-                        <div className="absolute top-[40%] left-[40%] w-[20%] h-[20%] bg-slate-300/20 blur-[10px] rounded-full mix-blend-overlay"></div>
+                        {/* Craters & Heat Haze */}
+                        <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent_0,transparent_10px,rgba(0,0,0,0.05)_12px)] opacity-40 mix-blend-multiply"></div>
+                        <div className="absolute top-[20%] left-[20%] w-[60%] h-[60%] bg-slate-400/20 blur-[20px] rounded-full mix-blend-multiply"></div>
+                        <div className="absolute inset-[-10%] bg-orange-100/10 blur-[30px] animate-pulse-slow"></div>
                     </>
                 )
             };
         case 'venus':
             return {
-                background: 'radial-gradient(circle at 30% 30%, #fef3c7 0%, #fbbf24 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(180,83,9,0.3),_0_0_80px_rgba(251,191,36,0.4)]',
+                background: 'radial-gradient(circle at 40% 30%, #fef3c7 0%, #f59e0b 50%, #b45309 100%)',
+                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(120,53,15,0.6),_0_0_50px_rgba(251,191,36,0.3)]',
                 detail: (
                     <>
-                        {/* Thick Clouds */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-orange-300 via-transparent to-rose-300 opacity-60 mix-blend-overlay"></div>
-                        <div className="absolute top-0 right-0 w-[90%] h-[90%] bg-amber-200/50 blur-[50px] rounded-full animate-spin-slow"></div>
+                        {/* Toxic Clouds - Rotating Thick Atmosphere */}
+                        <div className="absolute inset-[-20%] bg-[conic-gradient(from_0deg,transparent,rgba(255,255,255,0.2),transparent)] animate-[spin_20s_linear_infinite] opacity-60 mix-blend-soft-light blur-[20px]"></div>
+                        <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/30 to-yellow-200/30 mix-blend-overlay"></div>
                     </>
                 )
             };
         case 'terra':
             return {
-                background: 'radial-gradient(circle at 40% 40%, #60a5fa 0%, #1e40af 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_50px_rgba(30,58,138,0.5),_0_0_100px_rgba(59,130,246,0.6)]',
+                background: 'radial-gradient(circle at 55% 40%, #60a5fa 0%, #3b82f6 40%, #172554 100%)',
+                shadow: 'shadow-[inset_-15px_-15px_60px_rgba(2,6,23,0.8),_0_0_60px_rgba(59,130,246,0.4)]', // Atmospheric Glow
                 detail: (
                     <>
-                        {/* Oceans & Clouds */}
-                        <div className="absolute top-[-10%] right-[-20%] w-[80%] h-[80%] bg-teal-300/40 blur-[50px] rounded-full mix-blend-screen animate-pulse-slow"></div>
-                        <div className="absolute bottom-[-10%] left-[-10%] w-[90%] h-[90%] bg-indigo-600/50 blur-[40px] rounded-full mix-blend-multiply"></div>
-                        <div className="absolute top-[20%] right-[30%] w-[40%] h-[20%] bg-white/20 blur-[20px] rounded-full mix-blend-overlay"></div>
+                        {/* Dynamic Clouds */}
+                        <div className="absolute inset-[-10%] bg-[radial-gradient(circle,transparent_40%,rgba(255,255,255,0.8)_100%)] opacity-30 animate-[spin_60s_linear_infinite] mix-blend-overlay blur-[5px]"></div>
+                        <div className="absolute inset-0 bg-[url('https://raw.githubusercontent.com/catzz/aimainmap-assets/main/clouds-noise.png')] opacity-40 mix-blend-screen bg-cover animate-pulse-slow"></div>
+                        {/* Landmass hint (Abstract) */}
+                        <div className="absolute top-[20%] right-[30%] w-[40%] h-[50%] bg-emerald-500/20 blur-[15px] rounded-[40%] mix-blend-color-dodge"></div>
                     </>
                 )
             };
         case 'mars':
             return {
-                background: 'radial-gradient(circle at 30% 30%, #fdba74 0%, #ea580c 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(124,45,18,0.4),_0_0_80px_rgba(234,88,12,0.4)]',
+                background: 'radial-gradient(circle at 35% 35%, #fdba74 0%, #ea580c 50%, #7c2d12 100%)',
+                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(67,20,7,0.7),_0_0_40px_rgba(234,88,12,0.3)]',
                 detail: (
                     <>
-                        {/* Rusty Storms */}
-                        <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-orange-200/40 blur-[40px] rounded-full mix-blend-overlay"></div>
-                        <div className="absolute bottom-[10%] left-[10%] w-[50%] h-[50%] bg-rose-900/30 blur-[30px] rounded-full"></div>
+                        {/* Dust Storms */}
+                        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_40%,rgba(255,0,0,0.1)_50%,transparent_60%)] animate-pulse-slow mix-blend-overlay"></div>
+                        <div className="absolute bottom-[20%] left-[20%] w-[50%] h-[30%] bg-orange-900/40 blur-[20px] rounded-full mix-blend-multiply"></div>
                     </>
                 )
             };
         case 'jupiter':
             return {
-                background: 'linear-gradient(180deg, #d97706, #b45309, #92400e)',
-                shadow: 'shadow-[inset_-10px_-10px_50px_rgba(146,64,14,0.4),_0_0_100px_rgba(217,119,6,0.4)]',
+                background: 'linear-gradient(160deg, #fde68a 0%, #d97706 20%, #92400e 40%, #78350f 60%, #451a03 100%)',
+                shadow: 'shadow-[inset_-15px_-15px_50px_rgba(69,26,3,0.7),_0_0_60px_rgba(217,119,6,0.3)]',
                 detail: (
                     <>
-                        {/* Gas Bands - Enhanced */}
-                        <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,0,0,0.1)_60px)] blur-[8px] mix-blend-multiply rounded-full overflow-hidden"></div>
-                        <div className="absolute top-[20%] left-[-20%] w-[100%] h-[60%] bg-amber-200/30 blur-[50px] rounded-full mix-blend-overlay"></div>
-                        {/* Great Red Spot hint */}
-                        <div className="absolute bottom-[30%] right-[20%] w-[20%] h-[15%] bg-red-900/20 blur-[15px] rounded-full mix-blend-multiply"></div>
+                        {/* Storm Bands - Animated */}
+                        <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(0,0,0,0.1),rgba(0,0,0,0.1)_20px,transparent_20px,transparent_40px)] mix-blend-multiply blur-[2px] opacity-60"></div>
+                        {/* Great Red Spot */}
+                        <div className="absolute top-[60%] left-[30%] w-[25%] h-[15%] bg-red-800/60 blur-[10px] rounded-full mix-blend-multiply shadow-inner"></div>
+                        <div className="absolute inset-[-10%] bg-orange-200/10 blur-[40px] mix-blend-overlay"></div>
                     </>
                 )
             };
         case 'saturn':
             return {
-                background: 'radial-gradient(circle at 40% 40%, #fef08a 0%, #eab308 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(161,98,7,0.3),_0_0_80px_rgba(234,179,8,0.4)]',
+                background: 'radial-gradient(circle at 40% 40%, #fef9c3 0%, #eab308 60%, #a16207 100%)',
+                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(113,63,18,0.6),_0_0_50px_rgba(234,179,8,0.4)]',
                 detail: (
                     <>
-                        {/* Hexagon Storm hint */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-300/20 blur-[30px] rounded-full"></div>
+                        {/* Rings (Simulated with div + perspective would be complex, sticking to abstract bands for "orb" feel) */}
+                        <div className="absolute inset-[-20%] border-[20px] border-amber-200/20 rounded-full scale-[1.4] skew-x-[60deg] skew-y-[10deg] blur-[5px] mix-blend-screen"></div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-900/10 to-transparent mix-blend-multiply"></div>
                     </>
                 )
             };
         case 'uranus':
             return {
-                background: 'radial-gradient(circle at 30% 30%, #a5f3fc 0%, #0891b2 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(21,94,117,0.4),_0_0_80px_rgba(34,211,238,0.4)]',
+                background: 'radial-gradient(circle at 30% 30%, #cffafe 0%, #22d3ee 50%, #0e7490 100%)',
+                shadow: 'shadow-[inset_-10px_-10px_40px_rgba(21,94,117,0.6),_0_0_60px_rgba(103,232,249,0.3)]',
                 detail: (
                     <>
-                        {/* Vertical Tilt Glow */}
-                        <div className="absolute top-[-30%] left-0 w-[120%] h-[120%] bg-sky-200/30 blur-[40px] rounded-full mix-blend-soft-light animate-pulse-slow"></div>
+                        {/* Icy Haze - Soft & Uniform */}
+                        <div className="absolute inset-[-10%] bg-cyan-100/20 blur-[40px] rounded-full mix-blend-overlay"></div>
+                        <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent_40%,rgba(255,255,255,0.3)_50%,transparent_60%)] opacity-30"></div>
                     </>
                 )
             };
         case 'neptune':
             return {
-                background: 'radial-gradient(circle at 30% 30%, #818cf8 0%, #312e81 100%)',
-                shadow: 'shadow-[inset_-10px_-10px_50px_rgba(49,46,129,0.5),_0_0_100px_rgba(79,70,229,0.5)]',
+                background: 'radial-gradient(circle at 30% 30%, #818cf8 0%, #4338ca 50%, #1e1b4b 100%)',
+                shadow: 'shadow-[inset_-10px_-10px_50px_rgba(30,27,75,0.8),_0_0_60px_rgba(99,102,241,0.4)]',
                 detail: (
                     <>
-                        {/* Deep Dark Spot */}
-                        <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-purple-500/30 blur-[40px] rounded-full mix-blend-screen"></div>
-                        <div className="absolute bottom-0 left-0 w-[70%] h-[70%] bg-blue-900/60 blur-[40px] rounded-full mix-blend-multiply"></div>
+                        {/* Dark Spot & Windy Atmosphere */}
+                        <div className="absolute top-[20%] right-[20%] w-[30%] h-[20%] bg-indigo-950/60 blur-[15px] rounded-full mix-blend-multiply"></div>
+                        <div className="absolute inset-[-20%] bg-blue-500/10 blur-[50px] mix-blend-screen animate-pulse-slow"></div>
                     </>
                 )
             };
         case 'sun':
             return {
-                background: 'radial-gradient(circle at 40% 40%, #fff7ed 0%, #f59e0b 40%, #ea580c 100%)',
-                shadow: 'shadow-[0_0_80px_rgba(251,146,60,0.6)]', // Pure glow
+                background: 'radial-gradient(circle at 45% 45%, #fff7ed 0%, #fbbf24 30%, #ea580c 70%, #9a3412 100%)',
+                shadow: 'shadow-[0_0_100px_rgba(251,146,60,0.8),_inset_0_0_60px_rgba(255,237,213,0.5)]',
                 detail: (
                     <>
-                        {/* Coronal Loops */}
-                        <div className="absolute inset-[-20%] bg-orange-400/30 blur-[50px] animate-pulse-slow mix-blend-screen"></div>
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_40%,rgba(255,255,255,0.4)_100%)] mix-blend-overlay opacity-50"></div>
+                        {/* Plasma Surface Activity */}
+                        <div className="absolute inset-[-10%] bg-[url('https://raw.githubusercontent.com/catzz/aimainmap-assets/main/noise-texture.png')] opacity-20 mix-blend-overlay animate-[spin_100s_linear_infinite]"></div>
+                        {/* Coronal Ejection Simulation */}
+                        <div className="absolute inset-[-20%] bg-orange-500/20 blur-[60px] animate-pulse rounded-full mix-blend-screen"></div>
+                        <div className="absolute inset-0 bg-yellow-400/10 mix-blend-color-dodge hover:bg-yellow-400/30 transition-colors duration-700"></div>
                     </>
                 )
             };
