@@ -119,224 +119,144 @@ export default function BoardCard({
         hover:-translate-y-1 hover:border-white/60 dark:hover:border-white/20
     `;
 
-    // Variant: Stacked (Modern Grid Item) - Now unified with Premium Glass aesthetic
-    if (variant === 'stacked') {
+    // Unified Glass Slab Renderer
+    const renderContent = (currentVariant) => {
         const hasImage = board.backgroundImage || board.thumbnail;
         const themeStyles = board.summary ? getThemeStyles(board.summary.theme) : null;
+        const isOverlay = currentVariant === 'overlay';
 
         return (
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
                 className={`
                     ${containerClasses}
-                    flex flex-col min-h-[300px]
+                    ${isOverlay ? 'h-[220px] w-full' : 'min-h-[280px] h-full flex flex-col'}
                     ${shouldAnimate ? 'animate-fade-in-up' : ''}
                     ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
                     ${themeStyles ? themeStyles.border : ''}
                 `}
                 style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}>
 
-                {/* Background Layer - Full height for summary, split for image boards */}
-                {hasImage ? (
-                    <>
-                        <div className="relative w-full aspect-[16/10] overflow-hidden rounded-t-3xl border-b border-white/10">
+                {/* Background Layer (Unified for Image and Theme) */}
+                <div className="absolute inset-0 z-0">
+                    {hasImage ? (
+                        <>
                             <div
                                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                                 style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                             />
-                            {/* Subtle Overlay */}
-                            <div className="absolute inset-0 bg-white/10 dark:bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
+                            {/* Readability Overlay (Gradient) */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent dark:from-black/90 dark:via-black/30 opacity-80" />
+                        </>
+                    ) : (
+                        <div className={`absolute inset-0 transition-all duration-500 bg-gradient-to-br ${themeStyles ? themeStyles.bg : getRandomGradient(board.id)}`}>
+                            {themeStyles && (
+                                <>
+                                    <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 ${themeStyles.blob1}`} />
+                                    <div className={`absolute bottom-0 left-0 w-48 h-48 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3 ${themeStyles.blob2}`} />
+                                </>
+                            )}
                         </div>
-                        <div className="p-5 flex flex-col gap-2 relative bg-white/40 dark:bg-black/5 h-full flex-grow">
-                            <div className="flex items-start justify-between gap-2">
-                                <h3 className={`font-bold text-lg leading-tight line-clamp-2 font-inter-tight tracking-tight text-slate-800 dark:text-slate-100`}>
-                                    {board.name}
-                                </h3>
-                            </div>
-                            <div className="mt-auto pt-4 flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-neutral-400">
-                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 dark:bg-white/5 border border-white/20">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
-                                    <span>{board.cardCount || 0} Cards</span>
-                                </div>
-                                <span className="opacity-70">{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    // Full Height Summary Card - Like a colored glass tile
-                    <div className={`absolute inset-0 flex flex-col p-6 transition-all duration-500 bg-gradient-to-br ${themeStyles ? themeStyles.bg : getRandomGradient(board.id)}`}>
-                        {themeStyles && (
-                            <>
-                                <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 ${themeStyles.blob1}`} />
-                                <div className={`absolute bottom-0 left-0 w-48 h-48 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3 ${themeStyles.blob2}`} />
-                            </>
-                        )}
+                    )}
+                </div>
 
-                        <div className="relative z-10 flex flex-col h-full">
-                            <h3 className={`font-bold text-xl leading-tight line-clamp-3 font-inter-tight tracking-tight ${themeStyles ? themeStyles.text : 'text-slate-800 dark:text-slate-100'}`}>
+                {/* Main Content (Z-Indexed Above Background) */}
+                <div className="relative z-10 flex flex-col h-full p-6">
+                    {/* Header Area */}
+                    <div className="flex justify-between items-start mb-2 group/header">
+                        <div className="flex-1 min-w-0 pr-2">
+                            <h3 className={`
+                                font-bold tracking-tight line-clamp-2 font-inter-tight
+                                ${isOverlay ? 'text-xl' : 'text-lg'}
+                                ${hasImage ? 'text-white' : (themeStyles ? themeStyles.text : 'text-slate-800 dark:text-slate-100')}
+                            `}>
                                 {board.name}
                             </h3>
-                            {themeStyles && (
-                                <div className={`mt-3 h-1 w-12 rounded-full opacity-60 ${themeStyles.underline}`} />
-                            )}
-
-                            {board.summary && (
-                                <div className="mt-4 flex flex-wrap gap-1.5">
-                                    {board.summary.summary.split(' · ').slice(0, 3).map((tag, i) => (
-                                        <span key={i} className={`
-                                            px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md
-                                            ${themeStyles.tag}
-                                        `}>
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="mt-auto flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-neutral-400 pt-4">
-                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 dark:bg-black/20 border border-white/20">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
-                                    <span>{board.cardCount || 0} Cards</span>
-                                </div>
-                                <span className="opacity-70">{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                            </div>
+                            <div className={`
+                                mt-2 h-1 w-10 rounded-full opacity-60
+                                ${themeStyles ? themeStyles.underline : (hasImage ? 'bg-white/40' : 'bg-indigo-500/40')}
+                            `} />
                         </div>
-                    </div>
-                )}
 
-                {/* Actions Overlay */}
+                        {/* Arrow hint for Overlay variant */}
+                        {isOverlay && (
+                            <div className="shrink-0 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white scale-0 group-hover:scale-100 transition-transform">
+                                <ArrowRight size={14} className="-rotate-45" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Summary/Tags (Visible for both types if available) */}
+                    {(board.summary) && (
+                        <div className="mt-3 flex flex-wrap gap-1.5 overflow-hidden max-h-[64px]">
+                            {board.summary.summary.split(' · ').slice(0, 3).map((tag, i) => (
+                                <span key={i} className={`
+                                    px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md
+                                    ${themeStyles ? themeStyles.tag : (hasImage ? 'bg-black/20 border-white/20 text-white/90' : 'bg-white/40 border-slate-200 text-slate-600')}
+                                `}>
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Footer Meta (Push to Bottom) */}
+                    <div className="mt-auto pt-6 flex items-center justify-between">
+                        <div className={`
+                            flex items-center gap-1.5 px-2.5 py-1 rounded-full border backdrop-blur-sm transition-all duration-300
+                            ${hasImage
+                                ? 'bg-white/10 border-white/20 text-white/80'
+                                : 'bg-white/40 dark:bg-black/20 border-white/20 text-slate-500 dark:text-neutral-400'}
+                        `}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? (hasImage ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500') : 'bg-slate-300'}`} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">{board.cardCount || 0} Cards</span>
+                        </div>
+
+                        <span className={`
+                            text-[10px] font-bold opacity-60
+                            ${hasImage ? 'text-white' : 'text-slate-500 dark:text-neutral-400'}
+                        `}>
+                            {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Actions (Floating Corner) */}
                 {!isTrashView && (
-                    <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                    <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
                         <button
                             onClick={(e) => handleImageButtonClick(e, board.id)}
                             disabled={generatingBoardId === board.id}
-                            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-white/40 transition-colors"
+                            title="Generate Background"
+                            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/60 transition-all active:scale-90"
                         >
                             {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                         </button>
-
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(board.id);
-                            }}
-                            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-red-500/80 hover:text-white transition-colors"
+                            onClick={(e) => { e.stopPropagation(); onDelete(board.id); }}
+                            title="Move to Trash"
+                            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-red-500/80 transition-all active:scale-90"
                         >
                             <Trash2 size={14} />
                         </button>
                     </div>
                 )}
 
-                {/* Trash View Footer */}
+                {/* Trash View Actions */}
                 {isTrashView && (
-                    <div className="absolute bottom-0 inset-x-0 bg-red-50/90 dark:bg-red-900/90 backdrop-blur-sm p-2 flex justify-between items-center z-30">
-                        <span className="text-[10px] font-bold text-red-600 dark:text-red-200 flex items-center gap-1 ml-2">
-                            <Clock size={10} /> {getDaysRemaining(board.deletedAt)}d left
+                    <div className="absolute bottom-0 inset-x-0 bg-red-600/90 backdrop-blur-md p-2 flex justify-between items-center z-30">
+                        <span className="text-[10px] font-bold text-white flex items-center gap-1 ml-2">
+                            {getDaysRemaining(board.deletedAt)}d left
                         </span>
                         <div className="flex gap-1">
-                            <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} className="p-1.5 hover:bg-white/50 rounded-md text-emerald-600"><RotateCcw size={14} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} className="p-1.5 hover:bg-white/50 rounded-md text-red-600"><Trash2 size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); onRestore(board.id); }} className="p-1.5 hover:bg-white/20 rounded-md text-white transition-colors"><RotateCcw size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); onRequestPermanentDelete(board.id); }} className="p-1.5 hover:bg-white/20 rounded-md text-white transition-colors"><Trash2 size={14} /></button>
                         </div>
                     </div>
                 )}
             </div>
         );
-    }
+    };
 
-    // Variant: Overlay (Recently Visited) - Streamlined Glass
-    const themeStyles = (board.summary) ? getThemeStyles(board.summary.theme) : null;
-
-    return (
-        <div
-            onClick={() => !isTrashView && onSelect(board.id)}
-            style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}
-            className={`
-                ${containerClasses}
-                h-[200px] w-full
-                ${themeStyles ? themeStyles.border : ''}
-            `}
-        >
-            {/* Background Layer */}
-            {board.backgroundImage || board.thumbnail ? (
-                <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-90"
-                    style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
-                />
-            ) : board.summary ? (
-                // Themed Abstract Gradient for Summary
-                <div className={`absolute inset-0 bg-gradient-to-br ${themeStyles.bg}`}>
-                    <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 ${themeStyles.blob1}`} />
-                    <div className={`absolute bottom-0 left-0 w-64 h-64 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 ${themeStyles.blob2}`} />
-                </div>
-            ) : (
-                <div className={`absolute inset-0 bg-gradient-to-br ${getRandomGradient(board.id)} opacity-40`} />
-            )}
-
-            {/* Glass Overlay Content */}
-            <div className="absolute inset-0 flex flex-col p-6 z-10">
-                {/* Header */}
-                <div className="flex justify-between items-start">
-                    <div className="flex-1 pr-4">
-                        <h3 className={`text-xl font-bold tracking-tight leading-snug line-clamp-2 drop-shadow-sm mix-blend-hard-light ${themeStyles ? themeStyles.text : 'text-slate-900 dark:text-white'}`}>
-                            {board.name}
-                        </h3>
-                        {/* Decorative Underline */}
-                        <div className={`mt-2 h-1 w-12 rounded-full opacity-60 ${themeStyles ? themeStyles.underline : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} />
-                    </div>
-
-                    {/* Action Icon */}
-                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-slate-800 dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:rotate-[-45deg] hover:bg-white/40">
-                        <ArrowRight size={16} />
-                    </div>
-                </div>
-
-                {/* Body - Tags (if summary) */}
-                {board.summary && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        {board.summary.summary.split(' · ').slice(0, 3).map((tag, i) => (
-                            <span key={i} className={`
-                                    px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md
-                                    ${themeStyles ? themeStyles.tag : 'bg-white/30 border-white/30 text-slate-800 dark:text-white dark:bg-white/10'}
-                                `}>
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                )}
-
-                {/* Footer Meta */}
-                <div className="mt-auto flex items-center justify-between pt-4">
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest bg-white/30 dark:bg-black/20 px-2 py-1 rounded-md backdrop-blur-sm">
-                        {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-
-                    {!isTrashView && (
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                            <button
-                                onClick={(e) => handleImageButtonClick(e, board.id)}
-                                disabled={generatingBoardId === board.id}
-                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-white/40 transition-colors"
-                            >
-                                {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(board.id);
-                                }}
-                                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 dark:text-white flex items-center justify-center hover:bg-red-500/80 hover:text-white transition-colors"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Gradient Overlay for text readability on images */}
-            {(board.backgroundImage || board.thumbnail) && (
-                <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/20 to-transparent dark:from-black/80 dark:via-black/20 pointer-events-none" />
-            )}
-        </div>
-    );
+    return renderContent(variant);
 }
