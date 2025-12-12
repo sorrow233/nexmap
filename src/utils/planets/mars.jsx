@@ -19,9 +19,11 @@ export const marsTexture = {
             <div className="absolute top-[30%] left-[20%] w-[22%] h-[22%] bg-orange-900/60 rounded-full blur-[4px] shadow-[inset_4px_4px_10px_rgba(0,0,0,0.7)] mix-blend-multiply"></div>
             <div className="absolute top-[35%] left-[25%] w-[10%] h-[10%] bg-orange-850/50 rounded-full blur-[2px] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.6)]"></div>
 
-            {/* 2. Valles Marineris (The Grand Canyon - Fractured) */}
-            <div className="absolute top-[48%] left-[15%] w-[65%] h-[5%] bg-red-950/80 blur-[2px] rounded-full rotate-[-8deg] shadow-[0_1px_2px_rgba(255,255,255,0.1)] mix-blend-multiply border-t border-b border-red-900/20"></div>
-            <div className="absolute top-[47%] left-[40%] w-[20%] h-[2%] bg-red-950/70 blur-[1px] rotate-[-5deg] mix-blend-multiply"></div>
+            {/* 2. Valles Marineris (The Grand Canyon - Subtle shadow scar) */}
+            <div className="absolute top-[48%] left-[18%] w-[55%] h-[2%] bg-gradient-to-r from-transparent via-red-950/40 to-transparent blur-[3px] rounded-full rotate-[-8deg] mix-blend-multiply"></div>
+            <div className="absolute top-[49%] left-[20%] w-[50%] h-[1%] bg-red-900/30 blur-[2px] rounded-full rotate-[-8deg] mix-blend-multiply"></div>
+            {/* Side canyons */}
+            <div className="absolute top-[46%] left-[35%] w-[15%] h-[1%] bg-red-950/20 blur-[2px] rounded-full rotate-[-20deg] mix-blend-multiply"></div>
 
             {/* 3. Tharsis Bulge Volcanos (Ascraeus, Pavonis, Arsia Mons) */}
             <div className="absolute top-[40%] left-[30%] w-[9%] h-[9%] bg-orange-900/50 rounded-full blur-[2px] shadow-inner"></div>
