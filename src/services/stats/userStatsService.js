@@ -325,6 +325,15 @@ class UserStatsService {
     }
 
     /**
+     * Get total session count (all time)
+     * @returns {number}
+     */
+    getTotalSessions() {
+        const sessions = this._getDailySessions();
+        return Object.values(sessions).reduce((sum, count) => sum + count, 0);
+    }
+
+    /**
      * Get streak days (consecutive active days)
      * @returns {number}
      */
@@ -373,6 +382,7 @@ class UserStatsService {
             weeklyHistory: this.getWeeklyHistory(),
             timeDistribution: this.getActiveTimeDistribution(),
             todaySessions: this.getTodaySessions(),
+            totalSessions: this.getTotalSessions(),
             streakDays: this.getStreakDays()
         };
     }
