@@ -320,26 +320,12 @@ export default function StatisticsView({ boardsList, user }) {
                                 </div>
                             </div>
 
-                            {/* DEV MODE: Tier Navigation Controls */}
-                            <div className="absolute -bottom-16 flex items-center gap-3 z-40">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handlePrevTier(); }}
-                                    disabled={currentTierIndex === 0}
-                                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-200/50 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                                </button>
+
+                            {/* Planet Name Label */}
+                            <div className="absolute -bottom-12 flex items-center justify-center z-40">
                                 <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200/50 text-xs font-bold text-slate-600">
                                     <span className={`text-${currentTier.color}-500`}>{currentTier.name}</span>
-                                    <span className="text-slate-400 ml-2">({currentTierIndex + 1}/{tiers.length})</span>
                                 </div>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleNextTier(); }}
-                                    disabled={currentTierIndex === tiers.length - 1}
-                                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-200/50 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-                                </button>
                             </div>
                         </div>
 
