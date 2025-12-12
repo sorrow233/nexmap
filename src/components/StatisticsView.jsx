@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon } from 'lucide-react';
+import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon, LayoutGrid, StickyNote } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -239,6 +239,28 @@ export default function StatisticsView({ boardsList, user }) {
                             <div>
                                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">{t.stats?.sessions || "SESSIONS"}</span>
                                 <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.tokenStats.todaySessions}</span>
+                            </div>
+                        </div>
+
+                        {/* Canvas Count Card */}
+                        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)] flex items-center gap-4 group hover:scale-[1.02] transition-transform duration-300">
+                            <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/50 text-blue-500 flex items-center justify-center shadow-inner">
+                                <LayoutGrid size={24} />
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">{t.stats?.canvas || "CANVAS"}</span>
+                                <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.totalBoards}</span>
+                            </div>
+                        </div>
+
+                        {/* Cards Count Card */}
+                        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)] flex items-center gap-4 group hover:scale-[1.02] transition-transform duration-300">
+                            <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-900/50 text-purple-500 flex items-center justify-center shadow-inner">
+                                <StickyNote size={24} />
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">{t.stats?.cards || "CARDS"}</span>
+                                <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.totalCards}</span>
                             </div>
                         </div>
                     </div>
