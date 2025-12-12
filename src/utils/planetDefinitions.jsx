@@ -54,7 +54,11 @@ export const usePlanetTiers = (t) => {
         { id: 'saturn', name: t.stats?.planets?.saturn?.name || 'Saturn', color: 'yellow', limit: 5000000, gradient: 'from-yellow-100 via-yellow-200 to-amber-200', shadow: 'shadow-yellow-400', lore: t.stats?.planets?.saturn?.lore },
         { id: 'uranus', name: t.stats?.planets?.uranus?.name || 'Uranus', color: 'cyan', limit: 10000000, gradient: 'from-cyan-200 via-sky-300 to-blue-300', shadow: 'shadow-cyan-400', lore: t.stats?.planets?.uranus?.lore },
         { id: 'neptune', name: t.stats?.planets?.neptune?.name || 'Neptune', color: 'indigo', limit: 20000000, gradient: 'from-blue-600 via-indigo-600 to-violet-700', shadow: 'shadow-indigo-500', lore: t.stats?.planets?.neptune?.lore },
-        { id: 'sun', name: t.stats?.planets?.sun?.name || 'Sun', color: 'amber', limit: 50000000, gradient: 'from-yellow-300 via-orange-500 to-red-500', shadow: 'shadow-amber-500', lore: t.stats?.planets?.sun?.lore },
+        { id: 'sun', name: t.stats?.planets?.sun?.name || 'Sun', color: 'amber', limit: 30000000, gradient: 'from-yellow-300 via-orange-500 to-red-500', shadow: 'shadow-amber-500', lore: t.stats?.planets?.sun?.lore },
+
+        // Cosmic Endgame
+        { id: 'supernova', name: t.stats?.planets?.supernova?.name || 'Supernova', color: 'fuchsia', limit: 50000000, gradient: 'from-fuchsia-400 via-purple-500 to-indigo-600', shadow: 'shadow-fuchsia-500', lore: t.stats?.planets?.supernova?.lore },
+        { id: 'neutron', name: t.stats?.planets?.neutron?.name || 'Neutron Star', color: 'cyan', limit: 75000000, gradient: 'from-cyan-300 via-blue-500 to-indigo-600', shadow: 'shadow-cyan-500', lore: t.stats?.planets?.neutron?.lore },
 
         // Ultimate Goal
         { id: 'blackhole', name: t.stats?.planets?.blackhole?.name || 'Black Hole', color: 'indigo', limit: 100000000, gradient: 'from-gray-900 via-indigo-900 to-black', shadow: 'shadow-indigo-900', lore: t.stats?.planets?.blackhole?.lore }

@@ -178,12 +178,12 @@ export default function StatisticsView({ boardsList, user }) {
     const texture = getPlanetTexture(currentTier.id || currentTier.name);
 
     return (
-        <div className="w-full relative min-h-screen text-slate-600 overflow-hidden font-sans">
+        <div className="w-full relative min-h-screen text-slate-600 dark:text-slate-300 overflow-hidden font-sans">
             {/* Soft Pastel Background */}
-            <div className="absolute inset-0 bg-[#f8fafc] -z-20"></div>
-            <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-indigo-100/40 blur-[120px] pointer-events-none mix-blend-multiply"></div>
-            <div className="absolute bottom-[-20%] left-[-10%] w-[800px] h-[800px] rounded-full bg-blue-100/40 blur-[120px] pointer-events-none mix-blend-multiply"></div>
-            <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] rounded-full bg-pink-100/40 blur-[100px] pointer-events-none mix-blend-multiply"></div>
+            <div className="absolute inset-0 bg-[#f8fafc] dark:bg-slate-900 -z-20"></div>
+            <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-indigo-100/40 dark:bg-indigo-900/20 blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-normal"></div>
+            <div className="absolute bottom-[-20%] left-[-10%] w-[800px] h-[800px] rounded-full bg-blue-100/40 dark:bg-blue-900/20 blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-normal"></div>
+            <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] rounded-full bg-pink-100/40 dark:bg-purple-900/20 blur-[100px] pointer-events-none mix-blend-multiply dark:mix-blend-normal"></div>
 
             {/* Content Container */}
             <div className="relative z-10 p-6 sm:p-10 max-w-7xl mx-auto flex flex-col gap-12">
@@ -191,18 +191,18 @@ export default function StatisticsView({ boardsList, user }) {
                 {/* Header - Clean & Minimal */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">
+                        <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
                             Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {user?.displayName || 'Creator'}
                         </h2>
-                        <p className="text-slate-500 font-medium mt-1">
+                        <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
                             Here's your creative brain activity today.
                         </p>
                     </div>
                     <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
+                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] dark:shadow-[4px_4px_12px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
                             <Database size={20} className="group-hover:scale-110 transition-transform" />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-white shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
+                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 shadow-[8px_8px_16px_#e2e8f0,-8px_-8px_16px_#ffffff] dark:shadow-[4px_4px_12px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer group">
                             <Layers size={20} className="group-hover:scale-110 transition-transform" />
                         </div>
                     </div>
@@ -214,14 +214,14 @@ export default function StatisticsView({ boardsList, user }) {
                     {/* Left Column: Quick Stats */}
                     <div className="lg:col-span-3 space-y-6">
                         {/* Streak Card */}
-                        <div className="p-6 rounded-[2.5rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
                             <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <Flame size={64} className="text-orange-400" />
                             </div>
-                            <span className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">{t.stats?.currentStreak || "STREAK"}</span>
+                            <span className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">{t.stats?.currentStreak || "STREAK"}</span>
                             <div className="flex items-baseline gap-1">
-                                <span className="text-5xl font-black text-slate-800">{stats.tokenStats.streakDays}</span>
-                                <span className="text-sm font-bold text-slate-400">Days</span>
+                                <span className="text-5xl font-black text-slate-800 dark:text-white">{stats.tokenStats.streakDays}</span>
+                                <span className="text-sm font-bold text-slate-400 dark:text-slate-500">Days</span>
                             </div>
                             {/* Mini Sparkline */}
                             <div className="h-12 mt-4 flex items-end gap-1 opacity-50">
@@ -232,13 +232,13 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
 
                         {/* Efficiency/Pulse Card */}
-                        <div className="p-6 rounded-[2.5rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] flex items-center gap-4 group hover:scale-[1.02] transition-transform duration-300">
-                            <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center shadow-inner">
+                        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)] flex items-center gap-4 group hover:scale-[1.02] transition-transform duration-300">
+                            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/50 text-indigo-500 flex items-center justify-center shadow-inner">
                                 <Activity size={24} />
                             </div>
                             <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">{t.stats?.sessions || "SESSIONS"}</span>
-                                <span className="text-2xl font-black text-slate-800">{stats.tokenStats.todaySessions}</span>
+                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">{t.stats?.sessions || "SESSIONS"}</span>
+                                <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.tokenStats.todaySessions}</span>
                             </div>
                         </div>
                     </div>
@@ -249,11 +249,11 @@ export default function StatisticsView({ boardsList, user }) {
                         {/* Orbital Rings Background - Animated */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-visible">
                             {/* Ring 1 - Slow Clockwise */}
-                            <div className="w-[550px] h-[300px] border border-slate-300/40 rounded-[100%] absolute animate-[spin_60s_linear_infinite]"></div>
+                            <div className="w-[550px] h-[300px] border border-slate-300/40 dark:border-slate-600/30 rounded-[100%] absolute animate-[spin_60s_linear_infinite]"></div>
                             {/* Ring 2 - Slow Counter-Clockwise */}
-                            <div className="w-[550px] h-[300px] border border-slate-300/40 rounded-[100%] absolute animate-[spin_80s_linear_infinite_reverse]"></div>
+                            <div className="w-[550px] h-[300px] border border-slate-300/40 dark:border-slate-600/30 rounded-[100%] absolute animate-[spin_80s_linear_infinite_reverse]"></div>
                             {/* Ring 3 - Tilted & Slower */}
-                            <div className="w-[600px] h-[350px] border border-slate-200/30 rounded-[100%] absolute animate-[spin_100s_linear_infinite] delay-1000"></div>
+                            <div className="w-[600px] h-[350px] border border-slate-200/30 dark:border-slate-700/20 rounded-[100%] absolute animate-[spin_100s_linear_infinite] delay-1000"></div>
                         </div>
 
                         {/* Planet Container */}
@@ -266,7 +266,7 @@ export default function StatisticsView({ boardsList, user }) {
                             <div className="absolute inset-0 -m-6">
                                 <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 400 400">
                                     {/* Track */}
-                                    <circle cx="200" cy="200" r={radius} stroke="#f1f5f9" strokeWidth="4" fill="none" />
+                                    <circle cx="200" cy="200" r={radius} stroke="#f1f5f9" className="dark:stroke-slate-700" strokeWidth="4" fill="none" />
                                     {/* Progress */}
                                     <circle
                                         cx="200" cy="200" r={radius}
@@ -323,7 +323,7 @@ export default function StatisticsView({ boardsList, user }) {
 
                             {/* Planet Name Label */}
                             <div className="absolute -bottom-12 flex items-center justify-center z-40">
-                                <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200/50 text-xs font-bold text-slate-600">
+                                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200/50 dark:border-slate-700/50 text-xs font-bold text-slate-600 dark:text-slate-300">
                                     <span className={`text-${currentTier.color}-500`}>{currentTier.name}</span>
                                 </div>
                             </div>
@@ -336,17 +336,17 @@ export default function StatisticsView({ boardsList, user }) {
                     {/* Right Column: Quota & Peak */}
                     <div className="lg:col-span-3 space-y-6">
                         {/* Token/Quota Card */}
-                        <div className="p-6 rounded-[2.5rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] hover:scale-[1.02] transition-transform duration-300">
+                        <div className="p-6 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)] hover:scale-[1.02] transition-transform duration-300">
                             <div className="flex justify-between items-center mb-4">
-                                <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t.stats?.aiQuota || "AI QUOTA"}</span>
-                                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-500">
+                                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t.stats?.aiQuota || "AI QUOTA"}</span>
+                                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-500">
                                     <Zap size={18} fill="currentColor" />
                                 </div>
                             </div>
-                            <h3 className="text-4xl font-black text-slate-800 mb-2">
+                            <h3 className="text-4xl font-black text-slate-800 dark:text-white mb-2">
                                 {Math.min(100, Math.round(((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100))}%
                             </h3>
-                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                            <div className="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner">
                                 <div
                                     className="h-full bg-gradient-to-r from-emerald-300 to-emerald-400 rounded-full"
                                     style={{ width: `${Math.min(100, ((stats.credits?.credits || 0) / (stats.credits?.initialCredits || 1)) * 100)}%` }}
@@ -355,7 +355,7 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
 
                         {/* Peak Time - Circular Dial */}
-                        <div className="p-6 rounded-[2.5rem] bg-indigo-500 text-white shadow-[20px_20px_60px_#cbd5e1,-20px_-20px_60px_#ffffff] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                        <div className="p-6 rounded-[2.5rem] bg-indigo-500 dark:bg-indigo-600 text-white shadow-[20px_20px_60px_#cbd5e1,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
                             <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
 
                             <span className="text-xs font-bold text-indigo-200 uppercase tracking-widest block mb-4">{t.stats?.activeTime || "PEAK PERFORMANCE"}</span>
@@ -376,15 +376,15 @@ export default function StatisticsView({ boardsList, user }) {
                 </div>
 
                 {/* Bottom Section: Activity Chart (Soft dashboard) */}
-                <div className="w-full p-8 rounded-[3rem] bg-white shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff]">
+                <div className="w-full p-8 rounded-[3rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)]">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-xl font-bold text-slate-800">{t.stats?.activityFlow || "Activity Flow"}</h3>
-                            <p className="text-sm text-slate-400">{t.stats?.activityFlowDesc || "Your creative output over time"}</p>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white">{t.stats?.activityFlow || "Activity Flow"}</h3>
+                            <p className="text-sm text-slate-400 dark:text-slate-500">{t.stats?.activityFlowDesc || "Your creative output over time"}</p>
                         </div>
 
                         {/* Soft Switch */}
-                        <div className="flex p-1.5 bg-slate-100 rounded-2xl shadow-inner">
+                        <div className="flex p-1.5 bg-slate-100 dark:bg-slate-700 rounded-2xl shadow-inner">
                             {['week', 'month', 'year'].map(mode => (
                                 <button
                                     key={mode}
@@ -392,8 +392,8 @@ export default function StatisticsView({ boardsList, user }) {
                                     className={`
                                         px-6 py-2 text-xs font-bold rounded-xl transition-all duration-300 uppercase tracking-wider
                                         ${chartViewMode === mode
-                                            ? 'bg-white text-slate-800 shadow-md'
-                                            : 'text-slate-400 hover:text-slate-600'}
+                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-md'
+                                            : 'text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
                                     `}
                                 >
                                     {mode === 'week' ? t.stats?.weeklyTrend || 'WEEK' : mode === 'month' ? t.stats?.month || 'MONTH' : t.stats?.year || 'YEAR'}
