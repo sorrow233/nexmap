@@ -100,18 +100,17 @@ export const settings = {
             noBackupsYet: "暂无备份。在线期间每30分钟自动保存。",
             restoreConfirm: "从此备份恢复缺失的画板？只会添加您当前没有的画板。",
             restoreSuccess: "已恢复缺失的画板",
-            noNewBoards: "无需恢复 - 所有画板已存在",
             dataExport: {
-                title: "数据导入导出",
-                desc: "将所有数据导出为文件，或从备份文件导入数据。",
-                exportButton: "导出数据",
-                exporting: "正在导出...",
-                exportSuccess: "导出成功！",
-                importButton: "导入数据",
-                importing: "正在导入...",
-                importSuccess: "导入成功！",
-                confirmImport: "此操作将覆盖现有数据。是否继续？",
-                sensitiveWarning: "导出文件包含敏感信息（如 API 密钥），请妥善保管。"
+                title: "数据迁移中心",
+                desc: "创建工作区的完整快照，或从备份文件恢复数据。",
+                exportButton: "下载数据快照",
+                exporting: "正在生成快照...",
+                exportSuccess: "快照已创建！",
+                importButton: "恢复数据",
+                importing: "正在解析文件...",
+                importSuccess: "恢复完成！",
+                confirmImport: "这将覆盖当前工作区数据，是否继续？",
+                sensitiveWarning: "快照文件包含敏感信息（如 API 密钥），请妥善保管。"
             }
         },
         app: {

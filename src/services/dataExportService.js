@@ -93,13 +93,22 @@ export async function exportAllData() {
 }
 
 /**
+ * Generate a semantic filename for the backup
+ */
+export function generateBackupFilename() {
+    const date = new Date();
+    const dateStr = date.toISOString().split('T')[0];
+    const timeStr = date.toTimeString().split(' ')[0].replace(/:/g, '-');
+    return `Mixboard_Backup_${dateStr}_${timeStr}.json`;
+}
+
+/**
  * Download data as a JSON file
  * @param {object} data - Data to download
  * @param {string} filename - Optional filename
  */
 export function downloadDataAsFile(data, filename = null) {
-    const timestamp = new Date().toISOString().split('T')[0];
-    const finalFilename = filename || `mixboard_backup_${timestamp}.json`;
+    const finalFilename = filename || generateBackupFilename();
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -112,6 +121,27 @@ export function downloadDataAsFile(data, filename = null) {
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
+}
+
+/**
+ * Get statistics/preview of a backup object without importing it
+ * @param {object} data 
+ */
+export function getBackupStats(data) {
+    if (!data || typeof data !== 'object') return null;
+
+    return {
+        version: data.version || 'Unknown',
+        timestamp: data.exportedAt ? new Date(data.exportedAt).toLocaleString() : 'Unknown',
+        boardCount: Array.isArray(data.boards) ? data.boards.length : 0,
+        settingsCount: data.localStorage ? Object.keys(data.localStorage).length : 0,
+        hasSettings: data.localStorage && !!data.localStorage['mixboard_settings'],
+        hasSecrets: data.localStorage && (
+            !!data.localStorage['mixboard_providers_v3'] ||
+            !!data.localStorage['mixboard_s3_config']
+        ),
+        sizeBytes: new Blob([JSON.stringify(data)]).size
+    };
 }
 
 /**
@@ -139,9 +169,10 @@ export function validateImportData(data) {
  * Import user data from a JSON object
  * @param {object} data - Data to import
  * @param {object} options - Import options
+ * @param {boolean} options.importSettings - Whether to import settings/keys (default: false)
  * @returns {Promise<{success: boolean, message?: string, error?: string}>}
  */
-export async function importData(data, options = { overwrite: true }) {
+export async function importData(data, options = { importSettings: false }) {
     // Validate data first
     const validation = validateImportData(data);
     if (!validation.valid) {
@@ -149,16 +180,35 @@ export async function importData(data, options = { overwrite: true }) {
     }
 
     try {
+        let restoredSettingsCount = 0;
+
         // 1. Import localStorage data
-        for (const [key, value] of Object.entries(data.localStorage)) {
-            const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-            localStorage.setItem(key, stringValue);
+        if (data.localStorage) {
+            // Keys related to system configuration/secrets
+            const CONFIG_KEYS = [
+                'mixboard_providers_v3',
+                'mixboard_s3_config',
+                'mixboard_settings',
+                'mixboard_custom_instructions'
+            ];
+
+            for (const [key, value] of Object.entries(data.localStorage)) {
+                // If this is a config key and user chose NOT to import settings, skip it
+                if (!options.importSettings && CONFIG_KEYS.includes(key)) {
+                    continue;
+                }
+
+                const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+                localStorage.setItem(key, stringValue);
+                restoredSettingsCount++;
+            }
         }
-        console.log(`[Import] Restored ${Object.keys(data.localStorage).length} localStorage entries`);
+
+        console.log(`[Import] Restored ${restoredSettingsCount} localStorage entries`);
 
         // 2. Import board data to IndexedDB
+        let boardCount = 0;
         if (data.boards && Array.isArray(data.boards)) {
-            let boardCount = 0;
             for (const board of data.boards) {
                 if (board.id && board.data) {
                     await idbSet(`mixboard_board_${board.id}`, board.data);
@@ -170,7 +220,7 @@ export async function importData(data, options = { overwrite: true }) {
 
         return {
             success: true,
-            message: `Imported ${Object.keys(data.localStorage).length} settings and ${data.boards?.length || 0} boards`
+            message: `Imported ${boardCount} boards and ${restoredSettingsCount} settings.`
         };
     } catch (e) {
         console.error('[Import] Failed:', e);
