@@ -48,14 +48,6 @@ export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
     const [isInitialized, setIsInitialized] = useState(false);
-    // Initialize from localStorage first to handle guests
-    const [hasSeenWelcome, setHasSeenWelcome] = useState(() => {
-        try {
-            return localStorage.getItem('hasVisitedBefore') === 'true';
-        } catch (e) {
-            return true;
-        }
-    });
     const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
     const location = useLocation();
 
@@ -304,27 +296,7 @@ export function useAppInit() {
                             }
                         }
 
-                        // Check welcome page status from cloud
-                        const cloudHasSeen = settings.hasSeenWelcome === true;
 
-                        // If cloud says SEEN, update local state
-                        if (cloudHasSeen) {
-                            setHasSeenWelcome(true);
-                            localStorage.setItem('hasVisitedBefore', 'true');
-                            debugLog.auth('Welcome status from cloud: true');
-                        }
-                        // If cloud says NOT SEEN but local says SEEN, sync local to cloud
-                        else if (hasSeenWelcome === true) {
-                            debugLog.auth('Local says seen, but cloud is stale/missing. Syncing to cloud...');
-                            import('../services/storage').then(({ updateUserSettings }) => {
-                                updateUserSettings(u.uid, { hasSeenWelcome: true });
-                            });
-                        }
-                        // Otherwise, follow cloud state if it's explicitly FALSE
-                        else if (settings.hasSeenWelcome === false) {
-                            setHasSeenWelcome(false);
-                            debugLog.auth('Welcome status from cloud: false');
-                        }
 
                         // Load system credits if user has no API key configured
                         const activeConfig = useStore.getState().getActiveConfig();
@@ -375,5 +347,5 @@ export function useAppInit() {
         return () => { unsubscribe(); if (unsubDb) unsubDb(); };
     }, []);
 
-    return { user, boardsList, setBoardsList, isInitialized, hasSeenWelcome, setHasSeenWelcome };
+    return { user, boardsList, setBoardsList, isInitialized };
 }

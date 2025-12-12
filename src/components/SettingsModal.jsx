@@ -39,7 +39,7 @@ import SettingsGeneralTab from './settings/SettingsGeneralTab';
 import SettingsInstructionsTab from './settings/SettingsInstructionsTab';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) {
+export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
 
     const { t } = useLanguage();
@@ -378,7 +378,6 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
                                 <SettingsStorageTab
                                     s3Config={s3Config}
                                     setS3ConfigState={setS3ConfigState}
-                                    onShowWelcome={onShowWelcome}
                                 />
                             )}
                         </div>
