@@ -137,9 +137,8 @@ export default function Sidebar({ className = "" }) {
     const AddInput = ({ type, onCancel }) => (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={onCancel}>
             <div
-                className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72 animate-in fade-in duration-200"
+                className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72 animate-in fade-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
-                style={{ transform: 'none' }}
             >
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.sidebar.newPrompt || "NEW PROMPT"}</div>
 
