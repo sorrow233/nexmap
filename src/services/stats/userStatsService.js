@@ -207,9 +207,7 @@ class UserStatsService {
      * @returns {Object} { totalChars, todayChars, yesterdayChars }
      */
     getStats() {
-        // TEMPORARY: Force Unlock All Tiers for User Review
-        // const totalChars = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10);
-        const totalChars = 100000001; // > 100M for Black Hole
+        const totalChars = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10);
         const history = this._getHistory();
 
         const today = new Date().toISOString().split('T')[0];

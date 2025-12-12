@@ -284,21 +284,6 @@ export default function StatisticsView({ boardsList, user }) {
                             className="relative w-96 h-96 group cursor-pointer flex items-center justify-center transition-transform active:scale-95 aspect-square"
                         >
 
-                            {/* Manual Navigation Arrows (Unlocked) */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handlePrevTier(); }}
-                                className="absolute left-[-20px] md:left-[-60px] top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-md text-slate-500 hover:text-slate-800 transition-all z-50 hover:scale-110 active:scale-95"
-                            >
-                                <ChevronLeft size={32} />
-                            </button>
-
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleNextTier(); }}
-                                className="absolute right-[-20px] md:right-[-60px] top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-md text-slate-500 hover:text-slate-800 transition-all z-50 hover:scale-110 active:scale-95"
-                            >
-                                <ChevronRight size={32} />
-                            </button>
-
                             {/* Progress Ring SVG */}
                             <div className="absolute inset-0 -m-6 pointer-events-none">
                                 <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 400 400">
