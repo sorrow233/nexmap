@@ -145,8 +145,8 @@ export default function BoardCard({
                                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                                 style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
                             />
-                            {/* Readability Overlay (Gradient) */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent dark:from-black/90 dark:via-black/30 opacity-80" />
+                            {/* Readability Overlay (Light gradient for black text in light mode, dark for white text in dark mode) */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/20 to-transparent dark:from-black/90 dark:via-black/30 opacity-90" />
                         </>
                     ) : (
                         <div className={`absolute inset-0 transition-all duration-500 bg-gradient-to-br ${themeStyles ? themeStyles.bg : getRandomGradient(board.id)}`}>
@@ -168,7 +168,7 @@ export default function BoardCard({
                             <h3 className={`
                                 font-bold tracking-tight line-clamp-2 font-inter-tight
                                 ${isOverlay ? 'text-xl' : 'text-lg'}
-                                ${hasImage ? 'text-white' : (themeStyles ? themeStyles.text : 'text-slate-800 dark:text-slate-100')}
+                                ${themeStyles ? themeStyles.text : 'text-slate-900 dark:text-slate-100'}
                             `}>
                                 {board.name}
                             </h3>
@@ -205,16 +205,16 @@ export default function BoardCard({
                         <div className={`
                             flex items-center gap-1.5 px-2.5 py-1 rounded-full border backdrop-blur-sm transition-all duration-300
                             ${hasImage
-                                ? 'bg-white/10 border-white/20 text-white/80'
+                                ? 'bg-black/5 dark:bg-white/10 border-black/10 dark:border-white/20 text-slate-600 dark:text-white/80'
                                 : 'bg-white/40 dark:bg-black/20 border-white/20 text-slate-500 dark:text-neutral-400'}
                         `}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? (hasImage ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500') : 'bg-slate-300'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${board.cardCount > 0 ? (hasImage ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-indigo-500') : 'bg-slate-300'}`} />
                             <span className="text-[10px] font-bold uppercase tracking-widest">{board.cardCount || 0} Cards</span>
                         </div>
 
                         <span className={`
                             text-[10px] font-bold opacity-60
-                            ${hasImage ? 'text-white' : 'text-slate-500 dark:text-neutral-400'}
+                            ${hasImage ? 'text-slate-500 dark:text-white' : 'text-slate-500 dark:text-neutral-400'}
                         `}>
                             {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
