@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon, LayoutGrid, StickyNote, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Database, Layers, Zap, Activity, Clock, Cpu, Flame, Sun, Sunset, Moon, CloudMoon, LayoutGrid, StickyNote } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';
