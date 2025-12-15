@@ -206,16 +206,53 @@ export async function importData(data, options = { importSettings: false }) {
 
         console.log(`[Import] Restored ${restoredSettingsCount} localStorage entries`);
 
-        // 2. Import board data to IndexedDB
+        // 2. Import board data to IndexedDB AND update boards list
         let boardCount = 0;
+
+        // Load existing boards list to merge into
+        let existingBoardsList = [];
+        try {
+            const listRaw = localStorage.getItem('mixboard_boards_list');
+            existingBoardsList = listRaw ? JSON.parse(listRaw) : [];
+            if (!Array.isArray(existingBoardsList)) existingBoardsList = [];
+        } catch (e) {
+            console.warn('[Import] Failed to parse existing boards list, starting fresh');
+            existingBoardsList = [];
+        }
+
         if (data.boards && Array.isArray(data.boards)) {
             for (const board of data.boards) {
                 if (board.id && board.data) {
+                    // A. Restore content to IDB
                     await idbSet(`mixboard_board_${board.id}`, board.data);
+
+                    // B. Update/Add metadata to the main list
+                    // Use metadata from export if available, otherwise reconstruct from data
+                    const meta = board.meta || {
+                        id: board.id,
+                        name: board.data.name || 'Imported Board',
+                        createdAt: board.data.createdAt || Date.now(),
+                        updatedAt: board.data.updatedAt || Date.now(),
+                        lastAccessedAt: Date.now(),
+                        cardCount: Array.isArray(board.data.cards) ? board.data.cards.length : 0
+                    };
+
+                    const existingIndex = existingBoardsList.findIndex(b => b.id === board.id);
+                    if (existingIndex >= 0) {
+                        // Update existing entry
+                        existingBoardsList[existingIndex] = { ...existingBoardsList[existingIndex], ...meta };
+                    } else {
+                        // Add new entry
+                        existingBoardsList.push(meta);
+                    }
+
                     boardCount++;
                 }
             }
-            console.log(`[Import] Restored ${boardCount} boards to IndexedDB`);
+
+            // Save updated list back to localStorage
+            localStorage.setItem('mixboard_boards_list', JSON.stringify(existingBoardsList));
+            console.log(`[Import] Restored ${boardCount} boards (Content + Metadata)`);
         }
 
         return {
