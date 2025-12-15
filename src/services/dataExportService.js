@@ -175,9 +175,18 @@ export function validateImportData(data) {
  * @returns {Promise<{success: boolean, message?: string, error?: string}>}
  */
 export async function importData(data, options = { importSettings: false }) {
+    console.log('[Import] Starting import process...');
+    console.log('[Import] Data structure:', {
+        hasLocalStorage: !!data.localStorage,
+        localStorageKeys: data.localStorage ? Object.keys(data.localStorage) : [],
+        hasBoards: !!data.boards,
+        boardsCount: Array.isArray(data.boards) ? data.boards.length : 0
+    });
+
     // Validate data first
     const validation = validateImportData(data);
     if (!validation.valid) {
+        console.error('[Import] Validation failed:', validation.error);
         return { success: false, error: validation.error };
     }
 
@@ -197,12 +206,18 @@ export async function importData(data, options = { importSettings: false }) {
             for (const [key, value] of Object.entries(data.localStorage)) {
                 // If this is a config key and user chose NOT to import settings, skip it
                 if (!options.importSettings && CONFIG_KEYS.includes(key)) {
+                    console.log(`[Import] Skipping config key: ${key}`);
                     continue;
                 }
 
                 const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
                 localStorage.setItem(key, stringValue);
                 restoredSettingsCount++;
+
+                // Extra logging for the critical key
+                if (key === 'mixboard_boards_list') {
+                    console.log('[Import] Restored mixboard_boards_list:', stringValue.substring(0, 200) + '...');
+                }
             }
         }
 
@@ -215,6 +230,7 @@ export async function importData(data, options = { importSettings: false }) {
         let existingBoardsList = [];
         try {
             const listRaw = localStorage.getItem('mixboard_boards_list');
+            console.log('[Import] Current boards list after localStorage restore:', listRaw ? listRaw.substring(0, 200) + '...' : 'NULL');
             existingBoardsList = listRaw ? JSON.parse(listRaw) : [];
             if (!Array.isArray(existingBoardsList)) existingBoardsList = [];
         } catch (e) {
@@ -222,13 +238,21 @@ export async function importData(data, options = { importSettings: false }) {
             existingBoardsList = [];
         }
 
+        console.log(`[Import] Existing boards list has ${existingBoardsList.length} entries`);
+
         const user = auth.currentUser;
+        console.log('[Import] User logged in:', !!user);
 
         if (data.boards && Array.isArray(data.boards)) {
+            console.log(`[Import] Processing ${data.boards.length} boards from import file...`);
+
             for (const board of data.boards) {
                 if (board.id && board.data) {
+                    console.log(`[Import] Processing board: ${board.id}`);
+
                     // A. Restore content to IDB
                     await idbSet(`mixboard_board_${board.id}`, board.data);
+                    console.log(`[Import] Saved board ${board.id} to IndexedDB`);
 
                     // B. Update/Add metadata to the main list
                     // Use metadata from export if available, otherwise reconstruct from data
@@ -262,13 +286,25 @@ export async function importData(data, options = { importSettings: false }) {
                     }
 
                     boardCount++;
+                } else {
+                    console.warn('[Import] Skipping invalid board entry:', board);
                 }
             }
 
             // Save updated list back to localStorage
-            localStorage.setItem('mixboard_boards_list', JSON.stringify(existingBoardsList));
-            console.log(`[Import] Restored ${boardCount} boards (Content + Metadata)`);
+            const finalList = JSON.stringify(existingBoardsList);
+            localStorage.setItem('mixboard_boards_list', finalList);
+            console.log(`[Import] Final boards list saved with ${existingBoardsList.length} entries`);
+
+            // VERIFICATION: Read it back to confirm it was saved
+            const verifyList = localStorage.getItem('mixboard_boards_list');
+            console.log('[Import] VERIFICATION - boards list after save:', verifyList ? verifyList.substring(0, 200) + '...' : 'NULL');
+
+        } else {
+            console.warn('[Import] No boards array in import data or it is empty!');
         }
+
+        console.log(`[Import] Complete! Restored ${boardCount} boards and ${restoredSettingsCount} settings.`);
 
         return {
             success: true,
