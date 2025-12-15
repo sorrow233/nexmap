@@ -6,6 +6,8 @@
  */
 
 import { idbGet, idbSet } from './db/indexedDB';
+import { auth } from './firebase';
+import { updateBoardMetadataInCloud } from './storage';
 
 // localStorage keys to export
 const EXPORT_KEYS = [
@@ -220,6 +222,8 @@ export async function importData(data, options = { importSettings: false }) {
             existingBoardsList = [];
         }
 
+        const user = auth.currentUser;
+
         if (data.boards && Array.isArray(data.boards)) {
             for (const board of data.boards) {
                 if (board.id && board.data) {
@@ -244,6 +248,17 @@ export async function importData(data, options = { importSettings: false }) {
                     } else {
                         // Add new entry
                         existingBoardsList.push(meta);
+                    }
+
+                    // C. CRITICAL: If logged in, sync to cloud immediately to prevent overwrite
+                    if (user) {
+                        try {
+                            console.log(`[Import] Syncing imported board ${board.id} to cloud...`);
+                            await updateBoardMetadataInCloud(user.uid, board.id, meta);
+                        } catch (cloudErr) {
+                            console.error(`[Import] Cloud sync failed for ${board.id}`, cloudErr);
+                            // We continue anyway, local storage might save it for a bit
+                        }
                     }
 
                     boardCount++;
