@@ -18,6 +18,7 @@ import favoritesService from '../services/favoritesService';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
+import { getSampleBoardsList } from '../utils/sampleBoardsData';
 import { useLocation } from 'react-router-dom';
 import { debugLog } from '../utils/debugLogger';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -65,13 +66,12 @@ export function useAppInit() {
             debugLog.storage(`Loaded metadata for ${list.length} boards`);
             setBoardsList(list);
 
-            // Onboarding check
+            // Onboarding check - Show sample boards for new users
             if (location.pathname === '/' && list.length === 0) {
-                debugLog.auth('No boards found, triggering onboarding...');
-                const newBoard = await createBoard(ONBOARDING_DATA.name);
-                await saveBoard(newBoard.id, { cards: ONBOARDING_DATA.cards, connections: ONBOARDING_DATA.connections, groups: ONBOARDING_DATA.groups || [] });
-                setBoardsList([newBoard]);
-                debugLog.auth('Onboarding board created successfully');
+                debugLog.auth('No boards found, loading sample boards for new user...');
+                const sampleBoards = getSampleBoardsList();
+                setBoardsList(sampleBoards);
+                debugLog.auth(`Loaded ${sampleBoards.length} sample boards for onboarding`);
             }
             setIsInitialized(true);
         };

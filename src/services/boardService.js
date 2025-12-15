@@ -1,6 +1,7 @@
 import { idbGet, idbSet, idbDel } from './db/indexedDB';
 import { downloadImageAsBase64 } from './imageStore';
 import { debugLog } from '../utils/debugLogger';
+import { getSampleBoardData } from '../utils/sampleBoardsData';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -103,6 +104,14 @@ export const saveBoard = async (id, data) => {
 
 export const loadBoard = async (id) => {
     debugLog.storage(`Loading board: ${id}`);
+
+    // Handle sample boards - return static sample data
+    if (id && id.startsWith('sample-')) {
+        debugLog.storage(`Loading sample board: ${id}`);
+        const sampleData = getSampleBoardData(id);
+        return { ...sampleData, boardPrompts: [] };
+    }
+
     let stored = null;
     try {
         stored = await idbGet(BOARD_PREFIX + id);
