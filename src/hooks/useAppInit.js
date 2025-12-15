@@ -52,6 +52,10 @@ export function useAppInit() {
     const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
     const location = useLocation();
 
+    // Track if user was ever logged in this session - used to distinguish
+    // "guest user" (never logged in) from "logged out user" (was logged in, then out)
+    const wasEverLoggedIn = React.useRef(false);
+
     // Load initial boards metadata
     useEffect(() => {
         const init = async () => {
@@ -94,6 +98,9 @@ export function useAppInit() {
             }
 
             if (u) {
+                // Mark that user has logged in this session
+                wasEverLoggedIn.current = true;
+
                 // MIGRATION: Check for local boards that need to be synced to this new user
                 // This handles the "Guest -> Logged In" flow where data would otherwise be lost
                 // OPTIMIZATION: Only migrate once per user to avoid quota exhaustion
@@ -338,9 +345,15 @@ export function useAppInit() {
                     }
                 });
             } else {
-                // User logged out - clear user-specific state to prevent data leakage
-                debugLog.auth('User logged out, clearing user-specific state...');
-                setBoardsList([]);
+                // User is not logged in
+                // CRITICAL FIX: Only clear boards if user was PREVIOUSLY logged in (actual logout)
+                // Do NOT clear for guest users who were never logged in - they might have local data
+                if (wasEverLoggedIn.current) {
+                    debugLog.auth('User logged out, clearing user-specific state...');
+                    setBoardsList([]);
+                } else {
+                    debugLog.auth('Guest user (never logged in), preserving local boards data.');
+                }
             }
         });
 
@@ -349,3 +362,4 @@ export function useAppInit() {
 
     return { user, boardsList, setBoardsList, isInitialized };
 }
+
