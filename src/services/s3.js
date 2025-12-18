@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import imageCompression from 'browser-image-compression';
 
 const S3_CONFIG_KEY = 'mixboard_s3_config';
 
@@ -49,11 +50,53 @@ export const saveS3Config = (config) => {
     localStorage.setItem(S3_CONFIG_KEY, JSON.stringify(config));
 };
 
+/**
+ * Compresses an image file using modern web technologies (WebP).
+ * Optimized for AI readability while minimizing file size.
+ * @param {File} file - The original image file
+ * @returns {Promise<File>} - The compressed image file
+ */
+const compressImage = async (file) => {
+    // Skip if not an image
+    if (!file.type.startsWith('image/')) return file;
+    // Skip if already small (e.g. < 500KB)
+    if (file.size < 0.5 * 1024 * 1024) return file;
+
+    const options = {
+        maxSizeMB: 1,           // Target roughly 1MB or less
+        maxWidthOrHeight: 1920, // 1080p is sufficient for AI reading text
+        useWebWorker: true,
+        fileType: 'image/webp', // Use WebP for better compression/quality ratio
+        initialQuality: 0.6     // Good balance for AI OCR
+    };
+
+    try {
+        console.log(`[Compression] Starting compression for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+        const compressedBlob = await imageCompression(file, options);
+
+        // Create a new File object from the blob to preserve name (with new extension)
+        const newName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+        const compressedFile = new File([compressedBlob], newName, {
+            type: 'image/webp',
+            lastModified: Date.now()
+        });
+
+        console.log(`[Compression] Finished. New size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB. Saved: ${((1 - compressedFile.size / file.size) * 100).toFixed(0)}%`);
+        return compressedFile;
+    } catch (error) {
+        console.error('[Compression] Failed, using original file:', error);
+        return file;
+    }
+};
+
 export const uploadImageToS3 = async (file, folder = 'uploads') => {
     const config = getS3Config();
     if (!config || !config.enabled) {
         throw new Error("S3 is not configured or enabled");
     }
+
+    // 1. Compress Image (New Feature)
+    const fileToUpload = await compressImage(file);
 
     const { endpoint, region, bucket, accessKeyId, secretAccessKey, publicDomain, folderPrefix } = config;
 
@@ -73,7 +116,7 @@ export const uploadImageToS3 = async (file, folder = 'uploads') => {
     // Folder Management: prefix/folder/YYYY-MM/filename
     const date = new Date();
     const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const cleanFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const cleanFilename = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const uniqueId = Math.random().toString(36).substring(2, 9);
 
     // Construct Path: e.g. "nexmap/backgrounds/2024-01/17012345-abc1234-image.png"
@@ -82,13 +125,13 @@ export const uploadImageToS3 = async (file, folder = 'uploads') => {
     const finalKey = `${keyPath}/${Date.now()}-${uniqueId}-${cleanFilename}`;
 
     // Convert File to ArrayBuffer for browser compatibility
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await fileToUpload.arrayBuffer();
 
     const command = new PutObjectCommand({
         Bucket: bucket,
         Key: finalKey,
         Body: arrayBuffer,
-        ContentType: file.type,
+        ContentType: fileToUpload.type,
         // ACL is often not supported by R2/S3 depending on bucket settings, so we default to bucket policy
     });
 
