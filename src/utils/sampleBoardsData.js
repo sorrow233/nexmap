@@ -6,79 +6,50 @@
 
 /**
  * 获取示例面板列表（仅元数据，用于 Gallery 展示）
- * 注意：这些是"只读展示"的示例，用户无法编辑，只能查看
  */
 export const getSampleBoardsList = () => {
     const now = Date.now();
 
     return [
         {
-            id: "sample-commercialization",
-            name: "关于商业化的本质困境",
+            id: "sample-musk-algorithm",
+            name: "马斯克的五步工程法",
             createdAt: now - 86400000 * 2,
             updatedAt: now - 3600000,
             lastAccessedAt: now - 3600000,
-            cardCount: 8,
-            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/backgrounds/2026-01/1767910650391-j49iao9-bg_1767908903163_1767910650388.png",
+            cardCount: 16, // 扩充内容
+            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/1766823633432-spvds5w-bg_1766817094375_1766823633429.png", // 复用一张好看的图
             summary: {
-                theme: "emerald",
-                summary: "商业化困境 · 幸存者偏差 · 现实主义"
-            },
-            isSample: true
-        },
-        {
-            id: "sample-software-dev",
-            name: "软件开发工作流",
-            createdAt: now - 86400000 * 5,
-            updatedAt: now - 7200000,
-            lastAccessedAt: now - 7200000,
-            cardCount: 9,
-            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/backgrounds/2026-01/1767704397504-qac658g-bg_1767688330243_1767704397502.png",
-            summary: {
-                theme: "blue",
-                summary: "AI 开发工作流 · 技术架构规划 · 交互体验优化"
+                theme: "purple",
+                summary: "五步工作法 · SpaceX 案例 · 极简主义"
             },
             isSample: true
         },
         {
             id: "sample-indie-hacker",
-            name: "独立网站和软件都是怎么样商业化的",
+            name: "独立产品商业化指南",
             createdAt: now - 86400000 * 7,
             updatedAt: now - 14400000,
             lastAccessedAt: now - 14400000,
-            cardCount: 11,
+            cardCount: 24, // 扩充内容
             backgroundImage: "https://storage.googleapis.com/gmi-video-assests-prod/user-assets/e54d0b64-bb26-47df-9cbf-c1d6e0987a41/a6cee7b4-4b9b-467c-b550-f061dea6fe40/gmi-videogen/generated/google_ai_studio_929a3a18-6141-40e1-836c-73d6a52c3f33_aa443634-83fd-47cb-ba9c-04841878394d.png",
             summary: {
                 theme: "indigo",
-                summary: "商业模式 · 流量获取 · 独立开发者生存指南"
+                summary: "SaaS 定价 · 流量增长 · 避坑指南"
             },
             isSample: true
         },
         {
-            id: "sample-solid-battery",
-            name: "如果手机用上固态电池会怎么样？",
-            createdAt: now - 86400000 * 10,
-            updatedAt: now - 28800000,
-            lastAccessedAt: now - 28800000,
-            cardCount: 6,
-            backgroundImage: "https://storage.googleapis.com/gmi-video-assests-prod/user-assets/e54d0b64-bb26-47df-9cbf-c1d6e0987a41/a6cee7b4-4b9b-467c-b550-f061dea6fe40/gmi-videogen/generated/google_ai_studio_7142ade6-5aa1-400b-bb0e-8aafe7a9c067_b3b04885-1935-4028-aa67-bc602920081e.png",
-            summary: {
-                theme: "amber",
-                summary: "固态电池 · 科技前沿 · 未来手机形态"
-            },
-            isSample: true
-        },
-        {
-            id: "sample-musk-algorithm",
-            name: "你知道马斯克的五步法吗？",
+            id: "sample-dev-workflow",
+            name: "全栈 AI 开发工作流",
             createdAt: now - 86400000 * 14,
             updatedAt: now - 43200000,
             lastAccessedAt: now - 43200000,
-            cardCount: 8,
-            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/1766823633432-spvds5w-bg_1766817094375_1766823633429.png",
+            cardCount: 32, // 扩充内容
+            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/backgrounds/2026-01/1767704397504-qac658g-bg_1767688330243_1767704397502.png",
             summary: {
-                theme: "purple",
-                summary: "五步工程法 · SpaceX 实践 · 产品极简主义"
+                theme: "blue",
+                summary: "技术栈选型 · CI/CD · 性能优化 · 状态管理"
             },
             isSample: true
         }
@@ -86,133 +57,195 @@ export const getSampleBoardsList = () => {
 };
 
 /**
- * 获取示例面板的完整数据（cards, connections）
- * 每个面板包含精选的对话内容，用于展示产品能力
+ * 获取示例面板的完整数据（cards, connections, groups）
  */
 export const getSampleBoardData = (boardId) => {
-    // 辅助生成卡片的函数
-    const createCard = (id, x, y, title, content, type = "standard", color = "default") => ({
-        id, x, y, type,
-        data: type === "standard" ? {
-            title,
-            messages: [{ role: "assistant", content }],
-            model: "sample"
-        } : { content, color }
-    });
+    // 辅助：生成卡片
+    // 布局策略：cols 表示列数，i 表示当前索引，spacing 表示间距
+    const createLayoutCard = (id, i, colCount, title, content, type = "standard", color = "default", baseXY = { x: 0, y: 0 }) => {
+        const spacingX = 450;
+        const spacingY = 350;
+        const row = Math.floor(i / colCount);
+        const col = i % colCount;
+        return {
+            id,
+            x: baseXY.x + col * spacingX,
+            y: baseXY.y + row * spacingY,
+            type,
+            data: type === "standard" ? {
+                title,
+                messages: [{ role: "assistant", content }],
+                model: "sample"
+            } : { content, color, title }
+        };
+    };
 
     const sampleData = {
-        "sample-commercialization": {
+        // =================================================================================
+        // BOARD 1: 马斯克的五步法 (16 Cards) - 重点展示分区和逻辑流
+        // =================================================================================
+        "sample-musk-algorithm": {
             cards: [
-                createCard("c-1", 0, 0, "核心问题：商业化困境", "个人开发难在商业化。用户懒得学新东西，开发者没钱没精力推广，这是否是一个无解的死局？"),
-                createCard("c-2", 400, 0, "认知错位", "开发者往往在解决「我觉得这很有用」的问题，而商业化的本质是解决「用户愿意付出的代价小于其收益」的问题。"),
-                createCard("c-3", 800, 0, "Notion 的启示", "Notion 的起步是一场极其狼狈的绝地求生。\n\n**乐高式的模块化哲学：**\n它不是给用户一个复杂的工具，而是给了用户一盒积木。用户不需要一开始就学完整套系统，这种自发的探索欲抵消了学习的痛苦。"),
-                createCard("c-4", 200, 300, "幸存者偏差", "我们看到的成功案例（如 Indie Hackers 上的采访）往往是已经在商业上跑通过的千万分之一。沉默的大多数都在 Github 的角落里积灰。", "note", "red"),
-                createCard("c-5", 600, 300, "PMF (Product Market Fit)", "在找到 PMF 之前，任何推广都是在浪费时间。你需要的是 100 个极其热爱你产品的用户，而不是 10000 个觉得你产品「还行」的用户。", "note", "blue"),
-                createCard("c-6", 0, 600, "反直觉真理", "最好的商业化是「看不见商业化」。当用户在使用产品过程中自然地感受到价值，付费就是水到渠成的事情。"),
-                createCard("c-7", 400, 600, "具体的行动建议", "1. 别憋大招：MVP 赶紧上线\n2. 建立 Audience：在 Twitter/Reddit 上分享构建过程 (Building in public)\n3. 专注于利基市场 (Niche Market)", "standard"),
-                createCard("c-8", 800, 600, "收费策略", "**Freemium vs Free Trial**\n\n对于效率工具，Freemium (基础版免费) 通常更好，因为它可以培养用户习惯。", "standard")
-            ],
-            connections: [
-                { from: "c-1", to: "c-2" },
-                { from: "c-2", to: "c-3" },
-                { from: "c-1", to: "c-4" },
-                { from: "c-2", to: "c-5" },
-                { from: "c-5", to: "c-7" },
-                { from: "c-7", to: "c-8" }
-            ],
-            groups: []
-        },
+                // Zone 1: The Algorithm (Cards 0-6)
+                ...[
+                    { t: "核心法则：The Algorithm", c: "马斯克在生产地狱中总结出的绝对真理。每当偏离这五步，灾难就会发生。" },
+                    { t: "Step 1: 质疑需求", c: "需求越聪明的人提出来的，越要质疑。因为人们往往不敢质疑聪明人。任何需求都必须有具体的负责人，而不是某个「部门」。" },
+                    { t: "Step 2: 删除部件/流程", c: "如果你的删除量不够，说明你没努力。如果最后你不需要把删掉的 10% 加回来，说明你删得还不够多。", type: "note", color: "red" },
+                    { t: "Step 3: 简化和优化", c: "最常见的错误是「优化一个不该存在的东西」。必须先做完前两步（质疑+删除），确认它必须存在后，才能开始优化。" },
+                    { t: "Step 4: 加速周期", c: "只有当你挖出了垃圾流程，停止了为了挖垃圾而挖垃圾，这时候才能加速。" },
+                    { t: "Step 5: 自动化", c: "最后一步才是用机器取代人。过早自动化是产能地狱的根源（例如 Model 3 早期的 Flufferbot 悲剧）。" },
+                    { t: "First Principles", c: "永远回归物理学第一性原理。不要类比思考（别人怎么做我也怎么做），要思考事物的本质极限在哪里。", type: "note", color: "purple" }
+                ].map((item, i) => createLayoutCard(`m-${i}`, i, 3, item.t, item.c, item.type, item.color, { x: 0, y: 0 })),
 
-        "sample-software-dev": {
-            cards: [
-                createCard("d-1", 0, 0, "AI 辅助开发的最佳实践", "**核心原则：把 AI 当成极其聪明但没有项目上下文的新同事。**\n\n1. 提供充足的上下文\n2. 小步迭代\n3. 代码审查"),
-                createCard("d-2", 400, -100, "Prompt Engineering", "这不是玄学，是「如何清晰表达需求」的学科。结构化的 Prompt (Role, Context, Task, Constraints) 永远比自然语言更有效。"),
-                createCard("d-3", 400, 200, "Cursor & Copilot", "现代开发者的左膀右臂。Copilot 擅长补全，Cursor 擅长重构和理解整个代码库。", "note", "purple"),
-                createCard("d-4", 800, 0, "测试驱动开发 (TDD)", "AI 时代 TDD 变得更容易了。先让 AI 写测试用例，再让 AI 写通过测试的代码。"),
-                createCard("d-5", 0, 400, "技术债管理", "AI 会加速代码产出，也会加速技术债的堆积。定期进行 Refactoring Sprints 变得比以往任何时候都重要。", "note", "red"),
-                createCard("d-6", 400, 500, "前端架构", "在这个项目中，采用的是 React + Vite + Tailwind 方案。这种组合提供了极致的灵活性和构建速度。", "standard"),
-                createCard("d-7", 800, 500, "状态管理", "Zustand 是比 Redux 更轻量、更现代的选择。它避免了繁琐的 Boilerplate code。", "standard"),
-                createCard("d-8", 1200, 250, "部署与 CI/CD", "自动化部署流程：\nGitHub Actions -> Cloudflare Pages\n每次 Push 自动构建预览版 (Preview Deployment)。", "standard"),
-                createCard("d-9", 1200, 550, "性能优化", "Code Splitting, Lazy Loading, 图片格式优化 (WebP/AVIF), 还有最重要的——减少不必要的 Re-render。", "standard")
+                // Zone 2: Starship Case Study (Cards 7-11)
+                ...[
+                    { t: "案例：星舰栅格翼", c: "传统经验：栅格翼需要折叠（气动优化）。\nAlgorithm应用：马斯克问「不折叠会死吗？」。结论是不折叠只增加微小阻力，但省去了沉重的液压折叠机构。结果：删除折叠机构。", type: "standard" },
+                    { t: "案例：不锈钢外壳", c: "传统经验：碳纤维轻，用碳纤维。\nAlgorithm应用：不锈钢虽然重，但熔点极高，可以省去背风面的隔热瓦。综合计算下来，整体更优且极其便宜。结果：改用不锈钢。", type: "standard" },
+                    { t: "案例：筷子夹火箭", c: "传统经验：火箭必须自带起落架。\nAlgorithm应用：起落架是死重。为什么不能让地面（发射塔）接住它？结果：删除起落架，移到地面。", type: "note", color: "blue" },
+                    { t: "Idiot Index", c: "白痴指数：成品成本 / 原材料成本。如果这个比值很高，说明你的制造过程极其低效（如传统航天）。SpaceX 的目标是把这个指数降到个位数。", type: "note", color: "yellow" },
+                    { t: "Raptor 3 引擎", c: "2025 年的奇迹。不需要隔热罩，因为把冷却管路整合进了内壁。没有外部零件，这就是「删除」的极致。", type: "standard" }
+                ].map((item, i) => createLayoutCard(`m-case-${i}`, i, 3, item.t, item.c, item.type, item.color, { x: 0, y: 1000 })),
+
+                // Zone 3: Personal Application (Cards 12-15)
+                ...[
+                    { t: "生活中的应用", c: "不仅仅是造火箭。这套逻辑适用于所有复杂系统：学习、烹饪、甚至人际关系。", type: "note", color: "green" },
+                    { t: "删除：极简生活", c: "家里 80% 的东西是没用的。不是整理它们，而是删除它们。" },
+                    { t: "质疑：社会规训", c: "「大家都这么做」不是理由。为什么要买房？为什么要考证？如果不做会怎样？" },
+                    { t: "简化：饮食习惯", c: "不要追求花哨的食谱。只需几种核心调料（盐、蒜、鲜），就能覆盖 90% 的美味需求。", type: "standard" }
+                ].map((item, i) => createLayoutCard(`m-life-${i}`, i, 4, item.t, item.c, item.type, item.color, { x: 0, y: 1800 }))
             ],
             connections: [
-                { from: "d-1", to: "d-2" },
-                { from: "d-1", to: "d-4" },
-                { from: "d-1", to: "d-5" },
-                { from: "d-6", to: "d-7" },
-                { from: "d-6", to: "d-9" },
-                { from: "d-8", to: "d-6" }
+                { from: "m-0", to: "m-1" }, { from: "m-1", to: "m-2" }, { from: "m-2", to: "m-3" }, { from: "m-3", to: "m-4" }, { from: "m-4", to: "m-5" },
+                { from: "m-0", to: "m-6" },
+                { from: "m-3", to: "m-case-0" }, { from: "m-3", to: "m-case-1" }, { from: "m-2", to: "m-case-2" },
+                { from: "m-6", to: "m-case-3" },
+                { from: "m-0", to: "m-life-0" }, { from: "m-2", to: "m-life-2" }
             ],
             groups: [
-                { id: "g-1", title: "AI Workflow", cardIds: ["d-1", "d-2", "d-3", "d-4"], color: "blue", x: -20, y: -150, width: 1000, height: 500 }
+                { id: "g-m-1", title: "五步工程法理论", cardIds: ["m-0", "m-1", "m-2", "m-3", "m-4", "m-5", "m-6"], color: "purple", x: -50, y: -150, width: 1400, height: 900 },
+                { id: "g-m-2", title: "SpaceX 实战案例", cardIds: ["m-case-0", "m-case-1", "m-case-2", "m-case-3", "m-case-4"], color: "blue", x: -50, y: 850, width: 1400, height: 800 },
+                { id: "g-m-3", title: "生活哲学应用", cardIds: ["m-life-0", "m-life-1", "m-life-2", "m-life-3"], color: "green", x: -50, y: 1700, width: 1800, height: 500 }
             ]
         },
 
+        // =================================================================================
+        // BOARD 2: 独立开发商业化 (24 Cards) - 重点展示内容密度
+        // =================================================================================
         "sample-indie-hacker": {
             cards: [
-                createCard("i-1", 0, 0, "独立开发商业化路径", "1. SaaS 订阅\n2. 一次性买断\n3. Freemium\n4. 广告/赞助"),
-                createCard("i-2", 400, 0, "SaaS 订阅", "最性感的模式。MRR (Monthly Recurring Revenue) 是核心指标。只要 Churn Rate 控制得当，复利效应惊人。"),
-                createCard("i-3", 800, 0, "一次性买断", "并没有过时。对于工具类 APP，买断制往往转化率更高。现在流行「一年更新期」的买断模式 (Sketch 模式)。"),
-                createCard("i-4", 0, 300, "流量获取：SEO", "长期主义者的游戏。内容营销 (Content Marketing) 是获取免费流量的最佳途径。关键是「解决用户问题」而非「推销产品」。", "note", "green"),
-                createCard("i-5", 400, 300, "流量获取：Product Hunt", "爆发式流量的来源。要在 PH 上成功，需要准备精美的配图、视频和即时的评论互动。", "note", "orange"),
-                createCard("i-6", 800, 300, "流量获取：Twitter/X", "构建个人品牌 (Personal Branding)。人们更愿意信任具体的人，而不是冷冰冰的 Logo。", "note", "blue"),
-                createCard("i-7", 200, 600, "案例：Pieter Levels", "12 个月做 12 个产品的狂人。Nomad List 和 Remote OK 让他实现了财务自由。核心教训：快速发货，验证死活。", "standard"),
-                createCard("i-8", 600, 600, "案例：Tony Dinh", "从 DevUtils 到 TypingMind。擅长利用 Twitter 营销，将小工具做到极致。", "standard"),
-                createCard("i-9", 1000, 600, "定价心理学", "锚定效应 (Anchoring)：设置一个昂贵的企业版，让专业版看起来很划算。\n以 9 结尾的价格确实有效。", "standard"),
-                createCard("i-10", 0, 900, "失败的陷阱", "1. 伪需求 (解决不存在的问题)\n2. 完美主义 (迟迟不肯上线)\n3. 忽视营销 (以为酒香不怕巷子深)", "note", "red"),
-                createCard("i-11", 400, 900, "支付渠道", "Stripe 是首选，但仅限支持地区。Paddle 是很好的 Merchant of Record 替代方案 (处理税务)。Lemon Squeezy 是新起之秀。", "standard")
+                // Section 1: 核心思维 (0-7)
+                ...[
+                    { t: "商业化困境", c: "用户懒得学新东西，开发者没钱推广。这不是死局，是过滤网。" },
+                    { t: "切换成本 (Switching Cost)", c: "除非你的产品好 10 倍，否则用户不会迁移。因为迁移有「认知成本」和「数据沉没成本」。" },
+                    { t: "维生素 vs 止痛片", c: "维生素：锦上添花（整理笔记）。止痛片：雪中送炭（一键修复 Bug）。Indie Hacker 只能做止痛片。", type: "note", color: "red" },
+                    { t: "三秒原则", c: "用户打开网页 3 秒内，必须知道这东西能解决他什么痛苦。" },
+                    { t: "寄生策略", c: "没钱买流量？去有鱼的地方钓鱼。Chrome 商店、Notion 社区、Shopify 插件市场。", type: "note", color: "blue" },
+                    { t: "PMF 验证", c: "不要写代码！先做落地页。如果有 100 个人点击「购买」，你再开始写代码。" },
+                    { t: "Freemium 陷阱", c: "对于小团队，免费用户往往是负担（客服成本）。尽早收费，筛选高价值用户。" },
+                    { t: "SaaS 估值逻辑", c: "MRR (月经常性收入) 是核心。100 个付 $10/月的用户 > 1 个付 $1000 的用户。" }
+                ].map((item, i) => createLayoutCard(`i-${i}`, i, 4, item.t, item.c, item.type, item.color, { x: 0, y: 0 })),
+
+                // Section 2: 流量与营销 (8-15)
+                ...[
+                    { t: "流量来源：SEO", c: "内容营销是长尾流量之王。写「How to」类文章，解决用户具体问题，顺便推荐自己的工具。" },
+                    { t: "流量来源：Product Hunt", c: "发布日的爆发性流量。准备好视频、Gif、第一批评论种子。最好在周二/周三发布。" },
+                    { t: "流量来源：Twitter/X", c: "Build in Public (公开构建)。分享你的失败、你的收入、用破烂英语写代码的过程。人们通过信任「人」来信任「产品」。", type: "standard" },
+                    { t: "案例：Pieter Levels", c: "Nomad List 创始人。他卖的不是数据，是「数字游民」的梦想。他是营销天才，而不只是程序员。", type: "standard" },
+                    { t: "案例：Carrd", c: "极简建站工具。解决了「我就想 1 分钟搞个网页」的痛点。切中了大型建站工具(Wix)过于复杂的软肋。", type: "standard" },
+                    { t: "冷启动邮件", c: "不要群发。找到 50 个潜在客户，手动写 50 封真诚的邮件。" },
+                    { t: "KOL 合作", c: "送给 YouTuber 终身会员，换取一个提及。微小网红（Micro-Influencers）的转化率往往比大网红高。" },
+                    { t: "Side Project 营销", c: "开发一些免费的小工具（如「图片压缩器」、「配色生成器」）来给主产品引流。" }
+                ].map((item, i) => createLayoutCard(`i-m-${i}`, i, 4, item.t, item.c, item.type, item.color, { x: 0, y: 1000 })),
+
+                // Section 3: 定价与心理学 (16-23)
+                ...[
+                    { t: "定价心理学", c: "永远要有三个档位。中间那个是你真正想卖的。右边那个是用来显得中间那个「很划算」的（锚定效应）。", type: "note", color: "yellow" },
+                    { t: "买断 vs 订阅", c: "工具类适合买断（+1年更新权）。服务类/云存储类必须订阅。不要为了订阅而订阅。" },
+                    { t: "退款政策", c: "大方退款。30 天无理由退款能极大地降低用户的购买决策门槛。" },
+                    { t: "终身版 (LTD)", c: "早期快速回笼资金的神器，但也是未来的债务。慎用，或者限量。", type: "note", color: "red" },
+                    { t: "支付网关", c: "Stripe (全球首选)，Lemon Squeezy (处理税务更省心)，Paddle (适合 SaaS)。" },
+                    { t: "涨价的艺术", c: "老用户保留原价（Grandfathering）。新用户涨价。这能刺激观望者立刻下单。" },
+                    { t: "黑五促销", c: "如果不降价，就送额度。降价会伤害品牌，送额度不会。" },
+                    { t: "放弃完美主义", c: "V1 版本如果不够尴尬，说明你发布晚了。Bug 是最好的用户反馈渠道。" }
+                ].map((item, i) => createLayoutCard(`i-p-${i}`, i, 4, item.t, item.c, item.type, item.color, { x: 0, y: 2000 }))
             ],
             connections: [
-                { from: "i-1", to: "i-2" },
-                { from: "i-1", to: "i-3" },
-                { from: "i-1", to: "i-4" },
-                { from: "i-4", to: "i-5" },
-                { from: "i-5", to: "i-6" },
-                { from: "i-7", to: "i-1" },
-                { from: "i-8", to: "i-1" }
+                { from: "i-0", to: "i-2" }, { from: "i-1", to: "i-2" }, { from: "i-2", to: "i-3" }, { from: "i-3", to: "i-5" },
+                { from: "i-m-0", to: "i-3" }, { from: "i-m-2", to: "i-m-3" },
+                { from: "i-0", to: "i-p-0" }, { from: "i-p-0", to: "i-p-1" }
             ],
-            groups: []
+            groups: [
+                { id: "g-i-1", title: "核心商业思维", cardIds: [], color: "blue", x: -50, y: -150, width: 1800, height: 900 }, // 框住第一区
+                { id: "g-i-2", title: "流量获取战术", cardIds: [], color: "indigo", x: -50, y: 900, width: 1800, height: 900 }, // 框住第二区
+                { id: "g-i-3", title: "定价与变现", cardIds: [], color: "emerald", x: -50, y: 1900, width: 1800, height: 900 } // 框住第三区
+            ]
         },
 
-        "sample-solid-battery": {
+        // =================================================================================
+        // BOARD 3: 全栈开发工作流 (32 Cards) - 巨型看板
+        // =================================================================================
+        "sample-dev-workflow": {
             cards: [
-                createCard("b-1", 0, 0, "固态电池革命", "固态电池将从根本上改变手机的设计逻辑：\n1. 容量翻倍，厚度减半\n2. 5分钟充满80%\n3. 极度安全"),
-                createCard("b-2", 400, 0, "手机形态的解放", "如果电池不再需要钢壳保护，不再怕弯折，那么「柔性屏手机」将真正实用化。手镯手机、折纸手机成为可能。", "standard"),
-                createCard("b-3", 800, 0, "电动汽车的影响", "不仅仅是手机。电动汽车续航突破 1000km 将是常态。充电像加油一样快。燃油车将彻底成为历史。", "standard"),
-                createCard("b-4", 200, 300, "全固态 vs 半固态", "目前市场上的「半固态」是过渡方案。全固态（硫化物、氧化物路线）才是终局，但量产难度极高。", "note", "yellow"),
-                createCard("b-5", 600, 300, "成本障碍", "目前固态电池成本是液态锂电池的 4-10 倍。需要 5-10 年才能降到平价水平。", "note", "red"),
-                createCard("b-6", 400, 600, "未来的移动设备", "想象一下，你的 AR 眼镜腿里就是电池，能用一整天。你的智能手表充一次电用一个月。", "standard")
-            ],
-            connections: [
-                { from: "b-1", to: "b-2" },
-                { from: "b-1", to: "b-3" },
-                { from: "b-2", to: "b-6" },
-                { from: "b-3", to: "b-4" }
-            ],
-            groups: []
-        },
+                // Zone 1: Planning & AI (0-7)
+                ...[
+                    { t: "AI-First Development", c: "现在写代码，第一步不是打开 IDE，而是打开 Chat 窗口。把 AI 当作结对编程的伙伴，而不是搜索引擎。" },
+                    { t: "Prompt Engineering", c: "Role (角色) + Context (背景) + Constraints (约束) + Format (格式)。写 Prompt 就是在用自然语言编程。", type: "note", color: "purple" },
+                    { t: "Cursor 编辑器", c: "VS Code 的超集。Cmd+K 直接修改代码，Cmd+L 针对代码库提问。它改变了「阅读代码」的方式。" },
+                    { t: "需求分析", c: "先让 AI 写 PRD (产品文档)。把模糊的想法变成结构化的功能列表。" },
+                    { t: "技术选型", c: "让 AI 对比不同方案的优劣。例如：Next.js vs Vite + React SPA。" },
+                    { t: "数据库设计", c: "把需求发给 AI，让它生成 Mermaid ER 图和 SQL 建表语句。" },
+                    { t: "API 定义", c: "先定义接口 (Swagger/OpenAPI)，前后端并行开发。" },
+                    { t: "原型设计", c: "v0.dev 或 Claude Artifacts 快速生成 UI 原型，验证交互逻辑。" }
+                ].map((item, i) => createLayoutCard(`d-ai-${i}`, i, 4, item.t, item.c, item.type, item.color, { x: 0, y: 0 })),
 
-        "sample-musk-algorithm": {
-            cards: [
-                createCard("m-1", 0, 0, "马斯克的五步工程法", "1. 质疑每一个需求\n2. 删除不必要的部件或流程\n3. 简化和优化\n4. 加速周期时间\n5. 自动化"),
-                createCard("m-2", 400, -100, "第一步：质疑需求", "需求越聪明的人提出来的，越要质疑。因为人们往往不好意思质疑聪明人。需求必须有具体的个人负责，而不是「部门」。"),
-                createCard("m-3", 400, 150, "第二步：删除", "如果你的删除量不够，说明你没努力。如果最后你不需要把删掉的 10% 加回来，说明你删得还不够多。", "note", "red"),
-                createCard("m-4", 800, 0, "第三步：简化", "最常见的错误是「优化一个不该存在的东西」。必须先做前两步！", "standard"),
-                createCard("m-5", 1200, 0, "第四步：加速", "只有当你挖出了垃圾，停止了为了挖垃圾而挖垃圾，这时候才能加速。"),
-                createCard("m-6", 1600, 0, "第五步：自动化", "最后一步才是用机器取代人。过早自动化是产能地狱的根源。", "standard"),
-                createCard("m-7", 600, 400, "第一性原理 (First Principles)", "不要用类比思维 (Analogy) 思考，要回归到物理学的基本真理。火箭为什么贵？是因为由于材料贵？不，原材料只占 2%。剩下的都是制造方法的低效。", "note", "purple"),
-                createCard("m-8", 200, 400, "Idiot Index", "白痴指数：成品的成本与原材料成本的比值。如果比值很高，说明制造过程极其低效，改进空间巨大。", "note", "blue")
+                // Zone 2: Frontend Engineering (8-17)
+                ...[
+                    { t: "React 生态", c: "Vite (构建) + React (视图) + Tailwind (样式) + Zustand (状态)。这是目前的甜点级组合。" },
+                    { t: "Tailwind CSS", c: "Utility-first。虽然 HTML 看起来乱，但开发速度极快，且彻底解决了命名难题。", type: "standard" },
+                    { t: "组件化思维", c: "Atomic Design：原子 (Button) -> 分子 (SearchBox) -> 有机体 (Header) -> 模板 -> 页面。" },
+                    { t: "状态管理", c: "不要滥用 Context。服务端状态用 TanStack Query，客户端全局状态用 Zustand，局部状态用 useState。" },
+                    { t: "性能优化：Lighthouse", c: "关注 LCP (最大内容绘制) 和 CLS (累积布局偏移)。图片必须用 WebP + LazyLoad。" },
+                    { t: "React Hooks 陷阱", c: "useEffect 闭包陷阱、不必要的 Re-render。使用 useMemo 和 useCallback 保护昂贵的计算。" },
+                    { t: "TypeScript", c: "AnyScript 没意义。严谨的类型定义是重构的底气。利用 AI 自动生成 Interface。", type: "note", color: "blue" },
+                    { t: "PWA (渐进式 Web 应用)", c: "让网页像 App 一样离线运行、可安装。Service Worker 是核心。" },
+                    { t: "可访问性 (a11y)", c: "语义化 HTML (header, main, footer)。不仅是为了残障人士，对 SEO 也极好。" },
+                    { t: "动画交互", c: "Framer Motion。声明式动画，比手写 CSS Keyframes 强太大。" }
+                ].map((item, i) => createLayoutCard(`d-fe-${i}`, i, 5, item.t, item.c, item.type, item.color, { x: 0, y: 800 })),
+
+                // Zone 3: Backend & Serverless (18-25)
+                ...[
+                    { t: "Serverless 架构", c: "Cloudflare Workers / AWS Lambda。忘记服务器运维，按请求计费。极度适合个人开发者。" },
+                    { t: "Edge Computing", c: "让代码在离用户最近的节点运行。更低的延迟，无需 CDN 回源。" },
+                    { t: "BaaS (Backend as a Service)", c: "Firebase / Supabase。给你现成的 Auth、Database、Storage。省去 90% 后端工作。" },
+                    { t: "API 安全", c: "JWT (Json Web Token) 鉴权。Rate Limiting (限流) 防止被刷。CORS 配置。" },
+                    { t: "数据库选型", c: "关系型 (PostgreSQL) 还是 NoSQL (Firestore)? 现在的趋势是 NewSQL (如 PlanetScale)。" },
+                    { t: "对象存储", c: "S3 / R2 / OBS。把文件存云端，数据库只存链接。" },
+                    { t: "WebSockets", c: "实时应用 (IM, 协同编辑) 的基石。Socket.io 或原生 WS。" },
+                    { t: "GraphQL vs REST", c: "GraphQL 灵活但复杂。REST 简单但可能请求冗余。tRPC 是全栈 TypeScript 的新宠。" }
+                ].map((item, i) => createLayoutCard(`d-be-${i}`, i, 4, item.t, item.c, item.type, item.color, { x: 0, y: 1600 })),
+
+                // Zone 4: DevOps & Production (26-31)
+                ...[
+                    { t: "CI/CD 流水线", c: "GitHub Actions。Push 代码 -> 跑测试 -> 构建 -> 自动部署。拒绝手动 FTP。" },
+                    { t: "环境隔离", c: "Development (本地) -> Staging (预发布) -> Production (生产)。数据和配置严格分离。", type: "note", color: "red" },
+                    { t: "监控与日志", c: "Sentry (报错追踪)。LogRocket (用户行为回放)。不要等用户报错才知道崩了。" },
+                    { t: "Docker 容器化", c: "虽然 Serverless 不需要，但本地开发环境用 Docker Compose 编排数据库还是很香的。" },
+                    { t: "Git 规范", c: "Conventional Commits (feat: xxx, fix: xxx)。分支策略 (Git Flow / Trunk Based)。" },
+                    { t: "终身学习", c: "技术半衰期只有 2 年。保持对新事物的饥饿感，但要有自己的技术判断力。" }
+                ].map((item, i) => createLayoutCard(`d-ops-${i}`, i, 3, item.t, item.c, item.type, item.color, { x: 0, y: 2400 }))
             ],
             connections: [
-                { from: "m-1", to: "m-2" },
-                { from: "m-1", to: "m-3" },
-                { from: "m-1", to: "m-4" },
-                { from: "m-4", to: "m-5" },
-                { from: "m-5", to: "m-6" },
-                { from: "m-1", to: "m-7" },
-                { from: "m-7", to: "m-8" }
+                { from: "d-ai-0", to: "d-ai-1" }, { from: "d-ai-1", to: "d-ai-2" }, { from: "d-ai-3", to: "d-ai-4" }, { from: "d-ai-4", to: "d-ai-5" },
+                { from: "d-fe-0", to: "d-fe-1" }, { from: "d-fe-0", to: "d-fe-3" }, { from: "d-fe-3", to: "d-be-2" },
+                { from: "d-be-0", to: "d-be-1" }, { from: "d-be-2", to: "d-be-5" },
+                { from: "d-ops-0", to: "d-ops-1" }, { from: "d-ai-3", to: "d-ops-0" }
             ],
-            groups: []
+            groups: [
+                { id: "g-d-1", title: "Wait... Let AI Help You", cardIds: [], color: "purple", x: -50, y: -150, width: 1800, height: 700 },
+                { id: "g-d-2", title: "Modern Frontend", cardIds: [], color: "blue", x: -50, y: 700, width: 2200, height: 750 },
+                { id: "g-d-3", title: "Backend & Infrastructure", cardIds: [], color: "slate", x: -50, y: 1500, width: 1800, height: 750 },
+                { id: "g-d-4", title: "DevOps & Life Cycle", cardIds: [], color: "rose", x: -50, y: 2300, width: 1400, height: 800 }
+            ]
         }
     };
 
