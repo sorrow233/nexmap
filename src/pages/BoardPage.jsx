@@ -9,7 +9,8 @@ import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
 import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import WelcomeCanvas from '../components/WelcomeCanvas';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
@@ -116,6 +117,21 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
     }, [cards, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage]);
 
 
+
+    // User Guide Logic
+    const [showWelcome, setShowWelcome] = useState(false);
+
+    useEffect(() => {
+        const hasSeen = localStorage.getItem('has_seen_welcome_v2');
+        if (!hasSeen) {
+            setShowWelcome(true);
+        }
+    }, []);
+
+    const handleWelcomeDismiss = () => {
+        localStorage.setItem('has_seen_welcome_v2', 'true');
+        setShowWelcome(false);
+    };
 
     return (
         <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative">
@@ -250,6 +266,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         user={user}
                     />
                 </Suspense>
+
+                {showWelcome && <WelcomeCanvas onDismiss={handleWelcomeDismiss} />}
             </div>
         </div>
     );

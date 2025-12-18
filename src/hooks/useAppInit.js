@@ -309,16 +309,21 @@ export function useAppInit() {
                         }
 
                         // NEW: Auto-create sample boards for truly new cloud users
+                        // Race Condition Fix: Also check if we ONLY have sample boards locally
+                        // This handles the case where Init injected samples, but Cloud Sync wiped them from UI (because cloud was empty)
                         const currentBoards = loadBoardsMetadata();
-                        if (currentBoards.length === 0) {
+                        const isOnlySamples = currentBoards.length > 0 && currentBoards.every(b => b.id.startsWith('sample-'));
+
+                        if (currentBoards.length === 0 || isOnlySamples) {
                             try {
-                                debugLog.auth('New cloud user with no boards, injecting samples...');
+                                debugLog.auth('New cloud user (or only local samples), ensuring samples are on cloud...');
                                 const samples = getSampleBoardsList(); // STATIC IMPORT
                                 for (const sample of samples) {
                                     const data = getSampleBoardData(sample.id); // STATIC IMPORT
                                     await saveBoard(sample.id, data);
                                     await saveBoardToCloud(u.uid, sample.id, data);
                                 }
+                                // Force update state in case Sync wiped it
                                 setBoardsList(samples);
                             } catch (err) {
                                 console.error("Failed to inject samples", err);
