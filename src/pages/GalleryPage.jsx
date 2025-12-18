@@ -17,7 +17,6 @@ import ProBadge from '../components/ProBadge';
 import PaymentSuccessModal from '../components/PaymentSuccessModal';
 import { auth } from '../services/firebase';
 import { useAutoBoardSummaries } from '../hooks/useAutoBoardSummaries';
-import WelcomeCanvas from '../components/WelcomeCanvas';
 
 export default function GalleryPage({
     boardsList,
@@ -43,20 +42,6 @@ export default function GalleryPage({
     const isPro = useStore(state => state.isPro);
     const refreshCredits = useStore(state => state.fetchSystemCredits);
 
-    // Welcome Canvas Logic - Show for first-time users
-    const [showWelcome, setShowWelcome] = useState(false);
-
-    useEffect(() => {
-        const hasSeen = localStorage.getItem('has_seen_welcome_v2');
-        if (!hasSeen) {
-            setShowWelcome(true);
-        }
-    }, []);
-
-    const handleWelcomeDismiss = () => {
-        localStorage.setItem('has_seen_welcome_v2', 'true');
-        setShowWelcome(false);
-    };
 
     // Auto-generate summaries for eligible boards
     useAutoBoardSummaries(boardsList, onUpdateBoardMetadata);
@@ -360,9 +345,6 @@ export default function GalleryPage({
                 }}
                 orderDetails={orderDetails}
             />
-
-            {/* Welcome Canvas for First-Time Users */}
-            {showWelcome && <WelcomeCanvas onDismiss={handleWelcomeDismiss} />}
         </div>
     );
 }
