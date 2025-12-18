@@ -18,7 +18,7 @@ import favoritesService from '../services/favoritesService';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { useStore } from '../store/useStore';
 import { ONBOARDING_DATA } from '../utils/onboarding';
-import { getSampleBoardsList } from '../utils/sampleBoardsData';
+import { getSampleBoardsList, getSampleBoardData } from '../utils/sampleBoardsData';
 import { useLocation } from 'react-router-dom';
 import { debugLog } from '../utils/debugLogger';
 import { userStatsService } from '../services/stats/userStatsService';
@@ -67,35 +67,31 @@ export function useAppInit() {
             initScheduledBackup();
 
             const list = loadBoardsMetadata();
-            debugLog.storage(`Loaded metadata for ${list.length} boards`);
-            setBoardsList(list);
 
             // Onboarding check - Show sample boards for new users
             if (location.pathname === '/' && list.length === 0) {
                 debugLog.auth('No boards found, loading sample boards for new user...');
                 const sampleBoards = getSampleBoardsList();
 
-                // IMPORTANT: Persist these samples to LocalStorage/IndexedDB so they are "real" boards
-                // This prevents them from disappearing on refresh or conflicting with other logic
-                const { getSampleBoardData } = await import('../utils/sampleBoardsData');
-                const { saveBoard } = await import('../services/storage');
+                // 1. Immediate UI Update (Synchronous)
+                setBoardsList(sampleBoards);
 
+                // 2. Persist in background (Fire & Forget)
                 const persistedBoards = [];
                 for (const sample of sampleBoards) {
-                    // Save full data to IndexedDB
                     const fullData = getSampleBoardData(sample.id);
+                    // We must wait for this to ensure data is there if they click immediately, 
+                    // but we already updated state so UI is happy.
                     await saveBoard(sample.id, fullData);
                     persistedBoards.push(sample);
                 }
-
-                // Update metadata in LocalStorage via setBoardsList logic inside storage service would be better
-                // but since we are here, we manually update the list and let the state update
-                // Note: saveBoard saves the content. We also need to save the metadata list to localStorage
                 localStorage.setItem('mixboard_boards_list', JSON.stringify(persistedBoards));
-
-                setBoardsList(persistedBoards);
                 debugLog.auth(`Loaded & Persisted ${persistedBoards.length} sample boards for onboarding`);
+            } else {
+                debugLog.storage(`Loaded metadata for ${list.length} boards`);
+                setBoardsList(list);
             }
+
             setIsInitialized(true);
         };
         init();
@@ -254,132 +250,107 @@ export function useAppInit() {
                 });
 
                 debugLog.auth('Loading user settings from cloud...');
-                loadUserSettings(u.uid).then(settings => {
-                    (async () => { // Wrap in async for await support
-                        if (settings) {
-                            debugLog.auth('Cloud settings loaded successfully');
-                            // CRITICAL FIX: Sync cloud settings to Store (which handles localStorage persistence)
-                            if (settings.providers) {
-                                useStore.getState().setFullConfig({
-                                    providers: settings.providers,
-                                    activeId: settings.activeId || 'google'
+                loadUserSettings(u.uid).then(async (settings) => {
+                    if (settings) {
+                        debugLog.auth('Cloud settings loaded successfully');
+                        // CRITICAL FIX: Sync cloud settings to Store (which handles localStorage persistence)
+                        if (settings.providers) {
+                            useStore.getState().setFullConfig({
+                                providers: settings.providers,
+                                activeId: settings.activeId || 'google'
+                            });
+                        }
+                        if (settings.s3Config) {
+                            localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
+                        }
+
+                        // --- Smart Sync: Compare timestamps for customInstructions ---
+                        const localData = loadWithTimestamp('mixboard_custom_instructions');
+                        const cloudModified = settings.customInstructionsModifiedAt?.toMillis?.() || 0;
+
+                        if (cloudModified > localData.lastModified) {
+                            // Cloud is newer, use cloud value
+                            debugLog.sync(`Cloud customInstructions is newer (${cloudModified} > ${localData.lastModified}), using cloud`);
+                            if (settings.customInstructions) {
+                                saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
+                            }
+                        } else if (localData.lastModified > cloudModified && localData.value) {
+                            // Local is newer, sync to cloud
+                            debugLog.sync(`Local customInstructions is newer (${localData.lastModified} > ${cloudModified}), syncing to cloud`);
+                            updateUserSettings(u.uid, {
+                                customInstructions: localData.value,
+                                customInstructionsModified: true
+                            });
+                        } else if (!cloudModified && !localData.lastModified) {
+                            // Neither has timestamp (legacy), fall back to content-based merge
+                            if (settings.customInstructions && settings.customInstructions !== localData.value) {
+                                saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
+                            } else if (localData.value && !settings.customInstructions) {
+                                // Local has data, cloud is empty - sync local to cloud
+                                updateUserSettings(u.uid, {
+                                    customInstructions: localData.value,
+                                    customInstructionsModified: true
                                 });
-                            }
-                            if (settings.s3Config) {
-                                localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
-                            }
-
-                            // --- Smart Sync: Compare timestamps for customInstructions ---
-                            const localData = loadWithTimestamp('mixboard_custom_instructions');
-                            const cloudModified = settings.customInstructionsModifiedAt?.toMillis?.() || 0;
-
-                            if (cloudModified > localData.lastModified) {
-                                // Cloud is newer, use cloud value
-                                debugLog.sync(`Cloud customInstructions is newer (${cloudModified} > ${localData.lastModified}), using cloud`);
-                                if (settings.customInstructions) {
-                                    saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
-                                }
-                            } else if (localData.lastModified > cloudModified && localData.value) {
-                                // Local is newer, sync to cloud
-                                debugLog.sync(`Local customInstructions is newer (${localData.lastModified} > ${cloudModified}), syncing to cloud`);
-                                import('../services/storage').then(({ updateUserSettings }) => {
-                                    updateUserSettings(u.uid, {
-                                        customInstructions: localData.value,
-                                        customInstructionsModified: true
-                                    });
-                                });
-                            } else if (!cloudModified && !localData.lastModified) {
-                                // Neither has timestamp (legacy), fall back to content-based merge
-                                if (settings.customInstructions && settings.customInstructions !== localData.value) {
-                                    saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
-                                } else if (localData.value && !settings.customInstructions) {
-                                    // Local has data, cloud is empty - sync local to cloud
-                                    import('../services/storage').then(({ updateUserSettings }) => {
-                                        updateUserSettings(u.uid, {
-                                            customInstructions: localData.value,
-                                            customInstructionsModified: true
-                                        });
-                                    });
-                                }
-                            }
-
-                            // Sync global prompts from cloud
-                            if (settings.globalPrompts && Array.isArray(settings.globalPrompts)) {
-                                localStorage.setItem('mixboard_global_prompts', JSON.stringify(settings.globalPrompts));
-                            }
-
-                            // Sync language preference from cloud
-                            if (settings.userLanguage) {
-                                localStorage.setItem('userLanguage', settings.userLanguage);
-                            } else {
-                                // If user has local language valid setting, sync to cloud
-                                const localLang = localStorage.getItem('userLanguage');
-                                if (localLang) {
-                                    import('../services/storage').then(({ updateUserSettings }) => {
-                                        updateUserSettings(u.uid, { userLanguage: localLang });
-                                    });
-                                }
-                            }
-
-                            // Load system credits if user has no API key configured
-                            const activeConfig = useStore.getState().getActiveConfig();
-                            if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
-                                debugLog.auth('No API key configured, loading system credits...');
-                                useStore.getState().loadSystemCredits?.();
-                            }
-
-                            // NEW: Auto-create sample boards for truly new cloud users
-                            const currentBoards = loadBoardsMetadata();
-                            if (currentBoards.length === 0) {
-                                try {
-                                    debugLog.auth('New cloud user with no boards, injecting samples...');
-                                    const { getSampleBoardsList, getSampleBoardData } = await import('../utils/sampleBoardsData');
-                                    const { saveBoard } = await import('../services/storage');
-                                    const samples = getSampleBoardsList();
-                                    for (const sample of samples) {
-                                        const data = getSampleBoardData(sample.id);
-                                        // Save to cloud directly since user is logged in
-                                        await saveBoard(sample.id, data);
-                                        await saveBoardToCloud(u.uid, sample.id, data);
-                                    }
-                                    setBoardsList(samples);
-                                } catch (err) {
-                                    console.error("Failed to inject samples", err);
-                                }
-                            }
-                        } else {
-                            // No cloud settings = new user (or just created)
-                            debugLog.auth('No cloud settings found, checking for onboarding...');
-
-                            const currentBoards = loadBoardsMetadata();
-                            if (currentBoards.length === 0) {
-                                try {
-                                    debugLog.auth('No cloud settings & no local boards, injecting samples...');
-                                    const { getSampleBoardsList, getSampleBoardData } = await import('../utils/sampleBoardsData');
-                                    const { saveBoard } = await import('../services/storage');
-                                    const samples = getSampleBoardsList();
-                                    // Persist locally
-                                    const persisted = [];
-                                    for (const sample of samples) {
-                                        const data = getSampleBoardData(sample.id);
-                                        await saveBoard(sample.id, data);
-                                        persisted.push(sample);
-                                    }
-                                    localStorage.setItem('mixboard_boards_list', JSON.stringify(persisted));
-                                    setBoardsList(persisted);
-                                } catch (err) {
-                                    console.error("Failed to inject samples (local)", err);
-                                }
-                            }
-
-                            // Check if we should load credits
-                            const activeConfig = useStore.getState().getActiveConfig();
-                            if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
-                                debugLog.auth('New user, loading system credits...');
-                                useStore.getState().loadSystemCredits?.();
                             }
                         }
-                    })(); // End Async IIFE
+
+                        // Sync global prompts from cloud
+                        if (settings.globalPrompts && Array.isArray(settings.globalPrompts)) {
+                            localStorage.setItem('mixboard_global_prompts', JSON.stringify(settings.globalPrompts));
+                        }
+
+                        // Sync language preference...
+                        if (settings.userLanguage) localStorage.setItem('userLanguage', settings.userLanguage);
+
+                        // Load system credits...
+                        const activeConfig = useStore.getState().getActiveConfig();
+                        if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                            useStore.getState().loadSystemCredits?.();
+                        }
+
+                        // NEW: Auto-create sample boards for truly new cloud users
+                        const currentBoards = loadBoardsMetadata();
+                        if (currentBoards.length === 0) {
+                            try {
+                                debugLog.auth('New cloud user with no boards, injecting samples...');
+                                const samples = getSampleBoardsList(); // STATIC IMPORT
+                                for (const sample of samples) {
+                                    const data = getSampleBoardData(sample.id); // STATIC IMPORT
+                                    await saveBoard(sample.id, data);
+                                    await saveBoardToCloud(u.uid, sample.id, data);
+                                }
+                                setBoardsList(samples);
+                            } catch (err) {
+                                console.error("Failed to inject samples", err);
+                            }
+                        }
+                    } else {
+                        // No cloud settings = new user (or just created)
+                        debugLog.auth('No cloud settings found, checking for onboarding...');
+                        const currentBoards = loadBoardsMetadata();
+                        if (currentBoards.length === 0) {
+                            try {
+                                debugLog.auth('No cloud settings & no local boards, injecting samples...');
+                                const samples = getSampleBoardsList();
+                                // Persist locally
+                                const persisted = [];
+                                for (const sample of samples) {
+                                    const data = getSampleBoardData(sample.id);
+                                    await saveBoard(sample.id, data);
+                                    persisted.push(sample);
+                                }
+                                localStorage.setItem('mixboard_boards_list', JSON.stringify(persisted));
+                                setBoardsList(persisted);
+                            } catch (err) {
+                                console.error("Failed to inject samples (local)", err);
+                            }
+                        }
+
+                        const activeConfig = useStore.getState().getActiveConfig();
+                        if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                            useStore.getState().loadSystemCredits?.();
+                        }
+                    }
                 });
             } else {
                 // User is not logged in
