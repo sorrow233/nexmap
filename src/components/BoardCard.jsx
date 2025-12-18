@@ -1,4 +1,5 @@
 import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal } from 'lucide-react';
+import { optimizeImageUrl } from '../utils/imageOptimizer';
 
 export default function BoardCard({
     board,
@@ -83,7 +84,7 @@ export default function BoardCard({
                     {hasImage ? (
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                            style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
+                            style={{ backgroundImage: `url(${optimizeImageUrl(board.backgroundImage || board.thumbnail, 600)})` }}
                         />
                     ) : board.summary ? (
                         // Neural Clay Text Card Variant v3.0 (Stacked)
@@ -197,7 +198,7 @@ export default function BoardCard({
             {board.backgroundImage || board.thumbnail ? (
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
-                    style={{ backgroundImage: `url(${board.backgroundImage || board.thumbnail})` }}
+                    style={{ backgroundImage: `url(${optimizeImageUrl(board.backgroundImage || board.thumbnail, 600)})` }}
                 />
             ) : board.summary ? (
                 // Neural Clay Text Card Variant v3.0 (Soft & Tactile)
