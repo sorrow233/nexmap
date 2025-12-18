@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { auth } from '../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -54,7 +54,7 @@ export function useAppInit() {
 
     // Track if user was ever logged in this session - used to distinguish
     // "guest user" (never logged in) from "logged out user" (was logged in, then out)
-    const wasEverLoggedIn = React.useRef(false);
+    const wasEverLoggedIn = useRef(false);
 
     // Load initial boards metadata
     useEffect(() => {
