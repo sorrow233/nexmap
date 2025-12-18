@@ -69,7 +69,8 @@ export function useAppInit() {
             const list = loadBoardsMetadata();
 
             // Onboarding check - Show sample boards for new users
-            if (location.pathname === '/' && list.length === 0) {
+            // Fixed: Removed location.pathname check - users land on /gallery, not /
+            if (list.length === 0) {
                 debugLog.auth('No boards found, loading sample boards for new user...');
                 const sampleBoards = getSampleBoardsList();
 
