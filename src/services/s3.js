@@ -18,7 +18,9 @@ export const getS3Config = () => {
         }
     }
 
-    // 1. First priority: Environment Variables (classic)
+    // 1. Environment Variables - DISABLED for public cost control
+    // User must manually configure S3 in Settings to enable it.
+    /*
     if (import.meta.env.VITE_S3_ACCESS_KEY && import.meta.env.VITE_S3_BUCKET) {
         return {
             enabled: true,
@@ -31,6 +33,7 @@ export const getS3Config = () => {
             folderPrefix: import.meta.env.VITE_S3_FOLDER_PREFIX || ''
         };
     }
+    */
 
     // 2. Fallback: Local Storage (User specific overrides)
     try {
@@ -90,18 +93,31 @@ const compressImage = async (file) => {
 };
 
 export const uploadImageToS3 = async (file, folder = 'uploads') => {
-    const config = getS3Config();
-    if (!config || !config.enabled) {
-        throw new Error("S3 is not configured or enabled");
-    }
-
-    // 1. Compress Image (New Feature)
+    // 1. Always Compress logic
     const fileToUpload = await compressImage(file);
+
+    const config = getS3Config();
+
+    // 2. CHECK: If no S3 config, fallback to Local Storage (Base64)
+    // This allows free users to save images without consuming S3 bandwidth/storage
+    if (!config || !config.enabled) {
+        console.log('[S3] No configuration found. Falling back to local Base64 storage.');
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(fileToUpload);
+            reader.onloadend = () => {
+                // Return the Base64 string directly
+                // This string will be saved into the board data (IndexedDB)
+                resolve(reader.result);
+            };
+            reader.onerror = reject;
+        });
+    }
 
     const { endpoint, region, bucket, accessKeyId, secretAccessKey, publicDomain, folderPrefix } = config;
 
     if (!bucket || !accessKeyId || !secretAccessKey) {
-        throw new Error("Missing required S3 configuration fields");
+        throw new Error("Invalid S3 configuration");
     }
 
     const client = new S3Client({

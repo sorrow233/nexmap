@@ -153,38 +153,43 @@ export default function useBoardBackground() {
 
             if (!imageUrl) throw new Error("Failed to generate image");
 
-            // 5. Processing & Upload
+            // 5. Processing & Upload (S3 or Local Base64)
             let finalImageUrl = imageUrl;
             const markdownMatch = finalImageUrl.match(/\!\[.*?\]\((.*?)\)/);
             if (markdownMatch && markdownMatch[1]) {
                 finalImageUrl = markdownMatch[1];
             }
 
-            const s3Config = getS3Config();
-            if (s3Config && s3Config.enabled) {
-                try {
-                    let blob;
-                    if (finalImageUrl.startsWith('data:')) {
-                        const byteString = atob(finalImageUrl.split(',')[1]);
-                        const mimeString = finalImageUrl.split(',')[0].split(':')[1].split(';')[0];
-                        const ab = new ArrayBuffer(byteString.length);
-                        const ia = new Uint8Array(ab);
-                        for (let i = 0; i < byteString.length; i++) {
-                            ia[i] = byteString.charCodeAt(i);
-                        }
-                        blob = new Blob([ab], { type: mimeString });
-                    } else {
-                        const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
-                        const response = await fetch(proxyUrl);
-                        if (!response.ok) throw new Error("Failed to download generated image via proxy");
-                        blob = await response.blob();
+            // Always attempt to persist the image (S3 or Local)
+            // This prevents expiring URLs from being saved to the board
+            try {
+                let blob;
+                if (finalImageUrl.startsWith('data:')) {
+                    const byteString = atob(finalImageUrl.split(',')[1]);
+                    const mimeString = finalImageUrl.split(',')[0].split(':')[1].split(';')[0];
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
                     }
-
-                    const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
-                    finalImageUrl = await uploadImageToS3(file, 'backgrounds');
-                } catch (uploadError) {
-                    console.warn('[Image Gen] S3 Upload Failed:', uploadError);
+                    blob = new Blob([ab], { type: mimeString });
+                } else {
+                    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error("Failed to download generated image via proxy");
+                    blob = await response.blob();
                 }
+
+                const file = new File([blob], `bg_${boardId}_${Date.now()}.png`, { type: 'image/png' });
+
+                // uploadImageToS3 will now handle the logic:
+                // - If S3 Config exists -> Upload to S3 -> Return S3 URL
+                // - If NO Config -> Convert to Base64 (Compressed) -> Return Base64
+                finalImageUrl = await uploadImageToS3(file, 'backgrounds');
+
+            } catch (uploadError) {
+                console.warn('[Image Gen] Persistence Failed (using original URL):', uploadError);
+                // If persistence fails, we keep the original URL (better than nothing)
             }
 
             // 6. Save
