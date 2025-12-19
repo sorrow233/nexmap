@@ -18,7 +18,7 @@ export const getSampleBoardsList = () => {
             updatedAt: now - 3600000,
             lastAccessedAt: now - 3600000,
             cardCount: 16, // 扩充内容
-            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/1766823633432-spvds5w-bg_1766817094375_1766823633429.png", // 复用一张好看的图
+            backgroundImage: "/samples/musk-bg.png",
             summary: {
                 theme: "purple",
                 summary: "五步工作法 · SpaceX 案例 · 极简主义"
@@ -32,7 +32,7 @@ export const getSampleBoardsList = () => {
             updatedAt: now - 14400000,
             lastAccessedAt: now - 14400000,
             cardCount: 24, // 扩充内容
-            backgroundImage: "https://storage.googleapis.com/gmi-video-assests-prod/user-assets/e54d0b64-bb26-47df-9cbf-c1d6e0987a41/a6cee7b4-4b9b-467c-b550-f061dea6fe40/gmi-videogen/generated/google_ai_studio_929a3a18-6141-40e1-836c-73d6a52c3f33_aa443634-83fd-47cb-ba9c-04841878394d.png",
+            backgroundImage: "/samples/indie-hacker-bg.png",
             summary: {
                 theme: "indigo",
                 summary: "SaaS 定价 · 流量增长 · 避坑指南"
@@ -46,7 +46,7 @@ export const getSampleBoardsList = () => {
             updatedAt: now - 43200000,
             lastAccessedAt: now - 43200000,
             cardCount: 32, // 扩充内容
-            backgroundImage: "https://aimappic.obs.cn-east-3.myhuaweicloud.com/backgrounds/2026-01/1767704397504-qac658g-bg_1767688330243_1767704397502.png",
+            backgroundImage: "/samples/dev-workflow-bg.png",
             summary: {
                 theme: "blue",
                 summary: "技术栈选型 · CI/CD · 性能优化 · 状态管理"
