@@ -122,9 +122,9 @@ export const getSampleBoardData = (boardId) => {
                 { from: "m-0", to: "m-life-0" }, { from: "m-2", to: "m-life-2" }
             ],
             groups: [
-                { id: "g-m-1", title: "五步工程法理论", cardIds: ["m-0", "m-1", "m-2", "m-3", "m-4", "m-5", "m-6"], color: "purple", x: -50, y: -150, width: 1400, height: 900 },
-                { id: "g-m-2", title: "SpaceX 实战案例", cardIds: ["m-case-0", "m-case-1", "m-case-2", "m-case-3", "m-case-4"], color: "blue", x: -50, y: 850, width: 1400, height: 800 },
-                { id: "g-m-3", title: "生活哲学应用", cardIds: ["m-life-0", "m-life-1", "m-life-2", "m-life-3"], color: "green", x: -50, y: 1700, width: 1800, height: 500 }
+                { id: "g-m-1", title: "五步工程法理论", cardIds: ["m-0", "m-1", "m-2", "m-3", "m-4", "m-5", "m-6"], color: "purple", x: -80, y: -80, width: 1450, height: 950 },
+                { id: "g-m-2", title: "SpaceX 实战案例", cardIds: ["m-case-0", "m-case-1", "m-case-2", "m-case-3", "m-case-4"], color: "blue", x: -80, y: 920, width: 1450, height: 950 },
+                { id: "g-m-3", title: "生活哲学应用", cardIds: ["m-life-0", "m-life-1", "m-life-2", "m-life-3"], color: "green", x: -80, y: 1720, width: 1850, height: 450 }
             ]
         },
 
