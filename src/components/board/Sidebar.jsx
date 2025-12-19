@@ -27,7 +27,10 @@ const getRandomColor = () => TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.le
 
 // Moved outside Sidebar to prevent re-creation on every render
 const AddInput = ({ type, onCancel, newName, setNewName, newContent, setNewContent, onSubmit, t }) => (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={onCancel}>
+    <div
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm"
+        onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
         <div
             className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72 animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
