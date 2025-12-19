@@ -126,11 +126,16 @@ export function useAppInit() {
                 if (!hasMigrated) {
                     const migrateLocalData = async () => {
                         const localBoards = getBoardsList();
-                        if (localBoards.length > 0) {
-                            debugLog.sync(`Found ${localBoards.length} local boards. Migrating to cloud (first login)...`);
+                        // CRITICAL FIX: Skip sample boards to prevent polluting old user's cloud data
+                        // When old users login on new device, sample boards are temporarily loaded
+                        // We should NOT upload these to cloud - only real user-created boards
+                        const realBoards = localBoards.filter(b => !b.id.startsWith('sample-'));
+
+                        if (realBoards.length > 0) {
+                            debugLog.sync(`Found ${realBoards.length} real local boards. Migrating to cloud (first login)...`);
 
                             let migratedCount = 0;
-                            for (const board of localBoards) {
+                            for (const board of realBoards) {
                                 try {
                                     const fullBoardData = await loadBoard(board.id);
                                     if (fullBoardData) {
@@ -145,6 +150,8 @@ export function useAppInit() {
                             if (migratedCount > 0) {
                                 debugLog.sync(`Successfully migrated ${migratedCount} local boards to cloud account.`);
                             }
+                        } else {
+                            debugLog.sync('No real local boards to migrate (only sample boards found, skipping).');
                         }
 
                         // Migrate Favorites (only on first login)
