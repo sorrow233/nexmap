@@ -370,49 +370,48 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
 
                 {/* Action Bar (Share, etc.) */}
                 {!isUser && !isStreaming && content && !content.includes("⚠️ Error") && (
-                    <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={() => onToggleFavorite && onToggleFavorite(index, textContent)}
-                            className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${isFavorite ? 'text-orange-400 bg-orange-50 dark:bg-orange-500/10' : 'text-slate-400 hover:text-orange-400 bg-slate-50 dark:bg-white/5 hover:bg-orange-50 dark:hover:bg-white/10'}`}
+                            className={`p-2 rounded-full transition-all ring-1 ring-inset ${isFavorite
+                                ? 'text-orange-500 bg-orange-50/80 ring-orange-200 dark:bg-orange-500/20 dark:ring-orange-500/40'
+                                : 'text-slate-400 hover:text-orange-500 bg-slate-50/50 hover:bg-orange-50 ring-transparent hover:ring-orange-200 dark:bg-white/5 dark:hover:bg-orange-500/10'}`}
                             title={isFavorite ? "Unfavorite" : "Favorite Message"}
                         >
-                            <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
-                            <span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
+                            <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
                         </button>
                         <button
                             onClick={handleCopy}
-                            className={`text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${copySuccess ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'text-slate-400 hover:text-emerald-500 bg-slate-50 dark:bg-white/5 hover:bg-emerald-50 dark:hover:bg-white/10'}`}
+                            className={`p-2 rounded-full transition-all ring-1 ring-inset ${copySuccess
+                                ? 'text-emerald-500 bg-emerald-50/80 ring-emerald-200 dark:bg-emerald-500/20 dark:ring-emerald-500/40'
+                                : 'text-slate-400 hover:text-emerald-500 bg-slate-50/50 hover:bg-emerald-50 ring-transparent hover:ring-emerald-200 dark:bg-white/5 dark:hover:bg-emerald-500/10'}`}
                             title="Copy text to clipboard"
                         >
-                            {copySuccess ? <Check size={14} /> : <Copy size={14} />}
-                            <span>{copySuccess ? 'Copied' : 'Copy'}</span>
+                            {copySuccess ? <Check size={16} /> : <Copy size={16} />}
                         </button>
                         <button
                             onClick={() => onShare && onShare(textContent)}
-                            className="text-xs font-bold text-slate-400 hover:text-brand-500 flex items-center gap-1 bg-slate-50 dark:bg-white/5 hover:bg-brand-50 dark:hover:bg-brand-500/10 px-3 py-1.5 rounded-full transition-all"
+                            className="p-2 rounded-full text-slate-400 hover:text-blue-500 bg-slate-50/50 hover:bg-blue-50 ring-1 ring-transparent hover:ring-blue-200 dark:bg-white/5 dark:hover:bg-blue-500/10 transition-all ring-inset"
                             title="Share as Image"
                         >
-                            <Share2 size={14} />
-                            <span>Share</span>
+                            <Share2 size={16} />
                         </button>
                         {onContinueTopic && (
                             <button
                                 onClick={() => onContinueTopic()}
-                                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-3 py-1.5 rounded-full transition-all"
-                                title="Sprout - Continue conversation with AI suggestion"
+                                className="p-2 rounded-full text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-100 ring-1 ring-transparent hover:ring-teal-200 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 transition-all ring-inset"
+                                title="Sprout - Continue conversation"
                             >
-                                <Sprout size={14} />
-                                <span>Sprout</span>
+                                <Sprout size={16} />
                             </button>
                         )}
                         {onBranch && (
                             <button
                                 onClick={() => onBranch()}
-                                className="text-xs font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1 bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 px-3 py-1.5 rounded-full transition-all"
-                                title="Branch - Extract topics to separate cards"
+                                className="p-2 rounded-full text-violet-600 hover:text-violet-700 bg-violet-50/50 hover:bg-violet-100 ring-1 ring-transparent hover:ring-violet-200 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 transition-all ring-inset"
+                                title="Branch - Extract to card"
                             >
-                                <GitBranch size={14} />
-                                <span>Branch</span>
+                                <GitBranch size={16} />
                             </button>
                         )}
                     </div>
