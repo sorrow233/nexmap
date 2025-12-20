@@ -158,6 +158,33 @@ body,
         box-shadow: 0 0 24px rgba(255, 180, 162, 0.15), 0 0 48px rgba(255, 180, 162, 0.08);
     }
 
+    /* Spotlight 效果增强 */
+    .spotlight-glow {
+        transition: opacity 0.3s ease-out;
+    }
+
+    /* Focus 光晕效果 - 通用 */
+    .focus-glow:focus-within {
+        box-shadow: 0 0 30px -5px rgba(255, 180, 162, 0.3);
+        border-color: rgba(255, 180, 162, 0.3);
+    }
+
+    /* 品牌色光晕 - 悬浮态 */
+    .glow-brand-hover:hover {
+        box-shadow: 0 8px 40px -8px rgba(255, 180, 162, 0.25);
+    }
+
+    /* Indigo 光晕 - 输入框专用 */
+    .glow-indigo-focus:focus-within {
+        box-shadow: 0 0 40px -8px rgba(99, 102, 241, 0.4);
+        ring: 2px solid rgba(99, 102, 241, 0.3);
+    }
+
+    /* 紫色光晕 - 选中态 */
+    .glow-purple-selected {
+        box-shadow: 0 0 40px -5px rgba(139, 92, 246, 0.3);
+    }
+
     .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
         /* Thinner */

@@ -189,10 +189,10 @@ const Card = React.memo(function Card({
         <div
             ref={cardRef}
             className={`absolute w-[calc(100vw-2rem)] xs:w-[300px] sm:w-[320px] rounded-3xl flex flex-col select-none pointer-events-auto group 
-                ${isDragging ? 'transition-none duration-0 shadow-2xl scale-[1.02] cursor-grabbing z-[100]' : 'transition-all duration-300 cursor-grab hover:glass-card-hover'}
+                ${isDragging ? 'transition-none duration-0 shadow-2xl scale-[1.02] cursor-grabbing z-[100]' : 'transition-all duration-300 cursor-grab hover:glass-card-hover hover:shadow-[0_8px_40px_-8px_rgba(255,180,162,0.25)]'}
                 glass-card
                 ${isSafari || isIOS ? 'bg-white/90 dark:bg-slate-900/90' : ''}
-                ${isSelected ? 'card-sharp-selected ring-2 ring-brand-500/50' : 'hover:border-brand-300/50 dark:hover:border-white/20'}
+                ${isSelected ? 'card-sharp-selected ring-2 ring-brand-500/50 shadow-[0_0_40px_-5px_rgba(139,92,246,0.3)]' : 'hover:border-brand-300/50 dark:hover:border-white/20'}
                 ${isConnecting && !isConnectionStart ? 'hover:ring-4 hover:ring-green-400/30 hover:cursor-crosshair' : ''}
                 ${isDragOver ? 'ring-2 ring-brand-500 scale-[1.02] bg-brand-50/80 dark:bg-brand-900/20' : ''}`}
             style={{

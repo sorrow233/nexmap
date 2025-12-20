@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, Sparkles, BarChart3 } from 'lucide-react';
+import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, Sparkles, BarChart3, Sun, Moon } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
@@ -7,8 +7,9 @@ import SettingsModal from '../components/SettingsModal';
 import UsageStatsModal from '../components/UsageStatsModal';
 import StatisticsView from '../components/StatisticsView';
 import SEO from '../components/SEO';
+import Spotlight from '../components/shared/Spotlight';
 import { getGuideBoardData } from '../utils/guideBoardData';
-import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
+import { createBoard, saveBoard, updateUserSettings, loadUserSettings } from '../services/storage';
 import { useNavigate, useSearchParams, NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -171,26 +172,28 @@ export default function GalleryPage({
                             <span>NexMap</span>
                         </div>
 
-                        {/* Navigation Pills */}
-                        <div className="hidden md:flex bg-slate-200/50 dark:bg-white/5 p-1 rounded-full border border-slate-200 dark:border-white/10">
-                            {navItems.map(tab => (
-                                <NavLink
-                                    key={tab.id}
-                                    to={tab.path}
-                                    end={tab.end}
-                                    aria-label={tab.label}
-                                    className={({ isActive }) => `
-                                        px-5 py-2 rounded-full text-sm font-semibold transition-all relative overflow-hidden flex items-center gap-2
-                                        ${isActive
-                                            ? 'text-white bg-black dark:bg-white dark:text-black shadow-lg'
-                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'}
-                                    `}
-                                >
-                                    {tab.icon && <tab.icon size={14} className={activeTab === tab.id ? (tab.id === 'favorites' ? 'fill-current' : '') : ''} />}
-                                    {tab.label}
-                                </NavLink>
-                            ))}
-                        </div>
+                        {/* Navigation Pills with Spotlight */}
+                        <Spotlight spotColor="rgba(99, 102, 241, 0.1)" size={300} className="rounded-full">
+                            <div className="hidden md:flex bg-slate-200/50 dark:bg-white/5 p-1.5 rounded-full border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow duration-300">
+                                {navItems.map(tab => (
+                                    <NavLink
+                                        key={tab.id}
+                                        to={tab.path}
+                                        end={tab.end}
+                                        aria-label={tab.label}
+                                        className={({ isActive }) => `
+                                            px-5 py-2 rounded-full text-sm font-semibold transition-all relative overflow-hidden flex items-center gap-2
+                                            ${isActive
+                                                ? 'text-white bg-black dark:bg-white dark:text-black shadow-lg'
+                                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'}
+                                        `}
+                                    >
+                                        {tab.icon && <tab.icon size={14} className={activeTab === tab.id ? (tab.id === 'favorites' ? 'fill-current' : '') : ''} />}
+                                        {tab.label}
+                                    </NavLink>
+                                ))}
+                            </div>
+                        </Spotlight>
                     </div>
 
                     {/* User & Actions */}

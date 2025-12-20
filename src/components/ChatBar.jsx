@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, Loader2, ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Copy } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import Spotlight from './shared/Spotlight';
 
 /**
  * ChatBar Component - Isolated input bar to prevent parent re-renders during typing
@@ -106,178 +107,180 @@ const ChatBar = React.memo(function ChatBar({
     return (
         <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom">
             <div className="absolute bottom-2 sm:bottom-8 inset-x-0 mx-auto w-full max-w-3xl z-50 px-2 sm:px-4 pointer-events-auto">
-                <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-brand-500/10 ring-1 ring-white/5">
-                    <div className="flex items-end gap-2 px-1 sm:px-2">
-                        {/* Left Actions - simplified on mobile */}
-                        <div className="flex gap-1 pb-2">
-                            <button
-                                onClick={() => globalFileInputRef.current?.click()}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all touch-target"
-                                title={t.chatBar.uploadImage}
-                            >
-                                <ImageIcon size={20} />
-                            </button>
-                            <input
-                                type="file"
-                                ref={globalFileInputRef}
-                                className="hidden"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) => onImageUpload(e.target.files)}
-                            />
-                            {/* StickyNote button - hidden on mobile */}
-                            <button
-                                onClick={() => onCreateNote('', false)}
-                                className="hidden sm:flex p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                title={t.chatBar.addStickyNote}
-                            >
-                                <StickyNoteIcon size={20} />
-                            </button>
-
-                            {/* Expand Topic Action (Conditional) */}
-                            {hasMarkedTopics && (
+                <Spotlight spotColor="rgba(99, 102, 241, 0.12)" size={500} className="rounded-2xl sm:rounded-[2rem]">
+                    <div className="bg-[#1e1e1e]/90 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-[2rem] shadow-2xl flex flex-col gap-2 p-2 transition-all duration-300 hover:shadow-indigo-500/10 ring-1 ring-white/5 focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:shadow-[0_0_40px_-8px_rgba(99,102,241,0.4)]">
+                        <div className="flex items-end gap-2 px-1 sm:px-2">
+                            {/* Left Actions - simplified on mobile */}
+                            <div className="flex gap-1 pb-2">
                                 <button
-                                    onClick={() => onExpandTopics(selectedIds[0])}
-                                    className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-full transition-all flex items-center gap-1 animate-pulse"
-                                    title={t.chatBar.expandTopics}
+                                    onClick={() => globalFileInputRef.current?.click()}
+                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all touch-target"
+                                    title={t.chatBar.uploadImage}
                                 >
-                                    <Sparkles size={20} />
-                                    <span className="text-[10px] font-bold uppercase tracking-tighter">{t.chatBar.topics}</span>
+                                    <ImageIcon size={20} />
                                 </button>
-                            )}
-
-                            {/* Selection Actions (Group / Connect) */}
-                            {selectedIds.length > 0 && (
-                                <>
-                                    <div className="w-px h-6 bg-white/10 mx-1" />
-                                    <button
-                                        onClick={() => {
-                                            const selectedContent = selectedIds
-                                                .map(id => {
-                                                    const card = cards.find(c => c.id === id);
-                                                    if (!card?.data?.messages) return '';
-                                                    const lastMsg = card.data.messages[card.data.messages.length - 1];
-                                                    if (!lastMsg) return '';
-                                                    // Helper to extract text from multimodal content (can duplicate logic or simplify)
-                                                    const content = lastMsg.content;
-                                                    if (Array.isArray(content)) {
-                                                        return content.filter(p => p.type === 'text').map(p => p.text).join(' ');
-                                                    }
-                                                    return content || '';
-                                                })
-                                                .filter(Boolean)
-                                                .join('\n\n---\n\n');
-
-                                            navigator.clipboard.writeText(selectedContent)
-                                                .catch(err => console.error('Failed to copy', err));
-                                        }}
-                                        className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-full transition-all"
-                                        title={t.common?.copy || "Copy"}
-                                    >
-                                        <Copy size={20} />
-                                    </button>
-                                    <button
-                                        onClick={() => onSelectConnected(selectedIds[0])}
-                                        className="p-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
-                                        title={t.chatBar.selectConnected}
-                                    >
-                                        <Network size={20} />
-                                    </button>
-                                    <button
-                                        onClick={() => onLayoutGrid && onLayoutGrid()}
-                                        className="p-2 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 rounded-full transition-all"
-                                        title={t.chatBar.gridLayout}
-                                    >
-                                        <LayoutGrid size={20} />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Input Area */}
-
-                        <div
-                            className="flex-1 relative flex flex-col"
-                            onDrop={handleDrop}
-                            onDragOver={(e) => e.preventDefault()}
-                        >
-                            {/* Instruction Badges */}
-                            {instructions.length > 0 && (
-                                <div className="flex flex-wrap gap-2 px-3 pb-2 border-b border-white/5 mx-2 mb-2 pt-2">
-                                    {instructions.map((inst, idx) => (
-                                        <div key={idx} className="flex items-center gap-1 bg-purple-500/20 text-purple-200 text-xs px-2 py-1 rounded border border-purple-500/30 animate-in fade-in zoom-in-95">
-                                            <span className="font-semibold text-[10px] uppercase opacity-70">Instruction</span>
-                                            <span className="truncate max-w-[150px]">{inst.text}</span>
-                                            <button onClick={() => onClearInstructions && onClearInstructions()} className="hover:text-white ml-1"><X size={10} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <textarea
-                                ref={globalPromptInputRef}
-                                value={promptInput}
-                                onInput={handleInput}
-                                onKeyDown={handleKeyDown}
-                                placeholder={placeholderText}
-                                className="w-full bg-transparent text-slate-200 placeholder-slate-500 text-base p-3 focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px] scrollbar-hide"
-                                rows={1}
-                            />
-                            {/* Image Previews */}
-                            {globalImages.length > 0 && (
-                                <div className="flex gap-2 p-2 overflow-x-auto">
-                                    {globalImages.map((img, index) => (
-                                        <div key={index} className="relative group shrink-0">
-                                            <img
-                                                src={img.previewUrl}
-                                                alt="Upload preview"
-                                                className="w-16 h-16 object-cover rounded-lg border border-white/10"
-                                            />
-                                            <button
-                                                onClick={() => onRemoveImage(index)}
-                                                className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Right Actions & Submit */}
-                        <div className="flex gap-1 pb-2 items-center">
-                            <div className="w-px h-6 bg-white/10 mx-1" />
-
-                            {/* Append to Chat Button (only when items selected) */}
-                            {selectedIds.length > 0 && (
+                                <input
+                                    type="file"
+                                    ref={globalFileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => onImageUpload(e.target.files)}
+                                />
+                                {/* StickyNote button - hidden on mobile */}
                                 <button
-                                    onClick={handleBatchSubmit}
-                                    disabled={!promptInput.trim() && globalImages.length === 0}
-                                    className="p-3 text-emerald-400 hover:bg-emerald-500/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
-                                    title={t.chatBar.appendToChat}
+                                    onClick={() => onCreateNote('', false)}
+                                    className="hidden sm:flex p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                                    title={t.chatBar.addStickyNote}
                                 >
-                                    <MessageSquarePlus size={20} />
+                                    <StickyNoteIcon size={20} />
                                 </button>
-                            )}
 
-
-
-
-                            <button
-                                onClick={handleSubmit}
-                                disabled={!promptInput.trim() && globalImages.length === 0}
-                                className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
-                            >
-                                {generatingCardIds.size > 0 ? (
-                                    <Loader2 size={20} className="animate-spin" />
-                                ) : (
-                                    <Sparkles size={20} className="fill-white" />
+                                {/* Expand Topic Action (Conditional) */}
+                                {hasMarkedTopics && (
+                                    <button
+                                        onClick={() => onExpandTopics(selectedIds[0])}
+                                        className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-full transition-all flex items-center gap-1 animate-pulse"
+                                        title={t.chatBar.expandTopics}
+                                    >
+                                        <Sparkles size={20} />
+                                        <span className="text-[10px] font-bold uppercase tracking-tighter">{t.chatBar.topics}</span>
+                                    </button>
                                 )}
-                            </button>
+
+                                {/* Selection Actions (Group / Connect) */}
+                                {selectedIds.length > 0 && (
+                                    <>
+                                        <div className="w-px h-6 bg-white/10 mx-1" />
+                                        <button
+                                            onClick={() => {
+                                                const selectedContent = selectedIds
+                                                    .map(id => {
+                                                        const card = cards.find(c => c.id === id);
+                                                        if (!card?.data?.messages) return '';
+                                                        const lastMsg = card.data.messages[card.data.messages.length - 1];
+                                                        if (!lastMsg) return '';
+                                                        // Helper to extract text from multimodal content (can duplicate logic or simplify)
+                                                        const content = lastMsg.content;
+                                                        if (Array.isArray(content)) {
+                                                            return content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+                                                        }
+                                                        return content || '';
+                                                    })
+                                                    .filter(Boolean)
+                                                    .join('\n\n---\n\n');
+
+                                                navigator.clipboard.writeText(selectedContent)
+                                                    .catch(err => console.error('Failed to copy', err));
+                                            }}
+                                            className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-full transition-all"
+                                            title={t.common?.copy || "Copy"}
+                                        >
+                                            <Copy size={20} />
+                                        </button>
+                                        <button
+                                            onClick={() => onSelectConnected(selectedIds[0])}
+                                            className="p-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
+                                            title={t.chatBar.selectConnected}
+                                        >
+                                            <Network size={20} />
+                                        </button>
+                                        <button
+                                            onClick={() => onLayoutGrid && onLayoutGrid()}
+                                            className="p-2 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 rounded-full transition-all"
+                                            title={t.chatBar.gridLayout}
+                                        >
+                                            <LayoutGrid size={20} />
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Input Area */}
+
+                            <div
+                                className="flex-1 relative flex flex-col"
+                                onDrop={handleDrop}
+                                onDragOver={(e) => e.preventDefault()}
+                            >
+                                {/* Instruction Badges */}
+                                {instructions.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 px-3 pb-2 border-b border-white/5 mx-2 mb-2 pt-2">
+                                        {instructions.map((inst, idx) => (
+                                            <div key={idx} className="flex items-center gap-1 bg-purple-500/20 text-purple-200 text-xs px-2 py-1 rounded border border-purple-500/30 animate-in fade-in zoom-in-95">
+                                                <span className="font-semibold text-[10px] uppercase opacity-70">Instruction</span>
+                                                <span className="truncate max-w-[150px]">{inst.text}</span>
+                                                <button onClick={() => onClearInstructions && onClearInstructions()} className="hover:text-white ml-1"><X size={10} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <textarea
+                                    ref={globalPromptInputRef}
+                                    value={promptInput}
+                                    onInput={handleInput}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={placeholderText}
+                                    className="w-full bg-transparent text-slate-200 placeholder-slate-500 text-base p-3 focus:outline-none resize-none overflow-y-auto max-h-[200px] min-h-[44px] scrollbar-hide"
+                                    rows={1}
+                                />
+                                {/* Image Previews */}
+                                {globalImages.length > 0 && (
+                                    <div className="flex gap-2 p-2 overflow-x-auto">
+                                        {globalImages.map((img, index) => (
+                                            <div key={index} className="relative group shrink-0">
+                                                <img
+                                                    src={img.previewUrl}
+                                                    alt="Upload preview"
+                                                    className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                                                />
+                                                <button
+                                                    onClick={() => onRemoveImage(index)}
+                                                    className="absolute -top-1 -right-1 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right Actions & Submit */}
+                            <div className="flex gap-1 pb-2 items-center">
+                                <div className="w-px h-6 bg-white/10 mx-1" />
+
+                                {/* Append to Chat Button (only when items selected) */}
+                                {selectedIds.length > 0 && (
+                                    <button
+                                        onClick={handleBatchSubmit}
+                                        disabled={!promptInput.trim() && globalImages.length === 0}
+                                        className="p-3 text-emerald-400 hover:bg-emerald-500/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
+                                        title={t.chatBar.appendToChat}
+                                    >
+                                        <MessageSquarePlus size={20} />
+                                    </button>
+                                )}
+
+
+
+
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!promptInput.trim() && globalImages.length === 0}
+                                    className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center transform hover:-translate-y-0.5"
+                                >
+                                    {generatingCardIds.size > 0 ? (
+                                        <Loader2 size={20} className="animate-spin" />
+                                    ) : (
+                                        <Sparkles size={20} className="fill-white" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </Spotlight>
             </div>
         </div >
     );
