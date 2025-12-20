@@ -96,19 +96,30 @@ export default function ChatInput({
                                     animate={{ opacity: 1, y: 0 }}
                                     className="flex flex-wrap gap-2 mb-1"
                                 >
-                                    {instructions.map((inst, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleQuickSend(inst.text)}
-                                            disabled={isStreaming}
-                                            className="group flex items-center gap-1.5 px-3 py-1 bg-pink-500/5 hover:bg-pink-500/10 dark:bg-pink-500/10 dark:hover:bg-pink-500/20 text-pink-500 rounded-full border border-pink-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 shrink-0"
-                                        >
-                                            <Star size={10} className="fill-current" />
-                                            <span className="text-[10px] font-bold tracking-tight truncate max-w-[150px]">
-                                                {inst.text}
-                                            </span>
-                                        </button>
-                                    ))}
+                                    {instructions.map((inst, idx) => {
+                                        const colors = [
+                                            'bg-rose-50 text-rose-500 border-rose-200/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20',
+                                            'bg-amber-50 text-amber-500 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
+                                            'bg-emerald-50 text-emerald-500 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+                                            'bg-sky-50 text-sky-500 border-sky-200/50 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20',
+                                            'bg-indigo-50 text-indigo-500 border-indigo-200/50 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20'
+                                        ];
+                                        const colorClass = colors[idx % colors.length];
+
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleQuickSend(inst.text)}
+                                                disabled={isStreaming}
+                                                className={`group flex items-center gap-1.5 px-3 py-1 ${colorClass} rounded-full border transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 shrink-0 shadow-sm`}
+                                            >
+                                                <Star size={10} className="fill-current" />
+                                                <span className="text-[10px] font-bold tracking-tight truncate max-w-[150px]">
+                                                    {inst.text}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
                                 </motion.div>
                             )}
                         </AnimatePresence>
