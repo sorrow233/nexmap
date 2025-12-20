@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, Send, Image as ImageIcon, Square, Star } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Square, Send as SendIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -163,7 +163,7 @@ export default function ChatInput({
                                                 : 'bg-gradient-to-br from-pink-300 via-pink-400 to-rose-400 text-white shadow-pink-200/50 hover:shadow-pink-300/50'}
                                         `}
                                     >
-                                        <Star size={24} className={canSend ? "fill-white" : ""} />
+                                        <Send size={24} className={canSend ? "fill-white" : ""} />
                                     </motion.button>
                                 )}
                             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette } from 'lucide-react';
+import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
@@ -42,6 +42,13 @@ const ChatBar = React.memo(function ChatBar({
     const handleSubmit = () => {
         if (!promptInput.trim() && globalImages.length === 0) return;
         onSubmit(promptInput, globalImages);
+        setPromptInput('');
+        if (onClearImages) onClearImages();
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    };
+
+    const handleQuickSend = (text) => {
+        onSubmit(text, []);
         setPromptInput('');
         if (onClearImages) onClearImages();
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -141,10 +148,42 @@ const ChatBar = React.memo(function ChatBar({
                                 onFocus={() => setIsFocused(true)}
                                 onBlur={() => setIsFocused(false)}
                                 placeholder={placeholderText}
-                                className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-sm leading-relaxed max-h-[120px] scrollbar-hide"
+                                className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-sm leading-relaxed max-h-[100px] scrollbar-hide"
                                 rows={1}
                             />
                         </div>
+
+                        {/* Prompt Tags Integration */}
+                        <AnimatePresence>
+                            {instructions.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="px-6 pb-2 -mt-1 flex flex-wrap gap-1.5 overflow-hidden"
+                                >
+                                    {instructions.map((inst, idx) => {
+                                        const colors = [
+                                            'bg-rose-50 text-rose-500 border-rose-200/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20',
+                                            'bg-amber-50 text-amber-500 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
+                                            'bg-emerald-50 text-emerald-500 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+                                            'bg-sky-50 text-sky-500 border-sky-200/50 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20',
+                                            'bg-indigo-50 text-indigo-500 border-indigo-200/50 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20'
+                                        ];
+                                        const colorClass = colors[idx % colors.length];
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleQuickSend(inst.content || inst.text)}
+                                                className={`flex items-center gap-1 px-2.5 py-0.5 ${colorClass} rounded-full border text-[10px] font-bold transition-all active:scale-90 shrink-0 shadow-sm`}
+                                            >
+                                                <Send size={8} className="fill-current" />
+                                                <span className="truncate max-w-[80px]">{inst.name || inst.text}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Footer Action Bar */}
                         <div className="flex items-center justify-between px-6 pb-5 pt-1">
@@ -215,7 +254,7 @@ const ChatBar = React.memo(function ChatBar({
                                     {generatingCardIds.size > 0 ? (
                                         <Loader2 size={18} className="animate-spin" />
                                     ) : (
-                                        <Star size={18} className={(promptInput.trim() || globalImages.length > 0) ? "fill-white" : ""} />
+                                        <Send size={18} className={(promptInput.trim() || globalImages.length > 0) ? "fill-white" : ""} />
                                     )}
                                 </motion.button>
                             </div>

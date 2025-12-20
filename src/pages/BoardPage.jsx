@@ -182,7 +182,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onSelectConnected={handleSelectConnected}
                     onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
-                    instructions={tempInstructions}
+                    instructions={[...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                 />
 
