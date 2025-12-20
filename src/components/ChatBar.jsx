@@ -36,7 +36,7 @@ const ChatBar = React.memo(function ChatBar({
     const handleInput = (e) => {
         setPromptInput(e.target.value);
         e.target.style.height = 'auto';
-        e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+        e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
     };
 
     const handleSubmit = () => {
@@ -77,8 +77,8 @@ const ChatBar = React.memo(function ChatBar({
     }, [selectedIds.length, t]);
 
     return (
-        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-10">
-            <div className="mx-auto w-full max-w-4xl pointer-events-auto">
+        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-8">
+            <div className="mx-auto w-full max-w-3xl pointer-events-auto">
                 <Spotlight spotColor="rgba(244, 114, 182, 0.1)" size={600} className="rounded-[2.5rem]">
                     <motion.div
                         layout
@@ -114,7 +114,7 @@ const ChatBar = React.memo(function ChatBar({
 
                         {/* Textarea Area */}
                         <div
-                            className="px-8 pt-6 pb-2"
+                            className="px-8 pt-5 pb-1"
                             onDrop={handleDrop}
                             onDragOver={(e) => e.preventDefault()}
                         >
@@ -141,13 +141,13 @@ const ChatBar = React.memo(function ChatBar({
                                 onFocus={() => setIsFocused(true)}
                                 onBlur={() => setIsFocused(false)}
                                 placeholder={placeholderText}
-                                className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg md:text-xl leading-relaxed max-h-[200px] scrollbar-hide"
+                                className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[160px] scrollbar-hide"
                                 rows={1}
                             />
                         </div>
 
                         {/* Footer Action Bar */}
-                        <div className="flex items-center justify-between px-6 pb-6 pt-2">
+                        <div className="flex items-center justify-between px-6 pb-5 pt-1">
                             {/* Left: Functional Icons */}
                             <div className="flex items-center gap-1">
                                 <IconButton onClick={() => fileInputRef.current?.click()}>

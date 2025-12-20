@@ -187,33 +187,50 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 />
 
                 {selectedIds.length > 0 && (
-                    <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit glass-panel px-3 md:px-6 py-2 md:py-3 rounded-full flex items-center gap-2 md:gap-4 z-50 animate-slide-up shadow-2xl">
-                        <span className="text-xs md:text-sm font-semibold text-slate-300">{selectedIds.length} <span className="hidden sm:inline">{t.toolbar?.items || "items"}</span></span>
+                    <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-pink-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(244,114,182,0.15)] ring-1 ring-pink-200/20 dark:ring-white/5">
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">{selectedIds.length} ITEMS</span>
+                        <div className="h-4 w-px bg-slate-100 dark:bg-white/5"></div>
+
                         {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
-                            <>
-                                <div className="h-4 w-px bg-slate-300"></div>
-                                <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Star size={16} /><span className="text-sm font-medium">{t.toolbar?.expand || "Expand"}</span></button>
-                            </>
+                            <button
+                                onClick={() => handleExpandTopics(selectedIds[0])}
+                                className="p-2 rounded-full text-pink-500 bg-pink-50 dark:bg-pink-500/10 hover:bg-pink-100 dark:hover:bg-pink-500/20 transition-all active:scale-90"
+                                title={t.toolbar?.expand || "Expand Topics"}
+                            >
+                                <Star size={18} fill="currentColor" />
+                            </button>
                         )}
-                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                        <button onClick={handleRegenerate} className="flex items-center gap-1 md:gap-2 text-blue-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95">
-                            <RefreshCw size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.retry || "Retry"}</span>
+
+                        <button
+                            onClick={handleRegenerate}
+                            className="p-2 rounded-full text-blue-500 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all active:scale-90"
+                            title={t.toolbar?.retry || "Retry Generation"}
+                        >
+                            <RefreshCw size={18} />
                         </button>
-                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                        <button onClick={() => selectedIds.forEach(id => handleQuickSprout(id))} className="flex items-center gap-1 md:gap-2 text-emerald-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20 active:scale-95">
-                            <Sprout size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.sprout || "Sprout"}</span>
+
+                        <button
+                            onClick={() => selectedIds.forEach(id => handleQuickSprout(id))}
+                            className="p-2 rounded-full text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all active:scale-90"
+                            title={t.toolbar?.sprout || "Sprout Inspiration"}
+                        >
+                            <Sprout size={18} />
                         </button>
-                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                        <button onClick={() => createGroup(selectedIds)} className="flex items-center gap-1 md:gap-2 text-indigo-600 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95">
-                            <BoxSelect size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.zone || "Zone"}</span>
+
+                        <button
+                            onClick={() => createGroup(selectedIds)}
+                            className="p-2 rounded-full text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all active:scale-90"
+                            title={t.toolbar?.zone || "Create Zone"}
+                        >
+                            <BoxSelect size={18} />
                         </button>
-                        <div className="h-3 md:h-4 w-px bg-slate-300"></div>
-                        <button onClick={handleBatchDelete} className="flex items-center gap-1 md:gap-2 text-red-500 px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95">
-                            <Trash2 size={14} className="md:w-4 md:h-4" />
-                            <span className="hidden sm:inline text-sm font-medium">{t.toolbar?.delete || "Delete"}</span>
+
+                        <button
+                            onClick={handleBatchDelete}
+                            className="p-2 rounded-full text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-all active:scale-90"
+                            title={t.toolbar?.delete || "Delete Selected"}
+                        >
+                            <Trash2 size={18} />
                         </button>
                     </div>
                 )}
