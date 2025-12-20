@@ -138,33 +138,14 @@ export default function StatisticsView({ boardsList, user }) {
     }, [timeDistribution, t]);
 
 
-    // ... inside the component
-
-    // DEV MODE: Manual Tier Override for Testing
-    const [devTierIndex, setDevTierIndex] = useState(null); // null = use real data, number = forced index
-
     // Planetary Logic (Lifted State & Localized)
     const totalTokens = stats.tokenStats.totalChars;
     const tiers = usePlanetTiers(t);
 
-    // Use override if set, otherwise calculate from tokens
+    // Calculate tier based on actual user tokens
     const calculatedTierIndex = tiers.findIndex(t => totalTokens < t.limit);
-    const currentTierIndex = devTierIndex !== null ? devTierIndex : (calculatedTierIndex === -1 ? tiers.length - 1 : calculatedTierIndex);
+    const currentTierIndex = calculatedTierIndex === -1 ? tiers.length - 1 : calculatedTierIndex;
     const currentTier = tiers[currentTierIndex] || tiers[tiers.length - 1];
-
-    // DEV MODE: Navigation handlers
-    const handlePrevTier = () => {
-        setDevTierIndex(prev => {
-            const current = prev !== null ? prev : currentTierIndex;
-            return Math.max(0, current - 1);
-        });
-    };
-    const handleNextTier = () => {
-        setDevTierIndex(prev => {
-            const current = prev !== null ? prev : currentTierIndex;
-            return Math.min(tiers.length - 1, current + 1);
-        });
-    };
 
     // Progress for Ring
     const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
