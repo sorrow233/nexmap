@@ -27,7 +27,8 @@ export default function ChatView({
     onCreateNote,
     onSprout,
     onToggleFavorite,
-    isFullScreen = false
+    isFullScreen = false,
+    instructions = []
 }) {
     const [input, setInput] = useState('');
 
@@ -491,6 +492,7 @@ export default function ChatView({
                     isStreaming={isStreaming}
                     onStop={handleStop}
                     placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
+                    instructions={instructions}
                 />
             </div>
 

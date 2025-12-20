@@ -230,6 +230,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                             onCreateNote={handleCreateNote}
                             onSprout={handleSprout}
                             onToggleFavorite={toggleFavorite}
+                            instructions={tempInstructions}
                         />
                     </Suspense>
                 )}
