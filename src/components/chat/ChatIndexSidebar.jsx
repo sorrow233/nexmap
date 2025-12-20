@@ -21,7 +21,16 @@ export default function ChatIndexSidebar({ messages, onScrollTo }) {
             </div>
 
             <div className="flex-grow overflow-y-auto custom-scrollbar pr-1 space-y-1">
-                {userMessages.map(({ m, i }) => {
+                {userMessages.map(({ m, i }, idx) => {
+                    const rainbowColors = [
+                        'bg-rose-400 dark:bg-rose-500',
+                        'bg-amber-400 dark:bg-amber-500',
+                        'bg-emerald-400 dark:bg-emerald-500',
+                        'bg-sky-400 dark:bg-sky-500',
+                        'bg-indigo-400 dark:bg-indigo-500'
+                    ];
+                    const colorClass = rainbowColors[Math.floor(idx / 3) % 5];
+
                     let preview = '';
                     if (typeof m.content === 'string') {
                         preview = m.content.slice(0, 15);
@@ -36,9 +45,9 @@ export default function ChatIndexSidebar({ messages, onScrollTo }) {
                         <button
                             key={i}
                             onClick={() => onScrollTo(i)}
-                            className="w-full group flex items-start text-left px-3 py-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-all outline-none border border-transparent hover:border-slate-100 dark:hover:border-white/5"
+                            className="w-full group flex items-start text-left px-3 py-2 rounded-xl hover:bg-white/80 dark:hover:bg-white/5 transition-all outline-none border border-transparent hover:border-slate-100 dark:hover:border-white/5"
                         >
-                            <div className="mt-1 w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700 group-hover:bg-brand-500 transition-colors shrink-0 mr-2" />
+                            <div className={`mt-1.5 w-1.5 h-1.5 rounded-full ${colorClass} opacity-40 group-hover:opacity-100 transition-all shrink-0 mr-3 shadow-sm`} />
                             <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 font-medium leading-relaxed break-all line-clamp-2">
                                 {preview}
                             </span>
