@@ -77,13 +77,13 @@ const ChatBar = React.memo(function ChatBar({
     }, [selectedIds.length, t]);
 
     return (
-        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-8">
-            <div className="mx-auto w-full max-w-3xl pointer-events-auto">
-                <Spotlight spotColor="rgba(244, 114, 182, 0.1)" size={600} className="rounded-[2.5rem]">
+        <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-6">
+            <div className="mx-auto w-full max-w-md pointer-events-auto">
+                <Spotlight spotColor="rgba(244, 114, 182, 0.1)" size={400} className="rounded-[1.5rem]">
                     <motion.div
                         layout
                         className={`
-                            relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl border border-pink-100/50 dark:border-white/10 rounded-[2.5rem] 
+                            relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl border border-pink-100/50 dark:border-white/10 rounded-[1.5rem] 
                             shadow-[0_8px_32px_rgba(244,114,182,0.1)] ring-1 ring-pink-200/20 dark:ring-white/5 overflow-hidden flex flex-col
                             ${isFocused ? 'ring-pink-300/40 shadow-xl' : 'hover:border-pink-200/50'}
                         `}
@@ -114,7 +114,7 @@ const ChatBar = React.memo(function ChatBar({
 
                         {/* Textarea Area */}
                         <div
-                            className="px-8 pt-5 pb-1"
+                            className="px-6 pt-4 pb-1"
                             onDrop={handleDrop}
                             onDragOver={(e) => e.preventDefault()}
                         >
@@ -141,7 +141,7 @@ const ChatBar = React.memo(function ChatBar({
                                 onFocus={() => setIsFocused(true)}
                                 onBlur={() => setIsFocused(false)}
                                 placeholder={placeholderText}
-                                className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[160px] scrollbar-hide"
+                                className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-sm leading-relaxed max-h-[120px] scrollbar-hide"
                                 rows={1}
                             />
                         </div>
@@ -151,12 +151,12 @@ const ChatBar = React.memo(function ChatBar({
                             {/* Left: Functional Icons */}
                             <div className="flex items-center gap-1">
                                 <IconButton onClick={() => fileInputRef.current?.click()}>
-                                    <ImageIcon size={20} className="text-slate-400 dark:text-slate-500 hover:text-pink-400 transition-colors" />
+                                    <ImageIcon size={18} className="text-slate-400 dark:text-slate-500 hover:text-pink-400 transition-colors" />
                                 </IconButton>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={(e) => onImageUpload(e.target.files)} />
 
                                 <IconButton onClick={() => onCreateNote('', false)}>
-                                    <StickyNoteIcon size={20} className="text-slate-400 dark:text-slate-500 hover:text-amber-400 transition-colors" />
+                                    <StickyNoteIcon size={18} className="text-slate-400 dark:text-slate-500 hover:text-amber-400 transition-colors" />
                                 </IconButton>
 
                                 <AnimatePresence mode="popLayout">
@@ -171,14 +171,14 @@ const ChatBar = React.memo(function ChatBar({
                                             <div className="flex items-center gap-1">
                                                 {selectedIds.length > 1 && (
                                                     <IconButton onClick={() => onBatchChat(selectedIds)}>
-                                                        <MessageSquarePlus size={20} className="text-indigo-400" />
+                                                        <MessageSquarePlus size={18} className="text-indigo-400" />
                                                     </IconButton>
                                                 )}
                                                 <IconButton onClick={() => onSelectConnected(selectedIds[0])}>
-                                                    <Network size={20} className="text-emerald-400" />
+                                                    <Network size={18} className="text-emerald-400" />
                                                 </IconButton>
                                                 <IconButton onClick={() => onLayoutGrid && onLayoutGrid()}>
-                                                    <LayoutGrid size={20} className="text-sky-400" />
+                                                    <LayoutGrid size={18} className="text-sky-400" />
                                                 </IconButton>
                                                 {hasMarkedTopics && (
                                                     <button
@@ -206,16 +206,16 @@ const ChatBar = React.memo(function ChatBar({
                                     onClick={handleSubmit}
                                     disabled={(!promptInput.trim() && globalImages.length === 0)}
                                     className={`
-                                        relative w-12 h-12 rounded-[1rem] flex items-center justify-center transition-all shadow-lg
+                                        relative w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg
                                         ${(!promptInput.trim() && globalImages.length === 0)
                                             ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed'
                                             : 'bg-gradient-to-br from-pink-300 via-pink-400 to-rose-400 text-white shadow-pink-200/50 hover:shadow-pink-300/50'}
                                     `}
                                 >
                                     {generatingCardIds.size > 0 ? (
-                                        <Loader2 size={24} className="animate-spin" />
+                                        <Loader2 size={18} className="animate-spin" />
                                     ) : (
-                                        <Star size={24} className={(promptInput.trim() || globalImages.length > 0) ? "fill-white" : ""} />
+                                        <Star size={18} className={(promptInput.trim() || globalImages.length > 0) ? "fill-white" : ""} />
                                     )}
                                 </motion.button>
                             </div>
