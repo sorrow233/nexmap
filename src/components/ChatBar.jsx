@@ -208,8 +208,8 @@ const ChatBar = React.memo(function ChatBar({
                                     className={`
                                         relative w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg
                                         ${(!promptInput.trim() && globalImages.length === 0)
-                                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                            : 'bg-gradient-to-br from-pink-300 via-pink-400 to-rose-400 text-white shadow-pink-200/50 hover:shadow-pink-300/50'}
+                                            ? 'bg-pink-50/50 dark:bg-pink-500/5 text-pink-200 dark:text-pink-900 cursor-not-allowed border border-pink-100/20 dark:border-pink-500/10'
+                                            : 'bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 text-white shadow-pink-200/50 hover:shadow-pink-400/50 border border-white/20'}
                                     `}
                                 >
                                     {generatingCardIds.size > 0 ? (
