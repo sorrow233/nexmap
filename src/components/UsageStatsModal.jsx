@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap, Activity, Sparkles, TrendingUp } from 'lucide-react';
+import { BarChart3, X, Database, CreditCard, Clock, Layers, Zap, Activity, Star, TrendingUp } from 'lucide-react';
 import { checkCredits } from '../services/systemCredits/systemCreditsService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { userStatsService } from '../services/stats/userStatsService';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Maximize2, Link, ArrowRight, Copy, Sparkles, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Maximize2, Link, ArrowRight, Copy, Star, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -262,7 +262,7 @@ const Card = React.memo(function Card({
                         <div className="space-y-2 p-3 bg-violet-50/50 dark:bg-violet-900/10 rounded-xl border border-violet-100/50 dark:border-violet-500/10 transition-all hover:bg-violet-50 dark:hover:bg-violet-900/20">
                             {data.summary.summary.split('\n').map((line, i) => (
                                 <div key={i} className="text-[11px] text-violet-900/70 dark:text-violet-200/70 font-mono leading-tight flex items-start gap-2">
-                                    <Sparkles size={10} className="mt-0.5 shrink-0 opacity-40 text-violet-500" />
+                                    <Star size={10} className="mt-0.5 shrink-0 opacity-40 text-violet-500" />
                                     <span>{line.replace(/^[•-]\s*/, '')}</span>
                                 </div>
                             ))}
@@ -285,7 +285,7 @@ const Card = React.memo(function Card({
                         {formatTime(cardContent.timestamp || Date.now())}
                     </span>
                     <span className="flex items-center gap-1 uppercase tracking-wider">
-                        <Sparkles size={8} />
+                        <Star size={8} />
                         {cardContent.model?.split('/').pop() || 'AI'}
                     </span>
                 </div>

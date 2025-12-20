@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Cloud, CloudOff, RefreshCw, Coins, Sparkles, WifiOff } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, Coins, Star, WifiOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 

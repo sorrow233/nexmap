@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, Sparkles, BarChart3, Sun, Moon } from 'lucide-react';
+import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, BarChart3, Sun, Moon } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
@@ -167,7 +167,7 @@ export default function GalleryPage({
                             onClick={() => navigate('/gallery')}
                         >
                             <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black transform transition-transform group-hover:rotate-12">
-                                <Sparkles size={16} fill="currentColor" />
+                                <Star size={16} fill="currentColor" />
                             </div>
                             <span>NexMap</span>
                         </div>

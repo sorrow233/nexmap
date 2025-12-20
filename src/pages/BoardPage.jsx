@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef } from 'react';
-import { Sparkles, RefreshCw, Trash2, Sprout, BoxSelect } from 'lucide-react';
+import { Star, RefreshCw, Trash2, Sprout, BoxSelect } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -192,7 +192,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
                             <>
                                 <div className="h-4 w-px bg-slate-300"></div>
-                                <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Sparkles size={16} /><span className="text-sm font-medium">{t.toolbar?.expand || "Expand"}</span></button>
+                                <button onClick={() => handleExpandTopics(selectedIds[0])} className="flex items-center gap-2 text-purple-600 px-3 py-1.5 rounded-lg transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 active:scale-95"><Star size={16} /><span className="text-sm font-medium">{t.toolbar?.expand || "Expand"}</span></button>
                             </>
                         )}
                         <div className="h-3 md:h-4 w-px bg-slate-300"></div>

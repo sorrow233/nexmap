@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, ImageIcon, X } from 'lucide-react';
+import { Star, ImageIcon, X } from 'lucide-react';
 import useImageUpload from '../hooks/useImageUpload';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -91,7 +91,7 @@ export default function BoardDropZone({ onCreateBoard }) {
 
                 <div className="flex items-center gap-4 w-full pl-2">
                     <div className="pl-4 text-blue-500 dark:text-blue-400 my-auto shrink-0">
-                        <Sparkles size={24} className="animate-pulse-slow drop-shadow-sm" strokeWidth={2.5} />
+                        <Star size={24} className="animate-pulse-slow drop-shadow-sm" strokeWidth={2.5} />
                     </div>
 
                     <input

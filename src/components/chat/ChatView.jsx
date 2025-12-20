@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, StickyNote, Sprout } from 'lucide-react';
+import { X, Star, Loader2, StickyNote, Sprout } from 'lucide-react';
 // import { generateFollowUpTopics } from '../../services/llm'; // Converted to dynamic import
 import { parseModelOutput } from '../../services/llm/parser';
 import { isSafari, isIOS } from '../../utils/browser';
@@ -363,7 +363,7 @@ export default function ChatView({
                         onClick={addMarkTopic}
                         className="bg-brand-600 text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 hover:bg-brand-500 transition-all hover:scale-105 active:scale-95 border border-white/10"
                     >
-                        <Sparkles size={14} />
+                        <Star size={14} />
                         {t.chat.markTopic}
                     </button>
                 </div>
@@ -376,7 +376,7 @@ export default function ChatView({
                 {/* Top/Left Section: Icon & Title */}
                 <div className="flex items-center gap-4 lg:flex-col lg:gap-8 opacity-40 group-hover/sidebar:opacity-100 transition-all duration-500">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 shrink-0 ${card.type === 'note' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-br from-brand-600 to-brand-700 shadow-brand-500/20'}`}>
-                        {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : <Sparkles size={24} className="text-white" />}
+                        {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : <Star size={24} className="text-white" />}
                     </div>
 
                     <div className="flex flex-col min-w-0 lg:hidden">
