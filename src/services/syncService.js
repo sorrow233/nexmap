@@ -38,6 +38,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             const localCards = isCurrentBoard ? store.cards : (localData?.cards || []);
                             const localConnections = isCurrentBoard ? store.connections : (localData?.connections || []);
                             const localGroups = isCurrentBoard ? store.groups : (localData?.groups || []);
+                            const localBoardPrompts = isCurrentBoard ? store.boardPrompts : (localData?.boardPrompts || []);
                             const localUpdatedAt = isCurrentBoard ? (store.lastSavedAt || localData?.updatedAt || 0) : (localData?.updatedAt || 0);
 
                             if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
@@ -53,6 +54,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     cards: boardData.cards || [],
                                     connections: boardData.connections || [],
                                     groups: boardData.groups || [],
+                                    boardPrompts: boardData.boardPrompts || [],
                                     updatedAt: boardData.updatedAt
                                 });
                                 return;
@@ -70,6 +72,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 cards: finalCards,
                                 connections: boardData.connections || localConnections || [],
                                 groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
+                                boardPrompts: boardData.boardPrompts !== undefined ? boardData.boardPrompts : (localBoardPrompts || []),
                                 updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
@@ -160,7 +163,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
                 }
             })),
             connections: boardContent.connections || [],
-            groups: boardContent.groups || []
+            groups: boardContent.groups || [],
+            boardPrompts: boardContent.boardPrompts || []
         };
 
         const fullBoard = removeUndefined({
