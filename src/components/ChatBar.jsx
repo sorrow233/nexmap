@@ -52,11 +52,7 @@ const ChatBar = React.memo(function ChatBar({
     };
 
     const handleQuickSend = (text) => {
-        if (selectedIds.length > 0 && onBatchChat) {
-            onBatchChat(selectedIds, text, []);
-        } else {
-            onSubmit(text, []);
-        }
+        onSubmit(text, []);
         setPromptInput('');
         if (onClearImages) onClearImages();
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
