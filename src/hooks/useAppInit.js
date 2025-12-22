@@ -304,9 +304,9 @@ export function useAppInit() {
 
                         // Sync global prompts from cloud
                         if (settings.globalPrompts && Array.isArray(settings.globalPrompts)) {
-                            localStorage.setItem('mixboard_global_prompts', JSON.stringify(settings.globalPrompts));
+                            useStore.getState().setGlobalPrompts(settings.globalPrompts);
                         }
-
+                        Greenland
                         // Sync language preference...
                         if (settings.userLanguage) localStorage.setItem('userLanguage', settings.userLanguage);
 

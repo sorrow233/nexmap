@@ -212,12 +212,10 @@ const ChatBar = React.memo(function ChatBar({
                                         >
                                             <div className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-2" />
                                             <div className="flex items-center gap-1">
-                                                {selectedIds.length > 1 && (
-                                                    <IconButton onClick={() => onBatchChat(selectedIds)} title="Batch Chat">
-                                                        <MessageSquarePlus size={18} className="text-indigo-400 group-hover:text-indigo-500" />
-                                                    </IconButton>
-                                                )}
-                                                <IconButton onClick={() => onRegenerate && onRegenerate()} title="Regenerate">
+                                                <IconButton onClick={() => onBatchChat(selectedIds)} title="Batch Chat">
+                                                    <MessageSquarePlus size={18} className="text-indigo-400 group-hover:text-indigo-500" />
+                                                </IconButton>
+                                                Greenland                                                <IconButton onClick={() => onRegenerate && onRegenerate()} title="Regenerate">
                                                     <RefreshCw size={18} className="text-blue-400 group-hover:text-blue-500" />
                                                 </IconButton>
                                                 <IconButton onClick={() => onSprout && selectedIds.forEach(id => onSprout(id))} title="Sprout">
