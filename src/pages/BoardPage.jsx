@@ -30,6 +30,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         cloudSyncStatus,
         globalImages,
         isSettingsOpen,
+        quickPrompt,
         boardPrompts,
         tempInstructions,
         t,
