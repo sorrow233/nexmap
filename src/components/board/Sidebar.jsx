@@ -6,6 +6,8 @@ import { useStore } from '../../store/useStore';
 import { Plus, X, GripVertical, Check } from 'lucide-react';
 import { uuid } from '../../utils/uuid';
 import { useParams } from 'react-router-dom';
+import { updateUserSettings } from '../../services/syncService';
+import { auth } from '../../services/firebase';
 
 const GLOBAL_PROMPTS_KEY = 'mixboard_global_prompts';
 const MAX_NAME_LENGTH = 10;
@@ -118,13 +120,9 @@ export default function Sidebar({ className = "" }) {
         localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
 
         // Cloud sync
-        import('../../services/syncService').then(({ updateUserSettings }) => {
-            import('../../services/firebase').then(({ auth }) => {
-                if (auth?.currentUser) {
-                    updateUserSettings(auth.currentUser.uid, { globalPrompts: prompts });
-                }
-            });
-        });
+        if (auth?.currentUser) {
+            updateUserSettings(auth.currentUser.uid, { globalPrompts: prompts });
+        }
     };
 
     const handleAdd = (type) => {

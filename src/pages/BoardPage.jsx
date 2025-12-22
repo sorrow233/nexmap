@@ -9,6 +9,7 @@ import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
 import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
+import { useStore } from '../store/useStore';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
@@ -28,8 +29,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         currentBoard,
         cloudSyncStatus,
         globalImages,
-        isSettingsOpen,
         quickPrompt,
+        boardPrompts,
         tempInstructions,
         t,
         noteId,
