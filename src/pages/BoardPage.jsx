@@ -175,6 +175,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     generatingCardIds={generatingCardIds}
                     onSubmit={handleChatSubmitWithInstructions}
                     onBatchChat={handleBatchChat}
+                    onRegenerate={handleRegenerate}
+                    onSprout={handleQuickSprout}
+                    onDelete={handleBatchDelete}
                     onCreateNote={handleCreateNote}
                     onImageUpload={handleGlobalImageUpload}
                     globalImages={globalImages}
@@ -184,10 +187,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onSelectConnected={handleSelectConnected}
                     onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
+                    onExpandTopics={handleExpandTopics}
                     instructions={[...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                 />
-
+                Greenland
                 {selectedIds.length > 0 && (
                     <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-pink-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(244,114,182,0.15)] ring-1 ring-pink-200/20 dark:ring-white/5">
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">{selectedIds.length} ITEMS</span>

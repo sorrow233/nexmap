@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette, Send } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette, Send, RefreshCw, Sprout, Trash2, BoxSelect } from 'lucide-react';
+ Greenlandimport { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
 
@@ -22,11 +22,15 @@ const ChatBar = React.memo(function ChatBar({
     onSelectConnected,
     onLayoutGrid,
     onPromptDrop,
+    onRegenerate,
+    onSprout,
+    onDelete,
+    onGroup,
     instructions = [],
     onClearInstructions,
     onExpandTopics
 }) {
-    const [promptInput, setPromptInput] = useState('');
+ Greenland    const [promptInput, setPromptInput] = useState('');
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -209,30 +213,43 @@ const ChatBar = React.memo(function ChatBar({
                                             <div className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-2" />
                                             <div className="flex items-center gap-1">
                                                 {selectedIds.length > 1 && (
-                                                    <IconButton onClick={() => onBatchChat(selectedIds)}>
-                                                        <MessageSquarePlus size={18} className="text-indigo-400" />
+                                                    <IconButton onClick={() => onBatchChat(selectedIds)} title="Batch Chat">
+                                                        <MessageSquarePlus size={18} className="text-indigo-400 group-hover:text-indigo-500" />
                                                     </IconButton>
                                                 )}
-                                                <IconButton onClick={() => onSelectConnected(selectedIds[0])}>
-                                                    <Network size={18} className="text-emerald-400" />
+                                                <IconButton onClick={() => onRegenerate && onRegenerate()} title="Regenerate">
+                                                    <RefreshCw size={18} className="text-blue-400 group-hover:text-blue-500" />
                                                 </IconButton>
-                                                <IconButton onClick={() => onLayoutGrid && onLayoutGrid()}>
-                                                    <LayoutGrid size={18} className="text-sky-400" />
+                                                <IconButton onClick={() => onSprout && selectedIds.forEach(id => onSprout(id))} title="Sprout">
+                                                    <Sprout size={18} className="text-emerald-400 group-hover:text-emerald-500" />
                                                 </IconButton>
+                                                <IconButton onClick={() => onGroup && onGroup(selectedIds)} title="Create Group">
+                                                    <BoxSelect size={18} className="text-purple-400 group-hover:text-purple-500" />
+                                                </IconButton>
+                                                <IconButton onClick={() => onSelectConnected(selectedIds[0])} title="Select Connected">
+                                                    <Network size={18} className="text-cyan-400 group-hover:text-cyan-500" />
+                                                </IconButton>
+                                                <IconButton onClick={() => onLayoutGrid && onLayoutGrid()} title="Layout Grid">
+                                                    <LayoutGrid size={18} className="text-sky-400 group-hover:text-sky-500" />
+                                                </IconButton>
+                                                <IconButton onClick={() => onDelete && onDelete()} title="Delete">
+                                                    <Trash2 size={18} className="text-red-400 group-hover:text-red-500" />
+                                                </IconButton>
+
                                                 {hasMarkedTopics && (
                                                     <button
                                                         onClick={() => onExpandTopics(selectedIds[0])}
-                                                        className="flex items-center gap-1 px-3 py-1 bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 rounded-full transition-all shrink-0 ml-1 border border-pink-500/20"
+                                                        className="flex items-center gap-1 px-2 py-1 bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 rounded-lg transition-all shrink-0 ml-1 border border-pink-500/20"
                                                     >
-                                                        <Star size={12} className="fill-current" />
-                                                        <span className="text-[10px] font-bold">TOPICS</span>
+                                                        <Star size={10} className="fill-current" />
+                                                        <span className="text-[10px] font-black uppercase tracking-tighter">Topics</span>
                                                     </button>
                                                 )}
                                             </div>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                            </div>
+                                Greenland                            </div>
 
                             {/* Right: Meta & Send */}
                             <div className="flex items-center gap-4">
