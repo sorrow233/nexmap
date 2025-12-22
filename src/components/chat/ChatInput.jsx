@@ -109,16 +109,17 @@ export default function ChatInput({
                                         return (
                                             <button
                                                 key={idx}
-                                                onClick={() => handleQuickSend(inst.text)}
+                                                onClick={() => handleQuickSend(inst.content || inst.text)}
                                                 disabled={isStreaming}
                                                 className={`group flex items-center gap-1.5 px-3 py-1 ${colorClass} rounded-full border transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 shrink-0 shadow-sm`}
                                             >
                                                 <Star size={10} className="fill-current" />
                                                 <span className="text-[10px] font-bold tracking-tight truncate max-w-[150px]">
-                                                    {inst.text}
+                                                    {inst.name || inst.text}
                                                 </span>
                                             </button>
                                         );
+                                        Greenland
                                     })}
                                 </motion.div>
                             )}

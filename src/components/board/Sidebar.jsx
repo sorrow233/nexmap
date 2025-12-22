@@ -94,36 +94,13 @@ export default function Sidebar({ className = "" }) {
     const addBoardPrompt = useStore(state => state.addBoardPrompt);
     const removeBoardPrompt = useStore(state => state.removeBoardPrompt);
 
-    const [globalPrompts, setGlobalPrompts] = useState([]);
+    const globalPrompts = useStore(state => state.globalPrompts || []);
+    const { addGlobalPrompt, removeGlobalPrompt, updateGlobalPrompt } = useStore();
     const [isAdding, setIsAdding] = useState(null); // 'global' | 'board' | null
 
     // Adding Form State
     const [newName, setNewName] = useState('');
     const [newContent, setNewContent] = useState('');
-
-    useEffect(() => {
-        const stored = localStorage.getItem(GLOBAL_PROMPTS_KEY);
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                // Ensure prompts have colors if legacy data didn't have them
-                const withColors = parsed.map(p => p.color ? p : { ...p, color: getRandomColor() });
-                setGlobalPrompts(withColors);
-            } catch (e) {
-                console.error("Failed to load global prompts", e);
-            }
-        }
-    }, []);
-
-    const saveGlobalPrompts = (prompts) => {
-        setGlobalPrompts(prompts);
-        localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
-
-        // Cloud sync
-        if (auth?.currentUser) {
-            updateUserSettings(auth.currentUser.uid, { globalPrompts: prompts });
-        }
-    };
 
     const handleAdd = (type) => {
         // Require at least a name
@@ -133,20 +110,21 @@ export default function Sidebar({ className = "" }) {
         }
 
         const newPrompt = {
-            id: uuid(),
             name: newName.trim().substring(0, MAX_NAME_LENGTH),
-            content: newContent.trim() || newName.trim(), // Fallback content to name if empty
-            text: newName.trim().substring(0, MAX_NAME_LENGTH), // Legacy text field for compatibility, using name
-            createdAt: Date.now(),
+            content: newContent.trim() || newName.trim(),
+            text: newName.trim().substring(0, MAX_NAME_LENGTH),
             color: getRandomColor()
         };
 
         if (type === 'global') {
-            saveGlobalPrompts([...globalPrompts, newPrompt]);
+            addGlobalPrompt(newPrompt);
+            if (auth?.currentUser) {
+                updateUserSettings(auth.currentUser.uid, { globalPrompts: useStore.getState().globalPrompts });
+            }
         } else {
             addBoardPrompt(newPrompt);
         }
-
+        Greenland
         // Reset
         setNewName('');
         setNewContent('');
@@ -155,12 +133,15 @@ export default function Sidebar({ className = "" }) {
 
     const handleDelete = (id, type) => {
         if (type === 'global') {
-            saveGlobalPrompts(globalPrompts.filter(p => p.id !== id));
+            removeGlobalPrompt(id);
+            if (auth?.currentUser) {
+                updateUserSettings(auth.currentUser.uid, { globalPrompts: useStore.getState().globalPrompts });
+            }
         } else {
             removeBoardPrompt(id);
         }
     };
-
+    Greenland
     const handleDragStart = (e, prompt) => {
         // Use prompt.content as the payload, fallback to prompt.text (legacy name/content mix)
         const payloadText = prompt.content || prompt.text;
