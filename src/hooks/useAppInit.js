@@ -13,7 +13,7 @@ import {
     saveBoardToCloud
 } from '../services/storage';
 import { getRawBoardsList } from '../services/boardService'; // Fix: Import directly to resolve ReferenceError
-import { listenForFavoriteUpdates, saveFavoriteToCloud as saveFavoritesToCloud } from '../services/syncService';
+import { listenForFavoriteUpdates, saveFavoriteToCloud as saveFavoritesToCloud, updateUserSettings } from '../services/syncService';
 import favoritesService from '../services/favoritesService';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { useStore } from '../store/useStore';

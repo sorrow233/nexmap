@@ -1,6 +1,8 @@
 import React from 'react';
 import { Globe, Check } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { updateUserSettings } from '../../services/syncService';
+import { auth } from '../../services/firebase';
 
 export default function SettingsGeneralTab() {
     const { language, setLanguage, t } = useLanguage();
@@ -17,13 +19,9 @@ export default function SettingsGeneralTab() {
         localStorage.setItem('userLanguage', code);
 
         // Cloud sync
-        import('../../services/syncService').then(({ updateUserSettings }) => {
-            import('../../services/firebase').then(({ auth }) => {
-                if (auth?.currentUser) {
-                    updateUserSettings(auth.currentUser.uid, { userLanguage: code });
-                }
-            });
-        });
+        if (auth?.currentUser) {
+            updateUserSettings(auth.currentUser.uid, { userLanguage: code });
+        }
     };
 
     return (
