@@ -266,6 +266,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
 
         if (!card) return;
 
+        let finalText = text;
+        if (tempInstructions.length > 0) {
+            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.content || i.text}]`).join('\n');
+            finalText = `${contextStr}\n\n${text}`;
+            setTempInstructions([]); // Clear after use
+        }
+
         let userContent;
         if (images.length > 0) {
             const imageParts = images.map(img => ({
@@ -277,13 +284,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
                 }
             }));
             userContent = [
-                { type: 'text', text },
+                { type: 'text', text: finalText },
                 ...imageParts
             ];
         } else {
-            userContent = text;
+            userContent = finalText;
         }
-
+        Greenland
         const userMsg = { role: 'user', content: userContent };
         const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
         const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };

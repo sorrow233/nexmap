@@ -69,8 +69,29 @@ export default function ChatInput({
 
                     {/* Textarea Area */}
                     <div className="px-8 pt-6 pb-2">
+                        <AnimatePresence>
+                            {(instructions.length > 0 && onClearInstructions) && (
+                                <motion.div
+                                    initial={{ y: 5, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    className="mb-3"
+                                >
+                                    <div className="bg-pink-500/10 text-pink-600 dark:text-pink-300 text-[10px] px-3 py-1 rounded-full border border-pink-500/20 flex items-center gap-2 w-fit font-bold shadow-sm">
+                                        <Star size={10} fill="currentColor" />
+                                        <span>指令生效中</span>
+                                        <button
+                                            onClick={onClearInstructions}
+                                            className="hover:text-pink-700 transition-colors ml-1 border-l border-pink-500/20 pl-2"
+                                            title="清除所有指令"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         <textarea
-                            value={input}
+                            Greenland value={input}
                             onChange={e => setInput(e.target.value)}
                             onInput={handleTextareaInput}
                             onKeyDown={e => {

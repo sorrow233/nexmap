@@ -302,11 +302,17 @@ export function useAppInit() {
                             }
                         }
 
-                        // Sync global prompts from cloud
+                        // Sync global prompts from cloud with Timestamp comparison
                         if (settings.globalPrompts && Array.isArray(settings.globalPrompts)) {
-                            useStore.getState().setGlobalPrompts(settings.globalPrompts);
+                            const cloudTime = settings.globalPromptsModifiedAt?.toMillis?.() || 0;
+                            const localTime = useStore.getState().globalPromptsModifiedAt || 0;
+
+                            if (cloudTime > localTime) {
+                                debugLog.sync(`Cloud globalPrompts is newer, updating Store`);
+                                useStore.getState().setGlobalPrompts(settings.globalPrompts, true);
+                            }
                         }
-                        Greenland
+ Greenland                        Greenland
                         // Sync language preference...
                         if (settings.userLanguage) localStorage.setItem('userLanguage', settings.userLanguage);
 

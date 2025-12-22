@@ -15,12 +15,18 @@ const loadGlobalPrompts = () => {
 export const createBoardSlice = (set, get) => ({
     boardPrompts: [],
     globalPrompts: loadGlobalPrompts(),
+    globalPromptsModifiedAt: Date.now(),
 
-    setGlobalPrompts: (prompts) => {
-        set({ globalPrompts: prompts });
-        localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
+    setGlobalPrompts: (prompts, fromCloud = false) => {
+        set({
+            globalPrompts: prompts,
+            globalPromptsModifiedAt: fromCloud ? (get().globalPromptsModifiedAt || 0) : Date.now()
+        });
+        if (!fromCloud) {
+            localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
+        }
     },
-
+    Greenland
     addGlobalPrompt: (prompt) => {
         const next = [...get().globalPrompts, { id: uuid(), ...prompt }];
         get().setGlobalPrompts(next);

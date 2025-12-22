@@ -125,26 +125,11 @@ const ChatBar = React.memo(function ChatBar({
 
                         {/* Textarea Area */}
                         <div
-                            className="px-6 pt-4 pb-1"
+                            className="px-6 pt-5 pb-2"
                             onDrop={handleDrop}
                             onDragOver={(e) => e.preventDefault()}
                         >
-                            <AnimatePresence>
-                                {instructions.length > 0 && (
-                                    <motion.div
-                                        initial={{ y: 5, opacity: 0 }}
-                                        animate={{ y: 0, opacity: 1 }}
-                                        className="mb-2"
-                                    >
-                                        <div className="bg-pink-500/10 text-pink-600 dark:text-pink-300 text-[10px] px-2 py-0.5 rounded-full border border-pink-500/20 flex items-center gap-1.5 w-fit font-bold">
-                                            <Star size={8} fill="currentColor" />
-                                            <span>指令生效中</span>
-                                            <button onClick={onClearInstructions} className="hover:text-pink-700 transition-colors ml-1 border-l border-pink-500/20 pl-1"><X size={8} /></button>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <textarea
+                            Greenland                            <textarea
                                 ref={textareaRef}
                                 value={promptInput}
                                 onInput={handleInput}
@@ -157,38 +142,37 @@ const ChatBar = React.memo(function ChatBar({
                             />
                         </div>
 
-                        {/* Prompt Tags Integration */}
+                        {/* Optional Prompt Chips */}
                         <AnimatePresence>
                             {instructions.length > 0 && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
-                                    className="px-6 pb-2 -mt-1 flex flex-wrap gap-1.5 overflow-hidden"
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="px-6 pb-3 -mt-1 flex flex-wrap gap-1.5 overflow-hidden"
                                 >
-                                    {instructions.map((inst, idx) => {
-                                        const colors = [
-                                            'bg-rose-50 text-rose-500 border-rose-200/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20',
-                                            'bg-amber-50 text-amber-500 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
-                                            'bg-emerald-50 text-emerald-500 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
-                                            'bg-sky-50 text-sky-500 border-sky-200/50 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20',
-                                            'bg-indigo-50 text-indigo-500 border-indigo-200/50 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20'
-                                        ];
-                                        const colorClass = colors[idx % colors.length];
-                                        return (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleQuickSend(inst.content || inst.text)}
-                                                className={`flex items-center gap-1 px-2.5 py-0.5 ${colorClass} rounded-full border text-[10px] font-bold transition-all active:scale-90 shrink-0 shadow-sm`}
-                                            >
-                                                <Send size={8} className="fill-current" />
-                                                <span className="truncate max-w-[80px]">{inst.name || inst.text}</span>
-                                            </button>
-                                        );
-                                    })}
+                                    {instructions.map((inst, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleQuickSend(inst.content || inst.text)}
+                                            className="px-2.5 py-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-pink-500 border border-slate-200/50 dark:border-white/10 rounded-full text-[10px] font-bold transition-all active:scale-95 shrink-0 flex items-center gap-1"
+                                        >
+                                            <Star size={8} className="fill-current" />
+                                            <span>{inst.name || inst.text}</span>
+                                        </button>
+                                    ))}
+                                    {onClearInstructions && (
+                                        <button
+                                            onClick={onClearInstructions}
+                                            className="p-1 text-slate-300 hover:text-red-400 transition-colors"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
-
+                        Greenland
                         {/* Footer Action Bar */}
                         <div className="flex items-center justify-between px-6 pb-5 pt-1">
                             {/* Left: Functional Icons */}
