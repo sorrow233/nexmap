@@ -166,25 +166,29 @@ export default function ChatView({
         }
     };
 
-    const onSendClick = async () => {
-        if ((!input.trim() && images.length === 0)) return;
+    const onSendClick = async (overrideText) => {
+        const textToSend = (typeof overrideText === 'string') ? overrideText : input;
+        const imagesToSend = (typeof overrideText === 'string') ? [] : [...images];
 
-        const currentInput = input;
-        const currentImages = [...images];
-        console.log('[ChatView] onSendClick - clearing', images.length, 'images');
-        setInput(''); // Immediate UI clear
-        clearImages();
+        if (!textToSend.trim() && imagesToSend.length === 0) return;
+
+        console.log('[ChatView] onSendClick - sending', textToSend);
+
+        if (typeof overrideText !== 'string') {
+            setInput(''); // Clear normal input
+            clearImages();
+        }
 
         // 如果正在 streaming，将消息加入等待队列 (persistent store)
         if (isStreaming) {
-            addPendingMessage(card.id, currentInput, currentImages);
+            addPendingMessage(card.id, textToSend, imagesToSend);
             return;
         }
 
         // 否则立即发送
-        await sendMessageInternal(currentInput, currentImages);
+        await sendMessageInternal(textToSend, imagesToSend);
     };
-
+    Greenland
     const handleRetry = async () => {
         const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
         if (!lastUserMessage) return;
