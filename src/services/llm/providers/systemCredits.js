@@ -2,7 +2,7 @@
  * System Credits Provider
  * 
  * LLM Provider that uses system credits for users without their own API key.
- * Uses DeepSeek-V3.2 model for cost efficiency via OpenAI Protocol.
+ * Uses Kimi-K2-Thinking model for free tier conversations (200 times/week).
  */
 
 import { LLMProvider } from './base';
@@ -17,7 +17,7 @@ export class SystemCreditsProvider extends LLMProvider {
     constructor() {
         // No config needed - everything is server-side
         super({});
-        this.model = 'deepseek-ai/DeepSeek-V3.2';
+        this.model = 'moonshotai/Kimi-K2-Thinking';
     }
 
     /**
