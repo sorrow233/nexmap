@@ -179,7 +179,7 @@ export default function SettingsModal({ isOpen, onClose, user, onShowWelcome }) 
             <div className={`p-2 rounded-lg transition-colors ${activeTab === id
                 ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
-                } `}>>
+                } `}>
                 <Icon size={18} />
             </div>
             <div>
