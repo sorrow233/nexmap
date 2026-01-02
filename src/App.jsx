@@ -19,6 +19,8 @@ const LandingPage = lazyWithRetry(() => import('./modules/landing'));
 const FreeTrialPage = lazyWithRetry(() => import('./pages/FreeTrialPage'));
 const FeedbackPage = lazyWithRetry(() => import('./pages/FeedbackPage'));
 const PricingPage = lazyWithRetry(() => import('./pages/PricingPage'));
+const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
+const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -298,6 +300,8 @@ function AppContent() {
                     <Route path="/" element={user ? <Navigate to="/gallery" replace /> : <LandingPage />} />
                     <Route path="/intro" element={<LandingPage />} />
                     <Route path="/free-trial" element={<FreeTrialPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/history" element={<HistoryPage />} />
 
                     {/* Legal Routes */}
                     <Route path="/legal/tokushoho" element={<Tokushoho />} />

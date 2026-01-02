@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../services/firebase';
 import FeedbackCard from '../components/feedback/FeedbackCard';
 import FeedbackSubmitForm from '../components/feedback/FeedbackSubmitForm';
+import SEO from '../components/SEO';
 
 // API base URL
 const API_BASE = '/api/feedback';
@@ -131,6 +132,7 @@ export default function FeedbackPage() {
 
     return (
         <div className="bg-mesh-gradient min-h-screen text-slate-900 dark:text-slate-200 p-4 md:p-8 font-lxgw">
+            <SEO title="Feedback" description="Share your feedback, vote on features, and help us improve NexMap." />
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-6">

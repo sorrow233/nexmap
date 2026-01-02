@@ -4,6 +4,7 @@ import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import FeedbackView from '../components/FeedbackView';
 import SettingsModal from '../components/SettingsModal';
+import SEO from '../components/SEO';
 import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard, updateUserSettings } from '../services/storage';
 import { useNavigate } from 'react-router-dom';
