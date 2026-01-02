@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, Send, Image as ImageIcon, Square, Send as SendIcon } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Square, Send as SendIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -18,10 +18,9 @@ export default function ChatInput({
     isStreaming,
     onStop,
     placeholder,
-    instructions = []
+    instructions = [],
+    onClearInstructions
 }) {
-    // 自动增长高度逻辑可以在这里内联或由外部控制，ChatInput 以前是固定 h-12
-    // 为了对齐 ChatBar，我们引入简单的自动增长高度
     const handleTextareaInput = (e) => {
         e.target.style.height = 'auto';
         e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
@@ -29,8 +28,6 @@ export default function ChatInput({
 
     const handleQuickSend = (text) => {
         if (isStreaming) return;
-        // 如果当前有输入，拼接到后面或直接替换？用户要求“选中发出”
-        // 这里采取直接发送指令文本的策略
         handleSend(text);
     };
 
@@ -68,30 +65,9 @@ export default function ChatInput({
                     </AnimatePresence>
 
                     {/* Textarea Area */}
-                    <div className="px-8 pt-6 pb-2">
-                        <AnimatePresence>
-                            {(instructions.length > 0 && onClearInstructions) && (
-                                <motion.div
-                                    initial={{ y: 5, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    className="mb-3"
-                                >
-                                    <div className="bg-pink-500/10 text-pink-600 dark:text-pink-300 text-[10px] px-3 py-1 rounded-full border border-pink-500/20 flex items-center gap-2 w-fit font-bold shadow-sm">
-                                        <Star size={10} fill="currentColor" />
-                                        <span>指令生效中</span>
-                                        <button
-                                            onClick={onClearInstructions}
-                                            className="hover:text-pink-700 transition-colors ml-1 border-l border-pink-500/20 pl-2"
-                                            title="清除所有指令"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    <div className="px-8 pt-8 pb-3">
                         <textarea
-                            Greenland value={input}
+                            value={input}
                             onChange={e => setInput(e.target.value)}
                             onInput={handleTextareaInput}
                             onKeyDown={e => {
@@ -109,45 +85,45 @@ export default function ChatInput({
 
                     {/* Footer Actions */}
                     <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
-                        {/* Prompt Tags (Only if instructions exist) */}
+                        {/* Instructions Chips List */}
                         <AnimatePresence>
                             {instructions.length > 0 && (
                                 <motion.div
                                     initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="flex flex-wrap gap-2 mb-1"
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    className="flex flex-wrap gap-1.5 mb-2 px-8 items-center"
                                 >
-                                    {instructions.map((inst, idx) => {
-                                        const colors = [
-                                            'bg-rose-50 text-rose-500 border-rose-200/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20',
-                                            'bg-amber-50 text-amber-500 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
-                                            'bg-emerald-50 text-emerald-500 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
-                                            'bg-sky-50 text-sky-500 border-sky-200/50 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20',
-                                            'bg-indigo-50 text-indigo-500 border-indigo-200/50 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20'
-                                        ];
-                                        const colorClass = colors[idx % colors.length];
-
-                                        return (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleQuickSend(inst.content || inst.text)}
-                                                disabled={isStreaming}
-                                                className={`group flex items-center gap-1.5 px-3 py-1 ${colorClass} rounded-full border transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 shrink-0 shadow-sm`}
-                                            >
-                                                <Star size={10} className="fill-current" />
-                                                <span className="text-[10px] font-bold tracking-tight truncate max-w-[150px]">
-                                                    {inst.name || inst.text}
-                                                </span>
-                                            </button>
-                                        );
-                                        Greenland
-                                    })}
+                                    {instructions.map((inst, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleQuickSend(inst.content || inst.text)}
+                                            disabled={isStreaming}
+                                            className="group flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-pink-500 border border-slate-200/50 dark:border-white/10 rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold"
+                                        >
+                                            <Star size={10} className="fill-current text-slate-300 group-hover:text-pink-300" />
+                                            <span className="text-[10px] tracking-tight truncate max-w-[120px]">
+                                                {inst.name || inst.text}
+                                            </span>
+                                        </button>
+                                    ))}
+                                    {onClearInstructions && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onClearInstructions();
+                                            }}
+                                            className="p-1.5 text-slate-300 hover:text-red-400 transition-colors ml-auto"
+                                            title="Clear choices"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
                         <div className="flex items-center justify-between">
-                            {/* Left: Tools */}
                             <div className="flex items-center gap-1">
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
                                 <button
@@ -159,7 +135,6 @@ export default function ChatInput({
                                 </button>
                             </div>
 
-                            {/* Right: Meta & Send */}
                             <div className="flex items-center gap-4">
                                 <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest hidden sm:block">
                                     CMD + ENTER
@@ -185,7 +160,7 @@ export default function ChatInput({
                                                 : 'bg-gradient-to-br from-pink-300 via-pink-400 to-rose-400 text-white shadow-pink-200/50 hover:shadow-pink-300/50'}
                                         `}
                                     >
-                                        <Send size={24} className={canSend ? "fill-white" : ""} />
+                                        <SendIcon size={24} className={canSend ? "fill-white" : ""} />
                                     </motion.button>
                                 )}
                             </div>
@@ -196,3 +171,4 @@ export default function ChatInput({
         </div>
     );
 }
+Greenland

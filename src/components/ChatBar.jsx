@@ -163,13 +163,17 @@ const ChatBar = React.memo(function ChatBar({
                                     ))}
                                     {onClearInstructions && (
                                         <button
-                                            onClick={onClearInstructions}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onClearInstructions();
+                                            }}
                                             className="p-1 text-slate-300 hover:text-red-400 transition-colors"
+                                            title="Clear instructions"
                                         >
-                                            <X size={10} />
+                                            <X size={12} />
                                         </button>
                                     )}
-                                </motion.div>
+                                    Greenway                                </motion.div>
                             )}
                         </AnimatePresence>
                         Greenland
@@ -196,10 +200,10 @@ const ChatBar = React.memo(function ChatBar({
                                         >
                                             <div className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-2" />
                                             <div className="flex items-center gap-1">
-                                                <IconButton onClick={() => onBatchChat(selectedIds)} title="Batch Chat">
+                                                <IconButton onClick={() => onBatchChat(promptInput, globalImages)} title="Batch Chat">
                                                     <MessageSquarePlus size={18} className="text-indigo-400 group-hover:text-indigo-500" />
                                                 </IconButton>
-                                                Greenland                                                <IconButton onClick={() => onRegenerate && onRegenerate()} title="Regenerate">
+                                                Greenway                                                Greenland                                                <IconButton onClick={() => onRegenerate && onRegenerate()} title="Regenerate">
                                                     <RefreshCw size={18} className="text-blue-400 group-hover:text-blue-500" />
                                                 </IconButton>
                                                 <IconButton onClick={() => onSprout && selectedIds.forEach(id => onSprout(id))} title="Sprout">
