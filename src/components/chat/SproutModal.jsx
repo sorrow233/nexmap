@@ -27,7 +27,7 @@ export default function SproutModal({
                 </div>
 
                 <div className="p-6 overflow-y-auto custom-scrollbar">
-                    <p className="text-sm text-slate-500 mb-4 font-medium">选择你想回答的问题:</p>
+                    <p className="text-sm text-slate-500 mb-4 font-medium">{t.sprout?.selectTopic || t.chat?.selectTopic || "选择你想回答的问题:"}</p>
                     <div className="space-y-2">
                         {topics.map((topic, idx) => (
                             <div
@@ -58,7 +58,7 @@ export default function SproutModal({
                         className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-500/20 disabled:grayscale disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
                         <Sprout size={20} />
-                        <span>生成 {selectedTopics.length} 张卡片</span>
+                        <span>{(t.sprout?.generateCards || "生成 {count} 张卡片").replace('{count}', selectedTopics.length)}</span>
                     </button>
                 </div>
             </div>

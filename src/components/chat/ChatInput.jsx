@@ -21,11 +21,12 @@ export default function ChatInput({
     onStop,
     placeholder,
     instructions = [],
-    instructions = [],
+
     onClearInstructions
 }) {
     const { t } = useLanguage();
 
+    // Ensure height calculation handles larger text
     const handleTextareaInput = (e) => {
         e.target.style.height = 'auto';
         e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;

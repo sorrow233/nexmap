@@ -2,10 +2,11 @@ import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
 import { uuid } from '../../utils/uuid';
 import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
-import { getConnectedGraph } from '../../utils/graphUtils';
+import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 import favoritesService from '../../services/favoritesService';
 import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
 import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
+import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
 
 

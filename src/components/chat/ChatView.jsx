@@ -15,10 +15,7 @@ import ChatInput from '../chat/ChatInput';
 import MessageList from '../chat/MessageList';
 import ShareModal from '../share/ShareModal';
 import ChatIndexSidebar from '../chat/ChatIndexSidebar';
-import ChatHeader from '../chat/ChatHeader';
-import ChatSelectionMenu from '../chat/ChatSelectionMenu';
-import ChatHeader from '../chat/ChatHeader';
-import ChatSelectionMenu from '../chat/ChatSelectionMenu';
+
 
 // Stable empty array to prevent infinite re-renders from || [] pattern
 const EMPTY_PENDING_MESSAGES = [];
