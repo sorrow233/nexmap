@@ -118,18 +118,20 @@ export function useCardGeneration() {
      * Batch chat with selected cards
      */
     const handleBatchChat = async (text, images = []) => {
-        if (!text.trim() && images.length === 0) return;
+        // Robustness Check: Ensure text is a string
+        const safeText = (typeof text === 'string' ? text : (text?.toString() || '')).trim();
+        if (!safeText && (!images || images.length === 0)) return;
 
         const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
         if (targetCards.length === 0) return false;
 
-        debugLog.ai('Starting batch chat', { text, targetCount: targetCards.length });
+        debugLog.ai('Starting batch chat', { text: safeText, targetCount: targetCards.length });
 
         const { handleChatGenerate } = useStore.getState();
 
         // Prepare context
         let userContentParts = [];
-        if (text.trim()) userContentParts.push({ type: 'text', text });
+        if (safeText) userContentParts.push({ type: 'text', text: safeText });
 
         if (images.length > 0) {
             const processedImages = await Promise.all(images.map(async (img, idx) => {

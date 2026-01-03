@@ -27,11 +27,13 @@ export function useCardCreator() {
      * General purpose card creation (Text/AI/Image)
      */
     const handleCreateCard = async (text, images = [], position = null) => {
-        if (!text.trim() && images.length === 0) return;
+        // Robustness Check: Ensure text is a string
+        const safeText = (typeof text === 'string' ? text : (text?.toString() || '')).trim();
+        if (!safeText && (!images || images.length === 0)) return;
 
         // 1. Image Generation Command Detection
-        if (text.startsWith('/draw ') || text.startsWith('/image ')) {
-            const promptText = text.replace(/^\/(draw|image)\s+/, '');
+        if (safeText.startsWith('/draw ') || safeText.startsWith('/image ')) {
+            const promptText = safeText.replace(/^\/(draw|image)\s+/, '');
             const newId = uuid();
             debugLog.ai('Starting image generation', { prompt: promptText });
 
@@ -106,7 +108,7 @@ export function useCardCreator() {
             }).join('\n\n') + '\n\n---\n\nBased on the above context, please respond to:\n\n';
         }
 
-        await _generateAICard(text, targetX, targetY, images, contextPrefix);
+        await _generateAICard(safeText, targetX, targetY, images, contextPrefix);
     };
 
     /**
