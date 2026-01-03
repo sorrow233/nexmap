@@ -462,7 +462,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         {t.settings.storageConfig?.noBackupsYet || "No backups yet. Backups are created automatically at scheduled times."}
                     </div>
                 ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                    <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
                         {backupHistory.map((backup) => (
                             <div
                                 key={backup.id}

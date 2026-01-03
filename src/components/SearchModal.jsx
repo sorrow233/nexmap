@@ -164,7 +164,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                 </div>
 
                 {/* Results */}
-                <div className="flex-1 sm:flex-none sm:max-h-[50vh] overflow-y-auto">
+                <div className="flex-1 sm:flex-none sm:max-h-[50vh] overflow-y-auto custom-scrollbar">
                     {results.length === 0 && query && (
                         <div className="px-4 py-8 text-center text-slate-400">
                             {t.search.noResults}
