@@ -107,7 +107,7 @@ const ChatBar = React.memo(function ChatBar({
 
     return (
         <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-6">
-            <div className="mx-auto w-full max-w-lg pointer-events-auto">
+            <div className="mx-auto w-full max-w-2xl pointer-events-auto">
                 <Spotlight spotColor="rgba(6, 182, 212, 0.1)" size={400} className="rounded-[1.2rem]">
                     <motion.div
                         layout
