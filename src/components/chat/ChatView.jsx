@@ -10,11 +10,13 @@ import { aiManager } from '../../services/ai/AIManager';
 import { useAISprouting } from '../../hooks/useAISprouting';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-import SproutModal from '../chat/SproutModal';
-import ChatInput from '../chat/ChatInput';
-import MessageList from '../chat/MessageList';
+import SproutModal from './SproutModal';
+import ChatInput from './ChatInput';
+import MessageList from './MessageList';
 import ShareModal from '../share/ShareModal';
-import ChatIndexSidebar from '../chat/ChatIndexSidebar';
+import ChatIndexSidebar from './ChatIndexSidebar';
+import ChatSelectionMenu from './ChatSelectionMenu';
+import ChatHeader from './ChatHeader';
 
 
 // Stable empty array to prevent infinite re-renders from || [] pattern

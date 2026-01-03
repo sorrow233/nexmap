@@ -1,3 +1,4 @@
+import React, { useRef } from 'react';
 import { X, Send, Image as ImageIcon, Square, Send as SendIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -29,12 +30,23 @@ export default function ChatInput({
     // Ensure height calculation handles larger text
     const handleTextareaInput = (e) => {
         e.target.style.height = 'auto';
-        e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+        e.target.style.height = `${Math.min(e.target.scrollHeight, 80)}px`;
     };
 
-    const handleQuickSend = (text) => {
-        if (isStreaming) return;
-        handleSend(text);
+    const textareaRef = useRef(null);
+
+    const handlePromptSelect = (text) => {
+        const newText = input ? `${input} ${text}` : text;
+        setInput(newText);
+
+        // Focus and adjust height
+        if (textareaRef.current) {
+            textareaRef.current.focus();
+            requestAnimationFrame(() => {
+                textareaRef.current.style.height = 'auto';
+                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 80)}px`;
+            });
+        }
     };
 
     const handleKeyDown = (e) => {
@@ -79,28 +91,29 @@ export default function ChatInput({
                     </AnimatePresence>
 
                     {/* Textarea Area */}
-                    <div className="px-8 pt-6 pb-2">
+                    <div className="px-6 pt-4 pb-2">
                         <textarea
+                            ref={textareaRef}
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onInput={handleTextareaInput}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
-                            className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[200px] scrollbar-hide"
+                            className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[80px] scrollbar-hide"
                             placeholder={placeholder}
                             rows={1}
                         />
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
+                    <div className="flex flex-col gap-2 px-6 pb-4 pt-1">
                         {/* Instructions Chips List */}
                         <InstructionChips
                             instructions={instructions}
-                            onSelect={handleQuickSend}
+                            onSelect={handlePromptSelect}
                             onClear={onClearInstructions}
                             disabled={isStreaming}
-                            className="mb-2 px-8"
+                            className="mb-1 px-0"
                         />
 
                         <div className="flex items-center justify-between">

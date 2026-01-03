@@ -62,11 +62,17 @@ const ChatBar = React.memo(function ChatBar({
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
     };
 
-    const handleQuickSend = (text) => {
-        onSubmit(text, []);
-        setPromptInput('');
-        if (onClearImages) onClearImages();
-        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    const handlePromptSelect = (text) => {
+        const newText = promptInput ? `${promptInput} ${text}` : text;
+        setPromptInput(newText);
+        // Focus and adjust height
+        if (textareaRef.current) {
+            textareaRef.current.focus();
+            requestAnimationFrame(() => {
+                textareaRef.current.style.height = 'auto';
+                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+            });
+        }
     };
 
     const handleKeyDown = (e) => {
@@ -139,7 +145,7 @@ const ChatBar = React.memo(function ChatBar({
                         <div className="px-6 pt-4">
                             <InstructionChips
                                 instructions={instructions}
-                                onSelect={handleQuickSend}
+                                onSelect={handlePromptSelect}
                                 onClear={onClearInstructions}
                             />
                         </div>
@@ -212,26 +218,7 @@ const ChatBar = React.memo(function ChatBar({
                             </div>
                         </div>
 
-                        {/* Selection Context Toolbar */}
-                        <AnimatePresence>
-                            {selectedIds.length > 0 && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="px-6 pb-3 pt-0 flex items-center gap-1 overflow-x-auto no-scrollbar"
-                                >
-                                    <MiniActionBtn onClick={() => onRegenerate && onRegenerate()} icon={<RefreshCw size={10} />} color="text-blue-400" />
-                                    <MiniActionBtn onClick={() => onSprout && selectedIds.forEach(id => onSprout(id))} icon={<Sprout size={10} />} color="text-emerald-400" />
-                                    <MiniActionBtn onClick={() => onGroup && onGroup(selectedIds)} icon={<BoxSelect size={10} />} color="text-purple-400" />
-                                    <MiniActionBtn onClick={() => onDelete && onDelete()} icon={<Trash2 size={10} />} color="text-red-400" />
-                                    <div className="flex-1" />
-                                    <span className="text-[9px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-tighter">
-                                        {selectedIds.length} {t.chatBar.selected}
-                                    </span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+
                     </motion.div>
                 </Spotlight>
             </div>
@@ -245,10 +232,6 @@ const IconButton = ({ children, onClick, title }) => (
     </button>
 );
 
-const MiniActionBtn = ({ onClick, icon, color }) => (
-    <button onClick={onClick} className={`p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-md transition-all ${color}`}>
-        {icon}
-    </button>
-);
+
 
 export default ChatBar;

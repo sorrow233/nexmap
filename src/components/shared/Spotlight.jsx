@@ -13,7 +13,7 @@ import React, { useRef, useState } from 'react';
 const Spotlight = ({
     children,
     className = "",
-    spotColor = "rgba(255, 180, 162, 0.15)", // 品牌珊瑚粉
+    spotColor = "rgba(6, 182, 212, 0.15)", // 采用青色系
     size = 400,
     disabled = false
 }) => {
@@ -21,7 +21,7 @@ const Spotlight = ({
     const [opacity, setOpacity] = useState(0);
 
     // 移动端检测 - 禁用鼠标跟随效果
-    const isTouchDevice = typeof window !== 'undefined' && 
+    const isTouchDevice = typeof window !== 'undefined' &&
         ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
     const handleMouseMove = (e) => {

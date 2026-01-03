@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getColorForString } from '../../utils/colors';
 
 /**
  * Shared Instruction Chips Component
@@ -23,19 +24,23 @@ const InstructionChips = ({
                 exit={{ opacity: 0, height: 0 }}
                 className={`flex flex-wrap gap-1.5 items-center ${className}`}
             >
-                {instructions.map((inst, idx) => (
-                    <button
-                        key={idx}
-                        onClick={() => onSelect(inst.content || inst.text)}
-                        disabled={disabled}
-                        className="group flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-cyan-500 border border-slate-200/50 dark:border-white/10 rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold"
-                    >
-                        <Star size={10} className="fill-current text-slate-300 group-hover:text-cyan-300" />
-                        <span className="text-[10px] tracking-tight truncate max-w-[120px]">
-                            {inst.name || inst.text}
-                        </span>
-                    </button>
-                ))}
+                {instructions.map((inst, idx) => {
+                    const displayName = inst.name || inst.text;
+                    const colorClass = inst.color || getColorForString(displayName);
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => onSelect(inst.content || inst.text)}
+                            disabled={disabled}
+                            className={`group flex items-center gap-1.5 px-3 py-1 border rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold ${colorClass}`}
+                        >
+                            <Star size={10} className="fill-current text-white/50 group-hover:text-white" />
+                            <span className="text-[10px] tracking-tight truncate max-w-[120px]">
+                                {displayName}
+                            </span>
+                        </button>
+                    );
+                })}
 
                 {onClear && (
                     <button
