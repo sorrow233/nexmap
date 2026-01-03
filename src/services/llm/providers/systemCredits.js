@@ -10,7 +10,9 @@ import { resolveRemoteImages } from '../utils';
 import {
     streamWithSystemCredits,
     chatWithSystemCredits,
-    CreditsExhaustedError
+    imageWithSystemCredits,
+    CreditsExhaustedError,
+    ImageQuotaExhaustedError
 } from '../../systemCredits/systemCreditsService';
 
 export class SystemCreditsProvider extends LLMProvider {
@@ -92,9 +94,16 @@ export class SystemCreditsProvider extends LLMProvider {
     }
 
     /**
-     * Image generation - NOT supported with system credits
+     * Image generation using system credits
+     * Uses Seedream model with weekly quota (20/week)
      */
     async generateImage(prompt, model, options = {}) {
-        throw new Error('图片生成功能需要配置您自己的 API Key。请在设置中添加您的 GMI API Key。');
+        const result = await imageWithSystemCredits(prompt, {
+            size: options.size || '1024x1024',
+            watermark: options.watermark || false
+        });
+
+        // Return the image URL in the expected format
+        return result.url;
     }
 }
