@@ -42,10 +42,11 @@ export async function streamChatCompletion(messages, config, onToken, model = nu
 /**
  * Generate an image from a prompt
  * Uses 'image' role model
+ * For users without API key, uses SystemCreditsProvider with weekly quota
  */
 export async function imageGeneration(prompt, config, model = null, options = {}) {
-    if (!config || !config.apiKey) {
-        throw new Error(`Provider is not configured or missing API Key.`);
+    if (!config) {
+        throw new Error(`Provider configuration is missing.`);
     }
 
     const provider = ModelFactory.getProvider(config);
