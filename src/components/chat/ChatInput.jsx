@@ -105,55 +105,58 @@ export default function ChatInput({
                         />
                     </div>
 
-                    {/* Footer Actions */}
-                    <div className="flex flex-col gap-2 px-6 pb-4 pt-1">
-                        {/* Instructions Chips List */}
-                        <InstructionChips
-                            instructions={instructions}
-                            onSelect={handlePromptSelect}
-                            onClear={onClearInstructions}
-                            disabled={isStreaming}
-                            className="mb-1 px-0"
-                        />
+                    {/* Footer Actions - Compact Merged Row */}
+                    <div className="flex items-center gap-3 px-6 pb-6 pt-2">
+                        {/* Image Upload Trigger */}
+                        <div className="shrink-0 flex items-center">
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isStreaming}
+                                className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
+                                title={t.chatBar.uploadImage}
+                            >
+                                <ImageIcon size={18} />
+                            </button>
+                        </div>
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
+                        {/* Middle: Instructions Chips List - Flex grow to fill space */}
+                        <div className="flex-1 min-w-0">
+                            <InstructionChips
+                                instructions={instructions}
+                                onSelect={handlePromptSelect}
+                                onClear={onClearInstructions}
+                                disabled={isStreaming}
+                                className="mb-0 px-0"
+                            />
+                        </div>
+
+                        {/* Right: Send / Stop Action */}
+                        <div className="shrink-0 flex items-center">
+                            {isStreaming ? (
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isStreaming}
-                                    className="p-2.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
+                                    onClick={onStop}
+                                    className="w-10 h-10 bg-red-500 text-white rounded-[0.8rem] shadow-lg shadow-red-500/20 hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse"
+                                    title={t.ai?.stopGeneration || "Stop Generation"}
                                 >
-                                    <ImageIcon size={20} />
+                                    <Square size={16} fill="currentColor" />
                                 </button>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                                {isStreaming ? (
-                                    <button
-                                        onClick={onStop}
-                                        className="w-12 h-12 bg-red-500 text-white rounded-[1rem] shadow-lg shadow-red-500/20 hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse"
-                                        title={t.ai?.stopGeneration || "Stop Generation"}
-                                    >
-                                        <Square size={20} fill="currentColor" />
-                                    </button>
-                                ) : (
-                                    <motion.button
-                                        whileHover={canSend ? { scale: 1.05 } : {}}
-                                        whileTap={canSend ? { scale: 0.95 } : {}}
-                                        onClick={() => handleSend()}
-                                        disabled={!canSend}
-                                        className={`
-                                            relative w-12 h-12 rounded-[1rem] flex items-center justify-center transition-all shadow-lg
-                                            ${!canSend
-                                                ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
-                                                : 'bg-cyan-500 text-white shadow-cyan-500/20 hover:bg-cyan-400'}
-                                        `}
-                                    >
-                                        <SendIcon size={24} className={canSend ? "fill-white" : ""} />
-                                    </motion.button>
-                                )}
-                            </div>
+                            ) : (
+                                <motion.button
+                                    whileHover={canSend ? { scale: 1.05 } : {}}
+                                    whileTap={canSend ? { scale: 0.95 } : {}}
+                                    onClick={() => handleSend()}
+                                    disabled={!canSend}
+                                    className={`
+                                        relative w-10 h-10 rounded-[0.8rem] flex items-center justify-center transition-all shadow-lg
+                                        ${!canSend
+                                            ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
+                                            : 'bg-cyan-500 text-white shadow-cyan-500/20 hover:bg-cyan-400'}
+                                    `}
+                                >
+                                    <SendIcon size={18} className={canSend ? "fill-white" : ""} />
+                                </motion.button>
+                            )}
                         </div>
                     </div>
                 </motion.div>
