@@ -188,19 +188,19 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
                     onExpandTopics={handleExpandTopics}
-                    instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
+                    instructions={[...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                 />
-                Greenland                Greenland
+
                 {selectedIds.length > 0 && (
-                    <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-pink-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(244,114,182,0.15)] ring-1 ring-pink-200/20 dark:ring-white/5">
+                    <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-cyan-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(6,182,212,0.15)] ring-1 ring-cyan-200/20 dark:ring-white/5">
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">{selectedIds.length} ITEMS</span>
                         <div className="h-4 w-px bg-slate-100 dark:bg-white/5"></div>
 
                         {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
                             <button
                                 onClick={() => handleExpandTopics(selectedIds[0])}
-                                className="p-2 rounded-full text-pink-500 bg-pink-50 dark:bg-pink-500/10 hover:bg-pink-100 dark:hover:bg-pink-500/20 transition-all active:scale-90"
+                                className="p-2 rounded-full text-cyan-500 bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-all active:scale-90"
                                 title={t.toolbar?.expand || "Expand Topics"}
                             >
                                 <Star size={18} fill="currentColor" />

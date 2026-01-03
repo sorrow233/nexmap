@@ -338,93 +338,86 @@ export const createAISlice = (set, get) => {
         },
 
         updateCardContent: (id, chunk, messageId = null) => {
-            // Buffer key depends on whether we have a specific message ID
+            const state = get();
             const bufferKey = messageId ? `${id}:${messageId}` : id;
-
             const currentBuffer = contentBuffer.get(bufferKey) || "";
             contentBuffer.set(bufferKey, currentBuffer + chunk);
 
-            // Schedule flush if not already scheduled
+            const flush = () => {
+                if (contentBuffer.size === 0) return;
+                const updates = new Map(contentBuffer);
+                contentBuffer.clear();
+                if (contentFlushTimer) {
+                    clearTimeout(contentFlushTimer);
+                    contentFlushTimer = null;
+                }
+
+                set(state => ({
+                    cards: state.cards.map(c => {
+                        const directUpdate = updates.get(c.id);
+                        const idUpdates = [];
+                        updates.forEach((content, key) => {
+                            if (key.startsWith(c.id + ':')) {
+                                const msgId = key.split(':')[1];
+                                idUpdates.push({ msgId, content });
+                            }
+                        });
+
+                        if (!directUpdate && idUpdates.length === 0) return c;
+                        const msgs = [...c.data.messages];
+
+                        idUpdates.forEach(({ msgId, content }) => {
+                            const msgIndex = msgs.findIndex(m => m.id === msgId);
+                            if (msgIndex !== -1) {
+                                msgs[msgIndex] = {
+                                    ...msgs[msgIndex],
+                                    content: msgs[msgIndex].content + content
+                                };
+                            }
+                        });
+
+                        if (directUpdate && idUpdates.length === 0) {
+                            const lastMsg = msgs[msgs.length - 1];
+                            if (!lastMsg || lastMsg.role !== 'assistant') {
+                                msgs.push({ id: uuid(), role: 'assistant', content: directUpdate });
+                            } else {
+                                msgs[msgs.length - 1] = {
+                                    ...lastMsg,
+                                    content: lastMsg.content + directUpdate
+                                };
+                            }
+                        }
+                        return { ...c, data: { ...c.data, messages: msgs } };
+                    })
+                }));
+            };
+
+            // Schedule flush
             if (!contentFlushTimer) {
-                contentFlushTimer = setTimeout(() => {
-                    try {
-                        // Snapshot and clear buffer immediately
-                        const updates = new Map(contentBuffer);
-                        contentBuffer.clear();
-                        contentFlushTimer = null;
-
-                        // Batch update
-                        set(state => ({
-                            cards: state.cards.map(c => {
-                                // We need to process all updates relevant to this card
-                                // 1. Direct updates (key === c.id) -> legacy fallback to last assistant
-                                // 2. ID-based updates (key === c.id:msgId) -> targeted update
-
-                                const directUpdate = updates.get(c.id);
-                                const idUpdates = [];
-
-                                updates.forEach((content, key) => {
-                                    if (key.startsWith(c.id + ':')) {
-                                        const msgId = key.split(':')[1];
-                                        idUpdates.push({ msgId, content });
-                                    }
-                                });
-
-                                if (!directUpdate && idUpdates.length === 0) return c;
-
-                                const msgs = [...c.data.messages];
-
-                                // Handle ID-based precise updates first
-                                idUpdates.forEach(({ msgId, content }) => {
-                                    const msgIndex = msgs.findIndex(m => m.id === msgId);
-                                    if (msgIndex !== -1) {
-                                        msgs[msgIndex] = {
-                                            ...msgs[msgIndex],
-                                            content: msgs[msgIndex].content + content
-                                        };
-                                    } else {
-                                        // Critical Fallback: If ID not found, should we create it? 
-                                        // For now, if ID not found, it implies optimistic update failed or race condition.
-                                        // We could append, but without knowing position it's risky.
-                                        // Let's fallback to appending to last assistant as last sort resort?
-                                        // No, for concurrent safety, we stick to ID. If not found, we wait for next flush?
-                                        // Actually, let's look for a message with NO content and assistant role? 
-                                        // Or just log error.
-                                        console.warn(`[AI Store] Message ID ${msgId} not found in card ${c.id}`);
-                                    }
-                                });
-
-                                // Handle legacy direct updates (fallback - ONLY if no ID updates for this card)
-                                if (directUpdate && idUpdates.length === 0) {
-                                    const lastMsg = msgs[msgs.length - 1];
-                                    if (!lastMsg || lastMsg.role !== 'assistant') {
-                                        msgs.push({ id: uuid(), role: 'assistant', content: directUpdate });
-                                    } else {
-                                        msgs[msgs.length - 1] = {
-                                            ...lastMsg,
-                                            content: lastMsg.content + directUpdate
-                                        };
-                                    }
-                                }
-
-                                return { ...c, data: { ...c.data, messages: msgs } };
-                            })
-                        }));
-                    } catch (e) {
-                        console.error("[ContentSlice] Batched update failed", e);
-                    }
-                }, 20); // 20ms throttle
+                contentFlushTimer = setTimeout(flush, 20);
             }
+
+            // Expose flush globally to slice
+            state._flushAIContent = flush;
         },
 
         setCardGenerating: (id, isGenerating) => {
             set(state => {
                 const next = new Set(state.generatingCardIds);
-                if (isGenerating) next.add(id);
-                else {
+                if (isGenerating) {
+                    next.add(id);
+                } else {
                     next.delete(id);
-                    // Clean up buffer when generation stops (success or failure)
-                    contentBuffer.delete(id);
+                    // CRITICAL: Final Flush before stopping tracking
+                    if (state._flushAIContent) {
+                        state._flushAIContent();
+                    }
+                    // Clean up any remaining residue for this card
+                    contentBuffer.forEach((_, key) => {
+                        if (key === id || key.startsWith(id + ':')) {
+                            contentBuffer.delete(key);
+                        }
+                    });
                 }
                 return { generatingCardIds: next };
             });
