@@ -190,11 +190,17 @@ export const createAISlice = (set, get) => {
                 const neighborIds = Array.from(visited).filter(id => id !== cardId);
 
                 // Context Walking: Add neighbor context if any
-                // FIXED: Removed slice limit entirely to capture FULL context from connected cards.
-                // This is essential for summarization tasks where previous turns contain key data (e.g. word lists).
+                // FIXED: Limit to 30 cards to prevent token explosion while keeping strong context.
+                const MAX_CONTEXT_CARDS = 30;
+                const limitedNeighborIds = neighborIds.slice(0, MAX_CONTEXT_CARDS);
+
+                if (neighborIds.length > MAX_CONTEXT_CARDS) {
+                    console.warn(`[AI] Context truncated: ${neighborIds.length} connected cards found, using first ${MAX_CONTEXT_CARDS}.`);
+                }
+
                 const contextMessages = [];
-                if (neighborIds.length > 0) {
-                    const neighbors = cards.filter(c => neighborIds.indexOf(c.id) !== -1);
+                if (limitedNeighborIds.length > 0) {
+                    const neighbors = cards.filter(c => limitedNeighborIds.indexOf(c.id) !== -1);
                     const contextText = neighbors.map(c =>
                         `Context from linked card "${c.data.title}": \n${c.data.messages.map(m => {
                             const contentStr = typeof m.content === 'string'

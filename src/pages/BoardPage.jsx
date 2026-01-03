@@ -195,7 +195,9 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
                 {selectedIds.length > 0 && (
                     <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-cyan-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(6,182,212,0.15)] ring-1 ring-cyan-200/20 dark:ring-white/5">
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">{selectedIds.length} ITEMS</span>
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">
+                            {t.toolbar?.itemsSelected ? t.toolbar.itemsSelected.replace('{count}', selectedIds.length) : `${selectedIds.length} ITEMS`}
+                        </span>
                         <div className="h-4 w-px bg-slate-100 dark:bg-white/5"></div>
 
                         {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (

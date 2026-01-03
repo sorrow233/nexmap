@@ -15,6 +15,8 @@ import ChatInput from '../chat/ChatInput';
 import MessageList from '../chat/MessageList';
 import ShareModal from '../share/ShareModal';
 import ChatIndexSidebar from '../chat/ChatIndexSidebar';
+import ChatHeader from '../chat/ChatHeader';
+import ChatSelectionMenu from '../chat/ChatSelectionMenu';
 
 // Stable empty array to prevent infinite re-renders from || [] pattern
 const EMPTY_PENDING_MESSAGES = [];
@@ -166,324 +168,330 @@ export default function ChatView({
         }
     };
 
-    const onSendClick = async (overrideText) => {
-        const handleRetry = async () => {
-            const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
-            if (!lastUserMessage) return;
+    const handleRetry = async () => {
+        const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
+        if (!lastUserMessage) return;
 
-            // BUG FIX: content可能是字符串或数组（包含图片），需要正确提取
-            let textContent = '';
-            let imageContent = [];
+        // BUG FIX: content可能是字符串或数组（包含图片），需要正确提取
+        let textContent = '';
+        let imageContent = [];
 
-            if (typeof lastUserMessage.content === 'string') {
-                textContent = lastUserMessage.content;
-            } else if (Array.isArray(lastUserMessage.content)) {
-                // 多部分内容：提取文本和图片
-                lastUserMessage.content.forEach(part => {
-                    if (part.type === 'text') textContent += part.text;
-                    if (part.type === 'image') imageContent.push(part);
-                });
-            }
+        if (typeof lastUserMessage.content === 'string') {
+            textContent = lastUserMessage.content;
+        } else if (Array.isArray(lastUserMessage.content)) {
+            // 多部分内容：提取文本和图片
+            lastUserMessage.content.forEach(part => {
+                if (part.type === 'text') textContent += part.text;
+                if (part.type === 'image') imageContent.push(part);
+            });
+        }
 
-            if (!textContent.trim() && imageContent.length === 0) return;
+        if (!textContent.trim() && imageContent.length === 0) return;
 
-            setIsStreaming(true);
-            try {
-                await onGenerateResponse(card.id, textContent, imageContent);
-            } catch (e) {
-                console.error('Failed to retry:', e);
-            } finally {
-                setIsStreaming(false);
-            }
-        };
-
-
-        // 停止生成
-        const handleStop = () => {
-            console.log('[ChatView] Stopping generation for card:', card.id);
-            aiManager.cancelByTags([`card:${card.id}`]);
+        setIsStreaming(true);
+        try {
+            await onGenerateResponse(card.id, textContent, imageContent);
+        } catch (e) {
+            console.error('Failed to retry:', e);
+        } finally {
             setIsStreaming(false);
-            // 清空等待队列 (from persistent store)
-            clearPendingMessages(card.id);
-        };
+        }
+    };
 
-        const handleTextSelection = () => {
-            // Use a small timeout to let the selection stabilize (crucial for iOS)
-            setTimeout(() => {
-                const sel = window.getSelection();
-                if (sel && sel.toString().trim().length > 0 && !isStreaming) {
-                    try {
-                        const range = sel.getRangeAt(0);
-                        const rect = range.getBoundingClientRect();
-                        // Ensure the selection is within our messages container
-                        const container = modalRef.current?.querySelector('.messages-container');
-                        if (container && container.contains(range.commonAncestorContainer)) {
-                            setSelection({
-                                text: sel.toString().trim(),
-                                html: range.cloneContents(), // Store fragment
-                                rect: {
-                                    top: rect.top,
-                                    left: rect.left + rect.width / 2
-                                }
-                            });
-                            return;
-                        }
-                    } catch (e) {
-                        console.warn('[Selection] Failed to get range/rect', e);
+    // 停止生成
+    const handleStop = () => {
+        console.log('[ChatView] Stopping generation for card:', card.id);
+        aiManager.cancelByTags([`card:${card.id}`]);
+        setIsStreaming(false);
+        // 清空等待队列 (from persistent store)
+        clearPendingMessages(card.id);
+    };
+
+    const handleTextSelection = () => {
+        // Use a small timeout to let the selection stabilize (crucial for iOS)
+        setTimeout(() => {
+            const sel = window.getSelection();
+            if (sel && sel.toString().trim().length > 0 && !isStreaming) {
+                try {
+                    const range = sel.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    // Ensure the selection is within our messages container
+                    const container = modalRef.current?.querySelector('.messages-container');
+                    if (container && container.contains(range.commonAncestorContainer)) {
+                        setSelection({
+                            text: sel.toString().trim(),
+                            html: range.cloneContents(), // Store fragment
+                            rect: {
+                                top: rect.top,
+                                left: rect.left + rect.width / 2
+                            }
+                        });
+                        return;
                     }
+                } catch (e) {
+                    console.warn('[Selection] Failed to get range/rect', e);
                 }
-                setSelection(null);
-            }, 10);
+            }
+            setSelection(null);
+        }, 10);
+    };
+
+    // Global selection change listener for iPad/Safari stability
+    useEffect(() => {
+        const handleSelectionChange = () => {
+            if (selection) {
+                // If we already have a selection UI, re-validate it
+                // This helps if the user adjusts handle bars on iPad
+                handleTextSelection();
+            }
         };
 
-        // Global selection change listener for iPad/Safari stability
-        useEffect(() => {
-            const handleSelectionChange = () => {
-                if (selection) {
-                    // If we already have a selection UI, re-validate it
-                    // This helps if the user adjusts handle bars on iPad
-                    handleTextSelection();
+        document.addEventListener('selectionchange', handleSelectionChange);
+        return () => document.removeEventListener('selectionchange', handleSelectionChange);
+    }, [selection]);
+
+    const onSendClick = async (overrideText) => {
+        const textToSend = typeof overrideText === 'string' ? overrideText : input;
+        if ((!textToSend || !textToSend.trim()) && images.length === 0) return;
+
+        await sendMessageInternal(textToSend, images);
+        setInput('');
+        clearImages();
+    };
+
+    const addMarkTopic = (e) => {
+        e.stopPropagation();
+        if (!selection) return;
+
+        const text = selection.text;
+        if (text) {
+            onUpdate(card.id, (currentData) => {
+                if (!currentData) return currentData;
+                const currentMarks = currentData.marks || [];
+                if (currentMarks.indexOf(text) === -1) {
+                    return {
+                        ...currentData,
+                        marks: [...currentMarks, text]
+                    };
                 }
-            };
+                return currentData;
+            });
+        }
 
-            document.addEventListener('selectionchange', handleSelectionChange);
-            return () => document.removeEventListener('selectionchange', handleSelectionChange);
-        }, [selection]);
+        // Clear selection
+        window.getSelection()?.removeAllRanges();
+        setSelection(null);
+    };
 
-        const addMarkTopic = (e) => {
-            e.stopPropagation();
-            if (!selection) return;
+    const handleCaptureNote = (e) => {
+        e.stopPropagation();
+        if (!selection || !onCreateNote) return;
 
-            const text = selection.text;
-            if (text) {
-                onUpdate(card.id, (currentData) => {
-                    if (!currentData) return currentData;
-                    const currentMarks = currentData.marks || [];
-                    if (currentMarks.indexOf(text) === -1) {
-                        return {
-                            ...currentData,
-                            marks: [...currentMarks, text]
-                        };
-                    }
-                    return currentData;
-                });
-            }
+        const text = selection.text;
 
-            // Clear selection
-            window.getSelection()?.removeAllRanges();
-            setSelection(null);
-        };
+        // Convert captured HTML to Markdown if available
+        let processedText = text;
+        if (selection.html) {
+            const div = document.createElement('div');
+            div.appendChild(selection.html.cloneNode(true));
+            const md = htmlToMarkdown(div);
+            if (md) processedText = md;
+        }
 
-        const handleCaptureNote = (e) => {
-            e.stopPropagation();
-            if (!selection || !onCreateNote) return;
+        if (processedText) {
+            // 1. Create the note (existing logic)
+            onCreateNote(processedText, true);
 
-            const text = selection.text;
+            // 2. Persist the highlight (New logic)
+            onUpdate(card.id, (currentData) => {
+                if (!currentData) return currentData;
+                const currentNotes = currentData.capturedNotes || [];
+                // Avoid duplicates to keep array clean
+                if (currentNotes.indexOf(text) === -1) {
+                    return {
+                        ...currentData,
+                        capturedNotes: [...currentNotes, text]
+                    };
+                }
+                return currentData;
+            });
+        }
 
-            // Convert captured HTML to Markdown if available
-            let processedText = text;
-            if (selection.html) {
-                const div = document.createElement('div');
-                div.appendChild(selection.html.cloneNode(true));
-                const md = htmlToMarkdown(div);
-                if (md) processedText = md;
-            }
+        // Clear selection
+        window.getSelection()?.removeAllRanges();
+        setSelection(null);
+    };
 
-            if (processedText) {
-                // 1. Create the note (existing logic)
-                onCreateNote(processedText, true);
-
-                // 2. Persist the highlight (New logic)
-                onUpdate(card.id, (currentData) => {
-                    if (!currentData) return currentData;
-                    const currentNotes = currentData.capturedNotes || [];
-                    // Avoid duplicates to keep array clean (check against raw text to allow repeated structure if content diff? 
-                    // actually stick with text check for simplicitly or rely on id)
-                    if (currentNotes.indexOf(text) === -1) {
-                        return {
-                            ...currentData,
-                            capturedNotes: [...currentNotes, text] // Keep raw text for highlight matching?
-                        };
-                    }
-                    return currentData;
-                });
-            }
-
-            // Clear selection
-            window.getSelection()?.removeAllRanges();
-            setSelection(null);
-        };
-
-        return (
-            <div
-                ref={modalRef}
-                className={`w-full h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in relative z-10 transition-all duration-500
+    return (
+        <div
+            ref={modalRef}
+            className={`w-full h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in relative z-10 transition-all duration-500
                 ${isFullScreen
-                        ? 'bg-white dark:bg-slate-900'
-                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
-                    }`}
-                style={{ willChange: 'transform, opacity' }}
-                onMouseUp={handleTextSelection}
-                onTouchEnd={handleTextSelection}
-            >
-                {/* Floating Action Menu */}
-                {selection && (
-                    <div
-                        className="fixed z-[110] flex gap-2 -translate-x-1/2 -translate-y-[130%] animate-bounce-in transition-all"
-                        style={{
-                            top: selection.rect.top,
-                            left: selection.rect.left
-                        }}
+                    ? 'bg-white dark:bg-slate-900'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
+                }`}
+            style={{ willChange: 'transform, opacity' }}
+            onMouseUp={handleTextSelection}
+            onTouchEnd={handleTextSelection}
+        >
+            {/* Floating Action Menu */}
+            {selection && (
+                <div
+                    className="fixed z-[110] flex gap-2 -translate-x-1/2 -translate-y-[130%] animate-bounce-in transition-all"
+                    style={{
+                        top: selection.rect.top,
+                        left: selection.rect.left
+                    }}
+                >
+                    <button
+                        onClick={handleCaptureNote}
+                        className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-105 active:scale-95"
                     >
-                        <button
-                            onClick={handleCaptureNote}
-                            className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-105 active:scale-95"
-                        >
-                            <StickyNote size={14} className="text-brand-500" />
-                            {t.chat.captureAsNote}
-                        </button>
-                        <button
-                            onClick={addMarkTopic}
-                            className="bg-brand-600 text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 hover:bg-brand-500 transition-all hover:scale-105 active:scale-95 border border-white/10"
-                        >
-                            <Star size={14} />
-                            {t.chat.markTopic}
-                        </button>
-                    </div>
-                )}
+                        <StickyNote size={14} className="text-brand-500" />
+                        {t.chat.captureAsNote}
+                    </button>
+                    <button
+                        onClick={addMarkTopic}
+                        className="bg-brand-600 text-white px-4 py-2 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 hover:bg-brand-500 transition-all hover:scale-105 active:scale-95 border border-white/10"
+                    >
+                        <Star size={14} />
+                        {t.chat.markTopic}
+                    </button>
+                </div>
+            )}
 
-                {/* Minimal Header (Top on Mobile, Left Sidebar on Desktop) */}
-                <div className="shrink-0 z-20 w-full h-20 px-6 flex flex-row items-center justify-between border-b border-slate-100 dark:border-white/5
+            {/* Minimal Header (Top on Mobile, Left Sidebar on Desktop) */}
+            <div className="shrink-0 z-20 w-full h-20 px-6 flex flex-row items-center justify-between border-b border-slate-100 dark:border-white/5
                 lg:w-16 lg:h-full lg:flex-col lg:justify-between lg:py-8 lg:px-0 lg:border-none transition-all group/sidebar">
 
-                    {/* Top/Left Section: Icon & Title */}
-                    <div className="flex items-center gap-4 lg:flex-col lg:gap-8 opacity-40 group-hover/sidebar:opacity-100 transition-all duration-500">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 shrink-0 ${card.type === 'note' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-br from-brand-600 to-brand-700 shadow-brand-500/20'}`}>
-                            {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : <Star size={24} className="text-white" />}
-                        </div>
+                {/* Top/Left Section: Icon & Title */}
+                <div className="flex items-center gap-4 lg:flex-col lg:gap-8 opacity-40 group-hover/sidebar:opacity-100 transition-all duration-500">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 shrink-0 ${card.type === 'note' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-br from-brand-600 to-brand-700 shadow-brand-500/20'}`}>
+                        {card.type === 'note' ? <StickyNote size={24} className="text-white" /> : <Star size={24} className="text-white" />}
+                    </div>
 
-                        <div className="flex flex-col min-w-0 lg:hidden">
-                            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg tracking-tight leading-tight truncate font-sans">
-                                {card.data.title || (card.type === 'note' ? t.chat.insightArchive : t.chat.conversation)}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] uppercase tracking-[0.2em] font-black text-brand-600 dark:text-brand-400">
-                                    {card.type === 'note' ? t.chat.neuralNotepad : t.chat.neuralReader}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Desktop Vertical Title */}
-                        <div className="hidden lg:block [writing-mode:vertical-rl] text-center font-bold text-slate-300 dark:text-slate-600 tracking-[0.4em] text-xs select-none cursor-default opacity-0 group-hover/sidebar:opacity-100 transition-all duration-700 max-h-[50vh] overflow-hidden whitespace-nowrap">
+                    <div className="flex flex-col min-w-0 lg:hidden">
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg tracking-tight leading-tight truncate font-sans">
                             {card.data.title || (card.type === 'note' ? t.chat.insightArchive : t.chat.conversation)}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] uppercase tracking-[0.2em] font-black text-brand-600 dark:text-brand-400">
+                                {card.type === 'note' ? t.chat.neuralNotepad : t.chat.neuralReader}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Bottom/Right Section: Actions */}
-                    <div className="flex items-center gap-3 lg:flex-col lg:gap-4 lg:mb-2 opacity-30 group-hover/sidebar:opacity-100 transition-all duration-500">
-                        {card.data.marks?.length > 0 && (
-                            <button
-                                onClick={() => onUpdate(card.id, (currentData) => ({ ...currentData, marks: [] }))}
-                                className="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                                title="Clear Marks"
-                            >
-                                <span className="text-[10px] font-bold">{card.data.marks.length}</span>
-                            </button>
-                        )}
+                    {/* Desktop Vertical Title */}
+                    <div className="hidden lg:block [writing-mode:vertical-rl] text-center font-bold text-slate-300 dark:text-slate-600 tracking-[0.4em] text-xs select-none cursor-default opacity-0 group-hover/sidebar:opacity-100 transition-all duration-700 max-h-[50vh] overflow-hidden whitespace-nowrap">
+                        {card.data.title || (card.type === 'note' ? t.chat.insightArchive : t.chat.conversation)}
+                    </div>
+                </div>
 
-                        {/* Sprout Button */}
+                {/* Bottom/Right Section: Actions */}
+                <div className="flex items-center gap-3 lg:flex-col lg:gap-4 lg:mb-2 opacity-30 group-hover/sidebar:opacity-100 transition-all duration-500">
+                    {card.data.marks?.length > 0 && (
                         <button
-                            onClick={handleSproutClick}
-                            disabled={isSprouting || isStreaming}
-                            className={`group flex items-center justify-center gap-2 rounded-full font-bold text-xs uppercase tracking-widest transition-all
+                            onClick={() => onUpdate(card.id, (currentData) => ({ ...currentData, marks: [] }))}
+                            className="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                            title="Clear Marks"
+                        >
+                            <span className="text-[10px] font-bold">{card.data.marks.length}</span>
+                        </button>
+                    )}
+
+                    {/* Sprout Button */}
+                    <button
+                        onClick={handleSproutClick}
+                        disabled={isSprouting || isStreaming}
+                        className={`group flex items-center justify-center gap-2 rounded-full font-bold text-xs uppercase tracking-widest transition-all
                             ${isSprouting
-                                    ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 w-10 h-10 lg:w-12 lg:h-12'
-                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 h-10 px-4 lg:px-0 lg:w-12 lg:h-12'
-                                }`}
-                            title="Sprout Ideas"
-                        >
-                            {isSprouting ? <Loader2 size={18} className="animate-spin" /> : <Sprout size={18} />}
-                            <span className="lg:hidden">{isSprouting ? 'Thinking...' : 'Sprout'}</span>
-                        </button>
+                                ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 w-10 h-10 lg:w-12 lg:h-12'
+                                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 h-10 px-4 lg:px-0 lg:w-12 lg:h-12'
+                            }`}
+                        title="Sprout Ideas"
+                    >
+                        {isSprouting ? <Loader2 size={18} className="animate-spin" /> : <Sprout size={18} />}
+                        <span className="lg:hidden">{isSprouting ? 'Thinking...' : 'Sprout'}</span>
+                    </button>
 
-                        <button
-                            onClick={onClose}
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all"
-                        >
-                            <X size={24} />
-                        </button>
-                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all"
+                    >
+                        <X size={24} />
+                    </button>
                 </div>
+            </div>
 
-                {/* Sprout Modal Overlay */}
-                <SproutModal
-                    isOpen={showSproutModal}
-                    onClose={() => setShowSproutModal(false)}
-                    topics={sproutTopics}
-                    selectedTopics={selectedTopics}
-                    onToggleTopic={toggleTopicSelection}
-                    onConfirm={handleConfirmSprout}
-                />
+            {/* Sprout Modal Overlay */}
+            <SproutModal
+                isOpen={showSproutModal}
+                onClose={() => setShowSproutModal(false)}
+                topics={sproutTopics}
+                selectedTopics={selectedTopics}
+                onToggleTopic={toggleTopicSelection}
+                onConfirm={handleConfirmSprout}
+            />
 
-                {/* Main Content Column */}
-                <div className="flex flex-col flex-grow min-w-0 h-full overflow-hidden relative">
-                    {/* Reader Layout Area - Flex container for content + sidebar */}
-                    <div className="flex flex-grow overflow-hidden relative">
+            {/* Main Content Column */}
+            <div className="flex flex-col flex-grow min-w-0 h-full overflow-hidden relative">
+                {/* Reader Layout Area - Flex container for content + sidebar */}
+                <div className="flex flex-grow overflow-hidden relative">
 
-                        {/* Main Content Area */}
-                        <MessageList
-                            card={card}
-                            messagesEndRef={messagesEndRef}
-                            scrollContainerRef={scrollContainerRef}
-                            handleScroll={handleScroll}
-                            isStreaming={isStreaming}
-                            handleRetry={handleRetry}
-                            parseModelOutput={parseModelOutput}
-                            onUpdate={onUpdate}
-                            onShare={(content) => setShareContent(content)}
-                            onToggleFavorite={onToggleFavorite}
-                            pendingCount={pendingCount}
-                            onContinueTopic={() => handleContinueTopic(card.id, handleSendMessageFromSprout)}
-                            onBranch={() => handleBranch(card.id)}
-                        />
-
-                        {/* Sidebar Index for Quick Navigation */}
-                        {card.type !== 'note' && (
-                            <ChatIndexSidebar
-                                messages={card.data.messages || []}
-                                onScrollTo={(index) => {
-                                    const el = document.getElementById(`message-${index}`);
-                                    if (el) {
-                                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    }
-                                }}
-                            />
-                        )}
-                    </div>
-
-                    {/* Premium Input Bar */}
-                    <ChatInput
-                        input={input}
-                        setInput={setInput}
-                        handleSend={onSendClick}
-                        handlePaste={handlePaste}
-                        handleImageUpload={handleImageUpload}
-                        images={images}
-                        removeImage={removeImage}
-                        fileInputRef={fileInputRef}
+                    {/* Main Content Area */}
+                    <MessageList
+                        card={card}
+                        messagesEndRef={messagesEndRef}
+                        scrollContainerRef={scrollContainerRef}
+                        handleScroll={handleScroll}
                         isStreaming={isStreaming}
-                        onStop={handleStop}
-                        placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
-                        instructions={instructions}
+                        handleRetry={handleRetry}
+                        parseModelOutput={parseModelOutput}
+                        onUpdate={onUpdate}
+                        onShare={(content) => setShareContent(content)}
+                        onToggleFavorite={onToggleFavorite}
+                        pendingCount={pendingCount}
+                        onContinueTopic={() => handleContinueTopic(card.id, handleSendMessageFromSprout)}
+                        onBranch={() => handleBranch(card.id)}
                     />
+
+                    {/* Sidebar Index for Quick Navigation */}
+                    {card.type !== 'note' && (
+                        <ChatIndexSidebar
+                            messages={card.data.messages || []}
+                            onScrollTo={(index) => {
+                                const el = document.getElementById(`message-${index}`);
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                            }}
+                        />
+                    )}
                 </div>
 
-                {/* Share Modal */}
-                <ShareModal
-                    isOpen={!!shareContent}
-                    onClose={() => setShareContent(null)}
+                {/* Premium Input Bar */}
+                <ChatInput
+                    input={input}
+                    setInput={setInput}
+                    handleSend={onSendClick}
+                    handlePaste={handlePaste}
+                    handleImageUpload={handleImageUpload}
+                    images={images}
+                    removeImage={removeImage}
+                    fileInputRef={fileInputRef}
+                    isStreaming={isStreaming}
+                    onStop={handleStop}
+                    placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
+                    instructions={instructions}
                 />
             </div>
-        );
-    }
+
+            {/* Share Modal */}
+            <ShareModal
+                isOpen={!!shareContent}
+                onClose={() => setShareContent(null)}
+            />
+        </div>
+    );
+}
 

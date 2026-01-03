@@ -34,7 +34,40 @@ export const app = {
         selectConnected: "Select Connected Cluster",
         createZone: "Create Zone (Group)",
         gridLayout: "Grid Layout",
-        appendToChat: "Append to selected cards' chat"
+        appendToChat: "Append to selected cards' chat",
+        selected: "Selected",
+        batchChat: "Batch Chat",
+        clearChoices: "Clear choices"
+    },
+    ai: {
+        notifications: {
+            creditsExhausted: {
+                title: "⚠️ Free Credits Exhausted",
+                message: "You have used your 100 free credits. To continue using AI features, please configure your own API Key in settings.",
+                action: "👉 Click settings button in top right to add your GMI API Key."
+            },
+            serviceUnavailable: {
+                title: "⚠️ AI Service Temporarily Unavailable",
+                message: "The AI service is busy or temporarily offline. Please try again in a moment.",
+                englishMessage: "",
+                action: "💡 Click regenerate to try again"
+            },
+            rateLimit: {
+                title: "⚠️ Rate Limited",
+                message: "Please wait a few seconds before trying again.",
+                englishMessage: ""
+            },
+            timeout: {
+                title: "⚠️ Request Timeout",
+                message: "The server took too long to respond. Please try again.",
+                englishMessage: ""
+            },
+            genericError: {
+                title: "⚠️ Generation Failed",
+                action: "💡 Please try again, check API settings if issue persists"
+            }
+        },
+        stopGeneration: "Stop Generation"
     },
     gallery: {
         gallery: "Gallery",
@@ -108,7 +141,8 @@ export const app = {
         sprout: "Sprout",
         zone: "Zone",
         delete: "Delete",
-        expand: "Expand"
+        expand: "Expand",
+        itemsSelected: "{count} ITEMS"
     },
     favorites: {
         collection: "Collection",

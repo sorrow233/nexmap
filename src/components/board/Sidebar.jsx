@@ -9,19 +9,10 @@ import { useParams } from 'react-router-dom';
 import { updateUserSettings } from '../../services/syncService';
 import { auth } from '../../services/firebase';
 
+import { TAG_COLORS, getRandomColor, getColorForString } from '../../utils/colors';
+
 const GLOBAL_PROMPTS_KEY = 'mixboard_global_prompts';
 const MAX_NAME_LENGTH = 10;
-
-// Notion-like clear vibrant colors
-const TAG_COLORS = [
-    'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
-    'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-    'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-    'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20',
-    'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
-];
-
-const getRandomColor = () => TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
 
 // Moved outside Sidebar to prevent re-creation on every render
 const AddInput = ({ type, onCancel, newName, setNewName, newContent, setNewContent, onSubmit, t }) => (
@@ -194,9 +185,9 @@ export default function Sidebar({ className = "" }) {
     };
 
     const PromptTag = ({ prompt, type }) => {
-        const colorClass = prompt.color || getRandomColor();
-        // Use prompt.name for display, fallback to prompt.text
         const displayName = prompt.name || prompt.text;
+        const colorClass = prompt.color || getColorForString(displayName);
+        // Use prompt.name for display, fallback to prompt.text
 
         return (
             <div

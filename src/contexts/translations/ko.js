@@ -205,7 +205,38 @@ export const ko = {
         selectConnected: "연결된 클러스터 선택",
         createZone: "Zone 만들기 (그룹)",
         gridLayout: "그리드 레이아웃",
-        appendToChat: "선택한 카드의 채팅에 추가"
+        appendToChat: "선택한 카드의 채팅에 추가",
+        selected: "선택됨"
+    },
+    ai: {
+        notifications: {
+            creditsExhausted: {
+                title: "⚠️ 무료 크레딧 소진",
+                message: "100 크레딧 무료 한도를 모두 사용했습니다. AI 기능을 계속 사용하려면 설정에서 자체 API 키를 구성하십시오.",
+                action: "👉 오른쪽 상단의 설정 버튼을 클릭하여 GMI API 키를 추가하십시오."
+            },
+            serviceUnavailable: {
+                title: "⚠️ AI 서비스를 일시적으로 사용할 수 없음",
+                message: "서버가 사용 중이거나 일시적으로 오프라인 상태입니다. 잠시 후 다시 시도하십시오.",
+                englishMessage: "The AI service is busy or temporarily offline. Please try again in a moment.",
+                action: "💡 재생성 버튼을 클릭하여 다시 시도하십시오"
+            },
+            rateLimit: {
+                title: "⚠️ 요청이 너무 많음",
+                message: "몇 초 후에 다시 시도하십시오.",
+                englishMessage: "Please wait a few seconds before trying again."
+            },
+            timeout: {
+                title: "⚠️ 요청 시간 초과",
+                message: "서버 응답 시간이 너무 깁니다. 다시 시도하십시오.",
+                englishMessage: "The server took too long to respond. Please try again."
+            },
+            genericError: {
+                title: "⚠️ 생성 실패",
+                action: "💡 다시 시도하십시오. 문제가 지속되면 API 설정을 확인하십시오"
+            }
+        },
+        stopGeneration: "생성 중지"
     },
     gallery: {
         gallery: "갤러리",
@@ -455,7 +486,8 @@ export const ko = {
         sprout: "발아",
         zone: "Zone",
         delete: "삭제",
-        expand: "확장"
+        expand: "확장",
+        itemsSelected: "{count} 개 항목"
     },
     aboutPage: {
         backToHome: "홈으로 돌아가기",

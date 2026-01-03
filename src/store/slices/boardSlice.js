@@ -40,7 +40,6 @@ export const createBoardSlice = (set, get) => ({
         const next = get().globalPrompts.map(p => p.id === id ? { ...p, ...updates } : p);
         get().setGlobalPrompts(next);
     },
-    boardPrompts: [],
 
     addBoardPrompt: (promptOrText) => set((state) => {
         const newPrompt = typeof promptOrText === 'object'

@@ -3,6 +3,8 @@ import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, Mes
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
+import InstructionChips from './chat/InstructionChips';
+import { getColorForString } from '../utils/colors';
 
 /**
  * ChatBar Component - Integrated Card Style Redesign
@@ -134,35 +136,13 @@ const ChatBar = React.memo(function ChatBar({
                         </AnimatePresence>
 
                         {/* Instruction Chips */}
-                        <AnimatePresence>
-                            {(instructions.length > 0) && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="px-6 pt-4 flex flex-wrap gap-1 items-center"
-                                >
-                                    {instructions.map((inst, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleQuickSend(inst.content || inst.text)}
-                                            className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 hover:text-cyan-500 border border-slate-200/50 dark:border-white/10 rounded-full text-[10px] font-bold transition-all active:scale-95 shrink-0 flex items-center gap-1"
-                                        >
-                                            <Star size={8} className="fill-current" />
-                                            <span>{inst.name || inst.text}</span>
-                                        </button>
-                                    ))}
-                                    {onClearInstructions && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onClearInstructions(); }}
-                                            className="p-1 text-slate-300 hover:text-red-400 transition-colors ml-auto"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <div className="px-6 pt-4">
+                            <InstructionChips
+                                instructions={instructions}
+                                onSelect={handleQuickSend}
+                                onClear={onClearInstructions}
+                            />
+                        </div>
 
                         {/* Main Interaction Row */}
                         <div className="flex items-end gap-2 px-6 py-4">
@@ -247,7 +227,7 @@ const ChatBar = React.memo(function ChatBar({
                                     <MiniActionBtn onClick={() => onDelete && onDelete()} icon={<Trash2 size={10} />} color="text-red-400" />
                                     <div className="flex-1" />
                                     <span className="text-[9px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-tighter">
-                                        {selectedIds.length} Selected
+                                        {selectedIds.length} {t.chatBar.selected}
                                     </span>
                                 </motion.div>
                             )}

@@ -205,7 +205,38 @@ export const ja = {
         selectConnected: "接続されたクラスタを選択",
         createZone: "ゾーンを作成（グループ化）",
         gridLayout: "グリッドレイアウト",
-        appendToChat: "選択したカードのチャットに追加"
+        appendToChat: "選択したカードのチャットに追加",
+        selected: "選択済み"
+    },
+    ai: {
+        notifications: {
+            creditsExhausted: {
+                title: "⚠️ 無料クレジットを使い切りました",
+                message: "100クレジットの無料枠を使い切りました。AI機能を引き続き使用するには、設定で独自のAPIキーを構成してください。",
+                action: "👉 右上の設定ボタンをクリックして、GMI APIキーを追加してください。"
+            },
+            serviceUnavailable: {
+                title: "⚠️ AIサービスは一時的に利用できません",
+                message: "サーバーが混雑しているか、一時的にオフラインです。しばらくしてからもう一度お試しください。",
+                englishMessage: "The AI service is busy or temporarily offline. Please try again in a moment.",
+                action: "💡 再生成ボタンをクリックして、もう一度お試しください"
+            },
+            rateLimit: {
+                title: "⚠️ リクエストが頻繁すぎます",
+                message: "数秒待ってからもう一度お試しください。",
+                englishMessage: "Please wait a few seconds before trying again."
+            },
+            timeout: {
+                title: "⚠️ リクエストタイムアウト",
+                message: "サーバーの応答に時間がかかりすぎています。もう一度お試しください。",
+                englishMessage: "The server took too long to respond. Please try again."
+            },
+            genericError: {
+                title: "⚠️ 生成に失敗しました",
+                action: "💡 もう一度お試しください。問題が解決しない場合はAPI設定を確認してください"
+            }
+        },
+        stopGeneration: "生成を停止"
     },
     gallery: {
         gallery: "ギャラリー",
@@ -455,7 +486,8 @@ export const ja = {
         sprout: "発芽",
         zone: "Zone",
         delete: "削除",
-        expand: "展開"
+        expand: "展開",
+        itemsSelected: "{count} 項目"
     },
     aboutPage: {
         backToHome: "ホームに戻る",

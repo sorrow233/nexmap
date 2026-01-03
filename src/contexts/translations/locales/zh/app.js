@@ -34,7 +34,40 @@ export const app = {
         selectConnected: "选择连接的集群",
         createZone: "创建区域（分组）",
         gridLayout: "网格布局",
-        appendToChat: "追加到选中卡片的对话"
+        appendToChat: "追加到选中卡片的对话",
+        selected: "已选择",
+        batchChat: "批量对话",
+        clearChoices: "清除选择"
+    },
+    ai: {
+        notifications: {
+            creditsExhausted: {
+                title: "⚠️ 免费试用积分已用完",
+                message: "您的100积分免费额度已使用完毕。要继续使用AI功能，请在设置中配置您自己的API Key。",
+                action: "👉 点击右上角设置按钮，添加您的GMI API Key。"
+            },
+            serviceUnavailable: {
+                title: "⚠️ AI服务暂时不可用 / AI Service Temporarily Unavailable",
+                message: "服务器繁忙或暂时离线，请稍后重试。",
+                englishMessage: "The AI service is busy or temporarily offline. Please try again in a moment.",
+                action: "💡 点击重新生成按钮再试一次"
+            },
+            rateLimit: {
+                title: "⚠️ 请求过于频繁 / Rate Limited",
+                message: "请等待几秒后再试。",
+                englishMessage: "Please wait a few seconds before trying again."
+            },
+            timeout: {
+                title: "⚠️ 请求超时 / Request Timeout",
+                message: "服务器响应时间过长，请重试。",
+                englishMessage: "The server took too long to respond. Please try again."
+            },
+            genericError: {
+                title: "⚠️ 生成失败 / Generation Failed",
+                action: "💡 请重试，如果问题持续请检查API设置"
+            }
+        },
+        stopGeneration: "停止生成"
     },
     gallery: {
         gallery: "画廊",
@@ -81,7 +114,9 @@ export const app = {
         capturedInsight: "已捕获的洞见",
         clearMarks: "清除标记",
         thinking: "思考中...",
-        sproutIdeas: "发芽灵感",
+        sproutIdeas: "发散新想法",
+        selectTopic: "选择你想回答的问题:",
+        generateCards: "生成 {count} 张卡片",
         quickSprout: "发芽",
         branch: "分支",
         captureAsNote: "捕获为便签",
@@ -108,7 +143,8 @@ export const app = {
         sprout: "发芽",
         zone: "分区",
         delete: "删除",
-        expand: "展开"
+        expand: "展开",
+        itemsSelected: "{count} 个项目"
     },
     favorites: {
         collection: "收藏集",

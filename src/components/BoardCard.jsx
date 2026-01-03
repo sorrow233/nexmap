@@ -73,7 +73,7 @@ export default function BoardCard({
                 className={`
                     group relative flex flex-col cursor-pointer transition-all duration-300 ${shouldAnimate ? 'animate-fade-in-up' : ''}
                     rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden
-                    hover:shadow-2xl hover:border-indigo-500/30 dark:hover:border-indigo-400/30 hover:-translate-y-1
+                    hover:shadow-2xl hover:border-cyan-500/30 dark:hover:border-cyan-400/30 hover:-translate-y-1
                     bg-white dark:bg-[#0A0A0A]
                     ${isTrashView ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : ''}
                 `}
@@ -163,7 +163,7 @@ export default function BoardCard({
 
                     <div className="mt-auto flex items-center justify-between text-xs font-semibold text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
                         <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${board.cardCount > 0 ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-neutral-700'}`} />
+                            <span className={`w-2 h-2 rounded-full ${board.cardCount > 0 ? 'bg-cyan-500' : 'bg-slate-300 dark:bg-neutral-700'}`} />
                             <span>{board.cardCount || 0} Cards</span>
                         </div>
                         <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
@@ -263,7 +263,7 @@ export default function BoardCard({
                                     <button
                                         onClick={(e) => handleImageButtonClick(e, board.id)}
                                         disabled={generatingBoardId === board.id}
-                                        className="w-8 h-8 rounded-xl bg-white text-slate-400 hover:text-indigo-500 shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-slate-100"
+                                        className="w-8 h-8 rounded-xl bg-white text-slate-400 hover:text-cyan-500 shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-slate-100"
                                     >
                                         {generatingBoardId === board.id ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
                                     </button>
@@ -293,7 +293,7 @@ export default function BoardCard({
             {/* Content (Title/Stats) - STANDARD footer for non-summary cards */}
             {(!board.summary) && (
                 <div className={`absolute inset-x-0 bottom-0 p-4`}>
-                    <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-indigo-200 transition-colors font-inter-tight">
+                    <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-cyan-200 transition-colors font-inter-tight">
                         {board.name}
                     </h3>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">

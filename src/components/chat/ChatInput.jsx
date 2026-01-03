@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react';
 import { X, Send, Image as ImageIcon, Square, Send as SendIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { getColorForString } from '../../utils/colors';
+import InstructionChips from './InstructionChips';
 
 /**
  * ChatInput Component - Integrated Card Style
@@ -19,8 +21,11 @@ export default function ChatInput({
     onStop,
     placeholder,
     instructions = [],
+    instructions = [],
     onClearInstructions
 }) {
+    const { t } = useLanguage();
+
     const handleTextareaInput = (e) => {
         e.target.style.height = 'auto';
         e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
@@ -89,42 +94,13 @@ export default function ChatInput({
                     {/* Footer Actions */}
                     <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
                         {/* Instructions Chips List */}
-                        <AnimatePresence>
-                            {instructions.length > 0 && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className="flex flex-wrap gap-1.5 mb-2 px-8 items-center"
-                                >
-                                    {instructions.map((inst, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleQuickSend(inst.content || inst.text)}
-                                            disabled={isStreaming}
-                                            className="group flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-cyan-500 border border-slate-200/50 dark:border-white/10 rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold"
-                                        >
-                                            <Star size={10} className="fill-current text-slate-300 group-hover:text-cyan-300" />
-                                            <span className="text-[10px] tracking-tight truncate max-w-[120px]">
-                                                {inst.name || inst.text}
-                                            </span>
-                                        </button>
-                                    ))}
-                                    {onClearInstructions && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onClearInstructions();
-                                            }}
-                                            className="p-1.5 text-slate-300 hover:text-red-400 transition-colors ml-auto"
-                                            title="Clear choices"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <InstructionChips
+                            instructions={instructions}
+                            onSelect={handleQuickSend}
+                            onClear={onClearInstructions}
+                            disabled={isStreaming}
+                            className="mb-2 px-8"
+                        />
 
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1">
@@ -143,7 +119,7 @@ export default function ChatInput({
                                     <button
                                         onClick={onStop}
                                         className="w-12 h-12 bg-red-500 text-white rounded-[1rem] shadow-lg shadow-red-500/20 hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse"
-                                        title="停止生成"
+                                        title={t.ai?.stopGeneration || "Stop Generation"}
                                     >
                                         <Square size={20} fill="currentColor" />
                                     </button>
