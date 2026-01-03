@@ -256,9 +256,9 @@ body,
     }
 
     .glass-card-hover {
-        background: linear-gradient(135deg, rgba(255, 254, 249, 0.95) 0%, rgba(255, 244, 235, 0.85) 100%);
-        border-color: rgba(255, 180, 162, 0.25);
-        box-shadow: 0 8px 32px rgba(255, 180, 162, 0.12), 0 4px 16px rgba(74, 74, 74, 0.06);
+        background: linear-gradient(135deg, rgba(255, 254, 249, 0.95) 0%, rgba(225, 250, 252, 0.85) 100%);
+        border-color: rgba(6, 182, 212, 0.25);
+        box-shadow: 0 8px 32px rgba(6, 182, 212, 0.12), 0 4px 16px rgba(74, 74, 74, 0.06);
         transform: translateY(-6px);
     }
 
@@ -289,7 +289,7 @@ body,
 
     /* --- Text Gradients --- Japanese Warm Tones */
     .text-gradient {
-        background: linear-gradient(135deg, #FF9D80 0%, #FFB4A2 50%, #FF8A73 100%);
+        background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 50%, #0891b2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -311,7 +311,7 @@ body,
 
     @media (prefers-color-scheme: dark) {
         .text-gradient {
-            background: linear-gradient(135deg, #FFB4A2 0%, #FFC9BA 50%, #FFD4C8 100%);
+            background: linear-gradient(135deg, #22d3ee 0%, #67e8f9 50%, #a5f3fc 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -465,13 +465,13 @@ body,
 
         0%,
         100% {
-            box-shadow: 0 0 15px 2px rgba(255, 251, 230, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px 2px rgba(6, 182, 212, 0.1);
+            border-color: rgba(6, 182, 212, 0.2);
         }
 
         50% {
-            box-shadow: 0 0 30px 5px rgba(255, 251, 230, 0.3);
-            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 30px 5px rgba(6, 182, 212, 0.3);
+            border-color: rgba(6, 182, 212, 0.4);
         }
     }
 
@@ -491,9 +491,9 @@ body,
     .bg-mesh-gradient {
         background-color: #FAF8F3;
         background-image:
-            radial-gradient(at 0% 0%, rgba(255, 180, 162, 0.12) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(180, 199, 217, 0.12) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(255, 228, 225, 0.15) 0px, transparent 50%),
+            radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(34, 211, 238, 0.12) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(8, 145, 178, 0.15) 0px, transparent 50%),
             radial-gradient(at 0% 100%, rgba(200, 230, 201, 0.12) 0px, transparent 50%);
         background-size: 150% 150%;
         /* animation: mesh-breathe 20s ease-in-out infinite alternate; - Disabled for performance */
