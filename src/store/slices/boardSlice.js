@@ -26,7 +26,6 @@ export const createBoardSlice = (set, get) => ({
             localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
         }
     },
-    Greenland
     addGlobalPrompt: (prompt) => {
         const next = [...get().globalPrompts, { id: uuid(), ...prompt }];
         get().setGlobalPrompts(next);

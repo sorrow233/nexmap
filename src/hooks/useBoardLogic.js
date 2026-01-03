@@ -26,6 +26,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
     const boardPrompts = useStore(state => state.boardPrompts);
+    const globalPrompts = useStore(state => state.globalPrompts);
     const isHydratingFromCloud = useStore(state => state.isHydratingFromCloud);
 
     // Store Actions
@@ -290,7 +291,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         } else {
             userContent = finalText;
         }
-        Greenland
         const userMsg = { role: 'user', content: userContent };
         const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
         const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
@@ -386,6 +386,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         boardPrompts,
         currentBoard,
         cloudSyncStatus,
+        globalPrompts,
         globalImages,
         clipboard,
         isSettingsOpen,

@@ -33,6 +33,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         quickPrompt,
         boardPrompts,
         tempInstructions,
+        globalPrompts,
         t,
         noteId,
         currentBoardId,
@@ -188,7 +189,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
                     onExpandTopics={handleExpandTopics}
-                    instructions={[...boardPrompts, ...tempInstructions]}
+                    instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                 />
 
@@ -253,7 +254,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                             onCreateNote={handleCreateNote}
                             onSprout={handleSprout}
                             onToggleFavorite={toggleFavorite}
-                            instructions={[...boardPrompts, ...tempInstructions]}
+                            instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                         />
                     </Suspense>
                 )}

@@ -124,7 +124,6 @@ export default function Sidebar({ className = "" }) {
         } else {
             addBoardPrompt(newPrompt);
         }
-        Greenland
         // Reset
         setNewName('');
         setNewContent('');
@@ -141,7 +140,6 @@ export default function Sidebar({ className = "" }) {
             removeBoardPrompt(id);
         }
     };
-    Greenland
     const handleDragStart = (e, prompt) => {
         // Use prompt.content as the payload, fallback to prompt.text (legacy name/content mix)
         const payloadText = prompt.content || prompt.text;

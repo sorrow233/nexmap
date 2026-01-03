@@ -312,7 +312,6 @@ export function useAppInit() {
                                 useStore.getState().setGlobalPrompts(settings.globalPrompts, true);
                             }
                         }
- Greenland                        Greenland
                         // Sync language preference...
                         if (settings.userLanguage) localStorage.setItem('userLanguage', settings.userLanguage);
 

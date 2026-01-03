@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * ChatInput Component - Integrated Card Style
- * 支持顶部输入，底部操作区，以及画布 Prompt 标签集成。
+ * 采用青色系 (Cyan) 极简风格，对齐 ChatBar。
  */
 export default function ChatInput({
     input,
@@ -31,6 +31,14 @@ export default function ChatInput({
         handleSend(text);
     };
 
+    const handleKeyDown = (e) => {
+        // Enter 直接发送，Shift + Enter 换行
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
     const canSend = input.trim() || images.length > 0;
 
     return (
@@ -38,7 +46,7 @@ export default function ChatInput({
             <div className="max-w-4xl mx-auto w-full relative">
                 <motion.div
                     layout
-                    className="relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl rounded-[2.5rem] border border-pink-100/50 dark:border-white/10 shadow-[0_8px_32px_rgba(244,114,182,0.1)] ring-1 ring-pink-200/20 dark:ring-white/5 overflow-hidden flex flex-col transition-all focus-within:ring-pink-300/40"
+                    className="relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl rounded-[1.8rem] border border-cyan-100/50 dark:border-white/10 shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 overflow-hidden flex flex-col transition-all focus-within:ring-cyan-400/30"
                 >
                     {/* Images Container */}
                     <AnimatePresence>
@@ -65,17 +73,12 @@ export default function ChatInput({
                     </AnimatePresence>
 
                     {/* Textarea Area */}
-                    <div className="px-8 pt-8 pb-3">
+                    <div className="px-8 pt-6 pb-2">
                         <textarea
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onInput={handleTextareaInput}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                                    e.preventDefault();
-                                    handleSend();
-                                }
-                            }}
+                            onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
                             className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[160px] scrollbar-hide"
                             placeholder={placeholder}
@@ -99,9 +102,9 @@ export default function ChatInput({
                                             key={idx}
                                             onClick={() => handleQuickSend(inst.content || inst.text)}
                                             disabled={isStreaming}
-                                            className="group flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-pink-500 border border-slate-200/50 dark:border-white/10 rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold"
+                                            className="group flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-cyan-500 border border-slate-200/50 dark:border-white/10 rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold"
                                         >
-                                            <Star size={10} className="fill-current text-slate-300 group-hover:text-pink-300" />
+                                            <Star size={10} className="fill-current text-slate-300 group-hover:text-cyan-300" />
                                             <span className="text-[10px] tracking-tight truncate max-w-[120px]">
                                                 {inst.name || inst.text}
                                             </span>
@@ -129,16 +132,13 @@ export default function ChatInput({
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isStreaming}
-                                    className="p-2.5 text-slate-400 hover:text-pink-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
+                                    className="p-2.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
                                 >
                                     <ImageIcon size={20} />
                                 </button>
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest hidden sm:block">
-                                    CMD + ENTER
-                                </span>
                                 {isStreaming ? (
                                     <button
                                         onClick={onStop}
@@ -156,8 +156,8 @@ export default function ChatInput({
                                         className={`
                                             relative w-12 h-12 rounded-[1rem] flex items-center justify-center transition-all shadow-lg
                                             ${!canSend
-                                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed shadow-none'
-                                                : 'bg-gradient-to-br from-pink-300 via-pink-400 to-rose-400 text-white shadow-pink-200/50 hover:shadow-pink-300/50'}
+                                                ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
+                                                : 'bg-cyan-500 text-white shadow-cyan-500/20 hover:bg-cyan-400'}
                                         `}
                                     >
                                         <SendIcon size={24} className={canSend ? "fill-white" : ""} />
@@ -171,4 +171,3 @@ export default function ChatInput({
         </div>
     );
 }
-Greenland
