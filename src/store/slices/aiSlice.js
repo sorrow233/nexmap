@@ -6,6 +6,7 @@ import { getConnectedGraph } from '../../utils/graphUtils';
 import favoritesService from '../../services/favoritesService';
 import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
 import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
+import translations from '../../contexts/translations';
 
 
 export const createAISlice = (set, get) => {
@@ -301,9 +302,19 @@ export const createAISlice = (set, get) => {
             } catch (e) {
                 console.error(`Generation failed for card ${cardId}`, e);
 
+                // Localization logic
+                const lang = localStorage.getItem('userLanguage') || 'en';
+                const t = translations[lang] || translations['en'];
+                const notifications = t.ai?.notifications;
+
                 // Special handling for credits exhausted
                 if (e instanceof CreditsExhaustedError || e.name === 'CreditsExhaustedError') {
-                    updateCardContent(cardId, `\n\n⚠️ **免费试用积分已用完**\n\n您的100积分免费额度已使用完毕。要继续使用AI功能，请在设置中配置您自己的API Key。\n\n👉 点击右上角设置按钮，添加您的GMI API Key。`);
+                    const info = notifications?.creditsExhausted || {
+                        title: "⚠️ Free Credits Exhausted",
+                        message: "You have used your 100 free credits.",
+                        action: "👉 Click settings button to add API Key."
+                    };
+                    updateCardContent(cardId, `\n\n**${info.title}**\n\n${info.message}\n\n${info.action}`);
                     // Reload credits state
                     get().loadSystemCredits?.();
                 } else {
@@ -314,26 +325,30 @@ export const createAISlice = (set, get) => {
                     if (errorMsg.toLowerCase().includes('upstream') ||
                         errorMsg.toLowerCase().includes('unavailable') ||
                         errorMsg.toLowerCase().includes('service')) {
-                        // Service unavailable - external API issue
-                        userMessage = `\n\n⚠️ **AI服务暂时不可用 / AI Service Temporarily Unavailable**\n\n` +
-                            `服务器繁忙或暂时离线，请稍后重试。\n` +
-                            `The AI service is busy or temporarily offline. Please try again in a moment.\n\n` +
-                            `💡 点击重新生成按钮再试一次 / Click regenerate to try again`;
+                        // Service unavailable
+                        const info = notifications?.serviceUnavailable;
+                        userMessage = `\n\n**${info?.title || "⚠️ AI Service Unavailable"}**\n\n` +
+                            `${info?.message}\n` +
+                            `${info?.englishMessage ? info.englishMessage + '\n\n' : ''}` +
+                            `${info?.action}`;
                     } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
                         // Rate limited
-                        userMessage = `\n\n⚠️ **请求过于频繁 / Rate Limited**\n\n` +
-                            `请等待几秒后再试。\n` +
-                            `Please wait a few seconds before trying again.`;
+                        const info = notifications?.rateLimit;
+                        userMessage = `\n\n**${info?.title || "⚠️ Rate Limited"}**\n\n` +
+                            `${info?.message}\n` +
+                            `${info?.englishMessage || ''}`;
                     } else if (errorMsg.includes('timeout')) {
                         // Timeout
-                        userMessage = `\n\n⚠️ **请求超时 / Request Timeout**\n\n` +
-                            `服务器响应时间过长，请重试。\n` +
-                            `The server took too long to respond. Please try again.`;
+                        const info = notifications?.timeout;
+                        userMessage = `\n\n**${info?.title || "⚠️ Request Timeout"}**\n\n` +
+                            `${info?.message}\n` +
+                            `${info?.englishMessage || ''}`;
                     } else {
-                        // Generic error with technical details
-                        userMessage = `\n\n⚠️ **生成失败 / Generation Failed**\n\n` +
+                        // Generic error
+                        const info = notifications?.genericError;
+                        userMessage = `\n\n**${info?.title || "⚠️ Generation Failed"}**\n\n` +
                             `${errorMsg}\n\n` +
-                            `💡 请重试，如果问题持续请检查API设置`;
+                            `${info?.action}`;
                     }
 
                     updateCardContent(cardId, userMessage);

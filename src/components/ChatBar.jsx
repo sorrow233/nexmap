@@ -148,12 +148,12 @@ const ChatBar = React.memo(function ChatBar({
                         <div className="flex items-end gap-2 px-6 py-4">
                             {/* Left Functional Icons */}
                             <div className="flex items-center gap-0.5 h-9">
-                                <IconButton onClick={() => fileInputRef.current?.click()} title="Upload">
+                                <IconButton onClick={() => fileInputRef.current?.click()} title={t.chatBar.uploadImage}>
                                     <ImageIcon size={16} className="text-slate-400 hover:text-cyan-400" />
                                 </IconButton>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={(e) => onImageUpload(e.target.files)} />
 
-                                <IconButton onClick={() => onCreateNote('', false)} title="New Note">
+                                <IconButton onClick={() => onCreateNote('', false)} title={t.contextMenu.newNote}>
                                     <StickyNoteIcon size={16} className="text-slate-400 hover:text-cyan-400" />
                                 </IconButton>
 
@@ -166,7 +166,7 @@ const ChatBar = React.memo(function ChatBar({
                                             className="flex items-center"
                                         >
                                             <div className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-1.5" />
-                                            <IconButton onClick={handleBatchSubmit} title="Batch Chat">
+                                            <IconButton onClick={handleBatchSubmit} title={t.chatBar.batchChat}>
                                                 <MessageSquarePlus size={16} className="text-cyan-400 hover:text-cyan-500" />
                                             </IconButton>
                                         </motion.div>

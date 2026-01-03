@@ -85,7 +85,7 @@ export default function ChatInput({
                             onInput={handleTextareaInput}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
-                            className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[160px] scrollbar-hide"
+                            className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[200px] scrollbar-hide"
                             placeholder={placeholder}
                             rows={1}
                         />
