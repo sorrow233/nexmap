@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sprout, X, Check } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function SproutModal({
     isOpen,
@@ -9,6 +10,7 @@ export default function SproutModal({
     onToggleTopic,
     onConfirm
 }) {
+    const { t } = useLanguage();
     if (!isOpen) return null;
 
     return (

@@ -325,7 +325,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4">{t.settings.storageConfig?.recovery || 'Data Recovery'}</h3>
 
                 {hasBackup ? (
-                    <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl space-y-3">
+                    <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/10 backdrop-blur-md border border-emerald-100 dark:border-emerald-500/20 rounded-[2rem] space-y-3">
                         <div className="flex items-start gap-3">
                             <div className="p-2 bg-emerald-100 dark:bg-emerald-800/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
                                 <Database size={18} />
@@ -391,7 +391,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 </button>
 
                 {showManualImport && (
-                    <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-white/10 animate-fade-in">
+                    <div className="mt-4 p-6 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-white/10 animate-fade-in shadow-xl">
                         <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">{t.settings.storageConfig?.manualImport || "Manual JSON Import"}</h4>
                         <p className="text-xs text-slate-500 mb-3">
                             {t.settings.storageConfig?.manualImportDesc || "Paste the raw backup data JSON provided by support below."}

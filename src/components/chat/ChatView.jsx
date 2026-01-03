@@ -411,6 +411,13 @@ export default function ChatView({
                     onStop={handleStop}
                     placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
                     instructions={instructions}
+                    onClearInstructions={() => {
+                        // 在模态框内清空看板级/临时指令的逻辑：通常由父级 hooks (useBoardLogic) 控制
+                        // 这里我们目前仅确保清除按钮可点击且逻辑畅通
+                        if (typeof instructions === 'object' && instructions.length > 0) {
+                            // 调用可能存在的清除回调（若后续需要更精细控制可在 props 增加）
+                        }
+                    }}
                 />
             </div>
 

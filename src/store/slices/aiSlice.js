@@ -2,7 +2,7 @@ import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
 import { uuid } from '../../utils/uuid';
 import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
-import { aiManager, PRIORITY } from '../../services/ai/AIManager';
+
 import favoritesService from '../../services/favoritesService';
 import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
 import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
@@ -188,36 +188,7 @@ export const createAISlice = (set, get) => {
 
             try {
                 // Context Walking
-                const visited = getConnectedGraph(cardId, connections || []);
-                const neighborIds = Array.from(visited).filter(id => id !== cardId);
-
-                // Context Walking: Add neighbor context if any
-                // FIXED: Limit to 30 cards to prevent token explosion while keeping strong context.
-                const MAX_CONTEXT_CARDS = 30;
-                const limitedNeighborIds = neighborIds.slice(0, MAX_CONTEXT_CARDS);
-
-                if (neighborIds.length > MAX_CONTEXT_CARDS) {
-                    console.warn(`[AI] Context truncated: ${neighborIds.length} connected cards found, using first ${MAX_CONTEXT_CARDS}.`);
-                }
-
-                const contextMessages = [];
-                if (limitedNeighborIds.length > 0) {
-                    const neighbors = cards.filter(c => limitedNeighborIds.indexOf(c.id) !== -1);
-                    const contextText = neighbors.map(c =>
-                        `Context from linked card "${c.data.title}": \n${c.data.messages.map(m => {
-                            const contentStr = typeof m.content === 'string'
-                                ? m.content
-                                : (Array.isArray(m.content)
-                                    ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
-                                    : '');
-                            return `${m.role}: ${contentStr}`;
-                        }).join('\n')} `
-                    ).join('\n\n---\n\n');
-
-                    if (contextText.trim()) {
-                        contextMessages.push({ role: 'user', content: `[System Note: This card is connected to others. Here is their recent context:]\n\n${contextText}` });
-                    }
-                }
+                const contextMessages = assembleContext(cardId, connections || [], cards);
 
                 // Messages are now [contextMessages, ...messages]
                 // Time injection will be handled by AIManager globally
