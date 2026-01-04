@@ -187,7 +187,6 @@ export default function Sidebar({ className = "" }) {
     const PromptTag = ({ prompt, type }) => {
         const displayName = prompt.name || prompt.text;
         const colorClass = prompt.color || getColorForString(displayName);
-        // Use prompt.name for display, fallback to prompt.text
 
         return (
             <div
@@ -195,16 +194,16 @@ export default function Sidebar({ className = "" }) {
                 onDragStart={(e) => handleDragStart(e, prompt)}
                 onDoubleClick={() => handleEdit(prompt, type)}
                 className={`
-                    group relative flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full cursor-grab active:cursor-grabbing transition-all hover:scale-105 shadow-sm border
+                    group relative flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold rounded-2xl cursor-grab active:cursor-grabbing transition-all hover:scale-105 shadow-sm border backdrop-blur-md
                     ${colorClass}
                 `}
                 title={`Double-click to edit\n\n${prompt.content || prompt.text}`}
             >
-                <GripVertical size={10} className="opacity-40 group-hover:opacity-100" />
-                <span>{displayName}</span>
+                <GripVertical size={10} className="opacity-30 group-hover:opacity-60 transition-opacity" />
+                <span className="leading-none tracking-tight">{displayName}</span>
                 <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(prompt.id, type); }}
-                    className="opacity-0 group-hover:opacity-100 ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/20 transition-all"
+                    className="opacity-0 group-hover:opacity-100 ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/20 transition-all border border-transparent hover:border-black/5 dark:hover:border-white/5"
                 >
                     <X size={10} />
                 </button>
