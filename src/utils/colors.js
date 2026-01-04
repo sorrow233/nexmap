@@ -1,11 +1,19 @@
 // Shared vibrant colors for Tags, Prompts, and Chips
 // Notion-like clear vibrant colors
+// Premium, balanced colors for both light and dark modes
 export const TAG_COLORS = [
-    'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
-    'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-    'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-    'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20',
-    'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
+    // Soft Rose
+    'bg-rose-50/80 text-rose-600 border-rose-200/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20',
+    // Warm Amber
+    'bg-amber-50/80 text-amber-700 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
+    // Fresh Emerald
+    'bg-emerald-50/80 text-emerald-700 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+    // Sky Blue
+    'bg-sky-50/80 text-sky-600 border-sky-200/50 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20',
+    // Elegant Indigo
+    'bg-indigo-50/80 text-indigo-600 border-indigo-200/50 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20',
+    // Sophisticated Violet
+    'bg-violet-50/80 text-violet-600 border-violet-200/50 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20',
 ];
 
 export const getRandomColor = () => TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];

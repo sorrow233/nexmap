@@ -22,7 +22,7 @@ const InstructionChips = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`flex flex-wrap gap-1.5 items-center ${className}`}
+                className={`flex flex-wrap gap-2 items-center ${className}`}
             >
                 {instructions.map((inst, idx) => {
                     const displayName = inst.name || inst.text;
@@ -32,10 +32,15 @@ const InstructionChips = ({
                             key={idx}
                             onClick={() => onSelect(inst.content || inst.text)}
                             disabled={disabled}
-                            className={`group flex items-center gap-1.5 px-3 py-1 border rounded-full transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm font-bold ${colorClass}`}
+                            className={`
+                                group flex items-center gap-2 px-3.5 py-1.5 border rounded-2xl transition-all 
+                                backdrop-blur-md active:scale-95 disabled:opacity-50 shrink-0 
+                                shadow-sm hover:shadow-md font-bold tracking-tight
+                                ${colorClass}
+                            `}
                         >
-                            <Star size={10} className="fill-current text-white/50 group-hover:text-white" />
-                            <span className="text-[10px] tracking-tight truncate max-w-[120px]">
+                            <Star size={10} className="fill-current opacity-60 group-hover:opacity-100 transition-opacity" />
+                            <span className="text-[11px] leading-none truncate max-w-[150px]">
                                 {displayName}
                             </span>
                         </button>
@@ -48,7 +53,7 @@ const InstructionChips = ({
                             e.stopPropagation();
                             onClear();
                         }}
-                        className="p-1.5 text-slate-300 hover:text-red-400 transition-colors ml-auto flex items-center justify-center"
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all ml-auto flex items-center justify-center border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
                         title="Clear choices"
                     >
                         <X size={12} />
