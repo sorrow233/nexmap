@@ -106,7 +106,12 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     }, [offset, scale, showContextMenu, getCanvasMenuItems, onCreateNote, props]);
 
     const handleMouseDown = (e) => {
-        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+        // Ensure we are clicking on the canvas or background layers, not interactive elements like cards/buttons
+        // Interactive elements should call e.stopPropagation()
+        const target = e.target;
+        const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
+
+        if (!isInteractive) {
             // In pan mode, left click also pans
             const isPan = canvasMode === 'pan' || e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
 
@@ -168,7 +173,10 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const lastTouchRef = useRef(null);
 
     const handleTouchStart = (e) => {
-        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+        const target = e.target;
+        const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
+
+        if (!isInteractive) {
             if (e.touches.length === 1) {
                 setInteractionMode('panning');
                 lastTouchRef.current = {
@@ -240,7 +248,10 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     }, [selectedIds, connections]);
 
     const handleDoubleClick = (e) => {
-        if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
+        const target = e.target;
+        const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
+
+        if (!isInteractive) {
             // Calculate canvas coordinates
             const canvasX = (e.clientX - offset.x) / scale;
             const canvasY = (e.clientY - offset.y) / scale;
