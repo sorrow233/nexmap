@@ -255,9 +255,12 @@ export default function ChatView({
         const textToSend = typeof overrideText === 'string' ? overrideText : input;
         if ((!textToSend || !textToSend.trim()) && images.length === 0) return;
 
-        await sendMessageInternal(textToSend, images);
+        // Clear UI immediately for instant feedback
         setInput('');
         clearImages();
+
+        // Send message in background (handled by internal streaming state)
+        await sendMessageInternal(textToSend, images);
     };
 
     const addMarkTopic = (e) => {

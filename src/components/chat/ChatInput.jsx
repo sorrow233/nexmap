@@ -155,15 +155,7 @@ export default function ChatInput({
 
                         {/* Right: Send / Stop Action */}
                         <div className="shrink-0 flex items-center gap-2">
-                            {onClearInstructions && (
-                                <button
-                                    onClick={onClearInstructions}
-                                    className="p-1.5 text-slate-300 hover:text-slate-500 transition-colors"
-                                    title="Close instructions"
-                                >
-                                    <X size={16} />
-                                </button>
-                            )}
+
 
                             {isStreaming ? (
                                 <button
