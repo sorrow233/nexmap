@@ -6,7 +6,116 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useDraggable } from '../hooks/useDraggable';
 
 const COLORS = {
-    // ... (unchanged)
+    // 1. Blue (Existing - Refined)
+    blue: {
+        bg: 'bg-blue-500/5 dark:bg-blue-500/10',
+        border: 'border-blue-500/20 dark:border-blue-400/30',
+        text: 'text-blue-600 dark:text-blue-300',
+        ring: 'ring-blue-500/20',
+        indicator: 'bg-blue-500',
+        hex: '#3b82f6'
+    },
+    // 2. Purple (Existing - Refined)
+    purple: {
+        bg: 'bg-purple-500/5 dark:bg-purple-500/10',
+        border: 'border-purple-500/20 dark:border-purple-400/30',
+        text: 'text-purple-600 dark:text-purple-300',
+        ring: 'ring-purple-500/20',
+        indicator: 'bg-purple-500',
+        hex: '#a855f7'
+    },
+    // 3. Teal (Existing - Refined)
+    teal: {
+        bg: 'bg-teal-500/5 dark:bg-teal-500/10',
+        border: 'border-teal-500/20 dark:border-teal-400/30',
+        text: 'text-teal-600 dark:text-teal-300',
+        ring: 'ring-teal-500/20',
+        indicator: 'bg-teal-500',
+        hex: '#14b8a6'
+    },
+    // 4. Rose (Existing - Refined)
+    rose: {
+        bg: 'bg-rose-500/5 dark:bg-rose-500/10',
+        border: 'border-rose-500/20 dark:border-rose-400/30',
+        text: 'text-rose-600 dark:text-rose-300',
+        ring: 'ring-rose-500/20',
+        indicator: 'bg-rose-500',
+        hex: '#f43f5e'
+    },
+    // 5. Amber (Existing - Refined)
+    amber: {
+        bg: 'bg-amber-500/5 dark:bg-amber-500/10',
+        border: 'border-amber-500/20 dark:border-amber-400/30',
+        text: 'text-amber-600 dark:text-amber-300',
+        ring: 'ring-amber-500/20',
+        indicator: 'bg-amber-500',
+        hex: '#f59e0b'
+    },
+    // 6. Slate (Existing - Refined)
+    slate: {
+        bg: 'bg-slate-500/5 dark:bg-slate-500/10',
+        border: 'border-slate-500/20 dark:border-slate-400/30',
+        text: 'text-slate-600 dark:text-slate-300',
+        ring: 'ring-slate-500/20',
+        indicator: 'bg-slate-500',
+        hex: '#64748b'
+    },
+    // New Colors
+    // 7. Sky
+    sky: {
+        bg: 'bg-sky-500/5 dark:bg-sky-500/10',
+        border: 'border-sky-500/20 dark:border-sky-400/30',
+        text: 'text-sky-600 dark:text-sky-300',
+        ring: 'ring-sky-500/20',
+        indicator: 'bg-sky-500',
+        hex: '#0ea5e9'
+    },
+    // 8. Lime
+    lime: {
+        bg: 'bg-lime-500/5 dark:bg-lime-500/10',
+        border: 'border-lime-500/20 dark:border-lime-400/30',
+        text: 'text-lime-600 dark:text-lime-300',
+        ring: 'ring-lime-500/20',
+        indicator: 'bg-lime-500',
+        hex: '#84cc16'
+    },
+    // 9. Fuchsia
+    fuchsia: {
+        bg: 'bg-fuchsia-500/5 dark:bg-fuchsia-500/10',
+        border: 'border-fuchsia-500/20 dark:border-fuchsia-400/30',
+        text: 'text-fuchsia-600 dark:text-fuchsia-300',
+        ring: 'ring-fuchsia-500/20',
+        indicator: 'bg-fuchsia-500',
+        hex: '#d946ef'
+    },
+    // 10. Emerald
+    emerald: {
+        bg: 'bg-emerald-500/5 dark:bg-emerald-500/10',
+        border: 'border-emerald-500/20 dark:border-emerald-400/30',
+        text: 'text-emerald-600 dark:text-emerald-300',
+        ring: 'ring-emerald-500/20',
+        indicator: 'bg-emerald-500',
+        hex: '#10b981'
+    },
+    // 11. Violet
+    violet: {
+        bg: 'bg-violet-500/5 dark:bg-violet-500/10',
+        border: 'border-violet-500/20 dark:border-violet-400/30',
+        text: 'text-violet-600 dark:text-violet-300',
+        ring: 'ring-violet-500/20',
+        indicator: 'bg-violet-500',
+        hex: '#8b5cf6'
+    },
+    // 12. Orange
+    orange: {
+        bg: 'bg-orange-500/5 dark:bg-orange-500/10',
+        border: 'border-orange-500/20 dark:border-orange-400/30',
+        text: 'text-orange-600 dark:text-orange-300',
+        ring: 'ring-orange-500/20',
+        indicator: 'bg-orange-500',
+        hex: '#f97316'
+    },
+    // 13. Cyan
     cyan: {
         bg: 'bg-cyan-500/5 dark:bg-cyan-500/10',
         border: 'border-cyan-500/20 dark:border-cyan-400/30',
