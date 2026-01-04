@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette, Send, RefreshCw, Sprout, Trash2, BoxSelect } from 'lucide-react';
+import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette, Send, RefreshCw, Sprout, Trash2, BoxSelect, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
@@ -128,7 +128,7 @@ const ChatBar = React.memo(function ChatBar({
                                 >
                                     {globalImages.map((img, idx) => (
                                         <div key={idx} className="relative shrink-0 group/img">
-                                            <img src={img.previewUrl} className="h-12 w-auto rounded-lg object-cover border border-slate-100 dark:border-white/10 shadow-sm" alt="preview" />
+                                            <img src={img.previewUrl} className="h-14 w-auto rounded-lg object-cover border border-slate-100 dark:border-white/10 shadow-sm" alt="preview" />
                                             <button
                                                 onClick={() => onRemoveImage(idx)}
                                                 className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
@@ -163,8 +163,14 @@ const ChatBar = React.memo(function ChatBar({
                                 </IconButton>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={(e) => onImageUpload(e.target.files)} />
 
+                                <IconButton title="Files">
+                                    <FileText size={16} className="text-slate-400 hover:text-cyan-400" />
+                                </IconButton>
+
+                                <div className="w-px h-3 bg-slate-200 dark:bg-white/10 mx-1" />
+
                                 <IconButton onClick={() => onCreateNote('', false)} title={t.contextMenu.newNote}>
-                                    <StickyNoteIcon size={16} className="text-slate-400 hover:text-cyan-400" />
+                                    <Plus size={16} className="text-cyan-400/80 hover:text-cyan-500" />
                                 </IconButton>
 
                                 <AnimatePresence mode="popLayout">
@@ -175,9 +181,9 @@ const ChatBar = React.memo(function ChatBar({
                                             exit={{ scale: 0.8, opacity: 0 }}
                                             className="flex items-center"
                                         >
-                                            <div className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-1.5" />
+                                            <div className="h-3 w-px bg-slate-200 dark:bg-white/10 mx-1" />
                                             <IconButton onClick={handleBatchSubmit} title={t.chatBar.batchChat}>
-                                                <MessageSquarePlus size={16} className="text-cyan-400 hover:text-cyan-500" />
+                                                <MessageSquarePlus size={16} className="text-cyan-500 hover:text-cyan-600" />
                                             </IconButton>
                                         </motion.div>
                                     )}
@@ -210,7 +216,7 @@ const ChatBar = React.memo(function ChatBar({
                                         relative w-8 h-8 rounded-lg flex items-center justify-center transition-all
                                         ${(!promptInput.trim() && globalImages.length === 0)
                                             ? 'bg-slate-50 dark:bg-white/5 text-slate-200 dark:text-slate-800'
-                                            : 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20 hover:bg-cyan-400'}
+                                            : 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
                                     `}
                                 >
                                     {generatingCardIds.size > 0 ? (

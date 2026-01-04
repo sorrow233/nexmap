@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Send, Image as ImageIcon, Square, Send as SendIcon, Star } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Square, Send as SendIcon, Star, FileText, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getColorForString } from '../../utils/colors';
@@ -78,7 +78,7 @@ export default function ChatInput({
                             >
                                 {images.map((img, idx) => (
                                     <div key={idx} className="relative shrink-0 group/img">
-                                        <img src={img.previewUrl} className="h-20 w-auto rounded-xl object-cover border border-slate-100 dark:border-white/10 shadow-sm" alt="preview" />
+                                        <img src={img.previewUrl} className="h-16 w-auto rounded-xl object-cover border border-slate-100 dark:border-white/10 shadow-sm" alt="preview" />
                                         <button
                                             onClick={() => removeImage(idx)}
                                             className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
@@ -110,8 +110,8 @@ export default function ChatInput({
 
                     {/* Footer Actions - Compact Merged Row */}
                     <div className="flex items-center gap-3 px-6 pb-6 pt-2">
-                        {/* Image Upload Trigger */}
-                        <div className="shrink-0 flex items-center">
+                        {/* Left Side: functional cluster */}
+                        <div className="flex items-center gap-1">
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
                             <button
                                 onClick={() => fileInputRef.current?.click()}
@@ -120,6 +120,21 @@ export default function ChatInput({
                                 title={t.chatBar.uploadImage}
                             >
                                 <ImageIcon size={18} />
+                            </button>
+                            <button
+                                disabled={isStreaming}
+                                className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
+                            >
+                                <FileText size={18} />
+                            </button>
+
+                            <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
+
+                            <button
+                                disabled={isStreaming}
+                                className="p-2 text-cyan-500/80 hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-xl transition-all"
+                            >
+                                <Plus size={18} />
                             </button>
                         </div>
 
@@ -139,11 +154,21 @@ export default function ChatInput({
                         </div>
 
                         {/* Right: Send / Stop Action */}
-                        <div className="shrink-0 flex items-center">
+                        <div className="shrink-0 flex items-center gap-2">
+                            {onClearInstructions && (
+                                <button
+                                    onClick={onClearInstructions}
+                                    className="p-1.5 text-slate-300 hover:text-slate-500 transition-colors"
+                                    title="Close instructions"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+
                             {isStreaming ? (
                                 <button
                                     onClick={onStop}
-                                    className="w-10 h-10 bg-red-500 text-white rounded-[0.8rem] shadow-lg shadow-red-500/20 hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse"
+                                    className="w-10 h-10 bg-red-500 text-white rounded-[0.8rem] shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse transition-all"
                                     title={t.ai?.stopGeneration || "Stop Generation"}
                                 >
                                     <Square size={16} fill="currentColor" />
@@ -158,7 +183,7 @@ export default function ChatInput({
                                         relative w-10 h-10 rounded-[0.8rem] flex items-center justify-center transition-all shadow-lg
                                         ${!canSend
                                             ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
-                                            : 'bg-cyan-500 text-white shadow-cyan-500/20 hover:bg-cyan-400'}
+                                            : 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
                                     `}
                                 >
                                     <SendIcon size={18} className={canSend ? "fill-white" : ""} />
