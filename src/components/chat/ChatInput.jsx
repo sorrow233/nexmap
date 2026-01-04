@@ -26,6 +26,7 @@ export default function ChatInput({
     onClearInstructions
 }) {
     const { t } = useLanguage();
+    const [isFocused, setIsFocused] = React.useState(false);
 
     // Ensure height calculation handles larger text
     const handleTextareaInput = (e) => {
@@ -99,6 +100,8 @@ export default function ChatInput({
                             onInput={handleTextareaInput}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
                             className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[80px] scrollbar-hide"
                             placeholder={placeholder}
                             rows={1}
@@ -122,13 +125,17 @@ export default function ChatInput({
 
                         {/* Middle: Instructions Chips List - Flex grow to fill space */}
                         <div className="flex-1 min-w-0">
-                            <InstructionChips
-                                instructions={instructions}
-                                onSelect={handlePromptSelect}
-                                onClear={onClearInstructions}
-                                disabled={isStreaming}
-                                className="mb-0 px-0"
-                            />
+                            <AnimatePresence>
+                                {isFocused && (
+                                    <InstructionChips
+                                        instructions={instructions}
+                                        onSelect={handlePromptSelect}
+                                        onClear={onClearInstructions}
+                                        disabled={isStreaming}
+                                        className="mb-0 px-0"
+                                    />
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         {/* Right: Send / Stop Action */}

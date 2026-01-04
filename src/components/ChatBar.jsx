@@ -142,13 +142,17 @@ const ChatBar = React.memo(function ChatBar({
                         </AnimatePresence>
 
                         {/* Instruction Chips */}
-                        <div className="px-6 pt-4">
-                            <InstructionChips
-                                instructions={instructions}
-                                onSelect={handlePromptSelect}
-                                onClear={onClearInstructions}
-                            />
-                        </div>
+                        <AnimatePresence>
+                            {isFocused && (
+                                <div className="px-6 pt-4">
+                                    <InstructionChips
+                                        instructions={instructions}
+                                        onSelect={handlePromptSelect}
+                                        onClear={onClearInstructions}
+                                    />
+                                </div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Main Interaction Row */}
                         <div className="flex items-end gap-2 px-6 py-4">
