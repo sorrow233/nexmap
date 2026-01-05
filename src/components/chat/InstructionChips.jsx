@@ -24,7 +24,7 @@ const InstructionChips = ({
                 exit={{ opacity: 0, height: 0 }}
                 className={`flex flex-wrap gap-2 items-center ${className}`}
             >
-                {instructions.map((inst, idx) => {
+                {instructions.filter(i => i).map((inst, idx) => {
                     const displayName = inst.name || inst.text;
                     const colorClass = inst.color || getColorForString(displayName);
                     return (
