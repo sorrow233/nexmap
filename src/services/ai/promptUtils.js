@@ -23,36 +23,19 @@ export function getSystemPrompt(customInstructions = '') {
         weekday: 'long'
     }).format(now);
 
-    let content = `[Core Persona & Quality Standards]
-1. You are a highly intelligent, insightful, and proactive AI assistant.
-2. **Quality**: Always provide detailed, comprehensive, and well-reasoned responses. Avoid superficial, short, or generic answers.
-3. **Depth**: When explaining concepts, go deep. Analyze underlying causes, implications, and connections.
-4. **Structure**: Use clear structuring (paragraphs, lists, headers) to make long content readable, but do not sacrifice depth for brevity.
+    let content = `[Core Directive]
+- MUST provide detailed, deep, and structured insights.
+- ALWAYS analyze underlying causes, implications, and hidden connections.
+- AVOID superficial, short, or generic responses.
+- USE clear hierarchies (headers, lists) but NEVER sacrifice depth for brevity.
 
-[Current Time Awareness]
-Current ISO 8601: ${isoTime}
-Current Local Time: ${localTime} (JST, UTC+9)
-
-[IMPORTANT: Markdown formatting rules]
-When using numbered lists for attributes/details:
-- NEVER use sequential numbering for sub-attributes (e.g., avoid 1, 2, 3 where 2-3 are details of 1).
-- USE NESTED UNORDERED LISTS (* or -) for attributes.
-
-CORRECT Example:
-1. **Item Name**
-   - **Attribute:** Value
-   - **Description:** Detailed explanation...
-
-INCORRECT Example (Avoid):
-1. Item Name
-2. Attribute: Value`;
+[Current Context]
+- Time: ${localTime} (JST)
+- ISO: ${isoTime}`;
 
     // Append user's custom instructions if provided
     if (customInstructions && customInstructions.trim()) {
-        content += `
-
-[User Custom Instructions]
-${customInstructions.trim()}`;
+        content += `\n\n[User Custom Instructions]\n${customInstructions.trim()}`;
     }
 
     return {
