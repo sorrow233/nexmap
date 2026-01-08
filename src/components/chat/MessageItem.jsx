@@ -291,8 +291,21 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     };
 
     return (
-        <div id={`message-${index}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
-            <div className={`rounded-3xl p-6 shadow-sm group relative ${isUser
+        <div id={`message-${index}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up group relative`}>
+            {isUser && (
+                <div className="flex flex-col justify-end pb-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={handleCopy}
+                        className={`p-2 rounded-full transition-all ring-1 ring-inset ${copySuccess
+                            ? 'text-emerald-500 bg-emerald-50/80 ring-emerald-200 dark:bg-emerald-500/20 dark:ring-emerald-500/40'
+                            : 'text-slate-400 hover:text-emerald-500 bg-white/50 hover:bg-emerald-50 ring-transparent hover:ring-emerald-200 dark:bg-white/5 dark:hover:bg-emerald-500/10'}`}
+                        title="Copy message"
+                    >
+                        {copySuccess ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                </div>
+            )}
+            <div className={`rounded-3xl p-6 shadow-sm relative ${isUser
                 ? 'max-w-[85%] sm:max-w-[75%] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tr-none'
                 : 'w-full max-w-full bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-tl-none'
                 }`}>
