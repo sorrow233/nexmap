@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, ImageIcon, X } from 'lucide-react';
 import useImageUpload from '../hooks/useImageUpload';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /**
  * A dedicated component for the board creation interface, 
@@ -10,6 +11,7 @@ export default function BoardDropZone({ onCreateBoard }) {
     const [quickPrompt, setQuickPrompt] = useState('');
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
+    const { t } = useLanguage();
 
     const {
         images,
@@ -97,7 +99,7 @@ export default function BoardDropZone({ onCreateBoard }) {
                         value={quickPrompt}
                         onChange={e => setQuickPrompt(e.target.value)}
                         onKeyDown={handleKeyPress}
-                        placeholder="What would you like to create?"
+                        placeholder={t.gallery.whatToCreate}
                         className="flex-grow bg-transparent border-none outline-none py-6 text-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 font-medium min-w-0 tracking-tight font-inter-tight"
                     />
 
@@ -123,18 +125,17 @@ export default function BoardDropZone({ onCreateBoard }) {
                         disabled={!quickPrompt.trim() && images.length === 0}
                         className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-[1.75rem] font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed shrink-0"
                     >
-                        Start
+                        {t.gallery.start}
                     </button>
                 </div>
 
-                {/* Drag Overlay Hint */}
                 {isDragging && (
                     <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center pointer-events-none z-20 border-2 border-dashed border-blue-400/30">
                         <div className="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl shadow-premium-hover flex items-center gap-4 animate-bounce border border-blue-100 dark:border-white/10">
                             <div className="bg-blue-500 p-2 rounded-xl text-white">
                                 <ImageIcon size={20} />
                             </div>
-                            <span className="font-black text-slate-900 dark:text-white tracking-tight">Release to upload</span>
+                            <span className="font-black text-slate-900 dark:text-white tracking-tight">{t.gallery.releaseToUpload}</span>
                         </div>
                     </div>
                 )}

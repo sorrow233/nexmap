@@ -5,19 +5,21 @@ import useBoardBackground from '../hooks/useBoardBackground';
 import BoardDropZone from './BoardDropZone';
 import BoardCard from './BoardCard';
 import { useStore } from '../store/useStore';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
     const { generatingBoardId, generateBackground } = useBoardBackground();
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null, isPermanent: false });
     const [freeUserDialog, setFreeUserDialog] = useState(false);
-    const [greeting, setGreeting] = useState('Welcome back');
+    const [greeting, setGreeting] = useState('morning');
     const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const hour = new Date().getHours();
-        if (hour < 12) setGreeting('Good morning');
-        else if (hour < 18) setGreeting('Good afternoon');
-        else setGreeting('Good evening');
+        if (hour < 12) setGreeting('morning');
+        else if (hour < 18) setGreeting('afternoon');
+        else setGreeting('evening');
     }, []);
 
     // Use boards directly
@@ -36,10 +38,10 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     <div className="flex flex-col md:flex-row items-end md:items-center justify-between mb-8 animate-fade-in-up">
                         <div>
                             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-slate-900 dark:text-white font-inter-tight">
-                                {greeting}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Creator.</span>
+                                {greeting === 'morning' ? t.gallery.greetingMorning : greeting === 'afternoon' ? t.gallery.greetingAfternoon : t.gallery.greetingEvening}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">{t.gallery.creator}.</span>
                             </h1>
                             <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">
-                                Ready to capture your next big idea?
+                                {t.gallery.readyToCreate}
                             </p>
                         </div>
                         {/* DropZone is now more compact or integrated if needed, keeping as creates new board */}
@@ -53,11 +55,11 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             {isTrashView && (
                 <div className="pt-6 pb-6 px-2 text-center animate-fade-in-up">
                     <h1 className="text-3xl font-bold tracking-tight mb-4 text-slate-900 dark:text-white font-inter-tight">
-                        Recycle Bin
+                        {t.gallery.recycleBin}
                     </h1>
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 text-red-500 font-semibold text-sm">
                         <Clock size={14} />
-                        <span>Items deleted longer than 30 days are removed forever</span>
+                        <span>{t.gallery.trashHint}</span>
                     </div>
                 </div>
             )}
@@ -70,7 +72,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     <div className="animate-fade-in-up delay-100">
                         <div className="flex items-center gap-2 mb-4 px-1">
                             <Clock size={16} className="text-indigo-500" />
-                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recently Visited</h2>
+                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.gallery.recentlyVisited}</h2>
                         </div>
 
                         <div className="relative group/carousel">
@@ -103,7 +105,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                     {!isTrashView && (
                         <div className="flex items-center gap-2 mb-6 px-1">
                             <LayoutGrid size={16} className="text-indigo-500" />
-                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">All Boards</h2>
+                            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t.gallery.allBoards}</h2>
                             <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
                                 {validBoards.length}
                             </span>
@@ -130,19 +132,18 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                             </div>
                         ))}
 
-                        {/* Empty State */}
                         {validBoards.length === 0 && (
                             <div className="col-span-full py-32 glass-panel rounded-3xl flex flex-col items-center justify-center text-center animate-fade-in border-dashed border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
                                 <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 transition-transform hover:scale-110 duration-500 ${isTrashView ? 'bg-red-50 dark:bg-red-900/10 text-red-300' : 'bg-indigo-50 dark:bg-white/5 text-indigo-400'}`}>
                                     {isTrashView ? <Trash2 size={32} /> : <Sparkles size={32} />}
                                 </div>
                                 <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">
-                                    {isTrashView ? 'Trash is empty' : 'A fresh start'}
+                                    {isTrashView ? t.gallery.emptyTrash : t.gallery.freshStart}
                                 </h2>
                                 <p className="text-slate-500 dark:text-slate-400 max-w-xs text-sm">
                                     {isTrashView
-                                        ? 'Items appearing here can be restored.'
-                                        : "Your canvas is waiting. Create your first board above."}
+                                        ? t.gallery.emptyTrashHint
+                                        : t.gallery.freshStartHint}
                                 </p>
                             </div>
                         )}

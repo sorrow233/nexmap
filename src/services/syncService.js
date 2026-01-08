@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { idbGet } from './db/indexedDB';
 import { saveBoard, getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
@@ -41,8 +41,19 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             const localBoardPrompts = isCurrentBoard ? store.boardPrompts : (localData?.boardPrompts || []);
                             const localUpdatedAt = isCurrentBoard ? (store.lastSavedAt || localData?.updatedAt || 0) : (localData?.updatedAt || 0);
 
-                            if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
-                                debugLog.sync(`Skipping cloud update for ${boardData.id}: local version is up-to-date`);
+                            // Use syncVersion (logical clock) for conflict detection, fallback to updatedAt for backward compatibility
+                            const localVersion = localData?.syncVersion || 0;
+                            const cloudVersion = boardData.syncVersion || 0;
+
+                            // If both have syncVersion, use it; otherwise fall back to timestamp comparison
+                            if (localData && cloudVersion > 0 && localVersion > 0) {
+                                if (localVersion >= cloudVersion) {
+                                    debugLog.sync(`Skipping cloud update for ${boardData.id}: local syncVersion ${localVersion} >= cloud ${cloudVersion}`);
+                                    return;
+                                }
+                            } else if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
+                                // Backward compatibility: use timestamp if no syncVersion
+                                debugLog.sync(`Skipping cloud update for ${boardData.id}: local version is up-to-date (timestamp fallback)`);
                                 return;
                             }
 
@@ -61,9 +72,12 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             }
 
                             // Robust Merge with Deletion Reconciliation
+                            // Pass syncVersion for more reliable conflict detection
                             const finalCards = reconcileCards(
                                 boardData.cards || [],
                                 localCards,
+                                localVersion,
+                                cloudVersion,
                                 localUpdatedAt,
                                 boardData.updatedAt || 0
                             );
@@ -167,15 +181,20 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             boardPrompts: boardContent.boardPrompts || []
         };
 
+        // Increment syncVersion (logical clock) for conflict resolution
+        const newSyncVersion = (meta.syncVersion || 0) + 1;
+
         const fullBoard = removeUndefined({
             ...meta,
             ...cleanedContent,
-            updatedAt: Date.now()
+            updatedAt: Date.now(), // Keep for UI display
+            syncVersion: newSyncVersion // Logical clock for conflict detection
         });
 
+        // Use serverTimestamp for authoritative server time
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
-        await setDoc(boardRef, fullBoard);
-        debugLog.sync(`Board ${boardId} cloud save successful`);
+        await setDoc(boardRef, { ...fullBoard, serverUpdatedAt: serverTimestamp() });
+        debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
     } catch (e) {
         debugLog.error(`Cloud save failed for board ${boardId}`, e);
     }
