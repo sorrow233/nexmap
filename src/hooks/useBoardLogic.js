@@ -198,9 +198,19 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     // Hotkeys
     useGlobalHotkeys(clipboard, setClipboard);
 
-    // Global Paste Listener (Images)
+    // Global Paste Listener (Images) - ONLY for canvas-level, NOT for card modals
     useEffect(() => {
         const handlePaste = (e) => {
+            // Skip if user is focused on a textarea/input (card chat) or inside a modal
+            const activeEl = document.activeElement;
+            const isInsideModal = activeEl?.closest('.chat-modal, [role="dialog"]');
+            const isInsideInput = activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'INPUT';
+
+            if (isInsideModal || isInsideInput) {
+                // Let the card-level useImageUpload handle this paste event
+                return;
+            }
+
             const items = e.clipboardData.items;
             for (const item of items) {
                 if (item.type.indexOf("image") !== -1) {
