@@ -198,7 +198,14 @@ const ChatBar = React.memo(function ChatBar({
                                     onInput={handleInput}
                                     onKeyDown={handleKeyDown}
                                     onFocus={() => setIsFocused(true)}
-                                    onBlur={() => setIsFocused(false)}
+                                    onBlur={(e) => {
+                                        // If the user clicks on an element within the same container (like the IconButton or InstructionChips), 
+                                        // don't hide the instructions immediately.
+                                        if (e.relatedTarget && e.currentTarget.parentElement.contains(e.relatedTarget)) {
+                                            return;
+                                        }
+                                        setIsFocused(false);
+                                    }}
                                     placeholder={placeholderText}
                                     className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-[13px] leading-tight py-2.5 max-h-24 scrollbar-hide"
                                     rows={1}

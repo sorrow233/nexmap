@@ -101,7 +101,12 @@ export default function ChatInput({
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
                             onFocus={() => setIsFocused(true)}
-                            onBlur={() => setIsFocused(false)}
+                            onBlur={(e) => {
+                                if (e.relatedTarget && e.currentTarget.parentElement.contains(e.relatedTarget)) {
+                                    return;
+                                }
+                                setIsFocused(false);
+                            }}
                             className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[80px] scrollbar-hide"
                             placeholder={placeholder}
                             rows={1}

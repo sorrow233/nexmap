@@ -27,15 +27,30 @@ const InstructionChips = ({
                 {instructions.filter(i => i).map((inst, idx) => {
                     const displayName = inst.name || inst.text;
                     const colorClass = inst.color || getColorForString(displayName);
+                    const promptData = {
+                        type: 'prompt',
+                        content: inst.content || inst.text,
+                        text: displayName
+                    };
+
                     return (
                         <button
                             key={idx}
+                            draggable="true"
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('application/json', JSON.stringify(promptData));
+                                e.dataTransfer.effectAllowed = 'copy';
+                            }}
+                            onMouseDown={(e) => {
+                                // Prevent focus loss of textarea while allowing click
+                                e.preventDefault();
+                            }}
                             onClick={() => onSelect(inst.content || inst.text)}
                             disabled={disabled}
                             className={`
                                 group flex items-center gap-2 px-3.5 py-1.5 border rounded-2xl transition-all 
                                 backdrop-blur-md active:scale-95 disabled:opacity-50 shrink-0 
-                                shadow-sm hover:shadow-md font-bold tracking-tight
+                                shadow-sm hover:shadow-md font-bold tracking-tight cursor-grab active:cursor-grabbing
                                 ${colorClass}
                             `}
                         >
