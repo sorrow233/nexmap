@@ -52,7 +52,8 @@ export default function ChatInput({
 
     const handleKeyDown = (e) => {
         // Enter 直接发送，Shift + Enter 换行
-        if (e.key === 'Enter' && !e.shiftKey) {
+        // 增加 isComposing 判断，防止中文输入法选词时触发发送
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             handleSend();
         }
