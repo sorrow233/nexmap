@@ -1,32 +1,51 @@
-import React, { useState } from 'react';
-import { StickyNote, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { StickyNote, Target, Check, Loader2 } from 'lucide-react';
 import { linkageService } from '../../services/linkageService';
 
 const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
     const [showUidPrompt, setShowUidPrompt] = useState(false);
+    const [status, setStatus] = useState('idle'); // idle, sending, success, error
     const [uidInput, setUidInput] = useState('');
     const [pendingText, setPendingText] = useState('');
 
+    useEffect(() => {
+        if (status === 'success') {
+            const timer = setTimeout(() => setStatus('idle'), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [status]);
+
     if (!selection && !showUidPrompt) return null;
+
+    const performSend = async (text) => {
+        setStatus('sending');
+        const result = await linkageService.sendToExternalProject(text);
+        if (result.success) {
+            setStatus('success');
+        } else {
+            setStatus('error');
+            setTimeout(() => setStatus('idle'), 2000);
+        }
+    };
 
     const handleFlowClick = (e) => {
         e.stopPropagation();
+        if (status !== 'idle') return;
+
         const existingUid = linkageService.getFlowStudioUserId();
 
         if (!existingUid) {
-            // 没有配置 UID，弹出输入框
             setPendingText(selection.text);
             setShowUidPrompt(true);
         } else {
-            // 已有 UID，直接发送
-            linkageService.sendToExternalProject(selection.text);
+            performSend(selection.text);
         }
     };
 
     const handleUidSubmit = () => {
         if (uidInput.trim()) {
             linkageService.setFlowStudioUserId(uidInput.trim());
-            linkageService.sendToExternalProject(pendingText);
+            performSend(pendingText);
             setShowUidPrompt(false);
             setUidInput('');
             setPendingText('');
@@ -104,11 +123,23 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
             </button>
             <button
                 onClick={handleFlowClick}
-                className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 hover:bg-white/50 dark:hover:bg-white/10 transition-all active:scale-95"
+                disabled={status !== 'idle'}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 ${status === 'success' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                        status === 'error' ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
+                            'hover:bg-white/50 dark:hover:bg-white/10'
+                    }`}
                 title="Send to FlowStudio"
             >
-                <img src="/flowstudio-32x32.png" alt="Flow" className="w-4 h-4" />
-                <span className="text-slate-700 dark:text-white">Flow</span>
+                {status === 'sending' ? (
+                    <Loader2 size={13} className="animate-spin text-brand-500" />
+                ) : status === 'success' ? (
+                    <Check size={13} />
+                ) : (
+                    <img src="/flowstudio-32x32.png" alt="Flow" className="w-4 h-4" />
+                )}
+                <span className={status === 'success' ? 'font-bold' : 'text-slate-700 dark:text-white'}>
+                    {status === 'sending' ? '发送中' : status === 'success' ? '已添加' : status === 'error' ? '失败' : 'Flow'}
+                </span>
             </button>
         </div>
     );
