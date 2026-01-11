@@ -1,5 +1,5 @@
 import React from 'react';
-import { StickyNote, Star, ExternalLink } from 'lucide-react';
+import { StickyNote, Star } from 'lucide-react';
 import { linkageService } from '../../services/linkageService';
 
 const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
@@ -32,13 +32,14 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
                     e.stopPropagation();
                     linkageService.sendToExternalProject(selection.text);
                 }}
-                className="bg-teal-600 text-white p-2 rounded-full shadow-2xl hover:bg-teal-500 transition-all hover:scale-105 active:scale-95 border border-white/10"
+                className="bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-105 active:scale-95 border border-slate-200 dark:border-white/10"
                 title="Send to FlowStudio"
             >
-                <ExternalLink size={14} />
+                <img src="/flowstudio-32x32.png" alt="FlowStudio" className="w-5 h-5" />
             </button>
         </div>
     );
 };
 
 export default ChatSelectionMenu;
+
