@@ -2,7 +2,8 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
-import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check } from 'lucide-react';
+import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, ExternalLink } from 'lucide-react';
+import { linkageService } from '../../services/linkageService';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import DOMPurify from 'dompurify';
@@ -427,6 +428,13 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                                 <GitBranch size={16} />
                             </button>
                         )}
+                        <button
+                            onClick={() => linkageService.sendToExternalProject(textContent)}
+                            className="p-2 rounded-full text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-100 ring-1 ring-transparent hover:ring-teal-200 dark:bg-teal-500/10 dark:hover:bg-teal-500/20 transition-all ring-inset"
+                            title="Send to FlowStudio"
+                        >
+                            <ExternalLink size={16} />
+                        </button>
                     </div>
                 )}
 
