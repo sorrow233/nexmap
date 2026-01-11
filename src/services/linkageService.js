@@ -29,7 +29,13 @@ export const linkageService = {
             });
 
             if (response.ok) {
-                debugLog.ui('Successfully sent to FlowStudio');
+                const data = await response.json();
+                debugLog.ui('Successfully sent to FlowStudio', data);
+
+                // 如果 API 返回 redirectUrl，打开它来完成创建
+                if (data.redirectUrl) {
+                    window.open(data.redirectUrl, '_blank');
+                }
                 return true;
             } else {
                 console.error('[LinkageService] API returned error:', response.status);
