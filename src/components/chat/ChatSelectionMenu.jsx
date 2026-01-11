@@ -1,9 +1,84 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StickyNote, Target } from 'lucide-react';
 import { linkageService } from '../../services/linkageService';
 
 const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
-    if (!selection) return null;
+    const [showUidPrompt, setShowUidPrompt] = useState(false);
+    const [uidInput, setUidInput] = useState('');
+    const [pendingText, setPendingText] = useState('');
+
+    if (!selection && !showUidPrompt) return null;
+
+    const handleFlowClick = (e) => {
+        e.stopPropagation();
+        const existingUid = linkageService.getFlowStudioUserId();
+
+        if (!existingUid) {
+            // 没有配置 UID，弹出输入框
+            setPendingText(selection.text);
+            setShowUidPrompt(true);
+        } else {
+            // 已有 UID，直接发送
+            linkageService.sendToExternalProject(selection.text);
+        }
+    };
+
+    const handleUidSubmit = () => {
+        if (uidInput.trim()) {
+            linkageService.setFlowStudioUserId(uidInput.trim());
+            linkageService.sendToExternalProject(pendingText);
+            setShowUidPrompt(false);
+            setUidInput('');
+            setPendingText('');
+        }
+    };
+
+    // UID 输入弹窗
+    if (showUidPrompt) {
+        return (
+            <div
+                className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                onClick={() => setShowUidPrompt(false)}
+            >
+                <div
+                    className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4 animate-bounce-in"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center gap-3 mb-4">
+                        <img src="/flowstudio-32x32.png" alt="FlowStudio" className="w-8 h-8" />
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">连接 FlowStudio</h3>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        请输入你的 FlowStudio 用户 ID (Firebase UID) 以启用静默同步功能。
+                    </p>
+                    <input
+                        type="text"
+                        value={uidInput}
+                        onChange={(e) => setUidInput(e.target.value)}
+                        placeholder="Firebase UID"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 mb-4"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && handleUidSubmit()}
+                    />
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowUidPrompt(false)}
+                            className="flex-1 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                        >
+                            取消
+                        </button>
+                        <button
+                            onClick={handleUidSubmit}
+                            disabled={!uidInput.trim()}
+                            className="flex-1 px-4 py-2 rounded-xl text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            确认
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -28,10 +103,7 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
                 焦点
             </button>
             <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    linkageService.sendToExternalProject(selection.text);
-                }}
+                onClick={handleFlowClick}
                 className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 hover:bg-white/50 dark:hover:bg-white/10 transition-all active:scale-95"
                 title="Send to FlowStudio"
             >
