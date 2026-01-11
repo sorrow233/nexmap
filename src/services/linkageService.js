@@ -2,37 +2,47 @@ import { debugLog } from '../utils/debugLogger';
 
 /**
  * LinkageService
- * Handles cross-project data transmission via Deep Linking (URL Parameters)
+ * Handles cross-project data transmission via Background API Call
  */
 
-// Target project URL for cross-project linkage
-export const TARGET_PROJECT_URL = 'https://flowstudio.catzz.work/inspiration';
+// Target project API endpoint
+export const TARGET_API_URL = 'https://flowstudio.catzz.work/api/import';
 
 export const linkageService = {
     /**
-     * Send text to another project via URL redirect
+     * Send text to external project via background API call (silent, no redirect)
      * @param {string} text - The content to transmit
-     * @param {string} targetUrl - Optional target URL override
+     * @returns {Promise<boolean>} - Success status
      */
-    sendToExternalProject: (text, targetUrl = TARGET_PROJECT_URL) => {
-        if (!text) return;
+    sendToExternalProject: async (text) => {
+        if (!text) return false;
 
         try {
-            const encodedText = encodeURIComponent(text);
-            const finalUrl = new URL(targetUrl);
-            finalUrl.searchParams.set('import_text', text); // searchParams.set handles encoding
+            debugLog.ui('Sending to external project via API', { textLength: text.length });
 
-            debugLog.ui('Redirecting to external project', { url: finalUrl.toString() });
+            const response = await fetch(TARGET_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text, source: 'nexmap', timestamp: Date.now() })
+            });
 
-            // Open in new tab to keep current context
-            window.open(finalUrl.toString(), '_blank');
+            if (response.ok) {
+                debugLog.ui('Successfully sent to FlowStudio');
+                return true;
+            } else {
+                console.error('[LinkageService] API returned error:', response.status);
+                return false;
+            }
         } catch (error) {
             console.error('[LinkageService] Failed to send to project', error);
+            return false;
         }
     },
 
     /**
-     * Parse incoming import request from URL
+     * Parse incoming import request from URL (for receiving end)
      * @returns {string|null} - The imported text or null
      */
     getIncomingText: () => {
