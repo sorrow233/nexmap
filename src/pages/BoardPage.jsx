@@ -78,7 +78,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         customSproutPrompt,
         setCustomSproutPrompt,
         handleCustomSprout,
-        handleCustomSproutSubmit
+        handleCustomSproutSubmit,
+        handleGlobalPaste
 
     } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack });
 
@@ -189,6 +190,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
                     onExpandTopics={handleExpandTopics}
+                    onPaste={handleGlobalPaste}
                     instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                 />

@@ -28,6 +28,7 @@ const ChatBar = React.memo(function ChatBar({
     onSprout,
     onDelete,
     onGroup,
+    onPaste,
     instructions = [],
     onClearInstructions,
     onExpandTopics
@@ -197,6 +198,7 @@ const ChatBar = React.memo(function ChatBar({
                                     value={promptInput}
                                     onInput={handleInput}
                                     onKeyDown={handleKeyDown}
+                                    onPaste={onPaste}
                                     onFocus={() => setIsFocused(true)}
                                     onBlur={(e) => {
                                         // If the user clicks on an element within the same container (like the IconButton or InstructionChips), 

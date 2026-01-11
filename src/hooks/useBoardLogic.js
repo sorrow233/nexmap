@@ -64,6 +64,24 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
     const [tempInstructions, setTempInstructions] = useState([]);
 
+    // --- PASTE LOGIC ---
+
+    const handleGlobalPaste = useCallback((e) => {
+        const items = e.clipboardData.items;
+        for (const item of items) {
+            if (item.type.indexOf("image") !== -1) {
+                const file = item.getAsFile();
+                const reader = new FileReader();
+                reader.onload = (event) => setGlobalImages(prev => [...prev, {
+                    file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
+                }]);
+                reader.readAsDataURL(file);
+                e.preventDefault();
+            }
+        }
+    }, []);
+
+
     // --- EFFECTS ---
 
     // Document Title
@@ -201,32 +219,22 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     // Global Paste Listener (Images) - ONLY for canvas-level, NOT for card modals
     useEffect(() => {
         const handlePaste = (e) => {
-            // Skip if user is focused on a textarea/input (card chat) or inside a modal
+            // Skip if user is focused INSIDE a modal (card chat)
             const activeEl = document.activeElement;
             const isInsideModal = activeEl?.closest('.chat-modal, [role="dialog"]');
-            const isInsideInput = activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'INPUT';
 
-            if (isInsideModal || isInsideInput) {
+            if (isInsideModal) {
                 // Let the card-level useImageUpload handle this paste event
                 return;
             }
 
-            const items = e.clipboardData.items;
-            for (const item of items) {
-                if (item.type.indexOf("image") !== -1) {
-                    const file = item.getAsFile();
-                    const reader = new FileReader();
-                    reader.onload = (event) => setGlobalImages(prev => [...prev, {
-                        file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
-                    }]);
-                    reader.readAsDataURL(file);
-                    e.preventDefault();
-                }
-            }
+            // Otherwise, apply global paste logic (for canvas or global ChatBar)
+            handleGlobalPaste(e);
         };
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
-    }, []);
+    }, [handleGlobalPaste]);
+
 
     // --- HANDLERS ---
 
@@ -443,6 +451,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
         handleQuickSprout,
         handleSprout,
         handleExpandTopics,
+        handleGlobalPaste,
 
         // Card Creator exports
         ...cardCreator
