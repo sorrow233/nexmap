@@ -28,7 +28,6 @@ const ChatBar = React.memo(function ChatBar({
     onSprout,
     onDelete,
     onGroup,
-    onPaste,
     instructions = [],
     onClearInstructions,
     onExpandTopics
@@ -200,7 +199,6 @@ const ChatBar = React.memo(function ChatBar({
                                     value={promptInput}
                                     onInput={handleInput}
                                     onKeyDown={handleKeyDown}
-                                    onPaste={onPaste}
                                     onCompositionStart={() => { isComposingRef.current = true; }}
                                     onCompositionEnd={() => { isComposingRef.current = false; }}
                                     onFocus={() => setIsFocused(true)}

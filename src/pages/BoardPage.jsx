@@ -190,7 +190,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
                     onExpandTopics={handleExpandTopics}
-                    onPaste={handleGlobalPaste}
                     instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                 />

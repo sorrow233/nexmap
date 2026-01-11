@@ -68,16 +68,22 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
 
     const handleGlobalPaste = useCallback((e) => {
         const items = e.clipboardData.items;
+        let hasImage = false;
         for (const item of items) {
             if (item.type.indexOf("image") !== -1) {
+                hasImage = true;
                 const file = item.getAsFile();
                 const reader = new FileReader();
                 reader.onload = (event) => setGlobalImages(prev => [...prev, {
                     file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
                 }]);
                 reader.readAsDataURL(file);
-                e.preventDefault();
             }
+        }
+        // 只在有图片时阻止默认行为和冒泡，避免重复处理
+        if (hasImage) {
+            e.preventDefault();
+            e.stopPropagation();
         }
     }, []);
 
