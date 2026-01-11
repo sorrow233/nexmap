@@ -58,13 +58,13 @@ export const linkageService = {
                 const data = await response.json();
                 debugLog.ui('FlowStudio response', data);
 
-                // 队列模式：静默成功，无需跳转
-                if (data.method === 'queue') {
-                    debugLog.ui('Content queued for FlowStudio import', { importId: data.importId });
+                // 只要提供了 userId，我们就不希望打开新窗口，视为静默完成
+                if (userId) {
+                    debugLog.ui('Silent mode: Content sent to FlowStudio queue');
                     return { success: true, method: 'queue' };
                 }
 
-                // 备选模式：需要跳转页面
+                // 只有在没提供 userId 的备选模式下，才根据返回的 redirectUrl 打开页面
                 if (data.redirectUrl) {
                     window.open(data.redirectUrl, '_blank');
                     return { success: true, method: 'redirect' };
