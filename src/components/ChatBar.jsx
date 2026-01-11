@@ -37,6 +37,7 @@ const ChatBar = React.memo(function ChatBar({
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
+    const isComposingRef = useRef(false); // IME 合成状态追踪
     const { t } = useLanguage();
 
     const handleInput = (e) => {
@@ -78,8 +79,8 @@ const ChatBar = React.memo(function ChatBar({
 
     const handleKeyDown = (e) => {
         // Enter 直接发送，Shift + Enter 换行
-        // 增加 isComposing 判断，防止中文输入法选词时触发发送
-        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+        // 使用 isComposingRef 追踪 IME 状态，防止中文输入法选词时触发发送
+        if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
             e.preventDefault();
             handleSubmit();
         }
@@ -163,7 +164,7 @@ const ChatBar = React.memo(function ChatBar({
                                 <IconButton onClick={() => fileInputRef.current?.click()} title={t.chatBar.uploadImage}>
                                     <ImageIcon size={16} className="text-slate-400 hover:text-cyan-400" />
                                 </IconButton>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={(e) => onImageUpload(e.target.files)} />
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={onImageUpload} />
 
                                 <IconButton title="Files">
                                     <FileText size={16} className="text-slate-400 hover:text-cyan-400" />
@@ -200,6 +201,8 @@ const ChatBar = React.memo(function ChatBar({
                                     onInput={handleInput}
                                     onKeyDown={handleKeyDown}
                                     onPaste={onPaste}
+                                    onCompositionStart={() => { isComposingRef.current = true; }}
+                                    onCompositionEnd={() => { isComposingRef.current = false; }}
                                     onFocus={() => setIsFocused(true)}
                                     onBlur={(e) => {
                                         // If the user clicks on an element within the same container (like the IconButton or InstructionChips), 

@@ -27,6 +27,7 @@ export default function ChatInput({
 }) {
     const { t } = useLanguage();
     const [isFocused, setIsFocused] = React.useState(false);
+    const isComposingRef = useRef(false); // IME 合成状态追踪
 
     // Ensure height calculation handles larger text
     const handleTextareaInput = (e) => {
@@ -52,8 +53,8 @@ export default function ChatInput({
 
     const handleKeyDown = (e) => {
         // Enter 直接发送，Shift + Enter 换行
-        // 增加 isComposing 判断，防止中文输入法选词时触发发送
-        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+        // 使用 isComposingRef 追踪 IME 状态，防止中文输入法选词时触发发送
+        if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
             e.preventDefault();
             handleSend();
         }
@@ -101,6 +102,8 @@ export default function ChatInput({
                             onInput={handleTextareaInput}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
+                            onCompositionStart={() => { isComposingRef.current = true; }}
+                            onCompositionEnd={() => { isComposingRef.current = false; }}
                             onFocus={() => setIsFocused(true)}
                             onBlur={(e) => {
                                 if (e.relatedTarget && e.currentTarget.parentElement.contains(e.relatedTarget)) {
