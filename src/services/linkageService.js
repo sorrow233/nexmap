@@ -8,42 +8,76 @@ import { debugLog } from '../utils/debugLogger';
 // Target project API endpoint
 export const TARGET_API_URL = 'https://flowstudio.catzz.work/api/import';
 
+// localStorage key for FlowStudio user ID
+const FLOWSTUDIO_USER_ID_KEY = 'flowstudio_user_id';
+
 export const linkageService = {
     /**
-     * Send text to external project via background API call (silent, no redirect)
+     * Get configured FlowStudio user ID
+     * @returns {string|null}
+     */
+    getFlowStudioUserId: () => {
+        return localStorage.getItem(FLOWSTUDIO_USER_ID_KEY);
+    },
+
+    /**
+     * Set FlowStudio user ID for queue-based import
+     * @param {string} userId - FlowStudio Firebase UID
+     */
+    setFlowStudioUserId: (userId) => {
+        localStorage.setItem(FLOWSTUDIO_USER_ID_KEY, userId);
+    },
+
+    /**
+     * Send text to FlowStudio via background API call
+     * Supports both queue mode (silent) and redirect mode (fallback)
      * @param {string} text - The content to transmit
-     * @returns {Promise<boolean>} - Success status
+     * @returns {Promise<{success: boolean, method?: string}>}
      */
     sendToExternalProject: async (text) => {
-        if (!text) return false;
+        if (!text) return { success: false };
 
         try {
-            debugLog.ui('Sending to external project via API', { textLength: text.length });
+            const userId = localStorage.getItem(FLOWSTUDIO_USER_ID_KEY);
+            debugLog.ui('Sending to FlowStudio', { textLength: text.length, hasUserId: !!userId });
 
             const response = await fetch(TARGET_API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text, source: 'nexmap', timestamp: Date.now() })
+                body: JSON.stringify({
+                    text,
+                    userId: userId || undefined,
+                    source: 'nexmap',
+                    timestamp: Date.now()
+                })
             });
 
             if (response.ok) {
                 const data = await response.json();
-                debugLog.ui('Successfully sent to FlowStudio', data);
+                debugLog.ui('FlowStudio response', data);
 
-                // 如果 API 返回 redirectUrl，打开它来完成创建
+                // 队列模式：静默成功，无需跳转
+                if (data.method === 'queue') {
+                    debugLog.ui('Content queued for FlowStudio import', { importId: data.importId });
+                    return { success: true, method: 'queue' };
+                }
+
+                // 备选模式：需要跳转页面
                 if (data.redirectUrl) {
                     window.open(data.redirectUrl, '_blank');
+                    return { success: true, method: 'redirect' };
                 }
-                return true;
+
+                return { success: true, method: 'unknown' };
             } else {
                 console.error('[LinkageService] API returned error:', response.status);
-                return false;
+                return { success: false };
             }
         } catch (error) {
             console.error('[LinkageService] Failed to send to project', error);
-            return false;
+            return { success: false };
         }
     },
 
