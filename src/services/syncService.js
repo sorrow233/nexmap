@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, onSnapshot, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { idbGet } from './db/indexedDB';
 import { saveBoard, getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
@@ -390,7 +390,22 @@ export const updateUserSettings = async (userId, updates) => {
         }
 
         const configRef = doc(db, 'users', userId, 'settings', 'config');
-        await setDoc(configRef, processedUpdates, { merge: true });
+
+        // Use a more predictable timestamp for settings logic 
+        // because we use it for conflict resolution comparison in useAppInit.
+        if (processedUpdates.lastUpdated === undefined) {
+            processedUpdates.lastUpdated = Date.now();
+        }
+
+        const docSnap = await getDoc(configRef);
+        if (docSnap.exists()) {
+            // updateDoc DOES NOT do deep-merging of maps, it replaces the field.
+            // This is critical for deleting providers.
+            await updateDoc(configRef, processedUpdates);
+        } else {
+            // First time setup
+            await setDoc(configRef, processedUpdates);
+        }
     } catch (e) {
         await handleQuotaError(e, 'updateUserSettings');
         debugLog.error("Update settings failed", e);

@@ -19,6 +19,7 @@ const loadInitialSettings = () => {
             settings = {
                 providers: parsed.providers || DEFAULT_PROVIDERS,
                 activeId: parsed.activeId || 'google',
+                lastUpdated: parsed.lastUpdated || 0,
             };
         }
 
@@ -39,6 +40,7 @@ const loadInitialSettings = () => {
     return {
         providers: DEFAULT_PROVIDERS,
         activeId: 'google',
+        lastUpdated: 0,
         quickChatModel: null,
         quickChatProviderId: null,
         quickImageModel: null,
@@ -72,6 +74,7 @@ export const createSettingsSlice = (set, get) => ({
     // Data State
     providers: initialState.providers,
     activeId: initialState.activeId,
+    lastUpdated: initialState.lastUpdated || 0,
 
     // 快速模型切换（画布临时覆盖）- 增加对 Provider 的独立覆盖
     quickChatModel: initialState.quickChatModel,
@@ -86,11 +89,13 @@ export const createSettingsSlice = (set, get) => ({
                 ...state.providers,
                 [providerId]: { ...state.providers[providerId], ...updates }
             };
-            const newState = { providers: newProviders };
+            const now = Date.now();
+            const newState = { providers: newProviders, lastUpdated: now };
             try {
                 localStorage.setItem(CONFIG_KEY, JSON.stringify({
                     providers: newProviders,
-                    activeId: state.activeId
+                    activeId: state.activeId,
+                    lastUpdated: now
                 }));
             } catch (e) {
                 console.error('[Settings] Failed to persist config:', e);
@@ -198,16 +203,18 @@ export const createSettingsSlice = (set, get) => ({
 
     // Used by Cloud Sync
     setFullConfig: (config) => {
+        const now = config.lastUpdated || Date.now();
         const newState = {
             providers: config.providers || DEFAULT_PROVIDERS,
-            activeId: config.activeId || 'google'
+            activeId: config.activeId || 'google',
+            lastUpdated: now
         };
         try {
             localStorage.setItem(CONFIG_KEY, JSON.stringify(newState));
         } catch (e) {
             console.error('[Settings] Failed to persist full config:', e);
         }
-        set(newState);
+        set({ providers: newState.providers, activeId: newState.activeId, lastUpdated: newState.lastUpdated });
     },
 
     // Selectors (Helpers)

@@ -261,12 +261,20 @@ export function useAppInit() {
                 loadUserSettings(u.uid).then(async (settings) => {
                     if (settings) {
                         debugLog.auth('Cloud settings loaded successfully');
-                        // CRITICAL FIX: Sync cloud settings to Store (which handles localStorage persistence)
                         if (settings.providers) {
-                            useStore.getState().setFullConfig({
-                                providers: settings.providers,
-                                activeId: settings.activeId || 'google'
-                            });
+                            const cloudUpdated = settings.lastUpdated || 0;
+                            const localUpdated = useStore.getState().lastUpdated || 0;
+
+                            if (cloudUpdated > localUpdated) {
+                                debugLog.auth(`Cloud settings are newer (${cloudUpdated} > ${localUpdated}), applying to local store`);
+                                useStore.getState().setFullConfig({
+                                    providers: settings.providers,
+                                    activeId: settings.activeId || 'google',
+                                    lastUpdated: cloudUpdated
+                                });
+                            } else {
+                                debugLog.auth(`Local settings are up-to-date or newer (${localUpdated} >= ${cloudUpdated}), ignoring cloud settings`);
+                            }
                         }
                         if (settings.s3Config) {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));

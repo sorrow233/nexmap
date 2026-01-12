@@ -197,7 +197,7 @@ export default function SettingsLLMTab({
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
                                     <MessageSquare size={12} className="text-blue-500" />
-                                    {t.settings?.chatRole || "对话模型 (Dialogue Role)"}
+                                    {t.settings.roles?.chatTitle || "对话模型"}
                                 </label>
                                 <input
                                     type="text"
@@ -215,7 +215,7 @@ export default function SettingsLLMTab({
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
                                     <Zap size={12} className="text-amber-500" />
-                                    {t.settings?.analysisRole || "功能模型 (Analysis Role)"}
+                                    {t.settings.roles?.analysisTitle || "功能模型 (Analysis Role)"}
                                 </label>
                                 <input
                                     type="text"
@@ -233,7 +233,7 @@ export default function SettingsLLMTab({
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
                                     <ImageIcon size={12} className="text-purple-500" />
-                                    {t.settings?.imageRole || "绘画模型 (Image Role)"}
+                                    {t.settings.roles?.imageTitle || "绘画模型 (Image Role)"}
                                 </label>
                                 <input
                                     type="text"
