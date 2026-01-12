@@ -17,6 +17,7 @@ export default function SettingsLLMTab({
     handleReset
 }) {
     const { t } = useLanguage();
+    const [ignored, forceUpdate] = React.useState(0);
     const providerList = Object.values(providers || {});
 
     return (
@@ -123,9 +124,8 @@ export default function SettingsLLMTab({
                                         <button
                                             onClick={() => {
                                                 getKeyPool(currentProvider.id, currentProvider.apiKey).resetFailedStatus();
-                                                // 强制刷新组件状态
-                                                handleUpdateProvider('apiKey', currentProvider.apiKey + ' ');
-                                                setTimeout(() => handleUpdateProvider('apiKey', currentProvider.apiKey.trim()), 0);
+                                                // 强制组件重渲染以更新状态显示
+                                                forceUpdate(prev => prev + 1);
                                             }}
                                             className="text-[10px] font-bold text-brand-600 dark:text-brand-400 hover:opacity-80 transition-opacity uppercase"
                                         >
@@ -134,6 +134,7 @@ export default function SettingsLLMTab({
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {(() => {
+                                            // 依赖 forceUpdate 触发重渲染，从而获取最新的 KeyPool 状态
                                             const pool = getKeyPool(currentProvider.id, currentProvider.apiKey);
                                             const stats = pool.getStats();
                                             return stats.keys.map((k, i) => (
