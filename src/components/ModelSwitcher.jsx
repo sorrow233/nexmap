@@ -96,7 +96,7 @@ export default function ModelSwitcher({ compact = false }) {
         return unique(chatModels);
     }, [providers]);
 
-    const currentChatModel = useStore(state => state.getEffectiveChatModel?.() || quickChatModel);
+    const currentChatModel = useStore(state => state.getEffectiveChatModel?.() || state.quickChatModel);
     const displayModel = currentChatModel;
 
     // 焦点：始终显示聊天模型列表

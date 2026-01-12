@@ -169,19 +169,24 @@ export const createSettingsSlice = (set, get) => ({
         if (state.quickChatModel) {
             const pId = state.quickChatProviderId || state.globalRoles.chat.providerId;
             return {
+                ...state.providers[pId],
                 model: state.quickChatModel,
-                providerId: pId,
-                ...state.providers[pId]
+                providerId: pId
             };
         }
         // 2. 使用全局 Role 配置
         const roleConfig = state.globalRoles.chat;
         const providerConfig = state.providers[roleConfig.providerId];
         return {
+            ...providerConfig,
             model: roleConfig.model,
-            providerId: roleConfig.providerId,
-            ...providerConfig
+            providerId: roleConfig.providerId
         };
+    },
+
+    // 获取当前有效的聊天模型 ID (用于 UI 显示)
+    getEffectiveChatModel: () => {
+        return get().getEffectiveChatConfig().model;
     },
 
     // 获取当前有效的绘画配置 (严格遵循设置，不支持快速切换)
@@ -198,9 +203,9 @@ export const createSettingsSlice = (set, get) => ({
             const roleConfig = state.globalRoles.image;
             const providerConfig = state.providers[roleConfig.providerId];
             return {
+                ...providerConfig,
                 model: roleConfig.model,
-                providerId: roleConfig.providerId,
-                ...providerConfig
+                providerId: roleConfig.providerId
             };
         }
         // 除了图片，全部走对话配置（支持画布快速切换）
