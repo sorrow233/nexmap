@@ -3,6 +3,7 @@ import { resolveAllImages, getAuthMethod } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
 import { isRetryableError } from './gemini/errorUtils';
 import { parseGeminiStream } from './gemini/streamParser';
+import { getKeyPool } from '../llm/keyPoolManager';
 
 export class GeminiProvider extends LLMProvider {
     /**
@@ -27,7 +28,6 @@ export class GeminiProvider extends LLMProvider {
                 parts = msg.content.map(part => {
                     if (part.type === 'text') return { text: part.text };
                     if (part.type === 'image') {
-                        // CRITICAL: Only include if data is actually present to avoid 400 Validation Error
                         if (!part.source?.data) {
                             console.warn('[Gemini] Skipping image part due to missing data');
                             return null;
@@ -54,8 +54,17 @@ export class GeminiProvider extends LLMProvider {
     }
 
 
+    /**
+     * 获取 KeyPool（支持多 Key 轮询）
+     */
+    _getKeyPool() {
+        const keysString = this.config.apiKeys || this.config.apiKey || '';
+        return getKeyPool(this.config.id || 'default', keysString);
+    }
+
     async chat(messages, model, options = {}) {
-        const { apiKey, baseUrl = "" } = this.config;
+        const keyPool = this._getKeyPool();
+        const { baseUrl = "" } = this.config;
         const modelToUse = model || this.config.model;
         const cleanModel = (baseUrl && baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
@@ -70,14 +79,12 @@ export class GeminiProvider extends LLMProvider {
             }
         };
 
-        // Add tools ONLY if explicitly requested in options
         if (options.tools) {
             requestBody.tools = options.tools;
         } else if (options.useSearch) {
             requestBody.tools = [{ google_search: {} }];
         }
 
-        // Add experimental features ONLY if explicitly requested
         if (options.thinkingLevel) {
             requestBody.generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
         }
@@ -85,18 +92,20 @@ export class GeminiProvider extends LLMProvider {
             requestBody.generationConfig.mediaResolution = options.mediaResolution;
         }
 
-        // console.log('[Gemini] Generation Config:', JSON.stringify(requestBody.generationConfig, null, 2));
-
-
         if (systemInstruction) {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 5; // Allow 5 retries (6 total attempts) - GMI Cloud can be unstable
+        let retries = 3;
+        let lastError = null;
 
         while (retries >= 0) {
+            const apiKey = keyPool.getNextKey();
+            if (!apiKey) {
+                throw new Error('没有可用的 Gemini API Key');
+            }
+
             try {
-                // console.log(`[Gemini] Sending chat request to /api/gmi-serving for model ${cleanModel}`);
                 const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -109,18 +118,14 @@ export class GeminiProvider extends LLMProvider {
                     })
                 });
 
-                // console.log(`[Gemini] Response status: ${response.status} ${response.statusText}`);
-
                 if (response.ok) {
                     const data = await response.json();
-
-                    // Check for errors in response body
                     if (data.error) {
                         const errMsg = data.error.message || JSON.stringify(data.error);
-                        if (isRetryableError(errMsg) && retries > 0) {
-                            console.warn(`[Gemini] Retryable error: ${errMsg}, retrying... (${retries} left)`);
-                            await new Promise(r => setTimeout(r, 2000));
+                        if ([401, 403, 429].includes(data.error.code) || isRetryableError(errMsg)) {
+                            keyPool.markKeyFailed(apiKey, data.error.code || errMsg);
                             retries--;
+                            lastError = new Error(errMsg);
                             continue;
                         }
                         throw new Error(errMsg);
@@ -130,13 +135,14 @@ export class GeminiProvider extends LLMProvider {
                     return candidate?.content?.parts?.[0]?.text || "";
                 }
 
-                if (response.status === 404) {
-                    throw new Error("API Proxy endpoint not found (404). This might be a deployment or routing issue.");
+                if ([401, 403, 429].includes(response.status)) {
+                    keyPool.markKeyFailed(apiKey, response.status);
+                    retries--;
+                    continue;
                 }
 
                 if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
-                    console.warn(`[Gemini] Server error ${response.status}, retrying... (${retries} left)`);
-                    await new Promise(r => setTimeout(r, 2000));
+                    await new Promise(r => setTimeout(r, 1000));
                     retries--; continue;
                 }
 
@@ -144,27 +150,20 @@ export class GeminiProvider extends LLMProvider {
                 throw new Error(err.error?.message || err.message || `API Error ${response.status}: ${response.statusText}`);
             } catch (e) {
                 console.error('[Gemini] Chat error details:', e);
-
-                // Check if error is retryable
-                if (isRetryableError(e.message) && retries > 0) {
-                    console.warn(`[Gemini] Retryable error: ${e.message}, retrying... (${retries} left)`);
-                    await new Promise(r => setTimeout(r, 2000));
-                    retries--;
-                    continue;
-                }
-
                 if (retries > 0) {
-                    await new Promise(r => setTimeout(r, 2000));
                     retries--;
+                    lastError = e;
                     continue;
                 }
                 throw e;
             }
         }
+        throw lastError || new Error('Gemini 请求失败');
     }
 
     async stream(messages, onToken, model, options = {}) {
-        const { apiKey, baseUrl = "" } = this.config;
+        const keyPool = this._getKeyPool();
+        const { baseUrl = "" } = this.config;
         const modelToUse = model || this.config.model;
         const cleanModel = (baseUrl && baseUrl.indexOf('gmi') !== -1) ? modelToUse.replace('google/', '') : modelToUse;
 
@@ -179,14 +178,12 @@ export class GeminiProvider extends LLMProvider {
             }
         };
 
-        // Add tools ONLY if explicitly requested
         if (options.tools) {
             requestBody.tools = options.tools;
         } else if (options.useSearch) {
             requestBody.tools = [{ google_search: {} }];
         }
 
-        // Add experimental features ONLY if explicitly requested
         if (options.thinkingLevel) {
             requestBody.generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
         }
@@ -194,23 +191,24 @@ export class GeminiProvider extends LLMProvider {
             requestBody.generationConfig.mediaResolution = options.mediaResolution;
         }
 
-        // console.log('[Gemini] Stream Config:', JSON.stringify(requestBody.generationConfig, null, 2));
-
-
         if (systemInstruction) {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 5; // Allow 5 retries (6 total attempts) - GMI Cloud can be unstable
-        let delay = 2000; // Start with 2 seconds, will increase each retry
+        let retries = 3;
+        let delay = 1000;
 
         while (retries >= 0) {
+            const apiKey = keyPool.getNextKey();
+            if (!apiKey) {
+                throw new Error('没有可用的 Gemini API Key');
+            }
+
             try {
-                // console.log(`[Gemini] Starting stream request to ${baseUrl} for model ${cleanModel} (attempts left: ${retries + 1})`);
                 const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    signal: options.signal, // Pass AbortSignal
+                    signal: options.signal,
                     body: JSON.stringify({
                         apiKey,
                         baseUrl,
@@ -223,69 +221,44 @@ export class GeminiProvider extends LLMProvider {
 
                 if (!response.ok) {
                     const errStatus = response.status;
-                    console.error(`[Gemini] Stream response error: ${errStatus} ${response.statusText}`);
-
-                    if (errStatus === 404) {
-                        throw new Error("Stream API Proxy endpoint not found (404). This might be a deployment or routing issue.");
+                    if ([401, 403, 429].includes(errStatus)) {
+                        keyPool.markKeyFailed(apiKey, errStatus);
+                        retries--;
+                        continue;
                     }
 
-                    if ([429, 500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
-                        console.warn(`[Gemini] Request failed with ${errStatus}, retrying in ${delay}ms... (${retries} left)`);
+                    if ([500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
                         await new Promise(r => setTimeout(r, delay));
                         retries--;
-                        delay *= 1.5;
+                        delay *= 2;
                         continue;
                     }
 
                     const errData = await response.json().catch(() => ({}));
-                    console.error('[Gemini] API Error:', errStatus, errData);
                     throw new Error(errData.error?.message || errData.message || `API Error ${errStatus}: ${response.statusText}`);
                 }
 
                 const reader = response.body.getReader();
                 try {
-                    await parseGeminiStream(reader, onToken, (msg) => {
-                        // Optional: suppress verbose logs or route elsewhere
-                        // console.log(msg); 
-                    });
-                    // console.log('[Gemini] Stream finished normally.');
+                    await parseGeminiStream(reader, onToken, () => { });
                     return;
                 } finally {
                     reader.releaseLock();
                 }
 
             } catch (e) {
-                // DON'T retry on AbortError!
-                if (e.name === 'AbortError' || options.signal?.aborted) {
-                    throw e;
-                }
-
-                // Handle retryable errors (including our custom {retryable: true} objects)
-                if ((e.retryable || isRetryableError(e.message)) && retries > 0) {
-                    console.warn(`[Gemini] Retryable error: ${e.message}, retrying in ${delay / 1000}s... (${retries} left)`);
-                    await new Promise(r => setTimeout(r, delay));
-                    retries--;
-                    delay *= 2; // Double the delay each retry
-                    continue;
-                }
+                if (e.name === 'AbortError' || options.signal?.aborted) throw e;
 
                 if (retries > 0) {
-                    console.warn(`[Gemini] Stream error: ${e.message}, retrying in ${delay / 1000}s... (${retries} left)`);
-                    await new Promise(r => setTimeout(r, delay));
                     retries--;
-                    delay *= 2; // Double the delay each retry
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
                     continue;
-                }
-
-                // Final failure - throw the actual error
-                if (e.retryable) {
-                    throw new Error(e.message);
                 }
                 throw e;
             }
         }
     }
-
 
     /**
      * Generate Image using GMI Cloud Async API

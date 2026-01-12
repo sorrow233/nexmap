@@ -61,12 +61,25 @@ export class KeyPoolManager {
     /**
      * 标记 Key 失效
      * @param {string} key - 失效的 Key
-     * @param {string} reason - 失效原因
+     * @param {string|number} reason - 失效原因 (如果是 429 则视为临时失效)
      */
     markKeyFailed(key, reason = 'unknown') {
-        if (key && this.allKeys.includes(key)) {
+        if (!key || !this.allKeys.includes(key)) return;
+
+        const isTemporary = reason === 429 || String(reason).includes('429') || reason === 'rate_limit';
+
+        if (isTemporary) {
+            // 临时失效，挂起 60 秒
             this.failedKeys.add(key);
-            console.warn(`[KeyPool] Key ${this._maskKey(key)} 已标记失效: ${reason}`);
+            console.warn(`[KeyPool] Key ${this._maskKey(key)} 已挂起 (临时限流): ${reason}`);
+            setTimeout(() => {
+                this.failedKeys.delete(key);
+                console.log(`[KeyPool] Key ${this._maskKey(key)} 挂起结束，已恢复可用`);
+            }, 60000); // 1分钟后恢复
+        } else {
+            // 永久失效 (例如 401)
+            this.failedKeys.add(key);
+            console.error(`[KeyPool] Key ${this._maskKey(key)} 已标记失效 (持久错误): ${reason}`);
         }
     }
 
