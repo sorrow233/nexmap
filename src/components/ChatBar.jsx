@@ -124,7 +124,7 @@ const ChatBar = React.memo(function ChatBar({
                         layout
                         className={`
                             relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl border border-cyan-100/50 dark:border-white/10 rounded-[1.2rem] 
-                            shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 overflow-hidden flex flex-col
+                            shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 flex flex-col
                             ${isFocused ? 'ring-cyan-400/30' : 'hover:border-cyan-200/50'}
                             ${isReadOnly ? 'opacity-70 grayscale-[0.3]' : ''}
                         `}
