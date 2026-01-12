@@ -123,14 +123,15 @@ export default function ModelSwitcher({ compact = false }) {
     }, []);
 
     const handleModelSelect = (model) => {
-        // 关键：切换模型的同时，可能需要切换 Provider (如果选中的模型属于另一个厂商)
+        // 关键改进：不再调用 setActiveProvider(model.providerId)
+        // 仅仅记录“当前会话”临时使用的模型和它所属的厂商 ID
         const providerId = model.providerId;
-        if (providerId && providerId !== useStore.getState().activeId) {
-            useStore.getState().setActiveProvider(providerId);
-        }
 
-        if (activeTab === 'chat') setQuickChatModel(model.id);
-        else setQuickImageModel(model.id);
+        if (activeTab === 'chat') {
+            setQuickChatModel(model.id, providerId);
+        } else {
+            setQuickImageModel(model.id, providerId);
+        }
         setIsOpen(false);
     };
 

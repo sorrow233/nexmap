@@ -26,7 +26,9 @@ const loadInitialSettings = () => {
         if (quickModels) {
             const parsedQuick = JSON.parse(quickModels);
             settings.quickChatModel = parsedQuick.quickChatModel || null;
+            settings.quickChatProviderId = parsedQuick.quickChatProviderId || null;
             settings.quickImageModel = parsedQuick.quickImageModel || null;
+            settings.quickImageProviderId = parsedQuick.quickImageProviderId || null;
         }
 
         return settings;
@@ -36,32 +38,32 @@ const loadInitialSettings = () => {
 
     return {
         providers: DEFAULT_PROVIDERS,
-        activeId: 'google',
+        activeId: initialState.activeId,
         quickChatModel: null,
+        quickChatProviderId: null,
         quickImageModel: null,
+        quickImageProviderId: null,
     };
 };
 
 const initialState = loadInitialSettings();
 
 export const createSettingsSlice = (set, get) => ({
-    // UI State
+    // ... UI State ...
     isSettingsOpen: false,
     setIsSettingsOpen: (val) => set((state) => ({ isSettingsOpen: typeof val === 'function' ? val(state.isSettingsOpen) : val })),
 
-    // Offline Mode - reduces cloud sync to save quota
+    // ... Offline Mode ...
     offlineMode: localStorage.getItem('mixboard_offline_mode') === 'true',
-    autoOfflineTriggered: false, // True if quota exhausted triggered offline mode
+    autoOfflineTriggered: false,
 
     setOfflineMode: (enabled) => {
         localStorage.setItem('mixboard_offline_mode', enabled ? 'true' : 'false');
         set({ offlineMode: enabled, autoOfflineTriggered: false });
     },
 
-    // Called when quota is exhausted - auto-enable offline mode
     triggerAutoOffline: () => {
         if (!get().offlineMode) {
-            console.warn('[Settings] Quota exhausted - auto-enabling offline mode');
             localStorage.setItem('mixboard_offline_mode', 'true');
             set({ offlineMode: true, autoOfflineTriggered: true });
         }
@@ -71,9 +73,11 @@ export const createSettingsSlice = (set, get) => ({
     providers: initialState.providers,
     activeId: initialState.activeId,
 
-    // 快速模型切换（画布临时覆盖）
+    // 快速模型切换（画布临时覆盖）- 增加对 Provider 的独立覆盖
     quickChatModel: initialState.quickChatModel,
+    quickChatProviderId: initialState.quickChatProviderId,
     quickImageModel: initialState.quickImageModel,
+    quickImageProviderId: initialState.quickImageProviderId,
 
     // Actions
     updateProviderConfig: (providerId, updates) => {
@@ -83,9 +87,11 @@ export const createSettingsSlice = (set, get) => ({
                 [providerId]: { ...state.providers[providerId], ...updates }
             };
             const newState = { providers: newProviders };
-            // Persist with error handling
             try {
-                localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
+                localStorage.setItem(CONFIG_KEY, JSON.stringify({
+                    providers: newProviders,
+                    activeId: state.activeId
+                }));
             } catch (e) {
                 console.error('[Settings] Failed to persist config:', e);
             }
@@ -97,7 +103,10 @@ export const createSettingsSlice = (set, get) => ({
         set(state => {
             const newState = { activeId: id };
             try {
-                localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...state, ...newState }));
+                localStorage.setItem(CONFIG_KEY, JSON.stringify({
+                    providers: state.providers,
+                    activeId: id
+                }));
             } catch (e) {
                 console.error('[Settings] Failed to persist activeId:', e);
             }
@@ -105,45 +114,73 @@ export const createSettingsSlice = (set, get) => ({
         });
     },
 
-    // 快速模型切换 Actions
-    setQuickChatModel: (model) => {
-        set({ quickChatModel: model });
+    // 快速模型切换 Actions (隔离 Session)
+    setQuickChatModel: (modelId, providerId = null) => {
+        set({ quickChatModel: modelId, quickChatProviderId: providerId });
         try {
             const current = JSON.parse(localStorage.getItem(QUICK_MODEL_KEY) || '{}');
-            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({ ...current, quickChatModel: model }));
+            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({
+                ...current,
+                quickChatModel: modelId,
+                quickChatProviderId: providerId
+            }));
         } catch (e) {
             console.error('[Settings] Failed to persist quickChatModel:', e);
         }
     },
 
-    setQuickImageModel: (model) => {
-        set({ quickImageModel: model });
+    setQuickImageModel: (modelId, providerId = null) => {
+        set({ quickImageModel: modelId, quickImageProviderId: providerId });
         try {
             const current = JSON.parse(localStorage.getItem(QUICK_MODEL_KEY) || '{}');
-            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({ ...current, quickImageModel: model }));
+            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({
+                ...current,
+                quickImageModel: modelId,
+                quickImageProviderId: providerId
+            }));
         } catch (e) {
             console.error('[Settings] Failed to persist quickImageModel:', e);
         }
     },
 
-    // 获取当前有效的聊天模型（优先使用快速模型）
-    getEffectiveChatModel: () => {
+    // 获取当前有效的聊天配置（优先使用临时覆盖，不改动全局 activeId）
+    getEffectiveChatConfig: () => {
         const state = get();
+        // 1. 检查是否有临时覆盖
         if (state.quickChatModel) {
-            return state.quickChatModel;
+            const pId = state.quickChatProviderId || state.activeId;
+            return {
+                model: state.quickChatModel,
+                providerId: pId,
+                ...state.providers[pId]
+            };
         }
+        // 2. 使用全局默认配置
         const activeConfig = state.providers[state.activeId];
-        return activeConfig?.roles?.chat || activeConfig?.model || 'google/gemini-3-pro-preview';
+        return {
+            model: activeConfig?.roles?.chat || activeConfig?.model || 'google/gemini-3-pro-preview',
+            providerId: state.activeId,
+            ...activeConfig
+        };
     },
 
-    // 获取当前有效的绘画模型（优先使用快速模型）
-    getEffectiveImageModel: () => {
+    // 获取当前有效的绘画配置
+    getEffectiveImageConfig: () => {
         const state = get();
         if (state.quickImageModel) {
-            return state.quickImageModel;
+            const pId = state.quickImageProviderId || state.activeId;
+            return {
+                model: state.quickImageModel,
+                providerId: pId,
+                ...state.providers[pId]
+            };
         }
         const activeConfig = state.providers[state.activeId];
-        return activeConfig?.roles?.image || 'gemini-3-pro-image-preview';
+        return {
+            model: activeConfig?.roles?.image || 'gemini-3-pro-image-preview',
+            providerId: state.activeId,
+            ...activeConfig
+        };
     },
 
 
