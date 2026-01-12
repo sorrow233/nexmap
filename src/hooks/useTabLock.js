@@ -12,7 +12,21 @@ import { debugLog } from '../utils/debugLogger';
  */
 export function useTabLock(boardId) {
     const [isReadOnly, setIsReadOnly] = useState(false);
-    const tabId = useRef(Math.random().toString(36).substr(2, 9)).current;
+    // Use sessionStorage to persist tabId across refreshes
+    const [tabId] = useState(() => {
+        try {
+            const STORAGE_KEY = 'nexmap_tab_id';
+            let id = sessionStorage.getItem(STORAGE_KEY);
+            if (!id) {
+                id = Math.random().toString(36).substr(2, 9);
+                sessionStorage.setItem(STORAGE_KEY, id);
+            }
+            return id;
+        } catch (e) {
+            // Fallback for private browsing or if storage is full/disabled
+            return Math.random().toString(36).substr(2, 9);
+        }
+    });
     const channelRef = useRef(null);
     const heartbeatTimerRef = useRef(null);
     const monitoringTimerRef = useRef(null);
