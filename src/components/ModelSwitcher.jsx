@@ -130,15 +130,15 @@ export default function ModelSwitcher({ compact = false }) {
                         : 'bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10'
                     }
                 `}
-                title="切换会话模型"
+                title={activeTab === 'chat' ? t.chatBar.switchModel : '切换绘画模型'}
             >
                 <div className={`${isOpen ? 'text-white' : 'text-cyan-500'} transition-colors`}>
-                    <Bot size={15} />
+                    {activeTab === 'chat' ? <Bot size={15} /> : <ImageIcon size={15} />}
                 </div>
                 {!compact && (
                     <>
                         <span className="max-w-[110px] truncate tracking-tight">
-                            {getModelDisplayName(displayModel, userModels[activeTab])}
+                            {activeTab === 'chat' ? '对话: ' : '绘图: '}{getModelDisplayName(displayModel, userModels[activeTab])}
                         </span>
                         <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                     </>

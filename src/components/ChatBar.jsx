@@ -84,8 +84,15 @@ const ChatBar = React.memo(function ChatBar({
 
     const handleKeyDown = (e) => {
         if (isReadOnly) return;
+
+        // Cmd/Ctrl + Enter -> 批量对话 (如果有选中)
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isComposingRef.current && selectedIds.length > 0) {
+            e.preventDefault();
+            handleBatchSubmit();
+            return;
+        }
+
         // Enter 直接发送，Shift + Enter 换行
-        // 使用 isComposingRef 追踪 IME 状态，防止中文输入法选词时触发发送
         if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
             e.preventDefault();
             handleSubmit();

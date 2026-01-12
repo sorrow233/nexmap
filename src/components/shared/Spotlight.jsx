@@ -55,7 +55,7 @@ const Spotlight = ({
             onMouseMove={handleMouseMove}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className={`relative overflow-hidden ${className}`}
+            className={`relative ${className}`}
             style={{
                 '--spotlight-x': '0px',
                 '--spotlight-y': '0px'

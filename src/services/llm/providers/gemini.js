@@ -264,6 +264,7 @@ export class GeminiProvider extends LLMProvider {
      * Generate Image using GMI Cloud Async API
      */
     async generateImage(prompt, model, options = {}) {
-        return generateGeminiImage(this.config.apiKey, prompt, model, options);
+        const apiKey = this._getKeyPool().getNextKey();
+        return generateGeminiImage(apiKey, prompt, model, options);
     }
 }
