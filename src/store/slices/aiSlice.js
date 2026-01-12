@@ -194,25 +194,36 @@ export const createAISlice = (set, get) => {
                 // Time injection will be handled by AIManager globally
                 const fullMessages = [...contextMessages, ...messages];
 
-                // Re-fetch card from FRESH state to get updated model/providerId
-                // This is critical for handleRegenerate which updates these before calling us
+                // FIXED: 使用新的 getEffectiveChatConfig 这种隔离机制来获取配置
+                // 这确保了画布上的切换只影响对话，不影响全局 activeId (从而保护了功能模型和绘图模型)
                 const freshState = get();
                 const card = freshState.cards.find(c => c.id === cardId);
 
-                // FIXED: Use current active role model from settings, not card's saved model
-                // This allows model switching to take effect immediately for existing cards
-                // Priority: quickChatModel > role config > provider default
-                const currentModel = freshState.getEffectiveChatModel?.() || freshState.getRoleModel?.('chat');
-                const model = currentModel; // Use current settings (supports quick model switching)
-                const providerId = freshState.activeId; // Use current active provider
+                let config;
+                if (freshState.isSystemCreditsUser) {
+                    config = {
+                        apiKey: AI_PROVIDERS.SYSTEM_CREDITS,
+                        model: AI_MODELS.FREE_TIER,
+                        id: AI_PROVIDERS.SYSTEM_CREDITS,
+                        protocol: AI_PROVIDERS.SYSTEM_CREDITS
+                    };
+                    if (card.data.model !== AI_MODELS.FREE_TIER) {
+                        updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.FREE_TIER }));
+                    }
+                } else {
+                    config = freshState.getEffectiveChatConfig();
+                }
 
-                console.log(`[handleChatGenerate] Card: ${cardId}, Using model: ${model}, Provider: ${providerId}, QuickModel: ${freshState.quickChatModel}`);
+                const runModel = config.model;
+                const runProviderId = config.providerId || config.id;
+
+                console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, Provider: ${runProviderId}`);
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
                     cardId,
-                    model,
-                    providerId,
+                    model: runModel,
+                    providerId: runProviderId,
                     messages: fullMessages,
                     temperature: undefined,
                     stream: true
@@ -220,40 +231,15 @@ export const createAISlice = (set, get) => {
 
                 let firstToken = true;
 
-                // Resolve config
-                const state = get();
-
-                // If using system credits, FORCE the correct model/config
-                // Note: Display shows FREE_TIER (Kimi-K2-Thinking), backend actually uses this model
-                let config;
-                if (state.isSystemCreditsUser) {
-                    config = {
-                        apiKey: AI_PROVIDERS.SYSTEM_CREDITS,
-                        model: AI_MODELS.FREE_TIER, // Use FREE_TIER (Kimi-K2-Thinking)
-                        id: AI_PROVIDERS.SYSTEM_CREDITS,
-                        protocol: AI_PROVIDERS.SYSTEM_CREDITS // Special protocol handled by ModelFactory
-                    };
-                    // Ensure the card data reflects the actual model used
-                    if (card.data.model !== AI_MODELS.FREE_TIER) {
-                        console.log('[AI] Correcting card model to Kimi-K2-Thinking (System Credits)');
-                        // We don't await this state update, it just fixes the UI for next time
-                        updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.FREE_TIER }));
-                    }
-                } else {
-                    // FIXED: Always use active provider config
-                    config = state.getActiveConfig();
-                }
-
                 // Use AIManager for centralized scheduling and cancellation
-                // AWAIT the promise returned by requestTask!
                 await aiManager.requestTask({
                     type: 'chat',
-                    priority: PRIORITY.CRITICAL, // Chat is high priority
+                    priority: PRIORITY.CRITICAL,
                     payload: {
                         messages: fullMessages,
-                        model,
+                        model: runModel,
                         temperature: undefined,
-                        config, // Pass config explicitly
+                        config,
                     },
                     tags: [`card:${cardId}`], // Cancel any previous generation for this card
                     onProgress: (chunk) => {
@@ -422,17 +408,16 @@ export const createAISlice = (set, get) => {
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
 
-            // Get current active config to use for regeneration
+            // Get current active config to use for regeneration (Respect Session Overrides)
             let currentModel, currentProviderId;
 
             if (isSystemCreditsUser) {
-                // Force Kimi-K2-Thinking for system credits user
                 currentModel = AI_MODELS.FREE_TIER;
                 currentProviderId = AI_PROVIDERS.SYSTEM_CREDITS;
             } else {
-                const activeConfig = getActiveConfig();
-                currentModel = activeConfig?.model;
-                currentProviderId = activeProviderId;
+                const effectiveConfig = get().getEffectiveChatConfig();
+                currentModel = effectiveConfig.model;
+                currentProviderId = effectiveConfig.providerId || effectiveConfig.id;
             }
 
             // Reset assistant messages first AND update to current model
@@ -451,8 +436,8 @@ export const createAISlice = (set, get) => {
                             data: {
                                 ...c.data,
                                 messages: newMsgs,
-                                model: currentModel,       // Use current active model
-                                providerId: currentProviderId  // Use current active provider
+                                model: currentModel,
+                                providerId: currentProviderId
                             }
                         };
                     }

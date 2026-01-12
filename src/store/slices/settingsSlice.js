@@ -184,18 +184,26 @@ export const createSettingsSlice = (set, get) => ({
     },
 
 
+    // 获取特定角色的配置（如分析模型、图片模型），严格遵循 activeId
+    getRoleConfig: (role) => {
+        const state = get();
+        const activeConfig = state.providers[state.activeId];
+        const model = activeConfig?.roles?.[role] || activeConfig?.model || 'google/gemini-3-pro-preview';
+        return {
+            model,
+            providerId: state.activeId,
+            ...activeConfig
+        };
+    },
 
     // Used by Cloud Sync
     setFullConfig: (config) => {
-
         const newState = {
             providers: config.providers || DEFAULT_PROVIDERS,
             activeId: config.activeId || 'google'
         };
-
         try {
             localStorage.setItem(CONFIG_KEY, JSON.stringify(newState));
-
         } catch (e) {
             console.error('[Settings] Failed to persist full config:', e);
         }
@@ -214,18 +222,10 @@ export const createSettingsSlice = (set, get) => ({
 
         // 1. Check for specific role assignment in provider
         const providerRole = activeConfig?.roles?.[role];
-
-
-
-        if (providerRole) {
-
-            return providerRole;
-        }
+        if (providerRole) return providerRole;
 
         // 2. Fallback to main model for everything if not specified
-        const fallback = activeConfig?.model || 'google/gemini-3-pro-preview';
-
-        return fallback;
+        return activeConfig?.model || 'google/gemini-3-pro-preview';
     },
 
     // Reset settings state on logout
@@ -235,7 +235,9 @@ export const createSettingsSlice = (set, get) => ({
             activeId: 'google',
             isSettingsOpen: false,
             quickChatModel: null,
-            quickImageModel: null
+            quickChatProviderId: null,
+            quickImageModel: null,
+            quickImageProviderId: null
         };
         // Clear persisted settings
         localStorage.removeItem(CONFIG_KEY);
