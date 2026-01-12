@@ -59,9 +59,7 @@ export function useAISprouting() {
 
         debugLog.ai(`Expanding topics for card: ${sourceId}`, { count: source.data.marks.length });
 
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat');
+        const config = useStore.getState().getRoleConfig('chat');
 
         source.data.marks.map(async (mark, index) => {
             try {
@@ -76,8 +74,8 @@ export function useAISprouting() {
                     x: source.x + 400,
                     y: newY,
                     autoConnections: [{ from: sourceId, to: generatedId }],
-                    model: chatModel,
-                    providerId: activeConfig.id
+                    model: config.model,
+                    providerId: config.providerId
                 });
 
                 try {
@@ -86,8 +84,8 @@ export function useAISprouting() {
                         priority: PRIORITY.HIGH,
                         payload: {
                             messages: [{ role: 'user', content: mark }],
-                            model: chatModel,
-                            config: activeConfig
+                            model: config.model,
+                            config
                         },
                         tags: [`card:${generatedId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -95,11 +93,7 @@ export function useAISprouting() {
                     debugLog.ai(`Topic expansion complete for: ${generatedId}`);
                 } catch (innerError) {
                     debugLog.error(`Expand topic failed for ${generatedId}`, innerError);
-                    const errMsg = innerError.message || 'Generation failed';
-                    const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                        ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                        : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                    updateCardContent(newId, userMessage);
+                    updateCardContent(newId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
                 } finally {
                     setCardGenerating(newId, false);
                 }
@@ -115,9 +109,7 @@ export function useAISprouting() {
 
         debugLog.ai(`Sprouting ideas for card: ${sourceId}`, { topicsCount: topics.length });
 
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat');
+        const config = useStore.getState().getRoleConfig('chat');
 
         const CARD_HEIGHT = 400;
         const totalHeight = topics.length * CARD_HEIGHT;
@@ -137,8 +129,8 @@ export function useAISprouting() {
                         x: source.x + 450,
                         y: newY,
                         autoConnections: [{ from: sourceId, to: newId }],
-                        model: chatModel,
-                        providerId: activeConfig.id
+                        model: config.model,
+                        providerId: config.providerId
                     });
 
                     // Build context from source card's conversation (last 4 messages for context)
@@ -155,8 +147,8 @@ export function useAISprouting() {
                                     role: 'user',
                                     content: `[Previous Context]\n${sourceContext}\n\n[New Topic to Explore]\n${question}\n\nBased on the previous context, please elaborate on this topic in detail.`
                                 }],
-                                model: chatModel,
-                                config: activeConfig
+                                model: config.model,
+                                config
                             },
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -164,11 +156,7 @@ export function useAISprouting() {
                         debugLog.ai(`Sprout generation complete for: ${newId}`);
                     } catch (innerError) {
                         debugLog.error(`Sprout generation failed for ${newId}`, innerError);
-                        const errMsg = innerError.message || 'Generation failed';
-                        const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                            ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                            : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                        updateCardContent(newId, userMessage);
+                        updateCardContent(newId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
                     } finally {
                         setCardGenerating(newId, false);
                     }
@@ -190,18 +178,15 @@ export function useAISprouting() {
 
         debugLog.ai(`Quick sprouting for card: ${sourceId}`);
 
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const analysisModel = state.getRoleModel('analysis');
-        const chatModel = state.getRoleModel('chat');
+        const config = useStore.getState().getRoleConfig('chat');
 
         try {
             // Dynamic import to avoid circular dependency
             const { generateQuickSproutTopics } = await import('../services/llm');
             const topics = await generateQuickSproutTopics(
                 source.data.messages || [],
-                activeConfig,
-                analysisModel
+                config,
+                config.model
             );
 
             debugLog.ai(`Quick sprout topics generated:`, topics);
@@ -224,8 +209,8 @@ export function useAISprouting() {
                             x: pos.x,
                             y: pos.y,
                             autoConnections: [{ from: sourceId, to: newId }],
-                            model: chatModel,
-                            providerId: activeConfig.id
+                            model: config.model,
+                            providerId: config.providerId
                         });
 
                         // Build context from source card's conversation (last 4 messages for context)
@@ -240,10 +225,10 @@ export function useAISprouting() {
                                 payload: {
                                     messages: [{
                                         role: 'user',
-                                        content: `[Previous Context]\n${sourceContext}\n\n[Topic to Explore]\n${topic}\n\nBased on the previous context, please elaborate on this topic in detail.`
+                                        content: `[Previous Context]\n${sourceContext}\n\n[Topic to Explore]\n${topic}\n\nBased on the previous context, please provide a deeper explanation, analysis, or additional details about this specific point.`
                                     }],
-                                    model: chatModel,
-                                    config: activeConfig
+                                    model: config.model,
+                                    config
                                 },
                                 tags: [`card:${newId}`],
                                 onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -251,11 +236,7 @@ export function useAISprouting() {
                             debugLog.ai(`Quick sprout generation complete for: ${newId}`);
                         } catch (innerError) {
                             debugLog.error(`Quick sprout generation failed for ${newId}`, innerError);
-                            const errMsg = innerError.message || 'Generation failed';
-                            const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                                ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                                : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                            updateCardContent(newId, userMessage);
+                            updateCardContent(newId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
                         } finally {
                             setCardGenerating(newId, false);
                         }
@@ -277,16 +258,13 @@ export function useAISprouting() {
 
         debugLog.ai(`Continue topic for card: ${cardId}`);
 
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const analysisModel = state.getRoleModel('analysis');
-
+        const config = useStore.getState().getRoleConfig('chat');
         try {
             const { generateContinueTopic } = await import('../services/llm');
             const topic = await generateContinueTopic(
                 source.data.messages || [],
-                activeConfig,
-                analysisModel
+                config,
+                config.model
             );
 
             debugLog.ai(`Continue topic generated:`, topic);
@@ -319,11 +297,7 @@ export function useAISprouting() {
 
         debugLog.ai(`Branching content for card: ${sourceId}`);
 
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat');
-        // Use analysis model for splitting task if available
-        const analysisModel = state.getRoleModel('analysis') || chatModel;
+        const config = useStore.getState().getRoleConfig('chat');
 
         const content = typeof lastAssistantMsg.content === 'string'
             ? lastAssistantMsg.content
@@ -336,7 +310,7 @@ export function useAISprouting() {
         try {
             const { splitTextIntoSections } = await import('../services/llm');
             // Reuse explicit splitting function
-            chunks = await splitTextIntoSections(content, activeConfig, analysisModel);
+            chunks = await splitTextIntoSections(content, config, config.model);
         } catch (e) {
             console.error("AI split failed, falling back to basic split", e);
             chunks = content.split(/\n\s*\n/).filter(c => c.trim().length > 10).slice(0, 4);
@@ -367,8 +341,8 @@ export function useAISprouting() {
                     x: pos.x,
                     y: pos.y,
                     autoConnections: [{ from: sourceId, to: newId }],
-                    model: chatModel,
-                    providerId: activeConfig.id
+                    model: config.model,
+                    providerId: config.providerId
                     // No initialMessages -> standard AI generation flow
                 });
 
@@ -387,8 +361,8 @@ export function useAISprouting() {
                                 role: 'user',
                                 content: `[Previous Context]\n${sourceContext}\n\n[Focus Topic]\n${cleanChunk}\n\nBased on the context, please provide a deeper explanation, analysis, or additional details about this specific point.`
                             }],
-                            model: chatModel,
-                            config: activeConfig
+                            model: config.model,
+                            config
                         },
                         tags: [`card:${newId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -396,11 +370,7 @@ export function useAISprouting() {
                     debugLog.ai(`Branch generation complete for: ${newId}`);
                 } catch (innerError) {
                     debugLog.error(`Branch generation failed for ${newId}`, innerError);
-                    const errMsg = innerError.message || 'Generation failed';
-                    const userMessage = errMsg.toLowerCase().includes('upstream') || errMsg.toLowerCase().includes('unavailable')
-                        ? `\n\n⚠️ **AI服务暂时不可用**\n服务器繁忙，请稍后重试。`
-                        : `\n\n⚠️ **生成失败**: ${errMsg}`;
-                    updateCardContent(newId, userMessage);
+                    updateCardContent(newId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
                 } finally {
                     setCardGenerating(newId, false);
                 }
@@ -414,17 +384,15 @@ export function useAISprouting() {
 
         debugLog.ai(`Directed sprout for card: ${sourceId}`, { instruction });
 
-        const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat');
+        const config = useStore.getState().getRoleConfig('chat');
 
         try {
             const { generateDirectedCards } = await import('../services/llm');
             const contents = await generateDirectedCards(
                 (source.data.messages || []).slice(-6),
                 instruction,
-                activeConfig,
-                chatModel
+                config,
+                config.model
             );
 
             if (!contents || contents.length === 0) {
@@ -447,8 +415,8 @@ export function useAISprouting() {
                         x: pos.x,
                         y: pos.y,
                         autoConnections: [{ from: sourceId, to: newId }],
-                        model: chatModel,
-                        providerId: activeConfig.id
+                        model: config.model,
+                        providerId: config.providerId
                     });
 
                     // Build context from source and trigger AI elaboration
@@ -465,15 +433,14 @@ export function useAISprouting() {
                                     role: 'user',
                                     content: `[Previous Context]\n${sourceContext}\n\n[Topic/Instruction]\n${content}\n\nBased on this topic, please elaborate or fulfill the implied request.`
                                 }],
-                                model: chatModel,
-                                config: activeConfig
+                                model: config.model,
+                                config
                             },
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)
                         });
                     } catch (innerError) {
-                        const errMsg = innerError.message || 'Generation failed';
-                        updateCardContent(newId, `\n\n⚠️ **Generation Failed**: ${errMsg}`);
+                        updateCardContent(newId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
                     } finally {
                         setCardGenerating(newId, false);
                     }

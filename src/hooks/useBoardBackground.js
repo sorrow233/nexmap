@@ -13,18 +13,9 @@ export default function useBoardBackground() {
     const { providers, activeId, getRoleModel } = useStore();
     const toast = useToast();
 
-    // Helper to get active config for LLM calls
-    const getLlmConfig = () => {
-        const activeProvider = providers?.[activeId] || {
-            baseUrl: 'https://api.gmi-serving.com/v1',
-            apiKey: '',
-            protocol: 'gemini'
-        };
-        return activeProvider;
-    };
-
-    const getModelForRole = (role) => {
-        return getRoleModel(role);
+    // Unified role config helper 
+    const getRoleConfig = (role) => {
+        return useStore.getState().getRoleConfig(role);
     };
 
     // Shared Helper: Extract Text from Board
@@ -62,23 +53,14 @@ export default function useBoardBackground() {
             // But we can set it if we want the same spinner.
             // setGeneratingBoardId(boardId); 
 
-            const config = getLlmConfig();
+            const config = getRoleConfig('analysis');
+
             const { boardData, context } = await extractBoardContext(boardId);
-
-            if (!context.trim()) {
-                console.warn('[Summary Gen] No text content found');
-                return;
-            }
-
-            console.log('[Summary Gen] Generating summary for:', boardId);
-
-            // Dynamic import
-            const { aiSummaryService } = await import('../services/aiSummaryService');
-
+            // ...
             const summaryResult = await aiSummaryService.generateBoardSummary(
                 boardData,
                 boardData.cards,
-                { ...config, model: getModelForRole('analysis') }
+                config
             );
 
             console.log('[Summary Gen] Result:', summaryResult);
@@ -103,7 +85,8 @@ export default function useBoardBackground() {
     const generateBoardImage = async (boardId, onUpdateBoardMetadata) => {
         try {
             setGeneratingBoardId(boardId);
-            const config = getLlmConfig();
+            const textConfig = getRoleConfig('analysis');
+            const imageConfig = getRoleConfig('image');
 
             console.log('[Image Gen] Starting generation for board:', boardId);
 
@@ -125,8 +108,8 @@ export default function useBoardBackground() {
 
             const visualConcept = await chatCompletion(
                 [{ role: 'user', content: analysisPrompt }],
-                config,
-                getModelForRole('analysis')
+                textConfig,
+                textConfig.model
             );
 
             console.log('[Image Gen] Visual Concept:', visualConcept);
@@ -136,8 +119,8 @@ export default function useBoardBackground() {
             const promptGenPrompt = getPromptGeneratorPrompt(visualConcept, DEFAULT_STYLE);
             const imagePrompt = await chatCompletion(
                 [{ role: 'user', content: promptGenPrompt }],
-                config,
-                getModelForRole('analysis')
+                textConfig,
+                textConfig.model
             );
 
             console.log('[Image Gen] Final Image Prompt:', imagePrompt);
@@ -147,8 +130,8 @@ export default function useBoardBackground() {
             toast.success("Generating Visuals...");
             const imageUrl = await imageGeneration(
                 imagePrompt,
-                config,
-                getModelForRole('image')
+                imageConfig,
+                imageConfig.model
             );
 
             if (!imageUrl) throw new Error("Failed to generate image");

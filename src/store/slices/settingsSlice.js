@@ -230,21 +230,14 @@ export const createSettingsSlice = (set, get) => ({
     },
 
     // Selectors (Helpers)
+    // [DEPRECATED] Use getRoleConfig('chat') instead
     getActiveConfig: () => {
-        const state = get();
-        return state.providers[state.activeId] || DEFAULT_PROVIDERS['google'];
+        return get().getEffectiveChatConfig();
     },
 
+    // 获取特定角色的模型 ID
     getRoleModel: (role) => {
-        const state = get();
-        const activeConfig = state.providers[state.activeId];
-
-        // 1. Check for specific role assignment in provider
-        const providerRole = activeConfig?.roles?.[role];
-        if (providerRole) return providerRole;
-
-        // 2. Fallback to main model for everything if not specified
-        return activeConfig?.model || 'google/gemini-3-pro-preview';
+        return get().getRoleConfig(role).model;
     },
 
     // Reset settings state on logout

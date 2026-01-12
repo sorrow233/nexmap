@@ -20,8 +20,9 @@ export function useCardGeneration() {
      */
     const _generateAICard = async (text, x, y, images = [], contextPrefix = "") => {
         const state = useStore.getState();
-        const activeConfig = state.getActiveConfig();
-        const chatModel = state.getRoleModel('chat');
+        const config = state.getRoleConfig('chat');
+        const chatModel = config.model;
+        const providerId = config.providerId;
         const newId = uuid();
         const currentSelectedIds = state.selectedIds || [];
 
@@ -36,7 +37,7 @@ export function useCardGeneration() {
                 contextPrefix,
                 autoConnections: currentSelectedIds.map(sid => ({ from: sid, to: newId })),
                 model: chatModel,
-                providerId: activeConfig.id
+                providerId: providerId
             });
 
             // Construct content for AI
@@ -63,7 +64,7 @@ export function useCardGeneration() {
                 const perfMonitor = createPerformanceMonitor({
                     cardId: newId,
                     model: chatModel,
-                    providerId: activeConfig.id,
+                    providerId: providerId,
                     messages: [{ role: 'user', content: messageContent }],
                     stream: true
                 });
@@ -77,7 +78,7 @@ export function useCardGeneration() {
                     payload: {
                         messages: [{ role: 'user', content: messageContent }],
                         model: chatModel,
-                        config: activeConfig
+                        config: config
                     },
                     tags: [`card:${newId}`],
                     onProgress: (chunk) => {

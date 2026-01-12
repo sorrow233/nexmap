@@ -403,7 +403,7 @@ export const createAISlice = (set, get) => {
         },
 
         handleRegenerate: async () => {
-            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate, getActiveConfig, activeProviderId, isSystemCreditsUser } = get();
+            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate, activeProviderId, isSystemCreditsUser } = get();
             // Filter out cards that don't have messages (like sticky notes)
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;

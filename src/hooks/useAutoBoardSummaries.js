@@ -18,13 +18,8 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
         return () => clearTimeout(timer);
     }, [boardsList]);
 
-    const getLlmConfig = () => {
-        const activeProvider = providers?.[activeId] || {
-            baseUrl: 'https://api.gmi-serving.com/v1',
-            apiKey: '',
-            protocol: 'gemini'
-        };
-        return activeProvider;
+    const getRoleConfig = (role) => {
+        return useStore.getState().getRoleConfig(role);
     };
 
     const processNextBoard = async () => {
@@ -63,11 +58,11 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
                     return;
                 }
 
-                const config = getLlmConfig();
+                const config = getRoleConfig('analysis');
                 const { summary, theme } = await aiSummaryService.generateBoardSummary(
                     candidate,
                     fullBoardData.cards,
-                    { ...config, model: getRoleModel('analysis') }
+                    config
                 ) || {};
 
                 if (summary) {
