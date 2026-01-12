@@ -186,14 +186,34 @@ export default function SettingsLLMTab({
                         </div>
                     </div>
 
+                    {/* Model List (Multi-Model Support) */}
+                    <div className="pt-4 border-t border-slate-200 dark:border-white/5">
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            {t.settings?.modelList || "可用模型列表"}
+                            <span className="ml-2 text-[10px] font-normal text-slate-400">
+                                (该厂商支持的多个模型，用逗号分隔，如: gpt-3.5-turbo, gpt-4-turbo)
+                            </span>
+                        </label>
+                        <div className="relative">
+                            <div className="absolute left-3 top-3 text-slate-400"><Box size={16} /></div>
+                            <textarea
+                                value={currentProvider.customModels || ''}
+                                onChange={e => handleUpdateProvider('customModels', e.target.value)}
+                                className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white resize-none"
+                                placeholder="gpt-4-turbo, o1-preview, deepseek-coder..."
+                                rows={2}
+                            />
+                        </div>
+                    </div>
+
                     {/* Role Configuration (Advanced) */}
                     <div className="pt-4 mt-2 border-t border-slate-200 dark:border-white/5">
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-                            <Layers size={10} className="inline mr-1" />
-                            {t.settings?.roleAssignment || "功能角色模型分配 (Advanced)"}
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5 focus-within:text-brand-500 transition-colors">
+                            <Layers size={12} />
+                            {t.settings.roles?.title || "功能角色模型分配"}
                         </label>
-                        <div className="space-y-4">
-                            {/* Chat Model (Dialogue) */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Chat Model */}
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
                                     <MessageSquare size={12} className="text-blue-500" />
@@ -215,7 +235,7 @@ export default function SettingsLLMTab({
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
                                     <Zap size={12} className="text-amber-500" />
-                                    {t.settings.roles?.analysisTitle || "功能模型 (Analysis Role)"}
+                                    {t.settings.roles?.analysisTitle || "功能模型"}
                                 </label>
                                 <input
                                     type="text"
@@ -233,7 +253,7 @@ export default function SettingsLLMTab({
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
                                     <ImageIcon size={12} className="text-purple-500" />
-                                    {t.settings.roles?.imageTitle || "绘画模型 (Image Role)"}
+                                    {t.settings.roles?.imageTitle || "绘画模型"}
                                 </label>
                                 <input
                                     type="text"
@@ -243,10 +263,13 @@ export default function SettingsLLMTab({
                                         handleUpdateProvider('roles', newRoles);
                                     }}
                                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-1 focus:ring-brand-500 outline-none text-xs font-mono text-slate-800 dark:text-white"
-                                    placeholder="dall-e-3, flux-pro..."
+                                    placeholder="flux-pro..."
                                 />
                             </div>
                         </div>
+                        <p className="mt-3 text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-100 dark:border-white/5">
+                            {t.settings.roles?.importantText || "这些角色分配是针对每个提供商单独保存的。"}
+                        </p>
                     </div>
                 </div>
 

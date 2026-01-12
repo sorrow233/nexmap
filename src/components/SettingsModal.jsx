@@ -157,9 +157,12 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     const handleSave = async () => {
         try {
+            const now = Date.now();
+
             useStore.getState().setFullConfig({
                 providers,
-                activeId
+                activeId,
+                lastUpdated: now
             });
 
             saveS3Config(s3Config);
@@ -175,6 +178,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         activeId,
                         s3Config,
                         customInstructions,
+                        lastUpdated: now,
                         customInstructionsModified: true // Signal to add serverTimestamp
                     });
                 } catch (e) {
@@ -280,7 +284,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/5 px-2">
                         <div className="text-[10px] text-slate-400 text-center font-mono">
-                            v2.1.4
+                            v2.2.127
                         </div>
                     </div>
                 </div>
