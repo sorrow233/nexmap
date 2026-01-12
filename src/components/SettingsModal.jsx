@@ -162,6 +162,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             useStore.getState().setFullConfig({
                 providers,
                 activeId,
+                globalRoles: useStore.getState().globalRoles,
                 lastUpdated: now
             });
 
@@ -176,6 +177,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     await updateUserSettings(user.uid, {
                         providers,
                         activeId,
+                        globalRoles: useStore.getState().globalRoles,
                         s3Config,
                         customInstructions,
                         lastUpdated: now,
@@ -284,7 +286,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/5 px-2">
                         <div className="text-[10px] text-slate-400 text-center font-mono">
-                            v2.2.127
+                            v2.2.130
                         </div>
                     </div>
                 </div>
