@@ -141,7 +141,7 @@ export default function SettingsLLMTab({
             </span>
         )
     }
-                </div >
+        </div >
 
         <div className="pt-4 mt-2 border-t border-slate-200 dark:border-white/10 flex justify-between">
             <button
