@@ -168,19 +168,29 @@ export const createSettingsSlice = (set, get) => ({
         // 1. 检查是否有临时覆盖
         if (state.quickChatModel) {
             const pId = state.quickChatProviderId || state.globalRoles.chat.providerId;
+            const provider = state.providers[pId] || state.providers['google'] || {};
             return {
-                ...state.providers[pId],
+                ...provider,
                 model: state.quickChatModel,
                 providerId: pId
             };
         }
         // 2. 使用全局 Role 配置
         const roleConfig = state.globalRoles.chat;
-        const providerConfig = state.providers[roleConfig.providerId];
+        const providerId = roleConfig?.providerId || 'google';
+        const providerConfig = state.providers[providerId] || state.providers['google'] || {};
+        const defaultModel = 'google/gemini-3-pro-preview';
+        let modelToUse = roleConfig?.model || providerConfig.model || defaultModel;
+
+        // Strip 'google/' prefix if provider is Gemini
+        if (providerId === 'google' && modelToUse.startsWith('google/')) {
+            modelToUse = modelToUse.replace('google/', '');
+        }
+
         return {
             ...providerConfig,
-            model: roleConfig.model,
-            providerId: roleConfig.providerId
+            model: modelToUse,
+            providerId: providerId
         };
     },
 
