@@ -1,5 +1,5 @@
 import React from 'react';
-import { Key, Globe, Box, Layers, Settings, CheckCircle2, AlertCircle, RefreshCw, Plus, Trash2, Server } from 'lucide-react';
+import { Key, Globe, Box, Layers, Settings, CheckCircle2, AlertCircle, RefreshCw, Plus, Trash2, Server, MessageSquare, Zap, Image as ImageIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getKeyPool } from '../../services/llm/keyPoolManager';
 
