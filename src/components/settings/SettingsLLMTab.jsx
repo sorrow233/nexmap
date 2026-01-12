@@ -186,23 +186,66 @@ export default function SettingsLLMTab({
                         </div>
                     </div>
 
-                    {/* Model List (Multi-Model Support) */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                            {t.settings?.modelList || "可用模型列表"}
-                            <span className="ml-2 text-xs font-normal text-slate-400">
-                                (该厂商支持的多个模型，用逗号分隔，如: gpt-3.5-turbo, gpt-4-turbo)
-                            </span>
+                    {/* Role Configuration (Advanced) */}
+                    <div className="pt-4 mt-2 border-t border-slate-200 dark:border-white/5">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                            <Layers size={10} className="inline mr-1" />
+                            {t.settings?.roleAssignment || "功能角色模型分配 (Advanced)"}
                         </label>
-                        <div className="relative">
-                            <div className="absolute left-3 top-3 text-slate-400"><Box size={16} /></div>
-                            <textarea
-                                value={currentProvider.customModels || ''}
-                                onChange={e => handleUpdateProvider('customModels', e.target.value)}
-                                className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white resize-none"
-                                placeholder="gpt-4-turbo, o1-preview, deepseek-coder..."
-                                rows={2}
-                            />
+                        <div className="space-y-4">
+                            {/* Chat Model (Dialogue) */}
+                            <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                                    <MessageSquare size={12} className="text-blue-500" />
+                                    {t.settings?.chatRole || "对话模型 (Dialogue Role)"}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={currentProvider.roles?.chat || ''}
+                                    onChange={e => {
+                                        const newRoles = { ...(currentProvider.roles || {}), chat: e.target.value };
+                                        handleUpdateProvider('roles', newRoles);
+                                    }}
+                                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-1 focus:ring-brand-500 outline-none text-xs font-mono text-slate-800 dark:text-white"
+                                    placeholder={currentProvider.model || "默认随主模型"}
+                                />
+                            </div>
+
+                            {/* Analysis/Functional Model */}
+                            <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                                    <Zap size={12} className="text-amber-500" />
+                                    {t.settings?.analysisRole || "功能模型 (Analysis Role)"}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={currentProvider.roles?.analysis || ''}
+                                    onChange={e => {
+                                        const newRoles = { ...(currentProvider.roles || {}), analysis: e.target.value };
+                                        handleUpdateProvider('roles', newRoles);
+                                    }}
+                                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-1 focus:ring-brand-500 outline-none text-xs font-mono text-slate-800 dark:text-white"
+                                    placeholder={currentProvider.model || "默认随主模型"}
+                                />
+                            </div>
+
+                            {/* Image Model */}
+                            <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                                    <ImageIcon size={12} className="text-purple-500" />
+                                    {t.settings?.imageRole || "绘画模型 (Image Role)"}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={currentProvider.roles?.image || ''}
+                                    onChange={e => {
+                                        const newRoles = { ...(currentProvider.roles || {}), image: e.target.value };
+                                        handleUpdateProvider('roles', newRoles);
+                                    }}
+                                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-1 focus:ring-brand-500 outline-none text-xs font-mono text-slate-800 dark:text-white"
+                                    placeholder="dall-e-3, flux-pro..."
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

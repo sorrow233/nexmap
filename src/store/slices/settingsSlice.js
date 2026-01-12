@@ -38,7 +38,7 @@ const loadInitialSettings = () => {
 
     return {
         providers: DEFAULT_PROVIDERS,
-        activeId: initialState.activeId,
+        activeId: 'google',
         quickChatModel: null,
         quickChatProviderId: null,
         quickImageModel: null,
