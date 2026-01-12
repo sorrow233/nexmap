@@ -12,14 +12,21 @@ const loadInitialSettings = () => {
         let settings = {
             providers: DEFAULT_PROVIDERS,
             activeId: 'google',
+            lastUpdated: 0,
+            globalRoles: {
+                chat: { providerId: 'google', model: 'google/gemini-3-pro-preview' },
+                image: { providerId: 'google', model: 'gemini-3-pro-image-preview' }
+            }
         };
 
         if (stored) {
             const parsed = JSON.parse(stored);
             settings = {
+                ...settings,
                 providers: parsed.providers || DEFAULT_PROVIDERS,
                 activeId: parsed.activeId || 'google',
                 lastUpdated: parsed.lastUpdated || 0,
+                globalRoles: parsed.globalRoles || settings.globalRoles,
             };
         }
 
@@ -71,6 +78,7 @@ export const createSettingsSlice = (set, get) => ({
     providers: initialState.providers,
     activeId: initialState.activeId,
     lastUpdated: initialState.lastUpdated || 0,
+    globalRoles: initialState.globalRoles,
 
     // 快速模型切换（画布临时覆盖）- 仅针对对话角色 (Chat Role)
     quickChatModel: initialState.quickChatModel,
@@ -89,12 +97,36 @@ export const createSettingsSlice = (set, get) => ({
                 localStorage.setItem(CONFIG_KEY, JSON.stringify({
                     providers: newProviders,
                     activeId: state.activeId,
-                    lastUpdated: now
+                    lastUpdated: now,
+                    globalRoles: state.globalRoles
                 }));
             } catch (e) {
                 console.error('[Settings] Failed to persist config:', e);
             }
             return newState;
+        });
+    },
+
+    setGlobalRole: (role, providerId, model) => {
+        set(state => {
+            const newGlobalRoles = {
+                ...state.globalRoles,
+                [role]: { providerId, model }
+            };
+            const updates = { globalRoles: newGlobalRoles, lastUpdated: Date.now() };
+            if (role === 'chat') updates.activeId = providerId;
+
+            try {
+                localStorage.setItem(CONFIG_KEY, JSON.stringify({
+                    providers: state.providers,
+                    activeId: updates.activeId || state.activeId,
+                    lastUpdated: updates.lastUpdated,
+                    globalRoles: newGlobalRoles
+                }));
+            } catch (e) {
+                console.error('[Settings] Failed to persist globalRoles:', e);
+            }
+            return updates;
         });
     },
 
@@ -104,7 +136,9 @@ export const createSettingsSlice = (set, get) => ({
             try {
                 localStorage.setItem(CONFIG_KEY, JSON.stringify({
                     providers: state.providers,
-                    activeId: id
+                    activeId: id,
+                    lastUpdated: state.lastUpdated,
+                    globalRoles: state.globalRoles
                 }));
             } catch (e) {
                 console.error('[Settings] Failed to persist activeId:', e);
@@ -128,24 +162,25 @@ export const createSettingsSlice = (set, get) => ({
         }
     },
 
-    // 获取当前有效的聊天配置（优先使用临时覆盖，不改动全局 activeId）
+    // 获取当前有效的聊天配置（优先使用临时覆盖，其次使用全局 Role 配置）
     getEffectiveChatConfig: () => {
         const state = get();
         // 1. 检查是否有临时覆盖
         if (state.quickChatModel) {
-            const pId = state.quickChatProviderId || state.activeId;
+            const pId = state.quickChatProviderId || state.globalRoles.chat.providerId;
             return {
                 model: state.quickChatModel,
                 providerId: pId,
                 ...state.providers[pId]
             };
         }
-        // 2. 使用全局默认配置
-        const activeConfig = state.providers[state.activeId];
+        // 2. 使用全局 Role 配置
+        const roleConfig = state.globalRoles.chat;
+        const providerConfig = state.providers[roleConfig.providerId];
         return {
-            model: activeConfig?.roles?.chat || activeConfig?.model || 'google/gemini-3-pro-preview',
-            providerId: state.activeId,
-            ...activeConfig
+            model: roleConfig.model,
+            providerId: roleConfig.providerId,
+            ...providerConfig
         };
     },
 
@@ -155,16 +190,21 @@ export const createSettingsSlice = (set, get) => ({
     },
 
 
-    // 获取特定角色的配置（如分析模型、图片模型），严格遵循 activeId
+    // 获取特定角色的配置
+    // 对话模型覆盖所有文本类任务 (分析、摘要等)
     getRoleConfig: (role) => {
         const state = get();
-        const activeConfig = state.providers[state.activeId];
-        const model = activeConfig?.roles?.[role] || activeConfig?.model || 'google/gemini-3-pro-preview';
-        return {
-            model,
-            providerId: state.activeId,
-            ...activeConfig
-        };
+        if (role === 'image') {
+            const roleConfig = state.globalRoles.image;
+            const providerConfig = state.providers[roleConfig.providerId];
+            return {
+                model: roleConfig.model,
+                providerId: roleConfig.providerId,
+                ...providerConfig
+            };
+        }
+        // 除了图片，全部走对话配置（支持画布快速切换）
+        return state.getEffectiveChatConfig();
     },
 
     // Used by Cloud Sync
@@ -173,14 +213,20 @@ export const createSettingsSlice = (set, get) => ({
         const newState = {
             providers: config.providers || DEFAULT_PROVIDERS,
             activeId: config.activeId || 'google',
-            lastUpdated: now
+            lastUpdated: now,
+            globalRoles: config.globalRoles || initialState.globalRoles
         };
         try {
             localStorage.setItem(CONFIG_KEY, JSON.stringify(newState));
         } catch (e) {
             console.error('[Settings] Failed to persist full config:', e);
         }
-        set({ providers: newState.providers, activeId: newState.activeId, lastUpdated: newState.lastUpdated });
+        set({
+            providers: newState.providers,
+            activeId: newState.activeId,
+            lastUpdated: newState.lastUpdated,
+            globalRoles: newState.globalRoles
+        });
     },
 
     // Selectors (Helpers)

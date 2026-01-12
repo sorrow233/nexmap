@@ -240,73 +240,105 @@ export default function SettingsLLMTab({
                                 <input
                                     type="text"
                                     value={currentProvider.roles?.analysis || ''}
-                                    onChange={e => {
-                                        const newRoles = { ...(currentProvider.roles || {}), analysis: e.target.value };
-                                        handleUpdateProvider('roles', newRoles);
-                                    }}
-                                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-1 focus:ring-brand-500 outline-none text-xs font-mono text-slate-800 dark:text-white"
-                                    placeholder={currentProvider.model || "默认随主模型"}
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* 1. Dialogue & Functional Role */}
+                                    <div className="space-y-3">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
+                                            <MessageSquare size={14} className="text-blue-500" />
+                                            {t.settings.roles?.chatTitle || "对话与各种功能 (Dialogue & Analysis)"}
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <select
+                                                value={useStore.getState().globalRoles.chat.providerId}
+                                                onChange={(e) => {
+                                                    const pId = e.target.value;
+                                                    const model = providers[pId]?.model || 'default';
+                                                    useStore.getState().setGlobalRole('chat', pId, model);
+                                                }}
+                                                className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-brand-500"
+                                            >
+                                                {providerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                value={useStore.getState().globalRoles.chat.model}
+                                                onChange={(e) => useStore.getState().setGlobalRole('chat', useStore.getState().globalRoles.chat.providerId, e.target.value)}
+                                                className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-brand-500"
+                                                placeholder="Model ID"
+                                            />
+                                        </div>
+                                    </div>
 
-                            {/* Image Model */}
-                            <div>
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
-                                    <ImageIcon size={12} className="text-purple-500" />
-                                    {t.settings.roles?.imageTitle || "绘画模型"}
-                                </label>
-                                <input
-                                    type="text"
-                                    value={currentProvider.roles?.image || ''}
-                                    onChange={e => {
-                                        const newRoles = { ...(currentProvider.roles || {}), image: e.target.value };
-                                        handleUpdateProvider('roles', newRoles);
-                                    }}
-                                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-1 focus:ring-brand-500 outline-none text-xs font-mono text-slate-800 dark:text-white"
-                                    placeholder="flux-pro..."
-                                />
+                                    {/* 2. Image Role */}
+                                    <div className="space-y-3">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
+                                            <ImageIcon size={14} className="text-purple-500" />
+                                            {t.settings.roles?.imageTitle || "图片生成 (Image Mode)"}
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <select
+                                                value={useStore.getState().globalRoles.image.providerId}
+                                                onChange={(e) => {
+                                                    const pId = e.target.value;
+                                                    const model = providers[pId]?.model || 'default';
+                                                    useStore.getState().setGlobalRole('image', pId, model);
+                                                }}
+                                                className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-brand-500"
+                                            >
+                                                {providerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                value={useStore.getState().globalRoles.image.model}
+                                                onChange={(e) => useStore.getState().setGlobalRole('image', useStore.getState().globalRoles.image.providerId, e.target.value)}
+                                                className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-brand-500"
+                                                placeholder="Image Model ID"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p className="mt-4 text-[10px] text-slate-400 leading-relaxed bg-white/50 dark:bg-black/20 p-2.5 rounded-xl border border-slate-100 dark:border-white/5">
+                                    <AlertCircle size={10} className="inline mr-1" />
+                                    {t.settings.roles?.importantText || "对话模型将同时承担摘要、拆分、追问等所有智力功能。图片模型设定后固定执行任务。"}
+                                </p>
                             </div>
                         </div>
-                        <p className="mt-3 text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-white/5 p-2 rounded-lg border border-slate-100 dark:border-white/5">
-                            {t.settings.roles?.importantText || "这些角色分配是针对每个提供商单独保存的。"}
-                        </p>
+
+                        {/* Test Connection */}
+                        <div className="flex items-center gap-4 pt-6 mt-auto">
+                            <button
+                                onClick={handleTestConnection}
+                                disabled={testStatus === 'testing' || !currentProvider.apiKey}
+                                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+                            >
+                                {testStatus === 'testing' ? t.settings.testing : t.settings.testConnection}
+                            </button>
+                            {
+                                testStatus === 'success' && (
+                                    <span className="text-green-600 flex items-center gap-1 text-sm font-medium animate-fade-in">
+                                        <CheckCircle2 size={16} /> {testMessage}
+                                    </span>
+                                )
+                            }
+                            {
+                                testStatus === 'error' && (
+                                    <span className="text-red-500 flex items-center gap-1 text-sm font-medium animate-fade-in">
+                                        <AlertCircle size={16} /> {testMessage}
+                                    </span>
+                                )
+                            }
+                        </div>
+
+                        <div className="pt-4 mt-2 border-t border-slate-200 dark:border-white/10 flex justify-between">
+                            <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 text-red-500 hover:text-red-600 text-sm font-bold transition-all"
+                            >
+                                <RefreshCw size={14} /> {t.settings.resetDefaults}
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                {/* Test Connection */}
-                <div className="flex items-center gap-4 pt-6 mt-auto">
-                    <button
-                        onClick={handleTestConnection}
-                        disabled={testStatus === 'testing' || !currentProvider.apiKey}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
-                    >
-                        {testStatus === 'testing' ? t.settings.testing : t.settings.testConnection}
-                    </button>
-                    {
-                        testStatus === 'success' && (
-                            <span className="text-green-600 flex items-center gap-1 text-sm font-medium animate-fade-in">
-                                <CheckCircle2 size={16} /> {testMessage}
-                            </span>
-                        )
-                    }
-                    {
-                        testStatus === 'error' && (
-                            <span className="text-red-500 flex items-center gap-1 text-sm font-medium animate-fade-in">
-                                <AlertCircle size={16} /> {testMessage}
-                            </span>
-                        )
-                    }
-                </div>
-
-                <div className="pt-4 mt-2 border-t border-slate-200 dark:border-white/10 flex justify-between">
-                    <button
-                        onClick={handleReset}
-                        className="flex items-center gap-2 text-red-500 hover:text-red-600 text-sm font-bold transition-all"
-                    >
-                        <RefreshCw size={14} /> {t.settings.resetDefaults}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+                );
 }
