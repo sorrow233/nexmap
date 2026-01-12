@@ -112,49 +112,24 @@ export default function SettingsLLMTab({
                             />
                         </div>
 
-                        {/* Key Pool Status Dashboard */}
-                        {
-                            currentProvider.apiKey && (
-                                <div className="mt-3 p-3 bg-slate-50/50 dark:bg-white/5 rounded-xl border border-slate-200/50 dark:border-white/5">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                            Key Pool 状态
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                getKeyPool(currentProvider.id, currentProvider.apiKey).resetFailedStatus();
-                                                // 强制组件重渲染以更新状态显示
-                                                forceUpdate(prev => prev + 1);
-                                            }}
-                                            className="text-[10px] font-bold text-brand-600 dark:text-brand-400 hover:opacity-80 transition-opacity uppercase"
-                                        >
-                                            一键重置
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(() => {
-                                            // 依赖 forceUpdate 触发重渲染，从而获取最新的 KeyPool 状态
-                                            const pool = getKeyPool(currentProvider.id, currentProvider.apiKey);
-                                            const stats = pool.getStats();
-                                            return stats.keys.map((k, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-mono transition-all ${k.status === 'active'
-                                                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                                                        : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-500/20 text-red-500'
-                                                        }`}
-                                                    title={k.status === 'active' ? '处于活动状态' : '已失效或限流，将被跳过'}
-                                                >
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${k.status === 'active' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`}></div>
-                                                    {k.key}
-                                                </div>
-                                            ));
-                                        })()}
-                                    </div>
-                                </div>
-                            )
-                        }
+                        {/* Debug Info: Key Pool Status (Hidden by default for simplicity) */}
+                        {/* 
+                        <div className="mt-3 p-3 bg-slate-50/50 dark:bg-white/5 rounded-xl border border-slate-200/50 dark:border-white/5 opacity-50 hover:opacity-100 transition-opacity">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                Key Pool Pool Debug Info
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {(() => {
+                                    const pool = getKeyPool(currentProvider.id, currentProvider.apiKey);
+                                    const stats = pool.getStats();
+                                    return stats.keys.map((k, i) => (
+                                        <div key={i} className="text-[10px] font-mono text-slate-400">{k.key.substring(0, 8)}... ({k.status})</div>
+                                    ));
+                                })()}
+                            </div>
+                        </div> 
+                        */}
                     </div>
 
                     {/* Base URL */}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Sparkles, ChevronDown, Check, Image as ImageIcon, MessageSquare, Zap, Target, Cpu, ShieldCheck, Globe, RefreshCw } from 'lucide-react';
+import { Bot, Sparkles, ChevronDown, Check, Image as ImageIcon, MessageSquare, Zap, Target, ShieldCheck, Globe, RefreshCw, Settings as SettingsIcon } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -23,27 +23,29 @@ const PRESET_MODELS = {
 };
 
 /**
- * 提取模型显示名称
+ * 提取模型显示名称 (简化版，移除 ID)
  */
 function getModelDisplayName(modelId, customModels = []) {
     if (!modelId) return '默认配置';
 
-    // 先从自定义模型中查找
+    // 1. 自定义模型
     const custom = customModels.find(m => m.id === modelId);
     if (custom) return custom.name;
 
-    // 再从预设中查找
+    // 2. 预设模型
     const allPresets = [...PRESET_MODELS.chat, ...PRESET_MODELS.image];
     const preset = allPresets.find(m => m.id === modelId);
     if (preset) return preset.name;
 
+    // 3. Fallback: 简单的名称处理
     const parts = modelId.split('/');
     const name = parts[parts.length - 1];
     return name.replace(/-preview$/, '').replace(/-/g, ' ');
 }
 
 /**
- * ModelSwitcher - 画布快速模型切换组件 (Dynamic & Glassmorphism)
+ * ModelSwitcher V2 - 极简主义设计
+ * 核心理念：用户配置优先，隐藏不必要的复杂性
  */
 export default function ModelSwitcher({ compact = false }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -67,21 +69,25 @@ export default function ModelSwitcher({ compact = false }) {
 
         Object.values(providers || {}).forEach(p => {
             if (!p) return;
-            // 基本模型
+            // 基本模型配置
             if (p.model) {
-                const modelObj = { id: p.model, name: p.model, provider: p.name, icon: p.protocol === 'openai' ? Bot : p.protocol === 'gemini' ? Sparkles : Globe };
-                if (p.protocol === 'openai' || p.protocol === 'gemini' || p.protocol === 'anthropic' || p.protocol === 'custom') {
+                const modelObj = {
+                    id: p.model,
+                    name: p.model, // 这里未来可以扩展为用户自定义别名
+                    provider: p.name, // 厂商名称
+                    icon: p.protocol === 'openai' ? Bot : p.protocol === 'gemini' ? Sparkles : Globe
+                };
+                if (['openai', 'gemini', 'anthropic', 'custom'].includes(p.protocol)) {
                     chatModels.push(modelObj);
                 }
             }
-            // 角色分配模型
+            // 角色分配模型 (如果有)
             if (p.roles) {
-                if (p.roles.chat) chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: `${p.name} (Chat)`, icon: MessageSquare });
-                if (p.roles.image) imageModels.push({ id: p.roles.image, name: p.roles.image, provider: `${p.name} (Image)`, icon: ImageIcon });
+                if (p.roles.chat) chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: p.name, icon: MessageSquare });
+                if (p.roles.image) imageModels.push({ id: p.roles.image, name: p.roles.image, provider: p.name, icon: ImageIcon });
             }
         });
 
-        // 去重
         const unique = (arr) => Array.from(new Map(arr.map(item => [item.id, item])).values());
         return { chat: unique(chatModels), image: unique(imageModels) };
     }, [providers]);
@@ -89,6 +95,10 @@ export default function ModelSwitcher({ compact = false }) {
     const currentChatModel = getEffectiveChatModel?.() || quickChatModel;
     const currentImageModel = getEffectiveImageModel?.() || quickImageModel;
     const displayModel = activeTab === 'chat' ? currentChatModel : currentImageModel;
+
+    // 当用户没有配置任何模型时，显示预设；否则优先显示用户配置
+    const currentList = userModels[activeTab].length > 0 ? userModels[activeTab] : PRESET_MODELS[activeTab];
+    const isUsingPresets = userModels[activeTab].length === 0;
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -101,190 +111,137 @@ export default function ModelSwitcher({ compact = false }) {
     }, []);
 
     const handleModelSelect = (modelId) => {
-        if (activeTab === 'chat') {
-            setQuickChatModel(modelId);
-        } else {
-            setQuickImageModel(modelId);
-        }
+        if (activeTab === 'chat') setQuickChatModel(modelId);
+        else setQuickImageModel(modelId);
         setIsOpen(false);
     };
 
     const handleClearOverride = () => {
-        if (activeTab === 'chat') {
-            setQuickChatModel(null);
-        } else {
-            setQuickImageModel(null);
-        }
+        if (activeTab === 'chat') setQuickChatModel(null);
+        else setQuickImageModel(null);
     };
 
     return (
         <div className="relative" ref={dropdownRef}>
-            {/* Trigger Button */}
+            {/* Trigger Button - 极简风格 */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-                    group flex items-center gap-2 px-3 py-1.5 rounded-xl
+                    group flex items-center gap-1.5 px-3 py-1.5 rounded-xl
                     text-xs font-bold transition-all duration-300
                     ${isOpen
-                        ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-                        : 'bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10'
+                        ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white'
+                        : 'bg-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     }
                 `}
                 title={activeTab === 'chat' ? t.chatBar.switchModel : '切换绘画模型'}
             >
-                <div className={`${isOpen ? 'text-white' : 'text-cyan-500'} transition-colors`}>
+                <div className={`${isOpen ? 'text-brand-500' : ''} transition-colors`}>
                     {activeTab === 'chat' ? <Bot size={15} /> : <ImageIcon size={15} />}
                 </div>
                 {!compact && (
                     <>
-                        <span className="max-w-[110px] truncate tracking-tight">
-                            {activeTab === 'chat' ? '对话: ' : '绘图: '}{getModelDisplayName(displayModel, userModels[activeTab])}
+                        <span className="max-w-[120px] truncate">
+                            {getModelDisplayName(displayModel, userModels[activeTab])}
                         </span>
-                        <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={12} className={`opacity-50 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                     </>
                 )}
             </button>
 
-            {/* Dropdown */}
+            {/* Dropdown - 现代卡片悬浮 */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        initial={{ opacity: 0, scale: 0.95, y: 8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                        className="absolute bottom-full mb-3 left-0 w-72 
-                            bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl 
-                            border border-white/20 dark:border-white/10
-                            rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.15)] 
-                            ring-1 ring-black/5 dark:ring-white/5 overflow-hidden z-50"
+                        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                        className="absolute bottom-full mb-2 left-0 w-64 
+                            bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl
+                            border border-slate-200/50 dark:border-white/10
+                            rounded-2xl shadow-xl 
+                            ring-1 ring-black/5 dark:ring-white/5 overflow-hidden z-50 p-2"
                     >
-                        {/* Tab Switcher */}
-                        <div className="p-1 mx-2 mt-2 bg-slate-100/50 dark:bg-white/5 rounded-xl flex">
-                            <button
-                                onClick={() => setActiveTab('chat')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all
-                                    ${activeTab === 'chat'
-                                        ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                    }`}
-                            >
-                                <MessageSquare size={14} />
-                                会话
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('image')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all
-                                    ${activeTab === 'image'
-                                        ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                    }`}
-                            >
-                                <ImageIcon size={14} />
-                                绘画
-                            </button>
-                        </div>
-
-                        {/* Model List Area */}
-                        <div className="max-h-[380px] overflow-y-auto py-2 px-2 custom-scrollbar">
-                            {/* Reset Option */}
-                            {(activeTab === 'chat' ? quickChatModel : quickImageModel) && (
+                        {/* Header: Mode Switcher */}
+                        <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-slate-100 dark:border-white/5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                {activeTab === 'chat' ? 'Chat Model' : 'Image Model'}
+                            </span>
+                            <div className="flex bg-slate-100 dark:bg-white/10 rounded-lg p-0.5">
                                 <button
-                                    onClick={handleClearOverride}
-                                    className="w-full flex items-center gap-3 px-3 py-2 mb-2 rounded-xl
-                                        text-xs font-bold text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5
-                                        border border-dashed border-slate-200 dark:border-white/10 transition-all shadow-sm"
+                                    onClick={() => setActiveTab('chat')}
+                                    className={`p-1 rounded-md transition-all ${activeTab === 'chat' ? 'bg-white dark:bg-slate-800 shadow-sm text-cyan-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="对话模型"
                                 >
-                                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                                        <RefreshCw size={14} />
-                                    </div>
-                                    <div className="text-left font-bold">恢复默认配置</div>
+                                    <MessageSquare size={12} />
                                 </button>
-                            )}
-
-                            {/* User Configured Models Section */}
-                            {userModels[activeTab].length > 0 && (
-                                <div className="mb-2">
-                                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                        <div className="h-px flex-1 bg-slate-100 dark:bg-white/5"></div>
-                                        我的配置
-                                        <div className="h-px flex-1 bg-slate-100 dark:bg-white/5"></div>
-                                    </div>
-                                    <div className="space-y-0.5 mt-1">
-                                        {userModels[activeTab].map((model) => {
-                                            const isSelected = displayModel === model.id;
-                                            return (
-                                                <ModelItem
-                                                    key={`user-${model.id}`}
-                                                    model={model}
-                                                    isSelected={isSelected}
-                                                    onClick={() => handleModelSelect(model.id)}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Preset List Section */}
-                            <div>
-                                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                    <div className="h-px flex-1 bg-slate-100 dark:bg-white/5"></div>
-                                    常用预设
-                                    <div className="h-px flex-1 bg-slate-100 dark:bg-white/5"></div>
-                                </div>
-                                <div className="space-y-0.5 mt-1">
-                                    {PRESET_MODELS[activeTab].map((model) => {
-                                        const isSelected = displayModel === model.id;
-                                        return (
-                                            <ModelItem
-                                                key={`preset-${model.id}`}
-                                                model={model}
-                                                isSelected={isSelected}
-                                                onClick={() => handleModelSelect(model.id)}
-                                            />
-                                        );
-                                    })}
-                                </div>
+                                <button
+                                    onClick={() => setActiveTab('image')}
+                                    className={`p-1 rounded-md transition-all ${activeTab === 'image' ? 'bg-white dark:bg-slate-800 shadow-sm text-purple-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="绘画模型"
+                                >
+                                    <ImageIcon size={12} />
+                                </button>
                             </div>
                         </div>
 
+                        {/* Reset / Default Option */}
+                        {(activeTab === 'chat' ? quickChatModel : quickImageModel) && (
+                            <button
+                                onClick={handleClearOverride}
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl
+                                    text-xs font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5
+                                    transition-all group mb-1"
+                            >
+                                <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                                <span>恢复默认</span>
+                            </button>
+                        )}
+
+                        {/* Model List */}
+                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-1 py-1">
+                            {currentList.map((model) => {
+                                const isSelected = displayModel === model.id;
+                                return (
+                                    <button
+                                        key={model.id}
+                                        onClick={() => handleModelSelect(model.id)}
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left
+                                            transition-all duration-200 group
+                                            ${isSelected
+                                                ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold'
+                                                : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-300'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-200/50 dark:bg-white/5'}`}>
+                                                {model.icon ? <model.icon size={14} className={model.color} /> : <Bot size={14} />}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="truncate text-xs">{model.name}</span>
+                                                <span className="text-[9px] text-slate-400 font-medium truncate">{model.provider}</span>
+                                            </div>
+                                        </div>
+                                        {isSelected && <Check size={14} className="text-cyan-500 flex-shrink-0" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Empty State / Hint */}
+                        {isUsingPresets && (
+                            <div className="px-3 py-2 mt-1 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg">
+                                <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
+                                    这里显示的是预设模型。
+                                    <br />
+                                    您可以在设置中添加自己的 API Key 来使用更多模型。
+                                </p>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
-    );
-}
-
-function ModelItem({ model, isSelected, onClick }) {
-    const Icon = model.icon || Bot;
-    return (
-        <button
-            onClick={onClick}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left
-                transition-all duration-200 group relative
-                ${isSelected
-                    ? 'bg-cyan-50/50 dark:bg-cyan-900/20 ring-1 ring-cyan-500/20 shadow-sm'
-                    : 'hover:bg-slate-50 dark:hover:bg-white/5'
-                }`}
-        >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 
-                ${isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-100 dark:bg-white/5'}`}>
-                <Icon size={16} className={model.color || 'text-slate-500 group-hover:text-cyan-500'} />
-            </div>
-
-            <div className="flex-1 min-w-0">
-                <div className={`text-xs font-bold truncate ${isSelected ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-700 dark:text-slate-200'}`}>
-                    {model.name}
-                </div>
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-70 truncate">{model.provider}</div>
-            </div>
-
-            {isSelected && (
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                    <Check size={14} className="text-cyan-500" />
-                </motion.div>
-            )}
-        </button>
     );
 }
