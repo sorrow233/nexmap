@@ -48,6 +48,16 @@ function getModelDisplayName(modelId, customModels = []) {
  * 核心理念：用户配置优先，隐藏不必要的复杂性
  */
 export default function ModelSwitcher({ compact = false }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+    const { t } = useLanguage();
+
+    // Store state
+    const providers = useStore(state => state.providers);
+    const quickChatModel = useStore(state => state.quickChatModel);
+    const setQuickChatModel = useStore(state => state.setQuickChatModel);
+    const getEffectiveChatModel = useStore(state => state.getEffectiveChatModel);
+
     // 动态提取用户在所有厂商配置中定义的模型
     const userModels = useMemo(() => {
         const chatModels = [];
