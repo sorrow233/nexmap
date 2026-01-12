@@ -205,26 +205,6 @@ export default function SettingsLLMTab({
                             />
                         </div>
                     </div>
-
-                    {/* Additional Models (Multi-Model Support) */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                            {t.settings?.additionalModels || "扩展模型列表"}
-                            <span className="ml-2 text-xs font-normal text-slate-400">
-                                (该厂商支持的其他模型，用逗号分隔，如: gpt-3.5-turbo, gpt-4-32k)
-                            </span>
-                        </label>
-                        <div className="relative">
-                            <div className="absolute left-3 top-3 text-slate-400"><Box size={16} /></div>
-                            <textarea
-                                value={currentProvider.customModels || ''}
-                                onChange={e => handleUpdateProvider('customModels', e.target.value)}
-                                className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white resize-none"
-                                placeholder="gpt-4-turbo, o1-preview, deepseek-coder..."
-                                rows={2}
-                            />
-                        </div>
-                    </div>
                 </div>
 
                 {/* Test Connection */}
