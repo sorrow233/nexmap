@@ -3,7 +3,7 @@ import { resolveAllImages, getAuthMethod } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
 import { isRetryableError } from './gemini/errorUtils';
 import { parseGeminiStream } from './gemini/streamParser';
-import { getKeyPool } from '../llm/keyPoolManager';
+import { getKeyPool } from '../keyPoolManager';
 
 export class GeminiProvider extends LLMProvider {
     /**
