@@ -62,29 +62,41 @@ export default function ModelSwitcher({ compact = false }) {
     const getEffectiveChatModel = useStore(state => state.getEffectiveChatModel);
     const getEffectiveImageModel = useStore(state => state.getEffectiveImageModel);
 
-    // 动态提取用户的自定义模型
+    // 动态提取用户在所有厂商配置中定义的模型
     const userModels = useMemo(() => {
         const chatModels = [];
         const imageModels = [];
 
         Object.values(providers || {}).forEach(p => {
             if (!p) return;
-            // 基本模型配置
-            if (p.model) {
+
+            // 收集所有定义的模型 ID
+            const modelIds = new Set();
+            if (p.model) modelIds.add(p.model.trim());
+            if (p.customModels) {
+                p.customModels.split(',').forEach(m => {
+                    const id = m.trim();
+                    if (id) modelIds.add(id);
+                });
+            }
+
+            modelIds.forEach(id => {
                 const modelObj = {
-                    id: p.model,
-                    name: p.model, // 这里未来可以扩展为用户自定义别名
-                    provider: p.name, // 厂商名称
+                    id,
+                    name: id,
+                    provider: p.name,
+                    providerId: p.id,
                     icon: p.protocol === 'openai' ? Bot : p.protocol === 'gemini' ? Sparkles : Globe
                 };
-                if (['openai', 'gemini', 'anthropic', 'custom'].includes(p.protocol)) {
-                    chatModels.push(modelObj);
-                }
-            }
-            // 角色分配模型 (如果有)
+
+                // 简单分类：通常目前大家配的都是 Chat
+                chatModels.push(modelObj);
+            });
+
+            // 角色分配模型 (保持兼容)
             if (p.roles) {
-                if (p.roles.chat) chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: p.name, icon: MessageSquare });
-                if (p.roles.image) imageModels.push({ id: p.roles.image, name: p.roles.image, provider: p.name, icon: ImageIcon });
+                if (p.roles.chat) chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: p.name, providerId: p.id, icon: MessageSquare });
+                if (p.roles.image) imageModels.push({ id: p.roles.image, name: p.roles.image, provider: p.name, providerId: p.id, icon: ImageIcon });
             }
         });
 
@@ -96,7 +108,7 @@ export default function ModelSwitcher({ compact = false }) {
     const currentImageModel = getEffectiveImageModel?.() || quickImageModel;
     const displayModel = activeTab === 'chat' ? currentChatModel : currentImageModel;
 
-    // 当用户没有配置任何模型时，显示预设；否则优先显示用户配置
+    // 核心改进：合并所有厂商的模型为一个平行列表
     const currentList = userModels[activeTab].length > 0 ? userModels[activeTab] : PRESET_MODELS[activeTab];
     const isUsingPresets = userModels[activeTab].length === 0;
 
@@ -110,9 +122,15 @@ export default function ModelSwitcher({ compact = false }) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleModelSelect = (modelId) => {
-        if (activeTab === 'chat') setQuickChatModel(modelId);
-        else setQuickImageModel(modelId);
+    const handleModelSelect = (model) => {
+        // 关键：切换模型的同时，可能需要切换 Provider (如果选中的模型属于另一个厂商)
+        const providerId = model.providerId;
+        if (providerId && providerId !== useStore.getState().activeId) {
+            useStore.getState().setActiveProvider(providerId);
+        }
+
+        if (activeTab === 'chat') setQuickChatModel(model.id);
+        else setQuickImageModel(model.id);
         setIsOpen(false);
     };
 
@@ -206,7 +224,7 @@ export default function ModelSwitcher({ compact = false }) {
                                 return (
                                     <button
                                         key={model.id}
-                                        onClick={() => handleModelSelect(model.id)}
+                                        onClick={() => handleModelSelect(model)}
                                         className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left
                                             transition-all duration-200 group
                                             ${isSelected
