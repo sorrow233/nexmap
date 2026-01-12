@@ -249,14 +249,6 @@ export default function ModelSwitcher({ compact = false }) {
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="px-4 py-3 bg-slate-50/50 dark:bg-white/5 flex items-center justify-between border-t border-slate-100 dark:border-white/5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session Only</span>
-                            <div className="flex gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span className="text-[10px] font-bold text-emerald-500 uppercase">Live</span>
-                            </div>
-                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
