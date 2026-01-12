@@ -31,7 +31,8 @@ export default function ChatView({
     onSprout,
     onToggleFavorite,
     isFullScreen = false,
-    instructions = []
+    instructions = [],
+    isReadOnly = false // NEW
 }) {
     const [input, setInput] = useState('');
 
@@ -79,13 +80,13 @@ export default function ChatView({
 
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
-        if (!text) return;
+        if (!text || isReadOnly) return;
         // Trigger the normal message flow
         onGenerateResponse(card.id, text, []);
     };
 
     const handleSproutClick = async () => {
-        if (isSprouting) return;
+        if (isSprouting || isReadOnly) return;
         setIsSprouting(true);
         try {
             const { generateFollowUpTopics } = await import('../../services/llm');
@@ -101,6 +102,7 @@ export default function ChatView({
     };
 
     const toggleTopicSelection = (topic) => {
+        if (isReadOnly) return;
         setSelectedTopics(prev =>
             prev.includes(topic)
                 ? prev.filter(t => t !== topic)
@@ -109,6 +111,7 @@ export default function ChatView({
     };
 
     const handleConfirmSprout = () => {
+        if (isReadOnly) return;
         if (onSprout && selectedTopics.length > 0) {
             onSprout(card.id, selectedTopics);
             setShowSproutModal(false);
@@ -145,6 +148,7 @@ export default function ChatView({
     // --- Handlers Wrapper ---
     // 核心发送逻辑（内部使用）
     const sendMessageInternal = async (textToSend, imagesToSend) => {
+        if (isReadOnly) return;
         const currentInput = textToSend;
         const currentImages = [...imagesToSend];
         setIsAtBottom(true);
@@ -170,6 +174,7 @@ export default function ChatView({
     };
 
     const handleRetry = async () => {
+        if (isReadOnly) return;
         const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
         if (!lastUserMessage) return;
 
@@ -201,6 +206,7 @@ export default function ChatView({
 
     // 停止生成
     const handleStop = () => {
+        if (isReadOnly) return;
         console.log('[ChatView] Stopping generation for card:', card.id);
         aiManager.cancelByTags([`card:${card.id}`]);
         setIsStreaming(false);
@@ -252,6 +258,7 @@ export default function ChatView({
     }, [selection]);
 
     const onSendClick = async (overrideText) => {
+        if (isReadOnly) return;
         const textToSend = typeof overrideText === 'string' ? overrideText : input;
         if ((!textToSend || !textToSend.trim()) && images.length === 0) return;
 
@@ -264,6 +271,7 @@ export default function ChatView({
     };
 
     const addMarkTopic = (e) => {
+        if (isReadOnly) return;
         e.stopPropagation();
         if (!selection) return;
 
@@ -288,6 +296,7 @@ export default function ChatView({
     };
 
     const handleCaptureNote = (e) => {
+        if (isReadOnly) return;
         e.stopPropagation();
         if (!selection || !onCreateNote) return;
 
@@ -339,12 +348,14 @@ export default function ChatView({
             onTouchEnd={handleTextSelection}
         >
             {/* Floating Action Menu */}
-            <ChatSelectionMenu
-                selection={selection}
-                onCaptureNote={handleCaptureNote}
-                onMarkTopic={addMarkTopic}
-                t={t}
-            />
+            {!isReadOnly && (
+                <ChatSelectionMenu
+                    selection={selection}
+                    onCaptureNote={handleCaptureNote}
+                    onMarkTopic={addMarkTopic}
+                    t={t}
+                />
+            )}
 
             {/* Minimal Header (Top on Mobile, Left Sidebar on Desktop) */}
             <ChatHeader
@@ -354,6 +365,7 @@ export default function ChatView({
                 onSprout={handleSproutClick}
                 isSprouting={isSprouting}
                 t={t}
+                isReadOnly={isReadOnly}
             />
 
             {/* Sprout Modal Overlay */}
@@ -362,7 +374,7 @@ export default function ChatView({
                 onClose={() => setShowSproutModal(false)}
                 topics={sproutTopics}
                 selectedTopics={selectedTopics}
-                onToggleTopic={toggleTopicSelection}
+                onToggleTopic={topic => !isReadOnly && toggleTopicSelection(topic)}
                 onConfirm={handleConfirmSprout}
             />
 
@@ -378,14 +390,14 @@ export default function ChatView({
                         scrollContainerRef={scrollContainerRef}
                         handleScroll={handleScroll}
                         isStreaming={isStreaming}
-                        handleRetry={handleRetry}
+                        handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
                         onUpdate={onUpdate}
                         onShare={(content) => setShareContent(content)}
                         onToggleFavorite={onToggleFavorite}
                         pendingCount={pendingCount}
-                        onContinueTopic={() => handleContinueTopic(card.id, handleSendMessageFromSprout)}
-                        onBranch={() => handleBranch(card.id)}
+                        onContinueTopic={isReadOnly ? null : () => handleContinueTopic(card.id, handleSendMessageFromSprout)}
+                        onBranch={isReadOnly ? null : () => handleBranch(card.id)}
                     />
 
                     {/* Sidebar Index for Quick Navigation */}
@@ -416,13 +428,8 @@ export default function ChatView({
                     onStop={handleStop}
                     placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
                     instructions={instructions}
-                    onClearInstructions={() => {
-                        // 在模态框内清空看板级/临时指令的逻辑：通常由父级 hooks (useBoardLogic) 控制
-                        // 这里我们目前仅确保清除按钮可点击且逻辑畅通
-                        if (typeof instructions === 'object' && instructions.length > 0) {
-                            // 调用可能存在的清除回调（若后续需要更精细控制可在 props 增加）
-                        }
-                    }}
+                    onClearInstructions={() => { }}
+                    isReadOnly={isReadOnly}
                 />
             </div>
 

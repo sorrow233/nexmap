@@ -10,7 +10,7 @@ import { useToast } from '../components/Toast';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) {
+export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
     const navigate = useNavigate();
 
@@ -145,6 +145,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     useEffect(() => {
         if (isBoardLoading) return;
         if (isHydratingFromCloud) return;
+        if (isReadOnly) return; // CRITICAL: Skip all writes in Read-Only mode
 
         if (currentBoardId && cards.length > 0) {
             const currentStateObj = {
@@ -183,7 +184,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud, performSave]);
+    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud, performSave, isReadOnly]);
 
     // 2. Unmount / Navigation Save Effect
     useEffect(() => {
@@ -245,6 +246,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     // --- HANDLERS ---
 
     const handleGlobalImageUpload = (e) => {
+        if (isReadOnly) return;
         const files = Array.from(e.target.files);
         files.forEach(file => {
             if (!file.type.startsWith('image/')) return;
@@ -258,6 +260,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const removeGlobalImage = (index) => {
+        if (isReadOnly) return;
         setGlobalImages(prev => {
             const next = [...prev];
             URL.revokeObjectURL(next[index].previewUrl);
@@ -267,6 +270,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handleCanvasDoubleClick = (e) => {
+        if (isReadOnly) return;
         setQuickPrompt({
             isOpen: true,
             x: e.screenX,
@@ -277,7 +281,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handleQuickPromptSubmit = (text) => {
-        if (!quickPrompt.isOpen) return;
+        if (isReadOnly || !quickPrompt.isOpen) return;
         cardCreator.handleCreateCard(text, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
     };
 
@@ -286,6 +290,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handleChatModalGenerate = async (cardId, text, images = []) => {
+        if (isReadOnly) return;
         const freshCards = useStore.getState().cards;
         const card = freshCards.find(c => c.id === cardId);
 
@@ -343,11 +348,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handlePromptDropOnChat = (prompt) => {
+        if (isReadOnly) return;
         setTempInstructions(prev => [...prev, prompt]);
         toast.success(`Added instruction: ${prompt.text.substring(0, 20)}...`);
     };
 
     const handleChatSubmitWithInstructions = async (text, images) => {
+        if (isReadOnly) return;
         let finalText = text;
         if (tempInstructions.length > 0) {
             const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
@@ -358,10 +365,12 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handlePromptDropOnCanvas = (prompt, x, y) => {
+        if (isReadOnly) return;
         cardCreator.handleCreateCard(prompt.text, [], { x, y });
     };
 
     const handlePromptDropOnCard = (cardId, prompt) => {
+        if (isReadOnly) return;
         handleChatModalGenerate(cardId, prompt.text, []);
     };
 
@@ -369,6 +378,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     const [customSproutPrompt, setCustomSproutPrompt] = useState({ isOpen: false, sourceId: null, x: 0, y: 0 });
 
     const handleCustomSprout = (sourceId) => {
+        if (isReadOnly) return;
         const sourceCard = cards.find(c => c.id === sourceId);
         if (!sourceCard) return;
 
@@ -389,7 +399,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack }) 
     };
 
     const handleCustomSproutSubmit = (instruction) => {
-        if (!customSproutPrompt.isOpen || !customSproutPrompt.sourceId) return;
+        if (isReadOnly || !customSproutPrompt.isOpen || !customSproutPrompt.sourceId) return;
 
         handleDirectedSprout(customSproutPrompt.sourceId, instruction);
         setCustomSproutPrompt({ isOpen: false, sourceId: null, x: 0, y: 0 });

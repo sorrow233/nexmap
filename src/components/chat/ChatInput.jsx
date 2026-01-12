@@ -22,8 +22,8 @@ export default function ChatInput({
     onStop,
     placeholder,
     instructions = [],
-
-    onClearInstructions
+    onClearInstructions,
+    isReadOnly = false // NEW
 }) {
     const { t } = useLanguage();
     const [isFocused, setIsFocused] = React.useState(false);
@@ -67,7 +67,7 @@ export default function ChatInput({
             <div className="max-w-4xl mx-auto w-full relative">
                 <motion.div
                     layout
-                    className="relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl rounded-[1.8rem] border border-cyan-100/50 dark:border-white/10 shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 overflow-hidden flex flex-col transition-all focus-within:ring-cyan-400/30"
+                    className={`relative bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-3xl rounded-[1.8rem] border border-cyan-100/50 dark:border-white/10 shadow-[0_4px_24px_rgba(6,182,212,0.1)] ring-1 ring-cyan-200/20 dark:ring-white/5 overflow-hidden flex flex-col transition-all focus-within:ring-cyan-400/30 ${isReadOnly ? 'opacity-70 grayscale-[0.3]' : ''}`}
                 >
                     {/* Images Container */}
                     <AnimatePresence>
@@ -81,12 +81,14 @@ export default function ChatInput({
                                 {images.map((img, idx) => (
                                     <div key={idx} className="relative shrink-0 group/img">
                                         <img src={img.previewUrl} className="h-16 w-auto rounded-xl object-cover border border-slate-100 dark:border-white/10 shadow-sm" alt="preview" />
-                                        <button
-                                            onClick={() => removeImage(idx)}
-                                            className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                        >
-                                            <X size={10} />
-                                        </button>
+                                        {!isReadOnly && (
+                                            <button
+                                                onClick={() => removeImage(idx)}
+                                                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </motion.div>
@@ -98,21 +100,22 @@ export default function ChatInput({
                         <textarea
                             ref={textareaRef}
                             value={input}
-                            onChange={e => setInput(e.target.value)}
+                            onChange={e => !isReadOnly && setInput(e.target.value)}
                             onInput={handleTextareaInput}
                             onKeyDown={handleKeyDown}
                             onPaste={handlePaste}
                             onCompositionStart={() => { isComposingRef.current = true; }}
                             onCompositionEnd={() => { isComposingRef.current = false; }}
-                            onFocus={() => setIsFocused(true)}
+                            onFocus={() => !isReadOnly && setIsFocused(true)}
                             onBlur={(e) => {
                                 if (e.relatedTarget && e.currentTarget.parentElement.contains(e.relatedTarget)) {
                                     return;
                                 }
                                 setIsFocused(false);
                             }}
-                            className="w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[80px] scrollbar-hide"
-                            placeholder={placeholder}
+                            readOnly={isReadOnly}
+                            className={`w-full bg-transparent outline-none resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 font-sans text-lg leading-relaxed max-h-[80px] scrollbar-hide ${isReadOnly ? 'cursor-not-allowed' : ''}`}
+                            placeholder={isReadOnly ? "Locked: Another tab is active." : placeholder}
                             rows={1}
                         />
                     </div>
@@ -121,18 +124,18 @@ export default function ChatInput({
                     <div className="flex items-center gap-3 px-6 pb-6 pt-2">
                         {/* Left Side: functional cluster */}
                         <div className="flex items-center gap-1">
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} disabled={isReadOnly} />
                             <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isStreaming}
-                                className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
+                                onClick={() => !isReadOnly && fileInputRef.current?.click()}
+                                disabled={isStreaming || isReadOnly}
+                                className={`p-2 rounded-xl transition-all ${isReadOnly ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}
                                 title={t.chatBar.uploadImage}
                             >
                                 <ImageIcon size={18} />
                             </button>
                             <button
-                                disabled={isStreaming}
-                                className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all"
+                                disabled={isStreaming || isReadOnly}
+                                className={`p-2 rounded-xl transition-all ${isReadOnly ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}
                             >
                                 <FileText size={18} />
                             </button>
@@ -140,8 +143,8 @@ export default function ChatInput({
                             <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
 
                             <button
-                                disabled={isStreaming}
-                                className="p-2 text-cyan-500/80 hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-xl transition-all"
+                                disabled={isStreaming || isReadOnly}
+                                className={`p-2 rounded-xl transition-all ${isReadOnly ? 'text-slate-200 cursor-not-allowed' : 'text-cyan-500/80 hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20'}`}
                             >
                                 <Plus size={18} />
                             </button>
@@ -150,7 +153,7 @@ export default function ChatInput({
                         {/* Middle: Instructions Chips List - Flex grow to fill space */}
                         <div className="flex-1 min-w-0">
                             <AnimatePresence>
-                                {isFocused && (
+                                {!isReadOnly && isFocused && (
                                     <InstructionChips
                                         instructions={instructions}
                                         onSelect={handlePromptSelect}
@@ -176,18 +179,19 @@ export default function ChatInput({
                                 </button>
                             ) : (
                                 <motion.button
-                                    whileHover={canSend ? { scale: 1.05 } : {}}
-                                    whileTap={canSend ? { scale: 0.95 } : {}}
+                                    whileHover={(!canSend || isReadOnly) ? {} : { scale: 1.05 }}
+                                    whileTap={(!canSend || isReadOnly) ? {} : { scale: 0.95 }}
                                     onClick={() => handleSend()}
-                                    disabled={!canSend}
+                                    disabled={!canSend || isReadOnly}
                                     className={`
                                         relative w-10 h-10 rounded-[0.8rem] flex items-center justify-center transition-all shadow-lg
-                                        ${!canSend
+                                        ${(!canSend || isReadOnly)
                                             ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
                                             : 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
+                                        ${isReadOnly ? 'cursor-not-allowed' : ''}
                                     `}
                                 >
-                                    <SendIcon size={18} className={canSend ? "fill-white" : ""} />
+                                    <SendIcon size={18} className={canSend && !isReadOnly ? "fill-white" : ""} />
                                 </motion.button>
                             )}
                         </div>

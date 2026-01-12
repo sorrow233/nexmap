@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef } from 'react';
-import { Star, RefreshCw, Trash2, Sprout, BoxSelect } from 'lucide-react';
+import { Star, RefreshCw, Trash2, Sprout, BoxSelect, AlertCircle } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -10,6 +10,8 @@ import Sidebar from '../components/board/Sidebar';
 import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
 import { useStore } from '../store/useStore';
+import { useTabLock } from '../hooks/useTabLock';
+import { useParams } from 'react-router-dom';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
@@ -18,6 +20,8 @@ const SettingsModal = lazy(() => import('../components/SettingsModal'));
 import { useBoardLogic } from '../hooks/useBoardLogic';
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
+    const { id: boardId } = useParams();
+    const { isReadOnly, takeOverMaster } = useTabLock(boardId);
 
     // Extracted Logic
     const {
@@ -81,7 +85,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handleCustomSproutSubmit,
         handleGlobalPaste
 
-    } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack });
+    } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly });
 
     // Background Generation
     const { generateBoardSummary, generateBoardImage, generatingBoardId } = useBoardBackground();
@@ -91,6 +95,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
     // Auto-generate background when active cards > 10
     // Auto-generation Logic
     useEffect(() => {
+        if (isReadOnly) return; // Skip auto-generation in Read-Only mode
+
         // Filter out soft-deleted cards
         const activeCards = cards.filter(c => !c.deletedAt);
         const count = activeCards.length;
@@ -116,7 +122,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
             });
             hasAutoImageGeneratedRef.current = true;
         }
-    }, [cards, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage]);
+    }, [cards, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
 
 
 
@@ -125,6 +131,21 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
             <Sidebar className="absolute left-4 top-24 z-40" />
 
             <div className="absolute inset-0 h-full overflow-hidden">
+                {isReadOnly && (
+                    <div className="fixed top-20 inset-x-0 mx-auto w-fit bg-amber-500/90 backdrop-blur-md text-white px-4 py-2 rounded-full flex items-center gap-3 z-[100] shadow-xl animate-bounce-subtle border border-amber-400">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle size={16} />
+                            <span className="text-xs font-bold tracking-tight">ReadOnly: Active editor detected in another tab.</span>
+                        </div>
+                        <button
+                            onClick={takeOverMaster}
+                            className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[10px] font-bold transition-all border border-white/20 active:scale-95"
+                        >
+                            Take Over
+                        </button>
+                    </div>
+                )}
+
                 <ErrorBoundary level="canvas">
                     <div ref={canvasContainerRef} className="absolute inset-0">
                         <Canvas
@@ -142,7 +163,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 {noteId && (
                     <div className="fixed inset-0 z-[200]">
                         <Suspense fallback={<Loading message="Loading note..." />}>
-                            <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} />
+                            <NotePage onBack={() => navigate(`/board/${currentBoardId}`)} isReadOnly={isReadOnly} />
                         </Suspense>
                     </div>
                 )}
@@ -192,9 +213,10 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onExpandTopics={handleExpandTopics}
                     instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
+                    isReadOnly={isReadOnly}
                 />
 
-                {selectedIds.length > 0 && (
+                {!isReadOnly && selectedIds.length > 0 && (
                     <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-cyan-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(6,182,212,0.15)] ring-1 ring-cyan-200/20 dark:ring-white/5">
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">
                             {t.toolbar?.itemsSelected ? t.toolbar.itemsSelected.replace('{count}', selectedIds.length) : `${selectedIds.length} ITEMS`}
@@ -258,6 +280,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                             onSprout={handleSprout}
                             onToggleFavorite={toggleFavorite}
                             instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
+                            isReadOnly={isReadOnly}
                         />
                     </Suspense>
                 )}
