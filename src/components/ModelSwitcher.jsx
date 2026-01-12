@@ -48,24 +48,9 @@ function getModelDisplayName(modelId, customModels = []) {
  * 核心理念：用户配置优先，隐藏不必要的复杂性
  */
 export default function ModelSwitcher({ compact = false }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'image'
-    const dropdownRef = useRef(null);
-    const { t } = useLanguage();
-
-    // Store state
-    const providers = useStore(state => state.providers);
-    const quickChatModel = useStore(state => state.quickChatModel);
-    const quickImageModel = useStore(state => state.quickImageModel);
-    const setQuickChatModel = useStore(state => state.setQuickChatModel);
-    const setQuickImageModel = useStore(state => state.setQuickImageModel);
-    const getEffectiveChatModel = useStore(state => state.getEffectiveChatModel);
-    const getEffectiveImageModel = useStore(state => state.getEffectiveImageModel);
-
     // 动态提取用户在所有厂商配置中定义的模型
     const userModels = useMemo(() => {
         const chatModels = [];
-        const imageModels = [];
 
         Object.values(providers || {}).forEach(p => {
             if (!p) return;
@@ -88,29 +73,25 @@ export default function ModelSwitcher({ compact = false }) {
                     providerId: p.id,
                     icon: p.protocol === 'openai' ? Bot : p.protocol === 'gemini' ? Sparkles : Globe
                 };
-
-                // 简单分类：通常目前大家配的都是 Chat
                 chatModels.push(modelObj);
             });
 
             // 角色分配模型 (保持兼容)
-            if (p.roles) {
-                if (p.roles.chat) chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: p.name, providerId: p.id, icon: MessageSquare });
-                if (p.roles.image) imageModels.push({ id: p.roles.image, name: p.roles.image, provider: p.name, providerId: p.id, icon: ImageIcon });
+            if (p.roles?.chat) {
+                chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: p.name, providerId: p.id, icon: MessageSquare });
             }
         });
 
         const unique = (arr) => Array.from(new Map(arr.map(item => [item.id, item])).values());
-        return { chat: unique(chatModels), image: unique(imageModels) };
+        return unique(chatModels);
     }, [providers]);
 
-    const currentChatModel = getEffectiveChatModel?.() || quickChatModel;
-    const currentImageModel = getEffectiveImageModel?.() || quickImageModel;
-    const displayModel = activeTab === 'chat' ? currentChatModel : currentImageModel;
+    const currentChatModel = useStore(state => state.getEffectiveChatModel?.() || quickChatModel);
+    const displayModel = currentChatModel;
 
-    // 核心改进：合并所有厂商的模型为一个平行列表
-    const currentList = userModels[activeTab].length > 0 ? userModels[activeTab] : PRESET_MODELS[activeTab];
-    const isUsingPresets = userModels[activeTab].length === 0;
+    // 焦点：始终显示聊天模型列表
+    const currentList = userModels.length > 0 ? userModels : PRESET_MODELS.chat;
+    const isUsingPresets = userModels.length === 0;
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -123,21 +104,13 @@ export default function ModelSwitcher({ compact = false }) {
     }, []);
 
     const handleModelSelect = (model) => {
-        // 关键改进：不再调用 setActiveProvider(model.providerId)
-        // 仅仅记录“当前会话”临时使用的模型和它所属的厂商 ID
-        const providerId = model.providerId;
-
-        if (activeTab === 'chat') {
-            setQuickChatModel(model.id, providerId);
-        } else {
-            setQuickImageModel(model.id, providerId);
-        }
+        // 关键改进：隔离 Session 覆盖，仅影响 Chat
+        setQuickChatModel(model.id, model.providerId);
         setIsOpen(false);
     };
 
     const handleClearOverride = () => {
-        if (activeTab === 'chat') setQuickChatModel(null);
-        else setQuickImageModel(null);
+        setQuickChatModel(null);
     };
 
     return (
@@ -153,15 +126,15 @@ export default function ModelSwitcher({ compact = false }) {
                         : 'bg-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     }
                 `}
-                title={activeTab === 'chat' ? t.chatBar.switchModel : '切换绘画模型'}
+                title={t.chatBar.switchModel}
             >
                 <div className={`${isOpen ? 'text-brand-500' : ''} transition-colors`}>
-                    {activeTab === 'chat' ? <Bot size={15} /> : <ImageIcon size={15} />}
+                    <Bot size={15} />
                 </div>
                 {!compact && (
                     <>
                         <span className="max-w-[120px] truncate">
-                            {getModelDisplayName(displayModel, userModels[activeTab])}
+                            {getModelDisplayName(displayModel, userModels)}
                         </span>
                         <ChevronDown size={12} className={`opacity-50 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                     </>
@@ -182,31 +155,15 @@ export default function ModelSwitcher({ compact = false }) {
                             rounded-2xl shadow-xl 
                             ring-1 ring-black/5 dark:ring-white/5 overflow-hidden z-50 p-2"
                     >
-                        {/* Header: Mode Switcher */}
-                        <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-slate-100 dark:border-white/5">
+                        {/* Header */}
+                        <div className="px-2 pb-2 mb-1 border-b border-slate-100 dark:border-white/5">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                {activeTab === 'chat' ? 'Chat Model' : 'Image Model'}
+                                {t.settings.roles?.chatTitle || "对话模型 (Chat Model)"}
                             </span>
-                            <div className="flex bg-slate-100 dark:bg-white/10 rounded-lg p-0.5">
-                                <button
-                                    onClick={() => setActiveTab('chat')}
-                                    className={`p-1 rounded-md transition-all ${activeTab === 'chat' ? 'bg-white dark:bg-slate-800 shadow-sm text-cyan-600' : 'text-slate-400 hover:text-slate-600'}`}
-                                    title="对话模型"
-                                >
-                                    <MessageSquare size={12} />
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('image')}
-                                    className={`p-1 rounded-md transition-all ${activeTab === 'image' ? 'bg-white dark:bg-slate-800 shadow-sm text-purple-600' : 'text-slate-400 hover:text-slate-600'}`}
-                                    title="绘画模型"
-                                >
-                                    <ImageIcon size={12} />
-                                </button>
-                            </div>
                         </div>
 
                         {/* Reset / Default Option */}
-                        {(activeTab === 'chat' ? quickChatModel : quickImageModel) && (
+                        {quickChatModel && (
                             <button
                                 onClick={handleClearOverride}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl
@@ -214,7 +171,7 @@ export default function ModelSwitcher({ compact = false }) {
                                     transition-all group mb-1"
                             >
                                 <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
-                                <span>恢复默认</span>
+                                <span>{t.settings.resetDefaults || "恢复默认"}</span>
                             </button>
                         )}
 

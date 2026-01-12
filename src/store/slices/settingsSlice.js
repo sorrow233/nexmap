@@ -28,8 +28,6 @@ const loadInitialSettings = () => {
             const parsedQuick = JSON.parse(quickModels);
             settings.quickChatModel = parsedQuick.quickChatModel || null;
             settings.quickChatProviderId = parsedQuick.quickChatProviderId || null;
-            settings.quickImageModel = parsedQuick.quickImageModel || null;
-            settings.quickImageProviderId = parsedQuick.quickImageProviderId || null;
         }
 
         return settings;
@@ -43,8 +41,6 @@ const loadInitialSettings = () => {
         lastUpdated: 0,
         quickChatModel: null,
         quickChatProviderId: null,
-        quickImageModel: null,
-        quickImageProviderId: null,
     };
 };
 
@@ -76,11 +72,9 @@ export const createSettingsSlice = (set, get) => ({
     activeId: initialState.activeId,
     lastUpdated: initialState.lastUpdated || 0,
 
-    // 快速模型切换（画布临时覆盖）- 增加对 Provider 的独立覆盖
+    // 快速模型切换（画布临时覆盖）- 仅针对对话角色 (Chat Role)
     quickChatModel: initialState.quickChatModel,
     quickChatProviderId: initialState.quickChatProviderId,
-    quickImageModel: initialState.quickImageModel,
-    quickImageProviderId: initialState.quickImageProviderId,
 
     // Actions
     updateProviderConfig: (providerId, updates) => {
@@ -134,20 +128,6 @@ export const createSettingsSlice = (set, get) => ({
         }
     },
 
-    setQuickImageModel: (modelId, providerId = null) => {
-        set({ quickImageModel: modelId, quickImageProviderId: providerId });
-        try {
-            const current = JSON.parse(localStorage.getItem(QUICK_MODEL_KEY) || '{}');
-            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({
-                ...current,
-                quickImageModel: modelId,
-                quickImageProviderId: providerId
-            }));
-        } catch (e) {
-            console.error('[Settings] Failed to persist quickImageModel:', e);
-        }
-    },
-
     // 获取当前有效的聊天配置（优先使用临时覆盖，不改动全局 activeId）
     getEffectiveChatConfig: () => {
         const state = get();
@@ -169,23 +149,9 @@ export const createSettingsSlice = (set, get) => ({
         };
     },
 
-    // 获取当前有效的绘画配置
+    // 获取当前有效的绘画配置 (严格遵循设置，不支持快速切换)
     getEffectiveImageConfig: () => {
-        const state = get();
-        if (state.quickImageModel) {
-            const pId = state.quickImageProviderId || state.activeId;
-            return {
-                model: state.quickImageModel,
-                providerId: pId,
-                ...state.providers[pId]
-            };
-        }
-        const activeConfig = state.providers[state.activeId];
-        return {
-            model: activeConfig?.roles?.image || 'gemini-3-pro-image-preview',
-            providerId: state.activeId,
-            ...activeConfig
-        };
+        return get().getRoleConfig('image');
     },
 
 
@@ -243,8 +209,6 @@ export const createSettingsSlice = (set, get) => ({
             isSettingsOpen: false,
             quickChatModel: null,
             quickChatProviderId: null,
-            quickImageModel: null,
-            quickImageProviderId: null
         };
         // Clear persisted settings
         localStorage.removeItem(CONFIG_KEY);
