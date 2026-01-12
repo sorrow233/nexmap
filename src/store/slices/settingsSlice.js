@@ -1,20 +1,35 @@
 import { DEFAULT_PROVIDERS } from '../../services/llm/registry';
 
 const CONFIG_KEY = 'mixboard_providers_v3';
+const QUICK_MODEL_KEY = 'mixboard_quick_models';
 
 // Helper to load initial settings from local storage
 const loadInitialSettings = () => {
     try {
         const stored = localStorage.getItem(CONFIG_KEY);
+        const quickModels = localStorage.getItem(QUICK_MODEL_KEY);
+
+        let settings = {
+            providers: DEFAULT_PROVIDERS,
+            activeId: 'google',
+        };
 
         if (stored) {
             const parsed = JSON.parse(stored);
-
-            return {
+            settings = {
                 providers: parsed.providers || DEFAULT_PROVIDERS,
                 activeId: parsed.activeId || 'google',
             };
         }
+
+        // 加载快速模型切换状态
+        if (quickModels) {
+            const parsedQuick = JSON.parse(quickModels);
+            settings.quickChatModel = parsedQuick.quickChatModel || null;
+            settings.quickImageModel = parsedQuick.quickImageModel || null;
+        }
+
+        return settings;
     } catch (e) {
         console.warn('Failed to load settings from localStorage', e);
     }
@@ -22,6 +37,8 @@ const loadInitialSettings = () => {
     return {
         providers: DEFAULT_PROVIDERS,
         activeId: 'google',
+        quickChatModel: null,
+        quickImageModel: null,
     };
 };
 
@@ -54,6 +71,10 @@ export const createSettingsSlice = (set, get) => ({
     providers: initialState.providers,
     activeId: initialState.activeId,
 
+    // 快速模型切换（画布临时覆盖）
+    quickChatModel: initialState.quickChatModel,
+    quickImageModel: initialState.quickImageModel,
+
     // Actions
     updateProviderConfig: (providerId, updates) => {
         set(state => {
@@ -82,6 +103,47 @@ export const createSettingsSlice = (set, get) => ({
             }
             return newState;
         });
+    },
+
+    // 快速模型切换 Actions
+    setQuickChatModel: (model) => {
+        set({ quickChatModel: model });
+        try {
+            const current = JSON.parse(localStorage.getItem(QUICK_MODEL_KEY) || '{}');
+            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({ ...current, quickChatModel: model }));
+        } catch (e) {
+            console.error('[Settings] Failed to persist quickChatModel:', e);
+        }
+    },
+
+    setQuickImageModel: (model) => {
+        set({ quickImageModel: model });
+        try {
+            const current = JSON.parse(localStorage.getItem(QUICK_MODEL_KEY) || '{}');
+            localStorage.setItem(QUICK_MODEL_KEY, JSON.stringify({ ...current, quickImageModel: model }));
+        } catch (e) {
+            console.error('[Settings] Failed to persist quickImageModel:', e);
+        }
+    },
+
+    // 获取当前有效的聊天模型（优先使用快速模型）
+    getEffectiveChatModel: () => {
+        const state = get();
+        if (state.quickChatModel) {
+            return state.quickChatModel;
+        }
+        const activeConfig = state.providers[state.activeId];
+        return activeConfig?.roles?.chat || activeConfig?.model || 'google/gemini-3-pro-preview';
+    },
+
+    // 获取当前有效的绘画模型（优先使用快速模型）
+    getEffectiveImageModel: () => {
+        const state = get();
+        if (state.quickImageModel) {
+            return state.quickImageModel;
+        }
+        const activeConfig = state.providers[state.activeId];
+        return activeConfig?.roles?.image || 'gemini-3-pro-image-preview';
     },
 
 
@@ -134,10 +196,13 @@ export const createSettingsSlice = (set, get) => ({
         const defaultState = {
             providers: DEFAULT_PROVIDERS,
             activeId: 'google',
-            isSettingsOpen: false
+            isSettingsOpen: false,
+            quickChatModel: null,
+            quickImageModel: null
         };
         // Clear persisted settings
         localStorage.removeItem(CONFIG_KEY);
+        localStorage.removeItem(QUICK_MODEL_KEY);
         set(defaultState);
     }
 });

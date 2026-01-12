@@ -1,6 +1,15 @@
 import { LLMProvider } from './base';
+import { getKeyPool } from '../keyPoolManager';
 
 export class OpenAIProvider extends LLMProvider {
+    /**
+     * 获取 KeyPool（支持多 Key 轮询）
+     */
+    _getKeyPool() {
+        const keysString = this.config.apiKeys || this.config.apiKey || '';
+        return getKeyPool(this.config.id || 'default', keysString);
+    }
+
     /**
      * OpenAI 协议转换
      */
@@ -26,46 +35,82 @@ export class OpenAIProvider extends LLMProvider {
     }
 
     async chat(messages, model, options = {}) {
-        const { apiKey, baseUrl } = this.config;
+        const keyPool = this._getKeyPool();
+        const { baseUrl } = this.config;
         const modelToUse = model || this.config.model;
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: modelToUse,
-                messages: this.formatMessages(messages),
-                max_tokens: 16384,
-                ...(options.temperature !== undefined && { temperature: options.temperature }),
-                ...(options.tools && { tools: options.tools }),
-                ...(options.tool_choice && { tool_choice: options.tool_choice })
-            })
-        });
+        let retries = 2; // 允许重试 2 次（使用不同 Key）
+        let lastError = null;
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error?.message || response.statusText);
+        while (retries >= 0) {
+            const apiKey = keyPool.getNextKey();
+            if (!apiKey) {
+                throw new Error('没有可用的 API Key');
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: modelToUse,
+                        messages: this.formatMessages(messages),
+                        max_tokens: 16384,
+                        ...(options.temperature !== undefined && { temperature: options.temperature }),
+                        ...(options.tools && { tools: options.tools }),
+                        ...(options.tool_choice && { tool_choice: options.tool_choice })
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+
+                    // Key 无效或超限，标记失效
+                    if ([401, 403, 429].includes(response.status)) {
+                        keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
+                        retries--;
+                        lastError = new Error(err.error?.message || `API 错误 ${response.status}`);
+                        continue;
+                    }
+                    throw new Error(err.error?.message || response.statusText);
+                }
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (e) {
+                if (retries > 0 && !e.message.includes('没有可用')) {
+                    retries--;
+                    lastError = e;
+                    continue;
+                }
+                throw e;
+            }
         }
 
-        const data = await response.json();
-        return data.choices[0].message.content;
+        throw lastError || new Error('请求失败');
     }
 
     async stream(messages, onToken, model, options = {}) {
-        const { apiKey, baseUrl } = this.config;
+        const keyPool = this._getKeyPool();
+        const { baseUrl } = this.config;
         const modelToUse = model || this.config.model;
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
 
-        let retries = 1; // Retry once on network error
+        let retries = 2; // 允许重试（使用不同 Key）
         let delay = 1000;
 
         while (retries >= 0) {
+            const apiKey = keyPool.getNextKey();
+            if (!apiKey) {
+                throw new Error('没有可用的 API Key');
+            }
+
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
@@ -73,7 +118,7 @@ export class OpenAIProvider extends LLMProvider {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${apiKey}`,
                     },
-                    signal: options.signal, // Pass AbortSignal
+                    signal: options.signal,
                     body: JSON.stringify({
                         model: modelToUse,
                         messages: this.formatMessages(messages),
@@ -86,7 +131,13 @@ export class OpenAIProvider extends LLMProvider {
                 });
 
                 if (!response.ok) {
-                    if ([429, 500, 502, 503, 504].includes(response.status) && retries > 0) {
+                    // Key 无效或超限，标记失效并切换
+                    if ([401, 403, 429].includes(response.status)) {
+                        keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
+                        retries--;
+                        continue;
+                    }
+                    if ([500, 502, 503, 504].includes(response.status) && retries > 0) {
                         console.warn(`[OpenAI] Request failed with ${response.status}, retrying in ${delay}ms...`);
                         await new Promise(r => setTimeout(r, delay));
                         retries--;
@@ -107,7 +158,7 @@ export class OpenAIProvider extends LLMProvider {
 
                         buffer += decoder.decode(value, { stream: true });
                         const lines = buffer.split('\n');
-                        buffer = lines.pop(); // Keep incomplete line in buffer
+                        buffer = lines.pop();
 
                         for (const line of lines) {
                             const trimmedLine = line.trim();
@@ -121,7 +172,6 @@ export class OpenAIProvider extends LLMProvider {
                         }
                     }
 
-                    // Process remaining buffer
                     if (buffer.trim()) {
                         const trimmedLine = buffer.trim();
                         if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
@@ -132,17 +182,15 @@ export class OpenAIProvider extends LLMProvider {
                             } catch (e) { }
                         }
                     }
-                    return; // Success
+                    return;
                 } finally {
                     reader.releaseLock();
                 }
 
             } catch (e) {
-                if (retries > 0) {
-                    console.warn(`[OpenAI] Stream error: ${e.message}, retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
+                if (retries > 0 && !e.message.includes('没有可用')) {
+                    console.warn(`[OpenAI] Stream error: ${e.message}, retrying...`);
                     retries--;
-                    delay *= 2;
                     continue;
                 }
                 throw e;

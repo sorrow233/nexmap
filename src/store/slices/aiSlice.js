@@ -201,12 +201,12 @@ export const createAISlice = (set, get) => {
 
                 // FIXED: Use current active role model from settings, not card's saved model
                 // This allows model switching to take effect immediately for existing cards
-                // Card's saved model is kept as a reference but not used for API calls
-                const currentRoleModel = freshState.getRoleModel('chat');
-                const model = currentRoleModel; // Use current settings
+                // Priority: quickChatModel > role config > provider default
+                const currentModel = freshState.getEffectiveChatModel?.() || freshState.getRoleModel?.('chat');
+                const model = currentModel; // Use current settings (supports quick model switching)
                 const providerId = freshState.activeId; // Use current active provider
 
-                console.log(`[handleChatGenerate] Card: ${cardId}, Using model: ${model}, Provider: ${providerId}, Card's saved model: ${card?.data?.model}`);
+                console.log(`[handleChatGenerate] Card: ${cardId}, Using model: ${model}, Provider: ${providerId}, QuickModel: ${freshState.quickChatModel}`);
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({

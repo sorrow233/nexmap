@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
 import InstructionChips from './chat/InstructionChips';
+import ModelSwitcher from './ModelSwitcher';
 import { getColorForString } from '../utils/colors';
 
 /**
@@ -171,6 +172,11 @@ const ChatBar = React.memo(function ChatBar({
                         <div className="flex items-end gap-2 px-6 py-4">
                             {/* Left Functional Icons */}
                             <div className="flex items-center gap-0.5 h-9">
+                                {/* 模型切换器 */}
+                                {!isReadOnly && <ModelSwitcher compact={false} />}
+
+                                <div className="w-px h-3 bg-slate-200 dark:bg-white/10 mx-1" />
+
                                 <IconButton onClick={() => !isReadOnly && fileInputRef.current?.click()} title={t.chatBar.uploadImage} disabled={isReadOnly}>
                                     <ImageIcon size={16} className={`${isReadOnly ? 'text-slate-300' : 'text-slate-400 hover:text-cyan-400'}`} />
                                 </IconButton>
@@ -256,7 +262,7 @@ const ChatBar = React.memo(function ChatBar({
                     </motion.div>
                 </Spotlight>
             </div>
-        </div>
+        </div >
     );
 });
 

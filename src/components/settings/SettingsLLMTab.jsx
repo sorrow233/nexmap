@@ -95,19 +95,27 @@ export default function SettingsLLMTab({
                 </div>
 
                 <div className="space-y-5">
-                    {/* API Key */}
+                    {/* API Key(s) - 支持多 Key 轮询 */}
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.apiKey}</label>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            {t.settings.apiKey}
+                            <span className="ml-2 text-xs font-normal text-slate-400">
+                                (多个 Key 用逗号分隔，自动轮询)
+                            </span>
+                        </label>
                         <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Key size={16} /></div>
-                            <input
-                                type="password"
+                            <div className="absolute left-3 top-3 text-slate-400"><Key size={16} /></div>
+                            <textarea
                                 value={currentProvider.apiKey || ''}
                                 onChange={e => handleUpdateProvider('apiKey', e.target.value)}
-                                className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
-                                placeholder={currentProvider.protocol === 'gemini' ? t.settings.geminiKeyPlaceholder : t.settings.openaiKeyPlaceholder}
+                                className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white resize-none"
+                                placeholder={currentProvider.protocol === 'gemini' ? t.settings.geminiKeyPlaceholder : `${t.settings.openaiKeyPlaceholder}, key2, key3...`}
+                                rows={2}
                             />
                         </div>
+                        <p className="text-xs text-slate-400 mt-1 ml-1">
+                            多个 Key 将自动轮询使用，失效 Key 会被自动跳过
+                        </p>
                     </div>
 
                     {/* Base URL */}
