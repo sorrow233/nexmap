@@ -58,6 +58,11 @@ const useStoreBase = create(
 
 export const useStore = useStoreBase;
 
+// Expose store to window for debugging
+if (typeof window !== 'undefined') {
+    window.useStore = useStoreBase;
+}
+
 // Correctly implement useTemporalStore using useStoreWithEqualityFn
 export function useTemporalStore(selector, equality) {
     return useStoreWithEqualityFn(useStoreBase.temporal, selector, equality);
