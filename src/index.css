@@ -9,11 +9,13 @@ body,
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    /* overflow-y: hidden; -- Moved to canvas-bg only */
+    /* overflow-y, overscroll-behavior, touch-action: moved to .canvas-bg only */
+}
+
+/* Canvas-specific scroll prevention */
+.canvas-bg {
     overscroll-behavior: none;
-    /* Prevent browser navigation gestures */
     touch-action: manipulation;
-    /* Prevent multi-touch swipe gestures */
 }
 
 @layer base {
