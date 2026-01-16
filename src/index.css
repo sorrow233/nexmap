@@ -9,7 +9,7 @@ body,
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    overflow-y: hidden;
+    /* overflow-y: hidden; -- Moved to canvas-bg only */
     overscroll-behavior: none;
     /* Prevent browser navigation gestures */
     touch-action: manipulation;
