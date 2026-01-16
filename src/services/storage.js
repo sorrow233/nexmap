@@ -5,7 +5,7 @@ import {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
-    saveViewportState, loadViewportState
+    saveViewportState, loadViewportState, loadBoardDataForSearch
 } from './boardService';
 
 import {
@@ -19,7 +19,7 @@ export {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
-    saveViewportState, loadViewportState,
+    saveViewportState, loadViewportState, loadBoardDataForSearch,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings,
     saveImageToIDB, getImageFromIDB
@@ -29,7 +29,7 @@ export {
 const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
-    saveViewportState, loadViewportState,
+    saveViewportState, loadViewportState, loadBoardDataForSearch,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
     listenForBoardUpdates, saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateUserSettings,

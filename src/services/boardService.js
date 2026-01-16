@@ -204,6 +204,25 @@ export const loadBoard = async (id) => {
     return finalBoard;
 };
 
+// Optimized loader for Search (Direct IDB access, NO S3 processing)
+export const loadBoardDataForSearch = async (id) => {
+    try {
+        let stored = await idbGet(BOARD_PREFIX + id);
+        if (!stored) {
+            // Fallback to legacy only if needed (rare case now)
+            const legacy = localStorage.getItem(BOARD_PREFIX + id);
+            if (legacy) stored = JSON.parse(legacy);
+        }
+        // Return raw stored data (we just need text content for search, no base64 conversion needed)
+        return stored;
+    } catch (e) {
+        console.warn(`[Search] Failed to load board ${id}`, e);
+        return null;
+    }
+};
+
+
+
 // --- Cleanup Logic ---
 export const cleanupExpiredTrash = async () => {
     const list = getTrashBoards();

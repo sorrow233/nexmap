@@ -87,58 +87,53 @@ const Card = React.memo(function Card({
     const messages = cardContent.messages || [];
 
     // Generate preview text (last message from assistant or user)
+    // Generate preview text (last message from assistant or user)
     const lastMessage = messages[messages.length - 1];
 
-    // ... (rest of imports)
+    // Helper to extract text from multimodal content - defined outside or memoized?
+    // Since it depends on nothing, we can leave it or move it out. 
+    // Let's keep it simple.
 
-    // Helper to extract text from multimodal content
-    const getPreviewContent = (content) => {
-        if (!content) return "No messages yet";
-        if (typeof content === 'string') return content;
-        if (Array.isArray(content)) {
-            const text = content.filter(p => p.type === 'text').map(p => p.text).join(' ');
-            const hasImage = content.some(p => p.type === 'image' || p.type === 'image_url');
-            return (hasImage ? '[Image] ' : '') + text;
+    const previewText = React.useMemo(() => {
+        const getPreviewContent = (content) => {
+            if (!content) return "No messages yet";
+            if (typeof content === 'string') return content;
+            if (Array.isArray(content)) {
+                const text = content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+                const hasImage = content.some(p => p.type === 'image' || p.type === 'image_url');
+                return (hasImage ? '[Image] ' : '') + text;
+            }
+            return "Unknown content";
+        };
+
+        let text = "";
+        const marks = data.data?.marks || [];
+
+        if (marks.length > 0) {
+            text = marks.map(m => `- **${m}**`).join('\n');
+        } else {
+            text = getPreviewContent(lastMessage?.content);
+            text = text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
         }
-        return "Unknown content";
-    };
 
-    let previewText = "";
-    const marks = data.data?.marks || [];
+        if (!text) text = "_Thinking..._";
 
-    if (marks.length > 0) {
-        // If there are marks, show them joined by "..."
-        // Format as markdown list for better visual
-        previewText = marks.map(m => `- **${m}**`).join('\n');
-    } else {
-        // Fallback to existing last message logic
-        previewText = getPreviewContent(lastMessage?.content);
-        // Clean up thinking tags for preview
-        previewText = previewText.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
-    }
+        if (text.length > 300) {
+            text = text.slice(0, 300) + "...";
+        }
+        return text;
+    }, [data.data?.marks, lastMessage, data.data?.messages]); // Dependencies: marks and lastMessage (which comes from data.data.messages)
 
-    if (!previewText) previewText = "_Thinking..._";
-
-    // Truncate logic - but keep it markdown friendly if possible
-    // Simple slice might break markdown syntax, but for preview it's acceptable trade-off
-    // or we render first then truncate visual height (CSS line-clamp).
-    // Let's stick to CSS line-clamp for safer rich text truncation usually, 
-    // but here we are rendering HTML. 
-    // Let's truncate source text to a reasonable length to avoid huge parsing overhead, 
-    // then let CSS handle the visual overflow.
-    if (previewText.length > 300) {
-        previewText = previewText.slice(0, 300) + "...";
-    }
 
     // Render Markdown
-    const renderMarkdown = () => {
+    const markdownHtml = React.useMemo(() => {
         try {
             const rawHtml = marked.parse(previewText, { breaks: true, gfm: true });
             return { __html: DOMPurify.sanitize(rawHtml) };
         } catch (e) {
             return { __html: previewText };
         }
-    };
+    }, [previewText]);
 
     // Copy handler
     const handleCopy = async (e) => {
@@ -273,7 +268,8 @@ const Card = React.memo(function Card({
                             style={{ maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)' }}
                         >
                             {/* Render plain text preview but with better typography */}
-                            {previewText}
+                            {/* Dangerously Set HTML for markdown */}
+                            <div className="markdown-preview prose prose-xs dark:prose-invert pointer-events-none" dangerouslySetInnerHTML={markdownHtml} />
                         </div>
                     )}
                 </div>

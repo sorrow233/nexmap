@@ -41,7 +41,8 @@ import {
     updateBoardMetadataInCloud,
     setCurrentBoardId as storageSetCurrentBoardId,
     getBoardsList,
-    loadViewportState
+    loadViewportState,
+    loadBoardDataForSearch
 } from './services/storage';
 
 export default function App() {
@@ -78,24 +79,27 @@ function AppContent() {
     useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
 
     // Load all boards data for search (lazy load when search opens)
+    // Load all boards data for search (lazy load when search opens)
     useEffect(() => {
         if (isSearchOpen && !isSearchDataLoaded) {
-            // Load data from localStorage for all boards
-            const loadedData = {};
-            let hasFoundAny = false;
-            boardsList.forEach(board => {
-                try {
-                    const data = localStorage.getItem(`board_${board.id}`);
-                    if (data) {
-                        loadedData[board.id] = JSON.parse(data);
-                        hasFoundAny = true;
+            const loadSearchData = async () => {
+                const loadedData = {};
+                const promises = boardsList.map(async (board) => {
+                    try {
+                        const data = await loadBoardDataForSearch(board.id);
+                        if (data) {
+                            loadedData[board.id] = data;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load board data for search:', board.id);
                     }
-                } catch (e) {
-                    console.warn('Failed to load board data for search:', board.id);
-                }
-            });
-            setAllBoardsData(loadedData);
-            setIsSearchDataLoaded(true);
+                });
+
+                await Promise.all(promises);
+                setAllBoardsData(loadedData);
+                setIsSearchDataLoaded(true);
+            };
+            loadSearchData();
         }
     }, [isSearchOpen, boardsList, isSearchDataLoaded]);
 

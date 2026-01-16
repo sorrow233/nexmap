@@ -92,21 +92,23 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
     const hasAutoImageGeneratedRef = useRef(false);
     const hasAutoSummaryGeneratedRef = useRef(false);
 
+    // Optimized: Calculate active count separately to avoid re-running effect on every card move/drag
+    // cards array changes on every drag frame, but count remains stable
+    const activeCardCount = React.useMemo(() => {
+        return cards.filter(c => !c.deletedAt).length;
+    }, [cards]);
+
     // Auto-generate background when active cards > 10
     // Auto-generation Logic
     useEffect(() => {
         if (isReadOnly) return; // Skip auto-generation in Read-Only mode
 
-        // Filter out soft-deleted cards
-        const activeCards = cards.filter(c => !c.deletedAt);
-        const count = activeCards.length;
-
         if (!currentBoardId) return;
 
         // 1. Text Summary (Cards > 3)
         // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
-        if (count > 3 && !hasAutoSummaryGeneratedRef.current && !currentBoard?.summary && !currentBoard?.backgroundImage) {
-            console.log(`[AutoGen] Triggering Summary (Count: ${count})`);
+        if (activeCardCount > 3 && !hasAutoSummaryGeneratedRef.current && !currentBoard?.summary && !currentBoard?.backgroundImage) {
+            console.log(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
             generateBoardSummary(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
             });
@@ -115,14 +117,14 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
         // 2. Visual Background (Cards > 10)
         // Trigger if: Enough cards, not generated this session, and no existing image
-        if (count > 10 && !hasAutoImageGeneratedRef.current && !currentBoard?.backgroundImage) {
-            console.log(`[AutoGen] Triggering Image (Count: ${count})`);
+        if (activeCardCount > 10 && !hasAutoImageGeneratedRef.current && !currentBoard?.backgroundImage) {
+            console.log(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
             generateBoardImage(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
             });
             hasAutoImageGeneratedRef.current = true;
         }
-    }, [cards, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
+    }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
 
 
 
