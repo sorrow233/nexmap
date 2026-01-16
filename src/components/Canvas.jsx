@@ -46,6 +46,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
     const { showContextMenu, getCanvasMenuItems } = useContextMenu();
     const canvasRef = useRef(null);
+    const contentRef = useRef(null); // Reference for Direct DOM Manipulation
     const stateRef = useRef({ offset, scale });
 
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
@@ -53,8 +54,8 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         stateRef.current = { offset, scale };
     }, [offset, scale]);
 
-    // Extracted Logic
-    useCanvasGestures(canvasRef, stateRef, setScale, setOffset);
+    // Extracted Logic - Now with Direct DOM capabilities
+    useCanvasGestures(canvasRef, contentRef, stateRef, setScale, setOffset);
     const { performSelectionCheck } = useSelection();
 
     // Right-click context menu for canvas
@@ -447,6 +448,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             />
 
             <div
+                ref={contentRef}
                 className="absolute top-0 left-0 w-full h-full origin-top-left transition-transform duration-75 ease-out will-change-transform pointer-events-none"
                 style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
             >
