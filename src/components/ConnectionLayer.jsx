@@ -146,53 +146,55 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
     // 3. RENDER LOOP (View Logic)
     // Manages Canvas drawing synchronized with browser paint.
     // =========================================================================
+    // =========================================================================
+    // 3. RENDER LOOP (View Logic) - Optimized with SLEEP MODE 💤
+    // =========================================================================
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const ctx = canvas.getContext('2d', { alpha: true }); // Optimized ctx
+        const ctx = canvas.getContext('2d', { alpha: true });
         let animationFrameId;
+        let isRunning = true;
+        let idleFrames = 0; // Count frames with no changes
 
-        // State tracking to prevent redundant clears/draws
-        // Added 'd' to track dark mode state
+        // State tracking
         let lastRenderState = { x: null, y: null, s: null, v: -1, d: null };
 
-        // Handle canvas resizing
         const resize = () => {
             const dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
-            // Force redraw after resize
-            lastRenderState = { ...lastRenderState, x: null };
+            lastRenderState = { ...lastRenderState, x: null }; // Force redraw
+            if (!isRunning) startLoop(); // Wake up
         };
 
         window.addEventListener('resize', resize);
-        resize(); // Initial size
+        resize();
 
-        // PRE-INIT dark mode matcher to avoid recreating it every frame
         const darkMatcher = window.matchMedia('(prefers-color-scheme: dark)');
 
+        // Loop Function
         const loop = () => {
+            if (!isRunning) return;
+
             const { x: cx, y: cy, s: cs } = transformRef.current;
             const cv = pathVersionRef.current;
-
-            // Check theme state (efficient property access)
             const isDark = document.documentElement.classList.contains('dark') || darkMatcher.matches;
 
-            // Redraw ONLY if View changed (pan/zoom) OR Content changed (pathVersion) OR Theme changed
-            if (
+            // Check if anything changed
+            const hasChanged =
                 cx !== lastRenderState.x ||
                 cy !== lastRenderState.y ||
                 cs !== lastRenderState.s ||
                 cv !== lastRenderState.v ||
-                isDark !== lastRenderState.d
-            ) {
-                // 1. Clear Screen
-                // We user stored dpr logic implicity via canvas width/height, 
-                // but for clearRect we need logical coords if we didn't scale context?
-                // We DID scale context by dpr. Canvas Size is W*dpr, H*dpr.
-                // clearRect(0,0, W, H) clears logical W*H.
+                isDark !== lastRenderState.d;
+
+            if (hasChanged) {
+                idleFrames = 0; // Reset idle counter
+
+                // --- DRAWING LOGIC ---
                 const width = canvas.width / (window.devicePixelRatio || 1);
                 const height = canvas.height / (window.devicePixelRatio || 1);
                 ctx.clearRect(0, 0, width, height);
@@ -200,92 +202,104 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
                 const map = pathCacheRef.current;
                 if (map.size > 0) {
                     ctx.save();
-
-                    // 2. Apply Transform (Pan/Zoom)
                     ctx.translate(cx, cy);
                     ctx.scale(cs, cs);
-
-                    // 3. Set Base Styles
-                    // Thin lines relative to zoom? Or constant screen width?
-                    // "ctx.lineWidth = 3 / cs" makes line constant physical width on screen (gets thinner in world space as you zoom in)
-                    // Usually we want constant SCREEN width for UI lines.
                     ctx.lineWidth = 3 / cs;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    // Color definitions for light/dark mode - 7 Modern Colors + Legacy Mappings
                     const colors = {
                         default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
-
-                        // Red / Rose
-                        red: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)', // rose-500
-                        rose: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)', // legacy
-
-                        // Orange
-                        orange: isDark ? 'rgba(249, 115, 22, 0.7)' : 'rgba(249, 115, 22, 0.65)', // orange-500
-
-                        // Amber
-                        amber: isDark ? 'rgba(245, 158, 11, 0.7)' : 'rgba(251, 191, 36, 0.65)', // amber-500/400
-
-                        // Green / Emerald
-                        green: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)', // green-500
-                        emerald: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)', // legacy
-
-                        // Teal
-                        teal: isDark ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.65)', // cyan-500 (more distinct from green)
-
-                        // Blue
-                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)', // blue-500/400
-
-                        // Violet
-                        violet: isDark ? 'rgba(124, 58, 237, 0.6)' : 'rgba(167, 139, 250, 0.6)', // violet-600/400
+                        red: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)',
+                        rose: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)',
+                        orange: isDark ? 'rgba(249, 115, 22, 0.7)' : 'rgba(249, 115, 22, 0.65)',
+                        amber: isDark ? 'rgba(245, 158, 11, 0.7)' : 'rgba(251, 191, 36, 0.65)',
+                        green: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)',
+                        emerald: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)',
+                        teal: isDark ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.65)',
+                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)',
+                        violet: isDark ? 'rgba(124, 58, 237, 0.6)' : 'rgba(167, 139, 250, 0.6)',
                     };
 
-                    // 4. Group paths by color for efficient batch drawing
-                    // Dynamically create groups based on defined colors
                     const colorGroups = {};
-                    for (const key of Object.keys(colors)) {
-                        colorGroups[key] = [];
-                    }
+                    for (const key of Object.keys(colors)) colorGroups[key] = [];
 
                     for (const entry of map.values()) {
                         const path = entry.path || entry;
                         const color = entry.cardColor;
-
-                        if (color && colorGroups[color]) {
-                            colorGroups[color].push(path);
-                        } else {
-                            colorGroups.default.push(path);
-                        }
+                        if (color && colorGroups[color]) colorGroups[color].push(path);
+                        else colorGroups.default.push(path);
                     }
 
-                    // Draw each color group
                     for (const [colorKey, paths] of Object.entries(colorGroups)) {
                         if (paths.length > 0) {
                             ctx.strokeStyle = colors[colorKey];
-                            for (const path of paths) {
-                                ctx.stroke(path);
-                            }
+                            for (const path of paths) ctx.stroke(path);
                         }
                     }
-
                     ctx.restore();
                 }
 
-                // Update state
                 lastRenderState = { x: cx, y: cy, s: cs, v: cv, d: isDark };
+            } else {
+                idleFrames++;
+            }
+
+            // Sleep Logic: Stop loop if idle for > 120 frames (~2 seconds)
+            if (idleFrames > 120) {
+                // console.log("💤 ConnectionLayer sleeping...");
+                isRunning = false;
+                cancelAnimationFrame(animationFrameId);
+                return;
             }
 
             animationFrameId = requestAnimationFrame(loop);
         };
 
+        const startLoop = () => {
+            if (!isRunning) {
+                // console.log("⏰ ConnectionLayer waking up!");
+                isRunning = true;
+                idleFrames = 0;
+                loop();
+            }
+        };
+
+        // Initial Start
         loop();
+
+        // Wake up listeners
+        // We need to attach startLoop to the refs so the OTHER effects can call it?
+        // Actually, the other effects can't access this scope.
+        // We need a way to trigger wake up.
+        // A simple way is to use a mutable ref attached to the component instance or just expose a method?
+        // No, simplest way is:
+        // The *dependency array* of this useEffect is empty [], so it never re-runs.
+        // But we need to restart the loop when props change.
+        // Ah, the previous implementation depended on [] and read from Refs.
+        // We need to listen to changes.
+
+        // SOLUTION:
+        // We attach the `startLoop` method to a ref that is accessible by the other effects.
+        canvasRef.current.__wakeUp = startLoop;
 
         return () => {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
+            isRunning = false;
         };
-    }, []); // <--- Runs once, loops forever
+    }, []);
+
+    // 4. Wake Up Effect
+    // Whenever [offset, scale] or [cards, connections] change, we assume we need to wake up.
+    // However, [cards, connections] update `pathVersionRef` via their own effect.
+    // [offset, scale] update `transformRef` via their own effect.
+    // We can add a simple effect here that watches them and wakes up the canvas.
+    useEffect(() => {
+        if (canvasRef.current && canvasRef.current.__wakeUp) {
+            canvasRef.current.__wakeUp();
+        }
+    }, [offset, scale, cards, connections]);
 
     return (
         <canvas
