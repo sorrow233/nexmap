@@ -352,8 +352,11 @@ export function useAISprouting() {
                     // No initialMessages -> standard AI generation flow
                 });
 
-                // Build context from source card
-                const sourceContext = (source.data.messages || []).slice(-6)
+                // Build context from source card UP TO and including the target message
+                const targetIndex = messages.findIndex(m => m.id === targetMsg.id);
+                const contextEndIndex = targetIndex >= 0 ? targetIndex + 1 : messages.length;
+                const contextMessages = messages.slice(Math.max(0, contextEndIndex - 6), contextEndIndex);
+                const sourceContext = contextMessages
                     .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
                     .join('\n');
 
