@@ -284,23 +284,29 @@ export function useAISprouting() {
      * 2. Creates new cards using these substrings as PROMPTS
      * 3. AI generates detailed explanation for each substring
      */
-    const handleBranch = async (sourceId) => {
+    const handleBranch = async (sourceId, targetMessageId) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source) return;
 
         const messages = source.data.messages || [];
         if (messages.length === 0) return;
 
-        // 1. Get the last assistant message
-        const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
-        if (!lastAssistantMsg || !lastAssistantMsg.content) return;
+        // 1. Get the target message (or last assistant message if not specified)
+        let targetMsg;
+        if (targetMessageId) {
+            targetMsg = messages.find(m => m.id === targetMessageId);
+        } else {
+            targetMsg = [...messages].reverse().find(m => m.role === 'assistant');
+        }
 
-        debugLog.ai(`Branching content for card: ${sourceId}`);
+        if (!targetMsg || !targetMsg.content) return;
+
+        debugLog.ai(`Branching content for card: ${sourceId}, msg: ${targetMsg.id}`);
 
         const config = useStore.getState().getRoleConfig('chat');
 
-        const content = typeof lastAssistantMsg.content === 'string'
-            ? lastAssistantMsg.content
+        const content = typeof targetMsg.content === 'string'
+            ? targetMsg.content
             : '';
 
         // 2. Split content using LLM

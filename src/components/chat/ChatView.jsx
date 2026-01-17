@@ -397,7 +397,7 @@ export default function ChatView({
                         onToggleFavorite={onToggleFavorite}
                         pendingCount={pendingCount}
                         onContinueTopic={isReadOnly ? null : () => handleContinueTopic(card.id, handleSendMessageFromSprout)}
-                        onBranch={isReadOnly ? null : () => handleBranch(card.id)}
+                        onBranch={isReadOnly ? null : (msgId) => handleBranch(card.id, msgId)}
                     />
 
                     {/* Sidebar Index for Quick Navigation */}

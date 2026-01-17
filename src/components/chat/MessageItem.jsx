@@ -420,7 +420,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                         )}
                         {onBranch && (
                             <button
-                                onClick={() => onBranch()}
+                                onClick={() => onBranch(message.id)}
                                 className="p-2 rounded-full text-violet-600 hover:text-violet-700 bg-violet-50/50 hover:bg-violet-100 ring-1 ring-transparent hover:ring-violet-200 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 transition-all ring-inset"
                                 title="Branch - Extract to card"
                             >
