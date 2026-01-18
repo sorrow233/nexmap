@@ -205,7 +205,7 @@ export function useAppInit() {
                         return merged;
                     });
 
-                    const currentActiveId = localStorage.getItem('mixboard_current_board_id');
+                    const currentActiveId = sessionStorage.getItem('mixboard_current_board_id');
                     if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
                         // CRITICAL FIX: Capture the active ID BEFORE the async operation
                         // to prevent race condition when user switches boards during load
@@ -215,7 +215,7 @@ export function useAppInit() {
                         loadBoard(targetBoardId).then(data => {
                             // RACE CONDITION FIX: Verify the active board hasn't changed
                             // during the async loadBoard operation
-                            const postLoadActiveId = localStorage.getItem('mixboard_current_board_id');
+                            const postLoadActiveId = sessionStorage.getItem('mixboard_current_board_id');
                             if (postLoadActiveId !== targetBoardId) {
                                 debugLog.sync(`[REHYDRATION ABORTED] User navigated from ${targetBoardId} to ${postLoadActiveId} during load. Discarding stale data.`);
                                 return;

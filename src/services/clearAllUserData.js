@@ -53,7 +53,7 @@ export async function clearAllUserData() {
             activeBoardData: null
         };
 
-        const activeId = localStorage.getItem('mixboard_current_board_id');
+        const activeId = sessionStorage.getItem('mixboard_current_board_id');
         if (activeId) {
             const boardData = await loadBoard(activeId);
             if (boardData) {

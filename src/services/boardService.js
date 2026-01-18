@@ -7,11 +7,11 @@ const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 
-export const getCurrentBoardId = () => localStorage.getItem(CURRENT_BOARD_ID_KEY);
+export const getCurrentBoardId = () => sessionStorage.getItem(CURRENT_BOARD_ID_KEY);
 export const setCurrentBoardId = (id) => {
     debugLog.storage(`Setting current board to: ${id}`);
-    if (id) localStorage.setItem(CURRENT_BOARD_ID_KEY, id);
-    else localStorage.removeItem(CURRENT_BOARD_ID_KEY);
+    if (id) sessionStorage.setItem(CURRENT_BOARD_ID_KEY, id);
+    else sessionStorage.removeItem(CURRENT_BOARD_ID_KEY);
 };
 
 // Shared helper to get ALL boards (Active + Trash)

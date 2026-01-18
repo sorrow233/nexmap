@@ -105,7 +105,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             // Get state for immediate comparison if it's the active board
                             const { useStore } = await import('../store/useStore');
                             const store = useStore.getState();
-                            const currentActiveId = localStorage.getItem('mixboard_current_board_id');
+                            const currentActiveId = sessionStorage.getItem('mixboard_current_board_id');
                             const isCurrentBoard = boardData.id === currentActiveId;
 
                             const localCards = isCurrentBoard ? store.cards : (localData?.cards || []);
