@@ -1,4 +1,6 @@
 import { debugLog } from '../utils/debugLogger';
+import { auth } from './firebase';
+import { updateUserSettings } from './syncService';
 
 /**
  * LinkageService
@@ -22,10 +24,19 @@ export const linkageService = {
 
     /**
      * Set FlowStudio user ID for queue-based import
+     * Also syncs to cloud for cross-device access
      * @param {string} userId - FlowStudio Firebase UID
      */
     setFlowStudioUserId: (userId) => {
         localStorage.setItem(FLOWSTUDIO_USER_ID_KEY, userId);
+
+        // 同步到云端
+        if (auth?.currentUser) {
+            updateUserSettings(auth.currentUser.uid, {
+                flowStudioUserId: userId
+            });
+            debugLog.sync('FlowStudio UID synced to cloud:', userId);
+        }
     },
 
     /**

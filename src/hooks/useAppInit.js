@@ -320,6 +320,16 @@ export function useAppInit() {
                                 useStore.getState().setGlobalPrompts(settings.globalPrompts, true);
                             }
                         }
+
+                        // Sync FlowStudio User ID (跨设备同步)
+                        if (settings.flowStudioUserId) {
+                            const localFlowId = localStorage.getItem('flowstudio_user_id');
+                            if (!localFlowId || localFlowId !== settings.flowStudioUserId) {
+                                localStorage.setItem('flowstudio_user_id', settings.flowStudioUserId);
+                                debugLog.sync('FlowStudio UID restored from cloud:', settings.flowStudioUserId);
+                            }
+                        }
+
                         // Sync language preference...
                         if (settings.userLanguage) localStorage.setItem('userLanguage', settings.userLanguage);
 
