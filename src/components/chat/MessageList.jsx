@@ -3,6 +3,7 @@ import ErrorBoundary from '../ErrorBoundary';
 import MessageItem from './MessageItem';
 import favoritesService from '../../services/favoritesService';
 import { Clock } from 'lucide-react';
+import { usePencilHighlight } from '../../hooks/usePencilHighlight';
 
 export default function MessageList({
     card,
@@ -17,8 +18,14 @@ export default function MessageList({
     onToggleFavorite,
     pendingCount = 0,
     onContinueTopic,
-    onBranch
+    onBranch,
+    onPencilCapture // NEW: Apple Pencil 划线捕获回调
 }) {
+    // Apple Pencil 划线高亮 Hook
+    const { bindEvents, highlightOverlayStyle, isHighlighting } = usePencilHighlight({
+        onCapture: onPencilCapture,
+        enabled: !!onPencilCapture && card.type !== 'note'
+    });
 
     // Helper to identify if it's a note or chat
     // Actually, ChatModal handles the "Note" text area separately.
@@ -34,7 +41,16 @@ export default function MessageList({
             ref={scrollContainerRef}
             onScroll={handleScroll}
             className="messages-container flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar transition-colors ios-scroll-fix touch-pan-y min-w-0"
+            {...bindEvents}
         >
+            {/* Apple Pencil 高亮 Overlay */}
+            {highlightOverlayStyle && (
+                <div
+                    style={highlightOverlayStyle}
+                    className={isHighlighting ? '' : 'pencil-highlight-success'}
+                />
+            )}
+
             <div className="w-full max-w-6xl mx-auto">
                 {card.type === 'note' ? (
                     <div className="animate-fade-in">

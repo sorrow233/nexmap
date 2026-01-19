@@ -777,4 +777,24 @@ body,
             transform: translateX(100%);
         }
     }
+
+    /* Apple Pencil 划线高亮动画 */
+    @keyframes pencil-flash {
+        0% {
+            background: rgba(134, 239, 172, 0.5);
+            transform: scale(1);
+        }
+        50% {
+            background: rgba(134, 239, 172, 0.7);
+            transform: scale(1.02);
+        }
+        100% {
+            background: rgba(134, 239, 172, 0);
+            transform: scale(1);
+        }
+    }
+
+    .pencil-highlight-success {
+        animation: pencil-flash 0.6s ease-out forwards;
+    }
 }

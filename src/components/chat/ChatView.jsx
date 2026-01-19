@@ -335,6 +335,32 @@ export default function ChatView({
         setSelection(null);
     };
 
+    /**
+     * Apple Pencil 划线捕获
+     * 用户用 Pencil 在消息文字上划过时触发
+     */
+    const handlePencilCapture = (text) => {
+        if (isReadOnly || !text || !onCreateNote) return;
+
+        console.log('[Pencil] Capturing text:', text.substring(0, 50) + '...');
+
+        // 1. 添加到 Neural Notepad
+        onCreateNote(text, true);
+
+        // 2. 添加到当前卡片的 capturedNotes（显示虚线下划线高亮）
+        onUpdate(card.id, (currentData) => {
+            if (!currentData) return currentData;
+            const currentNotes = currentData.capturedNotes || [];
+            if (currentNotes.indexOf(text) === -1) {
+                return {
+                    ...currentData,
+                    capturedNotes: [...currentNotes, text]
+                };
+            }
+            return currentData;
+        });
+    };
+
     return (
         <div
             ref={modalRef}
@@ -398,6 +424,7 @@ export default function ChatView({
                         pendingCount={pendingCount}
                         onContinueTopic={isReadOnly ? null : () => handleContinueTopic(card.id, handleSendMessageFromSprout)}
                         onBranch={isReadOnly ? null : (msgId) => handleBranch(card.id, msgId)}
+                        onPencilCapture={isReadOnly ? null : handlePencilCapture}
                     />
 
                     {/* Sidebar Index for Quick Navigation */}
