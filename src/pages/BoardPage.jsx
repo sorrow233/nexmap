@@ -11,6 +11,7 @@ import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
 import { useStore } from '../store/useStore';
 import { useTabLock } from '../hooks/useTabLock';
+import { useBoardSync } from '../hooks/useBoardSync';
 import { useParams } from 'react-router-dom';
 
 const NotePage = lazy(() => import('./NotePage'));
@@ -22,6 +23,9 @@ import { useBoardLogic } from '../hooks/useBoardLogic';
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
+
+    // 监听单画板云端同步（每个标签页只监听自己的画板）
+    useBoardSync(boardId, isReadOnly);
 
     // Extracted Logic
     const {

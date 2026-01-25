@@ -3,13 +3,13 @@ import { auth } from '../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
     loadBoardsMetadata,
-    listenForBoardUpdates,
+    listenForBoardsMetadata,
     loadBoard,
     loadUserSettings,
     createBoard,
     saveBoard,
     cleanupExpiredTrash,
-    getBoardsList, // New import
+    getBoardsList,
     saveBoardToCloud
 } from '../services/storage';
 import { getRawBoardsList } from '../services/boardService'; // Fix: Import directly to resolve ReferenceError
@@ -177,22 +177,19 @@ export function useAppInit() {
                     debugLog.sync('Already migrated to cloud, skipping migration.');
                 }
 
-                debugLog.sync('Starting cloud board sync...');
-                unsubDb = listenForBoardUpdates(u.uid, (cloudBoards, updatedIds) => {
-                    debugLog.sync(`Received cloud update for ${cloudBoards.length} boards`, updatedIds);
+                // NEW: 使用分离式监听器，只监听元数据列表变化（不触发内容 rehydration）
+                // 单画板内容同步由各自的 Canvas 页面通过 listenForSingleBoard 处理
+                debugLog.sync('Starting cloud board METADATA sync (分离式同步)...');
+                unsubDb = listenForBoardsMetadata(u.uid, (cloudBoards) => {
+                    debugLog.sync(`[Metadata] Received update: ${cloudBoards.length} boards`);
 
-                    // MERGE with local state AND localStorage to preserve local-only fields like 'summary'
-                    // that may not have synced to cloud yet
-                    const localStorageBoards = getRawBoardsList(); // Also check localStorage directly
+                    // 只更新画板列表元数据，不触发内容同步
+                    const localStorageBoards = getRawBoardsList();
 
                     setBoardsList(prev => {
                         const merged = cloudBoards.map(cloudBoard => {
-                            // Check React state first
                             const localStateBoard = prev.find(b => b.id === cloudBoard.id);
-                            // Then check localStorage as fallback
                             const localStorageBoard = localStorageBoards.find(b => b.id === cloudBoard.id);
-
-                            // Prefer cloud summary, then local state summary, then localStorage summary
                             const existingSummary = cloudBoard.summary ||
                                 localStateBoard?.summary ||
                                 localStorageBoard?.summary;
@@ -204,37 +201,8 @@ export function useAppInit() {
                         });
                         return merged;
                     });
-
-                    const currentActiveId = sessionStorage.getItem('mixboard_current_board_id');
-                    if (updatedIds && currentActiveId && updatedIds.indexOf(currentActiveId) !== -1) {
-                        // CRITICAL FIX: Capture the active ID BEFORE the async operation
-                        // to prevent race condition when user switches boards during load
-                        const targetBoardId = currentActiveId;
-                        debugLog.sync(`Active board ${targetBoardId} updated in cloud, starting rehydration...`);
-
-                        loadBoard(targetBoardId).then(data => {
-                            // RACE CONDITION FIX: Verify the active board hasn't changed
-                            // during the async loadBoard operation
-                            const postLoadActiveId = sessionStorage.getItem('mixboard_current_board_id');
-                            if (postLoadActiveId !== targetBoardId) {
-                                debugLog.sync(`[REHYDRATION ABORTED] User navigated from ${targetBoardId} to ${postLoadActiveId} during load. Discarding stale data.`);
-                                return;
-                            }
-
-                            if (data) {
-                                // Additional validation: log card count for debugging
-                                debugLog.sync(`Rehydrating board ${targetBoardId} with ${data.cards?.length || 0} cards`);
-
-                                // Use setCardsFromCloud to prevent save loop
-                                // This sets isHydratingFromCloud=true temporarily
-                                if (data.cards) useStore.getState().setCardsFromCloud?.(data.cards) || setCards(data.cards);
-                                if (data.connections) setConnections(data.connections);
-                                if (data.groups) setGroups(data.groups);
-                                if (data.boardPrompts) setBoardPrompts(data.boardPrompts);
-                                debugLog.sync(`Rehydration complete for board ${targetBoardId}`);
-                            }
-                        });
-                    }
+                    // NOTE: 不再在这里触发活跃画板的 rehydration
+                    // 每个标签页只监听自己的画板（在 Canvas 组件中使用 listenForSingleBoard）
                 });
 
                 // Listen for favorites

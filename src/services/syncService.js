@@ -81,11 +81,172 @@ const onSyncSuccess = () => {
     }
 };
 
+/**
+ * 监听用户所有画板的元数据变化（用于 Gallery 列表）
+ * 注意：这个监听器只更新画板列表，不触发画板内容的 rehydration
+ */
+export const listenForBoardsMetadata = (userId, onUpdate) => {
+    if (!db || !userId) return () => { };
+
+    try {
+        debugLog.sync('Initializing Firestore listener for boards METADATA ONLY');
+        const boardsRef = collection(db, 'users', userId, 'boards');
+        return onSnapshot(boardsRef, (snapshot) => {
+            debugLog.sync(`[Metadata] Snapshot received: ${snapshot.size} docs`);
+
+            // ONLY update metadata list, do NOT process individual board content
+            const allBoards = snapshot.docs.map(doc => doc.data()).filter(b => b && b.id);
+
+            // Get existing localStorage data to preserve local-only fields like 'summary'
+            const existingLocalBoards = getRawBoardsList();
+
+            const metadataList = allBoards.map(b => {
+                const idAsTimestamp = parseInt(b.id, 10);
+                const recoveredCreatedAt = (!isNaN(idAsTimestamp) && idAsTimestamp > 1000000000000) ? idAsTimestamp : null;
+                const existingLocal = existingLocalBoards.find(lb => lb.id === b.id);
+                const summaryToUse = b.summary || existingLocal?.summary;
+
+                return {
+                    id: b.id,
+                    name: b.name || 'Untitled',
+                    createdAt: b.createdAt || recoveredCreatedAt || b.updatedAt || 0,
+                    updatedAt: b.updatedAt || recoveredCreatedAt || 0,
+                    lastAccessedAt: b.lastAccessedAt || b.updatedAt || recoveredCreatedAt || 0,
+                    cardCount: b.cards?.length || 0,
+                    deletedAt: b.deletedAt,
+                    backgroundImage: b.backgroundImage,
+                    summary: summaryToUse
+                };
+            }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
+            onUpdate(metadataList);
+        }, (error) => {
+            handleQuotaError(error, 'listenForBoardsMetadata');
+            debugLog.error("Firestore metadata sync error:", error);
+        });
+    } catch (err) {
+        debugLog.error("listenForBoardsMetadata fatal error:", err);
+        return () => { };
+    }
+};
+
+/**
+ * 监听单个画板的内容变化（用于当前活跃画板的实时同步）
+ * 每个标签页只监听自己当前打开的画板，避免多标签页冲突
+ */
+export const listenForSingleBoard = (userId, boardId, onUpdate) => {
+    if (!db || !userId || !boardId || boardId.startsWith('sample-')) {
+        return () => { };
+    }
+
+    try {
+        debugLog.sync(`[SingleBoard] Starting listener for board: ${boardId}`);
+        const boardRef = doc(db, 'users', userId, 'boards', boardId);
+
+        return onSnapshot(boardRef, async (docSnap) => {
+            if (!docSnap.exists()) {
+                debugLog.sync(`[SingleBoard] Board ${boardId} does not exist in cloud`);
+                return;
+            }
+
+            const boardData = docSnap.data();
+            debugLog.sync(`[SingleBoard] Update received for ${boardId}`, {
+                cloudCards: (boardData.cards || []).length,
+                cloudVersion: boardData.syncVersion || 0
+            });
+
+            try {
+                const localData = await idbGet(BOARD_PREFIX + boardId);
+
+                // Get state for immediate comparison
+                const { useStore } = await import('../store/useStore');
+                const store = useStore.getState();
+
+                const localCards = store.cards || localData?.cards || [];
+                const localConnections = store.connections || localData?.connections || [];
+                const localGroups = store.groups || localData?.groups || [];
+                const localBoardPrompts = store.boardPrompts || localData?.boardPrompts || [];
+                const localUpdatedAt = store.lastSavedAt || localData?.updatedAt || 0;
+
+                const localVersion = localData?.syncVersion || 0;
+                const cloudVersion = boardData.syncVersion || 0;
+
+                // Use syncVersion for conflict detection
+                if (localData && cloudVersion > 0 && localVersion > 0) {
+                    if (localVersion >= cloudVersion) {
+                        debugLog.sync(`[SingleBoard] Skipping: local version ${localVersion} >= cloud ${cloudVersion}`);
+                        return;
+                    }
+                } else if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
+                    debugLog.sync(`[SingleBoard] Skipping: local timestamp is up-to-date`);
+                    return;
+                }
+
+                if (!localCards || localCards.length === 0) {
+                    debugLog.sync(`[SingleBoard] No local cards, using cloud data directly`);
+                    await saveBoard(boardId, {
+                        cards: boardData.cards || [],
+                        connections: boardData.connections || [],
+                        groups: boardData.groups || [],
+                        boardPrompts: boardData.boardPrompts || [],
+                        updatedAt: boardData.updatedAt
+                    });
+                    onUpdate(boardId, {
+                        cards: boardData.cards || [],
+                        connections: boardData.connections || [],
+                        groups: boardData.groups || [],
+                        boardPrompts: boardData.boardPrompts || []
+                    });
+                    return;
+                }
+
+                // Reconcile cards
+                const finalCards = reconcileCards(
+                    boardData.cards || [],
+                    localCards,
+                    localVersion,
+                    cloudVersion,
+                    localUpdatedAt,
+                    boardData.updatedAt || 0
+                );
+
+                debugLog.sync(`[SingleBoard] Merge result: ${localCards.length} local + ${(boardData.cards || []).length} cloud = ${finalCards.length} final`);
+
+                const mergedData = {
+                    cards: finalCards,
+                    connections: boardData.connections || localConnections || [],
+                    groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
+                    boardPrompts: boardData.boardPrompts !== undefined ? boardData.boardPrompts : (localBoardPrompts || []),
+                    updatedAt: boardData.updatedAt
+                };
+
+                await saveBoard(boardId, mergedData);
+                onUpdate(boardId, mergedData);
+
+            } catch (e) {
+                debugLog.error(`[SingleBoard] Merge failed for board ${boardId}`, e);
+            }
+        }, (error) => {
+            handleQuotaError(error, 'listenForSingleBoard');
+            debugLog.error(`[SingleBoard] Sync error for ${boardId}:`, error);
+        });
+
+    } catch (err) {
+        debugLog.error(`listenForSingleBoard fatal error for ${boardId}:`, err);
+        return () => { };
+    }
+};
+
+/**
+ * @deprecated Use listenForBoardsMetadata + listenForSingleBoard instead
+ * 保留用于向后兼容，但不推荐使用
+ */
 export const listenForBoardUpdates = (userId, onUpdate) => {
     if (!db || !userId) return () => { };
 
     try {
-        debugLog.sync('Initializing Firestore listener for user boards');
+        debugLog.sync('[DEPRECATED] Using listenForBoardUpdates - consider switching to listenForBoardsMetadata + listenForSingleBoard');
         const boardsRef = collection(db, 'users', userId, 'boards');
         return onSnapshot(boardsRef, async (snapshot) => {
             const promises = [];
