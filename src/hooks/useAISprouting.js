@@ -281,11 +281,8 @@ export function useAISprouting() {
     /**
      * Branch: Split the LAST assistant response into separate cards for deep dive
      * 1. Uses AI to split text into logical sections / exact substrings
-     * 2. Creates new cards with clean conversation structure
-     * 3. AI generates detailed explanation using context ONLY for first generation
-     * 
-     * IMPORTANT: Context is NOT stored as a user message to prevent pollution
-     * of subsequent conversations. The new card starts with a clean slate.
+     * 2. Creates new cards using these substrings as PROMPTS
+     * 3. AI generates detailed explanation for each substring
      */
     const handleBranch = async (sourceId, targetMessageId) => {
         const source = cards.find(c => c.id === sourceId);
@@ -332,15 +329,6 @@ export function useAISprouting() {
         // Calculate positions using mindmap layout
         const positions = calculateMindmapChildPositions(source, chunks.length);
 
-        // Build context from source card ONCE (shared by all chunks)
-        // This context is ONLY used for the initial AI generation, NOT stored in messages
-        const targetIndex = messages.findIndex(m => m.id === targetMsg.id);
-        const contextEndIndex = targetIndex >= 0 ? targetIndex + 1 : messages.length;
-        const contextMessages = messages.slice(Math.max(0, contextEndIndex - 6), contextEndIndex);
-        const sourceContext = contextMessages
-            .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
-            .join('\n');
-
         chunks.forEach((chunk, i) => {
             (async () => {
                 const newId = uuid();
@@ -352,42 +340,56 @@ export function useAISprouting() {
 
                 debugLog.ai(`Creating branch card: ${newId}`, { title: cardTitle });
 
-                // FIXED: Create card with initialMessages containing ONLY the clean chunk as user input
-                // The context is passed separately for first generation but NOT stored
+                // Create card: Use the CHUNK as the User's Prompt text
                 await createAICard({
                     id: newId,
-                    text: cleanChunk, // Title/prompt display
+                    text: cleanChunk, // Full chunk as prompt
                     x: pos.x,
                     y: pos.y,
                     autoConnections: [{ from: sourceId, to: newId }],
                     model: config.model,
-                    providerId: config.providerId,
-                    // NEW: Use initialMessages to create clean conversation structure
-                    // User message = just the extracted topic, no context pollution
-                    initialMessages: [
-                        { id: uuid(), role: 'user', content: cleanChunk },
-                        { id: uuid(), role: 'assistant', content: '' } // Placeholder for AI response
-                    ]
+                    providerId: config.providerId
+                    // No initialMessages -> standard AI generation flow
                 });
+
+                // Build context from source card UP TO and including the target message
+                const targetIndex = messages.findIndex(m => m.id === targetMsg.id);
+                const contextEndIndex = targetIndex >= 0 ? targetIndex + 1 : messages.length;
+                const contextMessages = messages.slice(Math.max(0, contextEndIndex - 6), contextEndIndex);
+                const sourceContext = contextMessages
+                    .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${typeof m.content === 'string' ? m.content : (m.text || '')}`)
+                    .join('\n');
 
                 try {
                     // Trigger AI generation for "Deep Dive"
-                    // Context is passed HERE for this one-time generation, not stored in card
+                    // Use clear markers so AI can distinguish imported context from current topic
+                    const branchPrompt = `
+╔══════════════════════════════════════════════════════════════╗
+║  📥 IMPORTED REFERENCE CONTEXT (from parent conversation)   ║
+║  This is background info only. Do NOT treat as current chat ║
+╚══════════════════════════════════════════════════════════════╝
+${sourceContext}
+
+╔══════════════════════════════════════════════════════════════╗
+║  🎯 THIS CARD'S FOCUS TOPIC (your primary task)             ║
+║  This is what this card is about. Focus on this.            ║
+╚══════════════════════════════════════════════════════════════╝
+${cleanChunk}
+
+══════════════════════════════════════════════════════════════
+INSTRUCTION: Based on the reference context above, provide a deeper explanation, analysis, or additional details about the FOCUS TOPIC. 
+Important: In future messages in this card, focus ONLY on the topic above. The "IMPORTED REFERENCE CONTEXT" is just background - future questions will be about expanding this specific topic.
+Respond in the same language as the focus topic.
+══════════════════════════════════════════════════════════════`.trim();
+
                     await aiManager.requestTask({
                         type: 'chat',
                         priority: PRIORITY.HIGH,
                         payload: {
-                            // System message for context (not stored, just for this request)
-                            messages: [
-                                {
-                                    role: 'system',
-                                    content: `You are helping the user explore a topic extracted from a previous conversation. Here is the relevant context from that conversation:\n\n${sourceContext}\n\nThe user wants to dive deeper into a specific point. Provide a thorough explanation, analysis, or additional details. Respond in the same language as the topic.`
-                                },
-                                {
-                                    role: 'user',
-                                    content: cleanChunk
-                                }
-                            ],
+                            messages: [{
+                                role: 'user',
+                                content: branchPrompt
+                            }],
                             model: config.model,
                             config
                         },
