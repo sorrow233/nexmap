@@ -163,20 +163,36 @@ export class OpenAIProvider extends LLMProvider {
                 // Kimi 等 thinking 模型会输出 <think>...</think> 包裹的思考内容
                 // 我们需要跳过这些内容，只输出 </think> 之后的实际回答
                 let thinkingBuffer = '';
-                let isInThinkingMode = true; // 假设开始可能有思考内容
                 let foundThinkEnd = false;
+                let checkedForThinking = false; // 是否已检测过是否为 thinking 模型
 
                 const processContent = (content) => {
                     if (!content) return;
 
                     if (foundThinkEnd) {
-                        // 已经找到 </think>，直接输出
+                        // 已经找到 </think> 或已确认不是 thinking 模型，直接输出
                         onToken(content);
                         return;
                     }
 
                     // 累积内容检测 </think>
                     thinkingBuffer += content;
+
+                    // 快速检测：前50个字符内如果没有 "<" 开头，基本可以确定不是 thinking 模型
+                    if (!checkedForThinking && thinkingBuffer.length >= 50) {
+                        checkedForThinking = true;
+                        // 检查开头是否可能是思考内容
+                        const trimmedStart = thinkingBuffer.trimStart();
+                        // 思考内容通常以空格、大写字母或 "<think>" 开头
+                        // 如果开头是 markdown（#、*、-）或数字，大概率不是思考
+                        if (/^[#\*\-0-9\[]/.test(trimmedStart)) {
+                            // 快速判定为非 thinking 模型
+                            foundThinkEnd = true;
+                            onToken(thinkingBuffer);
+                            thinkingBuffer = '';
+                            return;
+                        }
+                    }
 
                     // 检查是否包含 </think> 标签
                     const thinkEndIndex = thinkingBuffer.indexOf('</think>');
@@ -191,9 +207,9 @@ export class OpenAIProvider extends LLMProvider {
                         return;
                     }
 
-                    // 如果累积了超过 2000 字符还没找到 </think>，说明不是 thinking 模型
+                    // 如果累积了超过 500 字符还没找到 </think>，判定为非 thinking 模型
                     // 直接输出所有累积内容并切换到直通模式
-                    if (thinkingBuffer.length > 2000) {
+                    if (thinkingBuffer.length > 500) {
                         foundThinkEnd = true;
                         onToken(thinkingBuffer);
                         thinkingBuffer = '';
