@@ -51,9 +51,13 @@ export async function onRequest(context) {
             url = url.replace(':MODEL:', cleanModel);
         }
 
-        // Add API key for query-based auth
+        // Add API key for query-based auth (Gemini official)
         if (authMethod === 'query') {
             url += `?key=${apiKey}`;
+            // Gemini official streaming requires alt=sse parameter
+            if (stream) {
+                url += '&alt=sse';
+            }
         }
 
         // Prepare headers - include User-Agent to help pass Cloudflare checks

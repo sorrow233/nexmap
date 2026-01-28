@@ -163,16 +163,9 @@ export class GeminiProvider extends LLMProvider {
 
     async stream(messages, onToken, model, options = {}) {
         const keyPool = this._getKeyPool();
-        // 如果 baseUrl 为空，使用 Gemini 官方 API 地址
-        const baseUrl = this.config.baseUrl?.trim() || 'https://generativelanguage.googleapis.com/v1beta';
+        const { baseUrl = "" } = this.config;
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
-
-        console.log(`[GeminiProvider.stream] Starting stream`, {
-            model: cleanModel,
-            baseUrl: baseUrl,
-            hasApiKey: !!keyPool.getNextKey()?.substring(0, 10)
-        });
 
         const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
