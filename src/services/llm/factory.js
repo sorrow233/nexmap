@@ -4,8 +4,33 @@ import { SystemCreditsProvider } from './providers/systemCredits';
 
 export class ModelFactory {
     /**
-     * Get provider based on config
+     * Check if a model should use Gemini native protocol
+     * @param {string} model - Model name
+     * @returns {boolean}
+     */
+    static isGeminiModel(model) {
+        if (!model) return false;
+        const lowerModel = model.toLowerCase();
+        // Match: google/gemini-*, gemini-*, gemma-*
+        return lowerModel.startsWith('google/gemini') ||
+            lowerModel.startsWith('gemini') ||
+            lowerModel.startsWith('google/gemma') ||
+            lowerModel.startsWith('gemma');
+    }
+
+    /**
+     * Get provider based on config and model
      * If no API key is configured, returns SystemCreditsProvider for free trial
+     * 
+     * Protocol selection logic:
+     * 1. If config.protocol is 'gemini' AND model is a Gemini model → GeminiProvider
+     * 2. If config.protocol is 'gemini' BUT model is NOT a Gemini model → OpenAIProvider (auto-switch)
+     * 3. If config.protocol is 'openai' → OpenAIProvider
+     * 4. Default → OpenAIProvider
+     * 
+     * @param {Object} config - Provider config
+     * @param {Object} options - Options including model name
+     * @param {string} options.model - Model name for protocol auto-detection
      */
     static getProvider(config, options = {}) {
         if (!config) throw new Error("Provider configuration is missing.");
@@ -19,10 +44,21 @@ export class ModelFactory {
         }
 
         const protocol = config.protocol || 'openai';
+        const model = options.model || config.model || '';
+
+        // Auto-detect protocol based on model name
+        if (protocol === 'gemini') {
+            // Only use Gemini native protocol for actual Gemini models
+            if (this.isGeminiModel(model)) {
+                return new GeminiProvider(config);
+            } else {
+                // Non-Gemini model on Gemini provider config → use OpenAI compatible
+                console.log(`[ModelFactory] Model '${model}' is not a Gemini model, using OpenAI compatible protocol`);
+                return new OpenAIProvider(config);
+            }
+        }
 
         switch (protocol) {
-            case 'gemini':
-                return new GeminiProvider(config);
             case 'openai':
                 return new OpenAIProvider(config);
             case 'system-credits':

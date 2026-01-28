@@ -13,7 +13,7 @@ export async function chatCompletion(messages, config, model = null, options = {
     if (!config) {
         throw new Error("ChatCompletion: Config must be provided");
     }
-    const provider = ModelFactory.getProvider(config);
+    const provider = ModelFactory.getProvider(config, { model });
     if (model) userStatsService.incrementModelUsage(model);
     return provider.chat(messages, model, options);
 }
@@ -37,7 +37,7 @@ export async function streamChatCompletion(messages, config, onToken, model = nu
     // Let's assume the caller resolves the model using `getRoleModel` helper from the store BEFORE calling this.
     // However, to keep it simple for now, we'll rely on the passed model.
 
-    const provider = ModelFactory.getProvider(config);
+    const provider = ModelFactory.getProvider(config, { model });
     if (model) userStatsService.incrementModelUsage(model);
     return provider.stream(messages, onToken, model, options);
 }
@@ -52,7 +52,7 @@ export async function imageGeneration(prompt, config, model = null, options = {}
         throw new Error(`Provider configuration is missing.`);
     }
 
-    const provider = ModelFactory.getProvider(config);
+    const provider = ModelFactory.getProvider(config, { model });
     // Track image generation as "dall-e-3" (or general image model) usage
     userStatsService.incrementModelUsage('dall-e-3');
     return provider.generateImage(prompt, model, options);
