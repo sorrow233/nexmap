@@ -96,12 +96,28 @@ export default function ModelSwitcher({ compact = false }) {
         return unique(chatModels);
     }, [providers]);
 
+    // 按 Provider 分组模型
+    const groupedModels = useMemo(() => {
+        const groups = {};
+        userModels.forEach(model => {
+            const providerName = model.provider || 'Other';
+            if (!groups[providerName]) {
+                groups[providerName] = {
+                    name: providerName,
+                    providerId: model.providerId,
+                    models: []
+                };
+            }
+            groups[providerName].models.push(model);
+        });
+        return Object.values(groups);
+    }, [userModels]);
+
     const currentChatModel = useStore(state => state.getEffectiveChatModel?.() || state.quickChatModel);
     const displayModel = currentChatModel;
 
-    // 焦点：始终显示聊天模型列表
-    const currentList = userModels.length > 0 ? userModels : PRESET_MODELS.chat;
-    const isUsingPresets = userModels.length === 0;
+    // 判断是否使用预设模型
+    const isUsingPresets = groupedModels.length === 0;
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -185,34 +201,75 @@ export default function ModelSwitcher({ compact = false }) {
                             </button>
                         )}
 
-                        {/* Model List */}
-                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-1 py-1">
-                            {currentList.map((model) => {
-                                const isSelected = displayModel === model.id;
-                                return (
-                                    <button
-                                        key={model.id}
-                                        onClick={() => handleModelSelect(model)}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left
-                                            transition-all duration-200 group
-                                            ${isSelected
-                                                ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold'
-                                                : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-300'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-200/50 dark:bg-white/5'}`}>
-                                                {model.icon ? <model.icon size={14} className={model.color} /> : <Bot size={14} />}
-                                            </div>
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="truncate text-xs">{model.name}</span>
-                                                <span className="text-[9px] text-slate-400 font-medium truncate">{model.provider}</span>
-                                            </div>
+                        {/* Model List - 按 Provider 分组 */}
+                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar py-1">
+                            {groupedModels.length > 0 ? (
+                                groupedModels.map((group, groupIndex) => (
+                                    <div key={group.name} className={groupIndex > 0 ? 'mt-2 pt-2 border-t border-slate-100 dark:border-white/5' : ''}>
+                                        {/* Provider 分组标题 */}
+                                        <div className="px-2 py-1.5 flex items-center gap-2">
+                                            <Globe size={10} className="text-slate-400" />
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                {group.name}
+                                            </span>
                                         </div>
-                                        {isSelected && <Check size={14} className="text-cyan-500 flex-shrink-0" />}
-                                    </button>
-                                );
-                            })}
+                                        {/* Provider 下的模型列表 */}
+                                        <div className="space-y-0.5">
+                                            {group.models.map((model) => {
+                                                const isSelected = displayModel === model.id;
+                                                return (
+                                                    <button
+                                                        key={model.id}
+                                                        onClick={() => handleModelSelect(model)}
+                                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left
+                                                            transition-all duration-200 group
+                                                            ${isSelected
+                                                                ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold'
+                                                                : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-300'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center gap-2.5 overflow-hidden">
+                                                            <div className={`p-1 rounded-lg ${isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-200/50 dark:bg-white/5'}`}>
+                                                                {model.icon ? <model.icon size={12} className={model.color} /> : <Bot size={12} />}
+                                                            </div>
+                                                            <span className="truncate text-xs">{getModelDisplayName(model.id, userModels)}</span>
+                                                        </div>
+                                                        {isSelected && <Check size={14} className="text-cyan-500 flex-shrink-0" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                /* 预设模型 fallback */
+                                PRESET_MODELS.chat.map((model) => {
+                                    const isSelected = displayModel === model.id;
+                                    return (
+                                        <button
+                                            key={model.id}
+                                            onClick={() => handleModelSelect(model)}
+                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left
+                                                transition-all duration-200 group
+                                                ${isSelected
+                                                    ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold'
+                                                    : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-300'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-200/50 dark:bg-white/5'}`}>
+                                                    {model.icon ? <model.icon size={14} className={model.color} /> : <Bot size={14} />}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="truncate text-xs">{model.name}</span>
+                                                    <span className="text-[9px] text-slate-400 font-medium truncate">{model.provider}</span>
+                                                </div>
+                                            </div>
+                                            {isSelected && <Check size={14} className="text-cyan-500 flex-shrink-0" />}
+                                        </button>
+                                    );
+                                })
+                            )}
                         </div>
 
                         {/* Empty State / Hint */}
