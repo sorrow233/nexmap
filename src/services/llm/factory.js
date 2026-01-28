@@ -19,6 +19,23 @@ export class ModelFactory {
     }
 
     /**
+     * Check if a model outputs thinking content with <think>...</think> tags
+     * These models need special filtering to hide thought process
+     * @param {string} model - Model name
+     * @returns {boolean}
+     */
+    static isThinkingModel(model) {
+        if (!model) return false;
+        const lowerModel = model.toLowerCase();
+        // Kimi-K2.5, DeepSeek-R1, and models with "-thinking" suffix
+        return lowerModel.includes('kimi-k2.5') ||
+            lowerModel.includes('kimi-k2') ||
+            lowerModel.includes('deepseek-r1') ||
+            lowerModel.includes('-thinking') ||
+            lowerModel.includes('_thinking');
+    }
+
+    /**
      * Get provider based on config and model
      * If no API key is configured, returns SystemCreditsProvider for free trial
      * 

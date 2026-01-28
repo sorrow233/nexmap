@@ -83,10 +83,13 @@ export class OpenAIProvider extends LLMProvider {
                 const data = await response.json();
                 let content = data.choices[0].message.content || '';
 
-                // 过滤思考内容：移除 </think> 之前的所有内容（包括标签本身）
-                const thinkEndIndex = content.indexOf('</think>');
-                if (thinkEndIndex !== -1) {
-                    content = content.substring(thinkEndIndex + 8).trim(); // 8 = '</think>'.length
+                // 只对 Thinking 模型进行思考内容过滤
+                const { ModelFactory } = await import('../factory');
+                if (ModelFactory.isThinkingModel(modelToUse)) {
+                    const thinkEndIndex = content.indexOf('</think>');
+                    if (thinkEndIndex !== -1) {
+                        content = content.substring(thinkEndIndex + 8).trim();
+                    }
                 }
 
                 return content;
@@ -159,59 +162,35 @@ export class OpenAIProvider extends LLMProvider {
                 const decoder = new TextDecoder("utf-8");
                 let buffer = '';
 
-                // 思考过程过滤状态
-                // Kimi 等 thinking 模型会输出 <think>...</think> 包裹的思考内容
-                // 我们需要跳过这些内容，只输出 </think> 之后的实际回答
+                // 思考过程过滤 - 基于模型名预判
+                // Thinking 模型 (Kimi-K2.5, DeepSeek-R1) 会输出 <think>...</think>
+                // 需要缓冲并过滤，非 thinking 模型直通输出
+                const { ModelFactory } = await import('../factory');
+                const isThinkingModel = ModelFactory.isThinkingModel(modelToUse);
+
                 let thinkingBuffer = '';
-                let foundThinkEnd = false;
-                let checkedForThinking = false; // 是否已检测过是否为 thinking 模型
+                let foundThinkEnd = !isThinkingModel; // 非 thinking 模型直接标记为已找到
 
                 const processContent = (content) => {
                     if (!content) return;
 
                     if (foundThinkEnd) {
-                        // 已经找到 </think> 或已确认不是 thinking 模型，直接输出
+                        // 非 thinking 模型或已过滤完思考：直通输出
                         onToken(content);
                         return;
                     }
 
-                    // 累积内容检测 </think>
+                    // Thinking 模型：缓冲等待 </think>
                     thinkingBuffer += content;
 
-                    // 快速检测：前50个字符内如果没有 "<" 开头，基本可以确定不是 thinking 模型
-                    if (!checkedForThinking && thinkingBuffer.length >= 50) {
-                        checkedForThinking = true;
-                        // 检查开头是否可能是思考内容
-                        const trimmedStart = thinkingBuffer.trimStart();
-                        // 思考内容通常以空格、大写字母或 "<think>" 开头
-                        // 如果开头是 markdown（#、*、-）或数字，大概率不是思考
-                        if (/^[#\*\-0-9\[]/.test(trimmedStart)) {
-                            // 快速判定为非 thinking 模型
-                            foundThinkEnd = true;
-                            onToken(thinkingBuffer);
-                            thinkingBuffer = '';
-                            return;
-                        }
-                    }
-
-                    // 检查是否包含 </think> 标签
                     const thinkEndIndex = thinkingBuffer.indexOf('</think>');
                     if (thinkEndIndex !== -1) {
                         foundThinkEnd = true;
                         // 只输出 </think> 之后的内容
-                        const afterThink = thinkingBuffer.substring(thinkEndIndex + 8); // 8 = '</think>'.length
+                        const afterThink = thinkingBuffer.substring(thinkEndIndex + 8);
                         if (afterThink.trim()) {
                             onToken(afterThink);
                         }
-                        thinkingBuffer = ''; // 清空缓冲
-                        return;
-                    }
-
-                    // 如果累积了超过 500 字符还没找到 </think>，判定为非 thinking 模型
-                    // 直接输出所有累积内容并切换到直通模式
-                    if (thinkingBuffer.length > 500) {
-                        foundThinkEnd = true;
-                        onToken(thinkingBuffer);
                         thinkingBuffer = '';
                     }
                 };
