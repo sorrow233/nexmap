@@ -54,9 +54,14 @@ export default function ModelSwitcher({ compact = false }) {
 
     // Store state
     const providers = useStore(state => state.providers);
+    const activeId = useStore(state => state.activeId);
     const quickChatModel = useStore(state => state.quickChatModel);
     const setQuickChatModel = useStore(state => state.setQuickChatModel);
     const getEffectiveChatModel = useStore(state => state.getEffectiveChatModel);
+
+    // Get current provider config
+    const currentProvider = providers?.[activeId];
+    const isGeminiProtocol = currentProvider?.protocol === 'gemini';
 
     // 动态提取用户在所有厂商配置中定义的模型
     const userModels = useMemo(() => {
@@ -93,14 +98,30 @@ export default function ModelSwitcher({ compact = false }) {
         });
 
         const unique = (arr) => Array.from(new Map(arr.map(item => [item.id, item])).values());
-        return unique(chatModels);
-    }, [providers]);
+
+        // Filter based on active protocol
+        let models = unique(chatModels);
+        if (isGeminiProtocol) {
+            models = models.filter(m =>
+                m.providerId === activeId || // Allow models explicitly from this provider
+                m.id.toLowerCase().includes('google') ||
+                m.id.toLowerCase().includes('gemini')
+            );
+        }
+        return models;
+    }, [providers, activeId, isGeminiProtocol]);
 
     const currentChatModel = useStore(state => state.getEffectiveChatModel?.() || state.quickChatModel);
     const displayModel = currentChatModel;
 
+    // Filter presets if using presets
+    const filteredPresets = useMemo(() => {
+        if (!isGeminiProtocol) return PRESET_MODELS.chat;
+        return PRESET_MODELS.chat.filter(m => m.provider === 'Google');
+    }, [isGeminiProtocol]);
+
     // 焦点：始终显示聊天模型列表
-    const currentList = userModels.length > 0 ? userModels : PRESET_MODELS.chat;
+    const currentList = userModels.length > 0 ? userModels : filteredPresets;
     const isUsingPresets = userModels.length === 0;
 
     useEffect(() => {
