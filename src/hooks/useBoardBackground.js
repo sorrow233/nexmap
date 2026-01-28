@@ -7,6 +7,7 @@ import { DEFAULT_ROLES } from '../services/llm/registry';
 import { useStore } from '../store/useStore';
 import { getAnalysisPrompt, getPromptGeneratorPrompt, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
 import { useToast } from '../components/Toast';
+import { aiSummaryService } from '../services/aiSummaryService';
 
 export default function useBoardBackground() {
     const [generatingBoardId, setGeneratingBoardId] = useState(null);
