@@ -81,7 +81,15 @@ export class OpenAIProvider extends LLMProvider {
                 }
 
                 const data = await response.json();
-                return data.choices[0].message.content;
+                let content = data.choices[0].message.content || '';
+
+                // 过滤思考内容：移除 </think> 之前的所有内容（包括标签本身）
+                const thinkEndIndex = content.indexOf('</think>');
+                if (thinkEndIndex !== -1) {
+                    content = content.substring(thinkEndIndex + 8).trim(); // 8 = '</think>'.length
+                }
+
+                return content;
             } catch (e) {
                 if (retries > 0 && !e.message.includes('没有可用')) {
                     retries--;
@@ -151,6 +159,47 @@ export class OpenAIProvider extends LLMProvider {
                 const decoder = new TextDecoder("utf-8");
                 let buffer = '';
 
+                // 思考过程过滤状态
+                // Kimi 等 thinking 模型会输出 <think>...</think> 包裹的思考内容
+                // 我们需要跳过这些内容，只输出 </think> 之后的实际回答
+                let thinkingBuffer = '';
+                let isInThinkingMode = true; // 假设开始可能有思考内容
+                let foundThinkEnd = false;
+
+                const processContent = (content) => {
+                    if (!content) return;
+
+                    if (foundThinkEnd) {
+                        // 已经找到 </think>，直接输出
+                        onToken(content);
+                        return;
+                    }
+
+                    // 累积内容检测 </think>
+                    thinkingBuffer += content;
+
+                    // 检查是否包含 </think> 标签
+                    const thinkEndIndex = thinkingBuffer.indexOf('</think>');
+                    if (thinkEndIndex !== -1) {
+                        foundThinkEnd = true;
+                        // 只输出 </think> 之后的内容
+                        const afterThink = thinkingBuffer.substring(thinkEndIndex + 8); // 8 = '</think>'.length
+                        if (afterThink.trim()) {
+                            onToken(afterThink);
+                        }
+                        thinkingBuffer = ''; // 清空缓冲
+                        return;
+                    }
+
+                    // 如果累积了超过 2000 字符还没找到 </think>，说明不是 thinking 模型
+                    // 直接输出所有累积内容并切换到直通模式
+                    if (thinkingBuffer.length > 2000) {
+                        foundThinkEnd = true;
+                        onToken(thinkingBuffer);
+                        thinkingBuffer = '';
+                    }
+                };
+
                 try {
                     while (true) {
                         const { done, value } = await reader.read();
@@ -166,7 +215,7 @@ export class OpenAIProvider extends LLMProvider {
                                 try {
                                     const json = JSON.parse(trimmedLine.substring(6));
                                     const content = json.choices[0]?.delta?.content;
-                                    if (content) onToken(content);
+                                    processContent(content);
                                 } catch (e) { }
                             }
                         }
@@ -178,10 +227,16 @@ export class OpenAIProvider extends LLMProvider {
                             try {
                                 const json = JSON.parse(trimmedLine.substring(6));
                                 const content = json.choices[0]?.delta?.content;
-                                if (content) onToken(content);
+                                processContent(content);
                             } catch (e) { }
                         }
                     }
+
+                    // 如果流结束时还有未输出的缓冲内容（非 thinking 模型），输出它
+                    if (!foundThinkEnd && thinkingBuffer) {
+                        onToken(thinkingBuffer);
+                    }
+
                     return;
                 } finally {
                     reader.releaseLock();
