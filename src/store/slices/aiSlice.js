@@ -190,9 +190,22 @@ export const createAISlice = (set, get) => {
                 // Context Walking
                 const contextMessages = assembleContext(cardId, connections || [], cards);
 
-                // Messages are now [contextMessages, ...messages]
+                // Filter out error messages that were accidentally saved to history
+                // These error messages pollute the context and may cause API issues
+                const ERROR_MARKERS = ['⚠️', 'AI服务暂时不可用', 'AI Service', 'Service Unavailable', 'Rate Limited', 'Generation Failed', 'Request Timeout'];
+                const cleanMessages = messages.filter(msg => {
+                    if (msg.role !== 'assistant') return true;
+                    const content = msg.content || '';
+                    // Skip empty or error-only messages
+                    if (!content.trim()) return false;
+                    // Check if message starts with or contains error markers
+                    return !ERROR_MARKERS.some(marker => content.includes(marker));
+                });
+
+                // Messages are now [contextMessages, ...cleanMessages]
                 // Time injection will be handled by AIManager globally
-                const fullMessages = [...contextMessages, ...messages];
+                const fullMessages = [...contextMessages, ...cleanMessages];
+
 
                 // FIXED: 使用新的 getEffectiveChatConfig 这种隔离机制来获取配置
                 // 这确保了画布上的切换只影响对话，不影响全局 activeId (从而保护了功能模型和绘图模型)
