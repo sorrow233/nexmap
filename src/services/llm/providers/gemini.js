@@ -163,7 +163,8 @@ export class GeminiProvider extends LLMProvider {
 
     async stream(messages, onToken, model, options = {}) {
         const keyPool = this._getKeyPool();
-        const { baseUrl = "" } = this.config;
+        // 如果 baseUrl 为空，使用 Gemini 官方 API 地址
+        const baseUrl = this.config.baseUrl?.trim() || 'https://generativelanguage.googleapis.com/v1beta';
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
