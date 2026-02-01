@@ -183,12 +183,19 @@ export const createAISlice = (set, get) => {
         },
 
         handleChatGenerate: async (cardId, messages, onToken) => {
-            const { setCardGenerating, updateCardContent, updateCardFull, cards, connections } = get();
+            const { setCardGenerating, updateCardContent, updateCardFull } = get();
             setCardGenerating(cardId, true);
 
             try {
+                // CRITICAL FIX: 在执行 assembleContext 之前获取最新的 cards 和 connections
+                // 这确保了并发执行时每张卡片看到的是已更新的state，而不是共享的旧快照
+                // 之前的BUG：第186行的解构在Promise.all同时启动多个handleChatGenerate时
+                // 会导致所有调用共享同一个cards快照，使得assembleContext返回错误的上下文
+                const { cards, connections } = get();
+
                 // Context Walking
                 const contextMessages = assembleContext(cardId, connections || [], cards);
+
 
                 // Filter out error messages that were accidentally saved to history
                 // These error messages pollute the context and may cause API issues

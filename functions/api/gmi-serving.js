@@ -72,9 +72,7 @@ export async function onRequest(context) {
             headers['Authorization'] = `Bearer ${apiKey}`;
         }
 
-        const bodyStr = requestBody ? JSON.stringify(requestBody) : '';
         console.log(`[Proxy] Forwarding to: ${url}`);
-        console.log(`[Proxy] Request body size: ${bodyStr.length} bytes, stream: ${stream}, authMethod: ${authMethod}`);
 
         // Make the upstream request
         const upstreamResponse = await fetch(url, {
