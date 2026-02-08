@@ -6,6 +6,11 @@ import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser'
 import { getKeyPool } from '../keyPoolManager';
 
 export class GeminiProvider extends LLMProvider {
+    _isGemini3FlashModel(modelName = '') {
+        const lower = String(modelName).toLowerCase();
+        return lower.includes('gemini-3-flash');
+    }
+
     /**
      * Gemini 原生协议转换
      */
@@ -86,8 +91,10 @@ export class GeminiProvider extends LLMProvider {
             requestBody.tools = [{ google_search: {} }];
         }
 
-        if (options.thinkingLevel) {
-            requestBody.generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
+        // Force Gemini 3 Flash family to always run with high thinking.
+        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel) ? 'high' : options.thinkingLevel;
+        if (forcedThinkingLevel) {
+            requestBody.generationConfig.thinkingConfig = { thinkingLevel: forcedThinkingLevel };
         }
         if (options.mediaResolution) {
             requestBody.generationConfig.mediaResolution = options.mediaResolution;
@@ -195,8 +202,10 @@ export class GeminiProvider extends LLMProvider {
             requestBody.tools = [{ google_search: {} }];
         }
 
-        if (options.thinkingLevel) {
-            requestBody.generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
+        // Force Gemini 3 Flash family to always run with high thinking.
+        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel) ? 'high' : options.thinkingLevel;
+        if (forcedThinkingLevel) {
+            requestBody.generationConfig.thinkingConfig = { thinkingLevel: forcedThinkingLevel };
         }
         if (options.mediaResolution) {
             requestBody.generationConfig.mediaResolution = options.mediaResolution;
