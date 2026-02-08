@@ -2,7 +2,7 @@ import { LLMProvider } from './base';
 import { resolveAllImages, getAuthMethod } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
 import { isRetryableError } from './gemini/errorUtils';
-import { parseGeminiStream } from './gemini/streamParser';
+import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser';
 import { getKeyPool } from '../keyPoolManager';
 
 export class GeminiProvider extends LLMProvider {
@@ -133,6 +133,14 @@ export class GeminiProvider extends LLMProvider {
                     }
 
                     const candidate = data.candidates?.[0];
+                    const usedSearch = didCandidateUseSearch(candidate);
+                    if (typeof options.onResponseMetadata === 'function') {
+                        try {
+                            options.onResponseMetadata({ usedSearch });
+                        } catch (metaError) {
+                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                        }
+                    }
                     return candidate?.content?.parts?.[0]?.text || "";
                 }
 
@@ -243,7 +251,14 @@ export class GeminiProvider extends LLMProvider {
 
                 const reader = response.body.getReader();
                 try {
-                    await parseGeminiStream(reader, onToken, () => { });
+                    const streamMeta = await parseGeminiStream(reader, onToken, () => { });
+                    if (typeof options.onResponseMetadata === 'function') {
+                        try {
+                            options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
+                        } catch (metaError) {
+                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                        }
+                    }
                     return;
                 } finally {
                     reader.releaseLock();

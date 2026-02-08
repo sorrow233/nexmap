@@ -53,6 +53,16 @@ export function useAISprouting() {
         return positions;
     };
 
+    const applySearchMetaToLatestAssistant = (cardId, metadata = {}) => {
+        const store = useStore.getState();
+        const card = store.cards.find(c => c.id === cardId);
+        const assistantMsg = card?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+        if (!assistantMsg?.id || typeof store.setAssistantMessageMeta !== 'function') return;
+        store.setAssistantMessageMeta(cardId, assistantMsg.id, {
+            usedSearch: metadata.usedSearch === true
+        });
+    };
+
     const handleExpandTopics = async (sourceId) => {
         const source = cards.find(c => c.id === sourceId);
         if (!source || !source.data.marks) return;
@@ -85,7 +95,10 @@ export function useAISprouting() {
                         payload: {
                             messages: [{ role: 'user', content: mark }],
                             model: config.model,
-                            config
+                            config,
+                            options: {
+                                onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
+                            }
                         },
                         tags: [`card:${generatedId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -148,7 +161,10 @@ export function useAISprouting() {
                                     content: `[Previous Context]\n${sourceContext}\n\n[New Topic to Explore]\n${question}\n\nBased on the previous context, please elaborate on this topic in detail.`
                                 }],
                                 model: config.model,
-                                config
+                                config,
+                                options: {
+                                    onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
+                                }
                             },
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -228,7 +244,10 @@ export function useAISprouting() {
                                         content: `[Previous Context]\n${sourceContext}\n\n[Topic to Explore]\n${topic}\n\nBased on the previous context, please provide a deeper explanation, analysis, or additional details about this specific point.`
                                     }],
                                     model: config.model,
-                                    config
+                                    config,
+                                    options: {
+                                        onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
+                                    }
                                 },
                                 tags: [`card:${newId}`],
                                 onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -391,7 +410,10 @@ Respond in the same language as the focus topic.
                                 content: branchPrompt
                             }],
                             model: config.model,
-                            config
+                            config,
+                            options: {
+                                onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
+                            }
                         },
                         tags: [`card:${newId}`],
                         onProgress: (chunk) => updateCardContent(newId, chunk)
@@ -463,7 +485,10 @@ Respond in the same language as the focus topic.
                                     content: `[Previous Context]\n${sourceContext}\n\n[Topic/Instruction]\n${content}\n\nBased on this topic, please elaborate or fulfill the implied request.`
                                 }],
                                 model: config.model,
-                                config
+                                config,
+                                options: {
+                                    onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(newId, metadata)
+                                }
                             },
                             tags: [`card:${newId}`],
                             onProgress: (chunk) => updateCardContent(newId, chunk)

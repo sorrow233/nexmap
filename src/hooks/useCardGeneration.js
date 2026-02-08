@@ -78,7 +78,18 @@ export function useCardGeneration() {
                     payload: {
                         messages: [{ role: 'user', content: messageContent }],
                         model: chatModel,
-                        config: config
+                        config: config,
+                        options: {
+                            onResponseMetadata: (metadata = {}) => {
+                                const store = useStore.getState();
+                                const freshCard = store.cards.find(c => c.id === newId);
+                                const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
+                                if (!assistantMsg?.id || typeof store.setAssistantMessageMeta !== 'function') return;
+                                store.setAssistantMessageMeta(newId, assistantMsg.id, {
+                                    usedSearch: metadata.usedSearch === true
+                                });
+                            }
+                        }
                     },
                     tags: [`card:${newId}`],
                     onProgress: (chunk) => {

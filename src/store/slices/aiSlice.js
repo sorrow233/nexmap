@@ -250,6 +250,10 @@ export const createAISlice = (set, get) => {
                 });
 
                 let firstToken = true;
+                const resolveLatestAssistantMessageId = () => {
+                    const latestCard = get().cards.find(c => c.id === cardId);
+                    return latestCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant')?.id || null;
+                };
 
                 // Use AIManager for centralized scheduling and cancellation
                 await aiManager.requestTask({
@@ -260,6 +264,15 @@ export const createAISlice = (set, get) => {
                         model: runModel,
                         temperature: undefined,
                         config,
+                        options: {
+                            onResponseMetadata: (metadata = {}) => {
+                                const assistantMessageId = resolveLatestAssistantMessageId();
+                                if (!assistantMessageId) return;
+                                get().setAssistantMessageMeta(cardId, assistantMessageId, {
+                                    usedSearch: metadata.usedSearch === true
+                                });
+                            }
+                        }
                     },
                     tags: [`card:${cardId}`], // Cancel any previous generation for this card
                     onProgress: (chunk) => {
@@ -398,6 +411,33 @@ export const createAISlice = (set, get) => {
 
             // Expose flush globally to slice
             state._flushAIContent = flush;
+        },
+
+        setAssistantMessageMeta: (cardId, messageId, metaUpdates = {}) => {
+            if (!cardId || !messageId || !metaUpdates || typeof metaUpdates !== 'object') return;
+
+            set(state => ({
+                cards: state.cards.map(card => {
+                    if (card.id !== cardId) return card;
+                    const messages = [...(card.data.messages || [])];
+                    const targetIndex = messages.findIndex(msg => msg.id === messageId);
+                    if (targetIndex === -1) return card;
+
+                    const targetMsg = messages[targetIndex];
+                    messages[targetIndex] = {
+                        ...targetMsg,
+                        meta: {
+                            ...(targetMsg.meta || {}),
+                            ...metaUpdates
+                        }
+                    };
+
+                    return {
+                        ...card,
+                        data: { ...card.data, messages }
+                    };
+                })
+            }));
         },
 
         setCardGenerating: (id, isGenerating) => {

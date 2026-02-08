@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useStore } from '../../store/useStore';
 import { marked } from 'marked';
-import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check } from 'lucide-react';
+import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import DOMPurify from 'dompurify';
@@ -331,6 +331,16 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                         <div className="text-slate-500 text-sm italic border-l-2 border-slate-200 dark:border-slate-700 pl-4 py-1 leading-relaxed bg-slate-50/50 dark:bg-black/20 rounded-r-lg">
                             {thoughts}
                         </div>
+                    </div>
+                )}
+
+                {/* Search usage marker */}
+                {!isUser && message?.meta?.usedSearch === true && (
+                    <div className="mb-3 flex justify-end">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30">
+                            <Globe size={11} />
+                            已联网搜索
+                        </span>
                     </div>
                 )}
 

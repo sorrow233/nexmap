@@ -1,16 +1,34 @@
 import { isRetryableError } from './errorUtils';
 
 /**
+ * Detect whether a Gemini candidate includes grounding/search metadata.
+ * This indicates that web search grounding was actually invoked.
+ */
+export function didCandidateUseSearch(candidate) {
+    const grounding = candidate?.groundingMetadata;
+    if (!grounding) return false;
+
+    return Boolean(
+        (Array.isArray(grounding.webSearchQueries) && grounding.webSearchQueries.length > 0) ||
+        (Array.isArray(grounding.groundingChunks) && grounding.groundingChunks.length > 0) ||
+        (Array.isArray(grounding.groundingSupports) && grounding.groundingSupports.length > 0) ||
+        (Array.isArray(grounding.retrievalQueries) && grounding.retrievalQueries.length > 0) ||
+        grounding.searchEntryPoint
+    );
+}
+
+/**
  * Parses a stream response from Gemini API (via query proxy)
  * @param {ReadableStreamDefaultReader} reader 
  * @param {Function} onToken - Callback for new text chunks
  * @param {Function} onLog - Callback for logging (optional)
- * @returns {Promise<void>}
+ * @returns {Promise<{ usedSearch: boolean }>}
  */
 export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     const decoder = new TextDecoder();
     let lastFullText = ''; // Track cumulative text
     let buffer = '';
+    let usedSearch = false;
 
     try {
         onLog('[Gemini] Stream response OK, processing chunks...');
@@ -57,6 +75,9 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     }
 
                     const candidate = data.candidates?.[0];
+                    if (didCandidateUseSearch(candidate)) {
+                        usedSearch = true;
+                    }
 
                     // Gemini stream format: candidate content parts
                     const currentText = candidate?.content?.parts?.[0]?.text;
@@ -108,7 +129,12 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     throw new Error(errMsg);
                 }
 
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                const candidate = data.candidates?.[0];
+                if (didCandidateUseSearch(candidate)) {
+                    usedSearch = true;
+                }
+
+                const text = candidate?.content?.parts?.[0]?.text;
                 if (text) {
                     const delta = text.startsWith(lastFullText) ? text.substring(lastFullText.length) : text;
                     if (delta) {
@@ -120,6 +146,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                 if (e.message && !e.message.includes('JSON')) throw e;
             }
         }
+        return { usedSearch };
     } finally {
         // Reader release is handled by caller or automatic cleanup if properly structured, 
         // but here we just process. The caller should manage the reader lifecycle or we do it here?
