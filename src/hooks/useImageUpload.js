@@ -6,7 +6,10 @@ import { useState, useEffect } from 'react';
  * Manages image selection, preview URLs, Base64 conversion, and cleanup.
  * Shared between BoardGallery and ChatModal.
  */
-export default function useImageUpload() {
+export default function useImageUpload(options = {}) {
+    const {
+        maxFileSizeBytes = null // null = unlimited for local-only chat image flow
+    } = options;
     const [images, setImages] = useState([]);
 
     const processFiles = (files) => {
@@ -18,10 +21,10 @@ export default function useImageUpload() {
                 return;
             }
 
-            // Security: Check file size (Max 5MB)
-            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-            if (file.size > MAX_SIZE) {
-                alert(`File too large: ${file.name}. Maximum size is 5MB.`);
+            // Optional file size guard. Disabled by default in local-only workflow.
+            if (typeof maxFileSizeBytes === 'number' && maxFileSizeBytes > 0 && file.size > maxFileSizeBytes) {
+                const maxMB = (maxFileSizeBytes / (1024 * 1024)).toFixed(1);
+                alert(`File too large: ${file.name}. Maximum size is ${maxMB}MB.`);
                 return;
             }
 

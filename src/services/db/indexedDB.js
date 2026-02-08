@@ -87,3 +87,37 @@ export const idbClear = async () => {
         transaction.onerror = () => reject(transaction.error);
     });
 };
+
+/**
+ * Get all entries in the main store with keys matching the given prefix.
+ * @param {string} prefix
+ * @returns {Promise<Array<{ key: string, value: any }>>}
+ */
+export const idbGetEntriesByPrefix = async (prefix) => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(IDB_STORE, 'readonly');
+        const store = transaction.objectStore(IDB_STORE);
+        const request = store.openCursor();
+        const entries = [];
+
+        request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor) {
+                resolve(entries);
+                return;
+            }
+
+            const key = cursor.key;
+            if (typeof key === 'string' && key.startsWith(prefix)) {
+                entries.push({ key, value: cursor.value });
+            }
+            cursor.continue();
+        };
+
+        request.onerror = () => {
+            console.error(`[IDB] Cursor error for prefix ${prefix}:`, request.error);
+            reject(request.error);
+        };
+    });
+};
