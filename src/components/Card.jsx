@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, ArrowRight, Clipboard, Star, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Link, Clipboard, Star, Check } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -30,7 +30,9 @@ const Card = React.memo(function Card({
 }) {
     const { t } = useLanguage();
     const [isDragOver, setIsDragOver] = useState(false);
+    const [copyStatus, setCopyStatus] = useState('idle'); // idle | success | error
     const cardRef = useRef(null);
+    const copyResetTimerRef = useRef(null);
     const {
         isDragging,
         handleMouseDown,
@@ -155,11 +157,28 @@ const Card = React.memo(function Card({
 
         try {
             await navigator.clipboard.writeText(fullCardText);
-            console.log('✅ Full card copied to clipboard');
+            setCopyStatus('success');
+            if (copyResetTimerRef.current) clearTimeout(copyResetTimerRef.current);
+            copyResetTimerRef.current = setTimeout(() => {
+                setCopyStatus('idle');
+                copyResetTimerRef.current = null;
+            }, 1500);
         } catch (err) {
+            setCopyStatus('error');
+            if (copyResetTimerRef.current) clearTimeout(copyResetTimerRef.current);
+            copyResetTimerRef.current = setTimeout(() => {
+                setCopyStatus('idle');
+                copyResetTimerRef.current = null;
+            }, 1500);
             console.error('Failed to copy full card:', err);
         }
     };
+
+    useEffect(() => () => {
+        if (copyResetTimerRef.current) {
+            clearTimeout(copyResetTimerRef.current);
+        }
+    }, []);
 
 
     const zIndex = isSelected ? 60 : (isTarget ? 55 : 1);
@@ -222,10 +241,17 @@ const Card = React.memo(function Card({
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                     onClick={handleCopyFullCard}
-                    className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title="Copy full card"
+                    className={`p-1.5 rounded-lg transition-all ${copyStatus === 'success'
+                        ? 'text-emerald-600 bg-emerald-100/80 dark:bg-emerald-500/20 scale-105'
+                        : copyStatus === 'error'
+                            ? 'text-rose-600 bg-rose-100/80 dark:bg-rose-500/20'
+                            : 'text-slate-400 hover:text-blue-500 hover:bg-white/50 dark:hover:bg-white/10'
+                        }`}
+                    title={copyStatus === 'success' ? 'Copied full card' : copyStatus === 'error' ? 'Copy failed' : 'Copy full card'}
                 >
-                    <Clipboard size={14} />
+                    {copyStatus === 'success'
+                        ? <Check size={14} className="animate-pulse" />
+                        : <Clipboard size={14} />}
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
