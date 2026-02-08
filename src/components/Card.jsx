@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Maximize2, Link, ArrowRight, Copy, Clipboard, Star, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Link, ArrowRight, Clipboard, Star, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -143,17 +143,6 @@ const Card = React.memo(function Card({
         }
     }, [previewText]);
 
-    const handleCopyLastMessage = async (e) => {
-        e.stopPropagation();
-        const textToCopy = cleanThinkingTags(getPreviewContent(lastMessage?.content)) || '';
-        try {
-            await navigator.clipboard.writeText(textToCopy);
-            console.log('✅ Copied to clipboard');
-        } catch (err) {
-            console.error('Failed to copy:', err);
-        }
-    };
-
     const handleCopyFullCard = async (e) => {
         e.stopPropagation();
         const allMessagesText = messages.map((msg, index) => {
@@ -232,13 +221,6 @@ const Card = React.memo(function Card({
             {/* Quick Actions (Absolute Top Right) - Fade in on hover */}
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
-                    onClick={handleCopyLastMessage}
-                    className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title={t.card?.copyResponse || "Copy response"}
-                >
-                    <Copy size={14} />
-                </button>
-                <button
                     onClick={handleCopyFullCard}
                     className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
                     title="Copy full card"
@@ -251,13 +233,6 @@ const Card = React.memo(function Card({
                     title={t.card?.createConnection || "Create connection"}
                 >
                     <Link size={14} />
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
-                    className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
-                    title={t.card?.expand || "Expand"}
-                >
-                    <Maximize2 size={14} />
                 </button>
             </div>
 
