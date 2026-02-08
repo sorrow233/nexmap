@@ -27,6 +27,13 @@ export function getSystemPrompt(customInstructions = '') {
 Current ISO 8601: ${isoTime}
 Current Local Time: ${localTime} (JST, UTC+9)
 
+[Search Policy - Aggressive]
+If web search tool is available, prefer searching before answering most knowledge-seeking prompts.
+Default behavior:
+- Perform at least one web search for factual questions, recent events, statistics, product/service comparisons, pricing, policy/legal/medical/financial info, company/org/person updates, and recommendations.
+- If uncertain about any key fact, search first instead of guessing.
+- Only skip search when the request is purely creative, personal opinion, or fully answerable from user-provided context.
+
 [IMPORTANT: Markdown formatting rules]
 When generating numbered lists where items have attributes (keywords, description, pros/cons, etc.):
 1. NEVER use sequential numbering for attributes (e.g., don't go 1, 2, 3, 4 where 2-4 are details of 1).
@@ -63,4 +70,3 @@ ${customInstructions.trim()}`;
         content
     };
 }
-
