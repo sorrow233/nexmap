@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Maximize2, Link, ArrowRight, Copy, Star, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Maximize2, Link, ArrowRight, Copy, Clipboard, Star, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -87,33 +87,41 @@ const Card = React.memo(function Card({
     const messages = cardContent.messages || [];
 
     // Generate preview text (last message from assistant or user)
-    // Generate preview text (last message from assistant or user)
     const lastMessage = messages[messages.length - 1];
 
-    // Helper to extract text from multimodal content - defined outside or memoized?
-    // Since it depends on nothing, we can leave it or move it out. 
-    // Let's keep it simple.
+    const getPreviewContent = (content) => {
+        if (!content) return "No messages yet";
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+            const text = content.filter(p => p.type === 'text').map(p => p.text).join(' ');
+            const hasImage = content.some(p => p.type === 'image' || p.type === 'image_url');
+            return (hasImage ? '[Image] ' : '') + text;
+        }
+        return "Unknown content";
+    };
+
+    const cleanThinkingTags = (text) => {
+        if (!text || typeof text !== 'string') return '';
+        return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+    };
+
+    const cardTitle = React.useMemo(() => {
+        return (data.summary?.title || cardContent.title || 'Untitled')
+            .replace(/^#+\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/__/, '')
+            .replace(/^\d+\.\s*/, '')
+            .trim();
+    }, [data.summary?.title, cardContent.title]);
 
     const previewText = React.useMemo(() => {
-        const getPreviewContent = (content) => {
-            if (!content) return "No messages yet";
-            if (typeof content === 'string') return content;
-            if (Array.isArray(content)) {
-                const text = content.filter(p => p.type === 'text').map(p => p.text).join(' ');
-                const hasImage = content.some(p => p.type === 'image' || p.type === 'image_url');
-                return (hasImage ? '[Image] ' : '') + text;
-            }
-            return "Unknown content";
-        };
-
         let text = "";
         const marks = data.data?.marks || [];
 
         if (marks.length > 0) {
             text = marks.map(m => `- **${m}**`).join('\n');
         } else {
-            text = getPreviewContent(lastMessage?.content);
-            text = text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+            text = cleanThinkingTags(getPreviewContent(lastMessage?.content));
         }
 
         if (!text) text = "_Thinking..._";
@@ -135,16 +143,32 @@ const Card = React.memo(function Card({
         }
     }, [previewText]);
 
-    // Copy handler
-    const handleCopy = async (e) => {
+    const handleCopyLastMessage = async (e) => {
         e.stopPropagation();
-        const textToCopy = getPreviewContent(lastMessage?.content) || '';
+        const textToCopy = cleanThinkingTags(getPreviewContent(lastMessage?.content)) || '';
         try {
             await navigator.clipboard.writeText(textToCopy);
-            // Optional: Show a brief success indicator
             console.log('✅ Copied to clipboard');
         } catch (err) {
             console.error('Failed to copy:', err);
+        }
+    };
+
+    const handleCopyFullCard = async (e) => {
+        e.stopPropagation();
+        const allMessagesText = messages.map((msg, index) => {
+            const roleLabel = msg.role === 'user' ? 'User' : 'Assistant';
+            const contentText = cleanThinkingTags(getPreviewContent(msg.content)) || '(Empty)';
+            return `[${index + 1}] ${roleLabel}\n${contentText}`;
+        }).join('\n\n');
+
+        const fullCardText = `${cardTitle || 'Untitled'}\n\n${allMessagesText || '(No messages)'}`;
+
+        try {
+            await navigator.clipboard.writeText(fullCardText);
+            console.log('✅ Full card copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy full card:', err);
         }
     };
 
@@ -154,14 +178,13 @@ const Card = React.memo(function Card({
     // Context menu for card
     const { showContextMenu, getCardMenuItems } = useContextMenu();
 
-    const handleContextMenu = useCallback((e) => {
+    const handleContextMenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
         const menuItems = getCardMenuItems(data, {
             onCopy: async () => {
-                const textToCopy = data.data?.messages?.[data.data.messages.length - 1]?.content || '';
-                const text = typeof textToCopy === 'string' ? textToCopy : '';
+                const text = cleanThinkingTags(getPreviewContent(data.data?.messages?.[data.data.messages.length - 1]?.content));
                 try { await navigator.clipboard.writeText(text); } catch (err) { console.error(err); }
             },
             onDelete: () => onDelete && onDelete(data.id),
@@ -178,7 +201,7 @@ const Card = React.memo(function Card({
         });
 
         showContextMenu(e.clientX, e.clientY, menuItems);
-    }, [data, onDelete, onExpand, onConnect, onUpdate, showContextMenu, getCardMenuItems]);
+    };
 
     return (
         <div
@@ -209,11 +232,18 @@ const Card = React.memo(function Card({
             {/* Quick Actions (Absolute Top Right) - Fade in on hover */}
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
-                    onClick={handleCopy}
+                    onClick={handleCopyLastMessage}
                     className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
                     title={t.card?.copyResponse || "Copy response"}
                 >
                     <Copy size={14} />
+                </button>
+                <button
+                    onClick={handleCopyFullCard}
+                    className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
+                    title="Copy full card"
+                >
+                    <Clipboard size={14} />
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
@@ -241,12 +271,7 @@ const Card = React.memo(function Card({
                         {data.summary ? 'Topic' : 'Conversation'}
                     </div>
                     <h3 className="text-3xl font-thin leading-none tracking-wide text-slate-800 dark:text-slate-100 font-sans break-words">
-                        {(data.summary?.title || cardContent.title || 'Untitled')
-                            .replace(/^#+\s*/, '')
-                            .replace(/\*\*/g, '')
-                            .replace(/__/, '')
-                            .replace(/^\d+\.\s*/, '') // Remove numbering for cleaner look
-                            .trim()}
+                        {cardTitle}
                     </h3>
                 </div>
 
