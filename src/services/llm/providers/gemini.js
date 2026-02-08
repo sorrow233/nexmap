@@ -81,7 +81,8 @@ export class GeminiProvider extends LLMProvider {
 
         if (options.tools) {
             requestBody.tools = options.tools;
-        } else if (options.useSearch) {
+        } else if (options.useSearch !== false) {
+            // Default to enabling Google Search unless explicitly disabled.
             requestBody.tools = [{ google_search: {} }];
         }
 
@@ -181,7 +182,8 @@ export class GeminiProvider extends LLMProvider {
 
         if (options.tools) {
             requestBody.tools = options.tools;
-        } else if (options.useSearch) {
+        } else if (options.useSearch !== false) {
+            // Default to enabling Google Search unless explicitly disabled.
             requestBody.tools = [{ google_search: {} }];
         }
 
