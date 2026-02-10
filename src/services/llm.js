@@ -448,6 +448,7 @@ Example Output:
  */
 export async function generateAgentCardPlan(request, context = '', config, model = null, options = {}, images = []) {
     const fallbackPrompt = (request || '').trim() || 'Please break down the user request into actionable cards.';
+    const MAX_AGENT_CARDS = 20;
 
     const trimForCard = (text, max = 48) => {
         const clean = String(text || '').trim().replace(/\s+/g, ' ');
@@ -490,7 +491,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
             }
         });
 
-        return unique.slice(0, 8);
+        return unique.slice(0, MAX_AGENT_CARDS);
     };
 
     const checklistItems = extractChecklistItems(fallbackPrompt);
@@ -500,7 +501,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
             return {
                 planTitle: 'AI Agent Plan',
                 strategy: 'Use one focused card per checklist item.',
-                cards: checklistItems.slice(0, 6).map((item, index) => ({
+                cards: checklistItems.slice(0, MAX_AGENT_CARDS).map((item, index) => ({
                     title: trimForCard(item, 32),
                     objective: item,
                     prompt: item,
@@ -563,7 +564,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
                 };
             })
             .filter(Boolean)
-            .slice(0, 6);
+            .slice(0, MAX_AGENT_CARDS);
 
         if (normalizedCards.length === 0) return fallbackPlan;
 
@@ -618,7 +619,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
             ? checklistItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')
             : '(none)';
         const checklistRule = checklistItems.length >= 2
-            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, 6)} checklist-style items. Create one card per item (you may add at most one synthesis card).`
+            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, MAX_AGENT_CARDS)} checklist-style items. Create one card per item (you may add at most one synthesis card).`
             : 'If the request naturally includes multiple actionable tasks, split them into separate cards.';
 
         const finalPrompt = `You are an AI planner that decomposes one user request into multiple execution cards.
@@ -633,7 +634,7 @@ DETECTED CHECKLIST ITEMS:
 ${checklistBlock}
 
 TASK:
-1. Decide how many cards are needed (between 1 and 6) based on complexity.
+1. Decide how many cards are needed (between 1 and 20) based on complexity.
 2. Assign each card a clear title and responsibility.
 3. Write a concrete execution prompt for each card.
 4. Keep card responsibilities distinct and non-overlapping.
