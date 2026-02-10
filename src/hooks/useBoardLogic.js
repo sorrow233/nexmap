@@ -47,7 +47,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     const cardCreator = useCardCreator();
     const { t } = useLanguage();
     const toast = useToast();
-    const { handleQuickSprout, handleSprout, handleDirectedSprout, handleExpandTopics } = useAISprouting();
+    const {
+        handleQuickSprout,
+        handleSprout,
+        handleDirectedSprout,
+        handleExpandTopics,
+        handleAgentSubmit: handleAgentPlanSubmit
+    } = useAISprouting();
 
     // Derived State
     const currentBoard = boardsList.find(b => b.id === currentBoardId);
@@ -364,6 +370,17 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         setTempInstructions([]);
     };
 
+    const handleAgentSubmit = async (text, images) => {
+        if (isReadOnly) return;
+        let finalText = text;
+        if (tempInstructions.length > 0) {
+            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
+            finalText = `${contextStr}\n\n${text}`;
+        }
+        await handleAgentPlanSubmit(finalText, images);
+        setTempInstructions([]);
+    };
+
     const handlePromptDropOnCanvas = (prompt, x, y) => {
         if (isReadOnly) return;
         cardCreator.handleCreateCard(prompt.text, [], { x, y });
@@ -461,6 +478,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         handleChatModalGenerate,
         handleSelectConnected,
         handleChatSubmitWithInstructions,
+        handleAgentSubmit,
         handlePromptDropOnChat,
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,

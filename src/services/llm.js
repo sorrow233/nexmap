@@ -440,3 +440,141 @@ Example Output:
         return [];
     }
 }
+
+/**
+ * Agent Mode: plan multiple cards from one user request.
+ * Returns a normalized plan object:
+ * { planTitle, strategy, cards: [{ title, objective, prompt, deliverable }] }
+ */
+export async function generateAgentCardPlan(request, context = '', config, model = null, options = {}) {
+    const fallbackPrompt = (request || '').trim() || 'Please break down the user request into actionable cards.';
+    const fallbackPlan = {
+        planTitle: 'AI Agent Plan',
+        strategy: 'Break down the goal into focused, executable cards.',
+        cards: [{
+            title: 'Core Task',
+            objective: 'Address the main user request.',
+            prompt: fallbackPrompt,
+            deliverable: 'Actionable output with clear next steps.'
+        }]
+    };
+
+    const normalizePlan = (raw) => {
+        if (!raw || typeof raw !== 'object') return fallbackPlan;
+
+        const rawCards = Array.isArray(raw.cards)
+            ? raw.cards
+            : Array.isArray(raw.plan)
+                ? raw.plan
+                : Array.isArray(raw)
+                    ? raw
+                    : [];
+
+        const normalizedCards = rawCards
+            .map((card, index) => {
+                if (typeof card === 'string') {
+                    const text = card.trim();
+                    if (!text) return null;
+                    return {
+                        title: text.slice(0, 32),
+                        objective: text,
+                        prompt: text,
+                        deliverable: 'A concrete result for this topic.'
+                    };
+                }
+
+                if (!card || typeof card !== 'object') return null;
+                const title = String(card.title || card.name || card.topic || card.cardTitle || `Task ${index + 1}`).trim();
+                const objective = String(card.objective || card.goal || card.focus || card.task || title).trim();
+                const prompt = String(card.prompt || card.instruction || card.content || objective || title).trim();
+                const deliverable = String(card.deliverable || card.output || card.result || 'A concrete result for this task.').trim();
+
+                if (!title && !prompt) return null;
+
+                return {
+                    title: title || prompt.slice(0, 32),
+                    objective: objective || prompt,
+                    prompt: prompt || objective || title,
+                    deliverable
+                };
+            })
+            .filter(Boolean)
+            .slice(0, 6);
+
+        if (normalizedCards.length === 0) return fallbackPlan;
+
+        const planTitle = String(raw.planTitle || raw.title || raw.name || 'AI Agent Plan').trim() || 'AI Agent Plan';
+        const strategy = String(raw.strategy || raw.summary || raw.approach || '').trim()
+            || 'Break down the goal into focused, executable cards.';
+
+        return {
+            planTitle,
+            strategy,
+            cards: normalizedCards
+        };
+    };
+
+    const cleanJsonText = (text) => {
+        let clean = (text || '').trim();
+        if (clean.startsWith('```json')) {
+            clean = clean.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (clean.startsWith('```')) {
+            clean = clean.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+
+        const objMatch = clean.match(/\{[\s\S]*\}/);
+        if (objMatch) return objMatch[0];
+        const arrMatch = clean.match(/\[[\s\S]*\]/);
+        if (arrMatch) return arrMatch[0];
+        return clean;
+    };
+
+    try {
+        const finalPrompt = `You are an AI planner that decomposes one user request into multiple execution cards.
+
+USER REQUEST:
+${fallbackPrompt}
+
+OPTIONAL CONTEXT:
+${context || '(none)'}
+
+TASK:
+1. Decide how many cards are needed (between 2 and 6) based on complexity.
+2. Assign each card a clear title and responsibility.
+3. Write a concrete execution prompt for each card.
+4. Keep card responsibilities distinct and non-overlapping.
+5. Use the same language as the user request.
+
+OUTPUT FORMAT:
+Return ONLY valid JSON, no markdown:
+{
+  "planTitle": "short plan title",
+  "strategy": "one short strategy summary",
+  "cards": [
+    {
+      "title": "card title",
+      "objective": "what this card should solve",
+      "prompt": "exact prompt this card should execute",
+      "deliverable": "expected output for this card"
+    }
+  ]
+}`;
+
+        const response = await chatCompletion(
+            [{ role: 'user', content: finalPrompt }],
+            config,
+            model,
+            options
+        );
+
+        if (!response || response.trim().length === 0) {
+            return fallbackPlan;
+        }
+
+        const parsed = JSON.parse(cleanJsonText(response));
+        return normalizePlan(parsed);
+    } catch (e) {
+        console.error('[AgentPlan] Failed:', e);
+        return fallbackPlan;
+    }
+}

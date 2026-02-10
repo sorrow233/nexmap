@@ -1,45 +1,39 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Star, Loader2, Image as ImageIcon, X, StickyNote as StickyNoteIcon, MessageSquarePlus, Network, LayoutGrid, Plus, Palette, Send, RefreshCw, Sprout, Trash2, BoxSelect, FileText } from 'lucide-react';
+import { Bot, Loader2, Image as ImageIcon, X, MessageSquarePlus, Plus, Send, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
 import InstructionChips from './chat/InstructionChips';
 import ModelSwitcher from './ModelSwitcher';
-import { getColorForString } from '../utils/colors';
 
 /**
  * ChatBar Component - Integrated Card Style Redesign
  * 采用青色系 (Cyan) 极简风格，高度压低至单行感。
  */
 const ChatBar = React.memo(function ChatBar({
-    cards,
     selectedIds,
     generatingCardIds,
     onSubmit,
+    onAgentSubmit,
     onBatchChat,
     onCreateNote,
     onImageUpload,
     globalImages,
     onRemoveImage,
     onClearImages,
-    onSelectConnected,
-    onLayoutGrid,
     onPromptDrop,
-    onRegenerate,
-    onSprout,
-    onDelete,
-    onGroup,
     instructions = [],
     onClearInstructions,
-    onExpandTopics,
     isReadOnly = false
 }) {
     const [promptInput, setPromptInput] = useState('');
     const [isFocused, setIsFocused] = useState(false);
+    const [isAgentMode, setIsAgentMode] = useState(false);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const isComposingRef = useRef(false); // IME 合成状态追踪
     const { t } = useLanguage();
+    const canSend = !!promptInput.trim() || globalImages.length > 0;
 
     const handleInput = (e) => {
         if (isReadOnly) return;
@@ -52,7 +46,10 @@ const ChatBar = React.memo(function ChatBar({
         if (isReadOnly) return;
         const text = (promptInput || '').trim();
         if (!text && (!globalImages || globalImages.length === 0)) return;
-        onSubmit(text, globalImages || []);
+        const submitHandler = isAgentMode && typeof onAgentSubmit === 'function'
+            ? onAgentSubmit
+            : onSubmit;
+        submitHandler(text, globalImages || []);
         setPromptInput('');
         if (onClearImages) onClearImages();
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -86,7 +83,7 @@ const ChatBar = React.memo(function ChatBar({
         if (isReadOnly) return;
 
         // Cmd/Ctrl + Enter -> 批量对话 (如果有选中)
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isComposingRef.current && selectedIds.length > 0) {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isComposingRef.current && selectedIds.length > 0 && !isAgentMode) {
             e.preventDefault();
             handleBatchSubmit();
             return;
@@ -110,18 +107,12 @@ const ChatBar = React.memo(function ChatBar({
         } catch (err) { }
     };
 
-    const activeCards = cards.filter(c => !c.deletedAt);
-    const hasMarkedTopics = useMemo(() => {
-        if (selectedIds.length !== 1) return false;
-        const card = activeCards.find(c => c.id === selectedIds[0]);
-        return (card?.data?.marks?.length || 0) > 0;
-    }, [activeCards, selectedIds]);
-
     const placeholderText = useMemo(() => {
         if (isReadOnly) return "Locked: Another tab is currently active...";
+        if (isAgentMode) return t.chatBar.agentPlaceholder || "描述你的目标，AI 会先规划卡片再自动生成。";
         if (selectedIds.length > 0) return t.chatBar.askAboutSelected.replace('{count}', selectedIds.length);
         return t.chatBar.placeholder || "询问或记录点什么...";
-    }, [selectedIds.length, t, isReadOnly]);
+    }, [isAgentMode, selectedIds.length, t, isReadOnly]);
 
     return (
         <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-6">
@@ -199,8 +190,28 @@ const ChatBar = React.memo(function ChatBar({
                                     <Plus size={16} className={`${isReadOnly ? 'text-slate-300' : 'text-cyan-400/80 hover:text-cyan-500'}`} />
                                 </IconButton>
 
+                                {!isReadOnly && typeof onAgentSubmit === 'function' && (
+                                    <button
+                                        onClick={() => setIsAgentMode(prev => !prev)}
+                                        className={`
+                                            ml-1 h-7 px-2 rounded-lg border text-[11px] font-semibold transition-all
+                                            ${isAgentMode
+                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/50 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                                : 'border-slate-200 bg-white text-slate-500 hover:border-cyan-300 hover:text-cyan-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}
+                                        `}
+                                        title={t.chatBar.agentMode || "AI Agent Mode"}
+                                    >
+                                        <span className="inline-flex items-center gap-1">
+                                            <Bot size={12} />
+                                            {isAgentMode
+                                                ? (t.chatBar.agentModeOn || "代理中")
+                                                : (t.chatBar.agentMode || "AI代理")}
+                                        </span>
+                                    </button>
+                                )}
+
                                 <AnimatePresence mode="popLayout">
-                                    {!isReadOnly && selectedIds.length > 0 && (
+                                    {!isReadOnly && selectedIds.length > 0 && !isAgentMode && (
                                         <motion.div
                                             initial={{ scale: 0.8, opacity: 0 }}
                                             animate={{ scale: 1, opacity: 1 }}
@@ -247,19 +258,23 @@ const ChatBar = React.memo(function ChatBar({
                                     whileHover={isReadOnly ? {} : { scale: 1.05 }}
                                     whileTap={isReadOnly ? {} : { scale: 0.95 }}
                                     onClick={handleSubmit}
-                                    disabled={isReadOnly || (!promptInput.trim() && globalImages.length === 0)}
+                                    disabled={isReadOnly || !canSend}
                                     className={`
                                         relative w-8 h-8 rounded-lg flex items-center justify-center transition-all
-                                        ${(isReadOnly || (!promptInput.trim() && globalImages.length === 0))
+                                        ${(isReadOnly || !canSend)
                                             ? 'bg-slate-50 dark:bg-white/5 text-slate-200 dark:text-slate-800'
-                                            : 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
+                                            : isAgentMode
+                                                ? 'bg-emerald-500 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)] hover:bg-emerald-400'
+                                                : 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
                                         ${isReadOnly ? 'cursor-not-allowed' : ''}
                                     `}
                                 >
                                     {generatingCardIds.size > 0 ? (
                                         <Loader2 size={14} className="animate-spin" />
+                                    ) : isAgentMode ? (
+                                        <Bot size={14} />
                                     ) : (
-                                        <Send size={14} className={(promptInput.trim() || globalImages.length > 0) && !isReadOnly ? "fill-white" : ""} />
+                                        <Send size={14} className={canSend && !isReadOnly ? "fill-white" : ""} />
                                     )}
                                 </motion.button>
                             </div>

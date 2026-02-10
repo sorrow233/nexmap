@@ -74,6 +74,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handleChatModalGenerate,
         handleSelectConnected,
         handleChatSubmitWithInstructions,
+        handleAgentSubmit,
         handlePromptDropOnChat,
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,
@@ -203,6 +204,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     selectedIds={selectedIds}
                     generatingCardIds={generatingCardIds}
                     onSubmit={handleChatSubmitWithInstructions}
+                    onAgentSubmit={handleAgentSubmit}
                     onBatchChat={handleBatchChat}
                     onRegenerate={handleRegenerate}
                     onSprout={handleQuickSprout}

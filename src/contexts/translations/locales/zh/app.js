@@ -37,7 +37,10 @@ export const app = {
         appendToChat: "追加到选中卡片的对话",
         selected: "已选择",
         batchChat: "批量对话",
-        clearChoices: "清除选择"
+        clearChoices: "清除选择",
+        agentMode: "AI代理",
+        agentModeOn: "代理中",
+        agentPlaceholder: "描述你的目标，AI 会先规划需要几张卡片，再自动分发生成。"
     },
     ai: {
         notifications: {

@@ -37,7 +37,10 @@ export const app = {
         appendToChat: "Append to selected cards' chat",
         selected: "Selected",
         batchChat: "Batch Chat",
-        clearChoices: "Clear choices"
+        clearChoices: "Clear choices",
+        agentMode: "AI Agent",
+        agentModeOn: "Agent On",
+        agentPlaceholder: "Describe your goal. AI will plan how many cards are needed and auto-generate them."
     },
     ai: {
         notifications: {
