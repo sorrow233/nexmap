@@ -5,6 +5,11 @@ import { debugLog } from '../utils/debugLogger';
 import { CARD_GEOMETRY, findOptimalPosition } from '../utils/geometry';
 
 const AGENT_EXECUTION_CONCURRENCY = 5;
+const AGENT_EXECUTION_TYPES = {
+    AI_EXECUTE: 'ai_execute',
+    AI_GUIDE: 'ai_guide',
+    USER_DO: 'user_do'
+};
 
 /**
  * Hook to handle AI branching operations like "sprouting" new ideas 
@@ -92,6 +97,37 @@ export function useAISprouting() {
 
         await Promise.all(Array.from({ length: safeConcurrency }, () => worker()));
         return results;
+    };
+
+    const normalizeExecutionType = (value) => {
+        const raw = String(value || '').trim().toLowerCase();
+        if (raw === AGENT_EXECUTION_TYPES.AI_GUIDE) return AGENT_EXECUTION_TYPES.AI_GUIDE;
+        if (raw === AGENT_EXECUTION_TYPES.USER_DO) return AGENT_EXECUTION_TYPES.USER_DO;
+        return AGENT_EXECUTION_TYPES.AI_EXECUTE;
+    };
+
+    const getExecutionTypeLabel = (type) => {
+        if (type === AGENT_EXECUTION_TYPES.AI_GUIDE) return 'AI Guide';
+        if (type === AGENT_EXECUTION_TYPES.USER_DO) return 'User Do';
+        return 'AI Execute';
+    };
+
+    const getExecutionTypePromptRules = (type) => {
+        if (type === AGENT_EXECUTION_TYPES.USER_DO) {
+            return `- This task MUST be executed by the user personally.
+- Do not claim the action has been completed.
+- Output a practical step-by-step checklist, required materials, and fastest completion sequence.
+- Surface risks, blockers, and fallback options.`;
+        }
+        if (type === AGENT_EXECUTION_TYPES.AI_GUIDE) {
+            return `- AI cannot directly complete the final external action.
+- Do not pretend to have done external calls, payments, submissions, or approvals.
+- Provide fastest path, copy-ready templates, and a concrete handoff plan.
+- Keep guidance short, executable, and prioritized.`;
+        }
+        return `- Complete as much of this task as AI can directly execute right now.
+- Provide final usable output, not just ideas.
+- If a tiny external follow-up is needed, clearly mark it as remaining.`;
     };
 
     const handleExpandTopics = async (sourceId) => {
@@ -607,7 +643,15 @@ Respond in the same language as the focus topic.
             const rootTitle = (plan.planTitle || 'AI Agent Plan').trim();
             const strategy = (plan.strategy || '').trim();
             const planOverview = plan.cards
-                .map((item, idx) => `${idx + 1}. ${item.title} - ${item.objective}`)
+                .map((item, idx) => {
+                    const hasExecutionMeta = typeof item.executionType === 'string' && item.executionType.trim().length > 0;
+                    if (!hasExecutionMeta) {
+                        return `${idx + 1}. ${item.title} - ${item.objective}`;
+                    }
+                    const executionType = normalizeExecutionType(item.executionType);
+                    const typeLabel = getExecutionTypeLabel(executionType);
+                    return `${idx + 1}. [${typeLabel}] ${item.title} - ${item.objective}`;
+                })
                 .join('\n');
 
             await createAICard({
@@ -644,7 +688,25 @@ Respond in the same language as the focus topic.
                 const objective = (item.objective || '').trim();
                 const deliverable = (item.deliverable || '').trim();
                 const cardPrompt = (item.prompt || objective || title).trim();
+                const hasExecutionMeta = typeof item.executionType === 'string' && item.executionType.trim().length > 0;
+                const executionType = hasExecutionMeta
+                    ? normalizeExecutionType(item.executionType)
+                    : AGENT_EXECUTION_TYPES.AI_EXECUTE;
+                const executionTypeLabel = hasExecutionMeta ? getExecutionTypeLabel(executionType) : '';
+                const completionBoundary = String(item.completionBoundary || '').trim();
+                const quickStart = String(item.quickStart || '').trim();
                 const cardSeedText = `${title}\n\n${objective || cardPrompt}`.trim();
+                const executionMetaBlock = hasExecutionMeta
+                    ? `Execution Type: ${executionTypeLabel} (${executionType})
+${completionBoundary ? `Completion Boundary: ${completionBoundary}` : ''}
+${quickStart ? `Quick Start: ${quickStart}` : ''}`
+                    : '';
+                const executionTypeRulesBlock = hasExecutionMeta
+                    ? `6. Respect the execution type rules below.
+
+[Execution Type Rules / 执行类型规则]
+${getExecutionTypePromptRules(executionType)}`
+                    : '';
 
                 const executionPrompt = `
 [Role / 角色]
@@ -660,6 +722,7 @@ ${strategy || 'Break down and execute the goal.'}
 Title: ${title}
 Objective: ${objective || title}
 Expected Deliverable: ${deliverable || 'A concrete and actionable result.'}
+${executionMetaBlock}
 
 [Execution Task / 执行任务]
 ${cardPrompt}
@@ -673,12 +736,15 @@ ${briefSelectedContext ? `[Selected Card Context / 选中卡片上下文]\n${bri
 3. If required info is missing, state minimal assumptions first, then continue.
 4. Return execution-ready output, not abstract discussion.
 5. Focus only on this card's responsibility.
+${executionTypeRulesBlock}
                 `.trim();
 
                 return {
                     index,
                     cardId,
                     title,
+                    executionType,
+                    executionTypeLabel,
                     cardSeedText,
                     pos,
                     executionPrompt
