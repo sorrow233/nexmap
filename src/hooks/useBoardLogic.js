@@ -69,6 +69,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
     const [tempInstructions, setTempInstructions] = useState([]);
+    const [isAgentRunning, setIsAgentRunning] = useState(false);
 
     // --- PASTE LOGIC ---
 
@@ -371,14 +372,29 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     };
 
     const handleAgentSubmit = async (text, images) => {
-        if (isReadOnly) return;
+        if (isReadOnly || isAgentRunning) return;
         let finalText = text;
         if (tempInstructions.length > 0) {
             const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
             finalText = `${contextStr}\n\n${text}`;
         }
-        await handleAgentPlanSubmit(finalText, images);
-        setTempInstructions([]);
+        setIsAgentRunning(true);
+        toast.info('Agent mode is planning your cards...');
+        try {
+            const result = await handleAgentPlanSubmit(finalText, images);
+            const successCount = result?.success || 0;
+            const totalCount = result?.total || 0;
+            if (totalCount > 0) {
+                toast.success(`Agent completed: ${successCount}/${totalCount} cards generated`);
+            } else {
+                toast.warning('Agent mode finished, but no cards were generated.');
+            }
+        } catch (e) {
+            toast.error(`Agent mode failed: ${e?.message || 'Unknown error'}`);
+        } finally {
+            setTempInstructions([]);
+            setIsAgentRunning(false);
+        }
     };
 
     const handlePromptDropOnCanvas = (prompt, x, y) => {
@@ -444,6 +460,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         quickPrompt,
         customSproutPrompt, // Exported State
         tempInstructions,
+        isAgentRunning,
         t,
         noteId,
         currentBoardId,

@@ -206,7 +206,13 @@ export const ko = {
         createZone: "Zone 만들기 (그룹)",
         gridLayout: "그리드 레이아웃",
         appendToChat: "선택한 카드의 채팅에 추가",
-        selected: "선택됨"
+        selected: "선택됨",
+        agentMode: "AI 에이전트",
+        agentModeOn: "실행 중",
+        agentPlaceholder: "목표를 입력하세요. AI가 필요한 카드 수를 계획하고 자동 생성합니다.",
+        agentHint: "AI가 먼저 카드 수와 제목을 계획한 뒤 자동으로 카드를 생성합니다.",
+        agentRunning: "AI가 카드를 계획하고 생성하는 중입니다...",
+        agentUsesSelection: "선택한 {count}개 카드의 문맥을 포함해 계획합니다."
     },
     ai: {
         notifications: {

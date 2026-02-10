@@ -13,6 +13,7 @@ import ModelSwitcher from './ModelSwitcher';
 const ChatBar = React.memo(function ChatBar({
     selectedIds,
     generatingCardIds,
+    isAgentRunning = false,
     onSubmit,
     onAgentSubmit,
     onBatchChat,
@@ -33,7 +34,9 @@ const ChatBar = React.memo(function ChatBar({
     const fileInputRef = useRef(null);
     const isComposingRef = useRef(false); // IME 合成状态追踪
     const { t } = useLanguage();
-    const canSend = !!promptInput.trim() || globalImages.length > 0;
+    const hasInput = !!promptInput.trim() || globalImages.length > 0;
+    const canSend = hasInput && !(isAgentMode && isAgentRunning);
+    const isSending = generatingCardIds.size > 0 || (isAgentMode && isAgentRunning);
 
     const handleInput = (e) => {
         if (isReadOnly) return;
@@ -44,6 +47,7 @@ const ChatBar = React.memo(function ChatBar({
 
     const handleSubmit = () => {
         if (isReadOnly) return;
+        if (isAgentMode && isAgentRunning) return;
         const text = (promptInput || '').trim();
         if (!text && (!globalImages || globalImages.length === 0)) return;
         const submitHandler = isAgentMode && typeof onAgentSubmit === 'function'
@@ -114,6 +118,17 @@ const ChatBar = React.memo(function ChatBar({
         return t.chatBar.placeholder || "询问或记录点什么...";
     }, [isAgentMode, selectedIds.length, t, isReadOnly]);
 
+    const agentHintText = useMemo(() => {
+        if (isAgentRunning) {
+            return t.chatBar.agentRunning || "AI 正在规划并生成卡片，请稍候...";
+        }
+        if (selectedIds.length > 0) {
+            return (t.chatBar.agentUsesSelection || "将结合 {count} 个已选卡片的上下文进行规划。")
+                .replace('{count}', selectedIds.length);
+        }
+        return t.chatBar.agentHint || "AI 会先决定卡片数量与标题，再自动分发生成。";
+    }, [isAgentRunning, selectedIds.length, t]);
+
     return (
         <div className="absolute bottom-0 inset-x-0 z-50 pointer-events-none safe-bottom px-4 pb-6 md:pb-6">
             <div className="mx-auto w-full max-w-2xl pointer-events-auto">
@@ -166,6 +181,26 @@ const ChatBar = React.memo(function ChatBar({
                             )}
                         </AnimatePresence>
 
+                        <AnimatePresence>
+                            {!isReadOnly && isAgentMode && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    className="px-6 pt-3"
+                                >
+                                    <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-200 flex items-center gap-2">
+                                        {isAgentRunning ? (
+                                            <Loader2 size={12} className="animate-spin shrink-0" />
+                                        ) : (
+                                            <Bot size={12} className="shrink-0" />
+                                        )}
+                                        <span className="leading-relaxed">{agentHintText}</span>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         {/* Main Interaction Row */}
                         <div className="flex items-end gap-2 px-6 py-4">
                             {/* Left Functional Icons */}
@@ -193,11 +228,13 @@ const ChatBar = React.memo(function ChatBar({
                                 {!isReadOnly && typeof onAgentSubmit === 'function' && (
                                     <button
                                         onClick={() => setIsAgentMode(prev => !prev)}
+                                        disabled={isAgentRunning}
                                         className={`
                                             ml-1 h-7 px-2 rounded-lg border text-[11px] font-semibold transition-all
                                             ${isAgentMode
                                                 ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/50 dark:bg-emerald-500/15 dark:text-emerald-300'
                                                 : 'border-slate-200 bg-white text-slate-500 hover:border-cyan-300 hover:text-cyan-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}
+                                            ${isAgentRunning ? 'opacity-60 cursor-not-allowed' : ''}
                                         `}
                                         title={t.chatBar.agentMode || "AI Agent Mode"}
                                     >
@@ -269,7 +306,7 @@ const ChatBar = React.memo(function ChatBar({
                                         ${isReadOnly ? 'cursor-not-allowed' : ''}
                                     `}
                                 >
-                                    {generatingCardIds.size > 0 ? (
+                                    {isSending ? (
                                         <Loader2 size={14} className="animate-spin" />
                                     ) : isAgentMode ? (
                                         <Bot size={14} />

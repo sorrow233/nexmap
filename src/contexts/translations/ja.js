@@ -206,7 +206,13 @@ export const ja = {
         createZone: "ゾーンを作成（グループ化）",
         gridLayout: "グリッドレイアウト",
         appendToChat: "選択したカードのチャットに追加",
-        selected: "選択済み"
+        selected: "選択済み",
+        agentMode: "AIエージェント",
+        agentModeOn: "実行中",
+        agentPlaceholder: "目標を入力してください。AIが必要なカードを計画し、自動で生成します。",
+        agentHint: "AIはまずカード数とタイトルを計画し、その後カードを自動生成します。",
+        agentRunning: "AIがカードを計画・生成中です...",
+        agentUsesSelection: "選択中の {count} 件のカード文脈を使って計画します。"
     },
     ai: {
         notifications: {

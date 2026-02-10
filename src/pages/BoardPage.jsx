@@ -41,6 +41,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         quickPrompt,
         boardPrompts,
         tempInstructions,
+        isAgentRunning,
         globalPrompts,
         t,
         noteId,
@@ -200,25 +201,18 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 />
 
                 <ChatBar
-                    cards={cards}
                     selectedIds={selectedIds}
                     generatingCardIds={generatingCardIds}
+                    isAgentRunning={isAgentRunning}
                     onSubmit={handleChatSubmitWithInstructions}
                     onAgentSubmit={handleAgentSubmit}
                     onBatchChat={handleBatchChat}
-                    onRegenerate={handleRegenerate}
-                    onSprout={handleQuickSprout}
-                    onDelete={handleBatchDelete}
                     onCreateNote={handleCreateNote}
                     onImageUpload={handleGlobalImageUpload}
                     globalImages={globalImages}
                     onRemoveImage={removeGlobalImage}
                     onClearImages={() => setGlobalImages([])}
-                    onGroup={(ids) => createGroup(ids)}
-                    onSelectConnected={handleSelectConnected}
-                    onLayoutGrid={arrangeSelectionGrid}
                     onPromptDrop={handlePromptDropOnChat}
-                    onExpandTopics={handleExpandTopics}
                     instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
                     onClearInstructions={() => setTempInstructions([])}
                     isReadOnly={isReadOnly}

@@ -509,12 +509,18 @@ Respond in the same language as the focus topic.
 
     const handleAgentSubmit = async (requestText, images = []) => {
         const safeRequest = (typeof requestText === 'string' ? requestText : `${requestText || ''}`).trim();
-        if (!safeRequest && (!images || images.length === 0)) return;
+        if (!safeRequest && (!images || images.length === 0)) {
+            return { rootId: null, total: 0, success: 0, failed: 0 };
+        }
 
         const state = useStore.getState();
         const planningConfig = state.getRoleConfig?.('analysis') || state.getRoleConfig?.('chat');
         const runConfig = state.getRoleConfig?.('chat');
-        if (!planningConfig || !runConfig) return;
+        if (!planningConfig || !runConfig) {
+            return { rootId: null, total: 0, success: 0, failed: 0 };
+        }
+        const runProviderId = runConfig.providerId || runConfig.id;
+        const agentRunId = uuid();
 
         // Selected card context helps the planner infer what to branch from.
         const selectedSourceIds = (state.selectedIds || []).filter(id => {
@@ -538,16 +544,22 @@ Respond in the same language as the focus topic.
             ? `\n\nUser also attached ${images.length} image(s). If relevant, include image-dependent tasks in the plan.`
             : '';
 
+        let rootId = null;
+
         try {
             const { generateAgentCardPlan } = await import('../services/llm');
             const plan = await generateAgentCardPlan(
                 safeRequest || 'Break down this request into executable cards.',
                 `${selectedContext}${imageHint}`,
                 planningConfig,
-                planningConfig.model
+                planningConfig.model,
+                {},
+                images
             );
 
-            if (!plan?.cards?.length) return;
+            if (!plan?.cards?.length) {
+                return { rootId: null, total: 0, success: 0, failed: 0 };
+            }
 
             debugLog.ai('Agent plan generated', {
                 cardCount: plan.cards.length,
@@ -561,7 +573,7 @@ Respond in the same language as the focus topic.
                 fresh.scale,
                 fresh.selectedIds || []
             );
-            const rootId = uuid();
+            rootId = uuid();
             const rootTitle = (plan.planTitle || 'AI Agent Plan').trim();
             const strategy = (plan.strategy || '').trim();
             const planOverview = plan.cards
@@ -575,13 +587,16 @@ Respond in the same language as the focus topic.
                 y: rootPos.y,
                 autoConnections: selectedSourceIds.map(id => ({ from: id, to: rootId })),
                 model: runConfig.model,
-                providerId: runConfig.providerId,
+                providerId: runProviderId,
                 initialMessages: [
-                    { role: 'user', content: safeRequest || `Analyze ${images.length} image(s) and create an execution plan.` },
+                    {
+                        role: 'user',
+                        content: safeRequest || `Analyze ${images.length} image(s) and create an execution plan.`
+                    },
                     {
                         id: uuid(),
                         role: 'assistant',
-                        content: `## Plan Strategy\n${strategy || 'Decompose the goal into focused execution cards.'}\n\n## Card Assignments\n${planOverview}`
+                        content: `## Strategy / 策略\n${strategy || 'Decompose the goal into focused execution cards.'}\n\n## Plan / 规划\n${planOverview}`
                     }
                 ]
             });
@@ -589,46 +604,56 @@ Respond in the same language as the focus topic.
             updateCardFull?.(rootId, data => ({ ...data, title: rootTitle }));
 
             const positions = calculateMindmapChildPositions({ x: rootPos.x, y: rootPos.y }, plan.cards.length);
+            const results = [];
+            const briefSelectedContext = selectedContext
+                ? selectedContext.split('\n').slice(0, 12).join('\n')
+                : '';
 
-            await Promise.allSettled(plan.cards.map(async (item, index) => {
-                const cardId = uuid();
+            // Run sequentially for stability: avoids provider throttling spikes on first release.
+            for (let index = 0; index < plan.cards.length; index++) {
+                const item = plan.cards[index];
                 const pos = positions[index];
+                const cardId = uuid();
                 const title = (item.title || `Task ${index + 1}`).trim();
                 const objective = (item.objective || '').trim();
                 const deliverable = (item.deliverable || '').trim();
                 const cardPrompt = (item.prompt || objective || title).trim();
+                const cardSeedText = `${title}\n\n${objective || cardPrompt}`.trim();
 
                 const executionPrompt = `
-[User Goal]
+[User Goal / 用户目标]
 ${safeRequest}
 
-[Plan Strategy]
+[Plan Strategy / 计划策略]
 ${strategy || 'Break down and execute the goal.'}
 
-[This Card Responsibility]
+[This Card Responsibility / 本卡职责]
 Title: ${title}
 Objective: ${objective || title}
 Expected Deliverable: ${deliverable || 'A concrete and actionable result.'}
 
-[Execution Task]
+[Execution Task / 执行任务]
 ${cardPrompt}
+
+${images.length > 0 ? `[Image Context / 图片上下文]\nUser attached ${images.length} image(s). Use them if relevant.\n` : ''}
+${briefSelectedContext ? `[Selected Card Context / 选中卡片上下文]\n${briefSelectedContext}\n` : ''}
 
 Please complete this card only. Keep output practical and execution-ready.
                 `.trim();
 
-                await createAICard({
-                    id: cardId,
-                    text: executionPrompt,
-                    x: pos.x,
-                    y: pos.y,
-                    autoConnections: [{ from: rootId, to: cardId }],
-                    model: runConfig.model,
-                    providerId: runConfig.providerId
-                });
-
-                updateCardFull?.(cardId, data => ({ ...data, title }));
-
                 try {
+                    await createAICard({
+                        id: cardId,
+                        text: cardSeedText,
+                        x: pos.x,
+                        y: pos.y,
+                        autoConnections: [{ from: rootId, to: cardId }],
+                        model: runConfig.model,
+                        providerId: runProviderId
+                    });
+
+                    updateCardFull?.(cardId, data => ({ ...data, title }));
+
                     await aiManager.requestTask({
                         type: 'chat',
                         priority: PRIORITY.HIGH,
@@ -640,18 +665,64 @@ Please complete this card only. Keep output practical and execution-ready.
                                 onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(cardId, metadata)
                             }
                         },
-                        tags: [`card:${cardId}`],
+                        tags: [`card:${cardId}`, `agent:${agentRunId}`],
                         onProgress: (chunk) => updateCardContent(cardId, chunk)
                     });
+
+                    results.push({ title, ok: true });
                 } catch (innerError) {
                     debugLog.error(`Agent card generation failed for ${cardId}`, innerError);
                     updateCardContent(cardId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
+                    results.push({
+                        title,
+                        ok: false,
+                        error: innerError?.message || 'Generation failed'
+                    });
                 } finally {
                     setCardGenerating(cardId, false);
                 }
+            }
+
+            const successCount = results.filter(r => r.ok).length;
+            const failedCount = results.length - successCount;
+            const resultDetails = results
+                .map((r, idx) => `${r.ok ? '✅' : '⚠️'} ${idx + 1}. ${r.title}${r.ok ? '' : ` - ${r.error}`}`)
+                .join('\n');
+
+            updateCardFull?.(rootId, data => ({
+                ...data,
+                messages: [
+                    ...(data.messages || []),
+                    {
+                        id: uuid(),
+                        role: 'assistant',
+                        content: `## Execution Result / 执行结果\nSuccess: ${successCount}/${results.length}\nFailed: ${failedCount}\n\n${resultDetails}`
+                    }
+                ]
             }));
+
+            return {
+                rootId,
+                total: results.length,
+                success: successCount,
+                failed: failedCount
+            };
         } catch (e) {
             debugLog.error('Agent planning failed', e);
+            if (rootId) {
+                updateCardFull?.(rootId, data => ({
+                    ...data,
+                    messages: [
+                        ...(data.messages || []),
+                        {
+                            id: uuid(),
+                            role: 'assistant',
+                            content: `\n\n⚠️ **Agent planning failed**: ${e.message || 'Unknown error'}`
+                        }
+                    ]
+                }));
+            }
+            return { rootId, total: 0, success: 0, failed: 0, error: e?.message || 'Agent planning failed' };
         }
     };
 

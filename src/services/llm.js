@@ -446,18 +446,82 @@ Example Output:
  * Returns a normalized plan object:
  * { planTitle, strategy, cards: [{ title, objective, prompt, deliverable }] }
  */
-export async function generateAgentCardPlan(request, context = '', config, model = null, options = {}) {
+export async function generateAgentCardPlan(request, context = '', config, model = null, options = {}, images = []) {
     const fallbackPrompt = (request || '').trim() || 'Please break down the user request into actionable cards.';
-    const fallbackPlan = {
-        planTitle: 'AI Agent Plan',
-        strategy: 'Break down the goal into focused, executable cards.',
-        cards: [{
-            title: 'Core Task',
-            objective: 'Address the main user request.',
-            prompt: fallbackPrompt,
-            deliverable: 'Actionable output with clear next steps.'
-        }]
+
+    const trimForCard = (text, max = 48) => {
+        const clean = String(text || '').trim().replace(/\s+/g, ' ');
+        if (clean.length <= max) return clean;
+        return `${clean.slice(0, max - 3)}...`;
     };
+
+    const extractChecklistItems = (text) => {
+        const source = String(text || '');
+        const rawLines = source
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        const bulletRegex = /^([-*+•]|\d+[\.\)]|\[[ xX]\])\s+/;
+        const bulletLines = rawLines
+            .filter(line => bulletRegex.test(line))
+            .map(line => line.replace(bulletRegex, '').trim())
+            .filter(Boolean);
+
+        let items = bulletLines;
+        if (items.length < 2) {
+            const delimiterSplit = source
+                .split(/[;\n；]/)
+                .map(item => item.trim())
+                .map(item => item.replace(bulletRegex, '').trim())
+                .filter(item => item.length >= 2 && item.length <= 120);
+            if (delimiterSplit.length >= 2) {
+                items = delimiterSplit;
+            }
+        }
+
+        const unique = [];
+        const seen = new Set();
+        items.forEach(item => {
+            const key = item.toLowerCase();
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(item);
+            }
+        });
+
+        return unique.slice(0, 8);
+    };
+
+    const checklistItems = extractChecklistItems(fallbackPrompt);
+
+    const buildFallbackPlan = () => {
+        if (checklistItems.length >= 2) {
+            return {
+                planTitle: 'AI Agent Plan',
+                strategy: 'Use one focused card per checklist item.',
+                cards: checklistItems.slice(0, 6).map((item, index) => ({
+                    title: trimForCard(item, 32),
+                    objective: item,
+                    prompt: item,
+                    deliverable: `Complete item ${index + 1} with a practical result.`
+                }))
+            };
+        }
+
+        return {
+            planTitle: 'AI Agent Plan',
+            strategy: 'Break down the goal into focused, executable cards.',
+            cards: [{
+                title: 'Core Task',
+                objective: 'Address the main user request.',
+                prompt: fallbackPrompt,
+                deliverable: 'Actionable output with clear next steps.'
+            }]
+        };
+    };
+
+    const fallbackPlan = buildFallbackPlan();
 
     const normalizePlan = (raw) => {
         if (!raw || typeof raw !== 'object') return fallbackPlan;
@@ -503,6 +567,26 @@ export async function generateAgentCardPlan(request, context = '', config, model
 
         if (normalizedCards.length === 0) return fallbackPlan;
 
+        const dedupedCards = [];
+        const titleCounter = new Map();
+        normalizedCards.forEach((card, index) => {
+            const baseTitle = trimForCard(card.title || `Task ${index + 1}`, 36) || `Task ${index + 1}`;
+            const seenCount = titleCounter.get(baseTitle) || 0;
+            titleCounter.set(baseTitle, seenCount + 1);
+            const uniqueTitle = seenCount === 0 ? baseTitle : `${baseTitle} (${seenCount + 1})`;
+
+            dedupedCards.push({
+                ...card,
+                title: uniqueTitle,
+                objective: card.objective || card.prompt || uniqueTitle,
+                prompt: card.prompt || card.objective || uniqueTitle
+            });
+        });
+
+        const cardsToUse = checklistItems.length >= 2 && dedupedCards.length < 2
+            ? fallbackPlan.cards
+            : dedupedCards;
+
         const planTitle = String(raw.planTitle || raw.title || raw.name || 'AI Agent Plan').trim() || 'AI Agent Plan';
         const strategy = String(raw.strategy || raw.summary || raw.approach || '').trim()
             || 'Break down the goal into focused, executable cards.';
@@ -510,7 +594,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
         return {
             planTitle,
             strategy,
-            cards: normalizedCards
+            cards: cardsToUse
         };
     };
 
@@ -530,6 +614,13 @@ export async function generateAgentCardPlan(request, context = '', config, model
     };
 
     try {
+        const checklistBlock = checklistItems.length > 0
+            ? checklistItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')
+            : '(none)';
+        const checklistRule = checklistItems.length >= 2
+            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, 6)} checklist-style items. Create one card per item (you may add at most one synthesis card).`
+            : 'If the request naturally includes multiple actionable tasks, split them into separate cards.';
+
         const finalPrompt = `You are an AI planner that decomposes one user request into multiple execution cards.
 
 USER REQUEST:
@@ -538,12 +629,16 @@ ${fallbackPrompt}
 OPTIONAL CONTEXT:
 ${context || '(none)'}
 
+DETECTED CHECKLIST ITEMS:
+${checklistBlock}
+
 TASK:
-1. Decide how many cards are needed (between 2 and 6) based on complexity.
+1. Decide how many cards are needed (between 1 and 6) based on complexity.
 2. Assign each card a clear title and responsibility.
 3. Write a concrete execution prompt for each card.
 4. Keep card responsibilities distinct and non-overlapping.
 5. Use the same language as the user request.
+6. ${checklistRule}
 
 OUTPUT FORMAT:
 Return ONLY valid JSON, no markdown:
@@ -560,8 +655,22 @@ Return ONLY valid JSON, no markdown:
   ]
 }`;
 
+        const planningContent = Array.isArray(images) && images.length > 0
+            ? [
+                { type: 'text', text: finalPrompt },
+                ...images.slice(0, 3).map(img => ({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: img.mimeType,
+                        data: img.base64
+                    }
+                }))
+            ]
+            : finalPrompt;
+
         const response = await chatCompletion(
-            [{ role: 'user', content: finalPrompt }],
+            [{ role: 'user', content: planningContent }],
             config,
             model,
             options
