@@ -40,8 +40,8 @@ export const app = {
         clearChoices: "Clear choices",
         agentMode: "AI Agent",
         agentModeOn: "Agent On",
-        agentPlaceholder: "Describe your goal. AI will plan how many cards are needed and auto-generate them.",
-        agentHint: "AI plans card count and titles first, then dispatches generation automatically.",
+        agentPlaceholder: "Describe your goal. AI will plan 1-20 cards, then execute them with up to 5 workers.",
+        agentHint: "Flow: plan card count and titles first, then run generation with max concurrency 5 (no auto follow-up loops).",
         agentRunning: "AI is planning and generating cards...",
         agentUsesSelection: "Planning will include context from {count} selected cards."
     },

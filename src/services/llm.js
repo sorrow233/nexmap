@@ -496,6 +496,29 @@ export async function generateAgentCardPlan(request, context = '', config, model
 
     const checklistItems = extractChecklistItems(fallbackPrompt);
 
+    const extractHardConstraints = (text) => {
+        const source = String(text || '');
+        const keywordPattern = /(必须|务必|不要|不能|不得|仅|只|至少|至多|上限|下限|exactly|must|only|do not|don't|without|at least|at most|max(?:imum)?|minimum|json|markdown|format|language|中文|英文|禁止)/i;
+        const chunks = source
+            .split(/\r?\n|[;；。.!?]/)
+            .map(item => item.trim())
+            .filter(item => item.length >= 2 && item.length <= 180)
+            .filter(item => keywordPattern.test(item));
+
+        const unique = [];
+        const seen = new Set();
+        chunks.forEach(item => {
+            const key = item.toLowerCase();
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(item);
+            }
+        });
+        return unique.slice(0, 8);
+    };
+
+    const hardConstraints = extractHardConstraints(fallbackPrompt);
+
     const buildFallbackPlan = () => {
         if (checklistItems.length >= 2) {
             return {
@@ -618,11 +641,15 @@ export async function generateAgentCardPlan(request, context = '', config, model
         const checklistBlock = checklistItems.length > 0
             ? checklistItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')
             : '(none)';
+        const hardConstraintBlock = hardConstraints.length > 0
+            ? hardConstraints.map((item, idx) => `${idx + 1}. ${item}`).join('\n')
+            : '(none)';
         const checklistRule = checklistItems.length >= 2
-            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, MAX_AGENT_CARDS)} checklist-style items. Create one card per item (you may add at most one synthesis card).`
+            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, MAX_AGENT_CARDS)} checklist-style items. Create exactly one execution card per item. Do not merge or drop checklist items.`
             : 'If the request naturally includes multiple actionable tasks, split them into separate cards.';
 
-        const finalPrompt = `You are an AI planner that decomposes one user request into multiple execution cards.
+        const finalPrompt = `You are the planner in a Plan-and-Execute AI agent workflow.
+Your job is to transform one user request into an executable card plan that downstream worker agents can run directly.
 
 USER REQUEST:
 ${fallbackPrompt}
@@ -633,24 +660,35 @@ ${context || '(none)'}
 DETECTED CHECKLIST ITEMS:
 ${checklistBlock}
 
+DETECTED HARD CONSTRAINTS:
+${hardConstraintBlock}
+
 TASK:
 1. Decide how many cards are needed (between 1 and 20) based on complexity.
-2. Assign each card a clear title and responsibility.
-3. Write a concrete execution prompt for each card.
+2. Assign each card a clear, specific title and one core responsibility.
+3. Write a concrete execution prompt for each card that a worker can execute without re-planning.
 4. Keep card responsibilities distinct and non-overlapping.
-5. Use the same language as the user request.
-6. ${checklistRule}
+5. Preserve the user's explicit constraints (format, language, exclusions, counts) as non-negotiable requirements in relevant cards.
+6. Use the same language as the user request.
+7. ${checklistRule}
+
+PLANNING RULES:
+- Prioritize instruction-following over creativity.
+- Avoid generic card titles like "Task 1" unless unavoidable.
+- If user asks for a strict count/format, encode it directly in card prompts.
+- Keep plan minimal but complete; no filler cards.
+- Do NOT add quality-review loops or auto-follow-up loops.
 
 OUTPUT FORMAT:
 Return ONLY valid JSON, no markdown:
 {
   "planTitle": "short plan title",
-  "strategy": "one short strategy summary",
+  "strategy": "one short strategy summary focused on execution",
   "cards": [
     {
       "title": "card title",
       "objective": "what this card should solve",
-      "prompt": "exact prompt this card should execute",
+      "prompt": "exact worker prompt with constraints preserved",
       "deliverable": "expected output for this card"
     }
   ]

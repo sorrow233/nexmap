@@ -209,8 +209,8 @@ export const ja = {
         selected: "選択済み",
         agentMode: "AIエージェント",
         agentModeOn: "実行中",
-        agentPlaceholder: "目標を入力してください。AIが必要なカードを計画し、自動で生成します。",
-        agentHint: "AIはまずカード数とタイトルを計画し、その後カードを自動生成します。",
+        agentPlaceholder: "目標を入力してください。AIが1〜20枚のカードを計画し、最大5並列で自動生成します。",
+        agentHint: "フロー: 先にカード数とタイトルを計画し、その後は最大5並列で生成します（自動追問ループなし）。",
         agentRunning: "AIがカードを計画・生成中です...",
         agentUsesSelection: "選択中の {count} 件のカード文脈を使って計画します。"
     },

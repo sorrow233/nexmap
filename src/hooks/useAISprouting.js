@@ -4,6 +4,8 @@ import { aiManager, PRIORITY } from '../services/ai/AIManager';
 import { debugLog } from '../utils/debugLogger';
 import { CARD_GEOMETRY, findOptimalPosition } from '../utils/geometry';
 
+const AGENT_EXECUTION_CONCURRENCY = 5;
+
 /**
  * Hook to handle AI branching operations like "sprouting" new ideas 
  * or expanding marked topics into new cards.
@@ -62,6 +64,34 @@ export function useAISprouting() {
         store.setAssistantMessageMeta(cardId, assistantMsg.id, {
             usedSearch: metadata.usedSearch === true
         });
+    };
+
+    const runWithConcurrency = async (jobs, concurrency, runner) => {
+        if (!Array.isArray(jobs) || jobs.length === 0) return [];
+
+        const safeConcurrency = Math.max(1, Math.min(concurrency || 1, jobs.length));
+        const results = new Array(jobs.length);
+        let cursor = 0;
+
+        const worker = async () => {
+            while (true) {
+                const currentIndex = cursor;
+                cursor += 1;
+                if (currentIndex >= jobs.length) return;
+
+                try {
+                    results[currentIndex] = await runner(jobs[currentIndex], currentIndex);
+                } catch (error) {
+                    results[currentIndex] = {
+                        ok: false,
+                        error: error?.message || 'Generation failed'
+                    };
+                }
+            }
+        };
+
+        await Promise.all(Array.from({ length: safeConcurrency }, () => worker()));
+        return results;
     };
 
     const handleExpandTopics = async (sourceId) => {
@@ -596,7 +626,7 @@ Respond in the same language as the focus topic.
                     {
                         id: uuid(),
                         role: 'assistant',
-                        content: `## Strategy / 策略\n${strategy || 'Decompose the goal into focused execution cards.'}\n\n## Plan / 规划\n${planOverview}`
+                        content: `## Strategy / 策略\n${strategy || 'Decompose the goal into focused execution cards.'}\n\n## Execution Engine / 执行引擎\nParallel workers: ${AGENT_EXECUTION_CONCURRENCY}\n\n## Plan / 规划\n${planOverview}`
                     }
                 ]
             });
@@ -604,14 +634,10 @@ Respond in the same language as the focus topic.
             updateCardFull?.(rootId, data => ({ ...data, title: rootTitle }));
 
             const positions = calculateMindmapChildPositions({ x: rootPos.x, y: rootPos.y }, plan.cards.length);
-            const results = [];
             const briefSelectedContext = selectedContext
                 ? selectedContext.split('\n').slice(0, 12).join('\n')
                 : '';
-
-            // Run sequentially for stability: avoids provider throttling spikes on first release.
-            for (let index = 0; index < plan.cards.length; index++) {
-                const item = plan.cards[index];
+            const jobs = plan.cards.map((item, index) => {
                 const pos = positions[index];
                 const cardId = uuid();
                 const title = (item.title || `Task ${index + 1}`).trim();
@@ -621,7 +647,10 @@ Respond in the same language as the focus topic.
                 const cardSeedText = `${title}\n\n${objective || cardPrompt}`.trim();
 
                 const executionPrompt = `
-[User Goal / 用户目标]
+[Role / 角色]
+You are one worker in a parallel AI agent system.
+
+[Global User Goal / 全局目标]
 ${safeRequest}
 
 [Plan Strategy / 计划策略]
@@ -635,53 +664,123 @@ Expected Deliverable: ${deliverable || 'A concrete and actionable result.'}
 [Execution Task / 执行任务]
 ${cardPrompt}
 
-${images.length > 0 ? `[Image Context / 图片上下文]\nUser attached ${images.length} image(s). Use them if relevant.\n` : ''}
+${images.length > 0 ? `[Image Context / 图片上下文]\nUser attached ${images.length} image(s). Use them when relevant.\n` : ''}
 ${briefSelectedContext ? `[Selected Card Context / 选中卡片上下文]\n${briefSelectedContext}\n` : ''}
 
-Please complete this card only. Keep output practical and execution-ready.
+[Hard Rules / 硬规则]
+1. Follow explicit user constraints exactly (scope, format, count, language, style, exclusions).
+2. Do not rewrite the user's intent or broaden scope.
+3. If required info is missing, state minimal assumptions first, then continue.
+4. Return execution-ready output, not abstract discussion.
+5. Focus only on this card's responsibility.
                 `.trim();
 
+                return {
+                    index,
+                    cardId,
+                    title,
+                    cardSeedText,
+                    pos,
+                    executionPrompt
+                };
+            });
+
+            const results = jobs.map(job => ({
+                title: job.title,
+                ok: false,
+                error: 'Not started'
+            }));
+
+            const runnableJobs = [];
+            for (const job of jobs) {
                 try {
                     await createAICard({
-                        id: cardId,
-                        text: cardSeedText,
-                        x: pos.x,
-                        y: pos.y,
-                        autoConnections: [{ from: rootId, to: cardId }],
+                        id: job.cardId,
+                        text: job.cardSeedText,
+                        x: job.pos.x,
+                        y: job.pos.y,
+                        autoConnections: [{ from: rootId, to: job.cardId }],
                         model: runConfig.model,
                         providerId: runProviderId
                     });
 
-                    updateCardFull?.(cardId, data => ({ ...data, title }));
-
-                    await aiManager.requestTask({
-                        type: 'chat',
-                        priority: PRIORITY.HIGH,
-                        payload: {
-                            messages: [{ role: 'user', content: executionPrompt }],
-                            model: runConfig.model,
-                            config: runConfig,
-                            options: {
-                                onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(cardId, metadata)
-                            }
-                        },
-                        tags: [`card:${cardId}`, `agent:${agentRunId}`],
-                        onProgress: (chunk) => updateCardContent(cardId, chunk)
-                    });
-
-                    results.push({ title, ok: true });
-                } catch (innerError) {
-                    debugLog.error(`Agent card generation failed for ${cardId}`, innerError);
-                    updateCardContent(cardId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
-                    results.push({
-                        title,
+                    updateCardFull?.(job.cardId, data => ({ ...data, title: job.title }));
+                    runnableJobs.push(job);
+                } catch (createError) {
+                    debugLog.error(`Agent card creation failed for ${job.cardId}`, createError);
+                    results[job.index] = {
+                        title: job.title,
                         ok: false,
-                        error: innerError?.message || 'Generation failed'
-                    });
-                } finally {
-                    setCardGenerating(cardId, false);
+                        error: createError?.message || 'Card creation failed'
+                    };
+                    setCardGenerating(job.cardId, false);
                 }
             }
+
+            debugLog.ai('Agent execution dispatch', {
+                planned: jobs.length,
+                runnable: runnableJobs.length,
+                concurrency: AGENT_EXECUTION_CONCURRENCY
+            });
+
+            const executionResults = await runWithConcurrency(
+                runnableJobs,
+                AGENT_EXECUTION_CONCURRENCY,
+                async (job) => {
+                    const executionContent = images.length > 0
+                        ? [
+                            { type: 'text', text: job.executionPrompt },
+                            ...images.slice(0, 3).map(img => ({
+                                type: 'image',
+                                source: {
+                                    type: 'base64',
+                                    media_type: img.mimeType,
+                                    data: img.base64
+                                }
+                            }))
+                        ]
+                        : job.executionPrompt;
+
+                    try {
+                        await aiManager.requestTask({
+                            type: 'chat',
+                            priority: PRIORITY.HIGH,
+                            payload: {
+                                messages: [{ role: 'user', content: executionContent }],
+                                model: runConfig.model,
+                                config: runConfig,
+                                options: {
+                                    onResponseMetadata: (metadata = {}) => applySearchMetaToLatestAssistant(job.cardId, metadata)
+                                }
+                            },
+                            tags: [`card:${job.cardId}`, `agent:${agentRunId}`],
+                            onProgress: (chunk) => updateCardContent(job.cardId, chunk)
+                        });
+
+                        return { title: job.title, ok: true };
+                    } catch (innerError) {
+                        debugLog.error(`Agent card generation failed for ${job.cardId}`, innerError);
+                        updateCardContent(job.cardId, `\n\n⚠️ **生成失败**: ${innerError.message}`);
+                        return {
+                            title: job.title,
+                            ok: false,
+                            error: innerError?.message || 'Generation failed'
+                        };
+                    } finally {
+                        setCardGenerating(job.cardId, false);
+                    }
+                }
+            );
+
+            executionResults.forEach((result, idx) => {
+                const job = runnableJobs[idx];
+                if (!job) return;
+                results[job.index] = {
+                    title: job.title,
+                    ok: !!result?.ok,
+                    error: result?.ok ? undefined : (result?.error || 'Generation failed')
+                };
+            });
 
             const successCount = results.filter(r => r.ok).length;
             const failedCount = results.length - successCount;
@@ -696,7 +795,7 @@ Please complete this card only. Keep output practical and execution-ready.
                     {
                         id: uuid(),
                         role: 'assistant',
-                        content: `## Execution Result / 执行结果\nSuccess: ${successCount}/${results.length}\nFailed: ${failedCount}\n\n${resultDetails}`
+                        content: `## Execution Result / 执行结果\nSuccess: ${successCount}/${results.length}\nFailed: ${failedCount}\nParallel limit: ${AGENT_EXECUTION_CONCURRENCY}\n\n${resultDetails}`
                     }
                 ]
             }));
