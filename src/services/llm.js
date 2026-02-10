@@ -444,207 +444,16 @@ Example Output:
 /**
  * Agent Mode: plan multiple cards from one user request.
  * Returns a normalized plan object:
- * {
- *   planTitle,
- *   strategy,
- *   cards: [{ title, objective, prompt, deliverable, executionType, completionBoundary, quickStart }]
- * }
+ * { planTitle, strategy, cards: [{ title, objective, prompt, deliverable }] }
  */
 export async function generateAgentCardPlan(request, context = '', config, model = null, options = {}, images = []) {
     const fallbackPrompt = (request || '').trim() || 'Please break down the user request into actionable cards.';
     const MAX_AGENT_CARDS = 20;
-    const EXECUTION_TYPES = {
-        AI_EXECUTE: 'ai_execute',
-        AI_GUIDE: 'ai_guide',
-        USER_DO: 'user_do'
-    };
 
     const trimForCard = (text, max = 48) => {
         const clean = String(text || '').trim().replace(/\s+/g, ' ');
         if (clean.length <= max) return clean;
         return `${clean.slice(0, max - 3)}...`;
-    };
-
-    const isLikelyChinese = /[\u4e00-\u9fff]/.test(fallbackPrompt);
-
-    const normalizeExecutionType = (value) => {
-        const raw = String(value || '').trim().toLowerCase();
-        if (!raw) return EXECUTION_TYPES.AI_EXECUTE;
-        if (raw.includes('ai_execute') || raw.includes('execute') || raw.includes('auto') || raw.includes('direct')) {
-            return EXECUTION_TYPES.AI_EXECUTE;
-        }
-        if (raw.includes('ai_guide') || raw.includes('guide') || raw.includes('advice') || raw.includes('assist')) {
-            return EXECUTION_TYPES.AI_GUIDE;
-        }
-        if (raw.includes('user_do') || raw.includes('human') || raw.includes('manual') || raw.includes('person')) {
-            return EXECUTION_TYPES.USER_DO;
-        }
-        if (raw.includes('不能') || raw.includes('无法') || raw.includes('blocked') || raw.includes('external')) {
-            return EXECUTION_TYPES.AI_GUIDE;
-        }
-        if (raw.includes('亲自') || raw.includes('本人') || raw.includes('线下') || raw.includes('must')) {
-            return EXECUTION_TYPES.USER_DO;
-        }
-        return EXECUTION_TYPES.AI_EXECUTE;
-    };
-
-    const isThreeWayTriageRequest = (text) => {
-        const source = String(text || '');
-        const lower = source.toLowerCase();
-
-        const forceGeneralMode = /(不要三分类|不要分类|保持通用|普通模式|normal mode|general mode|no triage|disable triage)/i.test(source);
-        if (forceGeneralMode) return false;
-
-        const explicitModeKeyword = /(\[triage\]|\[3way\]|三分类模式|三类模式|三路由|3-way|three-way|triage mode|执行分类模式|ai可执行.*ai不可执行.*亲自执行)/i.test(source);
-
-        const buckets = [
-            /(ai.{0,10}(可执行|能完成|可以完成|可处理|能处理)|能完成|可完成)/i,
-            /(ai.{0,10}(不可执行|不能完成|无法完成|不能处理|can't|cannot)|无法完成|做不了)/i,
-            /((必须|需要|得).{0,12}(我|用户|本人).{0,10}(做|执行|亲自)|must.{0,20}(user|me).{0,12}(do|execute)|in person|亲自执行|本人执行)/i
-        ];
-        const matchedBuckets = buckets.filter(re => re.test(source)).length;
-
-        const hasSplitIntent = /(提取出来|拆分|分类|分组|split|classify|triage)/i.test(lower);
-
-        if (explicitModeKeyword && matchedBuckets >= 2) return true;
-        if (!explicitModeKeyword && hasSplitIntent && matchedBuckets === 3) return true;
-
-        return false;
-    };
-
-    const triageMode = isThreeWayTriageRequest(fallbackPrompt);
-
-    const classifyChecklistItem = (text) => {
-        const content = String(text || '').trim();
-        if (!content) return EXECUTION_TYPES.AI_GUIDE;
-
-        const mustUserPattern = /(打电话|联系|线下|到店|面谈|面试|签字|盖章|递交|提交材料|付款|支付|转账|购买|采购|邮寄|快递|办理|预约|出席|现场|亲自|本人|call|meet|sign|pay|purchase|visit|appointment|in person|interview)/i;
-        if (mustUserPattern.test(content)) return EXECUTION_TYPES.USER_DO;
-
-        const aiNativePattern = /(总结|整理|提取|分析|生成|撰写|改写|翻译|归纳|规划|拆解|写|草拟|对比|计算|建模|代码|脚本|文案|summary|analy|extract|generate|write|draft|translate|plan|breakdown|code)/i;
-        if (aiNativePattern.test(content)) return EXECUTION_TYPES.AI_EXECUTE;
-
-        return EXECUTION_TYPES.AI_GUIDE;
-    };
-
-    const getDefaultBoundaryByType = (type) => {
-        if (type === EXECUTION_TYPES.USER_DO) {
-            return isLikelyChinese
-                ? 'AI 不会假装替你完成线下/需要身份权限的动作，只提供可执行步骤。'
-                : 'AI must not pretend to complete in-person or permission-gated actions; it only provides executable steps.';
-        }
-        if (type === EXECUTION_TYPES.AI_GUIDE) {
-            return isLikelyChinese
-                ? 'AI 提供最快路径、模板与决策建议，不宣称已完成外部动作。'
-                : 'AI provides the fastest path, templates, and decisions, without claiming external actions are completed.';
-        }
-        return isLikelyChinese
-            ? 'AI 直接完成可文本化/可计算化任务，必要时标注仍需外部动作的收尾项。'
-            : 'AI directly completes text/analysis/code/planning tasks and flags any remaining external follow-ups.';
-    };
-
-    const getDefaultDeliverableByType = (type, index) => {
-        if (type === EXECUTION_TYPES.USER_DO) {
-            return isLikelyChinese
-                ? `用户亲自执行清单（第 ${index + 1} 项）：步骤、材料、时间与风险提示。`
-                : `User-executed checklist (item ${index + 1}): steps, required materials, timing, and risks.`;
-        }
-        if (type === EXECUTION_TYPES.AI_GUIDE) {
-            return isLikelyChinese
-                ? `AI 无法直接代办项（第 ${index + 1} 项）的快速完成路径与模板。`
-                : `Fast path and templates for task ${index + 1} that AI cannot execute directly.`;
-        }
-        return isLikelyChinese
-            ? `AI 可直接完成的任务结果（第 ${index + 1} 项）与可用输出。`
-            : `Direct AI-completed output for task ${index + 1}, ready to use.`;
-    };
-
-    const getDefaultQuickStartByType = (type, subject = '') => {
-        const safeSubject = String(subject || '').trim();
-        if (type === EXECUTION_TYPES.USER_DO) {
-            return isLikelyChinese
-                ? `先确认你要亲自执行的动作与截止时间，再按步骤完成：${safeSubject || '目标任务'}.`
-                : `Confirm the personal action and deadline first, then execute step-by-step for: ${safeSubject || 'the target task'}.`;
-        }
-        if (type === EXECUTION_TYPES.AI_GUIDE) {
-            return isLikelyChinese
-                ? `先给出最快路径（3 步内）与可复制模板，目标：${safeSubject || '任务推进'}.`
-                : `Start with a 3-step fastest path and reusable template for: ${safeSubject || 'task progress'}.`;
-        }
-        return isLikelyChinese
-            ? `立即产出可用结果，目标：${safeSubject || '任务完成'}.`
-            : `Produce usable output immediately for: ${safeSubject || 'task completion'}.`;
-    };
-
-    const withExecutionMeta = (baseCard, executionType, index, subject = '', force = false, overrides = {}) => {
-        if (!triageMode && !force) return baseCard;
-
-        const normalizedType = normalizeExecutionType(executionType);
-        const completionBoundary = String(overrides.completionBoundary || '').trim()
-            || getDefaultBoundaryByType(normalizedType);
-        const quickStart = String(overrides.quickStart || '').trim()
-            || getDefaultQuickStartByType(normalizedType, subject);
-        const deliverable = String(baseCard.deliverable || '').trim()
-            || getDefaultDeliverableByType(normalizedType, index);
-
-        return {
-            ...baseCard,
-            executionType: normalizedType,
-            completionBoundary,
-            quickStart,
-            deliverable
-        };
-    };
-
-    const ensureThreeWayCoverage = (cards) => {
-        if (!triageMode) return cards;
-
-        const normalized = Array.isArray(cards)
-            ? cards.filter(Boolean).slice(0, MAX_AGENT_CARDS)
-            : [];
-        const existingTypes = new Set(normalized.map(card => normalizeExecutionType(card.executionType)));
-
-        const synthesisTemplates = [
-            {
-                type: EXECUTION_TYPES.AI_EXECUTE,
-                card: {
-                    title: isLikelyChinese ? 'AI可直接完成项' : 'AI-Executable Tasks',
-                    objective: isLikelyChinese ? '提取并完成可由 AI 直接完成的任务。' : 'Extract and complete tasks AI can do directly.',
-                    prompt: isLikelyChinese ? '从用户请求中提取 AI 能直接完成的事项，并立即给出完成结果。' : 'Extract tasks AI can complete now and provide completed outputs immediately.'
-                }
-            },
-            {
-                type: EXECUTION_TYPES.AI_GUIDE,
-                card: {
-                    title: isLikelyChinese ? 'AI不可直接执行项' : 'AI-Guided Tasks',
-                    objective: isLikelyChinese ? '识别 AI 无法直接执行但可加速推进的事项。' : 'Identify tasks AI cannot execute directly but can accelerate.',
-                    prompt: isLikelyChinese ? '对 AI 无法直接执行的事项给出最快完成路径、模板和避坑点。' : 'For tasks AI cannot execute directly, provide fastest path, templates, and pitfalls.'
-                }
-            },
-            {
-                type: EXECUTION_TYPES.USER_DO,
-                card: {
-                    title: isLikelyChinese ? '必须你亲自执行项' : 'User-Must-Do Tasks',
-                    objective: isLikelyChinese ? '识别必须由用户本人执行的事项并给出清单。' : 'Identify tasks that must be executed by the user personally.',
-                    prompt: isLikelyChinese ? '列出必须你亲自做的事项，给出逐步操作、准备材料与截止建议。' : 'List tasks that must be done personally and provide step-by-step actions with required prep.'
-                }
-            }
-        ];
-
-        const appended = [...normalized];
-        synthesisTemplates.forEach((entry) => {
-            if (existingTypes.has(entry.type)) return;
-            if (appended.length >= MAX_AGENT_CARDS) return;
-            appended.push({
-                ...entry.card,
-                executionType: entry.type,
-                completionBoundary: getDefaultBoundaryByType(entry.type),
-                quickStart: getDefaultQuickStartByType(entry.type, entry.card.objective),
-                deliverable: getDefaultDeliverableByType(entry.type, appended.length)
-            });
-        });
-
-        return appended.slice(0, MAX_AGENT_CARDS);
     };
 
     const extractChecklistItems = (text) => {
@@ -712,42 +521,27 @@ export async function generateAgentCardPlan(request, context = '', config, model
 
     const buildFallbackPlan = () => {
         if (checklistItems.length >= 2) {
-            const fallbackCards = checklistItems.slice(0, MAX_AGENT_CARDS).map((item, index) => {
-                const executionType = triageMode ? classifyChecklistItem(item) : EXECUTION_TYPES.AI_EXECUTE;
-                const baseCard = {
+            return {
+                planTitle: 'AI Agent Plan',
+                strategy: 'Use one focused card per checklist item.',
+                cards: checklistItems.slice(0, MAX_AGENT_CARDS).map((item, index) => ({
                     title: trimForCard(item, 32),
                     objective: item,
                     prompt: item,
-                    deliverable: triageMode
-                        ? getDefaultDeliverableByType(executionType, index)
-                        : `Complete item ${index + 1} with a practical result.`
-                };
-                return withExecutionMeta(baseCard, executionType, index, item);
-            });
-
-            return {
-                planTitle: 'AI Agent Plan',
-                strategy: triageMode
-                    ? 'Classify tasks into AI-executable, AI-guided, and user-must-do cards.'
-                    : 'Use one focused card per checklist item.',
-                cards: triageMode ? ensureThreeWayCoverage(fallbackCards) : fallbackCards
+                    deliverable: `Complete item ${index + 1} with a practical result.`
+                }))
             };
         }
 
-        const coreType = triageMode ? EXECUTION_TYPES.AI_GUIDE : EXECUTION_TYPES.AI_EXECUTE;
         return {
             planTitle: 'AI Agent Plan',
-            strategy: triageMode
-                ? 'Classify the goal into AI-executable, AI-guided, and user-must-do actions.'
-                : 'Break down the goal into focused, executable cards.',
-            cards: [withExecutionMeta({
+            strategy: 'Break down the goal into focused, executable cards.',
+            cards: [{
                 title: 'Core Task',
                 objective: 'Address the main user request.',
                 prompt: fallbackPrompt,
-                deliverable: triageMode
-                    ? getDefaultDeliverableByType(coreType, 0)
-                    : 'Actionable output with clear next steps.'
-            }, coreType, 0, fallbackPrompt)]
+                deliverable: 'Actionable output with clear next steps.'
+            }]
         };
     };
 
@@ -769,51 +563,30 @@ export async function generateAgentCardPlan(request, context = '', config, model
                 if (typeof card === 'string') {
                     const text = card.trim();
                     if (!text) return null;
-                    const executionType = triageMode
-                        ? classifyChecklistItem(text)
-                        : EXECUTION_TYPES.AI_EXECUTE;
-                    const baseCard = {
+                    return {
                         title: text.slice(0, 32),
                         objective: text,
                         prompt: text,
-                        deliverable: triageMode
-                            ? getDefaultDeliverableByType(executionType, index)
-                            : 'A concrete result for this topic.'
+                        deliverable: 'A concrete result for this topic.'
                     };
-                    return withExecutionMeta(baseCard, executionType, index, text);
                 }
 
                 if (!card || typeof card !== 'object') return null;
                 const title = String(card.title || card.name || card.topic || card.cardTitle || `Task ${index + 1}`).trim();
                 const objective = String(card.objective || card.goal || card.focus || card.task || title).trim();
                 const prompt = String(card.prompt || card.instruction || card.content || objective || title).trim();
-                const executionType = normalizeExecutionType(
-                    card.executionType || card.type || card.mode || card.owner || card.route
-                );
-                const completionBoundary = String(card.completionBoundary || card.boundary || card.limit || '').trim();
-                const quickStart = String(card.quickStart || card.nextAction || card.firstStep || '').trim();
                 const deliverable = String(
                     card.deliverable || card.output || card.result || 'A concrete result for this task.'
                 ).trim();
 
                 if (!title && !prompt) return null;
 
-                const baseCard = {
+                return {
                     title: title || prompt.slice(0, 32),
                     objective: objective || prompt,
                     prompt: prompt || objective || title,
                     deliverable
                 };
-                const hasExecutionHints = !!(card.executionType || card.type || card.mode || card.owner || card.route || completionBoundary || quickStart);
-
-                return withExecutionMeta(
-                    baseCard,
-                    executionType,
-                    index,
-                    objective || prompt || title,
-                    hasExecutionHints,
-                    { completionBoundary, quickStart }
-                );
             })
             .filter(Boolean)
             .slice(0, MAX_AGENT_CARDS);
@@ -828,37 +601,17 @@ export async function generateAgentCardPlan(request, context = '', config, model
             titleCounter.set(baseTitle, seenCount + 1);
             const uniqueTitle = seenCount === 0 ? baseTitle : `${baseTitle} (${seenCount + 1})`;
 
-            const baseCard = {
-                ...card,
+            dedupedCards.push({
                 title: uniqueTitle,
                 objective: card.objective || card.prompt || uniqueTitle,
                 prompt: card.prompt || card.objective || uniqueTitle,
                 deliverable: card.deliverable
-            };
-            const hasExecutionHints = !!(card.executionType || card.completionBoundary || card.quickStart);
-            if (hasExecutionHints || triageMode) {
-                dedupedCards.push(
-                    withExecutionMeta(
-                        baseCard,
-                        card.executionType || EXECUTION_TYPES.AI_EXECUTE,
-                        index,
-                        card.objective || uniqueTitle,
-                        hasExecutionHints,
-                        {
-                            completionBoundary: card.completionBoundary,
-                            quickStart: card.quickStart
-                        }
-                    )
-                );
-            } else {
-                dedupedCards.push(baseCard);
-            }
+            });
         });
 
-        const cardsToUseBase = checklistItems.length >= 2 && dedupedCards.length < 2
+        const cardsToUse = checklistItems.length >= 2 && dedupedCards.length < 2
             ? fallbackPlan.cards
             : dedupedCards;
-        const cardsToUse = triageMode ? ensureThreeWayCoverage(cardsToUseBase) : cardsToUseBase;
 
         const planTitle = String(raw.planTitle || raw.title || raw.name || 'AI Agent Plan').trim() || 'AI Agent Plan';
         const strategy = String(raw.strategy || raw.summary || raw.approach || '').trim()
@@ -896,43 +649,10 @@ export async function generateAgentCardPlan(request, context = '', config, model
         const checklistRule = checklistItems.length >= 2
             ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, MAX_AGENT_CARDS)} checklist-style items. Create exactly one execution card per item. Do not merge or drop checklist items.`
             : 'If the request naturally includes multiple actionable tasks, split them into separate cards.';
-        const triageRule = triageMode
-            ? 'HARD CONSTRAINT: The user explicitly asks for 3-way routing. Every card MUST have executionType as one of: ai_execute, ai_guide, user_do. Preserve all three categories in the plan.'
-            : 'Default to a general goal-driven plan. Do NOT force any routing taxonomy unless the user explicitly asks for it.';
 
-        const executionTypeDefinitionsBlock = triageMode
-            ? `EXECUTION TYPE DEFINITIONS:
-- ai_execute: AI can directly complete this card now (content/analysis/code/plan output).
-- ai_guide: AI cannot perform the final action itself; provide fastest path, templates, and concrete guidance.
-- user_do: Must be completed by the user personally (in-person, approvals, signatures, payments, calls, physical actions). Never claim completion.
-`
-            : '';
-        const triageTaskLine = triageMode
-            ? `8. ${triageRule}`
-            : `8. ${triageRule}`;
-        const outputCardShape = triageMode
-            ? `"cards": [
-    {
-      "title": "card title",
-      "objective": "what this card should solve",
-      "prompt": "exact worker prompt with constraints preserved",
-      "executionType": "ai_execute | ai_guide | user_do",
-      "completionBoundary": "what AI can and cannot claim as completed for this card",
-      "quickStart": "the first concrete action to start immediately",
-      "deliverable": "expected output for this card"
-    }
-  ]`
-            : `"cards": [
-    {
-      "title": "card title",
-      "objective": "what this card should solve",
-      "prompt": "exact worker prompt with constraints preserved",
-      "deliverable": "expected output for this card"
-    }
-  ]`;
-
-        const finalPrompt = `You are the planner in a Plan-and-Execute AI agent workflow.
-Your job is to transform one user request into an executable card plan that downstream worker agents can run directly.
+        const finalPrompt = `You are a general-purpose planning agent in a Plan-and-Execute AI workflow.
+Your job is to decompose one user request into execution cards that a downstream worker can run directly.
+This planner must remain universal across domains and user intents.
 
 USER REQUEST:
 ${fallbackPrompt}
@@ -946,8 +666,6 @@ ${checklistBlock}
 DETECTED HARD CONSTRAINTS:
 ${hardConstraintBlock}
 
-${executionTypeDefinitionsBlock}
-
 TASK:
 1. Decide how many cards are needed (between 1 and 20) based on complexity.
 2. Assign each card a clear, specific title and one core responsibility.
@@ -956,21 +674,29 @@ TASK:
 5. Preserve the user's explicit constraints (format, language, exclusions, counts) as non-negotiable requirements in relevant cards.
 6. Use the same language as the user request.
 7. ${checklistRule}
-${triageTaskLine}
+8. This is a general planner: do not force fixed taxonomies.
 
 PLANNING RULES:
-- Prioritize instruction-following over creativity.
+- Prioritize strict instruction-following over creativity.
 - Avoid generic card titles like "Task 1" unless unavoidable.
 - If user asks for a strict count/format, encode it directly in card prompts.
 - Keep plan minimal but complete; no filler cards.
 - Do NOT add quality-review loops or auto-follow-up loops.
+- Do NOT claim external real-world actions are completed unless provided in context.
 
 OUTPUT FORMAT:
 Return ONLY valid JSON, no markdown:
 {
   "planTitle": "short plan title",
   "strategy": "one short strategy summary focused on execution",
-  ${outputCardShape}
+  "cards": [
+    {
+      "title": "card title",
+      "objective": "what this card should solve",
+      "prompt": "exact worker prompt with constraints preserved",
+      "deliverable": "expected output for this card"
+    }
+  ]
 }`;
 
         const planningContent = Array.isArray(images) && images.length > 0
