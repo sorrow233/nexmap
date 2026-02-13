@@ -77,6 +77,7 @@ export const app = {
     },
     gallery: {
         gallery: "Gallery",
+        notesCenter: "Notes",
         favorites: "Favorites",
         trash: "Trash",
         usageGuide: "💡 Usage Guide",
@@ -165,6 +166,27 @@ export const app = {
         share: "Share",
         source: "Source",
         goToBoard: "Go to Board"
+    },
+    notesCenter: {
+        title: "Notes Center",
+        subtitle: "Manage sticky notes across all active boards.",
+        totalNotes: "Total Notes",
+        sourceBoards: "Source Boards",
+        allBoards: "All Boards",
+        searchPlaceholder: "Search notes by title or content...",
+        empty: "No notes yet",
+        emptyDesc: "Create a sticky note on canvas and it will appear here.",
+        noMatch: "No matching notes",
+        noMatchDesc: "Try another keyword or switch board filter.",
+        open: "Open",
+        edit: "Edit",
+        copy: "Copy",
+        copied: "Copied",
+        delete: "Delete",
+        deleteConfirm: "Delete this note from its source board?",
+        save: "Save",
+        cancel: "Cancel",
+        editorTitle: "Edit Note"
     },
     zone: {
         dragToMove: "Drag title to move zone",

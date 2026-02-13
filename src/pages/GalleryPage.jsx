@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, BarChart3, Sun, Moon } from 'lucide-react';
+import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, BarChart3, Sun, Moon, StickyNote } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
+import NotesCenter from '../components/NotesCenter';
 import FeedbackView from '../components/FeedbackView';
 import SettingsModal from '../components/SettingsModal';
 import UsageStatsModal from '../components/UsageStatsModal';
@@ -111,6 +112,7 @@ export default function GalleryPage({
     // If path includes /gallery/favorites, active is 'favorites' etc.
     const getActiveTab = () => {
         const path = location.pathname;
+        if (path.includes('/notes')) return 'notes';
         if (path.includes('/favorites')) return 'favorites';
         if (path.includes('/statistics')) return 'statistics';
         if (path.includes('/trash')) return 'trash';
@@ -124,6 +126,7 @@ export default function GalleryPage({
 
     const navItems = [
         { id: 'active', label: t.gallery.gallery, path: '/gallery', end: true },
+        { id: 'notes', label: t.gallery.notesCenter || 'Notes', icon: StickyNote, path: '/gallery/notes' },
         { id: 'favorites', label: t.gallery.favorites, icon: Star, path: '/gallery/favorites' },
         { id: 'statistics', label: t.stats?.title || "Data", icon: BarChart3, path: '/gallery/statistics' },
         { id: 'trash', label: t.gallery.trash, path: '/gallery/trash' },
@@ -292,6 +295,13 @@ export default function GalleryPage({
                                 onUpdateBoardMetadata={onUpdateBoardMetadata}
                                 isTrashView={false}
                                 onImportGuide={handleCreateGuide}
+                            />
+                        } />
+                        <Route path="notes" element={
+                            <NotesCenter
+                                boardsList={boardsList}
+                                user={user}
+                                onUpdateBoardMetadata={onUpdateBoardMetadata}
                             />
                         } />
                         <Route path="favorites" element={<FavoritesGallery />} />

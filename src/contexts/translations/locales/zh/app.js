@@ -77,6 +77,7 @@ export const app = {
     },
     gallery: {
         gallery: "画廊",
+        notesCenter: "笔记中心",
         favorites: "收藏",
         trash: "回收站",
         usageGuide: "💡 使用指南",
@@ -165,6 +166,27 @@ export const app = {
         share: "分享",
         source: "来源",
         goToBoard: "查看原文"
+    },
+    notesCenter: {
+        title: "笔记管理中心",
+        subtitle: "统一管理所有活跃画板内的便签笔记。",
+        totalNotes: "笔记总数",
+        sourceBoards: "来源画板",
+        allBoards: "全部画板",
+        searchPlaceholder: "搜索笔记内容或标题...",
+        empty: "还没有笔记",
+        emptyDesc: "在画布中创建便签后会自动汇总到这里。",
+        noMatch: "没有匹配的笔记",
+        noMatchDesc: "请尝试其他关键词或切换画板筛选。",
+        open: "打开",
+        edit: "编辑",
+        copy: "复制",
+        copied: "已复制",
+        delete: "删除",
+        deleteConfirm: "确认从原画板中删除这条笔记？",
+        save: "保存",
+        cancel: "取消",
+        editorTitle: "编辑笔记"
     },
     zone: {
         dragToMove: "拖拽标题移动分区",
