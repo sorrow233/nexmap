@@ -42,11 +42,13 @@ const getActiveBoards = (boardsList = []) => {
 
 const isNoteCard = (card) => card?.type === 'note' && !card?.deletedAt;
 
-const normalizeNote = (card, board) => {
+const normalizeNote = (card, board, boardData = null) => {
     const content = getNoteContent(card);
     const title = getNoteTitle(card, content);
-    const updatedAt = toTimestamp(card?.updatedAt) || toTimestamp(board?.updatedAt) || toTimestamp(card?.createdAt) || toTimestamp(board?.createdAt);
-    const createdAt = toTimestamp(card?.createdAt) || toTimestamp(board?.createdAt) || updatedAt || Date.now();
+    const boardUpdatedAt = toTimestamp(boardData?.updatedAt) || toTimestamp(board?.updatedAt);
+    const boardCreatedAt = toTimestamp(boardData?.createdAt) || toTimestamp(board?.createdAt);
+    const updatedAt = toTimestamp(card?.updatedAt) || boardUpdatedAt || toTimestamp(card?.createdAt) || boardCreatedAt;
+    const createdAt = toTimestamp(card?.createdAt) || boardCreatedAt || updatedAt || Date.now();
 
     return {
         id: card.id,
@@ -68,6 +70,20 @@ const sortNotes = (notes = []) => {
         if (timeDelta !== 0) return timeDelta;
         return (b.createdAt || 0) - (a.createdAt || 0);
     });
+};
+
+const pickPrimaryBoardNote = (cards = []) => {
+    const noteCards = cards.filter(isNoteCard);
+    if (noteCards.length === 0) return null;
+
+    const masterNote = noteCards.find(card => Boolean(card?.data?.isNotepad));
+    if (masterNote) return masterNote;
+
+    return [...noteCards].sort((a, b) => {
+        const aTime = toTimestamp(a?.updatedAt) || toTimestamp(a?.createdAt);
+        const bTime = toTimestamp(b?.updatedAt) || toTimestamp(b?.createdAt);
+        return bTime - aTime;
+    })[0];
 };
 
 const loadBoardSafe = async (boardId) => {
@@ -99,11 +115,12 @@ const notesService = {
         const boards = getActiveBoards(boardsList);
         const notesByBoard = await Promise.all(boards.map(async (board) => {
             const boardData = await loadBoardSafe(board.id);
-            const notes = boardData.cards.filter(isNoteCard).map(card => normalizeNote(card, board));
-            return notes;
+            const primaryNote = pickPrimaryBoardNote(boardData.cards);
+            if (!primaryNote) return null;
+            return normalizeNote(primaryNote, board, boardData);
         }));
 
-        return sortNotes(notesByBoard.flat());
+        return sortNotes(notesByBoard.filter(Boolean));
     },
 
     async updateNoteContent({ boardId, noteId, content, userId = null }) {

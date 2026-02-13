@@ -60,6 +60,18 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
         return () => window.removeEventListener(notesService.NOTE_UPDATES_EVENT, handleUpdates);
     }, [refreshNotes]);
 
+    useEffect(() => {
+        const handleStorage = (event) => {
+            if (!event?.key) return;
+            if (event.key === 'mixboard_boards_list' || event.key.startsWith('mixboard_board_')) {
+                refreshNotes();
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [refreshNotes]);
+
     const boardOptions = useMemo(() => {
         const boardMap = new Map();
         notes.forEach(note => {
