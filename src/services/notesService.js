@@ -142,6 +142,7 @@ const notesService = {
         return sortNotes(notesByBoard.filter(Boolean));
     },
 
+
     async updateNoteContent({ boardId, noteId, content, userId = null }) {
         const safeContent = normalizeText(content);
         const boardData = await loadBoardSafe(boardId);

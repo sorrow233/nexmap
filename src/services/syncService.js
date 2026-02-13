@@ -93,12 +93,51 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
     if (!db || !userId) return () => { };
 
     try {
-        debugLog.sync('Initializing Firestore listener for boards METADATA ONLY');
+        debugLog.sync('Initializing Firestore listener for boards METADATA + BACKGROUND CACHE');
         const boardsRef = collection(db, 'users', userId, 'boards');
-        return onSnapshot(boardsRef, (snapshot) => {
-            debugLog.sync(`[Metadata] Snapshot received: ${snapshot.size} docs`);
+        return onSnapshot(boardsRef, async (snapshot) => {
+            debugLog.sync(`[Metadata] Snapshot received: ${snapshot.size} docs, ${snapshot.docChanges().length} changes`);
 
-            // ONLY update metadata list, do NOT process individual board content
+            // Background hydration: Update IDB for changed boards to keep search/notes indexed
+            const changeTasks = snapshot.docChanges().map(async (change) => {
+                if (change.type === 'added' || change.type === 'modified') {
+                    const boardData = change.doc.data();
+                    if (!boardData?.id) return;
+
+                    try {
+                        // Use basic sync check to avoid redundant IDB writes
+                        const boardId = boardData.id;
+                        const localData = await idbGet(BOARD_PREFIX + boardId);
+
+                        const cloudVersion = boardData.syncVersion || 0;
+                        const localVersion = localData?.syncVersion || 0;
+                        const cloudUpdated = boardData.updatedAt || 0;
+                        const localUpdated = localData?.updatedAt || 0;
+
+                        // Only update IDB if cloud version is actually newer
+                        if (!localData || cloudVersion > localVersion || (cloudVersion === 0 && cloudUpdated > localUpdated)) {
+                            // We use saveBoard from boardService but since it updates localStorage list meta too, 
+                            // we'll be careful to avoid race conditions with the setBoardsList call below.
+                            // Actually, saveBoard is safe to call here as a background sync.
+                            await saveBoard(boardId, {
+                                cards: boardData.cards || [],
+                                connections: boardData.connections || [],
+                                groups: boardData.groups || [],
+                                boardPrompts: boardData.boardPrompts || [],
+                                boardInstructionSettings: normalizeBoardInstructionSettings(
+                                    boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                                ),
+                                updatedAt: boardData.updatedAt,
+                                syncVersion: boardData.syncVersion
+                            });
+                        }
+                    } catch (e) {
+                        debugLog.error(`[BackgroundSync] Failed for ${boardData.id}`, e);
+                    }
+                }
+            });
+
+            // Process metadata list for UI
             const allBoards = snapshot.docs.map(doc => doc.data()).filter(b => b && b.id);
 
             // Get existing localStorage data to preserve local-only fields like 'summary'
@@ -125,11 +164,19 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
 
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
             onUpdate(metadataList);
+
+            // Ensure background sync completes
+            if (changeTasks.length > 0) {
+                Promise.all(changeTasks).then(() => {
+                    debugLog.sync(`[BackgroundSync] Finished processing ${changeTasks.length} changes`);
+                });
+            }
         }, (error) => {
             handleQuotaError(error, 'listenForBoardsMetadata');
             debugLog.error("Firestore metadata sync error:", error);
         });
     } catch (err) {
+
         debugLog.error("listenForBoardsMetadata fatal error:", err);
         return () => { };
     }

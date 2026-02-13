@@ -149,6 +149,7 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
                 setErrorMessage('');
             }
         } catch (error) {
+
             console.error('[NotesCenter] Failed to refresh notes', error);
             if (isMountedRef.current) setErrorMessage(labels.loadError);
             if (!background && isMountedRef.current) toast.error(labels.loadError);

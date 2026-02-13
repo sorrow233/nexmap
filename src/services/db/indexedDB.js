@@ -5,37 +5,52 @@ const IDB_BACKUP_STORE = 'scheduled_backups';
 const IDB_VERSION = 2; // Upgraded for scheduled backups
 const IS_VERBOSE_IDB_LOG = import.meta.env.MODE === 'development';
 
-const initDB = () => new Promise((resolve, reject) => {
-    const request = indexedDB.open(IDB_NAME, IDB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(IDB_STORE)) {
-            db.createObjectStore(IDB_STORE);
-        }
-        // V2: Add scheduled backups store
-        if (!db.objectStoreNames.contains(IDB_BACKUP_STORE)) {
-            db.createObjectStore(IDB_BACKUP_STORE);
-        }
-    };
-});
+let dbPromise = null;
+
+const initDB = () => {
+    if (dbPromise) return dbPromise;
+    
+    dbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+        request.onerror = (e) => {
+            dbPromise = null; // Reset promise on error to allow retry
+            reject(request.error);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+                db.createObjectStore(IDB_STORE);
+            }
+            // V2: Add scheduled backups store
+            if (!db.objectStoreNames.contains(IDB_BACKUP_STORE)) {
+                db.createObjectStore(IDB_BACKUP_STORE);
+            }
+        };
+    });
+    return dbPromise;
+};
 
 export const idbGet = async (key) => {
     const db = await initDB();
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(IDB_STORE, 'readonly');
-        const store = transaction.objectStore(IDB_STORE);
-        const request = store.get(key);
-        request.onsuccess = () => {
-            resolve(request.result);
-        };
-        request.onerror = () => {
-            console.error(`[IDB] Get error for ${key}:`, request.error);
-            reject(request.error);
-        };
+        try {
+            const transaction = db.transaction(IDB_STORE, 'readonly');
+            const store = transaction.objectStore(IDB_STORE);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => {
+                console.error(`[IDB] Get error for ${key}:`, request.error);
+                reject(request.error);
+            };
+        } catch (e) {
+            // Handle cases where connection might be closed
+            dbPromise = null;
+            reject(e);
+        }
     });
 };
+
 
 export const idbSet = async (key, value) => {
     const db = await initDB();
