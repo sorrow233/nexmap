@@ -60,7 +60,9 @@ const normalizeNote = (card, board, boardData = null) => {
         isMaster: Boolean(card?.data?.isNotepad),
         createdAt,
         updatedAt,
-        charCount: content.length
+        charCount: content.length,
+        lineCount: content ? content.split('\n').length : 0,
+        wordCount: content.trim() ? content.trim().split(/\s+/).length : 0
     };
 };
 
@@ -84,6 +86,10 @@ const pickPrimaryBoardNote = (cards = []) => {
         const bTime = toTimestamp(b?.updatedAt) || toTimestamp(b?.createdAt);
         return bTime - aTime;
     })[0];
+};
+
+const findActiveNoteIndex = (cards = [], noteId) => {
+    return cards.findIndex(card => card.id === noteId && isNoteCard(card));
 };
 
 const loadBoardSafe = async (boardId) => {
@@ -126,6 +132,10 @@ const notesService = {
     async updateNoteContent({ boardId, noteId, content, userId = null }) {
         const safeContent = normalizeText(content);
         const boardData = await loadBoardSafe(boardId);
+        const noteIndex = findActiveNoteIndex(boardData.cards, noteId);
+        if (noteIndex < 0) {
+            throw new Error('NOTE_NOT_FOUND');
+        }
         const now = Date.now();
 
         const nextCards = boardData.cards.map(card => {
@@ -151,6 +161,10 @@ const notesService = {
 
     async softDeleteNote({ boardId, noteId, userId = null }) {
         const boardData = await loadBoardSafe(boardId);
+        const noteIndex = findActiveNoteIndex(boardData.cards, noteId);
+        if (noteIndex < 0) {
+            throw new Error('NOTE_NOT_FOUND');
+        }
         const now = Date.now();
 
         const nextCards = boardData.cards.map(card => {
