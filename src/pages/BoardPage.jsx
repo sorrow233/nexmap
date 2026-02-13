@@ -7,6 +7,7 @@ import Loading from '../components/Loading';
 import StatusBar from '../components/StatusBar';
 import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
+import BoardInstructionPanel from '../components/board/BoardInstructionPanel';
 import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
 import { useStore } from '../store/useStore';
@@ -40,8 +41,13 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         isSettingsOpen,
         quickPrompt,
         boardPrompts,
+        boardInstructionSettings,
+        customInstructionCatalog,
+        conversationCount,
         tempInstructions,
         isAgentRunning,
+        isInstructionPanelOpen,
+        isAutoRecommending,
         globalPrompts,
         t,
         noteId,
@@ -56,6 +62,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         setQuickPrompt,
         setExpandedCardId,
         setTempInstructions,
+        setIsInstructionPanelOpen,
         navigate,
         toggleFavorite,
         updateCardFull,
@@ -79,6 +86,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handlePromptDropOnChat,
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,
+        handleOpenInstructionPanel,
+        handleToggleBoardInstruction,
+        handleUseManualInstructionMode,
+        handleUseAutoInstructionMode,
+        handleRunAutoInstructionRecommendNow,
         handleQuickSprout,
         handleSprout,
         handleCreateNote,
@@ -198,6 +210,20 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onBack={onBack}
                     board={currentBoard}
                     onUpdateTitle={onUpdateBoardTitle}
+                    onOpenInstructions={handleOpenInstructionPanel}
+                />
+
+                <BoardInstructionPanel
+                    isOpen={isInstructionPanelOpen}
+                    onClose={() => setIsInstructionPanelOpen(false)}
+                    instructions={customInstructionCatalog.items || []}
+                    boardInstructionSettings={boardInstructionSettings}
+                    onToggleInstruction={handleToggleBoardInstruction}
+                    onUseManualMode={handleUseManualInstructionMode}
+                    onUseAutoMode={handleUseAutoInstructionMode}
+                    onRunAutoRecommend={handleRunAutoInstructionRecommendNow}
+                    isAutoRecommending={isAutoRecommending}
+                    conversationCount={conversationCount}
                 />
 
                 <ChatBar

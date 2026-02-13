@@ -20,6 +20,7 @@ const STORAGE_KEYS_TO_REMOVE = [
     'mixboard_favorites_index',
     'mixboard_global_prompts',
     'mixboard_custom_instructions',
+    'mixboard_board_instruction_settings_map',
     'mixboard_settings',
     'userLanguage',
     'feedback_voted_ids',

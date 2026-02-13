@@ -18,6 +18,7 @@ const EXPORT_KEYS = [
     'mixboard_favorites_index',
     'mixboard_global_prompts',
     'mixboard_custom_instructions',
+    'mixboard_board_instruction_settings_map',
     'mixboard_settings',
     'userLanguage'
 ];
@@ -191,7 +192,8 @@ export async function importData(data, options = { importSettings: false }) {
                 'mixboard_providers_v3',
                 'mixboard_s3_config',
                 'mixboard_settings',
-                'mixboard_custom_instructions'
+                'mixboard_custom_instructions',
+                'mixboard_board_instruction_settings_map'
             ];
 
             for (const [key, value] of Object.entries(data.localStorage)) {

@@ -4,6 +4,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { listenForSingleBoard } from '../services/syncService';
 import { useStore } from '../store/useStore';
 import { debugLog } from '../utils/debugLogger';
+import {
+    DEFAULT_BOARD_INSTRUCTION_SETTINGS,
+    normalizeBoardInstructionSettings
+} from '../services/customInstructionsService';
 
 /**
  * useBoardSync - 监听单个画板的云端实时同步
@@ -20,7 +24,7 @@ import { debugLog } from '../utils/debugLogger';
 export function useBoardSync(boardId, isReadOnly = false) {
     const unsubRef = useRef(null);
     const [userId, setUserId] = useState(auth?.currentUser?.uid || null);
-    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
+    const { setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings } = useStore();
 
     // 监听 auth 状态变化
     useEffect(() => {
@@ -64,7 +68,8 @@ export function useBoardSync(boardId, isReadOnly = false) {
             debugLog.sync(`[BoardSync] Received update for ${boardId}`, {
                 cards: data.cards?.length || 0,
                 connections: data.connections?.length || 0,
-                groups: data.groups?.length || 0
+                groups: data.groups?.length || 0,
+                instructionSettings: !!data.boardInstructionSettings
             });
 
             // 更新 Store（使用 setCardsFromCloud 避免触发保存循环）
@@ -79,6 +84,11 @@ export function useBoardSync(boardId, isReadOnly = false) {
             if (data.connections) setConnections(data.connections);
             if (data.groups) setGroups(data.groups);
             if (data.boardPrompts) setBoardPrompts(data.boardPrompts);
+            setBoardInstructionSettings(
+                normalizeBoardInstructionSettings(
+                    data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                )
+            );
 
             debugLog.sync(`[BoardSync] State updated for board ${boardId}`);
         });
@@ -90,6 +100,5 @@ export function useBoardSync(boardId, isReadOnly = false) {
                 unsubRef.current = null;
             }
         };
-    }, [boardId, userId, isReadOnly, setCards, setConnections, setGroups, setBoardPrompts]);
+    }, [boardId, userId, isReadOnly, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings]);
 }
-

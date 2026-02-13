@@ -4,6 +4,10 @@ import { idbGet } from './db/indexedDB';
 import { saveBoard, getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
 import { reconcileCards, removeUndefined } from './syncUtils';
+import {
+    DEFAULT_BOARD_INSTRUCTION_SETTINGS,
+    normalizeBoardInstructionSettings
+} from './customInstructionsService';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -167,6 +171,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                 const localConnections = store.connections || localData?.connections || [];
                 const localGroups = store.groups || localData?.groups || [];
                 const localBoardPrompts = store.boardPrompts || localData?.boardPrompts || [];
+                const localBoardInstructionSettings = store.boardInstructionSettings || localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS;
                 const localUpdatedAt = store.lastSavedAt || localData?.updatedAt || 0;
 
                 const localVersion = localData?.syncVersion || 0;
@@ -190,13 +195,19 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                         connections: boardData.connections || [],
                         groups: boardData.groups || [],
                         boardPrompts: boardData.boardPrompts || [],
+                        boardInstructionSettings: normalizeBoardInstructionSettings(
+                            boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                        ),
                         updatedAt: boardData.updatedAt
                     });
                     onUpdate(boardId, {
                         cards: boardData.cards || [],
                         connections: boardData.connections || [],
                         groups: boardData.groups || [],
-                        boardPrompts: boardData.boardPrompts || []
+                        boardPrompts: boardData.boardPrompts || [],
+                        boardInstructionSettings: normalizeBoardInstructionSettings(
+                            boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                        )
                     });
                     return;
                 }
@@ -218,6 +229,9 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                     connections: boardData.connections || localConnections || [],
                     groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
                     boardPrompts: boardData.boardPrompts !== undefined ? boardData.boardPrompts : (localBoardPrompts || []),
+                    boardInstructionSettings: boardData.boardInstructionSettings !== undefined
+                        ? normalizeBoardInstructionSettings(boardData.boardInstructionSettings)
+                        : normalizeBoardInstructionSettings(localBoardInstructionSettings),
                     updatedAt: boardData.updatedAt
                 };
 
@@ -273,6 +287,9 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             const localConnections = isCurrentBoard ? store.connections : (localData?.connections || []);
                             const localGroups = isCurrentBoard ? store.groups : (localData?.groups || []);
                             const localBoardPrompts = isCurrentBoard ? store.boardPrompts : (localData?.boardPrompts || []);
+                            const localBoardInstructionSettings = isCurrentBoard
+                                ? (store.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
+                                : (localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS);
                             const localUpdatedAt = isCurrentBoard ? (store.lastSavedAt || localData?.updatedAt || 0) : (localData?.updatedAt || 0);
 
                             // Use syncVersion (logical clock) for conflict detection, fallback to updatedAt for backward compatibility
@@ -306,6 +323,9 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     connections: boardData.connections || [],
                                     groups: boardData.groups || [],
                                     boardPrompts: boardData.boardPrompts || [],
+                                    boardInstructionSettings: normalizeBoardInstructionSettings(
+                                        boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                                    ),
                                     updatedAt: boardData.updatedAt
                                 });
                                 return;
@@ -330,6 +350,9 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 connections: boardData.connections || localConnections || [],
                                 groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
                                 boardPrompts: boardData.boardPrompts !== undefined ? boardData.boardPrompts : (localBoardPrompts || []),
+                                boardInstructionSettings: boardData.boardInstructionSettings !== undefined
+                                    ? normalizeBoardInstructionSettings(boardData.boardInstructionSettings)
+                                    : normalizeBoardInstructionSettings(localBoardInstructionSettings),
                                 updatedAt: boardData.updatedAt
                             });
                         } catch (e) {
@@ -412,7 +435,10 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         })),
         connections: boardContent.connections || [],
         groups: boardContent.groups || [],
-        boardPrompts: boardContent.boardPrompts || []
+        boardPrompts: boardContent.boardPrompts || [],
+        boardInstructionSettings: normalizeBoardInstructionSettings(
+            boardContent.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+        )
     });
 
     const cacheKey = `${userId}:${boardId}`;
@@ -468,7 +494,10 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
             })),
             connections: boardContent.connections || [],
             groups: boardContent.groups || [],
-            boardPrompts: boardContent.boardPrompts || []
+            boardPrompts: boardContent.boardPrompts || [],
+            boardInstructionSettings: normalizeBoardInstructionSettings(
+                boardContent.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+            )
         };
 
         // Increment syncVersion (logical clock) for conflict resolution
@@ -519,19 +548,29 @@ export const deleteBoardFromCloud = async (userId, boardId) => {
 };
 
 export const saveUserSettings = async (userId, settings) => {
-    if (!db || !userId || isOfflineMode()) return;
+    if (!db || !userId) return { ok: false, reason: 'missing_context' };
+    if (isOfflineMode()) {
+        debugLog.sync('Skipped saveUserSettings because offline mode is enabled');
+        return { ok: false, reason: 'offline_mode' };
+    }
     try {
         debugLog.auth('Saving user settings to cloud...', settings);
         const configRef = doc(db, 'users', userId, 'settings', 'config');
         await setDoc(configRef, settings);
+        return { ok: true };
     } catch (e) {
         await handleQuotaError(e, 'saveUserSettings');
         debugLog.error("Save settings failed", e);
+        return { ok: false, reason: 'error', error: e };
     }
 };
 
 export const updateUserSettings = async (userId, updates) => {
-    if (!db || !userId || isOfflineMode()) return;
+    if (!db || !userId) return { ok: false, reason: 'missing_context' };
+    if (isOfflineMode()) {
+        debugLog.sync('Skipped updateUserSettings because offline mode is enabled');
+        return { ok: false, reason: 'offline_mode' };
+    }
     try {
         debugLog.auth('Updating user settings in cloud...', updates);
 
@@ -567,9 +606,11 @@ export const updateUserSettings = async (userId, updates) => {
             // First time setup
             await setDoc(configRef, processedUpdates);
         }
+        return { ok: true };
     } catch (e) {
         await handleQuotaError(e, 'updateUserSettings');
         debugLog.error("Update settings failed", e);
+        return { ok: false, reason: 'error', error: e };
     }
 };
 
@@ -585,6 +626,23 @@ export const loadUserSettings = async (userId) => {
     } catch (e) {
         debugLog.error("Load settings failed", e);
         return null;
+    }
+};
+
+export const listenForUserSettings = (userId, onUpdate) => {
+    if (!db || !userId || typeof onUpdate !== 'function') return () => { };
+    try {
+        const configRef = doc(db, 'users', userId, 'settings', 'config');
+        return onSnapshot(configRef, (docSnap) => {
+            const data = docSnap.exists() ? docSnap.data() : null;
+            onUpdate(data);
+        }, (error) => {
+            handleQuotaError(error, 'listenForUserSettings');
+            debugLog.error('Firestore user settings listener error:', error);
+        });
+    } catch (err) {
+        debugLog.error('listenForUserSettings error:', err);
+        return () => { };
     }
 };
 

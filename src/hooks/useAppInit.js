@@ -13,7 +13,7 @@ import {
     saveBoardToCloud
 } from '../services/storage';
 import { getRawBoardsList } from '../services/boardService'; // Fix: Import directly to resolve ReferenceError
-import { listenForFavoriteUpdates, saveFavoriteToCloud as saveFavoritesToCloud, updateUserSettings } from '../services/syncService';
+import { listenForFavoriteUpdates, saveFavoriteToCloud as saveFavoritesToCloud, updateUserSettings, listenForUserSettings } from '../services/syncService';
 import favoritesService from '../services/favoritesService';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { useStore } from '../store/useStore';
@@ -22,6 +22,11 @@ import { getSampleBoardsList, getSampleBoardData } from '../utils/sampleBoardsDa
 import { useLocation } from 'react-router-dom';
 import { debugLog } from '../utils/debugLogger';
 import { userStatsService } from '../services/stats/userStatsService';
+import {
+    CUSTOM_INSTRUCTIONS_KEY,
+    normalizeCustomInstructionsValue,
+    hasAnyCustomInstruction
+} from '../services/customInstructionsService';
 
 // --- Timestamp-aware localStorage utilities for smart sync ---
 const loadWithTimestamp = (key) => {
@@ -45,6 +50,29 @@ const saveWithTimestamp = (key, value) => {
     }));
 };
 
+const normalizeUpdatedAt = (value) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (value && typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value === 'string') {
+        const asNum = Number(value);
+        if (Number.isFinite(asNum)) return asNum;
+        const asDate = Date.parse(value);
+        if (Number.isFinite(asDate)) return asDate;
+    }
+    return 0;
+};
+
+const hasAnyApiKey = (providers) => {
+    if (!providers || typeof providers !== 'object') return false;
+    return Object.values(providers).some(p => {
+        const key = p?.apiKey;
+        return typeof key === 'string' && key.trim().length > 0;
+    });
+};
+
+const TRASH_CLEANUP_LAST_KEY = 'mixboard_last_trash_cleanup_at';
+const TRASH_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
 export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
@@ -60,8 +88,28 @@ export function useAppInit() {
     useEffect(() => {
         const init = async () => {
             debugLog.auth('Initializing app state...');
-            // Run cleanup first
-            await cleanupExpiredTrash();
+
+            // Cleanup expired trash at most once per day (non-blocking).
+            try {
+                const now = Date.now();
+                const lastCleanupRaw = localStorage.getItem(TRASH_CLEANUP_LAST_KEY);
+                const lastCleanup = Number(lastCleanupRaw || 0);
+                const shouldRunCleanup = !Number.isFinite(lastCleanup) || now - lastCleanup >= TRASH_CLEANUP_INTERVAL_MS;
+                if (shouldRunCleanup) {
+                    debugLog.storage('Running scheduled trash cleanup...');
+                    cleanupExpiredTrash()
+                        .then(() => {
+                            localStorage.setItem(TRASH_CLEANUP_LAST_KEY, String(Date.now()));
+                        })
+                        .catch((err) => {
+                            debugLog.error('Scheduled trash cleanup failed', err);
+                        });
+                } else {
+                    debugLog.storage('Skipping trash cleanup (recently cleaned).');
+                }
+            } catch (cleanupErr) {
+                debugLog.error('Failed to schedule trash cleanup', cleanupErr);
+            }
 
             // Initialize scheduled backup system
             initScheduledBackup();
@@ -210,11 +258,42 @@ export function useAppInit() {
                     favoritesService.updateLocalFavorites(updates);
                 });
 
+                const applyCloudProviderSettings = (settings, source = 'initial_load') => {
+                    if (!settings?.providers) return;
+                    const cloudUpdated = normalizeUpdatedAt(settings.lastUpdated);
+                    const localState = useStore.getState();
+                    const localUpdated = normalizeUpdatedAt(localState.lastUpdated);
+                    const cloudHasKey = hasAnyApiKey(settings.providers);
+                    const localHasKey = hasAnyApiKey(localState.providers);
+                    const providersChanged = JSON.stringify(settings.providers) !== JSON.stringify(localState.providers);
+                    const shouldApplyCloud = cloudUpdated > localUpdated ||
+                        (!localHasKey && cloudHasKey) ||
+                        (source === 'realtime' && providersChanged);
+
+                    if (shouldApplyCloud) {
+                        debugLog.auth(`[SettingsSync:${source}] Applying cloud settings (cloudUpdated=${cloudUpdated}, localUpdated=${localUpdated}, cloudHasKey=${cloudHasKey}, localHasKey=${localHasKey}, providersChanged=${providersChanged})`);
+                        useStore.getState().setFullConfig({
+                            providers: settings.providers,
+                            activeId: settings.activeId || 'google',
+                            globalRoles: settings.globalRoles || localState.globalRoles,
+                            lastUpdated: cloudUpdated || Date.now()
+                        });
+                    } else {
+                        debugLog.auth(`[SettingsSync:${source}] Ignored cloud settings (cloudUpdated=${cloudUpdated}, localUpdated=${localUpdated}, providersChanged=${providersChanged})`);
+                    }
+                };
+
+                const unsubSettings = listenForUserSettings(u.uid, (settings) => {
+                    if (!settings) return;
+                    applyCloudProviderSettings(settings, 'realtime');
+                });
+
                 // Chain unsubscribe
                 const originalUnsubDb = unsubDb;
                 unsubDb = () => {
                     originalUnsubDb();
                     unsubFav();
+                    unsubSettings();
                 };
 
                 // Load user stats from cloud
@@ -229,50 +308,40 @@ export function useAppInit() {
                 loadUserSettings(u.uid).then(async (settings) => {
                     if (settings) {
                         debugLog.auth('Cloud settings loaded successfully');
-                        if (settings.providers) {
-                            const cloudUpdated = settings.lastUpdated || 0;
-                            const localUpdated = useStore.getState().lastUpdated || 0;
-
-                            if (cloudUpdated > localUpdated) {
-                                debugLog.auth(`Cloud settings are newer (${cloudUpdated} > ${localUpdated}), applying to local store`);
-                                useStore.getState().setFullConfig({
-                                    providers: settings.providers,
-                                    activeId: settings.activeId || 'google',
-                                    lastUpdated: cloudUpdated
-                                });
-                            } else {
-                                debugLog.auth(`Local settings are up-to-date or newer (${localUpdated} >= ${cloudUpdated}), ignoring cloud settings`);
-                            }
-                        }
+                        applyCloudProviderSettings(settings, 'initial_load');
                         if (settings.s3Config) {
                             localStorage.setItem('mixboard_s3_config', JSON.stringify(settings.s3Config));
                         }
 
                         // --- Smart Sync: Compare timestamps for customInstructions ---
-                        const localData = loadWithTimestamp('mixboard_custom_instructions');
+                        const localData = loadWithTimestamp(CUSTOM_INSTRUCTIONS_KEY);
+                        const localInstructions = normalizeCustomInstructionsValue(localData.value);
+                        const cloudInstructions = normalizeCustomInstructionsValue(settings.customInstructions);
                         const cloudModified = settings.customInstructionsModifiedAt?.toMillis?.() || 0;
 
                         if (cloudModified > localData.lastModified) {
                             // Cloud is newer, use cloud value
                             debugLog.sync(`Cloud customInstructions is newer (${cloudModified} > ${localData.lastModified}), using cloud`);
-                            if (settings.customInstructions) {
-                                saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
-                            }
-                        } else if (localData.lastModified > cloudModified && localData.value) {
+                            saveWithTimestamp(CUSTOM_INSTRUCTIONS_KEY, cloudInstructions);
+                        } else if (localData.lastModified > cloudModified && hasAnyCustomInstruction(localInstructions)) {
                             // Local is newer, sync to cloud
                             debugLog.sync(`Local customInstructions is newer (${localData.lastModified} > ${cloudModified}), syncing to cloud`);
                             updateUserSettings(u.uid, {
-                                customInstructions: localData.value,
+                                customInstructions: localInstructions,
                                 customInstructionsModified: true
                             });
                         } else if (!cloudModified && !localData.lastModified) {
                             // Neither has timestamp (legacy), fall back to content-based merge
-                            if (settings.customInstructions && settings.customInstructions !== localData.value) {
-                                saveWithTimestamp('mixboard_custom_instructions', settings.customInstructions);
-                            } else if (localData.value && !settings.customInstructions) {
+                            const cloudHasInstructions = hasAnyCustomInstruction(cloudInstructions);
+                            const localHasInstructions = hasAnyCustomInstruction(localInstructions);
+                            const sameInstructions = JSON.stringify(cloudInstructions) === JSON.stringify(localInstructions);
+
+                            if (cloudHasInstructions && !sameInstructions) {
+                                saveWithTimestamp(CUSTOM_INSTRUCTIONS_KEY, cloudInstructions);
+                            } else if (localHasInstructions && !cloudHasInstructions) {
                                 // Local has data, cloud is empty - sync local to cloud
                                 updateUserSettings(u.uid, {
-                                    customInstructions: localData.value,
+                                    customInstructions: localInstructions,
                                     customInstructionsModified: true
                                 });
                             }
@@ -374,4 +443,3 @@ export function useAppInit() {
 
     return { user, boardsList, setBoardsList, isInitialized };
 }
-

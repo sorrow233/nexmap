@@ -1,5 +1,9 @@
 
 import { chatCompletion } from './llm';
+import {
+    readCustomInstructionsFromLocalStorage,
+    extractCustomInstructionsPlainText
+} from './customInstructionsService';
 
 /**
  * Service to generate concise AI summaries for cards
@@ -106,9 +110,9 @@ OUTPUT FORMAT:
         if (!cards || cards.length === 0) return null;
 
         // Get user's custom instructions to filter them out
-        const customInstructions = localStorage.getItem('mixboard_custom_instructions') || '';
-        const customInstructionsText = customInstructions ?
-            (JSON.parse(customInstructions)?.value || customInstructions) : '';
+        const customInstructionsText = extractCustomInstructionsPlainText(
+            readCustomInstructionsFromLocalStorage()
+        );
 
         // Prepare context - filter out custom instructions content
         const context = cards.slice(0, 5).map(c => {

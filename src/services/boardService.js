@@ -2,6 +2,10 @@ import { idbGet, idbSet, idbDel } from './db/indexedDB';
 import { downloadImageAsBase64 } from './imageStore';
 import { debugLog } from '../utils/debugLogger';
 import { getSampleBoardData } from '../utils/sampleBoardsData';
+import {
+    DEFAULT_BOARD_INSTRUCTION_SETTINGS,
+    normalizeBoardInstructionSettings
+} from './customInstructionsService';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
@@ -55,7 +59,13 @@ export const createBoard = async (name) => {
     const newList = [newBoard, ...list];
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
     // Init empty board in IDB with groups field
-    await saveBoard(newBoard.id, { cards: [], connections: [], groups: [], boardPrompts: [] });
+    await saveBoard(newBoard.id, {
+        cards: [],
+        connections: [],
+        groups: [],
+        boardPrompts: [],
+        boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
+    });
     return newBoard;
 };
 
@@ -109,7 +119,11 @@ export const loadBoard = async (id) => {
     if (id && id.startsWith('sample-')) {
         debugLog.storage(`Loading sample board: ${id}`);
         const sampleData = getSampleBoardData(id);
-        return { ...sampleData, boardPrompts: [] };
+        return {
+            ...sampleData,
+            boardPrompts: [],
+            boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
+        };
     }
 
     let stored = null;
@@ -142,7 +156,13 @@ export const loadBoard = async (id) => {
 
     if (!stored) {
         debugLog.storage(`Board ${id} not found, returning empty template`);
-        return { cards: [], connections: [], groups: [], boardPrompts: [] };
+        return {
+            cards: [],
+            connections: [],
+            groups: [],
+            boardPrompts: [],
+            boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
+        };
     }
 
     // Process S3 URL images: download and convert to base64
@@ -201,7 +221,10 @@ export const loadBoard = async (id) => {
     }
 
     debugLog.storage(`Board ${id} loaded successfully`, { cards: finalBoard.cards?.length || 0 });
-    return finalBoard;
+    return {
+        ...finalBoard,
+        boardInstructionSettings: normalizeBoardInstructionSettings(finalBoard.boardInstructionSettings)
+    };
 };
 
 // Optimized loader for Search (Direct IDB access, NO S3 processing)

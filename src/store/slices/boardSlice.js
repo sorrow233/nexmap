@@ -1,4 +1,8 @@
 import { uuid } from '../../utils/uuid';
+import {
+    DEFAULT_BOARD_INSTRUCTION_SETTINGS,
+    normalizeBoardInstructionSettings
+} from '../../services/customInstructionsService';
 
 const GLOBAL_PROMPTS_KEY = 'mixboard_global_prompts';
 const DEFAULT_GLOBAL_PROMPTS = [
@@ -14,6 +18,7 @@ const loadGlobalPrompts = () => {
 
 export const createBoardSlice = (set, get) => ({
     boardPrompts: [],
+    boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS),
     globalPrompts: loadGlobalPrompts(),
     globalPromptsModifiedAt: Date.now(),
 
@@ -64,4 +69,18 @@ export const createBoardSlice = (set, get) => ({
 
     // Set all board prompts (e.g. when loading board data)
     setBoardPrompts: (prompts) => set({ boardPrompts: prompts || [] }),
+
+    setBoardInstructionSettings: (settings) => {
+        set({ boardInstructionSettings: normalizeBoardInstructionSettings(settings) });
+    },
+
+    updateBoardInstructionSettings: (updater) => {
+        set(state => {
+            const current = normalizeBoardInstructionSettings(state.boardInstructionSettings);
+            const nextRaw = typeof updater === 'function' ? updater(current) : updater;
+            return {
+                boardInstructionSettings: normalizeBoardInstructionSettings(nextRaw)
+            };
+        });
+    },
 });

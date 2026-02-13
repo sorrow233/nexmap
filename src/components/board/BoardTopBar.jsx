@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { LayoutGrid, Undo2, Redo2 } from 'lucide-react';
+import { LayoutGrid, Undo2, Redo2, Sparkles } from 'lucide-react';
 import { useTemporalStore } from '../../store/useStore';
 
-export default function BoardTopBar({ onBack, board, onUpdateTitle }) {
+export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstructions }) {
     const undo = useTemporalStore((state) => state.undo);
     const redo = useTemporalStore((state) => state.redo);
     const pastStates = useTemporalStore((state) => state.pastStates);
@@ -43,6 +43,15 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle }) {
                     >
                         <Redo2 size={18} />
                     </button>
+                    {typeof onOpenInstructions === 'function' && (
+                        <button
+                            onClick={onOpenInstructions}
+                            className="p-2 rounded-xl text-cyan-600 hover:bg-cyan-50 transition-all"
+                            title="Canvas Instruction Selection"
+                        >
+                            <Sparkles size={18} />
+                        </button>
+                    )}
                 </div>
                 <div className="hidden sm:block h-5 md:h-6 w-[1px] bg-slate-200 mx-1 md:mx-2" />
                 <div className="hidden sm:block relative flex items-center group">

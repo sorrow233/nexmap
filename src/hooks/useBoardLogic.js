@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
@@ -9,6 +9,14 @@ import { useToast } from '../components/Toast';
 // import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
+import { recommendBoardInstructionIds } from '../services/ai/boardInstructionRecommender';
+import {
+    DEFAULT_BOARD_INSTRUCTION_SETTINGS,
+    normalizeBoardInstructionSettings,
+    readCustomInstructionsFromLocalStorage,
+    normalizeCustomInstructionsValue,
+    saveBoardInstructionSettingsCache
+} from '../services/customInstructionsService';
 
 export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -26,6 +34,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
     const boardPrompts = useStore(state => state.boardPrompts);
+    const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const globalPrompts = useStore(state => state.globalPrompts);
     const isHydratingFromCloud = useStore(state => state.isHydratingFromCloud);
 
@@ -42,6 +51,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     const setSelectedIds = useStore(state => state.setSelectedIds);
     const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
     const setLastSavedAt = useStore(state => state.setLastSavedAt);
+    const updateBoardInstructionSettings = useStore(state => state.updateBoardInstructionSettings);
 
     // Custom Hooks
     const cardCreator = useCardCreator();
@@ -58,6 +68,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     // Derived State
     const currentBoard = boardsList.find(b => b.id === currentBoardId);
     const hasBackgroundImage = !!currentBoard?.backgroundImage;
+    const conversationCount = cards.reduce((total, card) => {
+        const messages = card?.data?.messages || [];
+        const userCount = messages.filter(msg => msg?.role === 'user').length;
+        return total + userCount;
+    }, 0);
+    const normalizedBoardInstructionSettings = useMemo(
+        () => normalizeBoardInstructionSettings(boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS),
+        [boardInstructionSettings]
+    );
 
     // Thumbnail Capture REMOVED per user request
     const canvasContainerRef = useRef(null);
@@ -70,6 +89,11 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
     const [tempInstructions, setTempInstructions] = useState([]);
     const [isAgentRunning, setIsAgentRunning] = useState(false);
+    const [isInstructionPanelOpen, setIsInstructionPanelOpen] = useState(false);
+    const [isAutoRecommending, setIsAutoRecommending] = useState(false);
+    const [customInstructionCatalog, setCustomInstructionCatalog] = useState(
+        normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage())
+    );
 
     // --- PASTE LOGIC ---
 
@@ -107,10 +131,10 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     }, [currentBoardId, boardsList]);
 
     // Keep a ref of the latest data for unmount saving
-    const latestBoardDataRef = useRef({ cards, connections, groups, boardPrompts });
+    const latestBoardDataRef = useRef({ cards, connections, groups, boardPrompts, boardInstructionSettings });
     useEffect(() => {
-        latestBoardDataRef.current = { cards, connections, groups, boardPrompts };
-    }, [cards, connections, groups, boardPrompts]);
+        latestBoardDataRef.current = { cards, connections, groups, boardPrompts, boardInstructionSettings };
+    }, [cards, connections, groups, boardPrompts, boardInstructionSettings]);
 
     // Autosave Logic (Debounced)
     const lastSavedState = useRef('');
@@ -133,7 +157,10 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 cards: data.cards.map(c => ({ ...c, data: { ...c.data } })),
                 connections: data.connections || [],
                 groups: data.groups || [],
-                boardPrompts: data.boardPrompts || []
+                boardPrompts: data.boardPrompts || [],
+                boardInstructionSettings: normalizeBoardInstructionSettings(
+                    data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                )
             };
             lastSavedState.current = JSON.stringify(stateCustom);
 
@@ -154,19 +181,31 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         if (isHydratingFromCloud) return;
         if (isReadOnly) return; // CRITICAL: Skip all writes in Read-Only mode
 
-        if (currentBoardId && cards.length > 0) {
+        const hasInstructionState =
+            normalizedBoardInstructionSettings.enabledInstructionIds.length > 0 ||
+            normalizedBoardInstructionSettings.autoEnabledInstructionIds.length > 0 ||
+            normalizedBoardInstructionSettings.autoSelection.lastRunAt > 0;
+
+        if (currentBoardId && (cards.length > 0 || boardPrompts.length > 0 || hasInstructionState)) {
             const currentStateObj = {
                 cards: cards.map(c => ({ ...c, data: { ...c.data } })),
                 connections: connections || [],
                 groups: groups || [],
-                boardPrompts: boardPrompts || []
+                boardPrompts: boardPrompts || [],
+                boardInstructionSettings: normalizedBoardInstructionSettings
             };
             const currentState = JSON.stringify(currentStateObj);
 
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
-                performSave({ cards, connections, groups, boardPrompts });
+                performSave({
+                    cards,
+                    connections,
+                    groups,
+                    boardPrompts,
+                    boardInstructionSettings: normalizedBoardInstructionSettings
+                });
             }, 1000);
 
             // Cloud sync (keep existing logic)
@@ -175,7 +214,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 cloudTimeout = setTimeout(async () => {
                     setCloudSyncStatus('syncing');
                     try {
-                        await saveBoardToCloud(user.uid, currentBoardId, { cards, connections, groups, boardPrompts });
+                        await saveBoardToCloud(user.uid, currentBoardId, {
+                            cards,
+                            connections,
+                            groups,
+                            boardPrompts,
+                            boardInstructionSettings: normalizedBoardInstructionSettings
+                        });
                         setCloudSyncStatus('synced');
                         debugLog.sync(`Cloud autosave complete for board: ${currentBoardId}`);
                     } catch (e) {
@@ -191,7 +236,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 if (cloudTimeout) clearTimeout(cloudTimeout);
             };
         }
-    }, [cards, connections, groups, boardPrompts, currentBoardId, user, isBoardLoading, isHydratingFromCloud, performSave, isReadOnly]);
+    }, [cards, connections, groups, boardPrompts, boardInstructionSettings, currentBoardId, user, isBoardLoading, isHydratingFromCloud, performSave, isReadOnly, toast]);
 
     // 2. Unmount / Navigation Save Effect
     useEffect(() => {
@@ -202,12 +247,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 cards: data.cards.map(c => ({ ...c, data: { ...c.data } })),
                 connections: data.connections || [],
                 groups: data.groups || [],
-                boardPrompts: data.boardPrompts || []
+                boardPrompts: data.boardPrompts || [],
+                boardInstructionSettings: normalizeBoardInstructionSettings(
+                    data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                )
             };
             const currentState = JSON.stringify(currentStateObj);
 
             // If strictly different from last saved, force save
-            if (currentState !== lastSavedState.current && data.cards.length > 0) {
+            if (currentState !== lastSavedState.current && currentBoardId) {
                 console.log('[BoardLogic] Unmount detected with unsaved changes. Saving immediately.');
                 // We call the imported saveBoard directly or the helper. 
                 // Since performSave relies on closure variables that might be stale in cleanup if not careful,
@@ -215,7 +263,12 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 // Re-implementing the core synchronous part of save here to be 100% safe
 
                 // Note: We cannot execute async await here effectively, but saveBoard does synchronous LS update first.
-                saveBoard(currentBoardId, data);
+                saveBoard(currentBoardId, {
+                    ...data,
+                    boardInstructionSettings: normalizeBoardInstructionSettings(
+                        data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                    )
+                });
             }
         };
     }, [currentBoardId]);
@@ -248,6 +301,117 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
     }, [handleGlobalPaste]);
+
+    // Keep active board instruction settings cache in localStorage (used by AIManager sync read)
+    useEffect(() => {
+        if (!currentBoardId) return;
+        saveBoardInstructionSettingsCache(currentBoardId, normalizedBoardInstructionSettings);
+    }, [currentBoardId, normalizedBoardInstructionSettings]);
+
+    const refreshCustomInstructionCatalog = useCallback(() => {
+        setCustomInstructionCatalog(normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage()));
+    }, []);
+
+    useEffect(() => {
+        if (isInstructionPanelOpen) {
+            refreshCustomInstructionCatalog();
+        }
+    }, [isInstructionPanelOpen, refreshCustomInstructionCatalog]);
+
+    useEffect(() => {
+        const onStorage = (e) => {
+            if (e.key === 'mixboard_custom_instructions') {
+                refreshCustomInstructionCatalog();
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
+    }, [refreshCustomInstructionCatalog]);
+
+    const runAutoInstructionRecommendation = useCallback(async (force = false) => {
+        if (isReadOnly || !currentBoardId || isAutoRecommending) return;
+
+        const latestCatalog = normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage());
+        setCustomInstructionCatalog(latestCatalog);
+
+        const optionalCandidates = (latestCatalog.items || []).filter(
+            item => item.enabled !== false && item.isGlobal !== true
+        );
+        if (optionalCandidates.length === 0) return;
+
+        if (!force) {
+            if (conversationCount <= 2) return;
+            if (normalizedBoardInstructionSettings.autoSelection.status === 'running') return;
+
+            const lastCount = normalizedBoardInstructionSettings.autoSelection.lastConversationCount || 0;
+            const hasEnoughNewConversation = conversationCount >= Math.max(3, lastCount + 3);
+            if (!hasEnoughNewConversation) return;
+        }
+
+        setIsAutoRecommending(true);
+        updateBoardInstructionSettings(prev => ({
+            ...prev,
+            autoSelection: {
+                ...(prev.autoSelection || {}),
+                status: 'running',
+                lastError: ''
+            }
+        }));
+
+        try {
+            const state = useStore.getState();
+            const analysisConfig = state.getRoleConfig?.('analysis') || state.getRoleConfig?.('chat');
+            const recommendedIds = await recommendBoardInstructionIds({
+                cards,
+                instructions: latestCatalog.items || [],
+                config: analysisConfig
+            });
+
+            updateBoardInstructionSettings(prev => {
+                const current = normalizeBoardInstructionSettings(prev);
+                const next = {
+                    ...current,
+                    autoEnabledInstructionIds: recommendedIds,
+                    autoSelection: {
+                        status: 'done',
+                        lastRunAt: Date.now(),
+                        lastConversationCount: conversationCount,
+                        lastError: ''
+                    }
+                };
+
+                if (current.autoSelectionMode !== 'manual') {
+                    next.enabledInstructionIds = recommendedIds;
+                }
+                return next;
+            });
+        } catch (error) {
+            updateBoardInstructionSettings(prev => ({
+                ...normalizeBoardInstructionSettings(prev),
+                autoSelection: {
+                    ...(normalizeBoardInstructionSettings(prev).autoSelection || {}),
+                    status: 'error',
+                    lastError: error?.message || 'auto_recommend_failed'
+                }
+            }));
+        } finally {
+            setIsAutoRecommending(false);
+        }
+    }, [
+        cards,
+        conversationCount,
+        currentBoardId,
+        isAutoRecommending,
+        isReadOnly,
+        normalizedBoardInstructionSettings,
+        updateBoardInstructionSettings
+    ]);
+
+    useEffect(() => {
+        if (conversationCount > 2) {
+            runAutoInstructionRecommendation(false);
+        }
+    }, [conversationCount, runAutoInstructionRecommendation]);
 
 
     // --- HANDLERS ---
@@ -407,6 +571,52 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         handleChatModalGenerate(cardId, prompt.text, []);
     };
 
+    const handleOpenInstructionPanel = () => {
+        if (isReadOnly) return;
+        refreshCustomInstructionCatalog();
+        setIsInstructionPanelOpen(true);
+    };
+
+    const handleToggleBoardInstruction = (instructionId, enabled) => {
+        if (isReadOnly) return;
+        updateBoardInstructionSettings(prev => {
+            const current = normalizeBoardInstructionSettings(prev);
+            const enabledSet = new Set(current.enabledInstructionIds);
+            if (enabled) enabledSet.add(instructionId);
+            else enabledSet.delete(instructionId);
+
+            return {
+                ...current,
+                autoSelectionMode: 'manual',
+                enabledInstructionIds: Array.from(enabledSet)
+            };
+        });
+    };
+
+    const handleUseManualInstructionMode = () => {
+        if (isReadOnly) return;
+        updateBoardInstructionSettings(prev => ({
+            ...normalizeBoardInstructionSettings(prev),
+            autoSelectionMode: 'manual'
+        }));
+    };
+
+    const handleUseAutoInstructionMode = () => {
+        if (isReadOnly) return;
+        updateBoardInstructionSettings(prev => {
+            const current = normalizeBoardInstructionSettings(prev);
+            return {
+                ...current,
+                autoSelectionMode: 'auto',
+                enabledInstructionIds: [...current.autoEnabledInstructionIds]
+            };
+        });
+    };
+
+    const handleRunAutoInstructionRecommendNow = async () => {
+        await runAutoInstructionRecommendation(true);
+    };
+
     // Directed Generation (Custom Sprout)
     const [customSproutPrompt, setCustomSproutPrompt] = useState({ isOpen: false, sourceId: null, x: 0, y: 0 });
 
@@ -451,12 +661,17 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         isBoardLoading,
         favoritesLastUpdate,
         boardPrompts,
+        boardInstructionSettings: normalizedBoardInstructionSettings,
+        customInstructionCatalog,
+        conversationCount,
         currentBoard,
         cloudSyncStatus,
         globalPrompts,
         globalImages,
         clipboard,
         isSettingsOpen,
+        isInstructionPanelOpen,
+        isAutoRecommending,
         quickPrompt,
         customSproutPrompt, // Exported State
         tempInstructions,
@@ -475,6 +690,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         setCustomSproutPrompt,
         setExpandedCardId,
         setTempInstructions,
+        setIsInstructionPanelOpen,
         navigate,
         toggleFavorite,
         updateCardFull,
@@ -499,6 +715,11 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         handlePromptDropOnChat,
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,
+        handleOpenInstructionPanel,
+        handleToggleBoardInstruction,
+        handleUseManualInstructionMode,
+        handleUseAutoInstructionMode,
+        handleRunAutoInstructionRecommendNow,
         handleQuickSprout,
         handleSprout,
         handleExpandTopics,

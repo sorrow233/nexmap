@@ -44,6 +44,11 @@ import {
     loadViewportState,
     loadBoardDataForSearch
 } from './services/storage';
+import {
+    DEFAULT_BOARD_INSTRUCTION_SETTINGS,
+    normalizeBoardInstructionSettings,
+    saveBoardInstructionSettingsCache
+} from './services/customInstructionsService';
 
 export default function App() {
     return (
@@ -63,7 +68,7 @@ function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
-    const { setCards, setConnections, setGroups, setBoardPrompts } = useStore();
+    const { setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings } = useStore();
     const { createCardWithText } = useCardCreator();
 
     // Dialog State
@@ -166,7 +171,15 @@ function AppContent() {
 
         const newBoard = await createBoard(name);
         setBoardsList(prev => [newBoard, ...prev]);
-        if (user) saveBoardToCloud(user.uid, newBoard.id, { cards: [], connections: [], groups: [], boardPrompts: [] });
+        if (user) {
+            saveBoardToCloud(user.uid, newBoard.id, {
+                cards: [],
+                connections: [],
+                groups: [],
+                boardPrompts: [],
+                boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
+            });
+        }
 
         navigate(`/board/${newBoard.id}`);
 
@@ -197,6 +210,7 @@ function AppContent() {
                 setCards([]);
                 setConnections([]);
                 setGroups([]);
+                setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
 
                 try {
                     // 2. Load new data
@@ -213,6 +227,11 @@ function AppContent() {
                     setConnections(data.connections || []);
                     setGroups(data.groups || []);
                     setBoardPrompts(data.boardPrompts || []);
+                    const boardInstructionSettings = normalizeBoardInstructionSettings(
+                        data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                    );
+                    setBoardInstructionSettings(boardInstructionSettings);
+                    saveBoardInstructionSettingsCache(currentBoardId, boardInstructionSettings);
                     storageSetCurrentBoardId(currentBoardId);
 
                     // 3. Restore viewport state
@@ -232,7 +251,7 @@ function AppContent() {
         return () => {
             isCancelled = true;
         };
-    }, [currentBoardId]); // Rely on currentBoardId changing
+    }, [currentBoardId, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings]); // Rely on currentBoardId changing
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
@@ -273,8 +292,18 @@ function AppContent() {
 
     const handleBackToGallery = useCallback(async () => {
         // Save handled by Autosave in BoardPage mostly
-        const { cards, connections, groups, boardPrompts } = useStore.getState();
-        if (currentBoardId) await saveBoard(currentBoardId, { cards, connections, groups, boardPrompts });
+        const { cards, connections, groups, boardPrompts, boardInstructionSettings } = useStore.getState();
+        if (currentBoardId) {
+            await saveBoard(currentBoardId, {
+                cards,
+                connections,
+                groups,
+                boardPrompts,
+                boardInstructionSettings: normalizeBoardInstructionSettings(
+                    boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                )
+            });
+        }
 
         // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
         const freshBoards = getBoardsList();
@@ -284,7 +313,8 @@ function AppContent() {
         setCards([]);
         setConnections([]);
         setGroups([]);
-    }, [currentBoardId, navigate, setBoardsList, setCards, setConnections, setGroups]);
+        setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
+    }, [currentBoardId, navigate, setBoardsList, setCards, setConnections, setGroups, setBoardInstructionSettings]);
 
     const handleUpdateBoardTitle = useCallback(async (newTitle) => {
         if (!currentBoardId || !newTitle.trim()) return;

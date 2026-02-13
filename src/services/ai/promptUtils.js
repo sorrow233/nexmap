@@ -2,6 +2,35 @@
  * Centralized utility for generating system prompts.
  */
 
+const normalizeInstructionsForPrompt = (customInstructions) => {
+    if (!customInstructions) return [];
+
+    if (Array.isArray(customInstructions)) {
+        return customInstructions
+            .map(item => {
+                if (typeof item === 'string') {
+                    const content = item.trim();
+                    return content ? { title: '', content } : null;
+                }
+                if (!item || typeof item !== 'object') return null;
+                const content = String(item.content || item.text || '').trim();
+                if (!content) return null;
+                return {
+                    title: String(item.title || item.name || item.text || '').trim(),
+                    content
+                };
+            })
+            .filter(Boolean);
+    }
+
+    if (typeof customInstructions === 'string') {
+        const text = customInstructions.trim();
+        return text ? [{ title: '', content: text }] : [];
+    }
+
+    return [];
+};
+
 /**
  * Gets the current system prompt including time reference.
  * @returns {Object} System message object { role: 'system', content: string }
@@ -57,12 +86,18 @@ INCORRECT Example (Do NOT do this):
 1.1 Attribute: Value
 1.2 Description: Text`;
 
+    const instructionList = normalizeInstructionsForPrompt(customInstructions);
+
     // Append user's custom instructions if provided
-    if (customInstructions && customInstructions.trim()) {
+    if (instructionList.length > 0) {
+        const formattedInstructions = instructionList
+            .map((item, idx) => item.title ? `${idx + 1}. [${item.title}] ${item.content}` : `${idx + 1}. ${item.content}`)
+            .join('\n');
+
         content += `
 
 [User Custom Instructions]
-${customInstructions.trim()}`;
+${formattedInstructions}`;
     }
 
     return {

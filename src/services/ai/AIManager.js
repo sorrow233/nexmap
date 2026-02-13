@@ -2,6 +2,7 @@ import { uuid } from '../../utils/uuid.js';
 import { getSystemPrompt } from './promptUtils.js';
 import { streamChatCompletion, imageGeneration } from '../llm.js';
 import { userStatsService } from '../stats/userStatsService.js';
+import { resolveActiveInstructionsForCurrentBoard } from '../customInstructionsService.js';
 
 /**
  * Task Priorities
@@ -175,11 +176,11 @@ class AIManager {
             const { messages, model, temperature } = task.payload;
             let fullText = '';
 
-            // Get user's custom instructions from localStorage
-            const customInstructions = localStorage.getItem('mixboard_custom_instructions') || '';
+            // Resolve active instructions: global + current-board enabled optional instructions
+            const activeInstructions = resolveActiveInstructionsForCurrentBoard();
 
             // Inject time awareness and custom instructions into ALL chat requests
-            const timeSystemMsg = getSystemPrompt(customInstructions);
+            const timeSystemMsg = getSystemPrompt(activeInstructions);
             const enhancedMessages = [timeSystemMsg, ...messages];
 
             // Wrapped streamChatCompletion that respects AbortSignal
