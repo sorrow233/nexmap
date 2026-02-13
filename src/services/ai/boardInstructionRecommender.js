@@ -49,8 +49,50 @@ const parseJsonResponse = (raw) => {
     try {
         return JSON.parse(clean);
     } catch {
+        const firstBrace = clean.indexOf('{');
+        const lastBrace = clean.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            const candidate = clean.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(candidate);
+            } catch {
+                return null;
+            }
+        }
         return null;
     }
+};
+
+const tokenize = (text) => String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, ' ')
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token.length >= 2);
+
+const fallbackSelectByKeyword = (candidates, context, maxCount = 6) => {
+    const contextTokens = new Set(tokenize(context));
+    if (contextTokens.size === 0) return [];
+
+    const ranked = candidates
+        .map(candidate => {
+            const candidateTokens = new Set(tokenize(`${candidate.title} ${candidate.content}`));
+            if (candidateTokens.size === 0) return { id: candidate.id, score: 0 };
+
+            let hit = 0;
+            candidateTokens.forEach(token => {
+                if (contextTokens.has(token)) hit += 1;
+            });
+
+            return {
+                id: candidate.id,
+                score: hit / Math.sqrt(candidateTokens.size)
+            };
+        })
+        .filter(item => item.score > 0.01)
+        .sort((a, b) => b.score - a.score);
+
+    return ranked.slice(0, maxCount).map(item => item.id);
 };
 
 export async function recommendBoardInstructionIds({
@@ -59,8 +101,6 @@ export async function recommendBoardInstructionIds({
     config,
     model = null
 }) {
-    if (!config) return [];
-
     const candidates = (instructions || [])
         .filter(item => item && item.isGlobal !== true && item.enabled !== false)
         .map(item => ({
@@ -74,6 +114,11 @@ export async function recommendBoardInstructionIds({
 
     const context = buildBoardConversationDigest(cards);
     if (!context || context.trim().length < 10) return [];
+    const fallbackIds = fallbackSelectByKeyword(candidates, context, 6);
+
+    if (!config) {
+        return fallbackIds;
+    }
 
     const prompt = `你是一个“画布对话指令路由器”。
 任务：根据当前画布的真实对话内容，从候选指令中选择最应该启用的 1~6 条。
@@ -115,9 +160,11 @@ ${context}
             result.push(normalized);
         });
 
-        return result.slice(0, 6);
+        const finalIds = result.slice(0, 6);
+        if (finalIds.length > 0) return finalIds;
+        return fallbackIds;
     } catch (error) {
         console.error('[BoardInstructionRecommender] Failed:', error);
-        return [];
+        return fallbackIds;
     }
 }

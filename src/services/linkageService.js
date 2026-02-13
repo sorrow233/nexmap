@@ -1,6 +1,6 @@
 import { debugLog } from '../utils/debugLogger';
 import { auth } from './firebase';
-import { updateUserSettings } from './syncService';
+import { loadUserSettings, updateUserSettings } from './syncService';
 
 /**
  * LinkageService
@@ -12,6 +12,40 @@ export const TARGET_API_URL = 'https://flowstudio.catzz.work/api/import';
 
 // localStorage key for FlowStudio user ID
 const FLOWSTUDIO_USER_ID_KEY = 'flowstudio_user_id';
+const FLOWSTUDIO_USER_ID_KEY_PREFIX = 'flowstudio_user_id:';
+
+const getCurrentAppUserUid = () => auth?.currentUser?.uid || null;
+const getScopedFlowStudioKey = (uid) => `${FLOWSTUDIO_USER_ID_KEY_PREFIX}${uid}`;
+
+const cacheFlowStudioUserId = (userId) => {
+    if (!userId) return;
+
+    localStorage.setItem(FLOWSTUDIO_USER_ID_KEY, userId);
+
+    const appUid = getCurrentAppUserUid();
+    if (appUid) {
+        localStorage.setItem(getScopedFlowStudioKey(appUid), userId);
+    }
+};
+
+const readCachedFlowStudioUserId = () => {
+    const appUid = getCurrentAppUserUid();
+    if (appUid) {
+        const scoped = localStorage.getItem(getScopedFlowStudioKey(appUid));
+        if (scoped) {
+            if (localStorage.getItem(FLOWSTUDIO_USER_ID_KEY) !== scoped) {
+                localStorage.setItem(FLOWSTUDIO_USER_ID_KEY, scoped);
+            }
+            return scoped;
+        }
+    }
+
+    const legacy = localStorage.getItem(FLOWSTUDIO_USER_ID_KEY);
+    if (legacy && appUid) {
+        localStorage.setItem(getScopedFlowStudioKey(appUid), legacy);
+    }
+    return legacy;
+};
 
 export const linkageService = {
     /**
@@ -19,7 +53,34 @@ export const linkageService = {
      * @returns {string|null}
      */
     getFlowStudioUserId: () => {
-        return localStorage.getItem(FLOWSTUDIO_USER_ID_KEY);
+        return readCachedFlowStudioUserId();
+    },
+
+    /**
+     * Ensure FlowStudio UID is available.
+     * Fallback to cloud settings when local cache is missing.
+     * @returns {Promise<string|null>}
+     */
+    ensureFlowStudioUserId: async () => {
+        const localUserId = readCachedFlowStudioUserId();
+        if (localUserId) return localUserId;
+
+        const appUid = getCurrentAppUserUid();
+        if (!appUid) return null;
+
+        try {
+            const settings = await loadUserSettings(appUid);
+            const cloudUserId = settings?.flowStudioUserId?.trim?.() || '';
+            if (cloudUserId) {
+                cacheFlowStudioUserId(cloudUserId);
+                debugLog.sync('FlowStudio UID restored on-demand from cloud:', cloudUserId);
+                return cloudUserId;
+            }
+        } catch (error) {
+            debugLog.error('Failed to restore FlowStudio UID from cloud', error);
+        }
+
+        return null;
     },
 
     /**
@@ -27,16 +88,27 @@ export const linkageService = {
      * Also syncs to cloud for cross-device access
      * @param {string} userId - FlowStudio Firebase UID
      */
-    setFlowStudioUserId: (userId) => {
-        localStorage.setItem(FLOWSTUDIO_USER_ID_KEY, userId);
+    setFlowStudioUserId: async (userId) => {
+        const normalizedUserId = userId?.trim?.() || '';
+        if (!normalizedUserId) {
+            return { ok: false, reason: 'empty_user_id' };
+        }
+
+        cacheFlowStudioUserId(normalizedUserId);
 
         // 同步到云端
         if (auth?.currentUser) {
-            updateUserSettings(auth.currentUser.uid, {
-                flowStudioUserId: userId
+            const result = await updateUserSettings(auth.currentUser.uid, {
+                flowStudioUserId: normalizedUserId
             });
-            debugLog.sync('FlowStudio UID synced to cloud:', userId);
+            if (!result?.ok) {
+                debugLog.error('FlowStudio UID cloud sync failed:', result?.reason || 'unknown');
+                return result;
+            }
+            debugLog.sync('FlowStudio UID synced to cloud:', normalizedUserId);
+            return result;
         }
+        return { ok: true, reason: 'local_only' };
     },
 
     /**
@@ -49,7 +121,7 @@ export const linkageService = {
         if (!text) return { success: false };
 
         try {
-            const userId = localStorage.getItem(FLOWSTUDIO_USER_ID_KEY);
+            const userId = readCachedFlowStudioUserId();
             debugLog.ui('Sending to FlowStudio', { textLength: text.length, hasUserId: !!userId });
 
             const response = await fetch(TARGET_API_URL, {

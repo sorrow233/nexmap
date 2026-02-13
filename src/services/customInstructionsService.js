@@ -18,7 +18,9 @@ export const DEFAULT_BOARD_INSTRUCTION_SETTINGS = Object.freeze({
         status: 'idle', // 'idle' | 'running' | 'done' | 'error'
         lastRunAt: 0,
         lastConversationCount: 0,
-        lastError: ''
+        lastError: '',
+        lastResultCount: 0,
+        lastTrigger: 'auto' // 'auto' | 'manual'
     }
 });
 
@@ -173,8 +175,38 @@ export const normalizeBoardInstructionSettings = (value) => {
             status: ['idle', 'running', 'done', 'error'].includes(autoSelection.status) ? autoSelection.status : 'idle',
             lastRunAt: Number(autoSelection.lastRunAt) || 0,
             lastConversationCount: Number(autoSelection.lastConversationCount) || 0,
-            lastError: typeof autoSelection.lastError === 'string' ? autoSelection.lastError : ''
+            lastError: typeof autoSelection.lastError === 'string' ? autoSelection.lastError : '',
+            lastResultCount: Math.max(0, Number(autoSelection.lastResultCount) || 0),
+            lastTrigger: autoSelection.lastTrigger === 'manual' ? 'manual' : 'auto'
         }
+    };
+};
+
+export const getInstructionCatalogBreakdown = (allInstructionsValue) => {
+    const allInstructions = normalizeCustomInstructionsValue(allInstructionsValue).items.filter(i => i.enabled !== false);
+    const globalInstructions = allInstructions.filter(i => i.isGlobal === true);
+    const optionalInstructions = allInstructions.filter(i => i.isGlobal !== true);
+    const optionalIdSet = new Set(optionalInstructions.map(item => item.id));
+
+    return {
+        allInstructions,
+        globalInstructions,
+        optionalInstructions,
+        optionalIdSet
+    };
+};
+
+export const sanitizeBoardInstructionSettingsForCatalog = (boardInstructionSettings, allInstructionsValue) => {
+    const settings = normalizeBoardInstructionSettings(boardInstructionSettings);
+    const { optionalIdSet } = getInstructionCatalogBreakdown(allInstructionsValue);
+
+    const sanitizedEnabled = settings.enabledInstructionIds.filter(id => optionalIdSet.has(id));
+    const sanitizedAuto = settings.autoEnabledInstructionIds.filter(id => optionalIdSet.has(id));
+
+    return {
+        ...settings,
+        enabledInstructionIds: sanitizedEnabled,
+        autoEnabledInstructionIds: sanitizedAuto
     };
 };
 
@@ -211,13 +243,11 @@ const getCurrentBoardId = () => {
 };
 
 export const resolveActiveInstructionsForBoard = (allInstructionsValue, boardInstructionSettings) => {
-    const allInstructions = normalizeCustomInstructionsValue(allInstructionsValue).items.filter(i => i.enabled !== false);
-    const globalInstructions = allInstructions.filter(i => i.isGlobal);
-    const optionalInstructions = allInstructions.filter(i => !i.isGlobal);
+    const { globalInstructions, optionalInstructions } = getInstructionCatalogBreakdown(allInstructionsValue);
 
     if (optionalInstructions.length === 0) return globalInstructions;
 
-    const settings = normalizeBoardInstructionSettings(boardInstructionSettings);
+    const settings = sanitizeBoardInstructionSettingsForCatalog(boardInstructionSettings, allInstructionsValue);
     const enabledIds = new Set(settings.enabledInstructionIds);
     const enabledOptional = optionalInstructions.filter(item => enabledIds.has(item.id));
 

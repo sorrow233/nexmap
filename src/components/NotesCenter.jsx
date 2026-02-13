@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Search, StickyNote, ExternalLink, Copy, Trash2, PencilLine, Save, X, RefreshCw, BarChart3 } from 'lucide-react';
+import { StickyNote, RefreshCw, FileX2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import notesService from '../services/notesService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from './Toast';
+
+// Sub-components
+import NotesStatsPanel from './notes/NotesStatsPanel';
+import NotesFilterBar from './notes/NotesFilterBar';
+import NoteCard from './notes/NoteCard';
+import NoteEditorModal from './notes/NoteEditorModal';
+import NoteDeleteDialog from './notes/NoteDeleteDialog';
 
 const REFRESH_INTERVAL_MS = 20000;
 
@@ -25,7 +33,7 @@ const FALLBACK_LABELS = {
     refresh: 'Refresh',
     refreshHint: 'Auto-sync every 20s',
     empty: 'No notes yet',
-    emptyDesc: 'Create one note in a board and it will be listed here.',
+    emptyDesc: 'Create a note in any board and it will appear here automatically.',
     noMatch: 'No matching notes',
     noMatchDesc: 'Try another keyword or clear filters.',
     loadError: 'Failed to load notes index.',
@@ -59,30 +67,11 @@ const FALLBACK_LABELS = {
     syncing: 'Syncing...'
 };
 
-const sortOptions = [
-    { value: 'recent', labelKey: 'sortRecent' },
-    { value: 'oldest', labelKey: 'sortOldest' },
-    { value: 'title', labelKey: 'sortTitle' },
-    { value: 'length', labelKey: 'sortLength' }
-];
-
-const formatDateTime = (ts) => {
-    if (!ts) return '-';
-    return new Date(ts).toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-};
-
 const copyToClipboard = async (text) => {
     if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
         return true;
     }
-
     const el = document.createElement('textarea');
     el.value = text;
     el.setAttribute('readonly', '');
@@ -95,6 +84,11 @@ const copyToClipboard = async (text) => {
     return success;
 };
 
+const listContainerVariants = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.04 } }
+};
+
 export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetadata }) {
     const navigate = useNavigate();
     const { t } = useLanguage();
@@ -105,6 +99,7 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
         ...(t.notesCenter || {})
     }), [t.notesCenter]);
 
+    // --- State ---
     const [notes, setNotes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -113,6 +108,7 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
     const [query, setQuery] = useState('');
     const [boardFilter, setBoardFilter] = useState('all');
     const [sortMode, setSortMode] = useState('recent');
+    const [viewMode, setViewMode] = useState('grid');
 
     const [editingNote, setEditingNote] = useState(null);
     const [draftContent, setDraftContent] = useState('');
@@ -129,19 +125,17 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
     useEffect(() => {
         return () => {
             isMountedRef.current = false;
-            if (copyTimerRef.current) {
-                clearTimeout(copyTimerRef.current);
-            }
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
         };
     }, []);
 
+    // --- Data fetching ---
     const refreshNotes = useCallback(async ({ background = false } = {}) => {
         if (isRefreshingRef.current) {
             refreshQueuedRef.current = true;
             return;
         }
         isRefreshingRef.current = true;
-
         if (background) {
             if (isMountedRef.current) setIsRefreshing(true);
         } else {
@@ -156,12 +150,8 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
             }
         } catch (error) {
             console.error('[NotesCenter] Failed to refresh notes', error);
-            if (isMountedRef.current) {
-                setErrorMessage(labels.loadError);
-            }
-            if (!background && isMountedRef.current) {
-                toast.error(labels.loadError);
-            }
+            if (isMountedRef.current) setErrorMessage(labels.loadError);
+            if (!background && isMountedRef.current) toast.error(labels.loadError);
         } finally {
             if (background) {
                 if (isMountedRef.current) setIsRefreshing(false);
@@ -169,7 +159,6 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
                 if (isMountedRef.current) setIsLoading(false);
             }
             isRefreshingRef.current = false;
-
             if (refreshQueuedRef.current && isMountedRef.current) {
                 refreshQueuedRef.current = false;
                 refreshNotes({ background: true });
@@ -177,9 +166,7 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
         }
     }, [boardsList, labels.loadError, toast]);
 
-    useEffect(() => {
-        refreshNotes();
-    }, [refreshNotes]);
+    useEffect(() => { refreshNotes(); }, [refreshNotes]);
 
     useEffect(() => {
         const handleUpdates = () => refreshNotes({ background: true });
@@ -194,28 +181,16 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
                 refreshNotes({ background: true });
             }
         };
-
         window.addEventListener('storage', handleStorage);
         return () => window.removeEventListener('storage', handleStorage);
     }, [refreshNotes]);
 
     useEffect(() => {
         const handleFocus = () => refreshNotes({ background: true });
-        const handleVisibility = () => {
-            if (!document.hidden) {
-                refreshNotes({ background: true });
-            }
-        };
-
-        const interval = setInterval(() => {
-            if (!document.hidden) {
-                refreshNotes({ background: true });
-            }
-        }, REFRESH_INTERVAL_MS);
-
+        const handleVisibility = () => { if (!document.hidden) refreshNotes({ background: true }); };
+        const interval = setInterval(() => { if (!document.hidden) refreshNotes({ background: true }); }, REFRESH_INTERVAL_MS);
         window.addEventListener('focus', handleFocus);
         document.addEventListener('visibilitychange', handleVisibility);
-
         return () => {
             clearInterval(interval);
             window.removeEventListener('focus', handleFocus);
@@ -223,14 +198,12 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
         };
     }, [refreshNotes]);
 
+    // --- Filtering & sorting ---
     const boardOptions = useMemo(() => {
         const boardMap = new Map();
         notes.forEach(note => {
-            if (!boardMap.has(note.boardId)) {
-                boardMap.set(note.boardId, note.boardName);
-            }
+            if (!boardMap.has(note.boardId)) boardMap.set(note.boardId, note.boardName);
         });
-
         return Array.from(boardMap.entries())
             .map(([id, name]) => ({ id, name }))
             .sort((a, b) => a.name.localeCompare(b.name));
@@ -238,33 +211,20 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
 
     useEffect(() => {
         if (boardFilter === 'all') return;
-        const exists = boardOptions.some(option => option.id === boardFilter);
-        if (!exists) {
-            setBoardFilter('all');
-        }
+        if (!boardOptions.some(o => o.id === boardFilter)) setBoardFilter('all');
     }, [boardFilter, boardOptions]);
 
     const visibleNotes = useMemo(() => {
         const lowerQuery = query.trim().toLowerCase();
-
         const filtered = notes.filter(note => {
-            const boardPass = boardFilter === 'all' || note.boardId === boardFilter;
-            if (!boardPass) return false;
-
+            if (boardFilter !== 'all' && note.boardId !== boardFilter) return false;
             if (!lowerQuery) return true;
             return note.title.toLowerCase().includes(lowerQuery) || note.content.toLowerCase().includes(lowerQuery);
         });
-
         return [...filtered].sort((a, b) => {
-            if (sortMode === 'oldest') {
-                return (a.updatedAt || 0) - (b.updatedAt || 0);
-            }
-            if (sortMode === 'title') {
-                return a.title.localeCompare(b.title);
-            }
-            if (sortMode === 'length') {
-                return (b.charCount || 0) - (a.charCount || 0);
-            }
+            if (sortMode === 'oldest') return (a.updatedAt || 0) - (b.updatedAt || 0);
+            if (sortMode === 'title') return a.title.localeCompare(b.title);
+            if (sortMode === 'length') return (b.charCount || 0) - (a.charCount || 0);
             return (b.updatedAt || 0) - (a.updatedAt || 0);
         });
     }, [notes, query, boardFilter, sortMode]);
@@ -272,48 +232,37 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
     const isFilterActive = query.trim().length > 0 || boardFilter !== 'all' || sortMode !== 'recent';
 
     const stats = useMemo(() => {
-        const totalChars = notes.reduce((sum, note) => sum + (note.charCount || 0), 0);
-        const avgChars = notes.length > 0 ? Math.round(totalChars / notes.length) : 0;
-
+        const totalChars = notes.reduce((sum, n) => sum + (n.charCount || 0), 0);
         return {
             totalNotes: notes.length,
             sourceBoards: boardOptions.length,
             filteredCount: visibleNotes.length,
-            averageChars: avgChars
+            averageChars: notes.length > 0 ? Math.round(totalChars / notes.length) : 0
         };
     }, [notes, boardOptions.length, visibleNotes.length]);
 
-    const handleOpenNote = (note) => {
-        navigate(`/board/${note.boardId}/note/${note.id}`);
-    };
+    // --- Handlers ---
+    const handleOpenNote = useCallback((note) => navigate(`/board/${note.boardId}/note/${note.id}`), [navigate]);
+    const handleOpenBoard = useCallback((note) => navigate(`/board/${note.boardId}`), [navigate]);
 
-    const handleOpenBoard = (note) => {
-        navigate(`/board/${note.boardId}`);
-    };
-
-    const openEditor = (note) => {
+    const openEditor = useCallback((note) => {
         setEditingNote(note);
         setDraftContent(note.content || '');
-    };
+    }, []);
 
-    const closeEditor = () => {
+    const closeEditor = useCallback(() => {
         const original = editingNote?.content || '';
-        if (draftContent !== original && !window.confirm(labels.discardConfirm)) {
-            return;
-        }
+        if (draftContent !== original && !window.confirm(labels.discardConfirm)) return;
         setEditingNote(null);
         setDraftContent('');
-    };
+    }, [editingNote, draftContent, labels.discardConfirm]);
 
     const handleSaveEdit = useCallback(async () => {
         if (!editingNote) return;
-
-        const original = editingNote.content || '';
-        if (draftContent === original) {
+        if (draftContent === (editingNote.content || '')) {
             setEditingNote(null);
             return;
         }
-
         setBusyNoteId(editingNote.id);
         try {
             const updatedAt = await notesService.updateNoteContent({
@@ -322,11 +271,7 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
                 content: draftContent,
                 userId: user?.uid || null
             });
-
-            if (onUpdateBoardMetadata) {
-                await onUpdateBoardMetadata(editingNote.boardId, { updatedAt });
-            }
-
+            if (onUpdateBoardMetadata) await onUpdateBoardMetadata(editingNote.boardId, { updatedAt });
             setEditingNote(null);
             setDraftContent('');
             toast.success(labels.saveSuccess);
@@ -337,34 +282,23 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
         } finally {
             setBusyNoteId('');
         }
-    }, [draftContent, editingNote, labels.saveFailed, labels.saveSuccess, onUpdateBoardMetadata, refreshNotes, toast, user?.uid]);
+    }, [draftContent, editingNote, labels, onUpdateBoardMetadata, refreshNotes, toast, user?.uid]);
 
-    const requestDelete = (note) => {
-        setPendingDeleteNote(note);
-    };
-
-    const confirmDelete = async () => {
+    const confirmDelete = useCallback(async () => {
         if (!pendingDeleteNote) return;
-
-        const targetNote = pendingDeleteNote;
-        setBusyNoteId(targetNote.id);
-
+        const target = pendingDeleteNote;
+        setBusyNoteId(target.id);
         try {
             const updatedAt = await notesService.softDeleteNote({
-                boardId: targetNote.boardId,
-                noteId: targetNote.id,
+                boardId: target.boardId,
+                noteId: target.id,
                 userId: user?.uid || null
             });
-
-            if (onUpdateBoardMetadata) {
-                await onUpdateBoardMetadata(targetNote.boardId, { updatedAt });
-            }
-
-            if (editingNote?.id === targetNote.id) {
+            if (onUpdateBoardMetadata) await onUpdateBoardMetadata(target.boardId, { updatedAt });
+            if (editingNote?.id === target.id) {
                 setEditingNote(null);
                 setDraftContent('');
             }
-
             setPendingDeleteNote(null);
             toast.success(labels.deleteSuccess);
             refreshNotes({ background: true });
@@ -374,60 +308,52 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
         } finally {
             setBusyNoteId('');
         }
-    };
+    }, [pendingDeleteNote, editingNote, labels, onUpdateBoardMetadata, refreshNotes, toast, user?.uid]);
 
-    const handleCopy = async (note) => {
+    const handleCopy = useCallback(async (note) => {
         try {
             const success = await copyToClipboard(note.content || '');
-            if (!success) {
-                toast.error(labels.copyFailed);
-                return;
-            }
+            if (!success) { toast.error(labels.copyFailed); return; }
             setCopiedNoteId(note.id);
-            if (copyTimerRef.current) {
-                clearTimeout(copyTimerRef.current);
-            }
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
             copyTimerRef.current = setTimeout(() => {
-                if (isMountedRef.current) {
-                    setCopiedNoteId('');
-                }
+                if (isMountedRef.current) setCopiedNoteId('');
             }, 1200);
-        } catch (error) {
-            console.error('[NotesCenter] Copy failed', error);
+        } catch {
             toast.error(labels.copyFailed);
         }
-    };
+    }, [labels.copyFailed, toast]);
 
-    const handleClearFilters = () => {
+    const handleClearFilters = useCallback(() => {
         setQuery('');
         setBoardFilter('all');
         setSortMode('recent');
-    };
+    }, []);
 
-    const handleEditorKeyDown = (event) => {
+    const handleEditorKeyDown = useCallback((event) => {
         if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
             event.preventDefault();
             handleSaveEdit();
             return;
         }
-
         if (event.key === 'Escape') {
             event.preventDefault();
             closeEditor();
         }
-    };
+    }, [handleSaveEdit, closeEditor]);
 
-    const draftStats = useMemo(() => {
-        const content = draftContent || '';
-        return {
-            chars: content.length,
-            lines: content ? content.split('\n').length : 0,
-            words: content.trim() ? content.trim().split(/\s+/).length : 0
-        };
-    }, [draftContent]);
+    // --- Shared card action props ---
+    const cardActions = useMemo(() => ({
+        onOpenNote: handleOpenNote,
+        onOpenBoard: handleOpenBoard,
+        onEdit: openEditor,
+        onCopy: handleCopy,
+        onDelete: (note) => setPendingDeleteNote(note)
+    }), [handleOpenNote, handleOpenBoard, openEditor, handleCopy]);
 
     return (
         <>
+            {/* Hero Section */}
             <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1117] shadow-sm mb-7">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(79,70,229,0.15),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(14,165,233,0.12),transparent_30%),linear-gradient(140deg,rgba(255,255,255,0.85),rgba(244,247,255,0.65))] dark:bg-[radial-gradient(circle_at_15%_20%,rgba(129,140,248,0.22),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.2),transparent_30%),linear-gradient(140deg,rgba(15,17,23,0.95),rgba(17,24,39,0.82))]" />
                 <div className="relative p-6 md:p-8">
@@ -455,289 +381,135 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-                        <div className="rounded-2xl p-4 bg-white/80 dark:bg-white/5 border border-white dark:border-white/10">
-                            <div className="text-[11px] uppercase tracking-wider font-black text-slate-500 dark:text-slate-400">{labels.totalNotes}</div>
-                            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.totalNotes}</div>
-                        </div>
-                        <div className="rounded-2xl p-4 bg-white/80 dark:bg-white/5 border border-white dark:border-white/10">
-                            <div className="text-[11px] uppercase tracking-wider font-black text-slate-500 dark:text-slate-400">{labels.sourceBoards}</div>
-                            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.sourceBoards}</div>
-                        </div>
-                        <div className="rounded-2xl p-4 bg-white/80 dark:bg-white/5 border border-white dark:border-white/10">
-                            <div className="text-[11px] uppercase tracking-wider font-black text-slate-500 dark:text-slate-400">{labels.filteredCount}</div>
-                            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.filteredCount}</div>
-                        </div>
-                        <div className="rounded-2xl p-4 bg-white/80 dark:bg-white/5 border border-white dark:border-white/10">
-                            <div className="text-[11px] uppercase tracking-wider font-black text-slate-500 dark:text-slate-400">{labels.averageChars}</div>
-                            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.averageChars}</div>
-                        </div>
-                    </div>
+                    <NotesStatsPanel stats={stats} labels={labels} />
                 </div>
             </section>
 
-            <section className="rounded-[1.6rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111318] p-4 md:p-5 mb-6">
-                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_220px_200px_auto] gap-3">
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                        <Search size={16} className="text-slate-400" />
-                        <input
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder={labels.searchPlaceholder}
-                            className="w-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
-                        />
-                    </div>
+            {/* Filter Bar */}
+            <NotesFilterBar
+                query={query}
+                onQueryChange={setQuery}
+                boardFilter={boardFilter}
+                onBoardFilterChange={setBoardFilter}
+                sortMode={sortMode}
+                onSortModeChange={setSortMode}
+                boardOptions={boardOptions}
+                isFilterActive={isFilterActive}
+                onClearFilters={handleClearFilters}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                labels={labels}
+            />
 
-                    <select
-                        value={boardFilter}
-                        onChange={(e) => setBoardFilter(e.target.value)}
-                        className="px-3 py-2 rounded-xl text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 outline-none"
-                    >
-                        <option value="all">{labels.allBoards}</option>
-                        {boardOptions.map(board => (
-                            <option key={board.id} value={board.id}>{board.name}</option>
-                        ))}
-                    </select>
-
-                    <div className="flex items-center gap-2">
-                        <BarChart3 size={15} className="text-slate-400" />
-                        <select
-                            value={sortMode}
-                            onChange={(e) => setSortMode(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 outline-none"
-                        >
-                            {sortOptions.map(option => (
-                                <option key={option.value} value={option.value}>{labels[option.labelKey]}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <button
-                        onClick={handleClearFilters}
-                        disabled={!isFilterActive}
-                        className="px-4 py-2 rounded-xl text-sm font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-40"
-                    >
-                        {labels.clearFilters}
-                    </button>
-                </div>
-            </section>
-
+            {/* Notes List */}
             <section className="pb-36">
+                {/* Loading skeleton */}
                 {isLoading && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 animate-pulse">
-                        {Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="rounded-[1.6rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 h-[250px]">
+                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5' : 'flex flex-col gap-3'} animate-pulse`}>
+                        {Array.from({ length: viewMode === 'grid' ? 6 : 4 }).map((_, i) => (
+                            <div key={i} className={`rounded-[1.6rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 ${viewMode === 'grid' ? 'h-[250px]' : 'h-[80px]'}`}>
                                 <div className="h-4 w-24 bg-slate-200 dark:bg-white/10 rounded mb-3" />
                                 <div className="h-6 w-2/3 bg-slate-200 dark:bg-white/10 rounded mb-4" />
-                                <div className="h-4 w-full bg-slate-200 dark:bg-white/10 rounded mb-2" />
-                                <div className="h-4 w-5/6 bg-slate-200 dark:bg-white/10 rounded mb-2" />
-                                <div className="h-4 w-1/2 bg-slate-200 dark:bg-white/10 rounded" />
+                                {viewMode === 'grid' && (
+                                    <>
+                                        <div className="h-4 w-full bg-slate-200 dark:bg-white/10 rounded mb-2" />
+                                        <div className="h-4 w-5/6 bg-slate-200 dark:bg-white/10 rounded mb-2" />
+                                        <div className="h-4 w-1/2 bg-slate-200 dark:bg-white/10 rounded" />
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
                 )}
 
+                {/* Error */}
                 {!isLoading && errorMessage && (
                     <div className="rounded-[1.6rem] border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 p-6 text-center">
                         <p className="font-bold text-amber-700 dark:text-amber-300">{errorMessage}</p>
                         <button
                             onClick={() => refreshNotes()}
-                            className="mt-4 px-4 py-2 rounded-xl font-bold text-sm bg-amber-600 hover:bg-amber-500 text-white"
+                            className="mt-4 px-4 py-2 rounded-xl font-bold text-sm bg-amber-600 hover:bg-amber-500 text-white transition-colors"
                         >
                             {labels.retry}
                         </button>
                     </div>
                 )}
 
+                {/* Empty state */}
                 {!isLoading && !errorMessage && notes.length === 0 && (
-                    <div className="py-24 text-center text-slate-500 dark:text-slate-400">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="py-24 text-center"
+                    >
+                        <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-500/20 dark:to-violet-500/20 flex items-center justify-center">
+                            <FileX2 size={36} className="text-indigo-400 dark:text-indigo-300" />
+                        </div>
                         <div className="text-2xl font-black text-slate-900 dark:text-white mb-2">{labels.empty}</div>
-                        <p className="font-medium">{labels.emptyDesc}</p>
-                    </div>
+                        <p className="font-medium text-slate-500 dark:text-slate-400 max-w-sm mx-auto">{labels.emptyDesc}</p>
+                    </motion.div>
                 )}
 
+                {/* No match */}
                 {!isLoading && !errorMessage && notes.length > 0 && visibleNotes.length === 0 && (
-                    <div className="py-24 text-center text-slate-500 dark:text-slate-400">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="py-24 text-center"
+                    >
                         <div className="text-2xl font-black text-slate-900 dark:text-white mb-2">{labels.noMatch}</div>
-                        <p className="font-medium">{labels.noMatchDesc}</p>
-                    </div>
+                        <p className="font-medium text-slate-500 dark:text-slate-400">{labels.noMatchDesc}</p>
+                    </motion.div>
                 )}
 
+                {/* Notes grid/list */}
                 {!isLoading && !errorMessage && visibleNotes.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                        {visibleNotes.map(note => (
-                            <article
-                                key={note.id}
-                                className="group relative overflow-hidden rounded-[1.8rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#141823] shadow-sm"
-                            >
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-[radial-gradient(circle_at_85%_12%,rgba(99,102,241,0.14),transparent_32%)]" />
-                                <div className="relative p-5 flex flex-col h-full">
-                                    <div className="flex items-start justify-between gap-3 mb-4">
-                                        <div className="min-w-0">
-                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] uppercase tracking-widest font-black bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200 mb-3">
-                                                {note.isMaster ? labels.masterNote : labels.stickyNote}
-                                            </span>
-                                            <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight line-clamp-2">
-                                                {note.title}
-                                            </h3>
-                                        </div>
-                                        <button
-                                            onClick={() => handleOpenNote(note)}
-                                            title={labels.openNote}
-                                            className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-slate-500 dark:text-slate-300 flex items-center justify-center shrink-0"
-                                        >
-                                            <ExternalLink size={14} />
-                                        </button>
-                                    </div>
-
-                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed min-h-[84px] mb-4 line-clamp-4">
-                                        {note.preview || '-'}
-                                    </p>
-
-                                    <div className="mt-auto space-y-2 border-t border-slate-100 dark:border-white/10 pt-4">
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between gap-2">
-                                            <span className="truncate">{labels.board}: <span className="font-semibold text-slate-700 dark:text-slate-200">{note.boardName}</span></span>
-                                            <span className="shrink-0">{labels.updatedOn}: {formatDateTime(note.updatedAt)}</span>
-                                        </div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3">
-                                            <span>{note.charCount} {labels.chars}</span>
-                                            <span>{note.lineCount} {labels.lines}</span>
-                                            <span>{note.wordCount} {labels.words}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 mt-4">
-                                        <button
-                                            onClick={() => handleOpenBoard(note)}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20"
-                                        >
-                                            {labels.openBoard}
-                                        </button>
-                                        <button
-                                            onClick={() => openEditor(note)}
-                                            disabled={busyNoteId === note.id}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 disabled:opacity-50"
-                                        >
-                                            <span className="inline-flex items-center gap-1.5">
-                                                <PencilLine size={13} />
-                                                {labels.edit}
-                                            </span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleCopy(note)}
-                                            disabled={busyNoteId === note.id}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 disabled:opacity-50"
-                                        >
-                                            <span className="inline-flex items-center gap-1.5">
-                                                <Copy size={13} />
-                                                {copiedNoteId === note.id ? labels.copied : labels.copy}
-                                            </span>
-                                        </button>
-                                        <button
-                                            onClick={() => requestDelete(note)}
-                                            disabled={busyNoteId === note.id}
-                                            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50"
-                                        >
-                                            <span className="inline-flex items-center gap-1.5">
-                                                <Trash2 size={13} />
-                                                {labels.delete}
-                                            </span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
+                    <motion.div
+                        className={viewMode === 'grid'
+                            ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5'
+                            : 'flex flex-col gap-3'
+                        }
+                        variants={listContainerVariants}
+                        initial="hidden"
+                        animate="show"
+                    >
+                        <AnimatePresence mode="popLayout">
+                            {visibleNotes.map(note => (
+                                <NoteCard
+                                    key={note.id}
+                                    note={note}
+                                    viewMode={viewMode}
+                                    labels={labels}
+                                    busyNoteId={busyNoteId}
+                                    copiedNoteId={copiedNoteId}
+                                    {...cardActions}
+                                />
+                            ))}
+                        </AnimatePresence>
+                    </motion.div>
                 )}
             </section>
 
-            {editingNote && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm" onClick={closeEditor} />
-                    <div className="relative z-10 w-full max-w-5xl rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111318] shadow-2xl overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 flex items-start justify-between gap-4">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white">{labels.editorTitle}</h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{editingNote.boardName}</p>
-                                <p className="text-[11px] text-indigo-500 dark:text-indigo-300 font-semibold mt-2">{labels.editorHint}</p>
-                            </div>
-                            <button
-                                onClick={closeEditor}
-                                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300 flex items-center justify-center"
-                                title={labels.cancel}
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
+            {/* Editor Modal */}
+            <NoteEditorModal
+                editingNote={editingNote}
+                draftContent={draftContent}
+                onDraftChange={setDraftContent}
+                onSave={handleSaveEdit}
+                onClose={closeEditor}
+                onKeyDown={handleEditorKeyDown}
+                busyNoteId={busyNoteId}
+                labels={labels}
+            />
 
-                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-0">
-                            <div className="p-6">
-                                <textarea
-                                    value={draftContent}
-                                    onChange={(e) => setDraftContent(e.target.value)}
-                                    onKeyDown={handleEditorKeyDown}
-                                    className="w-full h-[420px] rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none resize-none leading-7"
-                                />
-                            </div>
-
-                            <aside className="border-l border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-black/20 p-5">
-                                <h4 className="text-sm font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Note Stats</h4>
-                                <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                                    <div className="flex items-center justify-between"><span>{labels.chars}</span><strong>{draftStats.chars}</strong></div>
-                                    <div className="flex items-center justify-between"><span>{labels.lines}</span><strong>{draftStats.lines}</strong></div>
-                                    <div className="flex items-center justify-between"><span>{labels.words}</span><strong>{draftStats.words}</strong></div>
-                                </div>
-                            </aside>
-                        </div>
-
-                        <div className="px-6 py-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
-                            <button
-                                onClick={closeEditor}
-                                className="px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200"
-                            >
-                                {labels.cancel}
-                            </button>
-                            <button
-                                onClick={handleSaveEdit}
-                                disabled={busyNoteId === editingNote.id}
-                                className="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
-                            >
-                                <span className="inline-flex items-center gap-1.5">
-                                    <Save size={14} />
-                                    {labels.save}
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {pendingDeleteNote && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm" onClick={() => setPendingDeleteNote(null)} />
-                    <div className="relative z-10 w-full max-w-md rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151821] p-6 shadow-2xl">
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">{labels.deleteConfirmTitle}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">{labels.deleteConfirmDesc}</p>
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-6">{pendingDeleteNote.title}</p>
-
-                        <div className="flex items-center justify-end gap-2">
-                            <button
-                                onClick={() => setPendingDeleteNote(null)}
-                                className="px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200"
-                            >
-                                {labels.cancel}
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                disabled={busyNoteId === pendingDeleteNote.id}
-                                className="px-4 py-2 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-500 text-white disabled:opacity-50"
-                            >
-                                {labels.deleteConfirmAction}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Delete Dialog */}
+            <NoteDeleteDialog
+                note={pendingDeleteNote}
+                busyNoteId={busyNoteId}
+                onConfirm={confirmDelete}
+                onCancel={() => setPendingDeleteNote(null)}
+                labels={labels}
+            />
         </>
     );
 }

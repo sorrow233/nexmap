@@ -5,6 +5,8 @@ import { linkageService } from '../../services/linkageService';
 const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
     const [showUidPrompt, setShowUidPrompt] = useState(false);
     const [status, setStatus] = useState('idle'); // idle, sending, success, error
+    const [isCheckingUid, setIsCheckingUid] = useState(false);
+    const [isSavingUid, setIsSavingUid] = useState(false);
     const [uidInput, setUidInput] = useState('');
     const [pendingText, setPendingText] = useState('');
 
@@ -28,27 +30,37 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
         }
     };
 
-    const handleFlowClick = (e) => {
+    const handleFlowClick = async (e) => {
         e.stopPropagation();
-        if (status !== 'idle') return;
+        if (status !== 'idle' || isCheckingUid) return;
 
-        const existingUid = linkageService.getFlowStudioUserId();
+        setIsCheckingUid(true);
+        try {
+            const existingUid = await linkageService.ensureFlowStudioUserId();
 
-        if (!existingUid) {
-            setPendingText(selection.text);
-            setShowUidPrompt(true);
-        } else {
-            performSend(selection.text);
+            if (!existingUid) {
+                setPendingText(selection.text);
+                setShowUidPrompt(true);
+            } else {
+                performSend(selection.text);
+            }
+        } finally {
+            setIsCheckingUid(false);
         }
     };
 
-    const handleUidSubmit = () => {
-        if (uidInput.trim()) {
-            linkageService.setFlowStudioUserId(uidInput.trim());
-            performSend(pendingText);
+    const handleUidSubmit = async () => {
+        if (!uidInput.trim() || isSavingUid) return;
+
+        setIsSavingUid(true);
+        try {
+            await linkageService.setFlowStudioUserId(uidInput.trim());
+            performSend(pendingText || selection?.text || '');
             setShowUidPrompt(false);
             setUidInput('');
             setPendingText('');
+        } finally {
+            setIsSavingUid(false);
         }
     };
 
@@ -82,16 +94,17 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
                     <div className="flex gap-2">
                         <button
                             onClick={() => setShowUidPrompt(false)}
+                            disabled={isSavingUid}
                             className="flex-1 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
                         >
                             取消
                         </button>
                         <button
                             onClick={handleUidSubmit}
-                            disabled={!uidInput.trim()}
+                            disabled={!uidInput.trim() || isSavingUid}
                             className="flex-1 px-4 py-2 rounded-xl text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
-                            确认
+                            {isSavingUid ? '保存中...' : '确认'}
                         </button>
                     </div>
                 </div>
@@ -123,14 +136,14 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
             </button>
             <button
                 onClick={handleFlowClick}
-                disabled={status !== 'idle'}
+                disabled={status !== 'idle' || isCheckingUid}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 ${status === 'success' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
                         status === 'error' ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
                             'hover:bg-white/50 dark:hover:bg-white/10'
                     }`}
                 title="Send to FlowStudio"
             >
-                {status === 'sending' ? (
+                {status === 'sending' || isCheckingUid ? (
                     <Loader2 size={13} className="animate-spin text-brand-500" />
                 ) : status === 'success' ? (
                     <Check size={13} />
@@ -138,7 +151,7 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic, t }) => {
                     <img src="/flowstudio-32x32.png" alt="Flow" className="w-4 h-4" />
                 )}
                 <span className={status === 'success' ? 'font-bold' : 'text-slate-700 dark:text-white'}>
-                    {status === 'sending' ? '发送中' : status === 'success' ? '已添加' : status === 'error' ? '失败' : 'Flow'}
+                    {isCheckingUid ? '检查中' : status === 'sending' ? '发送中' : status === 'success' ? '已添加' : status === 'error' ? '失败' : 'Flow'}
                 </span>
             </button>
         </div>

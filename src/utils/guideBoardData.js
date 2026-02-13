@@ -374,7 +374,7 @@ Playfair Display / Inter
 \`Cmd/Ctrl + Z\` 撤销
 \`Cmd/Ctrl + Shift + Z\` 重做
 \`Backspace\` 删除
-\`V\` 切换选择/平移模式
+右键空白画布切换选择/平移模式
 
 **高级功能：**
 🪄 工具栏魔法棒 - 自动布局

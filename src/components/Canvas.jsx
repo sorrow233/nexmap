@@ -11,7 +11,6 @@ import ErrorBoundary from './ErrorBoundary';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
-import { useContextMenu } from './ContextMenu';
 import InstantTooltip from './InstantTooltip';
 import { aiSummaryService } from '../services/aiSummaryService';
 
@@ -43,8 +42,6 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const deleteCard = useStore(state => state.deleteCard);
     const updateCardFull = useStore(state => state.updateCardFull);
     const toggleCanvasMode = useStore(state => state.toggleCanvasMode);
-
-    const { showContextMenu, getCanvasMenuItems } = useContextMenu();
     const canvasRef = useRef(null);
     const contentRef = useRef(null); // Reference for Direct DOM Manipulation
     const stateRef = useRef({ offset, scale });
@@ -58,53 +55,14 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     useCanvasGestures(canvasRef, contentRef, stateRef, setScale, setOffset);
     const { performSelectionCheck } = useSelection();
 
-    // Right-click context menu for canvas
+    // Right-click canvas background: toggle select/pan mode
     const handleContextMenu = useCallback((e) => {
-        // Only show menu if clicking on canvas background
+        // Only handle background right-click; keep card/connection context menus intact
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
             e.preventDefault();
-            const canvasX = (e.clientX - offset.x) / scale;
-            const canvasY = (e.clientY - offset.y) / scale;
-
-            const menuItems = getCanvasMenuItems(
-                { x: canvasX, y: canvasY },
-                {
-                    onCreateCard: (pos) => {
-                        if (props.onCanvasDoubleClick) {
-                            props.onCanvasDoubleClick({
-                                screenX: e.clientX,
-                                screenY: e.clientY,
-                                canvasX: pos.x,
-                                canvasY: pos.y
-                            });
-                        }
-                    },
-                    onCreateNote: (pos) => {
-                        if (props.onCreateStandaloneNote) {
-                            props.onCreateStandaloneNote('', { x: pos.x, y: pos.y });
-                        }
-                    },
-                    onPaste: () => {
-                        // Paste functionality - trigger paste event
-                        navigator.clipboard.readText().then(text => {
-                            if (text && props.onCanvasDoubleClick) {
-                                props.onCanvasDoubleClick({
-                                    screenX: e.clientX,
-                                    screenY: e.clientY,
-                                    canvasX,
-                                    canvasY,
-                                    pastedText: text
-                                });
-                            }
-                        }).catch(() => { });
-                    },
-                    canPaste: true // Assume paste is always available
-                }
-            );
-
-            showContextMenu(e.clientX, e.clientY, menuItems);
+            toggleCanvasMode();
         }
-    }, [offset, scale, showContextMenu, getCanvasMenuItems, onCreateNote, props]);
+    }, [toggleCanvasMode]);
 
     const handleMouseDown = (e) => {
         // Ensure we are clicking on the canvas or background layers, not interactive elements like cards/buttons
@@ -114,7 +72,8 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
         if (!isInteractive) {
             // In pan mode, left click also pans
-            const isPan = canvasMode === 'pan' || e.button === 1 || e.button === 2 || (e.button === 0 && (e.spaceKey || e.altKey));
+            // Right-click is now reserved for mode toggle (see handleContextMenu), not temporary pan.
+            const isPan = canvasMode === 'pan' || e.button === 1 || (e.button === 0 && (e.spaceKey || e.altKey));
 
             if (isPan) {
                 setInteractionMode('panning');
@@ -267,23 +226,6 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             }
         }
     };
-
-    // Keyboard shortcut: V key to toggle canvas mode (Figma-style)
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            // Only trigger if not typing in an input field
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-                return;
-            }
-
-            if (e.key === 'v' || e.key === 'V') {
-                toggleCanvasMode();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [toggleCanvasMode]);
 
     // Handle Drop on Canvas (similar to Paste)
     const handleDrop = (e) => {
@@ -494,7 +436,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
             <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
                 {/* Canvas Mode Toggle - Modern canvas standard */}
-                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (V)' : 'Switch to Pan Mode (V)'}>
+                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (Right Click)' : 'Switch to Pan Mode (Right Click)'}>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
