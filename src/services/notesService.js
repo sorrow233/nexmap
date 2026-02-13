@@ -37,7 +37,15 @@ const emitNotesUpdated = () => {
 
 const getActiveBoards = (boardsList = []) => {
     if (!Array.isArray(boardsList)) return [];
-    return boardsList.filter(board => board && !board.deletedAt);
+    const unique = new Map();
+    boardsList.forEach((board) => {
+        if (!board || board.deletedAt || !board.id) return;
+        const current = unique.get(board.id);
+        if (!current || toTimestamp(board.updatedAt) >= toTimestamp(current.updatedAt)) {
+            unique.set(board.id, board);
+        }
+    });
+    return Array.from(unique.values());
 };
 
 const isNoteCard = (card) => card?.type === 'note' && !card?.deletedAt;
@@ -98,11 +106,11 @@ const loadBoardSafe = async (boardId) => {
         return { cards: [], connections: [], groups: [], boardPrompts: [] };
     }
     return {
+        ...data,
         cards: Array.isArray(data.cards) ? data.cards : [],
         connections: Array.isArray(data.connections) ? data.connections : [],
         groups: Array.isArray(data.groups) ? data.groups : [],
-        boardPrompts: Array.isArray(data.boardPrompts) ? data.boardPrompts : [],
-        ...data
+        boardPrompts: Array.isArray(data.boardPrompts) ? data.boardPrompts : []
     };
 };
 
@@ -120,10 +128,15 @@ const notesService = {
     async getNotesIndex(boardsList = []) {
         const boards = getActiveBoards(boardsList);
         const notesByBoard = await Promise.all(boards.map(async (board) => {
-            const boardData = await loadBoardSafe(board.id);
-            const primaryNote = pickPrimaryBoardNote(boardData.cards);
-            if (!primaryNote) return null;
-            return normalizeNote(primaryNote, board, boardData);
+            try {
+                const boardData = await loadBoardSafe(board.id);
+                const primaryNote = pickPrimaryBoardNote(boardData.cards);
+                if (!primaryNote) return null;
+                return normalizeNote(primaryNote, board, boardData);
+            } catch (error) {
+                console.error(`[NotesService] Failed to read board ${board.id}`, error);
+                return null;
+            }
         }));
 
         return sortNotes(notesByBoard.filter(Boolean));

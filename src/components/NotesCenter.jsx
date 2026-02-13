@@ -121,35 +121,59 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
     const [busyNoteId, setBusyNoteId] = useState('');
     const [copiedNoteId, setCopiedNoteId] = useState('');
 
+    const isMountedRef = useRef(true);
     const isRefreshingRef = useRef(false);
+    const refreshQueuedRef = useRef(false);
+    const copyTimerRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (copyTimerRef.current) {
+                clearTimeout(copyTimerRef.current);
+            }
+        };
+    }, []);
 
     const refreshNotes = useCallback(async ({ background = false } = {}) => {
-        if (isRefreshingRef.current) return;
+        if (isRefreshingRef.current) {
+            refreshQueuedRef.current = true;
+            return;
+        }
         isRefreshingRef.current = true;
 
         if (background) {
-            setIsRefreshing(true);
+            if (isMountedRef.current) setIsRefreshing(true);
         } else {
-            setIsLoading(true);
+            if (isMountedRef.current) setIsLoading(true);
         }
 
         try {
             const nextNotes = await notesService.getNotesIndex(boardsList);
-            setNotes(nextNotes);
-            setErrorMessage('');
+            if (isMountedRef.current) {
+                setNotes(nextNotes);
+                setErrorMessage('');
+            }
         } catch (error) {
             console.error('[NotesCenter] Failed to refresh notes', error);
-            setErrorMessage(labels.loadError);
-            if (!background) {
+            if (isMountedRef.current) {
+                setErrorMessage(labels.loadError);
+            }
+            if (!background && isMountedRef.current) {
                 toast.error(labels.loadError);
             }
         } finally {
             if (background) {
-                setIsRefreshing(false);
+                if (isMountedRef.current) setIsRefreshing(false);
             } else {
-                setIsLoading(false);
+                if (isMountedRef.current) setIsLoading(false);
             }
             isRefreshingRef.current = false;
+
+            if (refreshQueuedRef.current && isMountedRef.current) {
+                refreshQueuedRef.current = false;
+                refreshNotes({ background: true });
+            }
         }
     }, [boardsList, labels.loadError, toast]);
 
@@ -360,7 +384,14 @@ export default function NotesCenter({ boardsList = [], user, onUpdateBoardMetada
                 return;
             }
             setCopiedNoteId(note.id);
-            setTimeout(() => setCopiedNoteId(''), 1200);
+            if (copyTimerRef.current) {
+                clearTimeout(copyTimerRef.current);
+            }
+            copyTimerRef.current = setTimeout(() => {
+                if (isMountedRef.current) {
+                    setCopiedNoteId('');
+                }
+            }, 1200);
         } catch (error) {
             console.error('[NotesCenter] Copy failed', error);
             toast.error(labels.copyFailed);
