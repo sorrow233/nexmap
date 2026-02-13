@@ -1,49 +1,43 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileText, LayoutGrid, Filter, Type } from 'lucide-react';
-
-const statConfig = [
-    { key: 'totalNotes', icon: FileText, gradient: 'from-indigo-500 to-violet-500' },
-    { key: 'sourceBoards', icon: LayoutGrid, gradient: 'from-sky-500 to-cyan-500' },
-    { key: 'filteredCount', icon: Filter, gradient: 'from-emerald-500 to-teal-500' },
-    { key: 'averageChars', icon: Type, gradient: 'from-amber-500 to-orange-500' }
-];
 
 const containerVariants = {
     hidden: {},
-    show: { transition: { staggerChildren: 0.08 } }
+    show: { transition: { staggerChildren: 0.05 } }
 };
 
 const itemVariants = {
-    hidden: { opacity: 0, y: 16, scale: 0.95 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+    hidden: { opacity: 0, scale: 0.9 },
+    show: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 400, damping: 30 } }
 };
+
+const statConfig = [
+    { key: 'totalNotes', color: 'text-indigo-600 dark:text-indigo-400' },
+    { key: 'sourceBoards', color: 'text-sky-600 dark:text-sky-400' },
+    { key: 'filteredCount', color: 'text-emerald-600 dark:text-emerald-400' },
+    { key: 'averageChars', color: 'text-amber-600 dark:text-amber-400' }
+];
 
 export default function NotesStatsPanel({ stats, labels }) {
     return (
         <motion.div
-            className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4"
+            className="flex items-center gap-5 flex-wrap"
             variants={containerVariants}
             initial="hidden"
             animate="show"
         >
-            {statConfig.map(({ key, icon: Icon, gradient }) => (
+            {statConfig.map(({ key, color }) => (
                 <motion.div
                     key={key}
                     variants={itemVariants}
-                    className="rounded-2xl p-4 bg-white/80 dark:bg-white/5 border border-white dark:border-white/10 hover:shadow-md transition-shadow"
+                    className="flex items-baseline gap-1.5"
                 >
-                    <div className="flex items-center gap-2.5 mb-2">
-                        <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm`}>
-                            <Icon size={14} className="text-white" />
-                        </div>
-                        <span className="text-[11px] uppercase tracking-wider font-black text-slate-500 dark:text-slate-400">
-                            {labels[key]}
-                        </span>
-                    </div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                    <span className={`text-xl font-black tabular-nums ${color}`}>
                         {stats[key]}
-                    </div>
+                    </span>
+                    <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                        {labels[key]}
+                    </span>
                 </motion.div>
             ))}
         </motion.div>
