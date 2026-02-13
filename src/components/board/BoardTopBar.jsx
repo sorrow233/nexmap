@@ -1,21 +1,34 @@
 import React, { useState } from 'react';
 import { LayoutGrid, Undo2, Redo2, Sparkles } from 'lucide-react';
 import { useTemporalStore } from '../../store/useStore';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstructions }) {
+export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstructions, instructionPanelSummary }) {
     const undo = useTemporalStore((state) => state.undo);
     const redo = useTemporalStore((state) => state.redo);
     const pastStates = useTemporalStore((state) => state.pastStates);
     const futureStates = useTemporalStore((state) => state.futureStates);
+    const { t } = useLanguage();
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleJustSaved, setTitleJustSaved] = useState(false);
+
+    const instructionMode = instructionPanelSummary?.mode === 'manual' ? 'manual' : 'auto';
+    const instructionStatus = instructionPanelSummary?.status || 'idle';
+    const activeInstructionCount = Number(instructionPanelSummary?.activeCount || 0);
 
     const saveTitleWithFeedback = (value) => {
         if (!value || !value.trim()) return;
         onUpdateTitle(value);
         setTitleJustSaved(true);
         setTimeout(() => setTitleJustSaved(false), 1000);
+    };
+
+    const statusColorMap = {
+        running: 'bg-amber-400',
+        error: 'bg-rose-400',
+        done: 'bg-emerald-400',
+        idle: 'bg-slate-400'
     };
 
     return (
@@ -46,10 +59,15 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstru
                     {typeof onOpenInstructions === 'function' && (
                         <button
                             onClick={onOpenInstructions}
-                            className="p-2 rounded-xl text-cyan-600 hover:bg-cyan-50 transition-all"
-                            title="Canvas Instruction Selection"
+                            className={`relative flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-bold transition-all ${activeInstructionCount > 0
+                                ? 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                                : 'text-cyan-600 hover:bg-cyan-50'
+                                }`}
+                            title={`${t.settings?.canvasInstructionTitle || 'Canvas Instructions'} (${instructionMode})`}
                         >
-                            <Sparkles size={18} />
+                            <Sparkles size={16} />
+                            <span className="hidden md:inline">{activeInstructionCount}</span>
+                            <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white ${statusColorMap[instructionStatus] || statusColorMap.idle}`} />
                         </button>
                     )}
                 </div>
@@ -67,7 +85,7 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstru
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
-                                e.target.blur(); // This will trigger onBlur which handles save
+                                e.target.blur();
                             }
                         }}
                         className={`

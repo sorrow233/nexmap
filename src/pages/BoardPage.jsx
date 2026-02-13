@@ -43,6 +43,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         boardPrompts,
         boardInstructionSettings,
         customInstructionCatalog,
+        instructionPanelSummary,
         conversationCount,
         tempInstructions,
         isAgentRunning,
@@ -87,6 +88,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,
         handleOpenInstructionPanel,
+        handleOpenInstructionSettings,
         handleToggleBoardInstruction,
         handleUseManualInstructionMode,
         handleUseAutoInstructionMode,
@@ -211,6 +213,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     board={currentBoard}
                     onUpdateTitle={onUpdateBoardTitle}
                     onOpenInstructions={handleOpenInstructionPanel}
+                    instructionPanelSummary={instructionPanelSummary}
                 />
 
                 <BoardInstructionPanel
@@ -218,10 +221,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     onClose={() => setIsInstructionPanelOpen(false)}
                     instructions={customInstructionCatalog.items || []}
                     boardInstructionSettings={boardInstructionSettings}
+                    instructionPanelSummary={instructionPanelSummary}
                     onToggleInstruction={handleToggleBoardInstruction}
                     onUseManualMode={handleUseManualInstructionMode}
                     onUseAutoMode={handleUseAutoInstructionMode}
                     onRunAutoRecommend={handleRunAutoInstructionRecommendNow}
+                    onOpenSettings={handleOpenInstructionSettings}
                     isAutoRecommending={isAutoRecommending}
                     conversationCount={conversationCount}
                 />

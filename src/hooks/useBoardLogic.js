@@ -15,8 +15,18 @@ import {
     normalizeBoardInstructionSettings,
     readCustomInstructionsFromLocalStorage,
     normalizeCustomInstructionsValue,
-    saveBoardInstructionSettingsCache
+    saveBoardInstructionSettingsCache,
+    sanitizeBoardInstructionSettingsForCatalog,
+    getInstructionCatalogBreakdown
 } from '../services/customInstructionsService';
+
+const isSameStringArray = (a = [], b = []) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+};
 
 export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -94,6 +104,32 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     const [customInstructionCatalog, setCustomInstructionCatalog] = useState(
         normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage())
     );
+    const autoRecommendLockRef = useRef(false);
+
+    const instructionCatalogBreakdown = useMemo(
+        () => getInstructionCatalogBreakdown(customInstructionCatalog),
+        [customInstructionCatalog]
+    );
+
+    const instructionPanelSummary = useMemo(() => {
+        const enabledSet = new Set(normalizedBoardInstructionSettings.enabledInstructionIds);
+        const autoSet = new Set(normalizedBoardInstructionSettings.autoEnabledInstructionIds);
+        const enabledOptionalCount = instructionCatalogBreakdown.optionalInstructions.filter(item => enabledSet.has(item.id)).length;
+        const autoEnabledOptionalCount = instructionCatalogBreakdown.optionalInstructions.filter(item => autoSet.has(item.id)).length;
+        const globalCount = instructionCatalogBreakdown.globalInstructions.length;
+
+        return {
+            totalCount: instructionCatalogBreakdown.allInstructions.length,
+            globalCount,
+            optionalCount: instructionCatalogBreakdown.optionalInstructions.length,
+            enabledOptionalCount,
+            autoEnabledOptionalCount,
+            activeCount: globalCount + enabledOptionalCount,
+            mode: normalizedBoardInstructionSettings.autoSelectionMode === 'manual' ? 'manual' : 'auto',
+            status: normalizedBoardInstructionSettings.autoSelection?.status || 'idle',
+            lastRunAt: normalizedBoardInstructionSettings.autoSelection?.lastRunAt || 0
+        };
+    }, [instructionCatalogBreakdown, normalizedBoardInstructionSettings]);
 
     // --- PASTE LOGIC ---
 
@@ -328,8 +364,32 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         return () => window.removeEventListener('storage', onStorage);
     }, [refreshCustomInstructionCatalog]);
 
+    useEffect(() => {
+        if (isReadOnly || !currentBoardId) return;
+
+        const sanitized = sanitizeBoardInstructionSettingsForCatalog(
+            normalizedBoardInstructionSettings,
+            customInstructionCatalog
+        );
+
+        const shouldUpdate =
+            !isSameStringArray(sanitized.enabledInstructionIds, normalizedBoardInstructionSettings.enabledInstructionIds) ||
+            !isSameStringArray(sanitized.autoEnabledInstructionIds, normalizedBoardInstructionSettings.autoEnabledInstructionIds);
+
+        if (shouldUpdate) {
+            updateBoardInstructionSettings(sanitized);
+        }
+    }, [
+        currentBoardId,
+        customInstructionCatalog,
+        isReadOnly,
+        normalizedBoardInstructionSettings,
+        updateBoardInstructionSettings
+    ]);
+
     const runAutoInstructionRecommendation = useCallback(async (force = false) => {
-        if (isReadOnly || !currentBoardId || isAutoRecommending) return;
+        if (isReadOnly || !currentBoardId) return;
+        if (autoRecommendLockRef.current) return;
 
         const latestCatalog = normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage());
         setCustomInstructionCatalog(latestCatalog);
@@ -337,26 +397,37 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         const optionalCandidates = (latestCatalog.items || []).filter(
             item => item.enabled !== false && item.isGlobal !== true
         );
-        if (optionalCandidates.length === 0) return;
+        if (optionalCandidates.length === 0) {
+            if (force) {
+                toast.info(t?.settings?.canvasInstructionNoOptionalToast || '当前没有可推荐的画布指令');
+            }
+            return;
+        }
 
         if (!force) {
+            if (normalizedBoardInstructionSettings.autoSelectionMode === 'manual') return;
             if (conversationCount <= 2) return;
             if (normalizedBoardInstructionSettings.autoSelection.status === 'running') return;
 
             const lastCount = normalizedBoardInstructionSettings.autoSelection.lastConversationCount || 0;
-            const hasEnoughNewConversation = conversationCount >= Math.max(3, lastCount + 3);
+            const hasEnoughNewConversation = conversationCount >= Math.max(3, lastCount + 2);
             if (!hasEnoughNewConversation) return;
         }
 
+        autoRecommendLockRef.current = true;
         setIsAutoRecommending(true);
-        updateBoardInstructionSettings(prev => ({
-            ...prev,
-            autoSelection: {
-                ...(prev.autoSelection || {}),
-                status: 'running',
-                lastError: ''
-            }
-        }));
+        updateBoardInstructionSettings(prev => {
+            const current = normalizeBoardInstructionSettings(prev);
+            return {
+                ...current,
+                autoSelection: {
+                    ...(current.autoSelection || {}),
+                    status: 'running',
+                    lastError: '',
+                    lastTrigger: force ? 'manual' : 'auto'
+                }
+            };
+        });
 
         try {
             const state = useStore.getState();
@@ -376,7 +447,9 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                         status: 'done',
                         lastRunAt: Date.now(),
                         lastConversationCount: conversationCount,
-                        lastError: ''
+                        lastError: '',
+                        lastResultCount: recommendedIds.length,
+                        lastTrigger: force ? 'manual' : 'auto'
                     }
                 };
 
@@ -385,33 +458,54 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 }
                 return next;
             });
-        } catch (error) {
-            updateBoardInstructionSettings(prev => ({
-                ...normalizeBoardInstructionSettings(prev),
-                autoSelection: {
-                    ...(normalizeBoardInstructionSettings(prev).autoSelection || {}),
-                    status: 'error',
-                    lastError: error?.message || 'auto_recommend_failed'
+
+            if (force) {
+                if (recommendedIds.length > 0) {
+                    toast.success(
+                        (t?.settings?.canvasInstructionRecommendDoneToast || 'AI 推荐完成：{count} 条').replace('{count}', String(recommendedIds.length))
+                    );
+                } else {
+                    toast.warning(t?.settings?.canvasInstructionRecommendEmptyToast || 'AI 没有找到强相关指令');
                 }
-            }));
+            }
+        } catch (error) {
+            const reason = error?.message || 'auto_recommend_failed';
+            updateBoardInstructionSettings(prev => {
+                const current = normalizeBoardInstructionSettings(prev);
+                return {
+                    ...current,
+                    autoSelection: {
+                        ...(current.autoSelection || {}),
+                        status: 'error',
+                        lastError: reason,
+                        lastResultCount: 0,
+                        lastTrigger: force ? 'manual' : 'auto'
+                    }
+                };
+            });
+            if (force) {
+                toast.error(t?.settings?.canvasInstructionRecommendFailToast || 'AI 推荐失败，请稍后重试');
+            }
         } finally {
             setIsAutoRecommending(false);
+            autoRecommendLockRef.current = false;
         }
     }, [
         cards,
         conversationCount,
         currentBoardId,
-        isAutoRecommending,
         isReadOnly,
         normalizedBoardInstructionSettings,
+        t,
+        toast,
         updateBoardInstructionSettings
     ]);
 
     useEffect(() => {
-        if (conversationCount > 2) {
+        if (conversationCount > 2 && normalizedBoardInstructionSettings.autoSelectionMode === 'auto') {
             runAutoInstructionRecommendation(false);
         }
-    }, [conversationCount, runAutoInstructionRecommendation]);
+    }, [conversationCount, normalizedBoardInstructionSettings.autoSelectionMode, runAutoInstructionRecommendation]);
 
 
     // --- HANDLERS ---
@@ -577,6 +671,12 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         setIsInstructionPanelOpen(true);
     };
 
+    const handleOpenInstructionSettings = () => {
+        if (isReadOnly) return;
+        setIsInstructionPanelOpen(false);
+        setIsSettingsOpen(true);
+    };
+
     const handleToggleBoardInstruction = (instructionId, enabled) => {
         if (isReadOnly) return;
         updateBoardInstructionSettings(prev => {
@@ -663,6 +763,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         boardPrompts,
         boardInstructionSettings: normalizedBoardInstructionSettings,
         customInstructionCatalog,
+        instructionPanelSummary,
         conversationCount,
         currentBoard,
         cloudSyncStatus,
@@ -716,6 +817,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         handlePromptDropOnCanvas,
         handlePromptDropOnCard,
         handleOpenInstructionPanel,
+        handleOpenInstructionSettings,
         handleToggleBoardInstruction,
         handleUseManualInstructionMode,
         handleUseAutoInstructionMode,
