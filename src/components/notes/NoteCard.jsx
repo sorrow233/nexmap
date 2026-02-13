@@ -1,16 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, PencilLine, Copy, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ExternalLink, PencilLine, Copy, Trash2, ChevronDown, ChevronUp, Maximize2 } from 'lucide-react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const formatDateTime = (ts) => {
     if (!ts) return '-';
-    return new Date(ts).toLocaleString(undefined, {
-        year: 'numeric',
+    return new Date(ts).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
     });
+};
+
+const cleanTitle = (title) => {
+    if (!title) return '';
+    return title
+        .replace(/^#+\s+/, '')
+        .replace(/^\d+\.\s+/, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+        .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+        .trim();
+};
+
+const stripMarkdown = (text) => {
+    if (!text) return '';
+    // Basic stripping for preview
+    return text
+        .replace(/^#+\s+/gm, '') // headings
+        .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+        .replace(/(\*|_)(.*?)\1/g, '$2') // italic
+        .replace(/`{3}[\s\S]*?`{3}/g, '[Code]') // code blocks
+        .replace(/`(.+?)`/g, '$1') // inline code
+        .replace(/\[(.*?)\]\(.*?\)/g, '$1') // links
+        .replace(/^\s*>+\s?/gm, '') // blockquotes
+        .replace(/^\s*-\s+/gm, '') // lists
+        .replace(/\n{2,}/g, '\n') // multiple newlines
+        .trim();
 };
 
 const cardVariants = {
@@ -19,140 +48,130 @@ const cardVariants = {
     exit: { opacity: 0, y: -10, transition: { duration: 0.15 } }
 };
 
+function ActionButton({ onClick, icon: Icon, label, disabled, dangerous }) {
+    return (
+        <button
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+            }}
+            disabled={disabled}
+            title={label}
+            className={`p-2 rounded-xl backdrop-blur-md transition-all duration-200 active:scale-95
+                ${dangerous
+                    ? 'text-red-500 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20'
+                    : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/80 dark:text-slate-500 dark:hover:text-indigo-300 dark:hover:bg-white/10'
+                }
+                disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+        >
+            <Icon size={16} strokeWidth={2} />
+        </button>
+    );
+}
+
 function NoteCardGrid({
     note, labels, busyNoteId, copiedNoteId,
     onOpenNote, onOpenBoard, onEdit, onCopy, onDelete
 }) {
     const [expanded, setExpanded] = useState(false);
+    const displayTitle = cleanTitle(note.title);
+    const isBusy = busyNoteId === note.id;
+
+    const renderedContent = useMemo(() => {
+        if (!note.content) return null;
+        const rawHtml = marked(note.content, { breaks: true, gfm: true });
+        return DOMPurify.sanitize(rawHtml);
+    }, [note.content]);
 
     return (
         <motion.article
             layout
             variants={cardVariants}
-            className="group relative overflow-hidden rounded-[1.8rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#141823] shadow-sm hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all duration-300"
+            className="group relative flex flex-col h-full overflow-hidden rounded-[24px] border border-slate-200/60 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
         >
-            {/* Hover gradient glow */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_85%_12%,rgba(99,102,241,0.12),transparent_40%)]" />
+            <div className="absolute top-3 right-3 z-20 flex items-center gap-1 opacity-100 xl:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <ActionButton onClick={() => onOpenBoard(note)} icon={ExternalLink} label={labels.openBoard} />
+                <ActionButton onClick={() => onEdit(note)} icon={PencilLine} label={labels.edit} disabled={isBusy} />
+                <ActionButton onClick={() => onCopy(note)} icon={Copy} label={copiedNoteId === note.id ? labels.copied : labels.copy} disabled={isBusy} />
+                <ActionButton onClick={() => onDelete(note)} icon={Trash2} label={labels.delete} disabled={isBusy} dangerous />
+            </div>
 
-            <div className="relative p-5 flex flex-col h-full">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="min-w-0">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest font-black mb-2.5
-                            ${note.isMaster
-                                ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 dark:from-indigo-500/15 dark:to-violet-500/15 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-500/20'
-                                : 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-200 border border-amber-100 dark:border-amber-500/20'
-                            }`}
-                        >
-                            {note.isMaster ? labels.masterNote : labels.stickyNote}
-                        </span>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight line-clamp-2">
-                            {note.title}
-                        </h3>
-                    </div>
-                    <button
-                        onClick={() => onOpenNote(note)}
-                        title={labels.openNote}
-                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-slate-500 dark:text-slate-300 flex items-center justify-center shrink-0 transition-colors"
+            <div
+                className="flex flex-col flex-1 p-6 cursor-pointer"
+                onClick={() => setExpanded(!expanded)}
+            >
+                <div className="flex items-center gap-2 mb-3">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
+                        ${note.isMaster
+                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                        }`}
                     >
-                        <ExternalLink size={14} />
-                    </button>
+                        {note.isMaster ? labels.masterNote : labels.stickyNote}
+                    </span>
+                    <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                        {formatDateTime(note.updatedAt)}
+                    </span>
                 </div>
 
-                {/* Preview with expand/collapse */}
-                <div
-                    className="cursor-pointer group/preview mb-4"
-                    onClick={() => setExpanded(!expanded)}
-                >
-                    <AnimatePresence mode="wait" initial={false}>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug mb-3 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {displayTitle || note.title}
+                </h3>
+
+                <div className="relative">
+                    <AnimatePresence initial={false} mode="wait">
                         {expanded ? (
                             <motion.div
                                 key="expanded"
-                                initial={{ opacity: 0, height: 84 }}
+                                initial={{ opacity: 0, height: 'auto' }}
                                 animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 84 }}
-                                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                className="overflow-hidden"
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
                             >
-                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap break-words max-h-[320px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {note.content || '-'}
-                                </p>
+                                <div
+                                    className="prose prose-sm prose-slate dark:prose-invert max-w-none 
+                                        prose-p:my-1.5 prose-p:leading-relaxed 
+                                        prose-headings:text-slate-800 dark:prose-headings:text-slate-200 prose-headings:font-bold prose-headings:my-2
+                                        prose-code:text-indigo-600 dark:prose-code:text-indigo-300 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                                        prose-li:my-0.5
+                                        font-lxgw text-[15px]"
+                                    dangerouslySetInnerHTML={{ __html: renderedContent || '<p class="text-slate-400 italic">No content</p>' }}
+                                />
                             </motion.div>
                         ) : (
-                            <motion.p
+                            <motion.div
                                 key="collapsed"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed min-h-[84px] line-clamp-4"
                             >
-                                {note.preview || '-'}
-                            </motion.p>
+                                <p className="text-[15px] leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-4 font-lxgw">
+                                    {stripMarkdown(note.content || note.preview) || <span className="text-slate-400 italic">No content</span>}
+                                </p>
+                            </motion.div>
                         )}
                     </AnimatePresence>
-                    <div className="flex items-center justify-center mt-2">
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold group-hover/preview:text-indigo-500 transition-colors flex items-center gap-1">
-                            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                            {expanded ? 'Collapse' : 'Expand'}
-                        </span>
-                    </div>
                 </div>
 
-                {/* Meta info */}
-                <div className="mt-auto space-y-2 border-t border-slate-100 dark:border-white/10 pt-4">
-                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between gap-2">
-                        <span className="truncate">
-                            {labels.board}: <span className="font-semibold text-slate-700 dark:text-slate-200">{note.boardName}</span>
-                        </span>
-                        <span className="shrink-0 tabular-nums">{formatDateTime(note.updatedAt)}</span>
+                <div className="mt-auto pt-6 flex items-center justify-between text-xs font-medium text-slate-400 dark:text-slate-500">
+                    <div className="flex items-center gap-1.5 truncate max-w-[60%]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                        <span className="truncate hover:text-indigo-500 transition-colors">{note.boardName}</span>
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3">
-                        <span className="tabular-nums">{note.charCount} {labels.chars}</span>
-                        <span className="tabular-nums">{note.lineCount} {labels.lines}</span>
-                        <span className="tabular-nums">{note.wordCount} {labels.words}</span>
+                    <div className="flex items-center gap-3">
+                        <span title={labels.chars}>{note.charCount}c</span>
+                        {expanded && <span title={labels.words}>{note.wordCount}w</span>}
                     </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 mt-4">
-                    <button
-                        onClick={() => onOpenBoard(note)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors"
-                    >
-                        {labels.openBoard}
-                    </button>
-                    <button
-                        onClick={() => onEdit(note)}
-                        disabled={busyNoteId === note.id}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 disabled:opacity-50 transition-colors"
-                    >
-                        <span className="inline-flex items-center gap-1.5">
-                            <PencilLine size={13} />
-                            {labels.edit}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => onCopy(note)}
-                        disabled={busyNoteId === note.id}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 disabled:opacity-50 transition-colors"
-                    >
-                        <span className="inline-flex items-center gap-1.5">
-                            <Copy size={13} />
-                            {copiedNoteId === note.id ? labels.copied : labels.copy}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => onDelete(note)}
-                        disabled={busyNoteId === note.id}
-                        className="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 transition-colors"
-                    >
-                        <span className="inline-flex items-center gap-1.5">
-                            <Trash2 size={13} />
-                            {labels.delete}
-                        </span>
-                    </button>
                 </div>
             </div>
+
+            <div className={`h-1 w-full bg-gradient-to-r 
+                ${note.isMaster
+                    ? 'from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100'
+                    : 'from-amber-400 via-orange-400 to-yellow-400 opacity-0 group-hover:opacity-100'
+                } transition-opacity duration-300`}
+            />
         </motion.article>
     );
 }
@@ -162,90 +181,74 @@ function NoteCardList({
     onOpenNote, onOpenBoard, onEdit, onCopy, onDelete
 }) {
     const [expanded, setExpanded] = useState(false);
+    const displayTitle = cleanTitle(note.title);
+    const isBusy = busyNoteId === note.id;
+
+    const renderedContent = useMemo(() => {
+        if (!note.content) return null;
+        const rawHtml = marked(note.content, { breaks: true, gfm: true });
+        return DOMPurify.sanitize(rawHtml);
+    }, [note.content]);
 
     return (
         <motion.article
             layout
             variants={cardVariants}
-            className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#141823] shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all duration-300"
+            className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm hover:shadow-md transition-all duration-200"
         >
-            <div className="relative p-4 md:p-5">
-                <div className="flex items-start gap-4">
-                    {/* Left: badge + title */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-black shrink-0
-                                ${note.isMaster
-                                    ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200'
-                                    : 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-200'
-                                }`}
-                            >
-                                {note.isMaster ? labels.masterNote : labels.stickyNote}
-                            </span>
-                            <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums shrink-0">
-                                {formatDateTime(note.updatedAt)}
-                            </span>
-                        </div>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug truncate">
-                            {note.title}
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 p-5 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2.5 mb-2">
+                        <span className={`w-2 h-2 rounded-full ${note.isMaster ? 'bg-indigo-500 shadow-indigo-500/50 shadow-sm' : 'bg-amber-400'}`} />
+                        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {displayTitle || note.title}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                {note.boardName}
-                            </span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {note.charCount} {labels.chars} · {note.lineCount} {labels.lines}
-                            </span>
-                        </div>
+                        <span className="text-xs text-slate-400 dark:text-slate-500 ml-auto sm:ml-0 tabular-nums">
+                            {formatDateTime(note.updatedAt)}
+                        </span>
                     </div>
 
-                    {/* Right: actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <button onClick={() => onOpenBoard(note)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors" title={labels.openBoard}>
-                            <ExternalLink size={14} />
-                        </button>
-                        <button onClick={() => onEdit(note)} disabled={busyNoteId === note.id} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors" title={labels.edit}>
-                            <PencilLine size={14} />
-                        </button>
-                        <button onClick={() => onCopy(note)} disabled={busyNoteId === note.id} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 disabled:opacity-50 transition-colors" title={copiedNoteId === note.id ? labels.copied : labels.copy}>
-                            <Copy size={14} />
-                        </button>
-                        <button onClick={() => onDelete(note)} disabled={busyNoteId === note.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50 transition-colors" title={labels.delete}>
-                            <Trash2 size={14} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Expandable preview */}
-                <div
-                    className="cursor-pointer mt-2"
-                    onClick={() => setExpanded(!expanded)}
-                >
-                    <AnimatePresence mode="wait" initial={false}>
+                    <AnimatePresence mode="wait">
                         {expanded ? (
                             <motion.div
                                 key="expanded"
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.2 }}
                                 className="overflow-hidden"
                             >
-                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap break-words max-h-[240px] overflow-y-auto pr-1 custom-scrollbar border-t border-slate-100 dark:border-white/5 pt-2 mt-1">
-                                    {note.content || '-'}
-                                </p>
+                                <div
+                                    className="prose prose-sm prose-slate dark:prose-invert max-w-none 
+                                        prose-p:my-1 prose-p:leading-relaxed 
+                                        prose-headings:text-slate-800 dark:prose-headings:text-slate-200 prose-headings:font-bold prose-headings:my-2
+                                        prose-code:text-indigo-600 dark:prose-code:text-indigo-300 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                                        font-lxgw text-sm pt-2"
+                                    dangerouslySetInnerHTML={{ __html: renderedContent || '<p class="text-slate-400 italic">No content</p>' }}
+                                />
                             </motion.div>
                         ) : (
                             <motion.p
                                 key="collapsed"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="text-sm text-slate-500 dark:text-slate-400 truncate"
+                                className="text-sm text-slate-500 dark:text-slate-400 truncate font-lxgw"
                             >
-                                {note.preview || '-'}
+                                {stripMarkdown(note.content || note.preview) || <span className="text-slate-400 italic">No content</span>}
                             </motion.p>
                         )}
                     </AnimatePresence>
+
+                    <div className="mt-3 flex items-center gap-4 text-xs font-medium text-slate-400 dark:text-slate-600">
+                        <span>{note.boardName}</span>
+                        <span>{note.charCount} {labels.chars}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1 sm:self-center opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ActionButton onClick={() => onOpenBoard(note)} icon={ExternalLink} label={labels.openBoard} />
+                    <ActionButton onClick={() => onEdit(note)} icon={PencilLine} label={labels.edit} disabled={isBusy} />
+                    <ActionButton onClick={() => onCopy(note)} icon={Copy} label={labels.copy} disabled={isBusy} />
+                    <ActionButton onClick={() => onDelete(note)} icon={Trash2} label={labels.delete} disabled={isBusy} dangerous />
                 </div>
             </div>
         </motion.article>
