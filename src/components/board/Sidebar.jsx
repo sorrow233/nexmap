@@ -17,18 +17,29 @@ const MAX_NAME_LENGTH = 10;
 // Moved outside Sidebar to prevent re-creation on every render
 const AddInput = ({ type, onCancel, newName, setNewName, newContent, setNewContent, onSubmit, t }) => (
     <div
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm"
-        onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-md"
     >
         <div
-            className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72 animate-in fade-in zoom-in-95 duration-200"
+            className="w-[22rem] max-w-full animate-in fade-in zoom-in-95 duration-200 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl ring-1 ring-slate-200/60 dark:border-slate-700 dark:bg-slate-800/95 dark:ring-slate-700/60"
             onClick={e => e.stopPropagation()}
         >
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.sidebar.newPrompt || "NEW PROMPT"}</div>
+            <div className="mb-3 flex items-center justify-between">
+                <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                        {t.sidebar.newPrompt || "NEW PROMPT"}
+                    </div>
+                    <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        {type === 'global' ? (t.sidebar.global || 'Global') : (t.sidebar.board || 'Board')}
+                    </div>
+                </div>
+                <div className="rounded-full bg-brand-500/10 px-2 py-1 text-[10px] font-bold text-brand-600 dark:text-brand-300">
+                    {newName.trim() ? 'Ready' : 'Draft'}
+                </div>
+            </div>
 
             {/* Name Input */}
-            <div>
-                <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+            <div className="mb-3">
+                <div className="mb-1 flex justify-between text-[10px] text-slate-400">
                     <span>Label</span>
                     <span>{newName.length}/{MAX_NAME_LENGTH}</span>
                 </div>
@@ -39,7 +50,7 @@ const AddInput = ({ type, onCancel, newName, setNewName, newContent, setNewConte
                     onChange={e => setNewName(e.target.value)}
                     maxLength={MAX_NAME_LENGTH}
                     placeholder="Tag Name"
-                    className="w-full px-2 py-1.5 text-xs rounded border border-brand-300 dark:border-brand-700 focus:ring-1 focus:ring-brand-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                    className="w-full rounded-xl border border-brand-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-brand-700 dark:bg-slate-900 dark:text-slate-100"
                     onKeyDown={e => {
                         if (e.key === 'Enter') document.getElementById('prompt-content-input')?.focus();
                         if (e.key === 'Escape') onCancel();
@@ -49,30 +60,38 @@ const AddInput = ({ type, onCancel, newName, setNewName, newContent, setNewConte
 
             {/* Content Input */}
             <div>
-                <div className="text-[10px] text-slate-400 mb-1">Prompt Content</div>
+                <div className="mb-1 text-[10px] text-slate-400">Prompt Content</div>
                 <textarea
                     id="prompt-content-input"
                     value={newContent}
                     onChange={e => setNewContent(e.target.value)}
                     placeholder="Enter the full instruction..."
-                    className="w-full px-2 py-1.5 text-xs rounded border border-brand-300 dark:border-brand-700 focus:ring-1 focus:ring-brand-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-[80px] resize-none"
+                    className="min-h-[110px] w-full resize-none rounded-xl border border-brand-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-brand-700 dark:bg-slate-900 dark:text-slate-100"
                     onKeyDown={e => {
                         if (e.key === 'Enter' && e.metaKey) onSubmit();
                         if (e.key === 'Escape') onCancel();
                     }}
                 />
+                <div className="mt-1 text-[10px] text-slate-400">
+                    Cmd/Ctrl + Enter: 快速保存
+                </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-1">
-                <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+            <div className="mt-4 flex justify-end gap-2">
+                <button
+                    onClick={onCancel}
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
                     <X size={14} />
+                    取消
                 </button>
                 <button
                     onClick={onSubmit}
                     disabled={!newName.trim()}
-                    className="p-1.5 bg-brand-500 text-white rounded hover:bg-brand-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-xl bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Check size={14} />
+                    确定
                 </button>
             </div>
         </div>
