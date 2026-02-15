@@ -257,7 +257,6 @@ export default function Sidebar({ className = "" }) {
             {editingPrompt && createPortal(
                 <div
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm"
-                    onClick={e => { if (e.target === e.currentTarget) setEditingPrompt(null); }}
                 >
                     <div
                         className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl w-72 animate-in fade-in zoom-in-95 duration-200"
