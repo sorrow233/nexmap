@@ -15,6 +15,7 @@ import InstantTooltip from './InstantTooltip';
 import { aiSummaryService } from '../services/aiSummaryService';
 
 export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
+    const RIGHT_BUTTON_LONG_PRESS_MS = 220;
     // Granular selectors to prevent unnecessary re-renders
     const cards = useStore(state => state.cards);
     const connections = useStore(state => state.connections);
@@ -45,6 +46,9 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const canvasRef = useRef(null);
     const contentRef = useRef(null); // Reference for Direct DOM Manipulation
     const stateRef = useRef({ offset, scale });
+    const rightPressTimerRef = useRef(null);
+    const isRightHoldPanningRef = useRef(false);
+    const suppressNextContextToggleRef = useRef(false);
 
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
     useEffect(() => {
@@ -60,6 +64,14 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         // Only handle background right-click; keep card/connection context menus intact
         if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
             e.preventDefault();
+            if (rightPressTimerRef.current) {
+                clearTimeout(rightPressTimerRef.current);
+                rightPressTimerRef.current = null;
+            }
+            if (suppressNextContextToggleRef.current) {
+                suppressNextContextToggleRef.current = false;
+                return;
+            }
             toggleCanvasMode();
         }
     }, [toggleCanvasMode]);
@@ -71,6 +83,25 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
 
         if (!isInteractive) {
+            const isCanvasBackground = target === canvasRef.current || target.classList.contains('canvas-bg');
+
+            // Right-click hold on canvas background: temporary pan mode
+            if (e.button === 2 && isCanvasBackground) {
+                suppressNextContextToggleRef.current = false;
+                isRightHoldPanningRef.current = false;
+
+                if (rightPressTimerRef.current) {
+                    clearTimeout(rightPressTimerRef.current);
+                }
+
+                rightPressTimerRef.current = setTimeout(() => {
+                    isRightHoldPanningRef.current = true;
+                    suppressNextContextToggleRef.current = true;
+                    setInteractionMode('panning');
+                }, RIGHT_BUTTON_LONG_PRESS_MS);
+                return;
+            }
+
             // In pan mode, left click also pans
             // Right-click is now reserved for mode toggle (see handleContextMenu), not temporary pan.
             const isPan = canvasMode === 'pan' || e.button === 1 || (e.button === 0 && (e.spaceKey || e.altKey));
@@ -109,6 +140,18 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     };
 
     const handleMouseUp = () => {
+        if (rightPressTimerRef.current) {
+            clearTimeout(rightPressTimerRef.current);
+            rightPressTimerRef.current = null;
+        }
+
+        if (isRightHoldPanningRef.current) {
+            isRightHoldPanningRef.current = false;
+            setInteractionMode('none');
+            setSelectionRect(null);
+            return;
+        }
+
         // Perform final check to ensure accuracy
         if (interactionMode === 'selecting' && selectionRect) {
             performSelectionCheck(selectionRect);
@@ -116,6 +159,14 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         setInteractionMode('none');
         setSelectionRect(null);
     };
+
+    useEffect(() => {
+        return () => {
+            if (rightPressTimerRef.current) {
+                clearTimeout(rightPressTimerRef.current);
+            }
+        };
+    }, []);
 
     const handleCardSelect = useCallback((id, e) => {
         const isAdditive = e && (e.shiftKey || e.metaKey || e.ctrlKey);
@@ -436,7 +487,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
             <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
                 {/* Canvas Mode Toggle - Modern canvas standard */}
-                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (Right Click)' : 'Switch to Pan Mode (Right Click)'}>
+                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (Right Click) · Hold Right Click to Drag' : 'Switch to Pan Mode (Right Click) · Hold Right Click to Drag'}>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
