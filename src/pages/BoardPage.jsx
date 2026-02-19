@@ -21,6 +21,9 @@ const SettingsModal = lazy(() => import('../components/SettingsModal'));
 
 import { useBoardLogic } from '../hooks/useBoardLogic';
 
+const AUTO_IMAGE_TRIGGERED_BOARDS = new Set();
+const AUTO_SUMMARY_TRIGGERED_BOARDS = new Set();
+
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
@@ -112,6 +115,24 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
     const hasAutoImageGeneratedRef = useRef(false);
     const hasAutoSummaryGeneratedRef = useRef(false);
 
+    useEffect(() => {
+        if (!currentBoardId) return;
+        hasAutoImageGeneratedRef.current = AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
+        hasAutoSummaryGeneratedRef.current = AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
+    }, [currentBoardId]);
+
+    useEffect(() => {
+        if (!currentBoardId) return;
+        if (currentBoard?.summary) {
+            AUTO_SUMMARY_TRIGGERED_BOARDS.add(currentBoardId);
+            hasAutoSummaryGeneratedRef.current = true;
+        }
+        if (currentBoard?.backgroundImage) {
+            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
+            hasAutoImageGeneratedRef.current = true;
+        }
+    }, [currentBoardId, currentBoard?.summary, currentBoard?.backgroundImage]);
+
     // Optimized: Calculate active count separately to avoid re-running effect on every card move/drag
     // cards array changes on every drag frame, but count remains stable
     const activeCardCount = React.useMemo(() => {
@@ -125,24 +146,29 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
         if (!currentBoardId) return;
 
+        const hasSummaryTriggered = hasAutoSummaryGeneratedRef.current || AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
+        const hasImageTriggered = hasAutoImageGeneratedRef.current || AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
+
         // 1. Text Summary (Cards > 3)
         // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
-        if (activeCardCount > 3 && !hasAutoSummaryGeneratedRef.current && !currentBoard?.summary && !currentBoard?.backgroundImage) {
+        if (activeCardCount > 3 && !hasSummaryTriggered && !currentBoard?.summary && !currentBoard?.backgroundImage) {
             console.log(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
             generateBoardSummary(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
             });
             hasAutoSummaryGeneratedRef.current = true;
+            AUTO_SUMMARY_TRIGGERED_BOARDS.add(currentBoardId);
         }
 
         // 2. Visual Background (Cards > 10)
         // Trigger if: Enough cards, not generated this session, and no existing image
-        if (activeCardCount > 10 && !hasAutoImageGeneratedRef.current && !currentBoard?.backgroundImage) {
+        if (activeCardCount > 10 && !hasImageTriggered && !currentBoard?.backgroundImage) {
             console.log(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
             generateBoardImage(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
             });
             hasAutoImageGeneratedRef.current = true;
+            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
         }
     }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
 

@@ -8,9 +8,15 @@ import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
 } from './customInstructionsService';
+import {
+    handleTransientNetworkError,
+    isLikelyNetworkError,
+    setupFirestoreConnectivityMonitor
+} from './syncNetworkGuard';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
+setupFirestoreConnectivityMonitor(db);
 
 // Global quota error detection - intercept Firebase console errors
 // This catches errors that happen at the connection level before onSnapshot callbacks
@@ -32,6 +38,9 @@ console.error = (...args) => {
             }).catch(() => { });
         }
     }
+    if (isLikelyNetworkError(message)) {
+        void handleTransientNetworkError(db, message, 'console.error');
+    }
 };
 
 // Check if error is quota exhausted and trigger offline mode
@@ -50,6 +59,16 @@ const handleQuotaError = async (error, context) => {
         return true;
     }
     return false;
+};
+
+const handleSyncError = (context, error) => {
+    void handleQuotaError(error, context);
+    if (isLikelyNetworkError(error)) {
+        void handleTransientNetworkError(db, error, context);
+        debugLog.warn(`${context} (temporary network issue)`, error);
+        return;
+    }
+    debugLog.error(context, error);
 };
 
 // Check if offline mode is enabled
@@ -78,6 +97,7 @@ const onSyncSuccess = () => {
         localStorage.removeItem('mixboard_offline_mode');
         localStorage.removeItem('mixboard_offline_auto');
         localStorage.removeItem('mixboard_offline_time');
+        localStorage.removeItem('mixboard_offline_reason');
         // Update store if available
         import('../store/useStore').then(({ useStore }) => {
             useStore.getState().setOfflineMode?.(false);
@@ -172,8 +192,7 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                 });
             }
         }, (error) => {
-            handleQuotaError(error, 'listenForBoardsMetadata');
-            debugLog.error("Firestore metadata sync error:", error);
+            handleSyncError('Firestore metadata sync error:', error);
         });
     } catch (err) {
 
@@ -289,8 +308,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                 debugLog.error(`[SingleBoard] Merge failed for board ${boardId}`, e);
             }
         }, (error) => {
-            handleQuotaError(error, 'listenForSingleBoard');
-            debugLog.error(`[SingleBoard] Sync error for ${boardId}:`, error);
+            handleSyncError(`[SingleBoard] Sync error for ${boardId}:`, error);
         });
 
     } catch (err) {
@@ -449,9 +467,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
             localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
         }, (error) => {
-            // Check for quota error and trigger offline mode
-            handleQuotaError(error, 'listenForBoardUpdates');
-            debugLog.error("Firestore sync error:", error);
+            handleSyncError('Firestore sync error:', error);
         });
     } catch (err) {
         debugLog.error("listenForBoardUpdates fatal error:", err);
@@ -566,8 +582,7 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         onSyncSuccess(); // Clear auto-offline if was triggered
         debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
     } catch (e) {
-        await handleQuotaError(e, 'saveBoardToCloud');
-        debugLog.error(`Cloud save failed for board ${boardId}`, e);
+        handleSyncError(`Cloud save failed for board ${boardId}`, e);
     }
 };
 
@@ -578,8 +593,7 @@ export const updateBoardMetadataInCloud = async (userId, boardId, metadata) => {
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
         await setDoc(boardRef, metadata, { merge: true });
     } catch (e) {
-        await handleQuotaError(e, 'updateBoardMetadataInCloud');
-        debugLog.error(`Cloud metadata update failed for board ${boardId}`, e);
+        handleSyncError(`Cloud metadata update failed for board ${boardId}`, e);
     }
 };
 
@@ -606,8 +620,7 @@ export const saveUserSettings = async (userId, settings) => {
         await setDoc(configRef, settings);
         return { ok: true };
     } catch (e) {
-        await handleQuotaError(e, 'saveUserSettings');
-        debugLog.error("Save settings failed", e);
+        handleSyncError('Save settings failed', e);
         return { ok: false, reason: 'error', error: e };
     }
 };
@@ -655,8 +668,7 @@ export const updateUserSettings = async (userId, updates) => {
         }
         return { ok: true };
     } catch (e) {
-        await handleQuotaError(e, 'updateUserSettings');
-        debugLog.error("Update settings failed", e);
+        handleSyncError('Update settings failed', e);
         return { ok: false, reason: 'error', error: e };
     }
 };
@@ -684,8 +696,7 @@ export const listenForUserSettings = (userId, onUpdate) => {
             const data = docSnap.exists() ? docSnap.data() : null;
             onUpdate(data);
         }, (error) => {
-            handleQuotaError(error, 'listenForUserSettings');
-            debugLog.error('Firestore user settings listener error:', error);
+            handleSyncError('Firestore user settings listener error:', error);
         });
     } catch (err) {
         debugLog.error('listenForUserSettings error:', err);
@@ -721,8 +732,7 @@ export const listenForFavoriteUpdates = (userId, onUpdate) => {
                 onUpdate(changes);
             }
         }, (error) => {
-            handleQuotaError(error, 'listenForFavoriteUpdates');
-            debugLog.error("Firestore favorites sync error:", error);
+            handleSyncError('Firestore favorites sync error:', error);
         });
     } catch (err) {
         debugLog.error("listenForFavoriteUpdates error:", err);
