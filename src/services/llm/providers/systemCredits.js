@@ -64,8 +64,7 @@ export class SystemCreditsProvider extends LLMProvider {
 
         const requestBody = {
             messages: formattedMessages,
-            temperature: options.temperature !== undefined ? options.temperature : 1.0,
-            max_tokens: 8192,
+            temperature: options.temperature !== undefined ? options.temperature : 1.0
         };
 
         const response = await chatWithSystemCredits(requestBody);
@@ -86,8 +85,7 @@ export class SystemCreditsProvider extends LLMProvider {
 
         const requestBody = {
             messages: formattedMessages,
-            temperature: options.temperature !== undefined ? options.temperature : 1.0,
-            max_tokens: 8192,
+            temperature: options.temperature !== undefined ? options.temperature : 1.0
         };
 
         await streamWithSystemCredits(requestBody, onToken, options);

@@ -381,7 +381,6 @@ export async function onRequest(context) {
             stream: stream,
             // Enable reasoning mode with recommended settings for Kimi-K2-Thinking
             temperature: selectedModel === CONVERSATION_MODEL ? 1.0 : (requestBody.temperature || 0.7),
-            max_tokens: requestBody.max_tokens || 16384, // Higher limit for reasoning chains
             stream_options: stream ? { include_usage: true } : undefined
         };
 
