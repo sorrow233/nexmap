@@ -309,11 +309,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         };
     }, [currentBoardId]);
 
-    // Persist Viewport
+    // Persist Viewport (debounced to avoid sync localStorage writes on every pan frame)
     useEffect(() => {
-        if (currentBoardId && !isBoardLoading) {
+        if (!currentBoardId || isBoardLoading) return;
+
+        const timer = setTimeout(() => {
             saveViewportState(currentBoardId, { offset, scale });
-        }
+        }, 120);
+
+        return () => clearTimeout(timer);
     }, [offset, scale, currentBoardId, isBoardLoading]);
 
     // Hotkeys

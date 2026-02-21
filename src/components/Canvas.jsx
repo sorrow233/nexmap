@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { Sparkles, Crosshair, Hand, MousePointer2, Bot } from 'lucide-react';
 import Card from './Card';
 import StickyNote from './StickyNote';
@@ -53,6 +53,17 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
     useEffect(() => {
         stateRef.current = { offset, scale };
+    }, [offset, scale]);
+
+    // Keep DOM transform/background in sync with canonical store state.
+    // This avoids occasional style conflicts with gesture-level direct DOM updates.
+    useLayoutEffect(() => {
+        if (canvasRef.current) {
+            canvasRef.current.style.backgroundPosition = `${offset.x}px ${offset.y}px`;
+        }
+        if (contentRef.current) {
+            contentRef.current.style.transform = `translate(${offset.x}px, ${offset.y}px) scale(${scale})`;
+        }
     }, [offset, scale]);
 
     // Extracted Logic - Now with Direct DOM capabilities
@@ -424,8 +435,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
             style={{
                 backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
-                backgroundSize: '24px 24px',
-                backgroundPosition: `${offset.x}px ${offset.y}px`
+                backgroundSize: '24px 24px'
             }}
         >
             {/* ConnectionLayer from beta - optimized Canvas rendering */}
@@ -442,8 +452,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
             <div
                 ref={contentRef}
-                className="absolute top-0 left-0 w-full h-full origin-top-left transition-transform duration-75 ease-out will-change-transform pointer-events-none"
-                style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
             >
                 {/* Zones Layer (Behind Cards) */}
                 {groups && groups.map(group => (
