@@ -45,12 +45,55 @@ const setBadge = async (type, pending = 0) => {
   await chrome.action.setBadgeBackgroundColor({ color: '#dc2626' });
 };
 
+const storageGet = (key) => new Promise((resolve, reject) => {
+  try {
+    chrome.storage.local.get(key, (result) => {
+      const lastError = chrome.runtime?.lastError;
+      if (lastError) {
+        reject(new Error(lastError.message || 'storage_get_failed'));
+        return;
+      }
+      resolve(result?.[key]);
+    });
+  } catch (error) {
+    reject(error);
+  }
+});
+
+const storageSet = (key, value) => new Promise((resolve, reject) => {
+  try {
+    chrome.storage.local.set({ [key]: value }, () => {
+      const lastError = chrome.runtime?.lastError;
+      if (lastError) {
+        reject(new Error(lastError.message || 'storage_set_failed'));
+        return;
+      }
+      resolve();
+    });
+  } catch (error) {
+    reject(error);
+  }
+});
+
+const storageRemove = (key) => new Promise((resolve, reject) => {
+  try {
+    chrome.storage.local.remove(key, () => {
+      const lastError = chrome.runtime?.lastError;
+      if (lastError) {
+        reject(new Error(lastError.message || 'storage_remove_failed'));
+        return;
+      }
+      resolve();
+    });
+  } catch (error) {
+    reject(error);
+  }
+});
+
 const saveLastEvent = async (payload) => {
-  await chrome.storage.local.set({
-    [STORAGE_LAST_EVENT_KEY]: {
-      ...payload,
-      at: Date.now()
-    }
+  await storageSet(STORAGE_LAST_EVENT_KEY, {
+    ...payload,
+    at: Date.now()
   });
 };
 
@@ -123,8 +166,8 @@ const handleSend = async (payload) => {
 };
 
 const loadBoundUid = async () => {
-  const data = await chrome.storage.local.get(STORAGE_FLOW_UID_KEY);
-  const rawUid = typeof data[STORAGE_FLOW_UID_KEY] === 'string' ? data[STORAGE_FLOW_UID_KEY] : '';
+  const raw = await storageGet(STORAGE_FLOW_UID_KEY);
+  const rawUid = typeof raw === 'string' ? raw : '';
   const checked = validateUid(rawUid);
   return checked.ok ? checked.value : '';
 };
@@ -237,12 +280,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (type === MESSAGE_TYPES.QUEUE_STATS) {
     Promise.all([
       getQueueStats(),
-      chrome.storage.local.get(STORAGE_LAST_EVENT_KEY)
+      storageGet(STORAGE_LAST_EVENT_KEY)
     ])
-      .then(([queue, extra]) => {
+      .then(([queue, lastEvent]) => {
         sendResponse({
           ...queue,
-          lastEvent: extra?.[STORAGE_LAST_EVENT_KEY] || null
+          lastEvent: lastEvent || null
         });
       })
       .catch((error) => {
@@ -265,6 +308,45 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .catch((error) => {
         sendResponse({ pending: -1, error: toErrorMessage(error) });
       });
+    return true;
+  }
+
+  if (type === MESSAGE_TYPES.STORAGE_PROXY) {
+    const op = message?.payload?.op;
+    const key = message?.payload?.key;
+    const value = message?.payload?.value;
+
+    if (typeof key !== 'string' || key.length === 0) {
+      sendResponse({ ok: false, error: 'invalid_storage_key' });
+      return false;
+    }
+
+    (async () => {
+      try {
+        if (op === 'get') {
+          const storageValue = await storageGet(key);
+          sendResponse({ ok: true, value: storageValue });
+          return;
+        }
+
+        if (op === 'set') {
+          await storageSet(key, value);
+          sendResponse({ ok: true });
+          return;
+        }
+
+        if (op === 'remove') {
+          await storageRemove(key);
+          sendResponse({ ok: true });
+          return;
+        }
+
+        sendResponse({ ok: false, error: 'invalid_storage_op' });
+      } catch (error) {
+        sendResponse({ ok: false, error: toErrorMessage(error) });
+      }
+    })();
+
     return true;
   }
 

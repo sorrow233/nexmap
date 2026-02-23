@@ -3,13 +3,24 @@
   if (!ns) return;
 
   const sendRuntimeMessage = (payload) => new Promise((resolve) => {
-    chrome.runtime.sendMessage(payload, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve({ success: false, error: chrome.runtime.lastError.message || 'runtime_error' });
-        return;
-      }
-      resolve(response || { success: false, error: 'empty_response' });
-    });
+    const runtime = globalThis.chrome?.runtime;
+    if (!runtime?.sendMessage) {
+      resolve({ success: false, error: 'runtime_unavailable' });
+      return;
+    }
+
+    try {
+      runtime.sendMessage(payload, (response) => {
+        const lastError = globalThis.chrome?.runtime?.lastError;
+        if (lastError) {
+          resolve({ success: false, error: lastError.message || 'runtime_error' });
+          return;
+        }
+        resolve(response || { success: false, error: 'empty_response' });
+      });
+    } catch (error) {
+      resolve({ success: false, error: error?.message || String(error) });
+    }
   });
 
   ns.transport = {

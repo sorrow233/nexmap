@@ -3,7 +3,8 @@ export const TARGET_API_URL = 'https://flowstudio.catzz.work/api/import';
 export const MESSAGE_TYPES = Object.freeze({
   SEND: 'AIM_FLOW_SEND',
   QUEUE_STATS: 'AIM_FLOW_QUEUE_STATS',
-  QUEUE_FLUSH: 'AIM_FLOW_QUEUE_FLUSH'
+  QUEUE_FLUSH: 'AIM_FLOW_QUEUE_FLUSH',
+  STORAGE_PROXY: 'AIM_FLOW_STORAGE_PROXY'
 });
 
 export const CONTEXT_MENU_ID = 'aim-flow-send-selection';
