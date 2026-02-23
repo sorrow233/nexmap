@@ -1,4 +1,7 @@
 (() => {
+  const ns = window.__AIMAINMAP_FLOW_EXT__;
+  if (!ns) return;
+
   const STATUS_TEXT = {
     idle: 'Flow',
     sending: '发送中',
@@ -7,19 +10,40 @@
     queued: '已排队'
   };
 
+  const STATUS_META = {
+    idle: '发送到 FlowStudio 队列',
+    sending: '正在提交内容…',
+    success: '内容已进入 FlowStudio 队列',
+    error: '发送失败，请稍后再试',
+    queued: '网络波动，已自动进入重试队列'
+  };
+
+  const shorten = (text, maxLen = 26) => {
+    if (!text) return '';
+    return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
+  };
+
   const createMenu = () => {
     const menu = document.createElement('div');
     menu.id = 'aim-flow-menu';
 
-    const flowButton = document.createElement('button');
-    flowButton.type = 'button';
-    flowButton.textContent = STATUS_TEXT.idle;
-    flowButton.dataset.status = 'idle';
+    menu.innerHTML = `
+      <span class="aim-flow-mark" aria-hidden="true">Flow</span>
+      <div class="aim-flow-copy">
+        <p class="aim-flow-title">发送到 FlowStudio</p>
+        <p class="aim-flow-meta">${STATUS_META.idle}</p>
+      </div>
+      <button class="aim-flow-action" type="button" data-status="idle">${STATUS_TEXT.idle}</button>
+    `;
 
-    menu.appendChild(flowButton);
     document.documentElement.appendChild(menu);
 
-    return { menu, flowButton };
+    return {
+      menu,
+      actionButton: menu.querySelector('.aim-flow-action'),
+      titleNode: menu.querySelector('.aim-flow-title'),
+      metaNode: menu.querySelector('.aim-flow-meta')
+    };
   };
 
   const createUidModal = () => {
@@ -29,11 +53,12 @@
     modal.innerHTML = `
       <div class="aim-flow-modal-card" role="dialog" aria-modal="true" aria-label="绑定 FlowStudio UID">
         <p class="aim-flow-modal-title">连接 FlowStudio</p>
-        <p class="aim-flow-modal-desc">请输入你的 FlowStudio Firebase UID，绑定后将静默发送。</p>
+        <p class="aim-flow-modal-desc">输入你的 FlowStudio Firebase UID。保存后，网页划词可直接静默发送。</p>
         <input class="aim-flow-modal-input" type="text" placeholder="Firebase UID" />
+        <p class="aim-flow-modal-error" aria-live="polite"></p>
         <div class="aim-flow-modal-actions">
           <button class="aim-flow-btn aim-flow-btn-cancel" type="button">取消</button>
-          <button class="aim-flow-btn aim-flow-btn-confirm" type="button" disabled>确认</button>
+          <button class="aim-flow-btn aim-flow-btn-confirm" type="button" disabled>确认绑定</button>
         </div>
       </div>
     `;
@@ -41,93 +66,169 @@
     document.documentElement.appendChild(modal);
 
     const input = modal.querySelector('.aim-flow-modal-input');
+    const errorNode = modal.querySelector('.aim-flow-modal-error');
     const cancelBtn = modal.querySelector('.aim-flow-btn-cancel');
     const confirmBtn = modal.querySelector('.aim-flow-btn-confirm');
 
-    const show = (initial = '') => new Promise((resolve) => {
+    let activeResolve = null;
+
+    const validateUid = (value) => {
+      const normalized = (value || '').trim();
+      if (!normalized) {
+        return { ok: false, reason: '请输入 UID' };
+      }
+      if (/\s/.test(normalized)) {
+        return { ok: false, reason: 'UID 不能包含空格' };
+      }
+      if (normalized.length < ns.FLOW_UID_MIN_LENGTH) {
+        return { ok: false, reason: `UID 长度至少 ${ns.FLOW_UID_MIN_LENGTH} 位` };
+      }
+      return { ok: true, value: normalized };
+    };
+
+    const setError = (text) => {
+      errorNode.textContent = text || '';
+    };
+
+    const cleanupListeners = (handlers) => {
+      input.removeEventListener('input', handlers.onInput);
+      input.removeEventListener('keydown', handlers.onKeydown);
+      cancelBtn.removeEventListener('click', handlers.onCancel);
+      confirmBtn.removeEventListener('click', handlers.onConfirm);
+      modal.removeEventListener('click', handlers.onBackdrop);
+    };
+
+    const closeModal = (handlers, result) => {
+      modal.style.display = 'none';
+      cleanupListeners(handlers);
+      const resolver = activeResolve;
+      activeResolve = null;
+      if (resolver) resolver(result);
+    };
+
+    const show = (initial = '') => {
+      if (activeResolve) {
+        return Promise.resolve('');
+      }
+
       input.value = initial || '';
-      confirmBtn.disabled = !input.value.trim();
+      setError('');
       modal.style.display = 'flex';
-      input.focus();
 
-      const cleanup = () => {
-        modal.style.display = 'none';
-        input.removeEventListener('input', handleInput);
-        input.removeEventListener('keydown', handleKeydown);
-        cancelBtn.removeEventListener('click', handleCancel);
-        confirmBtn.removeEventListener('click', handleConfirm);
-        modal.removeEventListener('click', handleBackdrop);
-      };
+      return new Promise((resolve) => {
+        activeResolve = resolve;
 
-      const handleInput = () => {
-        confirmBtn.disabled = !input.value.trim();
-      };
+        const refreshValidation = () => {
+          const checked = validateUid(input.value);
+          confirmBtn.disabled = !checked.ok;
+          setError(checked.ok ? '' : checked.reason);
+        };
 
-      const handleCancel = () => {
-        cleanup();
-        resolve('');
-      };
+        const handlers = {
+          onInput: () => {
+            refreshValidation();
+          },
+          onCancel: () => {
+            closeModal(handlers, '');
+          },
+          onConfirm: () => {
+            const checked = validateUid(input.value);
+            if (!checked.ok) {
+              setError(checked.reason);
+              return;
+            }
+            closeModal(handlers, checked.value);
+          },
+          onBackdrop: (event) => {
+            if (event.target === modal) {
+              closeModal(handlers, '');
+            }
+          },
+          onKeydown: (event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              closeModal(handlers, '');
+              return;
+            }
+            if (event.key === 'Enter' && !confirmBtn.disabled) {
+              event.preventDefault();
+              handlers.onConfirm();
+            }
+          }
+        };
 
-      const handleConfirm = () => {
-        const value = input.value.trim();
-        if (!value) return;
-        cleanup();
-        resolve(value);
-      };
+        refreshValidation();
+        input.addEventListener('input', handlers.onInput);
+        input.addEventListener('keydown', handlers.onKeydown);
+        cancelBtn.addEventListener('click', handlers.onCancel);
+        confirmBtn.addEventListener('click', handlers.onConfirm);
+        modal.addEventListener('click', handlers.onBackdrop);
 
-      const handleBackdrop = (event) => {
-        if (event.target === modal) {
-          handleCancel();
-        }
-      };
-
-      const handleKeydown = (event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          handleCancel();
-          return;
-        }
-        if (event.key === 'Enter' && !confirmBtn.disabled) {
-          event.preventDefault();
-          handleConfirm();
-        }
-      };
-
-      input.addEventListener('input', handleInput);
-      input.addEventListener('keydown', handleKeydown);
-      cancelBtn.addEventListener('click', handleCancel);
-      confirmBtn.addEventListener('click', handleConfirm);
-      modal.addEventListener('click', handleBackdrop);
-    });
+        requestAnimationFrame(() => input.focus());
+      });
+    };
 
     return { show };
   };
 
-  window.__AIMAINMAP_FLOW_EXT__.createUi = () => {
-    const { menu, flowButton } = createMenu();
+  ns.createUi = () => {
+    const { menu, actionButton, titleNode, metaNode } = createMenu();
     const uidModal = createUidModal();
+
+    let idleMeta = STATUS_META.idle;
 
     const api = {
       onFlowClick(handler) {
-        flowButton.onclick = handler;
+        actionButton.onclick = handler;
       },
-      setFlowStatus(status) {
-        flowButton.dataset.status = status;
-        flowButton.textContent = STATUS_TEXT[status] || STATUS_TEXT.idle;
+      setSelectionContext(text, truncated = false) {
+        const preview = shorten((text || '').replace(/\s+/g, ' '));
+        titleNode.textContent = preview ? `Flow: ${preview}` : '发送到 FlowStudio';
+        idleMeta = truncated
+          ? `内容超长，已自动截断到 ${ns.MAX_SELECTION_CHARS} 字`
+          : STATUS_META.idle;
+        if (actionButton.dataset.status === 'idle') {
+          metaNode.textContent = idleMeta;
+        }
+      },
+      setFlowStatus(status, detail = '') {
+        const safeStatus = STATUS_TEXT[status] ? status : 'idle';
+        actionButton.dataset.status = safeStatus;
+        actionButton.textContent = STATUS_TEXT[safeStatus];
+
+        if (safeStatus === 'idle') {
+          metaNode.textContent = idleMeta;
+          return;
+        }
+
+        metaNode.textContent = detail || STATUS_META[safeStatus] || STATUS_META.idle;
       },
       showMenuAt(rect) {
-        const top = Math.max(10, rect.top - 46);
-        const left = Math.max(10, rect.left + rect.width / 2 - menu.offsetWidth / 2);
-        menu.style.top = `${top}px`;
-        menu.style.left = `${left}px`;
         menu.style.display = 'flex';
+
+        const margin = 12;
+        const anchorX = rect.left + rect.width / 2;
+        const anchorY = Math.max(rect.top, menu.offsetHeight + margin + 4);
+
+        const half = menu.offsetWidth / 2;
+        const clampedX = Math.min(
+          window.innerWidth - margin - half,
+          Math.max(margin + half, anchorX)
+        );
+
+        menu.style.left = `${clampedX}px`;
+        menu.style.top = `${anchorY}px`;
       },
       hideMenu() {
         menu.style.display = 'none';
+        titleNode.textContent = '发送到 FlowStudio';
+        idleMeta = STATUS_META.idle;
         api.setFlowStatus('idle');
       },
       isWithinUi(node) {
-        return menu.contains(node) || (node && node.closest && node.closest('#aim-flow-modal'));
+        if (!node) return false;
+        const asElement = node instanceof Element ? node : null;
+        return menu.contains(node) || !!(asElement && asElement.closest('#aim-flow-modal'));
       },
       promptUid(initial) {
         return uidModal.show(initial);

@@ -1,6 +1,11 @@
 (() => {
   window.__AIMAINMAP_FLOW_EXT__ = {
     MESSAGE_SEND: 'AIM_FLOW_SEND',
-    STORAGE_UID_KEY: 'flowstudio_user_id'
+    MESSAGE_QUEUE_STATS: 'AIM_FLOW_QUEUE_STATS',
+    MESSAGE_QUEUE_FLUSH: 'AIM_FLOW_QUEUE_FLUSH',
+    STORAGE_UID_KEY: 'flowstudio_user_id',
+    FLOW_UID_MIN_LENGTH: 16,
+    MAX_SELECTION_CHARS: 12000,
+    STATUS_RESET_MS: 2400
   };
 })();

@@ -1,17 +1,12 @@
 import {
   ALARM_NAME,
   DIRECT_BACKOFF_BASE_MS,
-  MAX_DIRECT_RETRIES
+  MAX_DIRECT_RETRIES,
+  MESSAGE_TYPES
 } from './constants.js';
 import { sendToFlow } from './network.js';
 import { drainRetryQueue, enqueueForRetry, getQueueStats } from './retryQueue.js';
 import { calcBackoffMs, sleep, toErrorMessage } from './utils.js';
-
-const MESSAGE_TYPES = {
-  SEND: 'AIM_FLOW_SEND',
-  QUEUE_STATS: 'AIM_FLOW_QUEUE_STATS',
-  QUEUE_FLUSH: 'AIM_FLOW_QUEUE_FLUSH'
-};
 
 const sendWithRetry = async (payload) => {
   let lastError = null;
@@ -30,23 +25,35 @@ const sendWithRetry = async (payload) => {
   throw lastError || new Error('send_failed');
 };
 
-const handleSend = async (payload) => {
+const normalizeSendPayload = (payload) => {
   const text = payload?.text?.trim?.() || '';
   const userId = payload?.userId?.trim?.() || '';
+  const requestId = payload?.requestId?.trim?.() || crypto.randomUUID();
+  return { text, userId, requestId };
+};
 
-  if (!text) {
+const handleSend = async (payload) => {
+  const normalized = normalizeSendPayload(payload);
+
+  if (!normalized.text) {
     return { success: false, error: 'empty_text' };
+  }
+  if (!normalized.userId) {
+    return { success: false, error: 'empty_user_id' };
   }
 
   try {
-    const result = await sendWithRetry({ text, userId });
+    const result = await sendWithRetry(normalized);
     return { success: true, ...result };
   } catch (error) {
-    await enqueueForRetry({ text, userId }, toErrorMessage(error));
+    await enqueueForRetry(normalized, toErrorMessage(error));
+    const queue = await getQueueStats();
+
     return {
       success: false,
       queued: true,
-      error: toErrorMessage(error)
+      error: toErrorMessage(error),
+      queue
     };
   }
 };
@@ -73,8 +80,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (type === MESSAGE_TYPES.QUEUE_FLUSH) {
-    drainRetryQueue()
-      .then(getQueueStats)
+    const drainAll = !!message?.payload?.drainAll;
+    drainRetryQueue({ drainAll })
       .then(sendResponse)
       .catch((error) => {
         sendResponse({ pending: -1, error: toErrorMessage(error) });
@@ -91,15 +98,15 @@ const ensureAlarm = () => {
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureAlarm();
-  drainRetryQueue();
+  drainRetryQueue({ drainAll: true });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureAlarm();
-  drainRetryQueue();
+  drainRetryQueue({ drainAll: true });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== ALARM_NAME) return;
-  drainRetryQueue();
+  drainRetryQueue({ drainAll: true });
 });

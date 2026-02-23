@@ -8,11 +8,19 @@ const parseJsonSafe = async (response) => {
   }
 };
 
-export const sendToFlow = async ({ text, userId }) => {
+export const sendToFlow = async ({ text, userId, requestId }) => {
   const normalizedText = (text || '').trim();
+  const normalizedUserId = (userId || '').trim();
+  const normalizedRequestId = (requestId || '').trim();
+
   if (!normalizedText) {
     throw new Error('empty_text');
   }
+  if (!normalizedUserId) {
+    throw new Error('empty_user_id');
+  }
+
+  const safeRequestId = normalizedRequestId || crypto.randomUUID();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -25,9 +33,11 @@ export const sendToFlow = async ({ text, userId }) => {
       },
       body: JSON.stringify({
         text: normalizedText,
-        userId: userId || undefined,
+        userId: normalizedUserId,
         source: SOURCE,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        requestId: safeRequestId,
+        idempotencyKey: safeRequestId
       }),
       signal: controller.signal
     });
@@ -38,12 +48,12 @@ export const sendToFlow = async ({ text, userId }) => {
 
     const data = await parseJsonSafe(response);
 
-    if (!userId && data.redirectUrl) {
-      await chrome.tabs.create({ url: data.redirectUrl });
-      return { success: true, method: 'redirect' };
-    }
-
-    return { success: true, method: userId ? 'queue' : 'unknown' };
+    return {
+      success: true,
+      method: 'queue',
+      requestId: safeRequestId,
+      server: data
+    };
   } catch (error) {
     if (error?.name === 'AbortError') {
       throw new Error('request_timeout');
