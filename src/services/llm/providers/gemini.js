@@ -255,7 +255,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const maxAttempts = 4;
+        const maxAttempts = 6;
         let attempt = 0;
         let lastError = null;
 
@@ -263,6 +263,13 @@ export class GeminiProvider extends LLMProvider {
             attempt += 1;
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
+                const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
+                    ? keyPool.getShortestSuspendMs()
+                    : 0;
+                if (attempt < maxAttempts && cooldownMs > 0) {
+                    await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
+                    continue;
+                }
                 throw new Error('没有可用的 Gemini API Key');
             }
 
@@ -383,7 +390,7 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const maxAttempts = 4;
+        const maxAttempts = 6;
         let attempt = 0;
         let lastError = null;
 
@@ -391,6 +398,13 @@ export class GeminiProvider extends LLMProvider {
             attempt += 1;
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
+                const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
+                    ? keyPool.getShortestSuspendMs()
+                    : 0;
+                if (attempt < maxAttempts && cooldownMs > 0) {
+                    await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
+                    continue;
+                }
                 throw new Error('没有可用的 Gemini API Key');
             }
 

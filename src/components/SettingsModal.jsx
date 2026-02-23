@@ -55,6 +55,7 @@ import SettingsGeneralTab from './settings/SettingsGeneralTab';
 import SettingsInstructionsTab from './settings/SettingsInstructionsTab';
 import SettingsLinkageTab from './settings/SettingsLinkageTab';
 import { useLanguage } from '../contexts/LanguageContext';
+import packageJson from '../../package.json';
 
 const FLOWSTUDIO_USER_ID_KEY = 'flowstudio_user_id';
 const FLOWSTUDIO_USER_ID_KEY_PREFIX = 'flowstudio_user_id:';
@@ -548,7 +549,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             </div>
 
                             <div className="mt-5 border-t border-slate-200/90 pt-4 dark:border-white/10">
-                                <p className="text-center font-mono text-[11px] text-slate-500 dark:text-slate-500">v2.2.165</p>
+                                <p className="text-center font-mono text-[11px] text-slate-500 dark:text-slate-500">v{packageJson.version}</p>
                             </div>
                         </div>
                     </aside>
