@@ -19,6 +19,7 @@ import ProBadge from '../components/ProBadge';
 import PaymentSuccessModal from '../components/PaymentSuccessModal';
 import { auth } from '../services/firebase';
 import { useAutoBoardSummaries } from '../hooks/useAutoBoardSummaries';
+const AUTO_GALLERY_SUMMARY_ENABLED = false;
 
 export default function GalleryPage({
     boardsList,
@@ -45,8 +46,8 @@ export default function GalleryPage({
     const refreshCredits = useStore(state => state.fetchSystemCredits);
 
 
-    // Auto-generate summaries for eligible boards
-    useAutoBoardSummaries(boardsList, onUpdateBoardMetadata);
+    // Auto-generate summaries for eligible boards (disabled to avoid background token burn)
+    useAutoBoardSummaries(boardsList, onUpdateBoardMetadata, AUTO_GALLERY_SUMMARY_ENABLED);
 
 
     // Detect payment success from URL

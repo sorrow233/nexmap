@@ -27,6 +27,7 @@ const isSameStringArray = (a = [], b = []) => {
     }
     return true;
 };
+const AUTO_INSTRUCTION_RECOMMENDATION_ENABLED = false;
 
 export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -506,6 +507,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     ]);
 
     useEffect(() => {
+        if (!AUTO_INSTRUCTION_RECOMMENDATION_ENABLED) return;
         if (conversationCount > 2 && normalizedBoardInstructionSettings.autoSelectionMode === 'auto') {
             runAutoInstructionRecommendation(false);
         }

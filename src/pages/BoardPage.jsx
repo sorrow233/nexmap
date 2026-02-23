@@ -23,6 +23,7 @@ import { useBoardLogic } from '../hooks/useBoardLogic';
 
 const AUTO_IMAGE_TRIGGERED_BOARDS = new Set();
 const AUTO_SUMMARY_TRIGGERED_BOARDS = new Set();
+const AUTO_BACKGROUND_AI_ENABLED = false;
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
     const { id: boardId } = useParams();
@@ -142,6 +143,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
     // Auto-generate background when active cards > 10
     // Auto-generation Logic
     useEffect(() => {
+        if (!AUTO_BACKGROUND_AI_ENABLED) return;
         if (isReadOnly) return; // Skip auto-generation in Read-Only mode
 
         if (!currentBoardId) return;

@@ -36,6 +36,26 @@ export class GeminiProvider extends LLMProvider {
         return Number.isFinite(n) ? n : null;
     }
 
+    _shouldFallbackToProxyStatus(statusCode) {
+        const code = Number(statusCode);
+        return code === 408 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
+    }
+
+    _extractRetryDelayMs(errorMessage = '') {
+        const text = String(errorMessage || '');
+        const directMatch = text.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+        if (directMatch) {
+            return Math.max(1000, Math.ceil(Number(directMatch[1]) * 1000));
+        }
+
+        const jsonMatch = text.match(/"retryDelay"\s*:\s*"(\d+)s"/i);
+        if (jsonMatch) {
+            return Math.max(1000, Number(jsonMatch[1]) * 1000);
+        }
+
+        return null;
+    }
+
     _extractStatusCodeFromMessage(message = '') {
         const str = String(message || '');
         const tagged = str.match(/(?:API Error|Upstream Error)\s+(\d{3})/i);
@@ -176,7 +196,12 @@ export class GeminiProvider extends LLMProvider {
                     ? await this._fetchDirect({ apiKey, baseUrl, cleanModel, requestBody, stream, signal })
                     : await this._fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream, signal });
 
-                if (!response.ok && transport === 'direct' && transports.length > 1 && isRetryableStatus(response.status)) {
+                if (
+                    !response.ok &&
+                    transport === 'direct' &&
+                    transports.length > 1 &&
+                    this._shouldFallbackToProxyStatus(response.status)
+                ) {
                     console.warn(`[Gemini] Direct request returned ${response.status}, fallback to proxy`);
                     continue;
                 }
@@ -301,7 +326,8 @@ export class GeminiProvider extends LLMProvider {
 
                     const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
                     if (canRetry) {
-                        await wait(computeBackoffDelay(attempt));
+                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                        await wait(retryDelayMs || computeBackoffDelay(attempt));
                         lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
@@ -320,7 +346,8 @@ export class GeminiProvider extends LLMProvider {
 
                     const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
                     if (canRetry) {
-                        await wait(computeBackoffDelay(attempt));
+                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                        await wait(retryDelayMs || computeBackoffDelay(attempt));
                         lastError = new Error(errorMessage);
                         continue;
                     }
@@ -349,7 +376,8 @@ export class GeminiProvider extends LLMProvider {
 
                 const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
                 if (canRetry) {
-                    await wait(computeBackoffDelay(attempt));
+                    const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                    await wait(retryDelayMs || computeBackoffDelay(attempt));
                     lastError = error;
                     continue;
                 }
@@ -437,7 +465,8 @@ export class GeminiProvider extends LLMProvider {
 
                     const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
                     if (canRetry) {
-                        await wait(computeBackoffDelay(attempt));
+                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                        await wait(retryDelayMs || computeBackoffDelay(attempt));
                         lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
@@ -477,7 +506,8 @@ export class GeminiProvider extends LLMProvider {
                 const canRetry = attempt < maxAttempts && retryableLike;
 
                 if (canRetry) {
-                    await wait(computeBackoffDelay(attempt));
+                    const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                    await wait(retryDelayMs || computeBackoffDelay(attempt));
                     lastError = error;
                     continue;
                 }
