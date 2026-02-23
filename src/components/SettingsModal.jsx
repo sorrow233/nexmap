@@ -548,7 +548,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             </div>
 
                             <div className="mt-5 border-t border-white/10 pt-4">
-                                <p className="text-center font-mono text-[11px] text-slate-500">v2.2.130</p>
+                                <p className="text-center font-mono text-[11px] text-slate-500">v2.2.159</p>
                             </div>
                         </div>
                     </aside>

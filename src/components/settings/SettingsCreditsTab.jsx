@@ -7,6 +7,8 @@ import { redeemCode } from '../../services/redeemService';
 import PaymentModal from '../PaymentModal';
 import AdminCodePanel from '../AdminCodePanel';
 import ProBadge from '../ProBadge';
+import CreditMeterCard from './CreditMeterCard';
+import CreditBenefitCard from './CreditBenefitCard';
 
 /**
  * SettingsCreditsTab
@@ -80,95 +82,124 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
     const creditsPercent = Math.max(0, Math.min(100, (creditsValue / totalCap) * 100));
 
     // Image credits: default to 20 if undefined (weekly image limit)
-    const imageCreditsValue = typeof systemImageCredits === 'number' ? systemImageCredits : 20;
-    const imageCreditsPercent = Math.max(0, Math.min(100, (imageCreditsValue / 20) * 100));
+    const imageCreditsCap = 20;
+    const imageCreditsValue = typeof systemImageCredits === 'number' ? systemImageCredits : imageCreditsCap;
+    const imageCreditsPercent = Math.max(0, Math.min(100, (imageCreditsValue / imageCreditsCap) * 100));
+
+    const heroTheme = isPro
+        ? {
+            wrapper: 'bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600',
+            glowPrimary: 'bg-amber-100/25',
+            glowSecondary: 'bg-orange-900/35',
+            texture: 'bg-[url(\'https://grainy-gradients.vercel.app/noise.svg\')] opacity-20',
+            iconBox: 'bg-white/20 ring-white/35',
+            description: 'text-orange-100/95',
+            highlightPill: 'border-white/30 bg-white/15 text-orange-50',
+            meterContainer: 'border-white/20 bg-black/20',
+            meterLabel: 'text-orange-100',
+            meterValue: 'text-white',
+            meterTotal: 'text-orange-200',
+            meterTrack: 'bg-black/25',
+            conversationBar: 'bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-300',
+            imageBar: 'bg-gradient-to-r from-pink-200 via-rose-200 to-amber-200'
+        }
+        : {
+            wrapper: 'bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800',
+            glowPrimary: 'bg-cyan-100/25',
+            glowSecondary: 'bg-indigo-900/35',
+            texture: '',
+            iconBox: 'bg-white/15 ring-white/35',
+            description: 'text-cyan-100/95',
+            highlightPill: 'border-white/25 bg-white/10 text-cyan-50',
+            meterContainer: 'border-white/15 bg-slate-950/20',
+            meterLabel: 'text-cyan-100',
+            meterValue: 'text-white',
+            meterTotal: 'text-cyan-200',
+            meterTrack: 'bg-slate-950/35',
+            conversationBar: 'bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300',
+            imageBar: 'bg-gradient-to-r from-fuchsia-300 via-pink-300 to-amber-300'
+        };
 
     return (
         <div className="space-y-6">
             {/* Main Welcome Card */}
-            <div className={`relative overflow-hidden rounded-3xl text-white shadow-2xl p-8 group transition-all duration-500
-                ${isPro ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-red-600' : 'bg-gradient-to-br from-indigo-600 to-violet-700'}
-            `}>
-                {/* Background Effects */}
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-white/15 transition-colors duration-700"></div>
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-900/40 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-                {isPro && <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />}
+            <div className={`relative overflow-hidden rounded-[30px] border border-white/10 p-6 text-white shadow-2xl transition-all duration-500 sm:p-8 ${heroTheme.wrapper}`}>
+                <div className={`pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl ${heroTheme.glowPrimary}`} />
+                <div className={`pointer-events-none absolute -bottom-24 -left-14 h-72 w-72 rounded-full blur-3xl ${heroTheme.glowSecondary}`} />
+                {isPro && <div className={`pointer-events-none absolute inset-0 ${heroTheme.texture}`} />}
 
-                <div className="relative z-10 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-1 ring-white/30 relative">
+                <div className="relative z-10 grid gap-7 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+                    <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+                        <div className={`relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl backdrop-blur-md ring-1 shadow-inner ${heroTheme.iconBox}`}>
+                            {isPro ? (
+                                <>
+                                    <Crown size={32} className="text-white drop-shadow-md" />
+                                    <div className="absolute -right-1 -top-1">
+                                        <Sparkles size={16} className="animate-pulse text-yellow-100" />
+                                    </div>
+                                </>
+                            ) : (
+                                <CheckCircle2 size={32} className="text-white" />
+                            )}
+                        </div>
+
                         {isPro ? (
                             <>
-                                <Crown size={32} className="text-white drop-shadow-md" />
-                                <div className="absolute -top-1 -right-1">
-                                    <Sparkles size={16} className="text-yellow-200 animate-pulse" />
-                                </div>
+                                <h2 className="flex items-center gap-3 text-3xl font-black tracking-tight">
+                                    <span>{t.credits.proUser}</span>
+                                    <ProBadge size="md" className="shadow-lg" />
+                                </h2>
+                                <p className={`mt-2 max-w-lg text-lg font-medium leading-relaxed ${heroTheme.description}`}>
+                                    {t.credits.proFeaturesUnlocked}
+                                </p>
                             </>
                         ) : (
-                            <CheckCircle2 size={32} className="text-white" />
+                            <>
+                                <h2 className="text-3xl font-black tracking-tight sm:text-[34px]">{t.credits.noConfigNeeded}</h2>
+                                <p className={`mt-2 max-w-lg text-lg leading-relaxed ${heroTheme.description}`}>
+                                    {t.credits.readyToUse} <strong className="border-b-2 border-white/35 text-white">{totalCap}</strong> {t.credits.conversations}
+                                </p>
+                            </>
                         )}
+
+                        <div className={`mt-5 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold tracking-wide ${heroTheme.highlightPill}`}>
+                            <Sparkles size={14} />
+                            {t.credits.remainingCredits}: {Math.round(creditsPercent)}%
+                        </div>
                     </div>
 
-                    {isPro ? (
-                        <>
-                            <h2 className="text-3xl font-black mb-2 tracking-tight flex items-center gap-3">
-                                <span className="drop-shadow-sm">{t.credits.proUser}</span>
-                                <ProBadge size="md" className="shadow-lg" />
-                            </h2>
-                            <p className="text-orange-100 text-lg max-w-md mx-auto mb-8 font-medium">
-                                {t.credits.proFeaturesUnlocked}
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <h2 className="text-3xl font-bold mb-4">{t.credits.noConfigNeeded}</h2>
-                            <p className="text-indigo-100 text-lg max-w-md mx-auto mb-8 leading-relaxed">
-                                {t.credits.readyToUse} <strong className="text-white border-b-2 border-white/30">{totalCap}</strong> {t.credits.conversations}
-                            </p>
-                        </>
-                    )}
-
-                    {/* Usage Stats */}
-                    <div className="w-full max-w-sm space-y-4">
-                        {/* Conversation Credits */}
-                        <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                            <div className="flex justify-between items-end mb-2">
-                                <span className={`${isPro ? 'text-orange-200' : 'text-indigo-200'} text-sm font-medium`}>{t.credits.remainingCredits}</span>
-                                <span className="text-2xl font-bold font-mono">{creditsValue} <span className={`text-sm ${isPro ? 'text-orange-300' : 'text-indigo-300'}`}>/ {totalCap}</span></span>
-                            </div>
-                            <div className="h-3 bg-black/20 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full relative ${isPro ? 'bg-gradient-to-r from-yellow-300 to-amber-500' : 'bg-gradient-to-r from-emerald-400 to-cyan-400'}`}
-                                    style={{ width: `${creditsPercent}%` }}
-                                >
-                                    <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Image Credits */}
-                        <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                            <div className="flex justify-between items-end mb-2">
-                                <span className={`${isPro ? 'text-orange-200' : 'text-indigo-200'} text-sm font-medium flex items-center gap-2`}>
-                                    <Image size={14} />
-                                    {t.credits.imageCredits || 'Image Generation'}
-                                </span>
-                                <span className="text-2xl font-bold font-mono">{imageCreditsValue}<span className={`text-sm ${isPro ? 'text-orange-300' : 'text-indigo-300'}`}>/20</span></span>
-                            </div>
-                            <div className="h-3 bg-black/20 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-pink-400 to-orange-400 rounded-full relative"
-                                    style={{ width: `${imageCreditsPercent}%` }}
-                                >
-                                    <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
-                                </div>
-                            </div>
-                        </div>
+                    <div className="space-y-4">
+                        <CreditMeterCard
+                            label={t.credits.remainingCredits}
+                            value={creditsValue}
+                            total={totalCap}
+                            percent={creditsPercent}
+                            containerClassName={heroTheme.meterContainer}
+                            labelClassName={heroTheme.meterLabel}
+                            valueClassName={heroTheme.meterValue}
+                            totalClassName={heroTheme.meterTotal}
+                            progressTrackClassName={heroTheme.meterTrack}
+                            progressBarClassName={heroTheme.conversationBar}
+                        />
+                        <CreditMeterCard
+                            icon={Image}
+                            label={t.credits.imageCredits || 'Image Generation'}
+                            value={imageCreditsValue}
+                            total={imageCreditsCap}
+                            percent={imageCreditsPercent}
+                            containerClassName={heroTheme.meterContainer}
+                            labelClassName={heroTheme.meterLabel}
+                            valueClassName={heroTheme.meterValue}
+                            totalClassName={heroTheme.meterTotal}
+                            progressTrackClassName={heroTheme.meterTrack}
+                            progressBarClassName={heroTheme.imageBar}
+                        />
                     </div>
                 </div>
             </div>
 
             {/* Redeem Section */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-white/10 shadow-sm">
+            <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-[0_10px_40px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-slate-900 dark:to-slate-900/70 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
                         <Ticket size={20} />
@@ -179,28 +210,35 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={redeemInput}
-                        onChange={(e) => setRedeemInput(e.target.value)}
-                        placeholder={t.credits.enterCodePlaceholder}
-                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono uppercase"
-                    />
-                    <button
-                        onClick={handleRedeem}
-                        disabled={redeemStatus === 'loading' || !redeemInput.trim()}
-                        className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center gap-2"
-                    >
-                        {redeemStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : t.credits.redeem}
-                    </button>
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-1.5 dark:border-white/10 dark:bg-slate-900/60">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                            type="text"
+                            value={redeemInput}
+                            onChange={(e) => setRedeemInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleRedeem();
+                                }
+                            }}
+                            placeholder={t.credits.enterCodePlaceholder}
+                            className="flex-1 rounded-xl border border-transparent bg-transparent px-4 py-2.5 text-sm uppercase text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-400/40 focus:bg-white dark:text-slate-200 dark:focus:bg-slate-800/80 font-mono"
+                        />
+                        <button
+                            onClick={handleRedeem}
+                            disabled={redeemStatus === 'loading' || !redeemInput.trim()}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-6 py-2.5 font-bold text-white shadow-[0_8px_30px_rgba(79,70,229,0.35)] transition-all hover:from-indigo-500 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {redeemStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : t.credits.redeem}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Redeem Feedback */}
                 {redeemMessage && (
-                    <div className={`mt-3 text-sm p-3 rounded-xl flex items-center gap-2 ${redeemStatus === 'success'
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
-                        : 'bg-red-50 text-red-600 dark:bg-red-900/20'
+                    <div className={`mt-3 rounded-xl p-3 text-sm flex items-center gap-2 ${redeemStatus === 'success'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
                         }`}>
                         {redeemStatus === 'success' ? <CheckCircle2 size={16} /> : <Zap size={16} />}
                         {redeemMessage}
@@ -214,7 +252,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                     <div className="flex justify-center">
                         <button
                             onClick={() => setShowAdmin(!showAdmin)}
-                            className="text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors uppercase font-bold tracking-widest flex items-center gap-1"
+                            className="inline-flex items-center gap-1 rounded-full border border-indigo-200/80 bg-indigo-50 px-3 py-1 text-xs font-bold uppercase tracking-widest text-indigo-500 transition-colors hover:text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:text-indigo-200"
                         >
                             <Lock size={10} />
                             {showAdmin ? t.credits.hideAdminTools : t.credits.adminTools}
@@ -230,41 +268,43 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
             )}
 
             {/* Features Info */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-white/5 flex items-center gap-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl">
-                        <Zap size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{t.credits.fastResponse}</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.credits.fastResponseDesc}</p>
-                    </div>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-white/5 flex items-center gap-4">
-                    <div className="p-3 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl">
-                        <Infinity size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{t.credits.longLasting}</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.credits.longLastingDesc}</p>
-                    </div>
-                </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <CreditBenefitCard
+                    icon={Zap}
+                    title={t.credits.fastResponse}
+                    description={t.credits.fastResponseDesc}
+                    containerClassName="border-slate-200/70 bg-slate-50/80 dark:border-white/10 dark:bg-slate-800/65"
+                    iconWrapClassName="bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
+                />
+                <CreditBenefitCard
+                    icon={Infinity}
+                    title={t.credits.longLasting}
+                    description={t.credits.longLastingDesc}
+                    containerClassName="border-slate-200/70 bg-slate-50/80 dark:border-white/10 dark:bg-slate-800/65"
+                    iconWrapClassName="bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"
+                />
             </div>
 
             {/* Info Box - HIDDEN FOR CHINA USERS */}
             {!isChinaUser && (
-                <div className="text-center space-y-4">
-                    <button
-                        onClick={() => setIsPaymentOpen(true)}
-                        className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2 mx-auto"
-                    >
-                        <Gift size={20} />
-                        {t.credits.getMore}
-                    </button>
+                <div className="space-y-4 text-center">
+                    <div className="mx-auto max-w-xl rounded-2xl border border-cyan-200/40 bg-gradient-to-r from-cyan-50 via-white to-indigo-50 p-4 dark:border-cyan-300/20 dark:from-cyan-500/10 dark:via-slate-900/90 dark:to-indigo-500/10 sm:p-5">
+                        <button
+                            onClick={() => setIsPaymentOpen(true)}
+                            className="mx-auto flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-3 font-bold text-white shadow-[0_10px_36px_rgba(6,182,212,0.35)] transition-all hover:from-cyan-400 hover:to-indigo-500 active:scale-95"
+                        >
+                            <Gift size={20} />
+                            {t.credits.getMore}
+                        </button>
 
-                    <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">
-                        {t.credits.advancedNote} <span className="text-slate-600 dark:text-slate-300 font-bold cursor-pointer hover:underline" onClick={onOpenAdvanced}>{t.credits.advancedLink}</span> {t.credits.toConfig}
-                    </p>
+                        <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                            {t.credits.advancedNote}{' '}
+                            <span className="cursor-pointer font-bold text-slate-700 hover:underline dark:text-slate-200" onClick={onOpenAdvanced}>
+                                {t.credits.advancedLink}
+                            </span>{' '}
+                            {t.credits.toConfig}
+                        </p>
+                    </div>
                 </div>
             )}
 
