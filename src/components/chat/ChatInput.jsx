@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Send, Image as ImageIcon, Square, Send as SendIcon, Star, FileText, Plus } from 'lucide-react';
+import { X, Image as ImageIcon, Square, Send as SendIcon, FileText, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getColorForString } from '../../utils/colors';
@@ -127,14 +127,14 @@ export default function ChatInput({
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} disabled={isReadOnly} />
                             <button
                                 onClick={() => !isReadOnly && fileInputRef.current?.click()}
-                                disabled={isStreaming || isReadOnly}
+                                disabled={isReadOnly}
                                 className={`p-2 rounded-xl transition-all ${isReadOnly ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}
                                 title={t.chatBar.uploadImage}
                             >
                                 <ImageIcon size={18} />
                             </button>
                             <button
-                                disabled={isStreaming || isReadOnly}
+                                disabled={isReadOnly}
                                 className={`p-2 rounded-xl transition-all ${isReadOnly ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-cyan-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}
                             >
                                 <FileText size={18} />
@@ -143,7 +143,7 @@ export default function ChatInput({
                             <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
 
                             <button
-                                disabled={isStreaming || isReadOnly}
+                                disabled={isReadOnly}
                                 className={`p-2 rounded-xl transition-all ${isReadOnly ? 'text-slate-200 cursor-not-allowed' : 'text-cyan-500/80 hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20'}`}
                             >
                                 <Plus size={18} />
@@ -158,7 +158,7 @@ export default function ChatInput({
                                         instructions={instructions}
                                         onSelect={handlePromptSelect}
                                         onClear={onClearInstructions}
-                                        disabled={isStreaming}
+                                        disabled={isReadOnly}
                                         className="mb-0 px-0"
                                     />
                                 )}
@@ -167,9 +167,7 @@ export default function ChatInput({
 
                         {/* Right: Send / Stop Action */}
                         <div className="shrink-0 flex items-center gap-2">
-
-
-                            {isStreaming ? (
+                            {isStreaming && (
                                 <button
                                     onClick={onStop}
                                     className="w-10 h-10 bg-red-500 text-white rounded-[0.8rem] shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse transition-all"
@@ -177,23 +175,25 @@ export default function ChatInput({
                                 >
                                     <Square size={16} fill="currentColor" />
                                 </button>
-                            ) : (
-                                <motion.button
-                                    whileHover={(!canSend || isReadOnly) ? {} : { scale: 1.05 }}
-                                    whileTap={(!canSend || isReadOnly) ? {} : { scale: 0.95 }}
-                                    onClick={() => handleSend()}
-                                    disabled={!canSend || isReadOnly}
-                                    className={`
+                            )}
+                            <motion.button
+                                whileHover={(!canSend || isReadOnly) ? {} : { scale: 1.05 }}
+                                whileTap={(!canSend || isReadOnly) ? {} : { scale: 0.95 }}
+                                onClick={() => handleSend()}
+                                disabled={!canSend || isReadOnly}
+                                title={isStreaming ? (t.ai?.queueMessage || '加入队列') : (t.chatBar?.send || 'Send')}
+                                className={`
                                         relative w-10 h-10 rounded-[0.8rem] flex items-center justify-center transition-all shadow-lg
                                         ${(!canSend || isReadOnly)
                                             ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
-                                            : 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
+                                            : isStreaming
+                                                ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.45)] hover:bg-amber-400'
+                                                : 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
                                         ${isReadOnly ? 'cursor-not-allowed' : ''}
                                     `}
-                                >
-                                    <SendIcon size={18} className={canSend && !isReadOnly ? "fill-white" : ""} />
-                                </motion.button>
-                            )}
+                            >
+                                <SendIcon size={18} className={canSend && !isReadOnly ? "fill-white" : ""} />
+                            </motion.button>
                         </div>
                     </div>
                 </motion.div>

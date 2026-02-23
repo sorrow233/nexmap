@@ -35,6 +35,7 @@ export default function ChatView({
     isReadOnly = false // NEW
 }) {
     const [input, setInput] = useState('');
+    const isQueueProcessingRef = useRef(false);
 
     // Get config from Store
     const activeId = useStore(state => state.activeId);
@@ -81,8 +82,15 @@ export default function ChatView({
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
         if (!text || isReadOnly) return;
-        // Trigger the normal message flow
-        onGenerateResponse(card.id, text, []);
+        const normalizedText = text.trim();
+        if (!normalizedText) return;
+
+        if (isStreaming || isQueueProcessingRef.current) {
+            addPendingMessage(card.id, normalizedText, []);
+            return;
+        }
+
+        sendMessageInternal(normalizedText, []);
     };
 
     const handleSproutClick = async () => {
@@ -146,9 +154,16 @@ export default function ChatView({
 
 
     // --- Handlers Wrapper ---
+    const cloneImagesForSend = (imagesToClone = []) =>
+        imagesToClone.map((img) => ({
+            base64: img.base64,
+            mimeType: img.mimeType
+        }));
+
     // 核心发送逻辑（内部使用）
     const sendMessageInternal = async (textToSend, imagesToSend) => {
         if (isReadOnly) return;
+        isQueueProcessingRef.current = true;
         const currentInput = textToSend;
         const currentImages = [...imagesToSend];
         setIsAtBottom(true);
@@ -160,16 +175,18 @@ export default function ChatView({
         } catch (e) {
             console.error('Failed to send message:', e);
         } finally {
-            setIsStreaming(false);
-
             // 处理队列中的下一条消息 (from persistent store)
             const nextMsg = popPendingMessage(card.id);
             if (nextMsg) {
                 // 延迟一点调用，让UI有时间更新
                 setTimeout(() => {
-                    sendMessageInternal(nextMsg.text, nextMsg.images);
+                    sendMessageInternal(nextMsg.text, nextMsg.images || []);
                 }, 100);
+                return;
             }
+
+            isQueueProcessingRef.current = false;
+            setIsStreaming(false);
         }
     };
 
@@ -209,6 +226,7 @@ export default function ChatView({
         if (isReadOnly) return;
         console.log('[ChatView] Stopping generation for card:', card.id);
         aiManager.cancelByTags([`card:${card.id}`]);
+        isQueueProcessingRef.current = false;
         setIsStreaming(false);
         // 清空等待队列 (from persistent store)
         clearPendingMessages(card.id);
@@ -260,14 +278,25 @@ export default function ChatView({
     const onSendClick = async (overrideText) => {
         if (isReadOnly) return;
         const textToSend = typeof overrideText === 'string' ? overrideText : input;
-        if ((!textToSend || !textToSend.trim()) && images.length === 0) return;
+        const hasText = Boolean(textToSend && textToSend.trim());
+        const hasImages = images.length > 0;
+        if (!hasText && !hasImages) return;
+
+        const currentText = textToSend || '';
+        const currentImages = cloneImagesForSend(images);
 
         // Clear UI immediately for instant feedback
         setInput('');
         clearImages();
 
+        // If currently streaming, queue it and auto-send after current response.
+        if (isStreaming || isQueueProcessingRef.current) {
+            addPendingMessage(card.id, currentText, currentImages);
+            return;
+        }
+
         // Send message in background (handled by internal streaming state)
-        await sendMessageInternal(textToSend, images);
+        await sendMessageInternal(currentText, currentImages);
     };
 
     const addMarkTopic = (e) => {
@@ -441,4 +470,3 @@ export default function ChatView({
         </div>
     );
 }
-
