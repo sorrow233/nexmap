@@ -2,7 +2,7 @@ import React from 'react';
 import ErrorBoundary from '../ErrorBoundary';
 import MessageItem from './MessageItem';
 import favoritesService from '../../services/favoritesService';
-import { Clock } from 'lucide-react';
+import PendingQueueIndicator from './PendingQueueIndicator';
 
 export default function MessageList({
     card,
@@ -16,6 +16,7 @@ export default function MessageList({
     onShare,
     onToggleFavorite,
     pendingCount = 0,
+    pendingMessages = [],
     onContinueTopic,
     onBranch
 }) {
@@ -77,17 +78,7 @@ export default function MessageList({
                             </div>
                         )}
 
-                        {/* 等待队列提示 */}
-                        {pendingCount > 0 && (
-                            <div className="pt-4 flex justify-center animate-fade-in">
-                                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-full">
-                                    <Clock size={14} className="text-amber-500 animate-pulse" />
-                                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                                        {pendingCount} 条消息等待发送
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                        {pendingCount > 0 && <PendingQueueIndicator pendingMessages={pendingMessages} />}
 
                         <div ref={messagesEndRef} className="h-32" />
                     </div>

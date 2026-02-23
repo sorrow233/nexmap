@@ -35,7 +35,9 @@ export default function ChatView({
     isReadOnly = false // NEW
 }) {
     const [input, setInput] = useState('');
-    const isQueueProcessingRef = useRef(false);
+    const queueWorkerActiveRef = useRef(false);
+    const queueRunIdRef = useRef(0);
+    const isMountedRef = useRef(true);
 
     // Get config from Store
     const activeId = useStore(state => state.activeId);
@@ -46,8 +48,8 @@ export default function ChatView({
     // Use stable empty array constant to prevent infinite re-renders
     const pendingMessages = useStore(state => state.pendingMessages[card.id]) || EMPTY_PENDING_MESSAGES;
     const addPendingMessage = useStore(state => state.addPendingMessage);
-    const popPendingMessage = useStore(state => state.popPendingMessage);
     const clearPendingMessages = useStore(state => state.clearPendingMessages);
+    const isCardGenerating = useStore(state => state.generatingCardIds.has(card.id));
     const pendingCount = pendingMessages.length;
 
     const {
@@ -60,7 +62,8 @@ export default function ChatView({
     } = useImageUpload();
 
     const [shareContent, setShareContent] = useState(null);
-    const [isStreaming, setIsStreaming] = useState(false);
+    const [isQueueRunning, setIsQueueRunning] = useState(false);
+    const isStreaming = isQueueRunning || isCardGenerating;
     const [isAtBottom, setIsAtBottom] = useState(true);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
@@ -79,18 +82,14 @@ export default function ChatView({
     // Quick Sprout Hook (for one-click topic decomposition)
     const { handleContinueTopic, handleBranch } = useAISprouting();
 
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
         if (!text || isReadOnly) return;
         const normalizedText = text.trim();
         if (!normalizedText) return;
-
-        if (isStreaming || isQueueProcessingRef.current) {
-            addPendingMessage(card.id, normalizedText, []);
-            return;
-        }
-
-        sendMessageInternal(normalizedText, []);
+        enqueueMessage(normalizedText, []);
     };
 
     const handleSproutClick = async () => {
@@ -160,34 +159,54 @@ export default function ChatView({
             mimeType: img.mimeType
         }));
 
-    // 核心发送逻辑（内部使用）
-    const sendMessageInternal = async (textToSend, imagesToSend) => {
-        if (isReadOnly) return;
-        isQueueProcessingRef.current = true;
-        const currentInput = textToSend;
-        const currentImages = [...imagesToSend];
-        setIsAtBottom(true);
-        setIsStreaming(true);
-        setTimeout(() => scrollToBottom(true), 10);
-
-        try {
-            await onGenerateResponse(card.id, currentInput, currentImages);
-        } catch (e) {
-            console.error('Failed to send message:', e);
-        } finally {
-            // 处理队列中的下一条消息 (from persistent store)
-            const nextMsg = popPendingMessage(card.id);
-            if (nextMsg) {
-                // 延迟一点调用，让UI有时间更新
-                setTimeout(() => {
-                    sendMessageInternal(nextMsg.text, nextMsg.images || []);
-                }, 100);
-                return;
-            }
-
-            isQueueProcessingRef.current = false;
-            setIsStreaming(false);
+    const waitForCardIdle = async (runId) => {
+        while (queueRunIdRef.current === runId && useStore.getState().generatingCardIds.has(card.id)) {
+            await delay(120);
         }
+    };
+
+    const runQueueWorker = async (runId) => {
+        while (queueRunIdRef.current === runId) {
+            await waitForCardIdle(runId);
+            if (queueRunIdRef.current !== runId) break;
+
+            const nextMsg = useStore.getState().popPendingMessage(card.id);
+            if (!nextMsg) break;
+
+            setIsAtBottom(true);
+            setTimeout(() => scrollToBottom(true), 10);
+
+            try {
+                await onGenerateResponse(card.id, nextMsg.text || '', nextMsg.images || []);
+            } catch (e) {
+                console.error('Failed to send queued message:', e);
+            }
+        }
+    };
+
+    const startQueueWorker = () => {
+        if (isReadOnly || queueWorkerActiveRef.current) return;
+
+        const runId = queueRunIdRef.current + 1;
+        queueRunIdRef.current = runId;
+        queueWorkerActiveRef.current = true;
+        if (isMountedRef.current) {
+            setIsQueueRunning(true);
+        }
+
+        runQueueWorker(runId)
+            .finally(() => {
+                if (queueRunIdRef.current !== runId) return;
+                queueWorkerActiveRef.current = false;
+                if (isMountedRef.current) {
+                    setIsQueueRunning(false);
+                }
+            });
+    };
+
+    const enqueueMessage = (text, imagesToSend = []) => {
+        addPendingMessage(card.id, text, imagesToSend);
+        startQueueWorker();
     };
 
     const handleRetry = async () => {
@@ -211,13 +230,10 @@ export default function ChatView({
 
         if (!textContent.trim() && imageContent.length === 0) return;
 
-        setIsStreaming(true);
         try {
             await onGenerateResponse(card.id, textContent, imageContent);
         } catch (e) {
             console.error('Failed to retry:', e);
-        } finally {
-            setIsStreaming(false);
         }
     };
 
@@ -225,12 +241,38 @@ export default function ChatView({
     const handleStop = () => {
         if (isReadOnly) return;
         console.log('[ChatView] Stopping generation for card:', card.id);
+        queueRunIdRef.current += 1;
+        queueWorkerActiveRef.current = false;
+        setIsQueueRunning(false);
         aiManager.cancelByTags([`card:${card.id}`]);
-        isQueueProcessingRef.current = false;
-        setIsStreaming(false);
         // 清空等待队列 (from persistent store)
         clearPendingMessages(card.id);
     };
+
+    // Resume queued messages after reopen / rerender.
+    useEffect(() => {
+        if (isReadOnly) return;
+        if (pendingCount > 0) {
+            startQueueWorker();
+        }
+    }, [pendingCount, card.id, isReadOnly]);
+
+    // Reset local worker state when switching cards.
+    useEffect(() => {
+        queueRunIdRef.current += 1;
+        queueWorkerActiveRef.current = false;
+        setIsQueueRunning(false);
+    }, [card.id]);
+
+    // Cancel in-flight queue worker on unmount.
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            queueRunIdRef.current += 1;
+            queueWorkerActiveRef.current = false;
+        };
+    }, []);
 
     const handleTextSelection = () => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
@@ -275,7 +317,7 @@ export default function ChatView({
         return () => document.removeEventListener('selectionchange', handleSelectionChange);
     }, [selection]);
 
-    const onSendClick = async (overrideText) => {
+    const onSendClick = (overrideText) => {
         if (isReadOnly) return;
         const textToSend = typeof overrideText === 'string' ? overrideText : input;
         const hasText = Boolean(textToSend && textToSend.trim());
@@ -289,14 +331,8 @@ export default function ChatView({
         setInput('');
         clearImages();
 
-        // If currently streaming, queue it and auto-send after current response.
-        if (isStreaming || isQueueProcessingRef.current) {
-            addPendingMessage(card.id, currentText, currentImages);
-            return;
-        }
-
-        // Send message in background (handled by internal streaming state)
-        await sendMessageInternal(currentText, currentImages);
+        // Unified path: always enqueue, then queue worker sends strictly one-by-one.
+        enqueueMessage(currentText, currentImages);
     };
 
     const addMarkTopic = (e) => {
@@ -425,6 +461,7 @@ export default function ChatView({
                         onShare={(content) => setShareContent(content)}
                         onToggleFavorite={onToggleFavorite}
                         pendingCount={pendingCount}
+                        pendingMessages={pendingMessages}
                         onContinueTopic={isReadOnly ? null : () => handleContinueTopic(card.id, handleSendMessageFromSprout)}
                         onBranch={isReadOnly ? null : (msgId) => handleBranch(card.id, msgId)}
                     />
