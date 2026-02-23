@@ -20,6 +20,17 @@
       <div class="aim-flow-modal-card" role="dialog" aria-modal="true" aria-label="绑定 FlowStudio UID">
         <p class="aim-flow-modal-title">绑定 FlowStudio UID</p>
         <input class="aim-flow-modal-input" type="text" placeholder="Firebase UID" />
+        <p class="aim-flow-modal-link-row">
+          不知道 UID？
+          <a
+            class="aim-flow-modal-link"
+            href="https://flowstudio.catzz.work/__flowstudio/whoami"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            打开 whoami 页面复制
+          </a>
+        </p>
         <p class="aim-flow-modal-error" aria-live="polite"></p>
         <div class="aim-flow-modal-actions">
           <button class="aim-flow-btn aim-flow-btn-cancel" type="button">取消</button>

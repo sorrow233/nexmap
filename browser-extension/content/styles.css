@@ -93,6 +93,22 @@
   color: #b91c1c;
 }
 
+#aim-flow-modal .aim-flow-modal-link-row {
+  margin: 7px 0 0;
+  font-size: 12px;
+  color: #475569;
+}
+
+#aim-flow-modal .aim-flow-modal-link {
+  color: #0369a1;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+#aim-flow-modal .aim-flow-modal-link:hover {
+  text-decoration: underline;
+}
+
 #aim-flow-modal .aim-flow-modal-actions {
   margin-top: 10px;
   display: flex;
