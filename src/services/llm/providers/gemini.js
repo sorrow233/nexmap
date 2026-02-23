@@ -219,6 +219,13 @@ export class GeminiProvider extends LLMProvider {
         return false;
     }
 
+    _isFallbackEligible(error) {
+        if (!error) return false;
+        const errorMessage = error?.message || String(error);
+        const statusCode = this._extractStatusCodeFromMessage(errorMessage);
+        return this._shouldRetry({ statusCode, errorMessage, error }) || error?.retryable === true;
+    }
+
     async chat(messages, model, options = {}) {
         const keyPool = this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
@@ -463,10 +470,9 @@ export class GeminiProvider extends LLMProvider {
                     keyPool.markKeyFailed(apiKey, statusCode);
                 }
 
-                const canRetry = attempt < maxAttempts && (
-                    error?.retryable === true ||
-                    this._shouldRetry({ statusCode, errorMessage, error })
-                );
+                const retryableLike = error?.retryable === true ||
+                    this._shouldRetry({ statusCode, errorMessage, error });
+                const canRetry = attempt < maxAttempts && retryableLike;
 
                 if (canRetry) {
                     await wait(computeBackoffDelay(attempt));
@@ -474,8 +480,25 @@ export class GeminiProvider extends LLMProvider {
                     continue;
                 }
 
+                lastError = error;
+                if (options.allowNonStreamFallback !== false && retryableLike) {
+                    break;
+                }
+
                 throw error;
             }
+        }
+
+        if (!options.signal?.aborted && options.allowNonStreamFallback !== false && this._isFallbackEligible(lastError)) {
+            console.warn('[Gemini] Stream failed after retries, fallback to non-stream generateContent');
+            const text = await this.chat(messages, model, {
+                ...options,
+                signal: options.signal
+            });
+            if (text) {
+                onToken(text);
+            }
+            return;
         }
 
         throw lastError || new Error('Gemini 流式请求失败');
