@@ -244,7 +244,8 @@ export class GeminiProvider extends LLMProvider {
 
         if (options.tools) {
             requestBody.tools = options.tools;
-        } else if (options.useSearch !== false) {
+        } else if (options.useSearch === true) {
+            // Search tool is opt-in for stability under heavy context/concurrency workloads.
             requestBody.tools = [{ google_search: {} }];
         }
 
@@ -379,7 +380,8 @@ export class GeminiProvider extends LLMProvider {
 
         if (options.tools) {
             requestBody.tools = options.tools;
-        } else if (options.useSearch !== false) {
+        } else if (options.useSearch === true) {
+            // Search tool is opt-in for stability under heavy context/concurrency workloads.
             requestBody.tools = [{ google_search: {} }];
         }
 
