@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aimainmap Flow Capture</title>
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <h1>FlowStudio 绑定</h1>
+      <p class="desc">浏览器划词后将使用该 UID 静默写入 FlowStudio 队列。</p>
+
+      <label for="uid" class="label">FlowStudio Firebase UID</label>
+      <input id="uid" type="text" placeholder="请输入 UID" />
+
+      <div class="actions">
+        <button id="save" class="btn primary" type="button">保存</button>
+        <button id="clear" class="btn" type="button">清除</button>
+      </div>
+
+      <section class="queue">
+        <div class="queue-head">
+          <h2>重试队列</h2>
+          <button id="flush" class="btn" type="button">立即补发</button>
+        </div>
+        <p id="queue-status" class="queue-status">加载中...</p>
+      </section>
+
+      <p id="toast" class="toast" aria-live="polite"></p>
+    </main>
+
+    <script src="./options.js"></script>
+  </body>
+</html>

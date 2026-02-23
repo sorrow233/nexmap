@@ -9,6 +9,8 @@ coverage/
 
 # Production
 dist/
+dist-extension/
+dist-extension.zip
 
 # Env / Sensitive
 .env

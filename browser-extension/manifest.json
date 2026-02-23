@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Aimainmap Flow Capture",
+  "version": "0.1.0",
+  "description": "在任意网页划词后，直接发送到 FlowStudio 队列。",
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["https://flowstudio.catzz.work/*"],
+  "background": {
+    "service_worker": "background/index.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": [
+        "content/constants.js",
+        "content/storage.js",
+        "content/ui.js",
+        "content/main.js"
+      ],
+      "css": ["content/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options/options.html",
+  "action": {
+    "default_title": "Aimainmap Flow Capture",
+    "default_popup": "options/options.html"
+  }
+}
