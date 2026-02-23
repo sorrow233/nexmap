@@ -377,7 +377,8 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                     ) : isAssistantStreaming ? (
                         <div className="font-sans break-words whitespace-pre-wrap leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
                             <span>{streamingMainText}</span>
-                            {streamingTailText && <span className="stream-gradient-tail">{streamingTailText}</span>}
+                            {streamingTailText && <span className="stream-flow-tail">{streamingTailText}</span>}
+                            <span className="stream-flow-caret" aria-hidden="true">▎</span>
                         </div>
                     ) : (
                         <MessageContentWithCodeBlocks

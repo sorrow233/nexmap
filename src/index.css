@@ -778,34 +778,56 @@ body,
         }
     }
 
-    @keyframes stream-tail-shimmer {
+    @keyframes stream-tail-flow {
         0% {
-            background-position: 200% 0;
-            opacity: 0.6;
+            opacity: 0.45;
+            filter: blur(0.75px);
+            letter-spacing: 0.02em;
         }
 
-        45% {
+        55% {
             opacity: 1;
+            filter: blur(0);
+            letter-spacing: 0;
         }
 
         100% {
-            background-position: -20% 0;
-            opacity: 0.7;
+            opacity: 0.58;
+            filter: blur(0.4px);
+            letter-spacing: 0.01em;
         }
     }
 
-    .stream-gradient-tail {
-        background-image: linear-gradient(90deg, rgba(100, 116, 139, 0.35) 0%, rgba(14, 165, 233, 0.92) 45%, rgba(255, 255, 255, 0.98) 100%);
-        background-size: 220% 100%;
-        background-position: 200% 0;
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-        animation: stream-tail-shimmer 1.15s linear infinite;
-        filter: saturate(1.05);
+    .stream-flow-tail {
+        color: inherit;
+        animation: stream-tail-flow 0.62s ease-in-out infinite;
+        will-change: opacity, filter;
     }
 
-    .dark .stream-gradient-tail {
-        background-image: linear-gradient(90deg, rgba(148, 163, 184, 0.55) 0%, rgba(56, 189, 248, 0.92) 48%, rgba(226, 232, 240, 1) 100%);
+    @keyframes stream-caret-pulse {
+        0% {
+            opacity: 0.2;
+            transform: translateY(0);
+        }
+
+        45% {
+            opacity: 0.85;
+            transform: translateY(-0.5px);
+        }
+
+        100% {
+            opacity: 0.18;
+            transform: translateY(0);
+        }
+    }
+
+    .stream-flow-caret {
+        display: inline-block;
+        margin-left: 1px;
+        color: currentColor;
+        opacity: 0.2;
+        animation: stream-caret-pulse 0.78s ease-in-out infinite;
+        user-select: none;
+        pointer-events: none;
     }
 }
