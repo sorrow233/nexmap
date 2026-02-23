@@ -11,6 +11,15 @@ export class GeminiProvider extends LLMProvider {
         return lower.includes('gemini-3-flash');
     }
 
+    _normalizeThinkingLevel(level) {
+        if (!level) return null;
+        const normalized = String(level).trim().toUpperCase();
+        if (normalized === 'HIGH' || normalized === 'LOW' || normalized === 'THINKING_LEVEL_UNSPECIFIED') {
+            return normalized;
+        }
+        return null;
+    }
+
     /**
      * Gemini 原生协议转换
      */
@@ -90,8 +99,10 @@ export class GeminiProvider extends LLMProvider {
             requestBody.tools = [{ google_search: {} }];
         }
 
-        // Force Gemini 3 Flash family to always run with high thinking.
-        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel) ? 'high' : options.thinkingLevel;
+        // Force Gemini 3 Flash family to always run with HIGH thinking.
+        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
+            ? 'HIGH'
+            : this._normalizeThinkingLevel(options.thinkingLevel);
         if (forcedThinkingLevel) {
             requestBody.generationConfig.thinkingConfig = { thinkingLevel: forcedThinkingLevel };
         }
@@ -200,8 +211,10 @@ export class GeminiProvider extends LLMProvider {
             requestBody.tools = [{ google_search: {} }];
         }
 
-        // Force Gemini 3 Flash family to always run with high thinking.
-        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel) ? 'high' : options.thinkingLevel;
+        // Force Gemini 3 Flash family to always run with HIGH thinking.
+        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
+            ? 'HIGH'
+            : this._normalizeThinkingLevel(options.thinkingLevel);
         if (forcedThinkingLevel) {
             requestBody.generationConfig.thinkingConfig = { thinkingLevel: forcedThinkingLevel };
         }

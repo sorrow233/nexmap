@@ -2,6 +2,26 @@
  * Cloudflare Function: Universal GMI API Proxy
  * Handles all GMI Cloud API requests (chat, stream, image) to protect API keys
  */
+const THINKING_LEVEL_ALLOWLIST = new Set(['THINKING_LEVEL_UNSPECIFIED', 'LOW', 'HIGH']);
+
+function normalizeThinkingLevelInRequest(requestBody) {
+    const thinkingConfig = requestBody?.generationConfig?.thinkingConfig;
+    const level = thinkingConfig?.thinkingLevel;
+    if (typeof level !== 'string') return;
+
+    const normalized = level.trim().toUpperCase();
+    if (THINKING_LEVEL_ALLOWLIST.has(normalized)) {
+        thinkingConfig.thinkingLevel = normalized;
+        return;
+    }
+
+    // Drop invalid value to avoid upstream 400 validation errors.
+    delete thinkingConfig.thinkingLevel;
+    if (Object.keys(thinkingConfig).length === 0) {
+        delete requestBody.generationConfig.thinkingConfig;
+    }
+}
+
 export async function onRequest(context) {
     const { request } = context;
     console.log(`[Proxy] Received request: ${request.method} ${request.url}`);
@@ -73,6 +93,11 @@ export async function onRequest(context) {
         }
 
         console.log(`[Proxy] Forwarding to: ${url}`);
+
+        // Backward-compatibility guard for clients sending lowercase thinkingLevel.
+        if (requestBody && typeof requestBody === 'object') {
+            normalizeThinkingLevelInRequest(requestBody);
+        }
 
         // Make the upstream request
         const upstreamResponse = await fetch(url, {
