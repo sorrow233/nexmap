@@ -7,19 +7,12 @@
   let currentSelection = null;
   let isSending = false;
   let resetTimer = null;
-  let lastAutoSend = { fingerprint: '', at: 0 };
 
   const isValidUid = (uid) => {
     const normalized = (uid || '').trim();
     if (!normalized) return false;
     if (/\s/.test(normalized)) return false;
     return normalized.length >= ns.FLOW_UID_MIN_LENGTH;
-  };
-
-  const fingerprintText = (text) => {
-    const normalized = (text || '').replace(/\s+/g, ' ').trim();
-    if (!normalized) return '';
-    return `${normalized.length}:${normalized.slice(0, 260)}`;
   };
 
   const setStatusWithReset = (status = 'idle') => {
@@ -55,7 +48,7 @@
     return entered;
   };
 
-  const sendSelection = async (selection, trigger = 'button') => {
+  const sendSelection = async (selection) => {
     if (!selection?.text || isSending) return;
 
     isSending = true;
@@ -88,13 +81,6 @@
       setStatusWithReset('error');
     } finally {
       isSending = false;
-      if (trigger === 'copy') {
-        setTimeout(() => {
-          if (!currentSelection) {
-            ui.hideButton();
-          }
-        }, ns.STATUS_RESET_MS + 120);
-      }
     }
   };
 
@@ -114,25 +100,7 @@
     event.stopPropagation();
 
     if (!currentSelection?.text) return;
-    await sendSelection(currentSelection, 'button');
-  };
-
-  const handleCopyTrigger = () => {
-    setTimeout(async () => {
-      const selected = ns.selection.getSelectionPayload();
-      if (!selected?.text) return;
-
-      const now = Date.now();
-      const fp = fingerprintText(selected.text);
-      if (fp && fp === lastAutoSend.fingerprint && now - lastAutoSend.at < 1600) {
-        return;
-      }
-
-      lastAutoSend = { fingerprint: fp, at: now };
-      currentSelection = selected;
-      ui.showButtonAt(selected.rect);
-      await sendSelection(selected, 'copy');
-    }, 0);
+    await sendSelection(currentSelection);
   };
 
   ui.onFlowClick(handleFlowClick);
@@ -146,8 +114,6 @@
       setTimeout(tryOpenButtonFromSelection, 0);
     }
   });
-
-  document.addEventListener('copy', handleCopyTrigger, true);
 
   document.addEventListener('mousedown', (event) => {
     if (ui.isWithinUi(event.target)) return;
