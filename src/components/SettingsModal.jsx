@@ -475,8 +475,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 <button
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${isActive
-                        ? 'border-cyan-400/50 bg-cyan-400/20 text-cyan-100'
-                        : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/20 hover:text-white'
+                        ? 'border-cyan-300/70 bg-cyan-100 text-cyan-700 dark:border-cyan-400/50 dark:bg-cyan-400/20 dark:text-cyan-100'
+                        : 'border-slate-200 bg-white/85 text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-white/20 dark:hover:text-white'
                         }`}
                 >
                     <Icon size={14} />
@@ -489,20 +489,20 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             <button
                 onClick={() => setActiveTab(id)}
                 className={`group w-full rounded-2xl border px-3 py-3 text-left transition-all ${isActive
-                    ? 'border-cyan-400/40 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(56,189,248,0.2)]'
-                    : 'border-white/10 bg-slate-900/30 hover:border-white/20 hover:bg-slate-800/60'
+                    ? 'border-cyan-300/60 bg-cyan-100/70 shadow-[0_0_0_1px_rgba(56,189,248,0.2)] dark:border-cyan-400/40 dark:bg-cyan-400/10'
+                    : 'border-slate-200/80 bg-white/75 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20 dark:hover:bg-slate-800/60'
                     }`}
             >
                 <div className="flex items-center gap-3">
                     <div className={`rounded-xl p-2 transition-colors ${isActive
-                        ? 'bg-cyan-500/20 text-cyan-200'
-                        : 'bg-white/5 text-slate-400 group-hover:text-slate-200'
+                        ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-200'
+                        : 'bg-slate-100 text-slate-500 group-hover:text-slate-700 dark:bg-white/5 dark:text-slate-400 dark:group-hover:text-slate-200'
                         }`}>
                         <Icon size={16} />
                     </div>
                     <div className="min-w-0">
-                        <div className={`truncate text-sm font-bold ${isActive ? 'text-cyan-100' : 'text-slate-200'}`}>{label}</div>
-                        <div className="truncate text-[11px] text-slate-400">{description}</div>
+                        <div className={`truncate text-sm font-bold ${isActive ? 'text-cyan-800 dark:text-cyan-100' : 'text-slate-700 dark:text-slate-200'}`}>{label}</div>
+                        <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">{description}</div>
                     </div>
                 </div>
             </button>
@@ -510,51 +510,51 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-slate-950/70 p-2 backdrop-blur-md sm:p-6">
-            <div className="relative h-full w-full max-w-[1280px] overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
+        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-slate-900/35 p-2 backdrop-blur-md dark:bg-slate-950/70 sm:p-6">
+            <div className="relative h-full w-full max-w-[1280px] overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_35px_120px_rgba(2,6,23,0.22)] dark:border-white/10 dark:bg-slate-950 dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
                 <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
-                    <div className="absolute -bottom-24 left-8 h-80 w-80 rounded-full bg-blue-700/20 blur-3xl" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(56,189,248,0.1),transparent_34%),radial-gradient(circle_at_85%_88%,rgba(14,116,144,0.16),transparent_33%)]" />
+                    <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl dark:bg-cyan-500/20" />
+                    <div className="absolute -bottom-24 left-8 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl dark:bg-blue-700/20" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(56,189,248,0.18),transparent_36%),radial-gradient(circle_at_85%_88%,rgba(59,130,246,0.18),transparent_34%)] dark:bg-[radial-gradient(circle_at_20%_15%,rgba(56,189,248,0.1),transparent_34%),radial-gradient(circle_at_85%_88%,rgba(14,116,144,0.16),transparent_33%)]" />
                 </div>
 
                 <div className="relative flex h-full flex-col md:flex-row">
-                    <aside className="hidden w-[300px] shrink-0 border-r border-white/10 bg-slate-900/65 backdrop-blur-xl md:flex">
+                    <aside className="hidden w-[300px] shrink-0 border-r border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/65 md:flex">
                         <div className="flex h-full w-full flex-col p-6">
                             <div className="mb-6 flex items-center gap-3">
-                                <div className="rounded-2xl bg-cyan-500/20 p-2.5 text-cyan-200 shadow-[0_0_32px_rgba(14,165,233,0.35)]">
+                                <div className="rounded-2xl bg-cyan-500/15 p-2.5 text-cyan-700 shadow-[0_0_20px_rgba(14,165,233,0.25)] dark:bg-cyan-500/20 dark:text-cyan-200 dark:shadow-[0_0_32px_rgba(14,165,233,0.35)]">
                                     <Settings size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black tracking-tight text-white">{t.settings.title}</h2>
-                                    <p className="text-xs font-medium text-slate-400">{t.settings.configuration}</p>
+                                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">{t.settings.title}</h2>
+                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.settings.configuration}</p>
                                 </div>
                             </div>
 
                             <div className="flex-1 space-y-5 overflow-y-auto pr-1 custom-scrollbar">
                                 <div className="space-y-2">
-                                    <p className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">基础</p>
+                                    <p className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">基础</p>
                                     {primaryTabs.map(tab => (
                                         <TabButton key={tab.id} id={tab.id} icon={tab.icon} label={tab.label} description={tab.description} />
                                     ))}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <p className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">AI 配置</p>
+                                    <p className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">AI 配置</p>
                                     {aiTabs.map(tab => (
                                         <TabButton key={tab.id} id={tab.id} icon={tab.icon} label={tab.label} description={tab.description} />
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="mt-5 border-t border-white/10 pt-4">
-                                <p className="text-center font-mono text-[11px] text-slate-500">v2.2.159</p>
+                            <div className="mt-5 border-t border-slate-200/90 pt-4 dark:border-white/10">
+                                <p className="text-center font-mono text-[11px] text-slate-500 dark:text-slate-500">v2.2.160</p>
                             </div>
                         </div>
                     </aside>
 
-                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-950/70">
-                        <div className="border-b border-white/10 bg-slate-900/45 px-4 py-3 backdrop-blur-xl sm:px-8 sm:py-5">
+                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-50/80 dark:bg-slate-950/70">
+                        <div className="border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/45 sm:px-8 sm:py-5">
                             <div className="mb-3 flex gap-2 overflow-x-auto md:hidden custom-scrollbar">
                                 {mobileTabs.map(tab => (
                                     <TabButton key={tab.id} id={tab.id} icon={tab.icon} label={tab.label} compact />
@@ -563,13 +563,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-300/80">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-600/80 dark:text-cyan-300/80">
                                         {t.settings.title}
                                     </p>
-                                    <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
+                                    <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                                         {activeMeta.title}
                                     </h2>
-                                    <p className="mt-1 text-sm text-slate-300">
+                                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                                         {activeMeta.subtitle}
                                     </p>
                                 </div>
@@ -578,7 +578,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     <button
                                         onClick={onClose}
                                         disabled={isSaving}
-                                        className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-slate-800 disabled:opacity-60"
+                                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-all hover:bg-slate-100 disabled:opacity-60 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                                     >
                                         {t.settings.cancel}
                                     </button>
@@ -586,7 +586,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                         <button
                                             onClick={handlePullFromCloud}
                                             disabled={isSaving}
-                                            className="rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-100 transition-all hover:bg-cyan-400/20 disabled:opacity-60"
+                                            className="rounded-xl border border-cyan-300/70 bg-cyan-100 px-4 py-2 text-sm font-bold text-cyan-700 transition-all hover:bg-cyan-200 disabled:opacity-60 dark:border-cyan-300/25 dark:bg-cyan-400/10 dark:text-cyan-100 dark:hover:bg-cyan-400/20"
                                         >
                                             Pull Cloud
                                         </button>
@@ -613,16 +613,16 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                         ? 'border-amber-300/30 bg-amber-300/10'
                                         : saveStatus.type === 'error'
                                             ? 'border-rose-400/30 bg-rose-400/10'
-                                            : 'border-white/15 bg-slate-900/70'
+                                            : 'border-slate-200 bg-white/80 dark:border-white/15 dark:bg-slate-900/70'
                                     }`}>
                                     <div className="flex min-w-0 items-center gap-2">
-                                        {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-slate-200" />}
-                                        {saveStatus.type === 'success' && <CheckCircle2 size={16} className="text-emerald-300" />}
-                                        {saveStatus.type === 'warning' && <CloudOff size={16} className="text-amber-300" />}
-                                        {saveStatus.type === 'error' && <AlertCircle size={16} className="text-rose-300" />}
+                                        {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-slate-600 dark:text-slate-200" />}
+                                        {saveStatus.type === 'success' && <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300" />}
+                                        {saveStatus.type === 'warning' && <CloudOff size={16} className="text-amber-600 dark:text-amber-300" />}
+                                        {saveStatus.type === 'error' && <AlertCircle size={16} className="text-rose-600 dark:text-rose-300" />}
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-bold text-white">{saveStatus.title}</p>
-                                            <p className="truncate text-xs text-slate-300">{saveStatus.message}</p>
+                                            <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{saveStatus.title}</p>
+                                            <p className="truncate text-xs text-slate-600 dark:text-slate-300">{saveStatus.message}</p>
                                         </div>
                                     </div>
 
@@ -648,7 +648,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             <button
                                                 onClick={handleRetryCloudSync}
                                                 disabled={isSaving}
-                                                className="flex items-center gap-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-100 transition-all hover:bg-slate-800 disabled:opacity-60"
+                                                className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-100 disabled:opacity-60 dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                                             >
                                                 <Cloud size={12} />
                                                 Retry Cloud Sync
@@ -720,18 +720,18 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
                 {showResetConfirm && (
                     <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                        <div className="w-full max-w-sm rounded-3xl border border-rose-400/20 bg-slate-950 p-7 shadow-2xl">
+                        <div className="w-full max-w-sm rounded-3xl border border-rose-300/30 bg-white p-7 shadow-2xl dark:border-rose-400/20 dark:bg-slate-950">
                             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
                                 <AlertCircle size={32} />
                             </div>
-                            <h3 className="mb-2 text-center text-xl font-black text-white">{t.settings.resetConfiguration}</h3>
-                            <p className="mb-6 text-center text-sm leading-relaxed text-slate-300">
+                            <h3 className="mb-2 text-center text-xl font-black text-slate-900 dark:text-white">{t.settings.resetConfiguration}</h3>
+                            <p className="mb-6 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                                 {t.settings.resetWarning}
                             </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowResetConfirm(false)}
-                                    className="flex-1 rounded-xl border border-white/10 py-2.5 font-bold text-slate-200 transition-all hover:bg-white/5"
+                                    className="flex-1 rounded-xl border border-slate-200 py-2.5 font-bold text-slate-700 transition-all hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
                                 >
                                     {t.settings.cancel}
                                 </button>
