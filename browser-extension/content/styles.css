@@ -3,48 +3,106 @@
   z-index: 2147483646;
   display: none;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 12px;
-  border: 0;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 999px;
   cursor: pointer;
+  overflow: hidden;
   transform: translate(-50%, -118%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
-  font-weight: 700;
-  color: #ecfeff;
-  background: linear-gradient(120deg, #0f766e, #0ea5e9);
-  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.28);
+  font-weight: 800;
+  color: #8a2f60;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.72), transparent 43%),
+    linear-gradient(128deg, rgba(255, 233, 246, 0.58), rgba(255, 215, 236, 0.36));
+  backdrop-filter: blur(14px) saturate(138%);
+  -webkit-backdrop-filter: blur(14px) saturate(138%);
+  box-shadow:
+    0 9px 26px rgba(255, 111, 178, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+
+#aim-flow-mini::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
+  pointer-events: none;
 }
 
 #aim-flow-mini:hover {
-  filter: brightness(1.03);
+  transform: translate(-50%, -118%) translateY(-1px);
+  box-shadow:
+    0 13px 32px rgba(255, 111, 178, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 
 #aim-flow-mini .aim-flow-icon {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
+  color: #c02676;
+}
+
+#aim-flow-mini .aim-flow-text {
+  letter-spacing: 0.01em;
 }
 
 #aim-flow-mini[data-status='sending'] {
-  background: linear-gradient(120deg, #0369a1, #0284c7);
+  color: #ffffff;
+  border-color: rgba(255, 234, 246, 0.72);
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 242, 250, 0.62), transparent 46%),
+    linear-gradient(128deg, rgba(236, 72, 153, 0.75), rgba(217, 70, 239, 0.6));
+  box-shadow:
+    0 10px 30px rgba(236, 72, 153, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 #aim-flow-mini[data-status='sending'] .aim-flow-icon {
+  color: #fde7f3;
   animation: aim-flow-spin 1s linear infinite;
 }
 
 #aim-flow-mini[data-status='success'] {
-  background: linear-gradient(120deg, #166534, #16a34a);
+  color: #7a2250;
+  border-color: rgba(255, 255, 255, 0.62);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.72), transparent 44%),
+    linear-gradient(128deg, rgba(255, 231, 245, 0.72), rgba(255, 211, 233, 0.5));
+  box-shadow:
+    0 10px 28px rgba(255, 124, 183, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+#aim-flow-mini[data-status='success'] .aim-flow-icon {
+  color: #be185d;
 }
 
 #aim-flow-mini[data-status='queued'] {
-  background: linear-gradient(120deg, #92400e, #ca8a04);
+  color: #ffffff;
+  border-color: rgba(255, 236, 246, 0.74);
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 241, 249, 0.62), transparent 46%),
+    linear-gradient(128deg, rgba(217, 70, 239, 0.72), rgba(244, 63, 94, 0.66));
+  box-shadow:
+    0 10px 28px rgba(236, 72, 153, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 #aim-flow-mini[data-status='error'] {
-  background: linear-gradient(120deg, #991b1b, #dc2626);
+  color: #ffffff;
+  border-color: rgba(255, 234, 246, 0.72);
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 241, 248, 0.58), transparent 46%),
+    linear-gradient(128deg, rgba(244, 63, 94, 0.78), rgba(225, 29, 72, 0.68));
+  box-shadow:
+    0 10px 28px rgba(244, 63, 94, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 #aim-flow-modal {
