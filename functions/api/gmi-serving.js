@@ -3,6 +3,101 @@
  * Handles all GMI Cloud API requests (chat, stream, image) to protect API keys
  */
 const THINKING_LEVEL_ALLOWLIST = new Set(['THINKING_LEVEL_UNSPECIFIED', 'LOW', 'HIGH']);
+const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504, 524]);
+const RETRYABLE_ERROR_PATTERNS = [
+    'temporarily unavailable',
+    'service unavailable',
+    'overloaded',
+    'upstream',
+    'timeout',
+    'timed out',
+    'network',
+    'rate limit',
+    'too many requests',
+    'unavailable'
+];
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function computeBackoffDelay(attempt, baseMs = 700, maxMs = 8000) {
+    const exp = Math.min(maxMs, baseMs * (2 ** Math.max(0, attempt - 1)));
+    const jitter = Math.floor(Math.random() * 250);
+    return exp + jitter;
+}
+
+function isRetryableText(text = '') {
+    const lower = String(text).toLowerCase();
+    return RETRYABLE_ERROR_PATTERNS.some(pattern => lower.includes(pattern));
+}
+
+function shouldRetryUpstream({ statusCode, errorText = '', error = null }) {
+    if (RETRYABLE_STATUS_CODES.has(Number(statusCode))) {
+        return true;
+    }
+
+    if (isRetryableText(errorText)) {
+        return true;
+    }
+
+    if (error) {
+        if (error.name === 'AbortError') return true;
+        if (isRetryableText(error.message || String(error))) return true;
+        return true; // Most fetch/network failures are transient in this path.
+    }
+
+    return false;
+}
+
+async function fetchUpstreamWithRetry(url, requestInit, { stream = false } = {}) {
+    const maxAttempts = 3;
+    const timeoutMs = stream ? 95000 : 45000;
+    let attempt = 0;
+    let lastError = null;
+
+    while (attempt < maxAttempts) {
+        attempt += 1;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort('upstream_timeout'), timeoutMs);
+
+        try {
+            const response = await fetch(url, {
+                ...requestInit,
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                const canRetry = attempt < maxAttempts && shouldRetryUpstream({
+                    statusCode: response.status,
+                    errorText
+                });
+
+                if (canRetry) {
+                    await wait(computeBackoffDelay(attempt));
+                    continue;
+                }
+
+                return { response, errorText };
+            }
+
+            return { response, errorText: '' };
+        } catch (error) {
+            clearTimeout(timer);
+            lastError = error;
+
+            const canRetry = attempt < maxAttempts && shouldRetryUpstream({ error });
+            if (canRetry) {
+                await wait(computeBackoffDelay(attempt));
+                continue;
+            }
+            throw error;
+        }
+    }
+
+    if (lastError) throw lastError;
+    throw new Error('Upstream request failed after retries');
+}
 
 function normalizeThinkingLevelInRequest(requestBody) {
     const thinkingConfig = requestBody?.generationConfig?.thinkingConfig;
@@ -100,15 +195,15 @@ export async function onRequest(context) {
         }
 
         // Make the upstream request
-        const upstreamResponse = await fetch(url, {
+        const { response: upstreamResponse, errorText } = await fetchUpstreamWithRetry(url, {
             method: method,
             headers: headers,
             body: requestBody ? JSON.stringify(requestBody) : undefined
-        });
+        }, { stream });
 
         // Handle upstream errors immediately
         if (!upstreamResponse.ok) {
-            const errText = await upstreamResponse.text();
+            const errText = errorText || '';
             console.error(`[Proxy] Upstream error ${upstreamResponse.status}:`, errText);
             return new Response(JSON.stringify({
                 error: { message: `Upstream Error ${upstreamResponse.status}: ${errText}` }

@@ -179,7 +179,8 @@ export default function useBoardBackground() {
                 const { boardData } = await extractBoardContext(boardId);
                 const summaryResult = await withRetry(
                     () => aiSummaryService.generateBoardSummary(boardData, boardData.cards, config),
-                    { label: 'Summary Gen', maxAttempts: 2, baseDelayMs: 800 }
+                    // LLM provider itself already has retry/backoff; avoid nested retry storms here.
+                    { label: 'Summary Gen', maxAttempts: 1, baseDelayMs: 800 }
                 );
 
                 console.log('[Summary Gen] Result:', summaryResult);
@@ -242,7 +243,8 @@ export default function useBoardBackground() {
                         textConfig,
                         textConfig.model
                     ),
-                    { label: 'Image Concept', maxAttempts: 3, baseDelayMs: 900 }
+                    // Avoid duplicate retry layers (hook + provider), keep retry ownership in provider.
+                    { label: 'Image Concept', maxAttempts: 1, baseDelayMs: 900 }
                 );
 
                 console.log('[Image Gen] Visual Concept:', visualConcept);
@@ -256,7 +258,8 @@ export default function useBoardBackground() {
                         textConfig,
                         textConfig.model
                     ),
-                    { label: 'Image Prompt', maxAttempts: 3, baseDelayMs: 900 }
+                    // Avoid duplicate retry layers (hook + provider), keep retry ownership in provider.
+                    { label: 'Image Prompt', maxAttempts: 1, baseDelayMs: 900 }
                 );
 
                 console.log('[Image Gen] Final Image Prompt:', imagePrompt);

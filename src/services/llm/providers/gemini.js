@@ -1,9 +1,20 @@
 import { LLMProvider } from './base';
-import { resolveAllImages, getAuthMethod } from '../utils';
+import { resolveAllImages } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
-import { isRetryableError } from './gemini/errorUtils';
+import {
+    isRetryableError,
+    isRetryableStatus,
+    isKeyFailureStatus,
+    isRetryableNetworkError,
+    computeBackoffDelay,
+    isAbortError
+} from './gemini/errorUtils';
 import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser';
 import { getKeyPool } from '../keyPoolManager';
+
+const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiProvider extends LLMProvider {
     _isGemini3FlashModel(modelName = '') {
@@ -20,16 +31,57 @@ export class GeminiProvider extends LLMProvider {
         return null;
     }
 
+    _normalizeStatusCode(statusLike) {
+        const n = Number(statusLike);
+        return Number.isFinite(n) ? n : null;
+    }
+
+    _extractStatusCodeFromMessage(message = '') {
+        const str = String(message || '');
+        const tagged = str.match(/(?:API Error|Upstream Error)\s+(\d{3})/i);
+        if (tagged) return Number(tagged[1]);
+
+        const generic = str.match(/\b([45]\d{2})\b/);
+        if (generic) return Number(generic[1]);
+        return null;
+    }
+
+    _getResolvedBaseUrl() {
+        const base = this.config?.baseUrl?.trim();
+        const keysString = this.config?.apiKeys || this.config?.apiKey || '';
+        const hasGoogleKey = String(keysString)
+            .split(',')
+            .map(k => k.trim())
+            .some(k => k.startsWith('AIza'));
+
+        if (base && base.includes('api.gmi-serving.com') && hasGoogleKey) {
+            console.warn('[Gemini] Legacy GMI baseUrl detected with Google API key, auto-switching to official Gemini endpoint');
+            return DEFAULT_GEMINI_BASE_URL;
+        }
+
+        return base || DEFAULT_GEMINI_BASE_URL;
+    }
+
+    _shouldTryDirect(baseUrl = '') {
+        return String(baseUrl).includes('generativelanguage.googleapis.com');
+    }
+
+    _buildDirectUrl(baseUrl, cleanModel, stream = false) {
+        const endpoint = stream ? ':streamGenerateContent' : ':generateContent';
+        const query = stream ? '?alt=sse' : '';
+        return `${baseUrl.replace(/\/$/, '')}/models/${cleanModel}${endpoint}${query}`;
+    }
+
     /**
      * Gemini 原生协议转换
      */
     formatMessages(messages) {
         const contents = [];
-        let systemInstruction = "";
+        let systemInstruction = '';
 
         messages.forEach(msg => {
             if (msg.role === 'system') {
-                systemInstruction += (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)) + "\n";
+                systemInstruction += (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)) + '\n';
                 return;
             }
 
@@ -67,7 +119,6 @@ export class GeminiProvider extends LLMProvider {
         return { contents, systemInstruction };
     }
 
-
     /**
      * 获取 KeyPool（支持多 Key 轮询）
      */
@@ -76,9 +127,101 @@ export class GeminiProvider extends LLMProvider {
         return getKeyPool(this.config.id || 'default', keysString);
     }
 
+    async _fetchDirect({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
+        const rawUrl = this._buildDirectUrl(baseUrl, cleanModel, stream);
+        const sep = rawUrl.includes('?') ? '&' : '?';
+        const url = `${rawUrl}${sep}key=${encodeURIComponent(apiKey)}`;
+
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': stream ? 'text/event-stream, application/json' : 'application/json'
+            },
+            signal,
+            body: JSON.stringify(requestBody)
+        });
+    }
+
+    async _fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
+        const endpoint = stream
+            ? `/models/${cleanModel}:streamGenerateContent`
+            : `/models/${cleanModel}:generateContent`;
+
+        return fetch('/api/gmi-serving', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+            body: JSON.stringify({
+                apiKey,
+                baseUrl,
+                model: cleanModel,
+                endpoint,
+                requestBody,
+                stream
+            })
+        });
+    }
+
+    async _requestWithTransportFallback({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
+        const transports = this._shouldTryDirect(baseUrl)
+            ? ['direct', 'proxy']
+            : ['proxy'];
+
+        let lastNetworkError = null;
+
+        for (const transport of transports) {
+            try {
+                const response = transport === 'direct'
+                    ? await this._fetchDirect({ apiKey, baseUrl, cleanModel, requestBody, stream, signal })
+                    : await this._fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream, signal });
+
+                if (!response.ok && transport === 'direct' && transports.length > 1 && isRetryableStatus(response.status)) {
+                    console.warn(`[Gemini] Direct request returned ${response.status}, fallback to proxy`);
+                    continue;
+                }
+
+                return response;
+            } catch (error) {
+                if (isAbortError(error) || signal?.aborted) {
+                    throw error;
+                }
+
+                lastNetworkError = error;
+                if (transport === 'direct' && transports.length > 1 && isRetryableNetworkError(error)) {
+                    console.warn('[Gemini] Direct transport failed, fallback to proxy:', error?.message || error);
+                    continue;
+                }
+
+                throw error;
+            }
+        }
+
+        throw lastNetworkError || new Error('Gemini transport failed');
+    }
+
+    async _readErrorMessage(response) {
+        const rawText = await response.text().catch(() => '');
+        if (!rawText) return response.statusText || 'Unknown error';
+
+        try {
+            const parsed = JSON.parse(rawText);
+            return parsed?.error?.message || parsed?.message || rawText;
+        } catch {
+            return rawText;
+        }
+    }
+
+    _shouldRetry({ statusCode, errorMessage, error }) {
+        if (isRetryableStatus(statusCode)) return true;
+        if (isRetryableError(errorMessage)) return true;
+        if (isRetryableNetworkError(error)) return true;
+        return false;
+    }
+
     async chat(messages, model, options = {}) {
         const keyPool = this._getKeyPool();
-        const { baseUrl = "" } = this.config;
+        const baseUrl = this._getResolvedBaseUrl();
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
@@ -95,11 +238,9 @@ export class GeminiProvider extends LLMProvider {
         if (options.tools) {
             requestBody.tools = options.tools;
         } else if (options.useSearch !== false) {
-            // Default to enabling Google Search unless explicitly disabled.
             requestBody.tools = [{ google_search: {} }];
         }
 
-        // Force Gemini 3 Flash family to always run with HIGH thinking.
         const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
             ? 'HIGH'
             : this._normalizeThinkingLevel(options.thinkingLevel);
@@ -114,83 +255,101 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 3;
+        const maxAttempts = 4;
+        let attempt = 0;
         let lastError = null;
 
-        while (retries >= 0) {
+        while (attempt < maxAttempts) {
+            attempt += 1;
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
                 throw new Error('没有可用的 Gemini API Key');
             }
 
             try {
-                const response = await fetch('/api/gmi-serving', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        apiKey,
-                        baseUrl,
-                        model: cleanModel,
-                        endpoint: `/models/${cleanModel}:generateContent`,
-                        requestBody
-                    })
+                const response = await this._requestWithTransportFallback({
+                    apiKey,
+                    baseUrl,
+                    cleanModel,
+                    requestBody,
+                    stream: false,
+                    signal: options.signal
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.error) {
-                        const errMsg = data.error.message || JSON.stringify(data.error);
-                        if ([401, 403, 429].includes(data.error.code) || isRetryableError(errMsg)) {
-                            keyPool.markKeyFailed(apiKey, data.error.code || errMsg);
-                            retries--;
-                            lastError = new Error(errMsg);
-                            continue;
-                        }
-                        throw new Error(errMsg);
+                if (!response.ok) {
+                    const statusCode = this._normalizeStatusCode(response.status);
+                    const errorMessage = await this._readErrorMessage(response);
+
+                    if (isKeyFailureStatus(statusCode)) {
+                        keyPool.markKeyFailed(apiKey, statusCode);
                     }
 
-                    const candidate = data.candidates?.[0];
-                    const usedSearch = didCandidateUseSearch(candidate);
-                    if (typeof options.onResponseMetadata === 'function') {
-                        try {
-                            options.onResponseMetadata({ usedSearch });
-                        } catch (metaError) {
-                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
-                        }
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    if (canRetry) {
+                        await wait(computeBackoffDelay(attempt));
+                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                        continue;
                     }
-                    return candidate?.content?.parts?.[0]?.text || "";
+
+                    throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                 }
 
-                if ([401, 403, 429].includes(response.status)) {
-                    keyPool.markKeyFailed(apiKey, response.status);
-                    retries--;
+                const data = await response.json();
+                if (data.error) {
+                    const statusCode = this._normalizeStatusCode(data.error.code);
+                    const errorMessage = data.error.message || JSON.stringify(data.error);
+
+                    if (isKeyFailureStatus(statusCode)) {
+                        keyPool.markKeyFailed(apiKey, statusCode);
+                    }
+
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    if (canRetry) {
+                        await wait(computeBackoffDelay(attempt));
+                        lastError = new Error(errorMessage);
+                        continue;
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                const candidate = data.candidates?.[0];
+                const usedSearch = didCandidateUseSearch(candidate);
+                if (typeof options.onResponseMetadata === 'function') {
+                    try {
+                        options.onResponseMetadata({ usedSearch });
+                    } catch (metaError) {
+                        console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                    }
+                }
+                return candidate?.content?.parts?.[0]?.text || '';
+            } catch (error) {
+                if (isAbortError(error) || options.signal?.aborted) throw error;
+
+                const errorMessage = error?.message || String(error);
+                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
+                if (isKeyFailureStatus(statusCode)) {
+                    keyPool.markKeyFailed(apiKey, statusCode);
+                }
+
+                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
+                if (canRetry) {
+                    await wait(computeBackoffDelay(attempt));
+                    lastError = error;
                     continue;
                 }
 
-                if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    retries--; continue;
-                }
-
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || err.message || `API Error ${response.status}: ${response.statusText}`);
-            } catch (e) {
-                console.error('[Gemini] Chat error details:', e);
-                if (retries > 0) {
-                    retries--;
-                    lastError = e;
-                    continue;
-                }
-                throw e;
+                console.error('[Gemini] Chat error details:', error);
+                throw error;
             }
         }
+
         throw lastError || new Error('Gemini 请求失败');
     }
 
     async stream(messages, onToken, model, options = {}) {
         const keyPool = this._getKeyPool();
-        // 如果 baseUrl 为空，使用 Gemini 官方 API 地址
-        const baseUrl = this.config.baseUrl?.trim() || 'https://generativelanguage.googleapis.com/v1beta';
+        const baseUrl = this._getResolvedBaseUrl();
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
@@ -207,11 +366,9 @@ export class GeminiProvider extends LLMProvider {
         if (options.tools) {
             requestBody.tools = options.tools;
         } else if (options.useSearch !== false) {
-            // Default to enabling Google Search unless explicitly disabled.
             requestBody.tools = [{ google_search: {} }];
         }
 
-        // Force Gemini 3 Flash family to always run with HIGH thinking.
         const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
             ? 'HIGH'
             : this._normalizeThinkingLevel(options.thinkingLevel);
@@ -226,50 +383,50 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        let retries = 3;
-        let delay = 1000;
+        const maxAttempts = 4;
+        let attempt = 0;
+        let lastError = null;
 
-        while (retries >= 0) {
+        while (attempt < maxAttempts) {
+            attempt += 1;
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
                 throw new Error('没有可用的 Gemini API Key');
             }
 
             try {
-                const response = await fetch('/api/gmi-serving', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: options.signal,
-                    body: JSON.stringify({
-                        apiKey,
-                        baseUrl,
-                        model: cleanModel,
-                        endpoint: `/models/${cleanModel}:streamGenerateContent`,
-                        requestBody,
-                        stream: true
-                    })
+                const response = await this._requestWithTransportFallback({
+                    apiKey,
+                    baseUrl,
+                    cleanModel,
+                    requestBody,
+                    stream: true,
+                    signal: options.signal
                 });
 
                 if (!response.ok) {
-                    const errStatus = response.status;
-                    if ([401, 403, 429].includes(errStatus)) {
-                        keyPool.markKeyFailed(apiKey, errStatus);
-                        retries--;
+                    const statusCode = this._normalizeStatusCode(response.status);
+                    const errorMessage = await this._readErrorMessage(response);
+
+                    if (isKeyFailureStatus(statusCode)) {
+                        keyPool.markKeyFailed(apiKey, statusCode);
+                    }
+
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    if (canRetry) {
+                        await wait(computeBackoffDelay(attempt));
+                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
 
-                    if ([500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
-                        await new Promise(r => setTimeout(r, delay));
-                        retries--;
-                        delay *= 2;
-                        continue;
-                    }
-
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || errData.message || `API Error ${errStatus}: ${response.statusText}`);
+                    throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                 }
 
-                const reader = response.body.getReader();
+                const reader = response.body?.getReader?.();
+                if (!reader) {
+                    throw new Error('Stream response body is empty');
+                }
+
                 try {
                     const streamMeta = await parseGeminiStream(reader, onToken, () => { });
                     if (typeof options.onResponseMetadata === 'function') {
@@ -283,19 +440,31 @@ export class GeminiProvider extends LLMProvider {
                 } finally {
                     reader.releaseLock();
                 }
+            } catch (error) {
+                if (isAbortError(error) || options.signal?.aborted) throw error;
 
-            } catch (e) {
-                if (e.name === 'AbortError' || options.signal?.aborted) throw e;
+                const errorMessage = error?.message || String(error);
+                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
+                if (isKeyFailureStatus(statusCode)) {
+                    keyPool.markKeyFailed(apiKey, statusCode);
+                }
 
-                if (retries > 0) {
-                    retries--;
-                    await new Promise(r => setTimeout(r, delay));
-                    delay *= 2;
+                const canRetry = attempt < maxAttempts && (
+                    error?.retryable === true ||
+                    this._shouldRetry({ statusCode, errorMessage, error })
+                );
+
+                if (canRetry) {
+                    await wait(computeBackoffDelay(attempt));
+                    lastError = error;
                     continue;
                 }
-                throw e;
+
+                throw error;
             }
         }
+
+        throw lastError || new Error('Gemini 流式请求失败');
     }
 
     /**
