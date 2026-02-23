@@ -127,40 +127,32 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         textContent = message.content || "";
     }
 
-    // Apply fluid typewriter effect for assistant messages while streaming
-    const rawFluidText = useFluidTypewriter(textContent, !isUser && isStreaming);
+    const isAssistantStreaming = !isUser && isStreaming;
+    const fluidStreamingText = useFluidTypewriter(textContent, isAssistantStreaming);
+    const displayText = isAssistantStreaming ? fluidStreamingText : textContent;
 
-    // "Gray Tail" Effect Logic
-    const finalDisplayContent = React.useMemo(() => {
-        if (isUser || !isStreaming || !rawFluidText) return rawFluidText || textContent;
-        if (rawFluidText === textContent) return rawFluidText; // Finished streaming
-
-        const tailLength = 5; // Number of characters to fade
-        if (rawFluidText.length <= tailLength) return rawFluidText;
-
-        // Safety checks to avoid breaking Markdown/Code blocks
-        const backtickCount = (rawFluidText.match(/`/g) || []).length;
-        const isInsideCodeBlock = backtickCount % 2 !== 0; // Odd number of backticks means we are inside one
-
-        // Also avoid breaking partial HTML tags or complex markdown if near the end
-        // Simple heuristic: don't apply if near `<`, `[`, or `(`
-        const lastChar = rawFluidText.slice(-1);
-        const unsafeChars = ['<', '>', '`', '[', ']', '(', ')', '*', '_', '#'];
-
-        if (isInsideCodeBlock || unsafeChars.includes(lastChar)) {
-            return rawFluidText;
+    const STREAMING_TAIL_LENGTH = 18;
+    const { streamingMainText, streamingTailText } = React.useMemo(() => {
+        if (!isAssistantStreaming || !displayText) {
+            return { streamingMainText: displayText || '', streamingTailText: '' };
         }
 
-        const mainPart = rawFluidText.slice(0, -tailLength);
-        const tailPart = rawFluidText.slice(-tailLength);
+        if (displayText.length <= STREAMING_TAIL_LENGTH) {
+            return { streamingMainText: '', streamingTailText: displayText };
+        }
 
-        // We wrap the tail in a transparent-to-opaque span illusion
-        return `${mainPart}<span class="text-slate-400 dark:text-slate-500 opacity-70">${tailPart}</span>`;
-    }, [rawFluidText, isUser, isStreaming, textContent]);
+        return {
+            streamingMainText: displayText.slice(0, -STREAMING_TAIL_LENGTH),
+            streamingTailText: displayText.slice(-STREAMING_TAIL_LENGTH)
+        };
+    }, [displayText, isAssistantStreaming]);
 
-    const { thoughts, content } = (isUser || !finalDisplayContent)
-        ? { thoughts: null, content: finalDisplayContent }
-        : parseModelOutput(finalDisplayContent);
+    const { thoughts, content } = React.useMemo(() => {
+        if (isUser) return { thoughts: null, content: textContent };
+        if (isAssistantStreaming) return { thoughts: null, content: displayText };
+        if (!displayText) return { thoughts: null, content: '' };
+        return parseModelOutput(displayText);
+    }, [displayText, isAssistantStreaming, isUser, parseModelOutput, textContent]);
 
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
@@ -265,13 +257,13 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     };
 
     const { renderedHtml, codeBlocksToRender } = React.useMemo(() => {
-        if (isUser) return { renderedHtml: null, codeBlocksToRender: [] };
+        if (isUser || isAssistantStreaming) return { renderedHtml: null, codeBlocksToRender: [] };
         const result = content ? renderMessageContent(content, marks, capturedNotes) : { html: '', codeBlocksData: [] };
         return {
             renderedHtml: resolveCardReferences(result.html),
             codeBlocksToRender: result.codeBlocksData
         };
-    }, [content, marks, capturedNotes, isUser]);
+    }, [content, marks, capturedNotes, isUser, isAssistantStreaming]);
 
     const handleMessageClick = (e) => {
         const link = e.target.closest('.card-ref-link');
@@ -381,6 +373,11 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                             ) : (
                                 <div className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{textContent}</div>
                             )}
+                        </div>
+                    ) : isAssistantStreaming ? (
+                        <div className="font-sans break-words whitespace-pre-wrap leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
+                            <span>{streamingMainText}</span>
+                            {streamingTailText && <span className="stream-gradient-tail">{streamingTailText}</span>}
                         </div>
                     ) : (
                         <MessageContentWithCodeBlocks

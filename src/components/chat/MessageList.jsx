@@ -48,24 +48,28 @@ export default function MessageList({
                     </div>
                 ) : (
                     <div className="space-y-16">
-                        {messages.map((m, i) => (
-                            <ErrorBoundary key={i} level="card">
-                                <MessageItem
-                                    message={m}
-                                    index={i}
-                                    marks={card.data.marks}
-                                    capturedNotes={card.data.capturedNotes}
-                                    parseModelOutput={parseModelOutput}
-                                    isStreaming={isStreaming}
-                                    handleRetry={handleRetry}
-                                    onShare={onShare}
-                                    onToggleFavorite={(idx, content) => onToggleFavorite(card.id, idx, content)}
-                                    isFavorite={favoritesService.isFavorite(card.id, i)}
-                                    onContinueTopic={onContinueTopic}
-                                    onBranch={onBranch}
-                                />
-                            </ErrorBoundary>
-                        ))}
+                        {messages.map((m, i) => {
+                            const isStreamingMessage = isStreaming && i === messages.length - 1 && m.role === 'assistant';
+
+                            return (
+                                <ErrorBoundary key={i} level="card">
+                                    <MessageItem
+                                        message={m}
+                                        index={i}
+                                        marks={card.data.marks}
+                                        capturedNotes={card.data.capturedNotes}
+                                        parseModelOutput={parseModelOutput}
+                                        isStreaming={isStreamingMessage}
+                                        handleRetry={handleRetry}
+                                        onShare={onShare}
+                                        onToggleFavorite={(idx, content) => onToggleFavorite(card.id, idx, content)}
+                                        isFavorite={favoritesService.isFavorite(card.id, i)}
+                                        onContinueTopic={onContinueTopic}
+                                        onBranch={onBranch}
+                                    />
+                                </ErrorBoundary>
+                            );
+                        })}
 
                         {isStreaming && (
                             <div className="pt-8 flex justify-start">

@@ -777,4 +777,35 @@ body,
             transform: translateX(100%);
         }
     }
+
+    @keyframes stream-tail-shimmer {
+        0% {
+            background-position: 200% 0;
+            opacity: 0.6;
+        }
+
+        45% {
+            opacity: 1;
+        }
+
+        100% {
+            background-position: -20% 0;
+            opacity: 0.7;
+        }
+    }
+
+    .stream-gradient-tail {
+        background-image: linear-gradient(90deg, rgba(100, 116, 139, 0.35) 0%, rgba(14, 165, 233, 0.92) 45%, rgba(255, 255, 255, 0.98) 100%);
+        background-size: 220% 100%;
+        background-position: 200% 0;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: stream-tail-shimmer 1.15s linear infinite;
+        filter: saturate(1.05);
+    }
+
+    .dark .stream-gradient-tail {
+        background-image: linear-gradient(90deg, rgba(148, 163, 184, 0.55) 0%, rgba(56, 189, 248, 0.92) 48%, rgba(226, 232, 240, 1) 100%);
+    }
 }

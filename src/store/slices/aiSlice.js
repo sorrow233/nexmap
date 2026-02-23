@@ -8,12 +8,19 @@ import { CreditsExhaustedError } from '../../services/systemCredits/systemCredit
 import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
+import { applyStreamTextUpdates, createStreamRenderBuffer } from './utils/streamRenderBuffer';
 
 
 export const createAISlice = (set, get) => {
-    // Throttling buffer for AI streaming
-    const contentBuffer = new Map();
-    let contentFlushTimer = null;
+    const streamRenderBuffer = createStreamRenderBuffer((updates) => {
+        if (!updates || updates.size === 0) return;
+
+        set((state) => {
+            const nextCards = applyStreamTextUpdates(state.cards, updates);
+            if (nextCards === state.cards) return {};
+            return { cards: nextCards };
+        });
+    });
 
     return {
         generatingCardIds: new Set(),
@@ -350,67 +357,8 @@ export const createAISlice = (set, get) => {
         },
 
         updateCardContent: (id, chunk, messageId = null) => {
-            const state = get();
             const bufferKey = messageId ? `${id}:${messageId}` : id;
-            const currentBuffer = contentBuffer.get(bufferKey) || "";
-            contentBuffer.set(bufferKey, currentBuffer + chunk);
-
-            const flush = () => {
-                if (contentBuffer.size === 0) return;
-                const updates = new Map(contentBuffer);
-                contentBuffer.clear();
-                if (contentFlushTimer) {
-                    clearTimeout(contentFlushTimer);
-                    contentFlushTimer = null;
-                }
-
-                set(state => ({
-                    cards: state.cards.map(c => {
-                        const directUpdate = updates.get(c.id);
-                        const idUpdates = [];
-                        updates.forEach((content, key) => {
-                            if (key.startsWith(c.id + ':')) {
-                                const msgId = key.split(':')[1];
-                                idUpdates.push({ msgId, content });
-                            }
-                        });
-
-                        if (!directUpdate && idUpdates.length === 0) return c;
-                        const msgs = [...c.data.messages];
-
-                        idUpdates.forEach(({ msgId, content }) => {
-                            const msgIndex = msgs.findIndex(m => m.id === msgId);
-                            if (msgIndex !== -1) {
-                                msgs[msgIndex] = {
-                                    ...msgs[msgIndex],
-                                    content: msgs[msgIndex].content + content
-                                };
-                            }
-                        });
-
-                        if (directUpdate && idUpdates.length === 0) {
-                            const lastMsg = msgs[msgs.length - 1];
-                            if (!lastMsg || lastMsg.role !== 'assistant') {
-                                msgs.push({ id: uuid(), role: 'assistant', content: directUpdate });
-                            } else {
-                                msgs[msgs.length - 1] = {
-                                    ...lastMsg,
-                                    content: lastMsg.content + directUpdate
-                                };
-                            }
-                        }
-                        return { ...c, data: { ...c.data, messages: msgs } };
-                    })
-                }));
-            };
-
-            // Schedule flush
-            if (!contentFlushTimer) {
-                contentFlushTimer = setTimeout(flush, 20);
-            }
-
-            // Expose flush globally to slice
-            state._flushAIContent = flush;
+            streamRenderBuffer.enqueue(bufferKey, chunk);
         },
 
         setAssistantMessageMeta: (cardId, messageId, metaUpdates = {}) => {
@@ -448,15 +396,9 @@ export const createAISlice = (set, get) => {
                 } else {
                     next.delete(id);
                     // CRITICAL: Final Flush before stopping tracking
-                    if (state._flushAIContent) {
-                        state._flushAIContent();
-                    }
+                    streamRenderBuffer.flushNow();
                     // Clean up any remaining residue for this card
-                    contentBuffer.forEach((_, key) => {
-                        if (key === id || key.startsWith(id + ':')) {
-                            contentBuffer.delete(key);
-                        }
-                    });
+                    streamRenderBuffer.cleanupCard(id);
                 }
                 return { generatingCardIds: next };
             });
