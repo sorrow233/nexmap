@@ -7,6 +7,7 @@
   let currentSelection = null;
   let isSending = false;
   let resetTimer = null;
+  let lastAutoSend = { fingerprint: '', at: 0 };
 
   const isValidUid = (uid) => {
     const normalized = (uid || '').trim();
@@ -15,20 +16,20 @@
     return normalized.length >= ns.FLOW_UID_MIN_LENGTH;
   };
 
-  const toHumanError = (errorCode) => {
-    if (!errorCode) return '发送失败，请稍后重试';
-    if (errorCode === 'runtime_error') return '插件后台未就绪，请刷新页面后重试';
-    if (errorCode === 'request_timeout') return '请求超时，已自动重试';
-    if (errorCode === 'empty_text') return '选中文本为空';
-    if (errorCode.startsWith('http_')) {
-      return `接口返回 ${errorCode.replace('http_', '')}`;
-    }
-    return `发送失败：${errorCode}`;
+  const fingerprintText = (text) => {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return `${normalized.length}:${normalized.slice(0, 260)}`;
   };
 
-  const setStatusWithReset = (status, detail = '') => {
-    ui.setFlowStatus(status, detail);
-    if (resetTimer) clearTimeout(resetTimer);
+  const setStatusWithReset = (status = 'idle') => {
+    ui.setFlowStatus(status);
+
+    if (resetTimer) {
+      clearTimeout(resetTimer);
+      resetTimer = null;
+    }
+
     if (status === 'idle') return;
 
     resetTimer = setTimeout(() => {
@@ -36,21 +37,9 @@
     }, ns.STATUS_RESET_MS);
   };
 
-  const clearSelectionMenu = () => {
+  const clearSelectionButton = () => {
     currentSelection = null;
-    ui.hideMenu();
-  };
-
-  const tryOpenMenuFromSelection = () => {
-    const selected = ns.selection.getSelectionPayload();
-    if (!selected || !selected.text) {
-      clearSelectionMenu();
-      return;
-    }
-
-    currentSelection = selected;
-    ui.setSelectionContext(selected.text, selected.truncated);
-    ui.showMenuAt(selected.rect);
+    ui.hideButton();
   };
 
   const ensureUid = async () => {
@@ -66,11 +55,8 @@
     return entered;
   };
 
-  const handleFlowClick = async (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!currentSelection?.text || isSending) return;
+  const sendSelection = async (selection, trigger = 'button') => {
+    if (!selection?.text || isSending) return;
 
     isSending = true;
     setStatusWithReset('sending');
@@ -84,53 +70,95 @@
 
       const requestId = crypto.randomUUID();
       const result = await ns.transport.sendFlow({
-        text: currentSelection.text,
+        text: selection.text,
         userId: uid,
         requestId
       });
 
       if (result?.success) {
-        setStatusWithReset('success', '已同步到 FlowStudio 队列');
+        setStatusWithReset('success');
         return;
       }
 
       if (result?.queued) {
-        const pending = Number(result?.queue?.pending || 0);
-        const queuedDetail = pending > 0
-          ? `网络波动，已排队（当前待补发 ${pending} 条）`
-          : '网络波动，已排队等待补发';
-        setStatusWithReset('queued', queuedDetail);
+        setStatusWithReset('queued');
         return;
       }
 
-      setStatusWithReset('error', toHumanError(result?.error));
+      setStatusWithReset('error');
     } finally {
       isSending = false;
+      if (trigger === 'copy') {
+        setTimeout(() => {
+          if (!currentSelection) {
+            ui.hideButton();
+          }
+        }, ns.STATUS_RESET_MS + 120);
+      }
     }
+  };
+
+  const tryOpenButtonFromSelection = () => {
+    const selected = ns.selection.getSelectionPayload();
+    if (!selected || !selected.text) {
+      clearSelectionButton();
+      return;
+    }
+
+    currentSelection = selected;
+    ui.showButtonAt(selected.rect);
+  };
+
+  const handleFlowClick = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!currentSelection?.text) return;
+    await sendSelection(currentSelection, 'button');
+  };
+
+  const handleCopyTrigger = () => {
+    setTimeout(async () => {
+      const selected = ns.selection.getSelectionPayload();
+      if (!selected?.text) return;
+
+      const now = Date.now();
+      const fp = fingerprintText(selected.text);
+      if (fp && fp === lastAutoSend.fingerprint && now - lastAutoSend.at < 1600) {
+        return;
+      }
+
+      lastAutoSend = { fingerprint: fp, at: now };
+      currentSelection = selected;
+      ui.showButtonAt(selected.rect);
+      await sendSelection(selected, 'copy');
+    }, 0);
   };
 
   ui.onFlowClick(handleFlowClick);
 
   document.addEventListener('mouseup', () => {
-    setTimeout(tryOpenMenuFromSelection, 0);
+    setTimeout(tryOpenButtonFromSelection, 0);
   });
 
   document.addEventListener('keyup', (event) => {
     if (event.key.startsWith('Arrow') || event.key === 'Shift' || event.key === 'Meta') {
-      setTimeout(tryOpenMenuFromSelection, 0);
+      setTimeout(tryOpenButtonFromSelection, 0);
     }
   });
 
+  document.addEventListener('copy', handleCopyTrigger, true);
+
   document.addEventListener('mousedown', (event) => {
     if (ui.isWithinUi(event.target)) return;
-    clearSelectionMenu();
+    clearSelectionButton();
   }, true);
 
   window.addEventListener('scroll', () => {
-    clearSelectionMenu();
+    clearSelectionButton();
   }, true);
 
   window.addEventListener('resize', () => {
-    clearSelectionMenu();
+    clearSelectionButton();
   });
 })();

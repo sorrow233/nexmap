@@ -17,6 +17,7 @@ const statPending = document.getElementById('stat-pending');
 const statDue = document.getElementById('stat-due');
 const statDead = document.getElementById('stat-dead');
 const queueStatus = document.getElementById('queue-status');
+const lastEvent = document.getElementById('last-event');
 const queueError = document.getElementById('queue-error');
 const toast = document.getElementById('toast');
 
@@ -27,6 +28,17 @@ const showToast = (text, isError = false) => {
 
 const showQueueError = (text = '') => {
   queueError.textContent = text;
+};
+
+const showLastEvent = (eventPayload) => {
+  if (!eventPayload) {
+    lastEvent.textContent = '';
+    return;
+  }
+
+  const at = eventPayload.at ? new Date(eventPayload.at).toLocaleTimeString() : '';
+  const message = eventPayload.message || eventPayload.type || '未知事件';
+  lastEvent.textContent = at ? `最近操作：${message}（${at}）` : `最近操作：${message}`;
 };
 
 const validateUid = (value) => {
@@ -76,6 +88,8 @@ const setQueueStats = (stats) => {
   } else {
     showQueueError('');
   }
+
+  showLastEvent(stats?.lastEvent || null);
 };
 
 const loadUid = async () => {
@@ -88,6 +102,7 @@ const loadQueueStats = async () => {
   if (stats?.error) {
     queueStatus.textContent = `读取队列失败：${stats.error}`;
     showQueueError('');
+    showLastEvent(null);
     return;
   }
 
