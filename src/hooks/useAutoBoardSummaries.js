@@ -3,28 +3,26 @@ import { useStore } from '../store/useStore';
 import { loadBoard } from '../services/storage';
 import useBoardBackground from './useBoardBackground';
 
-export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata, enabled = true) {
+export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
     const isProcessingRef = useRef(false);
     const processedBoardIdsRef = useRef(new Set());
     const { getRoleModel, activeId, providers } = useStore();
     const { generateBackground } = useBoardBackground();
 
     useEffect(() => {
-        if (!enabled) return;
         // Debounce slightly to allow list to settle
         const timer = setTimeout(() => {
             processNextBoard();
         }, 2000);
 
         return () => clearTimeout(timer);
-    }, [boardsList, enabled]);
+    }, [boardsList]);
 
     const getRoleConfig = (role) => {
         return useStore.getState().getRoleConfig(role);
     };
 
     const processNextBoard = async () => {
-        if (!enabled) return;
         if (isProcessingRef.current) return;
 
         // Filter candidates: 
