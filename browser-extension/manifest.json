@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aimainmap Flow Capture",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "选中文本后可点击简洁 Flow 按钮发送，右键菜单也可一键发送到 FlowStudio。",
   "permissions": ["storage", "alarms", "contextMenus"],
   "host_permissions": ["https://flowstudio.catzz.work/*"],
