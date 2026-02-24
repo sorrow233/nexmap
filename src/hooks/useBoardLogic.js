@@ -27,7 +27,6 @@ const isSameStringArray = (a = [], b = []) => {
     }
     return true;
 };
-const AUTO_INSTRUCTION_RECOMMENDATION_ENABLED = false;
 
 export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
@@ -126,7 +125,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
             enabledOptionalCount,
             autoEnabledOptionalCount,
             activeCount: globalCount + enabledOptionalCount,
-            mode: normalizedBoardInstructionSettings.autoSelectionMode === 'manual' ? 'manual' : 'auto',
+            mode: 'manual',
             status: normalizedBoardInstructionSettings.autoSelection?.status || 'idle',
             lastRunAt: normalizedBoardInstructionSettings.autoSelection?.lastRunAt || 0
         };
@@ -172,18 +171,21 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     useEffect(() => {
         latestBoardDataRef.current = { cards, connections, groups, boardPrompts, boardInstructionSettings };
     }, [cards, connections, groups, boardPrompts, boardInstructionSettings]);
+    const isBoardLoadingRef = useRef(isBoardLoading);
+    useEffect(() => {
+        isBoardLoadingRef.current = isBoardLoading;
+    }, [isBoardLoading]);
 
     // Autosave Logic (Debounced)
     const lastSavedState = useRef('');
 
     // Save function reused for both debounce and unmount
-    const performSave = useCallback((data, isUnmount = false) => {
+    const performSave = useCallback(async (data, isUnmount = false) => {
         if (!currentBoardId) return;
 
         try {
             const now = Date.now();
-            // Synchronous LocalStorage update happens inside here
-            saveBoard(currentBoardId, data);
+            await saveBoard(currentBoardId, data);
 
             if (setLastSavedAt && typeof setLastSavedAt === 'function') {
                 setLastSavedAt(now);
@@ -236,7 +238,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
             if (currentState === lastSavedState.current) return;
 
             const saveTimeout = setTimeout(() => {
-                performSave({
+                void performSave({
                     cards,
                     connections,
                     groups,
@@ -278,6 +280,11 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     // 2. Unmount / Navigation Save Effect
     useEffect(() => {
         return () => {
+            if (isBoardLoadingRef.current) {
+                debugLog.storage('[BoardLogic] Skip unmount save because board is still loading');
+                return;
+            }
+
             // Check if we have unsaved changes on unmount
             const data = latestBoardDataRef.current;
             const currentStateObj = {
@@ -294,17 +301,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
             // If strictly different from last saved, force save
             if (currentState !== lastSavedState.current && currentBoardId) {
                 console.log('[BoardLogic] Unmount detected with unsaved changes. Saving immediately.');
-                // We call the imported saveBoard directly or the helper. 
-                // Since performSave relies on closure variables that might be stale in cleanup if not careful,
-                // we use the data from the REF.
-                // Re-implementing the core synchronous part of save here to be 100% safe
-
-                // Note: We cannot execute async await here effectively, but saveBoard does synchronous LS update first.
-                saveBoard(currentBoardId, {
+                void saveBoard(currentBoardId, {
                     ...data,
                     boardInstructionSettings: normalizeBoardInstructionSettings(
                         data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
                     )
+                }).catch((error) => {
+                    debugLog.error(`[BoardLogic] Unmount save failed for board ${currentBoardId}`, error);
                 });
             }
         };
@@ -392,7 +395,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         updateBoardInstructionSettings
     ]);
 
-    const runAutoInstructionRecommendation = useCallback(async (force = false) => {
+    const runAutoInstructionRecommendation = useCallback(async () => {
         if (isReadOnly || !currentBoardId) return;
         if (autoRecommendLockRef.current) return;
 
@@ -403,20 +406,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
             item => item.enabled !== false && item.isGlobal !== true
         );
         if (optionalCandidates.length === 0) {
-            if (force) {
-                toast.info(t?.settings?.canvasInstructionNoOptionalToast || '当前没有可推荐的画布指令');
-            }
+            toast.info(t?.settings?.canvasInstructionNoOptionalToast || '当前没有可推荐的画布指令');
             return;
-        }
-
-        if (!force) {
-            if (normalizedBoardInstructionSettings.autoSelectionMode === 'manual') return;
-            if (conversationCount <= 2) return;
-            if (normalizedBoardInstructionSettings.autoSelection.status === 'running') return;
-
-            const lastCount = normalizedBoardInstructionSettings.autoSelection.lastConversationCount || 0;
-            const hasEnoughNewConversation = conversationCount >= Math.max(3, lastCount + 2);
-            if (!hasEnoughNewConversation) return;
         }
 
         autoRecommendLockRef.current = true;
@@ -429,7 +420,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                     ...(current.autoSelection || {}),
                     status: 'running',
                     lastError: '',
-                    lastTrigger: force ? 'manual' : 'auto'
+                    lastTrigger: 'manual'
                 }
             };
         });
@@ -448,30 +439,26 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                 const next = {
                     ...current,
                     autoEnabledInstructionIds: recommendedIds,
+                    enabledInstructionIds: [...recommendedIds],
+                    autoSelectionMode: 'manual',
                     autoSelection: {
                         status: 'done',
                         lastRunAt: Date.now(),
                         lastConversationCount: conversationCount,
                         lastError: '',
                         lastResultCount: recommendedIds.length,
-                        lastTrigger: force ? 'manual' : 'auto'
+                        lastTrigger: 'manual'
                     }
                 };
-
-                if (current.autoSelectionMode !== 'manual') {
-                    next.enabledInstructionIds = recommendedIds;
-                }
                 return next;
             });
 
-            if (force) {
-                if (recommendedIds.length > 0) {
-                    toast.success(
-                        (t?.settings?.canvasInstructionRecommendDoneToast || 'AI 推荐完成：{count} 条').replace('{count}', String(recommendedIds.length))
-                    );
-                } else {
-                    toast.warning(t?.settings?.canvasInstructionRecommendEmptyToast || 'AI 没有找到强相关指令');
-                }
+            if (recommendedIds.length > 0) {
+                toast.success(
+                    (t?.settings?.canvasInstructionRecommendDoneToast || 'AI 推荐完成：{count} 条').replace('{count}', String(recommendedIds.length))
+                );
+            } else {
+                toast.warning(t?.settings?.canvasInstructionRecommendEmptyToast || 'AI 没有找到强相关指令');
             }
         } catch (error) {
             const reason = error?.message || 'auto_recommend_failed';
@@ -484,13 +471,11 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
                         status: 'error',
                         lastError: reason,
                         lastResultCount: 0,
-                        lastTrigger: force ? 'manual' : 'auto'
+                        lastTrigger: 'manual'
                     }
                 };
             });
-            if (force) {
-                toast.error(t?.settings?.canvasInstructionRecommendFailToast || 'AI 推荐失败，请稍后重试');
-            }
+            toast.error(t?.settings?.canvasInstructionRecommendFailToast || 'AI 推荐失败，请稍后重试');
         } finally {
             setIsAutoRecommending(false);
             autoRecommendLockRef.current = false;
@@ -500,18 +485,10 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         conversationCount,
         currentBoardId,
         isReadOnly,
-        normalizedBoardInstructionSettings,
         t,
         toast,
         updateBoardInstructionSettings
     ]);
-
-    useEffect(() => {
-        if (!AUTO_INSTRUCTION_RECOMMENDATION_ENABLED) return;
-        if (conversationCount > 2 && normalizedBoardInstructionSettings.autoSelectionMode === 'auto') {
-            runAutoInstructionRecommendation(false);
-        }
-    }, [conversationCount, normalizedBoardInstructionSettings.autoSelectionMode, runAutoInstructionRecommendation]);
 
 
     // --- HANDLERS ---
@@ -699,28 +676,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         });
     };
 
-    const handleUseManualInstructionMode = () => {
-        if (isReadOnly) return;
-        updateBoardInstructionSettings(prev => ({
-            ...normalizeBoardInstructionSettings(prev),
-            autoSelectionMode: 'manual'
-        }));
-    };
-
-    const handleUseAutoInstructionMode = () => {
-        if (isReadOnly) return;
-        updateBoardInstructionSettings(prev => {
-            const current = normalizeBoardInstructionSettings(prev);
-            return {
-                ...current,
-                autoSelectionMode: 'auto',
-                enabledInstructionIds: [...current.autoEnabledInstructionIds]
-            };
-        });
-    };
-
     const handleRunAutoInstructionRecommendNow = async () => {
-        await runAutoInstructionRecommendation(true);
+        await runAutoInstructionRecommendation();
     };
 
     // Directed Generation (Custom Sprout)
@@ -825,8 +782,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         handleOpenInstructionPanel,
         handleOpenInstructionSettings,
         handleToggleBoardInstruction,
-        handleUseManualInstructionMode,
-        handleUseAutoInstructionMode,
         handleRunAutoInstructionRecommendNow,
         handleQuickSprout,
         handleSprout,

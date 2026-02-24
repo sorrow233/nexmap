@@ -69,6 +69,7 @@ function AppContent() {
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
     const { setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings } = useStore();
+    const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
 
     // Dialog State
@@ -201,7 +202,6 @@ function AppContent() {
     useEffect(() => {
         // Use AbortController pattern to handle race conditions
         let isCancelled = false;
-        const boardIdAtStart = currentBoardId; // Capture the ID at effect start
 
         const load = async () => {
             if (currentBoardId) {
@@ -210,6 +210,7 @@ function AppContent() {
                 setCards([]);
                 setConnections([]);
                 setGroups([]);
+                setBoardPrompts([]);
                 setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
 
                 try {
@@ -218,8 +219,8 @@ function AppContent() {
 
                     // CRITICAL: Check if user has navigated away during load
                     // If so, discard this result to prevent data bleed-over
-                    if (isCancelled || boardIdAtStart !== currentBoardId) {
-                        console.log(`[Board] Load cancelled: user navigated from ${boardIdAtStart} to ${currentBoardId}`);
+                    if (isCancelled) {
+                        console.log(`[Board] Load cancelled: user navigated away from ${currentBoardId}`);
                         return;
                     }
 
@@ -237,6 +238,8 @@ function AppContent() {
                     // 3. Restore viewport state
                     const viewport = loadViewportState(currentBoardId);
                     useStore.getState().restoreViewport(viewport);
+                } catch (error) {
+                    console.error(`[Board] Failed to load board ${currentBoardId}:`, error);
                 } finally {
                     // 4. End loading state only if not cancelled
                     if (!isCancelled) {
@@ -291,9 +294,9 @@ function AppContent() {
     };
 
     const handleBackToGallery = useCallback(async () => {
-        // Save handled by Autosave in BoardPage mostly
-        const { cards, connections, groups, boardPrompts, boardInstructionSettings } = useStore.getState();
-        if (currentBoardId) {
+        if (currentBoardId && !isBoardLoading) {
+            // Save handled by Autosave in BoardPage mostly
+            const { cards, connections, groups, boardPrompts, boardInstructionSettings } = useStore.getState();
             await saveBoard(currentBoardId, {
                 cards,
                 connections,
@@ -303,6 +306,8 @@ function AppContent() {
                     boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
                 )
             });
+        } else if (currentBoardId && isBoardLoading) {
+            console.warn(`[Board] Skip save while loading board ${currentBoardId} to avoid overwriting with transient state`);
         }
 
         // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
@@ -314,7 +319,7 @@ function AppContent() {
         setConnections([]);
         setGroups([]);
         setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
-    }, [currentBoardId, navigate, setBoardsList, setCards, setConnections, setGroups, setBoardInstructionSettings]);
+    }, [currentBoardId, isBoardLoading, navigate, setBoardsList, setCards, setConnections, setGroups, setBoardInstructionSettings]);
 
     const handleUpdateBoardTitle = useCallback(async (newTitle) => {
         if (!currentBoardId || !newTitle.trim()) return;

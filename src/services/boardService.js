@@ -10,6 +10,21 @@ import {
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
+const MAX_IDB_SAVE_RETRIES = 2;
+const IDB_RETRY_DELAY_MS = 80;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const persistBoardToLegacyStorage = (id, payload) => {
+    try {
+        localStorage.setItem(BOARD_PREFIX + id, JSON.stringify(payload));
+        debugLog.warn(`[Storage] IDB save failed, fallback to localStorage for board ${id}`);
+        return true;
+    } catch (legacyErr) {
+        debugLog.error(`[Storage] Legacy fallback save failed for board ${id}`, legacyErr);
+        return false;
+    }
+};
 
 export const getCurrentBoardId = () => sessionStorage.getItem(CURRENT_BOARD_ID_KEY);
 export const setCurrentBoardId = (id) => {
@@ -89,6 +104,7 @@ export const updateBoardMetadata = (id, metadata) => {
 export const saveBoard = async (id, data) => {
     // data: { cards, connections, updatedAt? }
     const timestamp = data.updatedAt || Date.now();
+    const payload = { ...data, updatedAt: timestamp, syncVersion: data.syncVersion };
     debugLog.storage(`Saving board: ${id}`, {
         cardsCount: data.cards?.length || 0,
         connectionsCount: data.connections?.length || 0,
@@ -109,7 +125,26 @@ export const saveBoard = async (id, data) => {
         };
         localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
     }
-    await idbSet(BOARD_PREFIX + id, { ...data, updatedAt: timestamp, syncVersion: data.syncVersion });
+
+    let lastError = null;
+    for (let attempt = 1; attempt <= MAX_IDB_SAVE_RETRIES; attempt += 1) {
+        try {
+            await idbSet(BOARD_PREFIX + id, payload);
+            localStorage.removeItem(BOARD_PREFIX + id);
+            return;
+        } catch (e) {
+            lastError = e;
+            debugLog.error(`[Storage] IDB save attempt ${attempt}/${MAX_IDB_SAVE_RETRIES} failed for board ${id}`, e);
+            if (attempt < MAX_IDB_SAVE_RETRIES) {
+                await sleep(IDB_RETRY_DELAY_MS * attempt);
+            }
+        }
+    }
+
+    const fallbackOk = persistBoardToLegacyStorage(id, payload);
+    if (!fallbackOk) {
+        throw (lastError || new Error(`Failed to save board ${id}`));
+    }
 };
 
 export const loadBoard = async (id) => {
