@@ -31,6 +31,61 @@ const pickLocalArray = (storeValue, persistedValue) => {
     return storeArr.length > 0 ? storeArr : persistedArr;
 };
 
+const toEpochMillis = (value) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const asNumber = Number(value);
+        if (Number.isFinite(asNumber)) return asNumber;
+        const asDate = Date.parse(value);
+        if (Number.isFinite(asDate)) return asDate;
+        return 0;
+    }
+    if (value && typeof value.toMillis === 'function') {
+        try {
+            return value.toMillis();
+        } catch {
+            return 0;
+        }
+    }
+    return 0;
+};
+
+const toSafeSyncVersion = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
+};
+
+const isRetryableSyncWriteError = (error) => {
+    if (isLikelyNetworkError(error)) return true;
+    const code = String(error?.code || '').toLowerCase();
+    return (
+        code.includes('unavailable') ||
+        code.includes('deadline-exceeded') ||
+        code.includes('aborted') ||
+        code.includes('internal') ||
+        code.includes('resource-exhausted')
+    );
+};
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const buildCloudCursor = (boardData = {}) => ({
+    syncVersion: toSafeSyncVersion(boardData.syncVersion),
+    updatedAt: toEpochMillis(boardData.updatedAt)
+});
+
+const isCloudCursorNewer = (next, prev) => {
+    if (!prev) return true;
+    if (next.syncVersion !== prev.syncVersion) return next.syncVersion > prev.syncVersion;
+    return next.updatedAt > prev.updatedAt;
+};
+
+const singleBoardSnapshotCursor = new Map();
+const deprecatedBoardSnapshotCursor = new Map();
+const inFlightCloudSaveTasks = new Map();
+const pendingCloudSavePayloads = new Map();
+const CLOUD_SAVE_RETRY_DELAYS_MS = [500, 1500, 3500];
+
 // Global quota error detection - intercept Firebase console errors
 // This catches errors that happen at the connection level before onSnapshot callbacks
 const originalConsoleError = console.error;
@@ -142,10 +197,10 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                         const boardId = boardData.id;
                         const localData = await idbGet(BOARD_PREFIX + boardId);
 
-                        const cloudVersion = boardData.syncVersion || 0;
-                        const localVersion = localData?.syncVersion || 0;
-                        const cloudUpdated = boardData.updatedAt || 0;
-                        const localUpdated = localData?.updatedAt || 0;
+                        const cloudVersion = toSafeSyncVersion(boardData.syncVersion);
+                        const localVersion = toSafeSyncVersion(localData?.syncVersion);
+                        const cloudUpdated = toEpochMillis(boardData.updatedAt);
+                        const localUpdated = toEpochMillis(localData?.updatedAt);
 
                         // Only update IDB if cloud version is actually newer
                         if (!localData || cloudVersion > localVersion || (cloudVersion === 0 && cloudUpdated > localUpdated)) {
@@ -160,8 +215,8 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                                 boardInstructionSettings: normalizeBoardInstructionSettings(
                                     boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
                                 ),
-                                updatedAt: boardData.updatedAt,
-                                syncVersion: boardData.syncVersion
+                                updatedAt: cloudUpdated,
+                                syncVersion: cloudVersion
                             });
                         }
                     } catch (e) {
@@ -181,13 +236,16 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                 const recoveredCreatedAt = (!isNaN(idAsTimestamp) && idAsTimestamp > 1000000000000) ? idAsTimestamp : null;
                 const existingLocal = existingLocalBoards.find(lb => lb.id === b.id);
                 const summaryToUse = b.summary || existingLocal?.summary;
+                const updatedAt = toEpochMillis(b.updatedAt) || recoveredCreatedAt || 0;
+                const createdAt = toEpochMillis(b.createdAt) || recoveredCreatedAt || updatedAt || 0;
+                const lastAccessedAt = toEpochMillis(b.lastAccessedAt) || updatedAt || createdAt || 0;
 
                 return {
                     id: b.id,
                     name: b.name || 'Untitled',
-                    createdAt: b.createdAt || recoveredCreatedAt || b.updatedAt || 0,
-                    updatedAt: b.updatedAt || recoveredCreatedAt || 0,
-                    lastAccessedAt: b.lastAccessedAt || b.updatedAt || recoveredCreatedAt || 0,
+                    createdAt,
+                    updatedAt,
+                    lastAccessedAt,
                     cardCount: b.cards?.length || 0,
                     deletedAt: b.deletedAt,
                     backgroundImage: b.backgroundImage,
@@ -226,17 +284,28 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
     try {
         debugLog.sync(`[SingleBoard] Starting listener for board: ${boardId}`);
         const boardRef = doc(db, 'users', userId, 'boards', boardId);
+        const cloudCursorKey = `${userId}:${boardId}`;
 
-        return onSnapshot(boardRef, async (docSnap) => {
+        const unsubscribe = onSnapshot(boardRef, async (docSnap) => {
             if (!docSnap.exists()) {
                 debugLog.sync(`[SingleBoard] Board ${boardId} does not exist in cloud`);
                 return;
             }
 
             const boardData = docSnap.data();
+            const incomingCursor = buildCloudCursor(boardData);
+            const previousCursor = singleBoardSnapshotCursor.get(cloudCursorKey);
+            if (!isCloudCursorNewer(incomingCursor, previousCursor)) {
+                debugLog.sync(
+                    `[SingleBoard] Skip stale/duplicate snapshot for ${boardId} (incoming v${incomingCursor.syncVersion}/t${incomingCursor.updatedAt}, previous v${previousCursor?.syncVersion || 0}/t${previousCursor?.updatedAt || 0})`
+                );
+                return;
+            }
+            singleBoardSnapshotCursor.set(cloudCursorKey, incomingCursor);
+
             debugLog.sync(`[SingleBoard] Update received for ${boardId}`, {
                 cloudCards: (boardData.cards || []).length,
-                cloudVersion: boardData.syncVersion || 0
+                cloudVersion: incomingCursor.syncVersion
             });
 
             try {
@@ -264,11 +333,12 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                     ? (store.boardInstructionSettings || localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
                     : (localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS);
                 const localUpdatedAt = canTrustStoreState
-                    ? Math.max(store.lastSavedAt || 0, localData?.updatedAt || 0)
-                    : (localData?.updatedAt || 0);
+                    ? Math.max(toEpochMillis(store.lastSavedAt), toEpochMillis(localData?.updatedAt))
+                    : toEpochMillis(localData?.updatedAt);
 
-                const localVersion = localData?.syncVersion || 0;
-                const cloudVersion = boardData.syncVersion || 0;
+                const localVersion = toSafeSyncVersion(localData?.syncVersion);
+                const cloudVersion = incomingCursor.syncVersion;
+                const cloudUpdatedAt = incomingCursor.updatedAt;
 
                 // Use syncVersion for conflict detection
                 if (localData && cloudVersion > 0 && localVersion > 0) {
@@ -276,7 +346,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                         debugLog.sync(`[SingleBoard] Skipping: local version ${localVersion} >= cloud ${cloudVersion}`);
                         return;
                     }
-                } else if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
+                } else if (localData && cloudUpdatedAt > 0 && localUpdatedAt >= cloudUpdatedAt) {
                     debugLog.sync(`[SingleBoard] Skipping: local timestamp is up-to-date`);
                     return;
                 }
@@ -291,7 +361,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                         boardInstructionSettings: normalizeBoardInstructionSettings(
                             boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
                         ),
-                        updatedAt: boardData.updatedAt
+                        updatedAt: cloudUpdatedAt
                     });
                     onUpdate(boardId, {
                         cards: boardData.cards || [],
@@ -312,7 +382,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                     localVersion,
                     cloudVersion,
                     localUpdatedAt,
-                    boardData.updatedAt || 0
+                    cloudUpdatedAt
                 );
 
                 debugLog.sync(`[SingleBoard] Merge result: ${localCards.length} local + ${(boardData.cards || []).length} cloud = ${finalCards.length} final`);
@@ -325,7 +395,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                     boardInstructionSettings: boardData.boardInstructionSettings !== undefined
                         ? normalizeBoardInstructionSettings(boardData.boardInstructionSettings)
                         : normalizeBoardInstructionSettings(localBoardInstructionSettings),
-                    updatedAt: boardData.updatedAt
+                    updatedAt: cloudUpdatedAt
                 };
 
                 await saveBoard(boardId, mergedData);
@@ -337,6 +407,11 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
         }, (error) => {
             handleSyncError(`[SingleBoard] Sync error for ${boardId}:`, error);
         });
+
+        return () => {
+            singleBoardSnapshotCursor.delete(cloudCursorKey);
+            unsubscribe();
+        };
 
     } catch (err) {
         debugLog.error(`listenForSingleBoard fatal error for ${boardId}:`, err);
@@ -367,6 +442,17 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 if (change.type === 'added' || change.type === 'modified') {
                     promises.push((async () => {
                         try {
+                            const cloudCursorKey = `${userId}:${boardData.id}`;
+                            const incomingCursor = buildCloudCursor(boardData);
+                            const previousCursor = deprecatedBoardSnapshotCursor.get(cloudCursorKey);
+                            if (!isCloudCursorNewer(incomingCursor, previousCursor)) {
+                                debugLog.sync(
+                                    `[DeprecatedSync] Skip stale/duplicate snapshot for ${boardData.id} (incoming v${incomingCursor.syncVersion}/t${incomingCursor.updatedAt}, previous v${previousCursor?.syncVersion || 0}/t${previousCursor?.updatedAt || 0})`
+                                );
+                                return;
+                            }
+                            deprecatedBoardSnapshotCursor.set(cloudCursorKey, incomingCursor);
+
                             const localData = await idbGet(BOARD_PREFIX + boardData.id);
 
                             // Get state for immediate comparison if it's the active board
@@ -391,12 +477,13 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 ? (store.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
                                 : (localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS);
                             const localUpdatedAt = canTrustStoreState
-                                ? Math.max(store.lastSavedAt || 0, localData?.updatedAt || 0)
-                                : (localData?.updatedAt || 0);
+                                ? Math.max(toEpochMillis(store.lastSavedAt), toEpochMillis(localData?.updatedAt))
+                                : toEpochMillis(localData?.updatedAt);
 
                             // Use syncVersion (logical clock) for conflict detection, fallback to updatedAt for backward compatibility
-                            const localVersion = localData?.syncVersion || 0;
-                            const cloudVersion = boardData.syncVersion || 0;
+                            const localVersion = toSafeSyncVersion(localData?.syncVersion);
+                            const cloudVersion = incomingCursor.syncVersion;
+                            const cloudUpdatedAt = incomingCursor.updatedAt;
 
                             // If both have syncVersion, use it; otherwise fall back to timestamp comparison
                             if (localData && cloudVersion > 0 && localVersion > 0) {
@@ -404,7 +491,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     debugLog.sync(`Skipping cloud update for ${boardData.id}: local syncVersion ${localVersion} >= cloud ${cloudVersion}`);
                                     return;
                                 }
-                            } else if (localData && boardData.updatedAt && localUpdatedAt >= boardData.updatedAt) {
+                            } else if (localData && cloudUpdatedAt > 0 && localUpdatedAt >= cloudUpdatedAt) {
                                 // Backward compatibility: use timestamp if no syncVersion
                                 debugLog.sync(`Skipping cloud update for ${boardData.id}: local version is up-to-date (timestamp fallback)`);
                                 return;
@@ -428,7 +515,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                     boardInstructionSettings: normalizeBoardInstructionSettings(
                                         boardData.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
                                     ),
-                                    updatedAt: boardData.updatedAt
+                                    updatedAt: cloudUpdatedAt
                                 });
                                 return;
                             }
@@ -441,7 +528,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 localVersion,
                                 cloudVersion,
                                 localUpdatedAt,
-                                boardData.updatedAt || 0
+                                cloudUpdatedAt
                             );
 
                             // Log the merge result for debugging
@@ -455,7 +542,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 boardInstructionSettings: boardData.boardInstructionSettings !== undefined
                                     ? normalizeBoardInstructionSettings(boardData.boardInstructionSettings)
                                     : normalizeBoardInstructionSettings(localBoardInstructionSettings),
-                                updatedAt: boardData.updatedAt
+                                updatedAt: cloudUpdatedAt
                             });
                         } catch (e) {
                             debugLog.error(`[Firebase Sync] Merge failed for board ${boardData.id}`, e);
@@ -486,14 +573,17 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 // Preserve local summary if cloud doesn't have it
                 const existingLocal = existingLocalBoards.find(lb => lb.id === b.id);
                 const summaryToUse = b.summary || existingLocal?.summary;
+                const updatedAt = toEpochMillis(b.updatedAt) || recoveredCreatedAt || 0;
+                const createdAt = toEpochMillis(b.createdAt) || recoveredCreatedAt || updatedAt || 0;
+                const lastAccessedAt = toEpochMillis(b.lastAccessedAt) || updatedAt || createdAt || 0;
 
                 return {
                     id: b.id,
                     name: b.name || 'Untitled',
                     // Prefer explicit createdAt, then recover from ID, lastly use updatedAt (NOT Date.now())
-                    createdAt: b.createdAt || recoveredCreatedAt || b.updatedAt || 0,
-                    updatedAt: b.updatedAt || recoveredCreatedAt || 0,
-                    lastAccessedAt: b.lastAccessedAt || b.updatedAt || recoveredCreatedAt || 0,
+                    createdAt,
+                    updatedAt,
+                    lastAccessedAt,
                     cardCount: b.cards?.length || 0,
                     deletedAt: b.deletedAt,
                     backgroundImage: b.backgroundImage,
@@ -514,9 +604,83 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
 
 // Content hash cache to avoid redundant writes
 const lastSyncedContentHash = new Map();
+const buildBoardContentHash = (boardContent) => JSON.stringify({
+    cards: (boardContent.cards || []).map(c => ({
+        id: c.id,
+        x: c.x,
+        y: c.y,
+        type: c.type,
+        data: c.data
+    })),
+    connections: boardContent.connections || [],
+    groups: boardContent.groups || [],
+    boardPrompts: boardContent.boardPrompts || [],
+    boardInstructionSettings: normalizeBoardInstructionSettings(
+        boardContent.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+    )
+});
 
-export const saveBoardToCloud = async (userId, boardId, boardContent) => {
-    if (!db || !userId) return;
+const buildCleanedBoardContent = (boardContent) => ({
+    cards: (boardContent.cards || []).map(card => ({
+        ...card,
+        data: {
+            ...card.data,
+            messages: (card.data?.messages || []).map(msg => {
+                if (Array.isArray(msg.content)) {
+                    return {
+                        ...msg,
+                        content: msg.content.map(part => {
+                            if (part.type === 'image' && part.source) {
+                                if (part.source.s3Url) {
+                                    return {
+                                        type: 'image',
+                                        source: {
+                                            type: 'url',
+                                            media_type: part.source.media_type,
+                                            url: part.source.s3Url
+                                        }
+                                    };
+                                }
+                                if (part.source.type === 'base64' && !part.source.s3Url) {
+                                    return null;
+                                }
+                            }
+                            return part;
+                        }).filter(Boolean)
+                    };
+                }
+                return msg;
+            })
+        }
+    })),
+    connections: boardContent.connections || [],
+    groups: boardContent.groups || [],
+    boardPrompts: boardContent.boardPrompts || [],
+    boardInstructionSettings: normalizeBoardInstructionSettings(
+        boardContent.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+    )
+});
+
+const setBoardDocWithRetry = async (boardRef, payload, boardId) => {
+    for (let attempt = 0; attempt <= CLOUD_SAVE_RETRY_DELAYS_MS.length; attempt += 1) {
+        try {
+            await setDoc(boardRef, payload);
+            return;
+        } catch (error) {
+            const hasMoreRetries = attempt < CLOUD_SAVE_RETRY_DELAYS_MS.length;
+            if (!hasMoreRetries || !isRetryableSyncWriteError(error)) {
+                throw error;
+            }
+
+            const delayMs = CLOUD_SAVE_RETRY_DELAYS_MS[attempt];
+            debugLog.warn(`[Sync] Cloud save retry ${attempt + 1}/${CLOUD_SAVE_RETRY_DELAYS_MS.length} for board ${boardId} in ${delayMs}ms`, error);
+            await sleep(delayMs);
+        }
+    }
+};
+
+const persistBoardToCloudOnce = async (payload) => {
+    const { userId, boardId, boardContent, cacheKey, contentHash } = payload;
 
     // Skip cloud sync in offline mode
     if (isOfflineMode()) {
@@ -524,103 +688,83 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         return;
     }
 
-    // Generate content hash for dirty checking
-    const contentHash = JSON.stringify({
-        cards: (boardContent.cards || []).map(c => ({
-            id: c.id,
-            x: c.x,
-            y: c.y,
-            type: c.type,
-            data: c.data
-        })),
-        connections: boardContent.connections || [],
-        groups: boardContent.groups || [],
-        boardPrompts: boardContent.boardPrompts || [],
-        boardInstructionSettings: normalizeBoardInstructionSettings(
-            boardContent.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-        )
-    });
-
-    const cacheKey = `${userId}:${boardId}`;
     if (lastSyncedContentHash.get(cacheKey) === contentHash) {
         debugLog.sync(`Skipping cloud save for ${boardId}: content unchanged`);
         return;
     }
 
-    try {
-        debugLog.sync(`Saving board ${boardId} to cloud...`);
-        const list = getRawBoardsList();
-        const meta = list.find(b => b.id === boardId);
+    debugLog.sync(`Saving board ${boardId} to cloud...`);
+    const list = getRawBoardsList();
+    const meta = list.find(b => b.id === boardId);
 
-        if (!meta) {
-            debugLog.error(`Metadata not found for board ${boardId}, cloud save aborted.`);
-            return;
+    if (!meta) {
+        debugLog.error(`Metadata not found for board ${boardId}, cloud save aborted.`);
+        return;
+    }
+
+    const cleanedContent = buildCleanedBoardContent(boardContent);
+
+    // Increment syncVersion (logical clock) for conflict resolution
+    const newSyncVersion = toSafeSyncVersion(meta.syncVersion) + 1;
+    const fullBoard = removeUndefined({
+        ...meta,
+        ...cleanedContent,
+        updatedAt: Date.now(), // Keep for UI display
+        syncVersion: newSyncVersion // Logical clock for conflict detection
+    });
+
+    // Use serverTimestamp for authoritative server time
+    const boardRef = doc(db, 'users', userId, 'boards', boardId);
+    await setBoardDocWithRetry(boardRef, { ...fullBoard, serverUpdatedAt: serverTimestamp() }, boardId);
+
+    // Cache successful sync
+    lastSyncedContentHash.set(cacheKey, contentHash);
+    onSyncSuccess(); // Clear auto-offline if was triggered
+    debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
+};
+
+const startCloudSaveRunner = (cacheKey) => {
+    const runner = (async () => {
+        while (pendingCloudSavePayloads.has(cacheKey)) {
+            const payload = pendingCloudSavePayloads.get(cacheKey);
+            pendingCloudSavePayloads.delete(cacheKey);
+            await persistBoardToCloudOnce(payload);
         }
-
-
-
-        const cleanedContent = {
-            cards: (boardContent.cards || []).map(card => ({
-                ...card,
-                data: {
-                    ...card.data,
-                    messages: (card.data?.messages || []).map(msg => {
-                        if (Array.isArray(msg.content)) {
-                            return {
-                                ...msg,
-                                content: msg.content.map(part => {
-                                    if (part.type === 'image' && part.source) {
-                                        if (part.source.s3Url) {
-                                            return {
-                                                type: 'image',
-                                                source: {
-                                                    type: 'url',
-                                                    media_type: part.source.media_type,
-                                                    url: part.source.s3Url
-                                                }
-                                            };
-                                        }
-                                        if (part.source.type === 'base64' && !part.source.s3Url) {
-                                            return null;
-                                        }
-                                    }
-                                    return part;
-                                }).filter(Boolean)
-                            };
-                        }
-                        return msg;
-                    })
-                }
-            })),
-            connections: boardContent.connections || [],
-            groups: boardContent.groups || [],
-            boardPrompts: boardContent.boardPrompts || [],
-            boardInstructionSettings: normalizeBoardInstructionSettings(
-                boardContent.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-            )
-        };
-
-        // Increment syncVersion (logical clock) for conflict resolution
-        const newSyncVersion = (meta.syncVersion || 0) + 1;
-
-        const fullBoard = removeUndefined({
-            ...meta,
-            ...cleanedContent,
-            updatedAt: Date.now(), // Keep for UI display
-            syncVersion: newSyncVersion // Logical clock for conflict detection
+    })()
+        .catch((error) => {
+            const boardId = pendingCloudSavePayloads.get(cacheKey)?.boardId || cacheKey.split(':').slice(1).join(':');
+            handleSyncError(`Cloud save failed for board ${boardId}`, error);
+        })
+        .finally(() => {
+            inFlightCloudSaveTasks.delete(cacheKey);
+            // Handle race: payload may be queued between loop-exit and finally.
+            if (pendingCloudSavePayloads.has(cacheKey)) {
+                startCloudSaveRunner(cacheKey);
+            }
         });
 
-        // Use serverTimestamp for authoritative server time
-        const boardRef = doc(db, 'users', userId, 'boards', boardId);
-        await setDoc(boardRef, { ...fullBoard, serverUpdatedAt: serverTimestamp() });
+    inFlightCloudSaveTasks.set(cacheKey, runner);
+    return runner;
+};
 
-        // Cache successful sync
-        lastSyncedContentHash.set(cacheKey, contentHash);
-        onSyncSuccess(); // Clear auto-offline if was triggered
-        debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
-    } catch (e) {
-        handleSyncError(`Cloud save failed for board ${boardId}`, e);
+export const saveBoardToCloud = async (userId, boardId, boardContent) => {
+    if (!db || !userId) return;
+
+    const cacheKey = `${userId}:${boardId}`;
+    const contentHash = buildBoardContentHash(boardContent);
+    pendingCloudSavePayloads.set(cacheKey, {
+        userId,
+        boardId,
+        boardContent,
+        cacheKey,
+        contentHash
+    });
+
+    if (inFlightCloudSaveTasks.has(cacheKey)) {
+        return inFlightCloudSaveTasks.get(cacheKey);
     }
+
+    return startCloudSaveRunner(cacheKey);
 };
 
 export const updateBoardMetadataInCloud = async (userId, boardId, metadata) => {
