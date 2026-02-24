@@ -18,6 +18,19 @@ const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 setupFirestoreConnectivityMonitor(db);
 
+const ensureArray = (value) => (Array.isArray(value) ? value : []);
+const pickLocalArray = (storeValue, persistedValue) => {
+    const storeArr = ensureArray(storeValue);
+    const persistedArr = ensureArray(persistedValue);
+
+    // Critical guard: avoid treating transient in-memory [] (during route load/reset)
+    // as source of truth when persisted data exists.
+    if (storeArr.length === 0 && persistedArr.length > 0) {
+        return persistedArr;
+    }
+    return storeArr.length > 0 ? storeArr : persistedArr;
+};
+
 // Global quota error detection - intercept Firebase console errors
 // This catches errors that happen at the connection level before onSnapshot callbacks
 const originalConsoleError = console.error;
@@ -232,13 +245,27 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                 // Get state for immediate comparison
                 const { useStore } = await import('../store/useStore');
                 const store = useStore.getState();
+                const activeBoardId = sessionStorage.getItem('mixboard_current_board_id');
+                const canTrustStoreState = activeBoardId === boardId && !store.isBoardLoading;
 
-                const localCards = store.cards || localData?.cards || [];
-                const localConnections = store.connections || localData?.connections || [];
-                const localGroups = store.groups || localData?.groups || [];
-                const localBoardPrompts = store.boardPrompts || localData?.boardPrompts || [];
-                const localBoardInstructionSettings = store.boardInstructionSettings || localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS;
-                const localUpdatedAt = store.lastSavedAt || localData?.updatedAt || 0;
+                const localCards = canTrustStoreState
+                    ? pickLocalArray(store.cards, localData?.cards)
+                    : ensureArray(localData?.cards);
+                const localConnections = canTrustStoreState
+                    ? pickLocalArray(store.connections, localData?.connections)
+                    : ensureArray(localData?.connections);
+                const localGroups = canTrustStoreState
+                    ? pickLocalArray(store.groups, localData?.groups)
+                    : ensureArray(localData?.groups);
+                const localBoardPrompts = canTrustStoreState
+                    ? pickLocalArray(store.boardPrompts, localData?.boardPrompts)
+                    : ensureArray(localData?.boardPrompts);
+                const localBoardInstructionSettings = canTrustStoreState
+                    ? (store.boardInstructionSettings || localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
+                    : (localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS);
+                const localUpdatedAt = canTrustStoreState
+                    ? Math.max(store.lastSavedAt || 0, localData?.updatedAt || 0)
+                    : (localData?.updatedAt || 0);
 
                 const localVersion = localData?.syncVersion || 0;
                 const cloudVersion = boardData.syncVersion || 0;
@@ -292,7 +319,7 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
 
                 const mergedData = {
                     cards: finalCards,
-                    connections: boardData.connections || localConnections || [],
+                    connections: boardData.connections || localConnections,
                     groups: boardData.groups !== undefined ? boardData.groups : (localGroups || []),
                     boardPrompts: boardData.boardPrompts !== undefined ? boardData.boardPrompts : (localBoardPrompts || []),
                     boardInstructionSettings: boardData.boardInstructionSettings !== undefined
@@ -346,16 +373,26 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                             const { useStore } = await import('../store/useStore');
                             const store = useStore.getState();
                             const currentActiveId = sessionStorage.getItem('mixboard_current_board_id');
-                            const isCurrentBoard = boardData.id === currentActiveId;
+                            const canTrustStoreState = boardData.id === currentActiveId && !store.isBoardLoading;
 
-                            const localCards = isCurrentBoard ? store.cards : (localData?.cards || []);
-                            const localConnections = isCurrentBoard ? store.connections : (localData?.connections || []);
-                            const localGroups = isCurrentBoard ? store.groups : (localData?.groups || []);
-                            const localBoardPrompts = isCurrentBoard ? store.boardPrompts : (localData?.boardPrompts || []);
-                            const localBoardInstructionSettings = isCurrentBoard
+                            const localCards = canTrustStoreState
+                                ? pickLocalArray(store.cards, localData?.cards)
+                                : ensureArray(localData?.cards);
+                            const localConnections = canTrustStoreState
+                                ? pickLocalArray(store.connections, localData?.connections)
+                                : ensureArray(localData?.connections);
+                            const localGroups = canTrustStoreState
+                                ? pickLocalArray(store.groups, localData?.groups)
+                                : ensureArray(localData?.groups);
+                            const localBoardPrompts = canTrustStoreState
+                                ? pickLocalArray(store.boardPrompts, localData?.boardPrompts)
+                                : ensureArray(localData?.boardPrompts);
+                            const localBoardInstructionSettings = canTrustStoreState
                                 ? (store.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
                                 : (localData?.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS);
-                            const localUpdatedAt = isCurrentBoard ? (store.lastSavedAt || localData?.updatedAt || 0) : (localData?.updatedAt || 0);
+                            const localUpdatedAt = canTrustStoreState
+                                ? Math.max(store.lastSavedAt || 0, localData?.updatedAt || 0)
+                                : (localData?.updatedAt || 0);
 
                             // Use syncVersion (logical clock) for conflict detection, fallback to updatedAt for backward compatibility
                             const localVersion = localData?.syncVersion || 0;
@@ -377,7 +414,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                                 type: change.type,
                                 cloudCards: (boardData.cards || []).length,
                                 localCards: localCards.length,
-                                isCurrentBoard
+                                isCurrentBoard: canTrustStoreState
                             });
                             hasChanges = true;
 

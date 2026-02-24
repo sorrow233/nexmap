@@ -20,11 +20,13 @@ import {
  * 
  * @param {string} boardId - 当前画板 ID
  * @param {boolean} isReadOnly - 是否为只读模式（从 useTabLock 获取）
+ * @param {boolean} isBoardLoading - 当前画板是否处于初始加载阶段
  */
-export function useBoardSync(boardId, isReadOnly = false) {
+export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false) {
     const unsubRef = useRef(null);
     const [userId, setUserId] = useState(auth?.currentUser?.uid || null);
     const { setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings } = useStore();
+    const storeIsBoardLoading = useStore(state => state.isBoardLoading);
 
     // 监听 auth 状态变化
     useEffect(() => {
@@ -46,6 +48,12 @@ export function useBoardSync(boardId, isReadOnly = false) {
 
         // 如果没有 boardId 或者是示例画板，不需要同步
         if (!boardId || boardId.startsWith('sample-')) {
+            return;
+        }
+
+        // 避免与本地初始加载竞争，导致空状态误参与云合并
+        if (isBoardLoading || storeIsBoardLoading) {
+            debugLog.sync(`[BoardSync] Board ${boardId} is loading, postpone listener setup`);
             return;
         }
 
@@ -100,5 +108,5 @@ export function useBoardSync(boardId, isReadOnly = false) {
                 unsubRef.current = null;
             }
         };
-    }, [boardId, userId, isReadOnly, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings]);
+    }, [boardId, userId, isReadOnly, isBoardLoading, storeIsBoardLoading, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings]);
 }
