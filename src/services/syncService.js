@@ -84,7 +84,27 @@ const singleBoardSnapshotCursor = new Map();
 const deprecatedBoardSnapshotCursor = new Map();
 const inFlightCloudSaveTasks = new Map();
 const pendingCloudSavePayloads = new Map();
+const cloudSaveRetryTimers = new Map();
+const cloudSaveRetryAttempts = new Map();
 const CLOUD_SAVE_RETRY_DELAYS_MS = [500, 1500, 3500];
+const CLOUD_SAVE_QUEUE_RETRY_DELAYS_MS = [1000, 3000, 10000, 30000];
+const CLOUD_SAVE_DEFERRED_OFFLINE = 'deferred_offline';
+
+const getCloudQueueRetryDelay = (cacheKey) => {
+    const nextAttempt = (cloudSaveRetryAttempts.get(cacheKey) || 0) + 1;
+    cloudSaveRetryAttempts.set(cacheKey, nextAttempt);
+    const delayIndex = Math.min(nextAttempt - 1, CLOUD_SAVE_QUEUE_RETRY_DELAYS_MS.length - 1);
+    return CLOUD_SAVE_QUEUE_RETRY_DELAYS_MS[delayIndex];
+};
+
+const clearCloudQueueRetryState = (cacheKey) => {
+    cloudSaveRetryAttempts.delete(cacheKey);
+    const timer = cloudSaveRetryTimers.get(cacheKey);
+    if (timer) {
+        clearTimeout(timer);
+        cloudSaveRetryTimers.delete(cacheKey);
+    }
+};
 
 // Global quota error detection - intercept Firebase console errors
 // This catches errors that happen at the connection level before onSnapshot callbacks
@@ -429,7 +449,8 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
     try {
         debugLog.sync('[DEPRECATED] Using listenForBoardUpdates - consider switching to listenForBoardsMetadata + listenForSingleBoard');
         const boardsRef = collection(db, 'users', userId, 'boards');
-        return onSnapshot(boardsRef, async (snapshot) => {
+        const trackedCursorKeys = new Set();
+        const unsubscribe = onSnapshot(boardsRef, async (snapshot) => {
             const promises = [];
             let hasChanges = false;
 
@@ -443,6 +464,7 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                     promises.push((async () => {
                         try {
                             const cloudCursorKey = `${userId}:${boardData.id}`;
+                            trackedCursorKeys.add(cloudCursorKey);
                             const incomingCursor = buildCloudCursor(boardData);
                             const previousCursor = deprecatedBoardSnapshotCursor.get(cloudCursorKey);
                             if (!isCloudCursorNewer(incomingCursor, previousCursor)) {
@@ -596,6 +618,11 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
         }, (error) => {
             handleSyncError('Firestore sync error:', error);
         });
+
+        return () => {
+            trackedCursorKeys.forEach((key) => deprecatedBoardSnapshotCursor.delete(key));
+            unsubscribe();
+        };
     } catch (err) {
         debugLog.error("listenForBoardUpdates fatal error:", err);
         return () => { };
@@ -685,7 +712,7 @@ const persistBoardToCloudOnce = async (payload) => {
     // Skip cloud sync in offline mode
     if (isOfflineMode()) {
         debugLog.sync(`Skipping cloud save for ${boardId}: offline mode enabled`);
-        return;
+        return { status: CLOUD_SAVE_DEFERRED_OFFLINE };
     }
 
     if (lastSyncedContentHash.get(cacheKey) === contentHash) {
@@ -721,6 +748,21 @@ const persistBoardToCloudOnce = async (payload) => {
     lastSyncedContentHash.set(cacheKey, contentHash);
     onSyncSuccess(); // Clear auto-offline if was triggered
     debugLog.sync(`Board ${boardId} cloud save successful (syncVersion: ${newSyncVersion})`);
+
+    return { status: 'ok' };
+};
+
+const scheduleCloudQueueRetry = (cacheKey, boardId, reason = 'retryable_error') => {
+    if (cloudSaveRetryTimers.has(cacheKey)) return;
+    const delayMs = getCloudQueueRetryDelay(cacheKey);
+    debugLog.warn(`[SyncQueue] Retry scheduled for board ${boardId} in ${delayMs}ms (${reason})`);
+    const timer = setTimeout(() => {
+        cloudSaveRetryTimers.delete(cacheKey);
+        if (pendingCloudSavePayloads.has(cacheKey) && !inFlightCloudSaveTasks.has(cacheKey)) {
+            startCloudSaveRunner(cacheKey);
+        }
+    }, delayMs);
+    cloudSaveRetryTimers.set(cacheKey, timer);
 };
 
 const startCloudSaveRunner = (cacheKey) => {
@@ -728,17 +770,33 @@ const startCloudSaveRunner = (cacheKey) => {
         while (pendingCloudSavePayloads.has(cacheKey)) {
             const payload = pendingCloudSavePayloads.get(cacheKey);
             pendingCloudSavePayloads.delete(cacheKey);
-            await persistBoardToCloudOnce(payload);
+            if (!payload) continue;
+
+            const boardId = payload.boardId || cacheKey.split(':').slice(1).join(':');
+
+            try {
+                const result = await persistBoardToCloudOnce(payload);
+                if (result?.status === CLOUD_SAVE_DEFERRED_OFFLINE) {
+                    pendingCloudSavePayloads.set(cacheKey, payload);
+                    scheduleCloudQueueRetry(cacheKey, boardId, CLOUD_SAVE_DEFERRED_OFFLINE);
+                    break;
+                }
+                clearCloudQueueRetryState(cacheKey);
+            } catch (error) {
+                if (isRetryableSyncWriteError(error)) {
+                    pendingCloudSavePayloads.set(cacheKey, payload);
+                    scheduleCloudQueueRetry(cacheKey, boardId, error?.code || 'retryable_error');
+                    break;
+                }
+                clearCloudQueueRetryState(cacheKey);
+                handleSyncError(`Cloud save failed for board ${boardId}`, error);
+            }
         }
     })()
-        .catch((error) => {
-            const boardId = pendingCloudSavePayloads.get(cacheKey)?.boardId || cacheKey.split(':').slice(1).join(':');
-            handleSyncError(`Cloud save failed for board ${boardId}`, error);
-        })
         .finally(() => {
             inFlightCloudSaveTasks.delete(cacheKey);
             // Handle race: payload may be queued between loop-exit and finally.
-            if (pendingCloudSavePayloads.has(cacheKey)) {
+            if (pendingCloudSavePayloads.has(cacheKey) && !cloudSaveRetryTimers.has(cacheKey)) {
                 startCloudSaveRunner(cacheKey);
             }
         });
@@ -759,6 +817,14 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         cacheKey,
         contentHash
     });
+
+    // New payload arrived: cancel delayed retry and run immediately for best responsiveness.
+    const retryTimer = cloudSaveRetryTimers.get(cacheKey);
+    if (retryTimer) {
+        clearTimeout(retryTimer);
+        cloudSaveRetryTimers.delete(cacheKey);
+        cloudSaveRetryAttempts.delete(cacheKey);
+    }
 
     if (inFlightCloudSaveTasks.has(cacheKey)) {
         return inFlightCloudSaveTasks.get(cacheKey);
