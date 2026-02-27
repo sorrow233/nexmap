@@ -11,6 +11,7 @@ import {
 } from './gemini/errorUtils.js';
 import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser.js';
 import { extractCandidateText } from './gemini/partUtils.js';
+import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
 import { getKeyPool } from '../keyPoolManager';
 
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
@@ -355,111 +356,124 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const maxAttempts = 6;
-        let attempt = 0;
-        let lastError = null;
+        const releaseConcurrencySlot = options.disableGeminiConcurrencyGate === true
+            ? null
+            : await acquireGeminiConcurrencySlot({
+                providerId: this.config?.id || 'default',
+                baseUrl,
+                model: cleanModel,
+                stream: false
+            });
 
-        while (attempt < maxAttempts) {
-            attempt += 1;
-            const apiKey = keyPool.getNextKey();
-            if (!apiKey) {
-                const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
-                    ? keyPool.getShortestSuspendMs()
-                    : 0;
-                if (attempt < maxAttempts && cooldownMs > 0) {
-                    await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
-                    continue;
+        try {
+            const maxAttempts = 6;
+            let attempt = 0;
+            let lastError = null;
+
+            while (attempt < maxAttempts) {
+                attempt += 1;
+                const apiKey = keyPool.getNextKey();
+                if (!apiKey) {
+                    const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
+                        ? keyPool.getShortestSuspendMs()
+                        : 0;
+                    if (attempt < maxAttempts && cooldownMs > 0) {
+                        await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
+                        continue;
+                    }
+                    throw new Error('没有可用的 Gemini API Key');
                 }
-                throw new Error('没有可用的 Gemini API Key');
-            }
 
-            try {
-                const response = await this._requestWithTransportFallback({
-                    apiKey,
-                    baseUrl,
-                    cleanModel,
-                    requestBody,
-                    stream: false,
-                    signal: options.signal
-                });
+                try {
+                    const response = await this._requestWithTransportFallback({
+                        apiKey,
+                        baseUrl,
+                        cleanModel,
+                        requestBody,
+                        stream: false,
+                        signal: options.signal
+                    });
 
-                if (!response.ok) {
-                    const statusCode = this._normalizeStatusCode(response.status);
-                    const errorMessage = await this._readErrorMessage(response);
+                    if (!response.ok) {
+                        const statusCode = this._normalizeStatusCode(response.status);
+                        const errorMessage = await this._readErrorMessage(response);
 
+                        if (isKeyFailureStatus(statusCode)) {
+                            keyPool.markKeyFailed(apiKey, statusCode);
+                        }
+
+                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                        if (canRetry) {
+                            const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                            await wait(retryDelayMs || computeBackoffDelay(attempt));
+                            lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                            continue;
+                        }
+
+                        throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.error) {
+                        const statusCode = this._normalizeStatusCode(data.error.code);
+                        const errorMessage = data.error.message || JSON.stringify(data.error);
+
+                        if (isKeyFailureStatus(statusCode)) {
+                            keyPool.markKeyFailed(apiKey, statusCode);
+                        }
+
+                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                        if (canRetry) {
+                            const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                            await wait(retryDelayMs || computeBackoffDelay(attempt));
+                            lastError = new Error(errorMessage);
+                            continue;
+                        }
+
+                        throw new Error(errorMessage);
+                    }
+
+                    const candidate = data.candidates?.[0];
+                    const usedSearch = didCandidateUseSearch(candidate);
+                    if (typeof options.onResponseMetadata === 'function') {
+                        try {
+                            options.onResponseMetadata({ usedSearch });
+                        } catch (metaError) {
+                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                        }
+                    }
+
+                    const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
+                    if (visibleText) return visibleText;
+
+                    const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
+                    return fallbackText || '';
+                } catch (error) {
+                    if (isAbortError(error) || options.signal?.aborted) throw error;
+
+                    const errorMessage = error?.message || String(error);
+                    const statusCode = this._extractStatusCodeFromMessage(errorMessage);
                     if (isKeyFailureStatus(statusCode)) {
                         keyPool.markKeyFailed(apiKey, statusCode);
                     }
 
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
                     if (canRetry) {
                         const retryDelayMs = this._extractRetryDelayMs(errorMessage);
                         await wait(retryDelayMs || computeBackoffDelay(attempt));
-                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                        lastError = error;
                         continue;
                     }
 
-                    throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                    console.error('[Gemini] Chat error details:', error);
+                    throw error;
                 }
-
-                const data = await response.json();
-                if (data.error) {
-                    const statusCode = this._normalizeStatusCode(data.error.code);
-                    const errorMessage = data.error.message || JSON.stringify(data.error);
-
-                    if (isKeyFailureStatus(statusCode)) {
-                        keyPool.markKeyFailed(apiKey, statusCode);
-                    }
-
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
-                    if (canRetry) {
-                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                        await wait(retryDelayMs || computeBackoffDelay(attempt));
-                        lastError = new Error(errorMessage);
-                        continue;
-                    }
-
-                    throw new Error(errorMessage);
-                }
-
-                const candidate = data.candidates?.[0];
-                const usedSearch = didCandidateUseSearch(candidate);
-                if (typeof options.onResponseMetadata === 'function') {
-                    try {
-                        options.onResponseMetadata({ usedSearch });
-                    } catch (metaError) {
-                        console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
-                    }
-                }
-
-                const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
-                if (visibleText) return visibleText;
-
-                const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
-                return fallbackText || '';
-            } catch (error) {
-                if (isAbortError(error) || options.signal?.aborted) throw error;
-
-                const errorMessage = error?.message || String(error);
-                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
-                if (isKeyFailureStatus(statusCode)) {
-                    keyPool.markKeyFailed(apiKey, statusCode);
-                }
-
-                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
-                if (canRetry) {
-                    const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                    await wait(retryDelayMs || computeBackoffDelay(attempt));
-                    lastError = error;
-                    continue;
-                }
-
-                console.error('[Gemini] Chat error details:', error);
-                throw error;
             }
+
+            throw lastError || new Error('Gemini 请求失败');
+        } finally {
+            releaseConcurrencySlot?.();
         }
-
-        throw lastError || new Error('Gemini 请求失败');
     }
 
     async stream(messages, onToken, model, options = {}) {
@@ -499,120 +513,133 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const maxAttempts = 6;
-        let attempt = 0;
-        let lastError = null;
+        const releaseConcurrencySlot = options.disableGeminiConcurrencyGate === true
+            ? null
+            : await acquireGeminiConcurrencySlot({
+                providerId: this.config?.id || 'default',
+                baseUrl,
+                model: cleanModel,
+                stream: true
+            });
 
-        while (attempt < maxAttempts) {
-            attempt += 1;
-            const apiKey = keyPool.getNextKey();
-            if (!apiKey) {
-                const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
-                    ? keyPool.getShortestSuspendMs()
-                    : 0;
-                if (attempt < maxAttempts && cooldownMs > 0) {
-                    await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
-                    continue;
+        try {
+            const maxAttempts = 6;
+            let attempt = 0;
+            let lastError = null;
+
+            while (attempt < maxAttempts) {
+                attempt += 1;
+                const apiKey = keyPool.getNextKey();
+                if (!apiKey) {
+                    const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
+                        ? keyPool.getShortestSuspendMs()
+                        : 0;
+                    if (attempt < maxAttempts && cooldownMs > 0) {
+                        await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
+                        continue;
+                    }
+                    throw new Error('没有可用的 Gemini API Key');
                 }
-                throw new Error('没有可用的 Gemini API Key');
-            }
 
-            try {
-                const response = await this._requestWithTransportFallback({
-                    apiKey,
-                    baseUrl,
-                    cleanModel,
-                    requestBody,
-                    stream: true,
-                    signal: options.signal
-                });
+                try {
+                    const response = await this._requestWithTransportFallback({
+                        apiKey,
+                        baseUrl,
+                        cleanModel,
+                        requestBody,
+                        stream: true,
+                        signal: options.signal
+                    });
 
-                if (!response.ok) {
-                    const statusCode = this._normalizeStatusCode(response.status);
-                    const errorMessage = await this._readErrorMessage(response);
+                    if (!response.ok) {
+                        const statusCode = this._normalizeStatusCode(response.status);
+                        const errorMessage = await this._readErrorMessage(response);
 
+                        if (isKeyFailureStatus(statusCode)) {
+                            keyPool.markKeyFailed(apiKey, statusCode);
+                        }
+
+                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                        if (canRetry) {
+                            const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                            await wait(retryDelayMs || computeBackoffDelay(attempt));
+                            lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                            continue;
+                        }
+
+                        throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                    }
+
+                    const reader = response.body?.getReader?.();
+                    if (!reader) {
+                        throw new Error('Stream response body is empty');
+                    }
+
+                    try {
+                        const streamMeta = await parseGeminiStream(reader, onToken, () => { });
+                        if (typeof options.onResponseMetadata === 'function') {
+                            try {
+                                options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
+                            } catch (metaError) {
+                                console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                            }
+                        }
+                        return;
+                    } finally {
+                        reader.releaseLock();
+                    }
+                } catch (error) {
+                    if (isAbortError(error) || options.signal?.aborted) throw error;
+
+                    const errorMessage = error?.message || String(error);
+                    const statusCode = this._extractStatusCodeFromMessage(errorMessage);
                     if (isKeyFailureStatus(statusCode)) {
                         keyPool.markKeyFailed(apiKey, statusCode);
                     }
 
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    const retryableLike = error?.retryable === true ||
+                        this._shouldRetry({ statusCode, errorMessage, error });
+                    const canRetry = attempt < maxAttempts && retryableLike;
+
+                    if (error?.code === 'EMPTY_VISIBLE_STREAM') {
+                        lastError = error;
+                        if (options.allowNonStreamFallback !== false) {
+                            break;
+                        }
+                    }
+
                     if (canRetry) {
                         const retryDelayMs = this._extractRetryDelayMs(errorMessage);
                         await wait(retryDelayMs || computeBackoffDelay(attempt));
-                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                        lastError = error;
                         continue;
                     }
 
-                    throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
-                }
-
-                const reader = response.body?.getReader?.();
-                if (!reader) {
-                    throw new Error('Stream response body is empty');
-                }
-
-                try {
-                    const streamMeta = await parseGeminiStream(reader, onToken, () => { });
-                    if (typeof options.onResponseMetadata === 'function') {
-                        try {
-                            options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
-                        } catch (metaError) {
-                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
-                        }
-                    }
-                    return;
-                } finally {
-                    reader.releaseLock();
-                }
-            } catch (error) {
-                if (isAbortError(error) || options.signal?.aborted) throw error;
-
-                const errorMessage = error?.message || String(error);
-                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
-                if (isKeyFailureStatus(statusCode)) {
-                    keyPool.markKeyFailed(apiKey, statusCode);
-                }
-
-                const retryableLike = error?.retryable === true ||
-                    this._shouldRetry({ statusCode, errorMessage, error });
-                const canRetry = attempt < maxAttempts && retryableLike;
-
-                if (error?.code === 'EMPTY_VISIBLE_STREAM') {
                     lastError = error;
-                    if (options.allowNonStreamFallback !== false) {
+                    if (options.allowNonStreamFallback !== false && retryableLike) {
                         break;
                     }
-                }
 
-                if (canRetry) {
-                    const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                    await wait(retryDelayMs || computeBackoffDelay(attempt));
-                    lastError = error;
-                    continue;
+                    throw error;
                 }
-
-                lastError = error;
-                if (options.allowNonStreamFallback !== false && retryableLike) {
-                    break;
-                }
-
-                throw error;
             }
-        }
 
-        if (!options.signal?.aborted && options.allowNonStreamFallback !== false && this._isFallbackEligible(lastError)) {
-            console.warn('[Gemini] Stream failed after retries, fallback to non-stream generateContent');
-            const text = await this.chat(messages, model, {
-                ...options,
-                signal: options.signal
-            });
-            if (text) {
-                onToken(text);
+            if (!options.signal?.aborted && options.allowNonStreamFallback !== false && this._isFallbackEligible(lastError)) {
+                console.warn('[Gemini] Stream failed after retries, fallback to non-stream generateContent');
+                const text = await this.chat(messages, model, {
+                    ...options,
+                    signal: options.signal
+                });
+                if (text) {
+                    onToken(text);
+                }
+                return;
             }
-            return;
-        }
 
-        throw lastError || new Error('Gemini 流式请求失败');
+            throw lastError || new Error('Gemini 流式请求失败');
+        } finally {
+            releaseConcurrencySlot?.();
+        }
     }
 
     /**
