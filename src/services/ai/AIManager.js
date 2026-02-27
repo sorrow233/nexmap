@@ -24,6 +24,8 @@ export const STATUS = {
     CANCELLED: 'cancelled',
 };
 
+const MAX_CONCURRENT_CARDS = 8;
+
 class AIManager {
     constructor() {
         if (AIManager.instance) {
@@ -31,9 +33,69 @@ class AIManager {
         }
 
         this.activeTasks = new Map(); // taskId -> { controller, task }
+        this.pendingTasks = [];       // FIFO by priority/timestamp (re-sorted on enqueue)
+        this.runningCardIds = new Set();
+        this.maxConcurrentCards = MAX_CONCURRENT_CARDS;
         this.results = new Map();     // taskId -> result
 
         AIManager.instance = this;
+    }
+
+    _getTagsKey(tags = []) {
+        return [...tags].sort().join('|');
+    }
+
+    _getCardIdFromTags(tags = []) {
+        const cardTag = tags.find(tag => typeof tag === 'string' && tag.startsWith('card:'));
+        if (!cardTag) return null;
+        return cardTag.slice('card:'.length) || null;
+    }
+
+    _findIdenticalTask(type, tagsKey) {
+        const activeMatch = [...this.activeTasks.values()].find(({ task }) => (
+            task.type === type && task.tagsKey === tagsKey
+        ));
+        if (activeMatch?.task) return activeMatch.task;
+
+        return this.pendingTasks.find(task => task.type === type && task.tagsKey === tagsKey) || null;
+    }
+
+    _sortPendingTasks() {
+        this.pendingTasks.sort((a, b) => {
+            if (b.priority !== a.priority) return b.priority - a.priority;
+            return a.timestamp - b.timestamp;
+        });
+    }
+
+    _canRunTask(task) {
+        if (!task.cardId) return true;
+        if (this.runningCardIds.has(task.cardId)) return false;
+        return this.runningCardIds.size < this.maxConcurrentCards;
+    }
+
+    _pickNextRunnableTask() {
+        for (let i = 0; i < this.pendingTasks.length; i++) {
+            const task = this.pendingTasks[i];
+            if (this._canRunTask(task)) {
+                this.pendingTasks.splice(i, 1);
+                return task;
+            }
+        }
+        return null;
+    }
+
+    _drainQueue() {
+        while (true) {
+            const task = this._pickNextRunnableTask();
+            if (!task) break;
+
+            const controller = new AbortController();
+            this.activeTasks.set(task.id, { controller, task });
+            if (task.cardId) {
+                this.runningCardIds.add(task.cardId);
+            }
+            this._runTask(task, controller);
+        }
     }
 
     /**
@@ -50,20 +112,13 @@ class AIManager {
         // 1. Deduplication: SKIP for 'chat' type
         // Chat messages should NEVER be deduplicated - each message is a unique continuation
         // Only deduplicate for non-chat types (e.g., image generation)
+        const normalizedTags = Array.isArray(tags) ? [...tags] : [];
+        const tagsKey = this._getTagsKey(normalizedTags);
         if (type !== 'chat') {
-            const identicalTask = [...this.activeTasks.values()].find(item => {
-                const t = item.task || item;
-                if (t.type !== type) return false;
-                const existingTagsKey = (t.tags || []).sort().join('|');
-                const newTagsKey = tags.sort().join('|');
-                return existingTagsKey === newTagsKey;
-            });
+            const identicalTask = this._findIdenticalTask(type, tagsKey);
 
             if (identicalTask) {
-                const t = identicalTask.task || identicalTask;
-                if (t.promise) {
-                    return t.promise;
-                }
+                if (identicalTask.promise) return identicalTask.promise;
                 return Promise.resolve(null);
             }
         }
@@ -74,7 +129,9 @@ class AIManager {
             type,
             priority,
             payload,
-            tags,
+            tags: normalizedTags,
+            tagsKey,
+            cardId: this._getCardIdFromTags(normalizedTags),
             onProgress,
             status: STATUS.PENDING,
             timestamp: Date.now(),
@@ -90,10 +147,10 @@ class AIManager {
         task.promise = promise;
         promise.taskId = task.id;
 
-        // 4. Run Immediately (No Queue)
-        const controller = new AbortController();
-        this.activeTasks.set(task.id, { controller, task });
-        this._runTask(task, controller);
+        // 4. Enqueue then schedule with global card-level concurrency
+        this.pendingTasks.push(task);
+        this._sortPendingTasks();
+        this._drainQueue();
 
         return promise;
     }
@@ -109,6 +166,15 @@ class AIManager {
             activeEntry.controller.abort();
             return true;
         }
+
+        // Cancel queued task
+        const pendingIndex = this.pendingTasks.findIndex(task => task.id === taskId);
+        if (pendingIndex !== -1) {
+            const [task] = this.pendingTasks.splice(pendingIndex, 1);
+            task.status = STATUS.CANCELLED;
+            task.reject(new Error('Task cancelled'));
+            return true;
+        }
         return false;
     }
 
@@ -118,14 +184,28 @@ class AIManager {
      */
     cancelByTags(tags) {
         if (!tags || tags.length === 0) return;
+        const tagsSet = new Set(tags);
 
         // Cancel active tasks
         for (const [taskId, entry] of this.activeTasks) {
-            const hasMatch = entry.task.tags.some(tag => tags.includes(tag));
+            const hasMatch = entry.task.tags.some(tag => tagsSet.has(tag));
             if (hasMatch) {
                 entry.controller.abort();
             }
         }
+
+        // Cancel queued tasks
+        const survivors = [];
+        for (const task of this.pendingTasks) {
+            const hasMatch = task.tags.some(tag => tagsSet.has(tag));
+            if (hasMatch) {
+                task.status = STATUS.CANCELLED;
+                task.reject(new Error('Task cancelled'));
+            } else {
+                survivors.push(task);
+            }
+        }
+        this.pendingTasks = survivors;
     }
 
     /**
@@ -136,6 +216,13 @@ class AIManager {
         for (const [taskId, entry] of this.activeTasks) {
             entry.controller.abort();
         }
+
+        // Reject all queued tasks
+        for (const task of this.pendingTasks) {
+            task.status = STATUS.CANCELLED;
+            task.reject(new Error('Task cancelled'));
+        }
+        this.pendingTasks = [];
     }
 
     async _runTask(task, controller) {
@@ -159,6 +246,10 @@ class AIManager {
             }
         } finally {
             this.activeTasks.delete(task.id);
+            if (task.cardId) {
+                this.runningCardIds.delete(task.cardId);
+            }
+            this._drainQueue();
         }
     }
 
