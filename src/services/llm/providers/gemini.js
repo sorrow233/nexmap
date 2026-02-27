@@ -16,6 +16,8 @@ import { getKeyPool } from '../keyPoolManager';
 
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const PROXY_DEGRADE_COOLDOWN_MS = 2 * 60 * 1000;
+const KEY_ACQUIRE_MAX_WAIT_MS = 75 * 1000;
+const KEY_ACQUIRE_POLL_MAX_MS = 5000;
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -48,7 +50,7 @@ export class GeminiProvider extends LLMProvider {
 
     _shouldMarkProxyDegraded(statusCode) {
         const code = Number(statusCode);
-        return code === 408 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
+        return code === 408 || code === 429 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
     }
 
     _isProxyTemporarilyDegraded() {
@@ -96,6 +98,126 @@ export class GeminiProvider extends LLMProvider {
         const generic = str.match(/\b([45]\d{2})\b/);
         if (generic) return Number(generic[1]);
         return null;
+    }
+
+    _createAbortError(message = 'The operation was aborted') {
+        const error = new Error(message);
+        error.name = 'AbortError';
+        return error;
+    }
+
+    async _waitWithAbort(ms, signal) {
+        if (!ms || ms <= 0) return;
+        if (!signal) {
+            await wait(ms);
+            return;
+        }
+        if (signal.aborted) {
+            throw this._createAbortError();
+        }
+
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                signal.removeEventListener('abort', onAbort);
+                resolve();
+            }, ms);
+            const onAbort = () => {
+                clearTimeout(timer);
+                signal.removeEventListener('abort', onAbort);
+                reject(this._createAbortError());
+            };
+            signal.addEventListener('abort', onAbort, { once: true });
+        });
+    }
+
+    async _acquireApiKeyWithWait(keyPool, { signal, maxWaitMs = KEY_ACQUIRE_MAX_WAIT_MS } = {}) {
+        const startedAt = Date.now();
+
+        while (true) {
+            if (signal?.aborted) {
+                throw this._createAbortError();
+            }
+
+            const apiKey = keyPool.getNextKey();
+            if (apiKey) {
+                return apiKey;
+            }
+
+            const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
+                ? keyPool.getShortestSuspendMs()
+                : 0;
+            if (cooldownMs <= 0) {
+                return null;
+            }
+
+            const elapsedMs = Date.now() - startedAt;
+            const remainingWaitMs = maxWaitMs - elapsedMs;
+            if (remainingWaitMs <= 0) {
+                return null;
+            }
+
+            const waitMs = Math.min(
+                Math.max(1000, Math.min(cooldownMs, KEY_ACQUIRE_POLL_MAX_MS)),
+                remainingWaitMs
+            );
+            await this._waitWithAbort(waitMs, signal);
+        }
+    }
+
+    _parseRetryAfterMsFromHeader(retryAfterValue) {
+        if (!retryAfterValue) return null;
+
+        const trimmed = String(retryAfterValue).trim();
+        const asNumber = Number(trimmed);
+        if (Number.isFinite(asNumber) && asNumber >= 0) {
+            return Math.max(1000, Math.round(asNumber * 1000));
+        }
+
+        const parsedDateMs = Date.parse(trimmed);
+        if (Number.isFinite(parsedDateMs)) {
+            const diffMs = parsedDateMs - Date.now();
+            if (diffMs > 0) {
+                return Math.max(1000, diffMs);
+            }
+        }
+
+        return null;
+    }
+
+    _resolveRetryDelayMs({ response = null, errorMessage = '' } = {}) {
+        const headerDelayMs = this._parseRetryAfterMsFromHeader(response?.headers?.get?.('retry-after'));
+        if (headerDelayMs) return headerDelayMs;
+        return this._extractRetryDelayMs(errorMessage);
+    }
+
+    _shouldMarkKeyFailed(statusCode, errorMessage = '') {
+        if (!isKeyFailureStatus(statusCode)) return false;
+        if (Number(statusCode) !== 429) return true;
+
+        const lower = String(errorMessage || '').toLowerCase();
+        if (!lower) return true;
+
+        if (lower.includes('<!doctype') || lower.includes('<html') || lower.includes('cloudflare')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    _markKeyFailure(keyPool, apiKey, { statusCode, errorMessage = '', retryAfterMs = null } = {}) {
+        if (!apiKey) return;
+        if (!this._shouldMarkKeyFailed(statusCode, errorMessage)) return;
+
+        keyPool.markKeyFailed(apiKey, {
+            statusCode,
+            errorMessage,
+            retryAfterMs
+        });
+    }
+
+    _shouldSwitchKeyOnRetry(statusCode) {
+        const code = Number(statusCode);
+        return code === 401 || code === 403;
     }
 
     _getResolvedBaseUrl() {
@@ -366,69 +488,70 @@ export class GeminiProvider extends LLMProvider {
             });
 
         try {
-            const maxAttempts = 6;
-            let attempt = 0;
-            let lastError = null;
+        const maxAttempts = 6;
+        let attempt = 0;
+        let lastError = null;
+        let activeApiKey = null;
 
-            while (attempt < maxAttempts) {
-                attempt += 1;
-                const apiKey = keyPool.getNextKey();
-                if (!apiKey) {
-                    const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
-                        ? keyPool.getShortestSuspendMs()
-                        : 0;
-                    if (attempt < maxAttempts && cooldownMs > 0) {
-                        await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
-                        continue;
-                    }
-                    throw new Error('没有可用的 Gemini API Key');
+        while (attempt < maxAttempts) {
+            if (!activeApiKey) {
+                activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
+                    signal: options.signal
+                });
+                if (!activeApiKey) {
+                    throw new Error('没有可用的 Gemini API Key（全部处于限流冷却中）');
                 }
+            }
+            const apiKey = activeApiKey;
+            attempt += 1;
 
-                try {
-                    const response = await this._requestWithTransportFallback({
-                        apiKey,
-                        baseUrl,
+            try {
+                const response = await this._requestWithTransportFallback({
+                    apiKey,
+                    baseUrl,
                         cleanModel,
                         requestBody,
                         stream: false,
                         signal: options.signal
                     });
 
-                    if (!response.ok) {
-                        const statusCode = this._normalizeStatusCode(response.status);
-                        const errorMessage = await this._readErrorMessage(response);
+                if (!response.ok) {
+                    const statusCode = this._normalizeStatusCode(response.status);
+                    const errorMessage = await this._readErrorMessage(response);
+                    const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
 
-                        if (isKeyFailureStatus(statusCode)) {
-                            keyPool.markKeyFailed(apiKey, statusCode);
-                        }
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                    if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        activeApiKey = null;
+                    }
 
-                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
-                        if (canRetry) {
-                            const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                            await wait(retryDelayMs || computeBackoffDelay(attempt));
-                            lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
-                            continue;
-                        }
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    if (canRetry) {
+                        await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                        continue;
+                    }
 
                         throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                     }
 
                     const data = await response.json();
-                    if (data.error) {
-                        const statusCode = this._normalizeStatusCode(data.error.code);
-                        const errorMessage = data.error.message || JSON.stringify(data.error);
+                if (data.error) {
+                    const statusCode = this._normalizeStatusCode(data.error.code);
+                    const errorMessage = data.error.message || JSON.stringify(data.error);
+                    const retryDelayMs = this._extractRetryDelayMs(errorMessage);
 
-                        if (isKeyFailureStatus(statusCode)) {
-                            keyPool.markKeyFailed(apiKey, statusCode);
-                        }
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                    if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        activeApiKey = null;
+                    }
 
-                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
-                        if (canRetry) {
-                            const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                            await wait(retryDelayMs || computeBackoffDelay(attempt));
-                            lastError = new Error(errorMessage);
-                            continue;
-                        }
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    if (canRetry) {
+                        await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                        lastError = new Error(errorMessage);
+                        continue;
+                    }
 
                         throw new Error(errorMessage);
                     }
@@ -449,21 +572,23 @@ export class GeminiProvider extends LLMProvider {
                     const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
                     return fallbackText || '';
                 } catch (error) {
-                    if (isAbortError(error) || options.signal?.aborted) throw error;
+                if (isAbortError(error) || options.signal?.aborted) throw error;
 
-                    const errorMessage = error?.message || String(error);
-                    const statusCode = this._extractStatusCodeFromMessage(errorMessage);
-                    if (isKeyFailureStatus(statusCode)) {
-                        keyPool.markKeyFailed(apiKey, statusCode);
-                    }
+                const errorMessage = error?.message || String(error);
+                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = this._extractRetryDelayMs(errorMessage);
 
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
-                    if (canRetry) {
-                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                        await wait(retryDelayMs || computeBackoffDelay(attempt));
-                        lastError = error;
-                        continue;
-                    }
+                this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                    activeApiKey = null;
+                }
+
+                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
+                if (canRetry) {
+                    await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                    lastError = error;
+                    continue;
+                }
 
                     console.error('[Gemini] Chat error details:', error);
                     throw error;
@@ -523,49 +648,49 @@ export class GeminiProvider extends LLMProvider {
             });
 
         try {
-            const maxAttempts = 6;
-            let attempt = 0;
-            let lastError = null;
+        const maxAttempts = 6;
+        let attempt = 0;
+        let lastError = null;
+        let activeApiKey = null;
 
-            while (attempt < maxAttempts) {
-                attempt += 1;
-                const apiKey = keyPool.getNextKey();
-                if (!apiKey) {
-                    const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
-                        ? keyPool.getShortestSuspendMs()
-                        : 0;
-                    if (attempt < maxAttempts && cooldownMs > 0) {
-                        await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
-                        continue;
-                    }
-                    throw new Error('没有可用的 Gemini API Key');
+        while (attempt < maxAttempts) {
+            if (!activeApiKey) {
+                activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
+                    signal: options.signal
+                });
+                if (!activeApiKey) {
+                    throw new Error('没有可用的 Gemini API Key（全部处于限流冷却中）');
                 }
+            }
+            const apiKey = activeApiKey;
+            attempt += 1;
 
-                try {
-                    const response = await this._requestWithTransportFallback({
-                        apiKey,
-                        baseUrl,
+            try {
+                const response = await this._requestWithTransportFallback({
+                    apiKey,
+                    baseUrl,
                         cleanModel,
                         requestBody,
                         stream: true,
                         signal: options.signal
                     });
 
-                    if (!response.ok) {
-                        const statusCode = this._normalizeStatusCode(response.status);
-                        const errorMessage = await this._readErrorMessage(response);
+                if (!response.ok) {
+                    const statusCode = this._normalizeStatusCode(response.status);
+                    const errorMessage = await this._readErrorMessage(response);
+                    const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
 
-                        if (isKeyFailureStatus(statusCode)) {
-                            keyPool.markKeyFailed(apiKey, statusCode);
-                        }
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                    if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        activeApiKey = null;
+                    }
 
-                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
-                        if (canRetry) {
-                            const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                            await wait(retryDelayMs || computeBackoffDelay(attempt));
-                            lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
-                            continue;
-                        }
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    if (canRetry) {
+                        await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                        continue;
+                    }
 
                         throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                     }
@@ -591,15 +716,18 @@ export class GeminiProvider extends LLMProvider {
                 } catch (error) {
                     if (isAbortError(error) || options.signal?.aborted) throw error;
 
-                    const errorMessage = error?.message || String(error);
-                    const statusCode = this._extractStatusCodeFromMessage(errorMessage);
-                    if (isKeyFailureStatus(statusCode)) {
-                        keyPool.markKeyFailed(apiKey, statusCode);
-                    }
+                const errorMessage = error?.message || String(error);
+                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = this._extractRetryDelayMs(errorMessage);
 
-                    const retryableLike = error?.retryable === true ||
-                        this._shouldRetry({ statusCode, errorMessage, error });
-                    const canRetry = attempt < maxAttempts && retryableLike;
+                this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                    activeApiKey = null;
+                }
+
+                const retryableLike = error?.retryable === true ||
+                    this._shouldRetry({ statusCode, errorMessage, error });
+                const canRetry = attempt < maxAttempts && retryableLike;
 
                     if (error?.code === 'EMPTY_VISIBLE_STREAM') {
                         lastError = error;
@@ -608,12 +736,11 @@ export class GeminiProvider extends LLMProvider {
                         }
                     }
 
-                    if (canRetry) {
-                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-                        await wait(retryDelayMs || computeBackoffDelay(attempt));
-                        lastError = error;
-                        continue;
-                    }
+                if (canRetry) {
+                    await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                    lastError = error;
+                    continue;
+                }
 
                     lastError = error;
                     if (options.allowNonStreamFallback !== false && retryableLike) {

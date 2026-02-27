@@ -9,6 +9,8 @@
  */
 
 const TEMP_SUSPEND_MS = 60 * 1000;
+const MIN_TEMP_SUSPEND_MS = 5 * 1000;
+const MAX_TEMP_SUSPEND_MS = 5 * 60 * 1000;
 
 export class KeyPoolManager {
     constructor(keysString = '') {
@@ -32,7 +34,19 @@ export class KeyPoolManager {
     }
 
     _isTemporaryReason(reason = '') {
-        const text = String(reason).toLowerCase();
+        if (reason && typeof reason === 'object') {
+            const statusCode = Number(reason.statusCode);
+            if (Number.isFinite(statusCode)) {
+                if ([408, 409, 425, 429, 500, 502, 503, 504, 524].includes(statusCode)) {
+                    return true;
+                }
+                if ([401, 403].includes(statusCode)) {
+                    return false;
+                }
+            }
+        }
+
+        const text = this._formatReason(reason).toLowerCase();
         return text.includes('429') ||
             text.includes('rate_limit') ||
             text.includes('rate limit') ||
@@ -43,6 +57,88 @@ export class KeyPoolManager {
             text.includes('503') ||
             text.includes('524') ||
             text.includes('unavailable');
+    }
+
+    _formatReason(reason) {
+        if (!reason) return 'unknown';
+        if (typeof reason === 'string' || typeof reason === 'number') {
+            return String(reason);
+        }
+        if (typeof reason === 'object') {
+            const status = Number(reason.statusCode);
+            const statusText = Number.isFinite(status) ? `HTTP ${status}` : '';
+            const detail = String(
+                reason.reason ||
+                reason.message ||
+                reason.errorMessage ||
+                reason.detail ||
+                ''
+            ).trim();
+            if (statusText && detail) return `${statusText} ${detail}`;
+            return statusText || detail || 'unknown';
+        }
+        return String(reason);
+    }
+
+    _clampSuspendMs(ms) {
+        const n = Number(ms);
+        if (!Number.isFinite(n) || n <= 0) return TEMP_SUSPEND_MS;
+        return Math.min(MAX_TEMP_SUSPEND_MS, Math.max(MIN_TEMP_SUSPEND_MS, Math.round(n)));
+    }
+
+    _parseRetryDelayMsFromText(text = '') {
+        const source = String(text || '');
+        if (!source) return null;
+
+        const unitMatch = source.match(/retry(?:\s+after|\s+in)?\s+(\d+(?:\.\d+)?)\s*(ms|milliseconds?|s|sec|secs|seconds?|m|min|mins|minutes?)/i);
+        if (unitMatch) {
+            const value = Number(unitMatch[1]);
+            const unit = unitMatch[2].toLowerCase();
+            if (!Number.isFinite(value)) return null;
+            if (unit.startsWith('m')) return Math.ceil(value * 60 * 1000);
+            if (unit.startsWith('s')) return Math.ceil(value * 1000);
+            return Math.ceil(value);
+        }
+
+        const retryDelayMatch = source.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/i);
+        if (retryDelayMatch) {
+            const sec = Number(retryDelayMatch[1]);
+            return Number.isFinite(sec) ? Math.ceil(sec * 1000) : null;
+        }
+
+        const retryAfterMatch = source.match(/retry[-_ ]?after["'\s:=]+(\d+(?:\.\d+)?)/i);
+        if (retryAfterMatch) {
+            const sec = Number(retryAfterMatch[1]);
+            return Number.isFinite(sec) ? Math.ceil(sec * 1000) : null;
+        }
+
+        return null;
+    }
+
+    _extractSuspendMsFromReason(reason) {
+        if (reason && typeof reason === 'object') {
+            const explicitMs = Number(
+                reason.suspendMs ??
+                reason.retryAfterMs ??
+                reason.cooldownMs
+            );
+            if (Number.isFinite(explicitMs) && explicitMs > 0) {
+                return this._clampSuspendMs(explicitMs);
+            }
+
+            const objectText = this._formatReason(reason);
+            const parsedObjectDelay = this._parseRetryDelayMsFromText(objectText);
+            if (parsedObjectDelay !== null) {
+                return this._clampSuspendMs(parsedObjectDelay);
+            }
+        }
+
+        const parsedDelay = this._parseRetryDelayMsFromText(reason);
+        if (parsedDelay !== null) {
+            return this._clampSuspendMs(parsedDelay);
+        }
+
+        return TEMP_SUSPEND_MS;
     }
 
     _cleanupExpiredSuspensions(now = Date.now()) {
@@ -108,19 +204,21 @@ export class KeyPoolManager {
 
         const now = Date.now();
         const temporary = this._isTemporaryReason(reason);
+        const reasonText = this._formatReason(reason);
 
         if (temporary) {
+            const suspendMs = this._extractSuspendMsFromReason(reason);
             const prevUntil = this.suspendedUntil.get(key) || 0;
-            const nextUntil = Math.max(prevUntil, now + TEMP_SUSPEND_MS);
+            const nextUntil = Math.max(prevUntil, now + suspendMs);
             this.suspendedUntil.set(key, nextUntil);
             const remainSec = Math.ceil((nextUntil - now) / 1000);
-            console.warn(`[KeyPool] Key ${this._maskKey(key)} 已挂起 ${remainSec}s (临时限流): ${reason}`);
+            console.warn(`[KeyPool] Key ${this._maskKey(key)} 已挂起 ${remainSec}s (临时限流): ${reasonText}`);
             return;
         }
 
         this.permanentFailedKeys.add(key);
         this.suspendedUntil.delete(key);
-        console.error(`[KeyPool] Key ${this._maskKey(key)} 已标记失效 (持久错误): ${reason}`);
+        console.error(`[KeyPool] Key ${this._maskKey(key)} 已标记失效 (持久错误): ${reasonText}`);
     }
 
     restoreKey(key) {

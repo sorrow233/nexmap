@@ -225,14 +225,25 @@ export async function onRequest(context) {
         if (!upstreamResponse.ok) {
             const errText = errorText || '';
             console.error(`[Proxy] Upstream error ${upstreamResponse.status}:`, errText);
+            const retryAfter = upstreamResponse.headers.get('retry-after');
+            const rateLimitReset = upstreamResponse.headers.get('x-ratelimit-reset');
+            const responseHeaders = {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Expose-Headers': 'Retry-After, X-RateLimit-Reset'
+            };
+            if (retryAfter) {
+                responseHeaders['Retry-After'] = retryAfter;
+            }
+            if (rateLimitReset) {
+                responseHeaders['X-RateLimit-Reset'] = rateLimitReset;
+            }
+
             return new Response(JSON.stringify({
                 error: { message: `Upstream Error ${upstreamResponse.status}: ${errText}` }
             }), {
                 status: upstreamResponse.status,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: responseHeaders
             });
         }
 
