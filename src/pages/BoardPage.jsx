@@ -93,8 +93,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handleOpenInstructionPanel,
         handleOpenInstructionSettings,
         handleToggleBoardInstruction,
-        handleUseManualInstructionMode,
-        handleUseAutoInstructionMode,
         handleRunAutoInstructionRecommendNow,
         handleQuickSprout,
         handleSprout,
@@ -249,8 +247,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     boardInstructionSettings={boardInstructionSettings}
                     instructionPanelSummary={instructionPanelSummary}
                     onToggleInstruction={handleToggleBoardInstruction}
-                    onUseManualMode={handleUseManualInstructionMode}
-                    onUseAutoMode={handleUseAutoInstructionMode}
                     onRunAutoRecommend={handleRunAutoInstructionRecommendNow}
                     onOpenSettings={handleOpenInstructionSettings}
                     isAutoRecommending={isAutoRecommending}

@@ -14,9 +14,10 @@ export const RETRYABLE_ERRORS = [
     'quic'
 ];
 
-// 524 (Cloudflare timeout) and 429 are included because they are transient in this stack.
-export const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504, 524]);
-export const KEY_FAILURE_STATUS_CODES = new Set([401, 403, 429]);
+// 429 removed from both sets: rate-limit must NEVER trigger retry (amplifies requests)
+// and must NEVER mark a key as "failed" (causes key-rotation that drains the pool).
+export const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 500, 502, 503, 504, 524]);
+export const KEY_FAILURE_STATUS_CODES = new Set([401, 403]);
 
 export function isRetryableError(errorMessage) {
     if (!errorMessage) return false;

@@ -13,14 +13,14 @@ export const DEFAULT_CUSTOM_INSTRUCTIONS = Object.freeze({
 export const DEFAULT_BOARD_INSTRUCTION_SETTINGS = Object.freeze({
     enabledInstructionIds: [],
     autoEnabledInstructionIds: [],
-    autoSelectionMode: 'auto', // 'auto' | 'manual'
+    autoSelectionMode: 'manual',
     autoSelection: {
         status: 'idle', // 'idle' | 'running' | 'done' | 'error'
         lastRunAt: 0,
         lastConversationCount: 0,
         lastError: '',
         lastResultCount: 0,
-        lastTrigger: 'auto' // 'auto' | 'manual'
+        lastTrigger: 'manual' // 'auto' | 'manual'
     }
 });
 
@@ -164,13 +164,12 @@ export const normalizeBoardInstructionSettings = (value) => {
         };
     }
 
-    const mode = value.autoSelectionMode === 'manual' ? 'manual' : 'auto';
     const autoSelection = isObject(value.autoSelection) ? value.autoSelection : {};
 
     return {
         enabledInstructionIds: uniqueStrings(value.enabledInstructionIds),
         autoEnabledInstructionIds: uniqueStrings(value.autoEnabledInstructionIds),
-        autoSelectionMode: mode,
+        autoSelectionMode: 'manual',
         autoSelection: {
             status: ['idle', 'running', 'done', 'error'].includes(autoSelection.status) ? autoSelection.status : 'idle',
             lastRunAt: Number(autoSelection.lastRunAt) || 0,

@@ -3,10 +3,12 @@
  * Handles all GMI Cloud API requests (chat, stream, image) to protect API keys
  */
 const THINKING_LEVEL_ALLOWLIST = new Set(['THINKING_LEVEL_UNSPECIFIED', 'LOW', 'HIGH']);
-const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504, 524]);
+// 429 removed: rate-limit responses must NOT be retried by the proxy — doing so
+// multiplies a single user request into N upstream calls and exhausts the key pool.
+const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 500, 502, 503, 504, 524]);
 const STREAM_MAX_ATTEMPTS = 1;
 const STREAM_TIMEOUT_MS = 22000;
-const NON_STREAM_MAX_ATTEMPTS = 3;
+const NON_STREAM_MAX_ATTEMPTS = 2;
 const NON_STREAM_TIMEOUT_MS = 45000;
 const RETRYABLE_ERROR_PATTERNS = [
     'temporarily unavailable',
@@ -16,8 +18,6 @@ const RETRYABLE_ERROR_PATTERNS = [
     'timeout',
     'timed out',
     'network',
-    'rate limit',
-    'too many requests',
     'unavailable'
 ];
 
@@ -35,7 +35,14 @@ function isRetryableText(text = '') {
 }
 
 function shouldRetryUpstream({ statusCode, errorText = '', error = null }) {
-    if (RETRYABLE_STATUS_CODES.has(Number(statusCode))) {
+    const code = Number(statusCode);
+
+    // 429 / 401 / 403 — never retry, return immediately to the client.
+    if (code === 429 || code === 401 || code === 403) {
+        return false;
+    }
+
+    if (RETRYABLE_STATUS_CODES.has(code)) {
         return true;
     }
 
