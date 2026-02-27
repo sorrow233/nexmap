@@ -2,7 +2,7 @@ export const DEFAULT_PROVIDERS = {
     'google': {
         id: 'google',
         name: 'GMI Gemini',
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        baseUrl: 'https://api.gmi-serving.com/v1',
         apiKey: '',
         model: 'google/gemini-3-pro-preview',
         protocol: 'gemini',

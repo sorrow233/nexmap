@@ -1,8 +1,6 @@
 import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
 
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 export class OpenAIProvider extends LLMProvider {
     /**
      * 获取 KeyPool（支持多 Key 轮询）
@@ -49,14 +47,6 @@ export class OpenAIProvider extends LLMProvider {
         while (retries >= 0) {
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
-                const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
-                    ? keyPool.getShortestSuspendMs()
-                    : 0;
-                if (retries > 0 && cooldownMs > 0) {
-                    retries--;
-                    await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
-                    continue;
-                }
                 throw new Error('没有可用的 API Key');
             }
 
@@ -128,14 +118,6 @@ export class OpenAIProvider extends LLMProvider {
         while (retries >= 0) {
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
-                const cooldownMs = typeof keyPool.getShortestSuspendMs === 'function'
-                    ? keyPool.getShortestSuspendMs()
-                    : 0;
-                if (retries > 0 && cooldownMs > 0) {
-                    retries--;
-                    await wait(Math.min(Math.max(cooldownMs, 1000), 15000));
-                    continue;
-                }
                 throw new Error('没有可用的 API Key');
             }
 
