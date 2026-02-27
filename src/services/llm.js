@@ -1,5 +1,6 @@
 import { ModelFactory } from './llm/factory';
 import { DEFAULT_ROLES } from './llm/registry';
+import { parseStringArrayFromLLMResponse, splitTextFallback } from './llm/jsonArrayParser';
 import { userStatsService } from './stats/userStatsService';
 import { AGENT_INTENT, buildStructuredNumberedPlan, classifyAgentIntent, inferDynamicCardLimit } from './ai/structuredAgentPlan';
 
@@ -65,6 +66,8 @@ export async function imageGeneration(prompt, config, model = null, options = {}
  */
 export async function generateFollowUpTopics(messages, config, model = null, options = {}) {
     try {
+        const fallbackTopics = ["Tell me more", "Show me examples", "What are the risks?", "Are there alternatives?", "How does it work?"];
+
         // OPTIMIZATION: Only send the last interaction (User + Assistant) pair + system context if needed.
         // But for follow-up questions, we really only need the immediate context of what was just discussed.
         // Sending 10 messages is overkill and slow.
@@ -100,34 +103,17 @@ Example: ["How does this compare to X?", "What is the pricing?", ...]`;
 
         if (!response || response.trim().length === 0) {
             console.warn('[Sprout] Empty response from AI, using fallback');
-            return ["Tell me more", "Show me examples", "What are the risks?", "Are there alternatives?", "How does it work?"];
+            return fallbackTopics;
         }
 
-        let cleanResponse = response.trim();
-
-        // Remove markdown code blocks
-        if (cleanResponse.startsWith('```json')) {
-            cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.startsWith('```')) {
-            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-
-        // Further cleanup: remove any trailing text after the array
-        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-            cleanResponse = arrayMatch[0];
-        }
-
-        // console.log('[Sprout Debug] Cleaned response:', cleanResponse);
-
-        const parsed = JSON.parse(cleanResponse);
+        const parsed = parseStringArrayFromLLMResponse(response, { maxItems: 5 });
 
         if (!Array.isArray(parsed) || parsed.length === 0) {
             console.warn('[Sprout] Invalid array, using fallback');
-            return ["Tell me more", "Show me examples", "What are the risks?", "Are there alternatives?", "How does it work?"];
+            return fallbackTopics;
         }
 
-        return parsed;
+        return parsed.slice(0, 5);
     } catch (e) {
         console.error("[Sprout] Failed to generate follow-up topics:", e);
         return ["Tell me more", "Show me examples", "What are the risks?", "Are there alternatives?", "How does it work?"];
@@ -142,6 +128,8 @@ Example: ["How does this compare to X?", "What is the pricing?", ...]`;
  */
 export async function generateQuickSproutTopics(messages, config, model = null, options = {}) {
     try {
+        const fallbackTopics = ["Core concepts", "Key details", "Practical applications"];
+
         // Take only the last 2 messages for focused context
         const contextMessages = messages.slice(-2);
         const contextText = contextMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
@@ -169,29 +157,14 @@ ${contextText}
 
         if (!response || response.trim().length === 0) {
             console.warn('[QuickSprout] Empty response from AI, using fallback');
-            return ["Core concepts", "Key details", "Practical applications"];
+            return fallbackTopics;
         }
 
-        let cleanResponse = response.trim();
-
-        // Remove markdown code blocks
-        if (cleanResponse.startsWith('\`\`\`json')) {
-            cleanResponse = cleanResponse.replace(/^\`\`\`json\s*/, '').replace(/\s*\`\`\`$/, '');
-        } else if (cleanResponse.startsWith('\`\`\`')) {
-            cleanResponse = cleanResponse.replace(/^\`\`\`\s*/, '').replace(/\s*\`\`\`$/, '');
-        }
-
-        // Extract JSON array
-        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-            cleanResponse = arrayMatch[0];
-        }
-
-        const parsed = JSON.parse(cleanResponse);
+        const parsed = parseStringArrayFromLLMResponse(response, { maxItems: 3 });
 
         if (!Array.isArray(parsed) || parsed.length === 0) {
             console.warn('[QuickSprout] Invalid array, using fallback');
-            return ["Core concepts", "Key details", "Practical applications"];
+            return fallbackTopics;
         }
 
         // Return exactly 3 topics
@@ -285,22 +258,7 @@ Example: ["Detroit: Become Human 游戏介绍", "Beyond: Two Souls 游戏介绍"
             return ["主要话题"];
         }
 
-        let cleanResponse = response.trim();
-
-        // Remove markdown code blocks
-        if (cleanResponse.startsWith('\`\`\`json')) {
-            cleanResponse = cleanResponse.replace(/^\`\`\`json\s*/, '').replace(/\s*\`\`\`$/, '');
-        } else if (cleanResponse.startsWith('\`\`\`')) {
-            cleanResponse = cleanResponse.replace(/^\`\`\`\s*/, '').replace(/\s*\`\`\`$/, '');
-        }
-
-        // Extract JSON array
-        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-            cleanResponse = arrayMatch[0];
-        }
-
-        const parsed = JSON.parse(cleanResponse);
+        const parsed = parseStringArrayFromLLMResponse(response, { maxItems: 4 });
 
         if (!Array.isArray(parsed) || parsed.length === 0) {
             console.warn('[ExtractTopics] Invalid array');
@@ -349,36 +307,26 @@ Example Output:
 
         if (!response || response.trim().length === 0) {
             console.warn('[SplitText] Empty response');
-            return [text];
+            return splitTextFallback(text, { maxSections: 4 });
         }
 
-        let cleanResponse = response.trim();
-
-        // Remove markdown code blocks
-        if (cleanResponse.startsWith('```json')) {
-            cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.startsWith('```')) {
-            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-
-        const parsed = JSON.parse(cleanResponse);
+        const parsed = parseStringArrayFromLLMResponse(response, { maxItems: 4 });
 
         if (!Array.isArray(parsed) || parsed.length === 0) {
             console.warn('[SplitText] Invalid array');
-            return [text];
+            return splitTextFallback(text, { maxSections: 4 });
         }
 
-        // Validate that chunks are actually in the text (fuzzy check or just trust for now, 
-        // enforcing exact match in prompt is usually enough for decent models)
-        // If the model summarizes, it's a failure of the model instruction following, 
-        // but typically "EXACT COPY" works well with modern models.
+        const chunks = parsed
+            .map(item => String(item || '').trim())
+            .filter(Boolean)
+            .slice(0, 4);
 
-        return parsed.slice(0, 4);
+        return chunks.length > 0 ? chunks : splitTextFallback(text, { maxSections: 4 });
 
     } catch (e) {
         console.error("[SplitText] Failed:", e);
-        // Fallback: split by double newline
-        return text.split(/\n\s*\n/).filter(s => s.trim().length > 20).slice(0, 4);
+        return splitTextFallback(text, { maxSections: 4 });
     }
 }
 
@@ -420,19 +368,7 @@ Example Output:
             return [];
         }
 
-        let cleanResponse = response.trim();
-        if (cleanResponse.startsWith('```json')) {
-            cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanResponse.startsWith('```')) {
-            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-
-        const arrayMatch = cleanResponse.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-            cleanResponse = arrayMatch[0];
-        }
-
-        const parsed = JSON.parse(cleanResponse);
+        const parsed = parseStringArrayFromLLMResponse(response, { maxItems: 4 });
         if (!Array.isArray(parsed)) return [];
         return parsed.slice(0, 4);
 
