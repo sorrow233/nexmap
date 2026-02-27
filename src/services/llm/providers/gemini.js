@@ -37,9 +37,8 @@ export class GeminiProvider extends LLMProvider {
         return Number.isFinite(n) ? n : null;
     }
 
-    _shouldFallbackToProxyStatus(statusCode) {
-        const code = Number(statusCode);
-        return code === 408 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
+    _shouldFallbackTransportStatus(statusCode) {
+        return isRetryableStatus(statusCode);
     }
 
     _extractRetryDelayMs(errorMessage = '') {
@@ -85,6 +84,17 @@ export class GeminiProvider extends LLMProvider {
 
     _shouldTryDirect(baseUrl = '') {
         return String(baseUrl).includes('generativelanguage.googleapis.com');
+    }
+
+    _getTransportOrder(baseUrl = '') {
+        if (!this._shouldTryDirect(baseUrl)) {
+            return ['proxy'];
+        }
+
+        // Prefer proxy first:
+        // 1) proxy has upstream retry, reducing user-facing 5xx noise
+        // 2) avoids exposing direct Google query-key requests on the initial attempt
+        return ['proxy', 'direct'];
     }
 
     _buildDirectUrl(baseUrl, cleanModel, stream = false) {
@@ -185,13 +195,15 @@ export class GeminiProvider extends LLMProvider {
     }
 
     async _requestWithTransportFallback({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
-        const transports = this._shouldTryDirect(baseUrl)
-            ? ['direct', 'proxy']
-            : ['proxy'];
+        const transports = this._getTransportOrder(baseUrl);
 
         let lastNetworkError = null;
 
-        for (const transport of transports) {
+        for (let idx = 0; idx < transports.length; idx += 1) {
+            const transport = transports[idx];
+            const nextTransport = transports[idx + 1];
+            const hasFallbackTransport = Boolean(nextTransport);
+
             try {
                 const response = transport === 'direct'
                     ? await this._fetchDirect({ apiKey, baseUrl, cleanModel, requestBody, stream, signal })
@@ -199,11 +211,10 @@ export class GeminiProvider extends LLMProvider {
 
                 if (
                     !response.ok &&
-                    transport === 'direct' &&
-                    transports.length > 1 &&
-                    this._shouldFallbackToProxyStatus(response.status)
+                    hasFallbackTransport &&
+                    this._shouldFallbackTransportStatus(response.status)
                 ) {
-                    console.warn(`[Gemini] Direct request returned ${response.status}, fallback to proxy`);
+                    console.warn(`[Gemini] ${transport} request returned ${response.status}, fallback to ${nextTransport}`);
                     continue;
                 }
 
@@ -214,8 +225,8 @@ export class GeminiProvider extends LLMProvider {
                 }
 
                 lastNetworkError = error;
-                if (transport === 'direct' && transports.length > 1 && isRetryableNetworkError(error)) {
-                    console.warn('[Gemini] Direct transport failed, fallback to proxy:', error?.message || error);
+                if (hasFallbackTransport && isRetryableNetworkError(error)) {
+                    console.warn(`[Gemini] ${transport} transport failed, fallback to ${nextTransport}:`, error?.message || error);
                     continue;
                 }
 
