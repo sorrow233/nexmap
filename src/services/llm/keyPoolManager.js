@@ -20,6 +20,8 @@ export class KeyPoolManager {
         this.currentIndex = 0;
         this.lastUsedTime = new Map();
         this.lastCooldownLogAt = 0;
+        this.lastSuspendLogAt = new Map();
+        this.lastPermanentLogAt = new Map();
     }
 
     _parseKeys(keysString) {
@@ -211,14 +213,23 @@ export class KeyPoolManager {
             const prevUntil = this.suspendedUntil.get(key) || 0;
             const nextUntil = Math.max(prevUntil, now + suspendMs);
             this.suspendedUntil.set(key, nextUntil);
-            const remainSec = Math.ceil((nextUntil - now) / 1000);
-            console.warn(`[KeyPool] Key ${this._maskKey(key)} 已挂起 ${remainSec}s (临时限流): ${reasonText}`);
+            const shouldLog =
+                nextUntil > prevUntil + 500 ||
+                (now - (this.lastSuspendLogAt.get(key) || 0)) > 5000;
+            if (shouldLog) {
+                this.lastSuspendLogAt.set(key, now);
+                const remainSec = Math.ceil((nextUntil - now) / 1000);
+                console.warn(`[KeyPool] Key ${this._maskKey(key)} 已挂起 ${remainSec}s (临时限流): ${reasonText}`);
+            }
             return;
         }
 
         this.permanentFailedKeys.add(key);
         this.suspendedUntil.delete(key);
-        console.error(`[KeyPool] Key ${this._maskKey(key)} 已标记失效 (持久错误): ${reasonText}`);
+        if ((now - (this.lastPermanentLogAt.get(key) || 0)) > 2000) {
+            this.lastPermanentLogAt.set(key, now);
+            console.error(`[KeyPool] Key ${this._maskKey(key)} 已标记失效 (持久错误): ${reasonText}`);
+        }
     }
 
     restoreKey(key) {
@@ -252,6 +263,15 @@ export class KeyPoolManager {
             suspended: keys.filter(k => k.status === 'suspended').length,
             keys
         };
+    }
+
+    getUnavailableReason() {
+        const stats = this.getStats();
+        if (stats.available > 0) return null;
+        if (stats.total === 0) return 'empty';
+        if (stats.failed >= stats.total) return 'failed';
+        if (stats.suspended > 0) return 'suspended';
+        return 'unknown';
     }
 
     hasAvailableKey() {

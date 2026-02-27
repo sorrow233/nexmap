@@ -18,6 +18,8 @@ const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1bet
 const PROXY_DEGRADE_COOLDOWN_MS = 2 * 60 * 1000;
 const KEY_ACQUIRE_MAX_WAIT_MS = 75 * 1000;
 const KEY_ACQUIRE_POLL_MAX_MS = 5000;
+const MAX_CHAT_ATTEMPTS = 3;
+const MAX_STREAM_ATTEMPTS = 3;
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -45,12 +47,14 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _shouldFallbackTransportStatus(statusCode) {
-        return isRetryableStatus(statusCode);
+        const code = Number(statusCode);
+        if (code === 429) return false;
+        return isRetryableStatus(code);
     }
 
     _shouldMarkProxyDegraded(statusCode) {
         const code = Number(statusCode);
-        return code === 408 || code === 429 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
+        return code === 408 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
     }
 
     _isProxyTemporarilyDegraded() {
@@ -218,6 +222,65 @@ export class GeminiProvider extends LLMProvider {
     _shouldSwitchKeyOnRetry(statusCode) {
         const code = Number(statusCode);
         return code === 401 || code === 403;
+    }
+
+    _buildNoAvailableKeyError(keyPool) {
+        const unavailableReason = typeof keyPool?.getUnavailableReason === 'function'
+            ? keyPool.getUnavailableReason()
+            : null;
+
+        if (unavailableReason === 'empty') {
+            return new Error('没有配置 Gemini API Key');
+        }
+
+        if (unavailableReason === 'failed') {
+            return new Error('所有 Gemini API Key 已失效（如 401/403/泄露封禁），请更换新 Key');
+        }
+
+        if (unavailableReason === 'suspended') {
+            return new Error('没有可用的 Gemini API Key（全部处于限流冷却中）');
+        }
+
+        return new Error('没有可用的 Gemini API Key');
+    }
+
+    _createHandledApiError({ message, statusCode = null, retryDelayMs = null } = {}) {
+        const error = new Error(message || 'Gemini API 请求失败');
+        if (Number.isFinite(Number(statusCode))) {
+            error.statusCode = Number(statusCode);
+        }
+        if (Number.isFinite(Number(retryDelayMs)) && Number(retryDelayMs) > 0) {
+            error.retryDelayMs = Number(retryDelayMs);
+        }
+        error.keyAlreadyMarked = true;
+        return error;
+    }
+
+    _isRateLimited(statusCode, errorMessage = '') {
+        const code = Number(statusCode);
+        if (code === 429) return true;
+        const lower = String(errorMessage || '').toLowerCase();
+        return lower.includes('resource exhausted') ||
+            lower.includes('rate limit') ||
+            lower.includes('too many requests');
+    }
+
+    _resolveRetryWaitMs({ statusCode, errorMessage = '', retryDelayMs = null, keyPool = null, attempt = 1 } = {}) {
+        if (Number.isFinite(Number(retryDelayMs)) && Number(retryDelayMs) > 0) {
+            return Number(retryDelayMs);
+        }
+
+        if (this._isRateLimited(statusCode, errorMessage)) {
+            const poolCooldownMs = typeof keyPool?.getShortestSuspendMs === 'function'
+                ? keyPool.getShortestSuspendMs()
+                : 0;
+            if (poolCooldownMs > 0) {
+                return poolCooldownMs;
+            }
+            return 60 * 1000;
+        }
+
+        return computeBackoffDelay(attempt);
     }
 
     _getResolvedBaseUrl() {
@@ -438,6 +501,9 @@ export class GeminiProvider extends LLMProvider {
         if (!error) return false;
         const errorMessage = error?.message || String(error);
         const statusCode = this._extractStatusCodeFromMessage(errorMessage);
+        if (this._isRateLimited(statusCode, errorMessage)) {
+            return false;
+        }
         return this._shouldRetry({ statusCode, errorMessage, error }) || error?.retryable === true;
     }
 
@@ -488,7 +554,7 @@ export class GeminiProvider extends LLMProvider {
             });
 
         try {
-        const maxAttempts = 6;
+        const maxAttempts = MAX_CHAT_ATTEMPTS;
         let attempt = 0;
         let lastError = null;
         let activeApiKey = null;
@@ -499,7 +565,7 @@ export class GeminiProvider extends LLMProvider {
                     signal: options.signal
                 });
                 if (!activeApiKey) {
-                    throw new Error('没有可用的 Gemini API Key（全部处于限流冷却中）');
+                    throw this._buildNoAvailableKeyError(keyPool);
                 }
             }
             const apiKey = activeApiKey;
@@ -525,14 +591,26 @@ export class GeminiProvider extends LLMProvider {
                         activeApiKey = null;
                     }
 
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
                     if (canRetry) {
-                        await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                        const waitMs = this._resolveRetryWaitMs({
+                            statusCode,
+                            errorMessage,
+                            retryDelayMs,
+                            keyPool,
+                            attempt
+                        });
+                        await this._waitWithAbort(waitMs, options.signal);
                         lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
 
-                        throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                    throw this._createHandledApiError({
+                        message: `API Error ${statusCode || 'unknown'}: ${errorMessage}`,
+                        statusCode,
+                        retryDelayMs
+                    });
                     }
 
                     const data = await response.json();
@@ -546,14 +624,26 @@ export class GeminiProvider extends LLMProvider {
                         activeApiKey = null;
                     }
 
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
                     if (canRetry) {
-                        await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                        const waitMs = this._resolveRetryWaitMs({
+                            statusCode,
+                            errorMessage,
+                            retryDelayMs,
+                            keyPool,
+                            attempt
+                        });
+                        await this._waitWithAbort(waitMs, options.signal);
                         lastError = new Error(errorMessage);
                         continue;
                     }
 
-                        throw new Error(errorMessage);
+                    throw this._createHandledApiError({
+                        message: errorMessage,
+                        statusCode,
+                        retryDelayMs
+                    });
                     }
 
                     const candidate = data.candidates?.[0];
@@ -575,17 +665,31 @@ export class GeminiProvider extends LLMProvider {
                 if (isAbortError(error) || options.signal?.aborted) throw error;
 
                 const errorMessage = error?.message || String(error);
-                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
-                const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                const statusCode = Number.isFinite(Number(error?.statusCode))
+                    ? Number(error.statusCode)
+                    : this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
+                    ? Number(error.retryDelayMs)
+                    : this._extractRetryDelayMs(errorMessage);
 
-                this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                if (error?.keyAlreadyMarked !== true) {
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                }
                 if (this._shouldSwitchKeyOnRetry(statusCode)) {
                     activeApiKey = null;
                 }
 
-                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
+                const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error }) && !rateLimited;
                 if (canRetry) {
-                    await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                    const waitMs = this._resolveRetryWaitMs({
+                        statusCode,
+                        errorMessage,
+                        retryDelayMs,
+                        keyPool,
+                        attempt
+                    });
+                    await this._waitWithAbort(waitMs, options.signal);
                     lastError = error;
                     continue;
                 }
@@ -648,7 +752,7 @@ export class GeminiProvider extends LLMProvider {
             });
 
         try {
-        const maxAttempts = 6;
+        const maxAttempts = MAX_STREAM_ATTEMPTS;
         let attempt = 0;
         let lastError = null;
         let activeApiKey = null;
@@ -659,7 +763,7 @@ export class GeminiProvider extends LLMProvider {
                     signal: options.signal
                 });
                 if (!activeApiKey) {
-                    throw new Error('没有可用的 Gemini API Key（全部处于限流冷却中）');
+                    throw this._buildNoAvailableKeyError(keyPool);
                 }
             }
             const apiKey = activeApiKey;
@@ -685,14 +789,26 @@ export class GeminiProvider extends LLMProvider {
                         activeApiKey = null;
                     }
 
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage });
+                    const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
                     if (canRetry) {
-                        await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                        const waitMs = this._resolveRetryWaitMs({
+                            statusCode,
+                            errorMessage,
+                            retryDelayMs,
+                            keyPool,
+                            attempt
+                        });
+                        await this._waitWithAbort(waitMs, options.signal);
                         lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
 
-                        throw new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
+                    throw this._createHandledApiError({
+                        message: `API Error ${statusCode || 'unknown'}: ${errorMessage}`,
+                        statusCode,
+                        retryDelayMs
+                    });
                     }
 
                     const reader = response.body?.getReader?.();
@@ -717,17 +833,23 @@ export class GeminiProvider extends LLMProvider {
                     if (isAbortError(error) || options.signal?.aborted) throw error;
 
                 const errorMessage = error?.message || String(error);
-                const statusCode = this._extractStatusCodeFromMessage(errorMessage);
-                const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+                const statusCode = Number.isFinite(Number(error?.statusCode))
+                    ? Number(error.statusCode)
+                    : this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
+                    ? Number(error.retryDelayMs)
+                    : this._extractRetryDelayMs(errorMessage);
 
-                this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                if (error?.keyAlreadyMarked !== true) {
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                }
                 if (this._shouldSwitchKeyOnRetry(statusCode)) {
                     activeApiKey = null;
                 }
 
                 const retryableLike = error?.retryable === true ||
                     this._shouldRetry({ statusCode, errorMessage, error });
-                const canRetry = attempt < maxAttempts && retryableLike;
+                const canRetry = attempt < maxAttempts && retryableLike && !this._isRateLimited(statusCode, errorMessage);
 
                     if (error?.code === 'EMPTY_VISIBLE_STREAM') {
                         lastError = error;
@@ -737,7 +859,14 @@ export class GeminiProvider extends LLMProvider {
                     }
 
                 if (canRetry) {
-                    await this._waitWithAbort(retryDelayMs || computeBackoffDelay(attempt), options.signal);
+                    const waitMs = this._resolveRetryWaitMs({
+                        statusCode,
+                        errorMessage,
+                        retryDelayMs,
+                        keyPool,
+                        attempt
+                    });
+                    await this._waitWithAbort(waitMs, options.signal);
                     lastError = error;
                     continue;
                 }
