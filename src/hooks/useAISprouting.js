@@ -606,6 +606,7 @@ Respond in the same language as the focus topic.
             rootId = uuid();
             const rootTitle = (plan.planTitle || 'AI Agent Plan').trim();
             const strategy = (plan.strategy || '').trim();
+            const isStructuredPassthrough = plan.mode === 'structured_numbered_passthrough';
             const planOverview = plan.cards
                 .map((item, idx) => `${idx + 1}. ${item.title} - ${item.objective}`)
                 .join('\n');
@@ -644,7 +645,7 @@ Respond in the same language as the focus topic.
                 const objective = (item.objective || '').trim();
                 const deliverable = (item.deliverable || '').trim();
                 const cardPrompt = (item.prompt || objective || title).trim();
-                const cardSeedText = `${title}\n\n${objective || cardPrompt}`.trim();
+                const cardSeedText = (item.seedText || `${title}\n\n${objective || cardPrompt}`).trim();
 
                 const executionPrompt = `
 [Role / 角色]
@@ -674,6 +675,7 @@ ${briefSelectedContext ? `[Selected Card Context / 选中卡片上下文]\n${bri
 4. Return execution-ready output, not abstract discussion.
 5. Focus only on this card's responsibility.
 6. Do not claim that external real-world actions are already completed unless the prompt clearly provides completion evidence.
+${isStructuredPassthrough ? '7. This is a fixed numbered-item passthrough task. Never merge this card with other numbered items or rewrite list structure.' : ''}
                 `.trim();
 
                 return {

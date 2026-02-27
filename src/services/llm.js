@@ -1,6 +1,7 @@
 import { ModelFactory } from './llm/factory';
 import { DEFAULT_ROLES } from './llm/registry';
 import { userStatsService } from './stats/userStatsService';
+import { AGENT_INTENT, buildStructuredNumberedPlan, classifyAgentIntent, inferDynamicCardLimit } from './ai/structuredAgentPlan';
 
 
 export { DEFAULT_ROLES };
@@ -448,7 +449,15 @@ Example Output:
  */
 export async function generateAgentCardPlan(request, context = '', config, model = null, options = {}, images = []) {
     const fallbackPrompt = (request || '').trim() || 'Please break down the user request into actionable cards.';
-    const MAX_AGENT_CARDS = 20;
+
+    // Lightweight intent routing:
+    // 1) Extraction mode for explicit numbered structures.
+    // 2) Planner mode for fuzzy/open requests.
+    const intent = classifyAgentIntent(fallbackPrompt);
+    if (intent.intent === AGENT_INTENT.EXTRACTION) {
+        const structuredPlan = buildStructuredNumberedPlan(fallbackPrompt, intent.structured);
+        if (structuredPlan) return structuredPlan;
+    }
 
     const trimForCard = (text, max = 48) => {
         const clean = String(text || '').trim().replace(/\s+/g, ' ');
@@ -491,10 +500,11 @@ export async function generateAgentCardPlan(request, context = '', config, model
             }
         });
 
-        return unique.slice(0, MAX_AGENT_CARDS);
+        return unique;
     };
 
     const checklistItems = extractChecklistItems(fallbackPrompt);
+    const maxAgentCards = inferDynamicCardLimit(fallbackPrompt, checklistItems.length);
 
     const extractHardConstraints = (text) => {
         const source = String(text || '');
@@ -524,7 +534,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
             return {
                 planTitle: 'AI Agent Plan',
                 strategy: 'Use one focused card per checklist item.',
-                cards: checklistItems.slice(0, MAX_AGENT_CARDS).map((item, index) => ({
+                cards: checklistItems.slice(0, maxAgentCards).map((item, index) => ({
                     title: trimForCard(item, 32),
                     objective: item,
                     prompt: item,
@@ -589,7 +599,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
                 };
             })
             .filter(Boolean)
-            .slice(0, MAX_AGENT_CARDS);
+            .slice(0, maxAgentCards);
 
         if (normalizedCards.length === 0) return fallbackPlan;
 
@@ -647,7 +657,7 @@ export async function generateAgentCardPlan(request, context = '', config, model
             ? hardConstraints.map((item, idx) => `${idx + 1}. ${item}`).join('\n')
             : '(none)';
         const checklistRule = checklistItems.length >= 2
-            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, MAX_AGENT_CARDS)} checklist-style items. Create exactly one execution card per item. Do not merge or drop checklist items.`
+            ? `HARD CONSTRAINT: The request includes ${Math.min(checklistItems.length, maxAgentCards)} checklist-style items. Create exactly one execution card per item. Do not merge or drop checklist items.`
             : 'If the request naturally includes multiple actionable tasks, split them into separate cards.';
 
         const finalPrompt = `You are a general-purpose planning agent in a Plan-and-Execute AI workflow.
@@ -667,7 +677,7 @@ DETECTED HARD CONSTRAINTS:
 ${hardConstraintBlock}
 
 TASK:
-1. Decide how many cards are needed (between 1 and 20) based on complexity.
+1. Decide how many cards are needed based on complexity and explicit user constraints (count/numbering).
 2. Assign each card a clear, specific title and one core responsibility.
 3. Write a concrete execution prompt for each card that a worker can execute without re-planning.
 4. Keep card responsibilities distinct and non-overlapping.
