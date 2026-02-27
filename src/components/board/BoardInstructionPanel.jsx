@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Bot,
-    CheckCircle2,
+    Clock3,
     Globe2,
-    Lock,
     Loader2,
+    MessageSquare,
     Settings2,
     Sparkles,
     AlertTriangle,
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizeBoardInstructionSettings } from '../../services/customInstructionsService';
+import InstructionItemCard from './instructionPanel/InstructionItemCard';
+import InstructionToolbar from './instructionPanel/InstructionToolbar';
 
 const formatTimestamp = (ts) => {
     if (!ts || Number(ts) <= 0) return '';
@@ -29,19 +31,24 @@ export default function BoardInstructionPanel({
     boardInstructionSettings,
     instructionPanelSummary,
     onToggleInstruction,
-    onUseManualMode,
-    onUseAutoMode,
     onRunAutoRecommend,
     onOpenSettings,
     isAutoRecommending = false,
     conversationCount = 0
 }) {
     const { t } = useLanguage();
+    const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState('all');
 
     const settings = normalizeBoardInstructionSettings(boardInstructionSettings);
-    const enabledIds = useMemo(() => new Set(settings.enabledInstructionIds || []), [settings.enabledInstructionIds]);
-    const autoEnabledIds = useMemo(() => new Set(settings.autoEnabledInstructionIds || []), [settings.autoEnabledInstructionIds]);
-    const mode = settings.autoSelectionMode === 'manual' ? 'manual' : 'auto';
+    const enabledIds = useMemo(
+        () => new Set(settings.enabledInstructionIds || []),
+        [settings.enabledInstructionIds]
+    );
+    const autoEnabledIds = useMemo(
+        () => new Set(settings.autoEnabledInstructionIds || []),
+        [settings.autoEnabledInstructionIds]
+    );
     const status = settings.autoSelection?.status || 'idle';
     const lastRunAt = settings.autoSelection?.lastRunAt || 0;
     const lastError = settings.autoSelection?.lastError || '';
@@ -63,7 +70,41 @@ export default function BoardInstructionPanel({
     if (!isOpen) return null;
 
     const canRunAutoNow = !isAutoRecommending && optionalInstructions.length > 0;
-    const isManualMode = mode === 'manual';
+    const optionalRows = optionalInstructions.map(item => ({
+        ...item,
+        checked: enabledIds.has(item.id),
+        fromAuto: autoEnabledIds.has(item.id),
+        searchText: `${item.title || ''}\n${item.content || ''}`.toLowerCase()
+    }));
+
+    const normalizedQuery = query.trim().toLowerCase();
+    const visibleOptionalRows = optionalRows.filter((item) => {
+        if (normalizedQuery && !item.searchText.includes(normalizedQuery)) {
+            return false;
+        }
+
+        if (filter === 'enabled') return item.checked;
+        if (filter === 'recommended') return item.fromAuto;
+        if (filter === 'disabled') return !item.checked;
+        return true;
+    });
+
+    const enabledOptionalCount = optionalRows.filter(item => item.checked).length;
+    const autoOptionalCount = optionalRows.filter(item => item.fromAuto).length;
+    const activePreviewRows = [
+        ...globalInstructions.map(item => ({ ...item, locked: true, checked: true })),
+        ...optionalRows.filter(item => item.checked).map(item => ({ ...item, locked: false, checked: true }))
+    ];
+
+    const applyOptionalSelection = (nextEnabledIds) => {
+        const nextSet = new Set(nextEnabledIds);
+        optionalRows.forEach(item => {
+            const shouldEnable = nextSet.has(item.id);
+            if (item.checked !== shouldEnable) {
+                onToggleInstruction?.(item.id, shouldEnable);
+            }
+        });
+    };
 
     const statusLabelMap = {
         idle: t.settings?.canvasInstructionStatusIdle || '待机',
@@ -72,9 +113,7 @@ export default function BoardInstructionPanel({
         error: t.settings?.canvasInstructionStatusError || '推荐失败'
     };
 
-    const modeLabel = isManualMode
-        ? (t.settings?.canvasInstructionModeManual || '手动')
-        : (t.settings?.canvasInstructionModeAuto || '自动');
+    const modeLabel = t.settings?.canvasInstructionModeManual || '手动';
 
     return (
         <div
@@ -83,67 +122,78 @@ export default function BoardInstructionPanel({
                 if (e.target === e.currentTarget) onClose?.();
             }}
         >
-            <div className="w-full max-w-4xl max-h-[88vh] overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-[0_30px_100px_rgba(2,6,23,0.75)]">
-                <div className="border-b border-white/10 bg-slate-900/60 px-5 py-4 md:px-6 md:py-5">
+            <div className="relative w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-[0_30px_100px_rgba(2,6,23,0.75)]">
+                <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
+                <div className="pointer-events-none absolute -left-16 -bottom-16 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+
+                <div className="relative border-b border-white/10 bg-slate-900/70 px-5 py-4 md:px-6 md:py-5">
                     <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                            <h3 className="flex items-center gap-2 text-lg font-black text-white md:text-xl">
+                            <h3 className="flex items-center gap-2 text-xl font-black text-white md:text-2xl">
                                 <Sparkles size={18} className="text-cyan-300" />
                                 {t.settings?.canvasInstructionTitle || '画布指令选择'}
                             </h3>
-                            <p className="mt-1 text-xs text-slate-300 md:text-sm">
+                            <p className="mt-1 text-xs text-slate-300 md:text-sm leading-relaxed">
                                 {t.settings?.canvasInstructionSubtitle || '全局指令始终生效；可选指令按当前画布单独启用。'}
+                                <span className="ml-2 text-slate-400">支持搜索、筛选、批量操作。</span>
                             </p>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-slate-200 transition-colors hover:bg-slate-800"
-                            aria-label={t.settings?.close || 'Close'}
-                        >
-                            <X size={16} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onOpenSettings}
+                                className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-slate-200 transition-colors hover:bg-slate-800"
+                            >
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold md:text-sm">
+                                    <Settings2 size={14} />
+                                    指令设置
+                                </span>
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-slate-200 transition-colors hover:bg-slate-800"
+                                aria-label={t.settings?.close || 'Close'}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs md:grid-cols-4 md:text-sm">
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs md:grid-cols-5 md:text-sm">
                         <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
-                            {(t.settings?.canvasInstructionMetricActive || '当前生效')}：
-                            <span className="ml-1 font-bold text-cyan-200">
-                                {instructionPanelSummary?.activeCount ?? (globalInstructions.length + enabledIds.size)}
+                            当前生效：<span className="ml-1 font-bold text-cyan-200">{instructionPanelSummary?.activeCount ?? (globalInstructions.length + enabledIds.size)}</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
+                            可选指令：<span className="ml-1 font-bold text-cyan-200">{optionalInstructions.length}</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
+                            模式：<span className="ml-1 font-bold text-cyan-200">{modeLabel}</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
+                            AI 状态：<span className="ml-1 font-bold text-cyan-200">{statusLabelMap[status] || statusLabelMap.idle}</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
+                            AI 推荐：<span className="ml-1 font-bold text-cyan-200">{autoOptionalCount}</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300 md:text-sm">
+                                <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-2 py-1">
+                            <MessageSquare size={12} />
+                            当前画布对话 {conversationCount}
+                        </span>
+                        {lastRunAt > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-2 py-1">
+                                <Clock3 size={12} />
+                                最近推荐 {formatTimestamp(lastRunAt)}
                             </span>
-                        </div>
-                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
-                            {(t.settings?.canvasInstructionMetricOptional || '可选指令')}：
-                            <span className="ml-1 font-bold text-cyan-200">{optionalInstructions.length}</span>
-                        </div>
-                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
-                            {(t.settings?.canvasInstructionMetricMode || '模式')}：
-                            <span className="ml-1 font-bold text-cyan-200">{modeLabel}</span>
-                        </div>
-                        <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-slate-200">
-                            {(t.settings?.canvasInstructionMetricStatus || 'AI 状态')}：
-                            <span className="ml-1 font-bold text-cyan-200">{statusLabelMap[status] || statusLabelMap.idle}</span>
-                        </div>
-                    </div>
+                        )}
+                        {status === 'done' && (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-slate-900 px-2 py-1">
+                                <Bot size={12} />
+                                最近推荐条数 {lastResultCount}
+                            </span>
+                        )}
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button
-                            onClick={onUseAutoMode}
-                            className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors md:text-sm ${mode === 'auto'
-                                ? 'bg-cyan-500 text-slate-950'
-                                : 'border border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800'
-                                }`}
-                        >
-                            {t.settings?.canvasInstructionUseAuto || '自动模式'}
-                        </button>
-                        <button
-                            onClick={onUseManualMode}
-                            className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors md:text-sm ${mode === 'manual'
-                                ? 'bg-cyan-500 text-slate-950'
-                                : 'border border-white/15 bg-slate-900 text-slate-200 hover:bg-slate-800'
-                                }`}
-                        >
-                            {t.settings?.canvasInstructionUseManual || '手动模式'}
-                        </button>
                         <button
                             onClick={onRunAutoRecommend}
                             disabled={!canRunAutoNow}
@@ -158,23 +208,6 @@ export default function BoardInstructionPanel({
                         </button>
                     </div>
 
-                    <div className="mt-2 text-xs text-slate-400 md:text-sm">
-                        {(t.settings?.canvasInstructionConversationCount || '当前画布用户对话次数')}：
-                        <span className="ml-1 font-semibold text-slate-200">{conversationCount}</span>
-                        {lastRunAt > 0 && (
-                            <span className="ml-3">
-                                {(t.settings?.canvasInstructionLastRun || '最近推荐')}：
-                                <span className="ml-1 text-slate-300">{formatTimestamp(lastRunAt)}</span>
-                            </span>
-                        )}
-                        {status === 'done' && (
-                            <span className="ml-3">
-                                {(t.settings?.canvasInstructionLastResultCount || '最近推荐条数')}：
-                                <span className="ml-1 text-slate-300">{lastResultCount}</span>
-                            </span>
-                        )}
-                    </div>
-
                     {status === 'error' && (
                         <div className="mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100 md:text-sm">
                             <span className="inline-flex items-center gap-1.5 font-semibold">
@@ -184,93 +217,110 @@ export default function BoardInstructionPanel({
                             {lastError ? <span className="ml-1">{lastError}</span> : null}
                         </div>
                     )}
-
-                    {!isManualMode && (
-                        <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-100 md:text-sm">
-                            {conversationCount <= 2
-                                ? (t.settings?.canvasInstructionAutoHintNeedMoreChat || '自动模式会在当前画布用户对话超过 2 次后触发推荐。')
-                                : (t.settings?.canvasInstructionAutoHintLocked || '自动模式下可选指令由 AI 维护；切换到手动模式可进行逐条选择。')}
-                        </div>
-                    )}
                 </div>
 
-                <div className="max-h-[calc(88vh-285px)] space-y-6 overflow-y-auto p-5 md:p-6 custom-scrollbar">
-                    <section className="space-y-3">
-                        <h4 className="flex items-center gap-2 text-sm font-bold text-cyan-200 md:text-base">
-                            <Globe2 size={14} />
-                            {t.settings?.canvasInstructionGlobalTitle || '全局指令（始终生效）'}
-                        </h4>
-                        {globalInstructions.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-white/15 bg-slate-900/50 px-3 py-4 text-xs text-slate-400 md:text-sm">
-                                {t.settings?.canvasInstructionGlobalEmpty || '暂无全局指令。'}
-                            </div>
-                        ) : (
-                            <div className="grid gap-3">
-                                {globalInstructions.map(item => (
-                                    <div key={item.id} className="rounded-xl border border-cyan-300/20 bg-slate-900/80 p-3">
-                                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                                            <Lock size={12} className="text-cyan-300" />
-                                            {item.title || (t.settings?.canvasInstructionUntitled || '未命名指令')}
-                                        </div>
-                                        <p className="mt-1 whitespace-pre-wrap text-xs text-slate-300 md:text-sm">{item.content}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-
-                    <section className="space-y-3">
-                        <h4 className="text-sm font-bold text-cyan-200 md:text-base">
-                            {t.settings?.canvasInstructionOptionalTitle || '画布可选指令（当前画布）'}
-                        </h4>
-                        {optionalInstructions.length === 0 ? (
-                            <div className="space-y-3 rounded-xl border border-dashed border-white/15 bg-slate-900/50 px-3 py-4 text-xs text-slate-300 md:text-sm">
-                                <p>{t.settings?.canvasInstructionOptionalEmpty || '暂无可选指令，请先在设置里新增并取消“全局生效”。'}</p>
-                                <button
-                                    onClick={onOpenSettings}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-100 transition-colors hover:bg-slate-800"
-                                >
-                                    <Settings2 size={13} />
-                                    {t.settings?.canvasInstructionOpenSettings || '前往设置管理指令'}
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="grid gap-3">
-                                {optionalInstructions.map(item => {
-                                    const checked = enabledIds.has(item.id);
-                                    const fromAuto = autoEnabledIds.has(item.id);
-                                    return (
-                                        <label
+                <div className="relative max-h-[calc(90vh-290px)] overflow-y-auto p-5 md:p-6 custom-scrollbar">
+                    <div className="grid gap-6 xl:grid-cols-[1fr,1.45fr]">
+                        <section className="space-y-3">
+                            <h4 className="flex items-center gap-2 text-sm font-bold text-cyan-200 md:text-base">
+                                <Globe2 size={14} />
+                                全局指令（始终生效）
+                            </h4>
+                            {globalInstructions.length === 0 ? (
+                                <div className="rounded-2xl border border-dashed border-white/15 bg-slate-900/50 px-3 py-4 text-xs text-slate-400 md:text-sm">
+                                    {t.settings?.canvasInstructionGlobalEmpty || '暂无全局指令。'}
+                                </div>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {globalInstructions.map(item => (
+                                        <InstructionItemCard
                                             key={item.id}
-                                            className={`rounded-xl border p-3 transition-colors ${checked
-                                                ? 'border-cyan-300/25 bg-cyan-500/10'
-                                                : 'border-white/10 bg-slate-900/80'
-                                                } ${isManualMode ? 'cursor-pointer' : 'cursor-default opacity-90'}`}
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={checked}
-                                                    disabled={!isManualMode}
-                                                    onChange={(e) => onToggleInstruction(item.id, e.target.checked)}
-                                                    className="mt-1 h-4 w-4 rounded border-slate-400 text-cyan-500 focus:ring-cyan-400 disabled:opacity-60"
+                                            title={item.title}
+                                            content={item.content}
+                                            checked
+                                            locked
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="space-y-3">
+                            <h4 className="text-sm font-bold text-cyan-200 md:text-base">
+                                画布可选指令（当前画布）
+                            </h4>
+
+                            {optionalRows.length === 0 ? (
+                                <div className="space-y-3 rounded-2xl border border-dashed border-white/15 bg-slate-900/50 px-3 py-4 text-xs text-slate-300 md:text-sm">
+                                    <p>{t.settings?.canvasInstructionOptionalEmpty || '暂无可选指令，请先在设置里新增并取消“全局生效”。'}</p>
+                                    <button
+                                        onClick={onOpenSettings}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-100 transition-colors hover:bg-slate-800"
+                                    >
+                                        <Settings2 size={13} />
+                                        {t.settings?.canvasInstructionOpenSettings || '前往设置管理指令'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <InstructionToolbar
+                                        query={query}
+                                        onQueryChange={setQuery}
+                                        filter={filter}
+                                        onFilterChange={setFilter}
+                                        optionalCount={optionalRows.length}
+                                        visibleCount={visibleOptionalRows.length}
+                                        enabledCount={enabledOptionalCount}
+                                        autoCount={autoOptionalCount}
+                                        onEnableAll={() => applyOptionalSelection(optionalRows.map(item => item.id))}
+                                        onDisableAll={() => applyOptionalSelection([])}
+                                        onApplyAuto={() => applyOptionalSelection(optionalRows.filter(item => item.fromAuto).map(item => item.id))}
+                                    />
+
+                                    {visibleOptionalRows.length === 0 ? (
+                                        <div className="rounded-2xl border border-dashed border-white/15 bg-slate-900/50 px-3 py-4 text-xs text-slate-400 md:text-sm">
+                                            没有匹配的指令，试试清除搜索或切换筛选条件。
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-3">
+                                            {visibleOptionalRows.map(item => (
+                                                <InstructionItemCard
+                                                    key={item.id}
+                                                    title={item.title}
+                                                    content={item.content}
+                                                    checked={item.checked}
+                                                    fromAuto={item.fromAuto}
+                                                    onToggle={(checked) => onToggleInstruction?.(item.id, checked)}
                                                 />
-                                                <div className="min-w-0">
-                                                    <div className="text-sm font-semibold text-slate-100 md:text-[15px]">
-                                                        {item.title || (t.settings?.canvasInstructionUntitled || '未命名指令')}
-                                                        {fromAuto && (
-                                                            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-cyan-400/15 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200">
-                                                                <CheckCircle2 size={10} />
-                                                                {t.settings?.canvasInstructionAutoTag || 'AI 推荐'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="mt-1 whitespace-pre-wrap text-xs text-slate-300 md:text-sm">{item.content}</p>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    );
-                                })}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+                    </div>
+
+                    <section className="mt-6 space-y-3 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                        <h4 className="text-sm font-bold text-cyan-200 md:text-base">
+                            当前会附加到 AI 请求的指令预览
+                        </h4>
+                        {activePreviewRows.length === 0 ? (
+                            <p className="text-xs text-slate-400 md:text-sm">
+                                目前没有生效指令，AI 将仅按默认系统提示词回答。
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {activePreviewRows.slice(0, 4).map((item) => (
+                                    <p key={item.id} className="text-xs text-slate-200 md:text-sm">
+                                        <span className="mr-1 text-cyan-200">•</span>
+                                        {item.title || '未命名指令'}
+                                    </p>
+                                ))}
+                                {activePreviewRows.length > 4 && (
+                                    <p className="text-xs text-slate-400 md:text-sm">
+                                        还有 {activePreviewRows.length - 4} 条指令已生效。
+                                    </p>
+                                )}
                             </div>
                         )}
                     </section>
