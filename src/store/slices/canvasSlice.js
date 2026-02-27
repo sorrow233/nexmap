@@ -6,6 +6,7 @@ export const createCanvasSlice = (set, get) => ({
     selectedIds: [],
     interactionMode: 'none',
     canvasMode: 'select', // 'select' or 'pan' - Modern canvas tool mode
+    isSpacePanning: false,
     selectionRect: null,
     isConnecting: false,
     connectionStartId: null,
@@ -31,6 +32,7 @@ export const createCanvasSlice = (set, get) => ({
         debugLog.ui('Interaction mode change', { mode: nextMode });
         set({ interactionMode: nextMode });
     },
+    setIsSpacePanning: (val) => set({ isSpacePanning: Boolean(val) }),
     setSelectionRect: (valOrUpdater) => set((state) => ({
         selectionRect: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectionRect) : valOrUpdater
     })),

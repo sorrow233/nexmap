@@ -48,6 +48,8 @@ export function useDraggable({
 
     const handleStart = (e, clientX, clientY, isTouch = false) => {
         if (disabled) return;
+        const isSpacePanning = useStore.getState().isSpacePanning;
+        if (!isTouch && e.button === 0 && isSpacePanning) return;
         if (e.target.closest('button') || e.target.closest('.no-drag') || e.target.closest('.custom-scrollbar')) return;
 
         e.stopPropagation();

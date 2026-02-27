@@ -14,6 +14,14 @@ import favoritesService from '../services/favoritesService';
 import InstantTooltip from './InstantTooltip';
 import { aiSummaryService } from '../services/aiSummaryService';
 
+const isTextInputElement = (element) => {
+    if (!element || !(element instanceof Element)) return false;
+    const tagName = element.tagName;
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA') return true;
+    if (element.isContentEditable) return true;
+    return Boolean(element.closest('[contenteditable="true"]'));
+};
+
 export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const RIGHT_BUTTON_LONG_PRESS_MS = 220;
     // Granular selectors to prevent unnecessary re-renders
@@ -25,6 +33,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const selectedIds = useStore(state => state.selectedIds);
     const interactionMode = useStore(state => state.interactionMode);
     const canvasMode = useStore(state => state.canvasMode);
+    const isSpacePanning = useStore(state => state.isSpacePanning);
     const selectionRect = useStore(state => state.selectionRect);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const isConnecting = useStore(state => state.isConnecting);
@@ -35,6 +44,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const setScale = useStore(state => state.setScale);
     const setSelectedIds = useStore(state => state.setSelectedIds);
     const setInteractionMode = useStore(state => state.setInteractionMode);
+    const setIsSpacePanning = useStore(state => state.setIsSpacePanning);
     const setSelectionRect = useStore(state => state.setSelectionRect);
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
     const handleCardMove = useStore(state => state.handleCardMove);
@@ -48,6 +58,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const stateRef = useRef({ offset, scale });
     const rightPressTimerRef = useRef(null);
     const isRightHoldPanningRef = useRef(false);
+    const isSpaceHoldPanningRef = useRef(false);
     const suppressNextContextToggleRef = useRef(false);
 
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
@@ -69,6 +80,53 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     // Extracted Logic - Now with Direct DOM capabilities
     useCanvasGestures(canvasRef, contentRef, stateRef, setScale, setOffset);
     const { performSelectionCheck } = useSelection();
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.code !== 'Space') return;
+
+            const target = e.target instanceof Element ? e.target : null;
+            const activeEl = document.activeElement;
+            if (isTextInputElement(target) || isTextInputElement(activeEl)) return;
+
+            e.preventDefault();
+            setIsSpacePanning(true);
+        };
+
+        const handleKeyUp = (e) => {
+            if (e.code !== 'Space') return;
+
+            e.preventDefault();
+            setIsSpacePanning(false);
+
+            if (isSpaceHoldPanningRef.current) {
+                isSpaceHoldPanningRef.current = false;
+                setInteractionMode('none');
+                setSelectionRect(null);
+            }
+        };
+
+        const handleWindowBlur = () => {
+            setIsSpacePanning(false);
+
+            if (isSpaceHoldPanningRef.current) {
+                isSpaceHoldPanningRef.current = false;
+                setInteractionMode('none');
+                setSelectionRect(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown, { passive: false });
+        window.addEventListener('keyup', handleKeyUp, { passive: false });
+        window.addEventListener('blur', handleWindowBlur);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleWindowBlur);
+            setIsSpacePanning(false);
+        };
+    }, [setInteractionMode, setIsSpacePanning, setSelectionRect]);
 
     // Right-click canvas background: toggle select/pan mode
     const handleContextMenu = useCallback((e) => {
@@ -100,6 +158,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             if (e.button === 2 && isCanvasBackground) {
                 suppressNextContextToggleRef.current = false;
                 isRightHoldPanningRef.current = false;
+                isSpaceHoldPanningRef.current = false;
 
                 if (rightPressTimerRef.current) {
                     clearTimeout(rightPressTimerRef.current);
@@ -115,11 +174,13 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
             // In pan mode, left click also pans
             // Right-click is now reserved for mode toggle (see handleContextMenu), not temporary pan.
-            const isPan = canvasMode === 'pan' || e.button === 1 || (e.button === 0 && (e.spaceKey || e.altKey));
+            const isPan = canvasMode === 'pan' || e.button === 1 || (e.button === 0 && isSpacePanning);
 
             if (isPan) {
+                isSpaceHoldPanningRef.current = e.button === 0 && isSpacePanning;
                 setInteractionMode('panning');
             } else {
+                isSpaceHoldPanningRef.current = false;
                 setInteractionMode('selecting');
                 setSelectionRect({ x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY });
                 if (!e.shiftKey) {
@@ -133,10 +194,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
     const handleMouseMove = (e) => {
         if (interactionMode === 'panning') {
-            setOffset({
-                x: offset.x + e.movementX,
-                y: offset.y + e.movementY
-            });
+            setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
         } else if (interactionMode === 'selecting' && selectionRect) {
             const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
             setSelectionRect(newSelectionRect);
@@ -158,6 +216,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
         if (isRightHoldPanningRef.current) {
             isRightHoldPanningRef.current = false;
+            isSpaceHoldPanningRef.current = false;
             setInteractionMode('none');
             setSelectionRect(null);
             return;
@@ -169,6 +228,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         }
         setInteractionMode('none');
         setSelectionRect(null);
+        isSpaceHoldPanningRef.current = false;
     };
 
     useEffect(() => {
@@ -218,10 +278,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             if (lastTouch) {
                 const deltaX = touch.clientX - lastTouch.x;
                 const deltaY = touch.clientY - lastTouch.y;
-                setOffset({
-                    x: offset.x + deltaX,
-                    y: offset.y + deltaY
-                });
+                setOffset(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
                 lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
             }
         }
@@ -415,9 +472,9 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     return (
         <div
             ref={canvasRef}
-            className={`w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 ${canvasMode === 'pan'
-                ? 'cursor-grab active:cursor-grabbing'
-                : 'cursor-default'
+            className={`w-full h-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative canvas-bg transition-colors duration-500 ${interactionMode === 'panning'
+                ? 'cursor-grabbing'
+                : (canvasMode === 'pan' || isSpacePanning ? 'cursor-grab' : 'cursor-default')
                 }`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -496,7 +553,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
             <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
                 {/* Canvas Mode Toggle - Modern canvas standard */}
-                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (Right Click) · Hold Right Click to Drag' : 'Switch to Pan Mode (Right Click) · Hold Right Click to Drag'}>
+                <InstantTooltip content={canvasMode === 'pan' ? 'Switch to Select Mode (Right Click) · Hold Space to Drag' : 'Switch to Pan Mode (Right Click) · Hold Space to Drag'}>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
