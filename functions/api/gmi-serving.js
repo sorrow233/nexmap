@@ -265,8 +265,10 @@ export async function onRequest(context) {
 
     } catch (error) {
         console.error('[GMI Proxy] Error:', error);
-        return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
-            status: 500,
+        const errorMessage = error?.message || 'Internal server error';
+        const statusCode = /upstream timeout/i.test(errorMessage) ? 504 : 500;
+        return new Response(JSON.stringify({ error: errorMessage }), {
+            status: statusCode,
             headers: {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'

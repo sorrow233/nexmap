@@ -117,9 +117,19 @@ export class GeminiProvider extends LLMProvider {
         return String(baseUrl).includes('generativelanguage.googleapis.com');
     }
 
-    _getTransportOrder(baseUrl = '') {
+    _isDirectPreferredModel(cleanModel = '') {
+        const lower = String(cleanModel || '').toLowerCase();
+        // Gemini 3.1 Pro preview is currently more stable with direct transport in browser.
+        return lower.includes('gemini-3.1-pro-preview');
+    }
+
+    _getTransportOrder(baseUrl = '', cleanModel = '') {
         if (!this._shouldTryDirect(baseUrl)) {
             return ['proxy'];
+        }
+
+        if (this._isDirectPreferredModel(cleanModel)) {
+            return ['direct', 'proxy'];
         }
 
         if (this._isProxyTemporarilyDegraded()) {
@@ -230,7 +240,7 @@ export class GeminiProvider extends LLMProvider {
     }
 
     async _requestWithTransportFallback({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
-        const transports = this._getTransportOrder(baseUrl);
+        const transports = this._getTransportOrder(baseUrl, cleanModel);
 
         let lastNetworkError = null;
 
