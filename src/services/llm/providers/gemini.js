@@ -14,6 +14,10 @@ import { extractCandidateText } from './gemini/partUtils.js';
 import { getKeyPool } from '../keyPoolManager';
 
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const PROXY_DEGRADE_COOLDOWN_MS = 2 * 60 * 1000;
+const transportCircuitState = {
+    proxyDegradedUntil: 0
+};
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -39,6 +43,33 @@ export class GeminiProvider extends LLMProvider {
 
     _shouldFallbackTransportStatus(statusCode) {
         return isRetryableStatus(statusCode);
+    }
+
+    _shouldMarkProxyDegraded(statusCode) {
+        const code = Number(statusCode);
+        return code === 408 || code === 500 || code === 502 || code === 503 || code === 504 || code === 524;
+    }
+
+    _isProxyTemporarilyDegraded() {
+        return Date.now() < transportCircuitState.proxyDegradedUntil;
+    }
+
+    _markProxyTemporarilyDegraded(reason = '') {
+        const nextUntil = Date.now() + PROXY_DEGRADE_COOLDOWN_MS;
+        if (nextUntil <= transportCircuitState.proxyDegradedUntil) {
+            return;
+        }
+
+        transportCircuitState.proxyDegradedUntil = nextUntil;
+        if (reason) {
+            console.warn(`[Gemini] Proxy marked degraded for ${Math.round(PROXY_DEGRADE_COOLDOWN_MS / 1000)}s: ${reason}`);
+        }
+    }
+
+    _clearProxyDegradedState() {
+        if (transportCircuitState.proxyDegradedUntil !== 0) {
+            transportCircuitState.proxyDegradedUntil = 0;
+        }
     }
 
     _extractRetryDelayMs(errorMessage = '') {
@@ -89,6 +120,10 @@ export class GeminiProvider extends LLMProvider {
     _getTransportOrder(baseUrl = '') {
         if (!this._shouldTryDirect(baseUrl)) {
             return ['proxy'];
+        }
+
+        if (this._isProxyTemporarilyDegraded()) {
+            return ['direct', 'proxy'];
         }
 
         // Prefer proxy first:
@@ -214,8 +249,15 @@ export class GeminiProvider extends LLMProvider {
                     hasFallbackTransport &&
                     this._shouldFallbackTransportStatus(response.status)
                 ) {
+                    if (transport === 'proxy' && this._shouldMarkProxyDegraded(response.status)) {
+                        this._markProxyTemporarilyDegraded(`status ${response.status}`);
+                    }
                     console.warn(`[Gemini] ${transport} request returned ${response.status}, fallback to ${nextTransport}`);
                     continue;
+                }
+
+                if (transport === 'proxy' && response.ok) {
+                    this._clearProxyDegradedState();
                 }
 
                 return response;
@@ -226,6 +268,9 @@ export class GeminiProvider extends LLMProvider {
 
                 lastNetworkError = error;
                 if (hasFallbackTransport && isRetryableNetworkError(error)) {
+                    if (transport === 'proxy') {
+                        this._markProxyTemporarilyDegraded(error?.message || 'network error');
+                    }
                     console.warn(`[Gemini] ${transport} transport failed, fallback to ${nextTransport}:`, error?.message || error);
                     continue;
                 }

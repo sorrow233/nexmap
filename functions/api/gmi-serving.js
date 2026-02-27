@@ -4,6 +4,10 @@
  */
 const THINKING_LEVEL_ALLOWLIST = new Set(['THINKING_LEVEL_UNSPECIFIED', 'LOW', 'HIGH']);
 const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504, 524]);
+const STREAM_MAX_ATTEMPTS = 1;
+const STREAM_TIMEOUT_MS = 22000;
+const NON_STREAM_MAX_ATTEMPTS = 3;
+const NON_STREAM_TIMEOUT_MS = 45000;
 const RETRYABLE_ERROR_PATTERNS = [
     'temporarily unavailable',
     'service unavailable',
@@ -48,9 +52,22 @@ function shouldRetryUpstream({ statusCode, errorText = '', error = null }) {
     return false;
 }
 
+function getUpstreamRetryPolicy(stream = false) {
+    if (stream) {
+        return {
+            maxAttempts: STREAM_MAX_ATTEMPTS,
+            timeoutMs: STREAM_TIMEOUT_MS
+        };
+    }
+
+    return {
+        maxAttempts: NON_STREAM_MAX_ATTEMPTS,
+        timeoutMs: NON_STREAM_TIMEOUT_MS
+    };
+}
+
 async function fetchUpstreamWithRetry(url, requestInit, { stream = false } = {}) {
-    const maxAttempts = 3;
-    const timeoutMs = stream ? 95000 : 45000;
+    const { maxAttempts, timeoutMs } = getUpstreamRetryPolicy(stream);
     let attempt = 0;
     let lastError = null;
 
@@ -84,14 +101,17 @@ async function fetchUpstreamWithRetry(url, requestInit, { stream = false } = {})
             return { response, errorText: '' };
         } catch (error) {
             clearTimeout(timer);
-            lastError = error;
+            const isTimeoutAbort = controller.signal.aborted && error?.name === 'AbortError';
+            lastError = isTimeoutAbort
+                ? new Error(`Upstream timeout after ${timeoutMs}ms`)
+                : error;
 
-            const canRetry = attempt < maxAttempts && shouldRetryUpstream({ error });
+            const canRetry = attempt < maxAttempts && shouldRetryUpstream({ error: lastError });
             if (canRetry) {
                 await wait(computeBackoffDelay(attempt));
                 continue;
             }
-            throw error;
+            throw lastError;
         }
     }
 
