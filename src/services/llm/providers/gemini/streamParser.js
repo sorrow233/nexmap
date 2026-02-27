@@ -1,4 +1,5 @@
-import { isRetryableError } from './errorUtils';
+import { isRetryableError } from './errorUtils.js';
+import { extractCandidateText } from './partUtils.js';
 
 /**
  * Detect whether a Gemini candidate includes grounding/search metadata.
@@ -29,6 +30,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let lastFullText = ''; // Track cumulative text
     let buffer = '';
     let usedSearch = false;
+    let emittedVisibleText = false;
 
     try {
         onLog('[Gemini] Stream response OK, processing chunks...');
@@ -79,8 +81,9 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                         usedSearch = true;
                     }
 
-                    // Gemini stream format: candidate content parts
-                    const currentText = candidate?.content?.parts?.[0]?.text;
+                    // Gemini 3.1/2.5 thinking models may return multiple parts.
+                    // We stream only visible (non-thought) text to avoid blank-output regressions.
+                    const currentText = extractCandidateText(candidate, { includeThoughtFallback: false });
 
                     if (currentText) {
                         // Robust Delta Calculation
@@ -94,6 +97,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                         }
 
                         if (delta) {
+                            emittedVisibleText = true;
                             onToken(delta);
                         }
                     }
@@ -134,10 +138,11 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     usedSearch = true;
                 }
 
-                const text = candidate?.content?.parts?.[0]?.text;
+                const text = extractCandidateText(candidate, { includeThoughtFallback: false });
                 if (text) {
                     const delta = text.startsWith(lastFullText) ? text.substring(lastFullText.length) : text;
                     if (delta) {
+                        emittedVisibleText = true;
                         onToken(delta);
                     }
                 }
@@ -145,6 +150,14 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                 if (e.retryable) throw e;
                 if (e.message && !e.message.includes('JSON')) throw e;
             }
+        }
+
+        if (!emittedVisibleText) {
+            throw {
+                retryable: true,
+                code: 'EMPTY_VISIBLE_STREAM',
+                message: 'Gemini stream returned empty visible text'
+            };
         }
         return { usedSearch };
     } finally {

@@ -8,8 +8,9 @@ import {
     isRetryableNetworkError,
     computeBackoffDelay,
     isAbortError
-} from './gemini/errorUtils';
-import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser';
+} from './gemini/errorUtils.js';
+import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser.js';
+import { extractCandidateText } from './gemini/partUtils.js';
 import { getKeyPool } from '../keyPoolManager';
 
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
@@ -364,7 +365,12 @@ export class GeminiProvider extends LLMProvider {
                         console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
                     }
                 }
-                return candidate?.content?.parts?.[0]?.text || '';
+
+                const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
+                if (visibleText) return visibleText;
+
+                const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
+                return fallbackText || '';
             } catch (error) {
                 if (isAbortError(error) || options.signal?.aborted) throw error;
 
@@ -504,6 +510,13 @@ export class GeminiProvider extends LLMProvider {
                 const retryableLike = error?.retryable === true ||
                     this._shouldRetry({ statusCode, errorMessage, error });
                 const canRetry = attempt < maxAttempts && retryableLike;
+
+                if (error?.code === 'EMPTY_VISIBLE_STREAM') {
+                    lastError = error;
+                    if (options.allowNonStreamFallback !== false) {
+                        break;
+                    }
+                }
 
                 if (canRetry) {
                     const retryDelayMs = this._extractRetryDelayMs(errorMessage);
