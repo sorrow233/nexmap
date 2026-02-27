@@ -13,6 +13,7 @@ export class KeyPoolManager {
         // 解析逗号分隔的 Keys
         this.allKeys = this._parseKeys(keysString);
         this.failedKeys = new Set();
+        this._permanentFailures = new Set();
         this.currentIndex = 0;
         this.lastUsedTime = new Map();
     }
@@ -41,11 +42,25 @@ export class KeyPoolManager {
         const availableKeys = this.allKeys.filter(k => !this.failedKeys.has(k));
 
         if (availableKeys.length === 0) {
-            // 所有 Key 都失效，重置失效列表尝试恢复
+            // 不要无脑重置所有 Key：只重置临时限流的，永久失效的(401/403)保持标记
+            // 否则会无限循环使用同一个已被封禁的 Key
             if (this.allKeys.length > 0) {
-                console.warn('[KeyPool] 所有 Key 已标记失效，尝试重置...');
-                this.failedKeys.clear();
-                return this.allKeys[0];
+                console.warn('[KeyPool] 所有 Key 已标记失效，尝试重置临时限流的 Key...');
+                // 只保留永久失效的 Key 在 failedKeys 中
+                const permanentlyFailed = new Set();
+                for (const key of this.failedKeys) {
+                    if (this._permanentFailures && this._permanentFailures.has(key)) {
+                        permanentlyFailed.add(key);
+                    }
+                }
+                this.failedKeys = permanentlyFailed;
+                const recovered = this.allKeys.filter(k => !this.failedKeys.has(k));
+                if (recovered.length > 0) {
+                    return recovered[0];
+                }
+                // 全部都是永久失效，无法恢复
+                console.error('[KeyPool] 所有 Key 均已永久失效，无法恢复');
+                return null;
             }
             return null;
         }
@@ -77,8 +92,9 @@ export class KeyPoolManager {
                 console.log(`[KeyPool] Key ${this._maskKey(key)} 挂起结束，已恢复可用`);
             }, 60000); // 1分钟后恢复
         } else {
-            // 永久失效 (例如 401)
+            // 永久失效 (例如 401/403)
             this.failedKeys.add(key);
+            this._permanentFailures.add(key);
             console.error(`[KeyPool] Key ${this._maskKey(key)} 已标记失效 (持久错误): ${reason}`);
         }
     }

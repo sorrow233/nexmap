@@ -140,7 +140,11 @@ export class GeminiProvider extends LLMProvider {
                     const data = await response.json();
                     if (data.error) {
                         const errMsg = data.error.message || JSON.stringify(data.error);
-                        if ([401, 403, 429].includes(data.error.code) || isRetryableError(errMsg)) {
+                        if (data.error.code === 401 || data.error.code === 403) {
+                            keyPool.markKeyFailed(apiKey, data.error.code);
+                            throw new Error(errMsg);
+                        }
+                        if (data.error.code === 429 || isRetryableError(errMsg)) {
                             keyPool.markKeyFailed(apiKey, data.error.code || errMsg);
                             retries--;
                             lastError = new Error(errMsg);
@@ -161,7 +165,11 @@ export class GeminiProvider extends LLMProvider {
                     return candidate?.content?.parts?.[0]?.text || "";
                 }
 
-                if ([401, 403, 429].includes(response.status)) {
+                if (response.status === 401 || response.status === 403) {
+                    keyPool.markKeyFailed(apiKey, response.status);
+                    throw new Error(`API Key 已失效 (${response.status})，请更换 Key`);
+                }
+                if (response.status === 429) {
                     keyPool.markKeyFailed(apiKey, response.status);
                     retries--;
                     continue;
@@ -252,7 +260,11 @@ export class GeminiProvider extends LLMProvider {
 
                 if (!response.ok) {
                     const errStatus = response.status;
-                    if ([401, 403, 429].includes(errStatus)) {
+                    if (errStatus === 401 || errStatus === 403) {
+                        keyPool.markKeyFailed(apiKey, errStatus);
+                        throw new Error(`API Key 已失效 (${errStatus})，请更换 Key`);
+                    }
+                    if (errStatus === 429) {
                         keyPool.markKeyFailed(apiKey, errStatus);
                         retries--;
                         continue;
