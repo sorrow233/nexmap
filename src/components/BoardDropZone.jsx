@@ -40,7 +40,7 @@ export default function BoardDropZone({ onCreateBoard }) {
 
     const handleSubmit = async () => {
         if (!quickPrompt.trim() && images.length === 0) return;
-        await onCreateBoard(quickPrompt || 'New Board', quickPrompt, images);
+        await onCreateBoard(null, quickPrompt, images);
         setQuickPrompt('');
         clearImages();
     };

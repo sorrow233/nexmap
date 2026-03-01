@@ -12,6 +12,11 @@ import {
     getNextBackupTime
 } from '../../services/scheduledBackupService';
 import DataMigrationSection from './DataMigrationSection';
+import {
+    getEffectiveBoardCardCount,
+    normalizeBoardTitleMeta,
+    pickBoardTitleMetadata
+} from '../../services/boardTitle/metadata';
 
 export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const { t } = useLanguage();
@@ -58,8 +63,9 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             if (backup.boards && Array.isArray(backup.boards)) {
                 let restoredCount = 0;
                 for (const board of backup.boards) {
+                    const normalizedBoard = normalizeBoardTitleMeta(board);
                     // Remove soft delete marker if present
-                    if (board.deletedAt) delete board.deletedAt;
+                    if (normalizedBoard.deletedAt) delete normalizedBoard.deletedAt;
 
                     // We need full board content. 
                     // If the backup was "shallow" (list only), we can't fully restore content unless it's in IDB.
@@ -85,7 +91,10 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     // So we can definitely restore the ACTIVE board fully.
                     // For others, we restore metadata. If they click it, it might be empty or load from cloud if a previous sync existed.
 
-                    await updateBoardMetadataInCloud(user.uid, board.id, board); // This saves metadata only (merge), preserving content if exists
+                    await updateBoardMetadataInCloud(user.uid, normalizedBoard.id, {
+                        ...normalizedBoard,
+                        ...pickBoardTitleMetadata(normalizedBoard)
+                    }); // This saves metadata only (merge), preserving content if exists
                     restoredCount++;
                 }
                 setRestoreMsg(`Restored metadata for ${restoredCount} boards.`);
@@ -133,36 +142,42 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             let successCount = 0;
             for (const board of boardsToRestore) {
                 // Ensure board has basic fields
-                if (!board.id || !board.name) continue;
+                if (!board.id) continue;
+
+                const normalizedBoard = normalizeBoardTitleMeta(board);
 
                 // Remove deletion markers
-                if (board.deletedAt) delete board.deletedAt;
+                if (normalizedBoard.deletedAt) delete normalizedBoard.deletedAt;
 
                 // Force update 'updatedAt' to now so it syncs as "new"
-                board.updatedAt = Date.now();
-                board.createdAt = board.createdAt || Date.now();
+                normalizedBoard.updatedAt = Date.now();
+                normalizedBoard.createdAt = normalizedBoard.createdAt || Date.now();
 
                 // CRITICAL FIX: Write directly to Firestore, bypassing saveBoardToCloud 
                 // which requires local metadata (empty in recovery scenario)
                 try {
-                    const boardRef = doc(db, 'users', user.uid, 'boards', String(board.id));
+                    const boardRef = doc(db, 'users', user.uid, 'boards', String(normalizedBoard.id));
                     await setDoc(boardRef, {
-                        id: String(board.id),
-                        name: board.name,
-                        createdAt: board.createdAt,
-                        updatedAt: board.updatedAt,
-                        lastAccessedAt: board.lastAccessedAt || board.updatedAt,
-                        cardCount: board.cardCount || 0,
-                        cards: board.cards || [],
-                        connections: board.connections || [],
-                        groups: board.groups || [],
-                        backgroundImage: board.backgroundImage || null,
-                        thumbnail: board.thumbnail || null
+                        id: String(normalizedBoard.id),
+                        name: normalizedBoard.name,
+                        nameSource: normalizedBoard.nameSource,
+                        autoTitle: normalizedBoard.autoTitle,
+                        autoTitleGeneratedAt: normalizedBoard.autoTitleGeneratedAt,
+                        manualTitleUpdatedAt: normalizedBoard.manualTitleUpdatedAt,
+                        createdAt: normalizedBoard.createdAt,
+                        updatedAt: normalizedBoard.updatedAt,
+                        lastAccessedAt: normalizedBoard.lastAccessedAt || normalizedBoard.updatedAt,
+                        cardCount: getEffectiveBoardCardCount(normalizedBoard.cards) || normalizedBoard.cardCount || 0,
+                        cards: normalizedBoard.cards || [],
+                        connections: normalizedBoard.connections || [],
+                        groups: normalizedBoard.groups || [],
+                        backgroundImage: normalizedBoard.backgroundImage || null,
+                        thumbnail: normalizedBoard.thumbnail || null
                     });
                     successCount++;
-                    console.log(`[Import] Successfully wrote board ${board.id} to Firestore`);
+                    console.log(`[Import] Successfully wrote board ${normalizedBoard.id} to Firestore`);
                 } catch (err) {
-                    console.error(`[Import] Failed to write board ${board.id}:`, err);
+                    console.error(`[Import] Failed to write board ${normalizedBoard.id}:`, err);
                 }
             }
 

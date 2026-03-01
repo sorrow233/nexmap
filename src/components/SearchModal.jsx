@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, X, FileText, ArrowRight, Command } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, FileText, ArrowRight, Command } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getBoardDisplayName } from '../services/boardTitle/metadata';
 
 /**
  * SearchModal - 全局搜索弹窗
@@ -39,7 +40,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
         // Search through all boards
         Object.entries(allBoardsData).forEach(([boardId, boardData]) => {
             const board = boardsList.find(b => b.id === boardId);
-            const boardName = board?.name || 'Untitled Board';
+            const boardName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
 
             // Search cards in this board
             if (boardData.cards) {
@@ -65,13 +66,14 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
 
         // Also search board names
         boardsList.forEach(board => {
-            if (board.name?.toLowerCase().includes(lowerQuery)) {
+            const boardName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
+            if (boardName.toLowerCase().includes(lowerQuery)) {
                 searchResults.unshift({
                     type: 'board',
                     boardId: board.id,
-                    boardName: board.name,
-                    title: board.name,
-                    snippet: `${t.search.board} · ${board.cards?.length || 0} ${t.search.cards}`
+                    boardName,
+                    title: boardName,
+                    snippet: `${t.search.board} · ${board.cardCount || 0} ${t.search.cards}`
                 });
             }
         });
@@ -79,7 +81,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
         // Limit results
         setResults(searchResults.slice(0, 10));
         setSelectedIndex(0);
-    }, [allBoardsData, boardsList]);
+    }, [allBoardsData, boardsList, t]);
 
     // Get snippet around match
     const getSnippet = (content, query) => {

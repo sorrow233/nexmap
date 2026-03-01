@@ -10,6 +10,7 @@
 import { idbGet, idbSet, idbDel } from './db/indexedDB';
 import { getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
+import { normalizeBoardMetadataList } from './boardTitle/metadata';
 
 const BACKUP_KEY_PREFIX = 'scheduled_backup_';
 const BACKUP_INDEX_KEY = 'scheduled_backup_index';
@@ -258,7 +259,7 @@ export const restoreFromBackup = async (backupId) => {
 
             // Merge and save boards list
             if (restoredBoards.length > 0) {
-                const mergedBoards = [...currentBoards, ...restoredBoards];
+                const mergedBoards = normalizeBoardMetadataList([...currentBoards, ...restoredBoards]);
                 localStorage.setItem('mixboard_boards_list', JSON.stringify(mergedBoards));
             }
         }

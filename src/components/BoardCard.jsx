@@ -1,5 +1,7 @@
-import { FileText, ArrowRight, Ban, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock, MoreHorizontal } from 'lucide-react';
+import { ArrowRight, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock } from 'lucide-react';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getBoardDisplayName } from '../services/boardTitle/metadata';
 
 export default function BoardCard({
     board,
@@ -12,9 +14,11 @@ export default function BoardCard({
     onGenerateBackground,
     generatingBoardId,
     variant = 'overlay', // 'overlay' | 'stacked'
-    isSystemCreditsUser = false,
     shouldAnimate = true
 }) {
+    const { t } = useLanguage();
+    const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
+
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
         // Free users now have 20 images/week quota, no restriction needed
@@ -157,7 +161,7 @@ export default function BoardCard({
                 <div className="p-5 flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-2 h-12">
                         <h3 className="font-bold text-lg text-slate-900 dark:text-gray-100 leading-tight line-clamp-2 font-inter-tight">
-                            {board.name}
+                            {displayName}
                         </h3>
                     </div>
 
@@ -223,7 +227,7 @@ export default function BoardCard({
                         {/* Header: Title */}
                         <div className="mb-4">
                             <h3 className="text-xl font-bold tracking-tight text-slate-800 leading-snug line-clamp-2">
-                                {board.name}
+                                {displayName}
                             </h3>
                             {/* Decorative underline */}
                             <div className={`mt-3 h-1 w-8 rounded-full opacity-30 ${{
@@ -294,7 +298,7 @@ export default function BoardCard({
             {(!board.summary) && (
                 <div className={`absolute inset-x-0 bottom-0 p-4`}>
                     <h3 className="text-white font-bold truncate text-base mb-1 group-hover:text-cyan-200 transition-colors font-inter-tight">
-                        {board.name}
+                        {displayName}
                     </h3>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
                         <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>

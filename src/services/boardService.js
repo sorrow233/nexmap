@@ -6,12 +6,20 @@ import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
 } from './customInstructionsService';
+import {
+    getEffectiveBoardCardCount,
+    hasBoardTitleMetadataPatch,
+    normalizeBoardMetadataList,
+    normalizeBoardTitleMeta,
+    pickBoardTitleMetadata
+} from './boardTitle/metadata';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const BOARDS_LIST_KEY = 'mixboard_boards_list';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 const MAX_IDB_SAVE_RETRIES = 2;
 const IDB_RETRY_DELAY_MS = 80;
+const TITLE_METADATA_KEYS = ['name', 'nameSource', 'autoTitle', 'autoTitleGeneratedAt', 'manualTitleUpdatedAt'];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -38,7 +46,7 @@ export const getRawBoardsList = () => {
     const list = localStorage.getItem(BOARDS_LIST_KEY);
     try {
         const parsed = list ? JSON.parse(list) : [];
-        return Array.isArray(parsed) ? parsed : [];
+        return normalizeBoardMetadataList(Array.isArray(parsed) ? parsed : []);
     } catch (e) {
         console.error("Failed to parse boards list", e);
         return [];
@@ -60,18 +68,23 @@ export const loadBoardsMetadata = () => {
 };
 
 export const createBoard = async (name) => {
-    const newBoard = {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    const newBoard = normalizeBoardTitleMeta({
         id: Date.now().toString(),
-        name: name || 'Untitled Board',
+        name: normalizedName,
+        nameSource: normalizedName ? 'manual' : 'placeholder',
+        autoTitle: '',
+        autoTitleGeneratedAt: 0,
+        manualTitleUpdatedAt: normalizedName ? Date.now() : 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         lastAccessedAt: Date.now(),
         cardCount: 0,
         syncVersion: 0 // Initialize logical clock
-    };
+    });
     debugLog.storage(`Creating new board: ${newBoard.name}`, { id: newBoard.id });
     const list = getRawBoardsList();
-    const newList = [newBoard, ...list];
+    const newList = normalizeBoardMetadataList([newBoard, ...list]);
     localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
     // Init empty board in IDB with groups field
     await saveBoard(newBoard.id, {
@@ -90,12 +103,12 @@ export const updateBoardMetadata = (id, metadata) => {
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
-        list[boardIndex] = {
+        list[boardIndex] = normalizeBoardTitleMeta({
             ...list[boardIndex],
             ...metadata,
             updatedAt: Date.now()
-        };
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        });
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
         return true;
     }
     return false;
@@ -116,14 +129,28 @@ export const saveBoard = async (id, data) => {
     if (boardIndex >= 0) {
         // Preserve and increment syncVersion for cloud sync
         const currentVersion = list[boardIndex].syncVersion || 0;
-        list[boardIndex] = {
+        const nextBoardMeta = {
             ...list[boardIndex],
             updatedAt: timestamp,
-            cardCount: data.cards?.length || 0,
-            syncVersion: data.syncVersion !== undefined ? data.syncVersion : currentVersion,
-            ...(data.name && { name: data.name })
+            cardCount: getEffectiveBoardCardCount(data.cards),
+            syncVersion: data.syncVersion !== undefined ? data.syncVersion : currentVersion
         };
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+
+        if (hasBoardTitleMetadataPatch(data)) {
+            Object.assign(nextBoardMeta, pickBoardTitleMetadata({
+                ...list[boardIndex],
+                ...data
+            }));
+        } else {
+            TITLE_METADATA_KEYS.forEach((key) => {
+                if (Object.prototype.hasOwnProperty.call(data, key)) {
+                    nextBoardMeta[key] = data[key];
+                }
+            });
+        }
+
+        list[boardIndex] = normalizeBoardTitleMeta(nextBoardMeta);
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
     }
 
     let lastError = null;
@@ -251,7 +278,7 @@ export const loadBoard = async (id) => {
                 ...list[boardIndex],
                 lastAccessedAt: Date.now()
             };
-            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
         }
     }
 
@@ -337,8 +364,8 @@ export const deleteBoard = async (id) => {
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
-        list[boardIndex] = { ...list[boardIndex], deletedAt: Date.now() };
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        list[boardIndex] = normalizeBoardTitleMeta({ ...list[boardIndex], deletedAt: Date.now() });
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
     } else {
         debugLog.error(`Board ${id} not found for soft deletion.`);
     }
@@ -350,8 +377,8 @@ export const restoreBoard = async (id) => {
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
         const { deletedAt, ...rest } = list[boardIndex];
-        list[boardIndex] = rest; // Remove deletedAt
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(list));
+        list[boardIndex] = normalizeBoardTitleMeta(rest); // Remove deletedAt
+        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
         return true;
     }
     return false;
@@ -361,7 +388,7 @@ export const permanentlyDeleteBoard = async (id) => {
     debugLog.storage(`Permanently deleting board: ${id}`);
     const list = getRawBoardsList();
     const newList = list.filter(b => b.id !== id);
-    localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
+    localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(newList)));
 
     await idbDel(BOARD_PREFIX + id);
     localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy

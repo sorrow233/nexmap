@@ -82,6 +82,7 @@ export const app = {
         trash: "Trash",
         usageGuide: "💡 Usage Guide",
         newBoard: "New Board",
+        untitledBoard: "Untitled Board",
         signIn: "Sign In",
         pricing: "Plans & Pricing",
         signOut: "Sign Out",

@@ -106,7 +106,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handleCustomSproutSubmit,
         handleGlobalPaste
 
-    } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly });
+    } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly });
 
     // Background Generation
     const { generateBoardSummary, generateBoardImage, generatingBoardId } = useBoardBackground();

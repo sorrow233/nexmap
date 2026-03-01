@@ -10,6 +10,7 @@ import { useToast } from '../components/Toast';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
 import { recommendBoardInstructionIds } from '../services/ai/boardInstructionRecommender';
+import { useCurrentBoardAutoNaming } from './useCurrentBoardAutoNaming';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings,
@@ -19,6 +20,7 @@ import {
     sanitizeBoardInstructionSettingsForCatalog,
     getInstructionCatalogBreakdown
 } from '../services/customInstructionsService';
+import { getBoardDisplayName } from '../services/boardTitle/metadata';
 
 const isSameStringArray = (a = [], b = []) => {
     if (a.length !== b.length) return false;
@@ -28,7 +30,7 @@ const isSameStringArray = (a = [], b = []) => {
     return true;
 };
 
-export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, isReadOnly = false }) {
+export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
     const navigate = useNavigate();
 
@@ -131,6 +133,15 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
         };
     }, [instructionCatalogBreakdown, normalizedBoardInstructionSettings]);
 
+    useCurrentBoardAutoNaming({
+        board: currentBoard,
+        boardId: currentBoardId,
+        cards,
+        generatingCardIds,
+        isReadOnly,
+        onUpdateBoardMetadata
+    });
+
     // --- PASTE LOGIC ---
 
     const handleGlobalPaste = useCallback((e) => {
@@ -161,10 +172,11 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onBack, is
     useEffect(() => {
         if (currentBoardId) {
             const board = boardsList.find(b => b.id === currentBoardId);
-            document.title = board ? `${board.name} | NexMap` : 'NexMap';
+            const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
+            document.title = board ? `${displayName} | NexMap` : 'NexMap';
         }
         return () => { document.title = 'NexMap'; };
-    }, [currentBoardId, boardsList]);
+    }, [currentBoardId, boardsList, t.gallery?.untitledBoard]);
 
     // Keep a ref of the latest data for unmount saving
     const latestBoardDataRef = useRef({ cards, connections, groups, boardPrompts, boardInstructionSettings });

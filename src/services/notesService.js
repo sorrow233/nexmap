@@ -1,4 +1,5 @@
 import { loadBoardDataForSearch, saveBoard, saveBoardToCloud } from './storage';
+import { getBoardDisplayName } from './boardTitle/metadata';
 
 const FALLBACK_TITLE = 'Untitled Note';
 const NOTE_UPDATES_EVENT = 'notes-updated';
@@ -61,7 +62,7 @@ const normalizeNote = (card, board, boardData = null) => {
     return {
         id: card.id,
         boardId: board.id,
-        boardName: board.name || 'Untitled Board',
+        boardName: getBoardDisplayName(board, 'Untitled Board'),
         title,
         preview: getNotePreview(content),
         content,

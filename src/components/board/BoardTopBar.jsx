@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LayoutGrid, Undo2, Redo2, Sparkles } from 'lucide-react';
 import { useTemporalStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getBoardDisplayName } from '../../services/boardTitle/metadata';
 
 export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstructions, instructionPanelSummary }) {
     const undo = useTemporalStore((state) => state.undo);
@@ -12,13 +13,19 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstru
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleJustSaved, setTitleJustSaved] = useState(false);
+    const [titleDraft, setTitleDraft] = useState('');
 
     const instructionMode = instructionPanelSummary?.mode === 'manual' ? 'manual' : 'auto';
     const instructionStatus = instructionPanelSummary?.status || 'idle';
     const activeInstructionCount = Number(instructionPanelSummary?.activeCount || 0);
+    const untitledBoardLabel = t.gallery?.untitledBoard || 'Untitled Board';
+    const displayTitle = getBoardDisplayName(board, untitledBoardLabel);
+
+    useEffect(() => {
+        setTitleDraft(board?.name || '');
+    }, [board?.id, board?.name]);
 
     const saveTitleWithFeedback = (value) => {
-        if (!value || !value.trim()) return;
         onUpdateTitle(value);
         setTitleJustSaved(true);
         setTimeout(() => setTitleJustSaved(false), 1000);
@@ -75,9 +82,13 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstru
                 <div className="hidden sm:block relative flex items-center group">
                     <input
                         type="text"
-                        key={board?.id}
-                        defaultValue={board?.name || 'Untitled Board'}
-                        onFocus={() => setIsEditingTitle(true)}
+                        value={isEditingTitle ? titleDraft : (board?.name || displayTitle)}
+                        placeholder={untitledBoardLabel}
+                        onFocus={() => {
+                            setIsEditingTitle(true);
+                            setTitleDraft(board?.name || '');
+                        }}
+                        onChange={(e) => setTitleDraft(e.target.value)}
                         onBlur={(e) => {
                             setIsEditingTitle(false);
                             saveTitleWithFeedback(e.target.value);

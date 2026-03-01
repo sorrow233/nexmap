@@ -49,6 +49,12 @@ import {
     normalizeBoardInstructionSettings,
     saveBoardInstructionSettingsCache
 } from './services/customInstructionsService';
+import {
+    buildBoardTitleUpdatePatch,
+    hasBoardTitleMetadataPatch,
+    normalizeBoardTitleMeta,
+    pickBoardTitleMetadata
+} from './services/boardTitle/metadata';
 
 export default function App() {
     return (
@@ -165,13 +171,9 @@ function AppContent() {
     }, [user]);
 
     const handleCreateBoard = async (customName = null, initialPrompt = null, initialImages = []) => {
-        let name = customName;
-        if (!name) {
-            name = `Board ${boardsList.length + 1}`;
-        }
-
-        const newBoard = await createBoard(name);
-        setBoardsList(prev => [newBoard, ...prev]);
+        const normalizedName = typeof customName === 'string' ? customName.trim() : '';
+        const newBoard = await createBoard(normalizedName || null);
+        setBoardsList(prev => [normalizeBoardTitleMeta(newBoard), ...prev]);
         if (user) {
             saveBoardToCloud(user.uid, newBoard.id, {
                 cards: [],
@@ -263,7 +265,7 @@ function AppContent() {
 
         // Update state to reflect change (filter out moved item? No, just update its status)
         // or just re-fetch? easiest is to update local list state
-        setBoardsList(prev => prev.map(b => b.id === id ? { ...b, deletedAt: Date.now() } : b));
+        setBoardsList(prev => prev.map(b => b.id === id ? normalizeBoardTitleMeta({ ...b, deletedAt: Date.now() }) : b));
 
         // Optional: Show a subtle toast or message via some UI mechanism (skipped for now as per minimal App requirement, GalleryPage can handle toast)
     };
@@ -276,7 +278,7 @@ function AppContent() {
         // Actually storage.js checks `deletedAt` existence or truthiness. `updateDoc` with `deleteField` is cleaner.
         // But for simplicity sending `null` depends on how we check. `!b.deletedAt` works for null.
 
-        setBoardsList(prev => prev.map(b => b.id === id ? { ...b, deletedAt: null } : b));
+        setBoardsList(prev => prev.map(b => b.id === id ? normalizeBoardTitleMeta({ ...b, deletedAt: null }) : b));
     };
 
     // Permanent Delete
@@ -321,31 +323,51 @@ function AppContent() {
         setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
     }, [currentBoardId, isBoardLoading, navigate, setBoardsList, setCards, setConnections, setGroups, setBoardInstructionSettings]);
 
-    const handleUpdateBoardTitle = useCallback(async (newTitle) => {
-        if (!currentBoardId || !newTitle.trim()) return;
-
-        // 1. Update local storage (persist across reloads)
-        updateBoardMetadata(currentBoardId, { name: newTitle });
-
-        // 2. Update in-memory state (immediate UI update)
-        setBoardsList(prev => prev.map(b => b.id === currentBoardId ? { ...b, name: newTitle } : b));
-
-        // 3. Update cloud (sync across devices) - Use metadata update to avoid overwriting card data!
-        if (user) updateBoardMetadataInCloud(user.uid, currentBoardId, { name: newTitle });
-    }, [currentBoardId, user, setBoardsList]);
-
     const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
-        // 1. Update local storage
-        updateBoardMetadata(boardId, metadata);
+        const currentBoard = boardsList.find(board => board.id === boardId);
+        let nextMetadata = metadata;
 
-        // 2. Update in-memory state (immediate UI update)
-        setBoardsList(prev => prev.map(b => b.id === boardId ? { ...b, ...metadata } : b));
+        if (hasBoardTitleMetadataPatch(metadata)) {
+            nextMetadata = {
+                ...metadata,
+                ...pickBoardTitleMetadata({
+                    ...(currentBoard || {}),
+                    ...metadata
+                })
+            };
+        }
 
-        // 3. Update cloud
-        if (user) updateBoardMetadataInCloud(user.uid, boardId, metadata);
+        updateBoardMetadata(boardId, nextMetadata);
 
-        // NOTE: Removed stale setTimeout reload - setBoardsList already provides immediate update
-    }, [user, setBoardsList]);
+        setBoardsList(prev => prev.map(board => (
+            board.id === boardId
+                ? normalizeBoardTitleMeta({ ...board, ...nextMetadata })
+                : board
+        )));
+
+        if (user) {
+            updateBoardMetadataInCloud(user.uid, boardId, nextMetadata);
+        }
+    }, [boardsList, user, setBoardsList]);
+
+    const handleUpdateBoardTitle = useCallback(async (newTitle) => {
+        if (!currentBoardId) return;
+
+        const currentBoard = boardsList.find(board => board.id === currentBoardId);
+        const nextPatch = buildBoardTitleUpdatePatch(currentBoard, newTitle);
+        const currentTitleMetadata = currentBoard ? pickBoardTitleMetadata(currentBoard) : null;
+
+        if (currentTitleMetadata &&
+            currentTitleMetadata.name === nextPatch.name &&
+            currentTitleMetadata.nameSource === nextPatch.nameSource &&
+            currentTitleMetadata.autoTitle === (nextPatch.autoTitle ?? currentTitleMetadata.autoTitle) &&
+            currentTitleMetadata.autoTitleGeneratedAt === (nextPatch.autoTitleGeneratedAt ?? currentTitleMetadata.autoTitleGeneratedAt)
+        ) {
+            return;
+        }
+
+        await handleUpdateBoardMetadata(currentBoardId, nextPatch);
+    }, [boardsList, currentBoardId, handleUpdateBoardMetadata]);
 
     if (!isInitialized) return null;
 

@@ -82,6 +82,7 @@ export const app = {
         trash: "回收站",
         usageGuide: "💡 使用指南",
         newBoard: "新建画板",
+        untitledBoard: "未命名画布",
         signIn: "登录",
         pricing: "升级套餐",
         signOut: "退出登录",

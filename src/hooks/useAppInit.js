@@ -27,6 +27,10 @@ import {
     normalizeCustomInstructionsValue,
     hasAnyCustomInstruction
 } from '../services/customInstructionsService';
+import {
+    normalizeBoardMetadataList,
+    normalizeBoardTitleMeta
+} from '../services/boardTitle/metadata';
 
 // --- Timestamp-aware localStorage utilities for smart sync ---
 const loadWithTimestamp = (key) => {
@@ -123,7 +127,7 @@ export function useAppInit() {
                 const sampleBoards = getSampleBoardsList();
 
                 // 1. Immediate UI Update (Synchronous)
-                setBoardsList(sampleBoards);
+                setBoardsList(normalizeBoardMetadataList(sampleBoards));
 
                 // 2. Persist in background (Fire & Forget)
                 const persistedBoards = [];
@@ -134,11 +138,11 @@ export function useAppInit() {
                     await saveBoard(sample.id, fullData);
                     persistedBoards.push(sample);
                 }
-                localStorage.setItem('mixboard_boards_list', JSON.stringify(persistedBoards));
+                localStorage.setItem('mixboard_boards_list', JSON.stringify(normalizeBoardMetadataList(persistedBoards)));
                 debugLog.auth(`Loaded & Persisted ${persistedBoards.length} sample boards for onboarding`);
             } else {
                 debugLog.storage(`Loaded metadata for ${list.length} boards`);
-                setBoardsList(list);
+                setBoardsList(normalizeBoardMetadataList(list));
             }
 
             setIsInitialized(true);
@@ -242,12 +246,12 @@ export function useAppInit() {
                                 localStateBoard?.summary ||
                                 localStorageBoard?.summary;
 
-                            return {
+                            return normalizeBoardTitleMeta({
                                 ...cloudBoard,
                                 summary: existingSummary
-                            };
+                            });
                         });
-                        return merged;
+                        return normalizeBoardMetadataList(merged);
                     });
                     // NOTE: 不再在这里触发活跃画板的 rehydration
                     // 每个标签页只监听自己的画板（在 Canvas 组件中使用 listenForSingleBoard）
@@ -392,7 +396,7 @@ export function useAppInit() {
                                     await saveBoardToCloud(u.uid, sample.id, data);
                                 }
                                 // Force update state in case Sync wiped it
-                                setBoardsList(samples);
+                                setBoardsList(normalizeBoardMetadataList(samples));
                             } catch (err) {
                                 console.error("Failed to inject samples", err);
                             }
@@ -412,8 +416,8 @@ export function useAppInit() {
                                     await saveBoard(sample.id, data);
                                     persisted.push(sample);
                                 }
-                                localStorage.setItem('mixboard_boards_list', JSON.stringify(persisted));
-                                setBoardsList(persisted);
+                                localStorage.setItem('mixboard_boards_list', JSON.stringify(normalizeBoardMetadataList(persisted)));
+                                setBoardsList(normalizeBoardMetadataList(persisted));
                             } catch (err) {
                                 console.error("Failed to inject samples (local)", err);
                             }

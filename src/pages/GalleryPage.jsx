@@ -19,6 +19,7 @@ import ProBadge from '../components/ProBadge';
 import PaymentSuccessModal from '../components/PaymentSuccessModal';
 import { auth } from '../services/firebase';
 import { useAutoBoardSummaries } from '../hooks/useAutoBoardSummaries';
+import { useAutoBoardNaming } from '../hooks/useAutoBoardNaming';
 
 export default function GalleryPage({
     boardsList,
@@ -47,6 +48,7 @@ export default function GalleryPage({
 
     // Auto-generate summaries for eligible boards
     useAutoBoardSummaries(boardsList, onUpdateBoardMetadata);
+    useAutoBoardNaming(boardsList, onUpdateBoardMetadata);
 
 
     // Detect payment success from URL
@@ -208,7 +210,7 @@ export default function GalleryPage({
 
                         {activeTab === 'active' && (
                             <button
-                                onClick={() => onCreateBoard("New Board")}
+                                onClick={() => onCreateBoard()}
                                 className="hidden md:flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold shadow-lg hover:shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5"
                             >
                                 <Plus size={18} strokeWidth={3} />

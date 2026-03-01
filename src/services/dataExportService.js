@@ -8,6 +8,11 @@
 import { idbGet, idbSet } from './db/indexedDB';
 import { auth } from './firebase';
 import { updateBoardMetadataInCloud } from './storage';
+import {
+    getEffectiveBoardCardCount,
+    normalizeBoardMetadataList,
+    normalizeBoardTitleMeta
+} from './boardTitle/metadata';
 
 // localStorage keys to export
 const EXPORT_KEYS = [
@@ -234,14 +239,19 @@ export async function importData(data, options = { importSettings: false }) {
 
                     // B. Update/Add metadata to the main list
                     // Use metadata from export if available, otherwise reconstruct from data
-                    const meta = board.meta || {
+                    const meta = normalizeBoardTitleMeta({
                         id: board.id,
-                        name: board.data.name || 'Imported Board',
+                        name: board.data.name || '',
+                        nameSource: board.data.name ? 'manual' : 'placeholder',
+                        autoTitle: board.data.autoTitle || '',
+                        autoTitleGeneratedAt: board.data.autoTitleGeneratedAt || 0,
+                        manualTitleUpdatedAt: board.data.manualTitleUpdatedAt || 0,
                         createdAt: board.data.createdAt || Date.now(),
                         updatedAt: board.data.updatedAt || Date.now(),
                         lastAccessedAt: Date.now(),
-                        cardCount: Array.isArray(board.data.cards) ? board.data.cards.length : 0
-                    };
+                        cardCount: getEffectiveBoardCardCount(board.data.cards),
+                        ...(board.meta || {})
+                    });
 
                     const existingIndex = existingBoardsList.findIndex(b => b.id === board.id);
                     if (existingIndex >= 0) {
@@ -267,7 +277,7 @@ export async function importData(data, options = { importSettings: false }) {
             }
 
             // Save updated list back to localStorage
-            localStorage.setItem('mixboard_boards_list', JSON.stringify(existingBoardsList));
+            localStorage.setItem('mixboard_boards_list', JSON.stringify(normalizeBoardMetadataList(existingBoardsList)));
             console.log(`[Import] Restored ${boardCount} boards (Content + Metadata)`);
         }
 

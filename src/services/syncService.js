@@ -9,6 +9,11 @@ import {
     normalizeBoardInstructionSettings
 } from './customInstructionsService';
 import {
+    getEffectiveBoardCardCount,
+    normalizeBoardMetadataList,
+    normalizeBoardTitleMeta
+} from './boardTitle/metadata';
+import {
     handleTransientNetworkError,
     isLikelyNetworkError,
     setupFirestoreConnectivityMonitor
@@ -260,20 +265,24 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                 const createdAt = toEpochMillis(b.createdAt) || recoveredCreatedAt || updatedAt || 0;
                 const lastAccessedAt = toEpochMillis(b.lastAccessedAt) || updatedAt || createdAt || 0;
 
-                return {
+                return normalizeBoardTitleMeta({
                     id: b.id,
-                    name: b.name || 'Untitled',
+                    name: typeof b.name === 'string' ? b.name : '',
+                    nameSource: b.nameSource,
+                    autoTitle: b.autoTitle,
+                    autoTitleGeneratedAt: b.autoTitleGeneratedAt,
+                    manualTitleUpdatedAt: b.manualTitleUpdatedAt,
                     createdAt,
                     updatedAt,
                     lastAccessedAt,
-                    cardCount: b.cards?.length || 0,
+                    cardCount: getEffectiveBoardCardCount(b.cards),
                     deletedAt: b.deletedAt,
                     backgroundImage: b.backgroundImage,
                     summary: summaryToUse
-                };
+                });
             }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
+            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(metadataList)));
             onUpdate(metadataList);
 
             // Ensure background sync completes
@@ -599,21 +608,25 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
                 const createdAt = toEpochMillis(b.createdAt) || recoveredCreatedAt || updatedAt || 0;
                 const lastAccessedAt = toEpochMillis(b.lastAccessedAt) || updatedAt || createdAt || 0;
 
-                return {
+                return normalizeBoardTitleMeta({
                     id: b.id,
-                    name: b.name || 'Untitled',
+                    name: typeof b.name === 'string' ? b.name : '',
+                    nameSource: b.nameSource,
+                    autoTitle: b.autoTitle,
+                    autoTitleGeneratedAt: b.autoTitleGeneratedAt,
+                    manualTitleUpdatedAt: b.manualTitleUpdatedAt,
                     // Prefer explicit createdAt, then recover from ID, lastly use updatedAt (NOT Date.now())
                     createdAt,
                     updatedAt,
                     lastAccessedAt,
-                    cardCount: b.cards?.length || 0,
+                    cardCount: getEffectiveBoardCardCount(b.cards),
                     deletedAt: b.deletedAt,
                     backgroundImage: b.backgroundImage,
                     summary: summaryToUse // CRITICAL: Preserve summary field
-                };
+                });
             }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(metadataList));
+            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(metadataList)));
             onUpdate(metadataList, snapshot.docChanges().map(c => c.doc.data().id));
         }, (error) => {
             handleSyncError('Firestore sync error:', error);
@@ -737,6 +750,7 @@ const persistBoardToCloudOnce = async (payload) => {
         ...meta,
         ...cleanedContent,
         updatedAt: Date.now(), // Keep for UI display
+        cardCount: getEffectiveBoardCardCount(cleanedContent.cards),
         syncVersion: newSyncVersion // Logical clock for conflict detection
     });
 
