@@ -1,9 +1,10 @@
 import { LLMProvider } from './base';
-import { resolveAllImages, getAuthMethod } from '../utils';
+import { resolveAllImages } from '../utils';
 import { generateGeminiImage } from '../../image/geminiImageGenerator';
-import { isRetryableError } from './gemini/errorUtils';
+import { isRetryableError, isRetryableStatusCode, sleepWithAbort } from './gemini/errorUtils';
 import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser';
 import { getKeyPool } from '../keyPoolManager';
+import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate';
 
 export class GeminiProvider extends LLMProvider {
     _isGemini3FlashModel(modelName = '') {
@@ -116,6 +117,7 @@ export class GeminiProvider extends LLMProvider {
 
         let retries = 3;
         let lastError = null;
+        let delay = 1000;
 
         while (retries >= 0) {
             const apiKey = keyPool.getNextKey();
@@ -123,10 +125,19 @@ export class GeminiProvider extends LLMProvider {
                 throw new Error('没有可用的 Gemini API Key');
             }
 
+            const releaseConcurrency = await acquireGeminiConcurrencySlot({
+                providerId: this.config.id || 'default',
+                baseUrl,
+                model: cleanModel,
+                stream: false,
+                signal: options.signal
+            });
+
             try {
                 const response = await fetch('/api/gmi-serving', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: options.signal,
                     body: JSON.stringify({
                         apiKey,
                         baseUrl,
@@ -145,10 +156,18 @@ export class GeminiProvider extends LLMProvider {
                             throw new Error(errMsg);
                         }
                         if (data.error.code === 429 || isRetryableError(errMsg)) {
-                            keyPool.markKeyFailed(apiKey, data.error.code || errMsg);
-                            retries--;
                             lastError = new Error(errMsg);
-                            continue;
+                            if (data.error.code === 429) {
+                                keyPool.markKeyFailed(apiKey, data.error.code);
+                            }
+                            if (retries > 0) {
+                                releaseConcurrency();
+                                await sleepWithAbort(delay, options.signal);
+                                retries--;
+                                delay *= 2;
+                                continue;
+                            }
+                            throw lastError;
                         }
                         throw new Error(errMsg);
                     }
@@ -170,26 +189,45 @@ export class GeminiProvider extends LLMProvider {
                     throw new Error(`API Key 已失效 (${response.status})，请更换 Key`);
                 }
                 if (response.status === 429) {
+                    lastError = new Error(`API Error ${response.status}: ${response.statusText || 'Too Many Requests'}`);
                     keyPool.markKeyFailed(apiKey, response.status);
-                    retries--;
-                    continue;
+                    if (retries > 0) {
+                        releaseConcurrency();
+                        await sleepWithAbort(delay, options.signal);
+                        retries--;
+                        delay *= 2;
+                        continue;
+                    }
+                    throw lastError;
                 }
 
-                if ([500, 502, 503, 504].indexOf(response.status) !== -1 && retries > 0) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    retries--; continue;
+                if (isRetryableStatusCode(response.status) && retries > 0) {
+                    lastError = new Error(`API Error ${response.status}: ${response.statusText || 'Temporary upstream failure'}`);
+                    releaseConcurrency();
+                    await sleepWithAbort(delay, options.signal);
+                    retries--;
+                    delay *= 2;
+                    continue;
                 }
 
                 const err = await response.json().catch(() => ({}));
                 throw new Error(err.error?.message || err.message || `API Error ${response.status}: ${response.statusText}`);
             } catch (e) {
+                if (e.name === 'AbortError' || options.signal?.aborted) {
+                    throw e;
+                }
                 console.error('[Gemini] Chat error details:', e);
-                if (retries > 0) {
+                if (retries > 0 && (isRetryableError(e.message) || e instanceof TypeError)) {
+                    releaseConcurrency();
+                    await sleepWithAbort(delay, options.signal);
                     retries--;
+                    delay *= 2;
                     lastError = e;
                     continue;
                 }
                 throw e;
+            } finally {
+                releaseConcurrency();
             }
         }
         throw lastError || new Error('Gemini 请求失败');
@@ -235,6 +273,7 @@ export class GeminiProvider extends LLMProvider {
         }
 
         let retries = 3;
+        let lastError = null;
         let delay = 1000;
 
         while (retries >= 0) {
@@ -242,6 +281,14 @@ export class GeminiProvider extends LLMProvider {
             if (!apiKey) {
                 throw new Error('没有可用的 Gemini API Key');
             }
+
+            const releaseConcurrency = await acquireGeminiConcurrencySlot({
+                providerId: this.config.id || 'default',
+                baseUrl,
+                model: cleanModel,
+                stream: true,
+                signal: options.signal
+            });
 
             try {
                 const response = await fetch('/api/gmi-serving', {
@@ -265,13 +312,22 @@ export class GeminiProvider extends LLMProvider {
                         throw new Error(`API Key 已失效 (${errStatus})，请更换 Key`);
                     }
                     if (errStatus === 429) {
+                        lastError = new Error(`API Error ${errStatus}: ${response.statusText || 'Too Many Requests'}`);
                         keyPool.markKeyFailed(apiKey, errStatus);
-                        retries--;
-                        continue;
+                        if (retries > 0) {
+                            releaseConcurrency();
+                            await sleepWithAbort(delay, options.signal);
+                            retries--;
+                            delay *= 2;
+                            continue;
+                        }
+                        throw lastError;
                     }
 
-                    if ([500, 502, 503, 504].indexOf(errStatus) !== -1 && retries > 0) {
-                        await new Promise(r => setTimeout(r, delay));
+                    if (isRetryableStatusCode(errStatus) && retries > 0) {
+                        lastError = new Error(`API Error ${errStatus}: ${response.statusText || 'Temporary upstream failure'}`);
+                        releaseConcurrency();
+                        await sleepWithAbort(delay, options.signal);
                         retries--;
                         delay *= 2;
                         continue;
@@ -299,15 +355,21 @@ export class GeminiProvider extends LLMProvider {
             } catch (e) {
                 if (e.name === 'AbortError' || options.signal?.aborted) throw e;
 
-                if (retries > 0) {
+                if (retries > 0 && (isRetryableError(e.message) || e instanceof TypeError)) {
+                    lastError = e;
+                    releaseConcurrency();
+                    await sleepWithAbort(delay, options.signal);
                     retries--;
-                    await new Promise(r => setTimeout(r, delay));
                     delay *= 2;
                     continue;
                 }
                 throw e;
+            } finally {
+                releaseConcurrency();
             }
         }
+
+        throw lastError || new Error('Gemini 流式请求失败');
     }
 
     /**
