@@ -243,8 +243,10 @@ export const createAISlice = (set, get) => {
 
                 const runModel = config.model;
                 const runProviderId = config.providerId || config.id;
+                const runProviderName = config.name || runProviderId || 'unknown';
+                const runBaseUrl = config.baseUrl || 'default';
 
-                console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, Provider: ${runProviderId}`);
+                console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({

@@ -3,6 +3,25 @@ import { DEFAULT_PROVIDERS } from '../../services/llm/registry';
 const CONFIG_KEY = 'mixboard_providers_v3';
 const QUICK_MODEL_KEY = 'mixboard_quick_models';
 
+function normalizeProviders(providers = DEFAULT_PROVIDERS) {
+    const nextProviders = { ...providers };
+    const googleProvider = nextProviders.google;
+    if (!googleProvider) return nextProviders;
+
+    const baseUrl = String(googleProvider.baseUrl || '');
+    const looksLikeLegacyGmiDefault = baseUrl.includes('api.gmi-serving.com');
+    const displayName = String(googleProvider.name || '').trim();
+
+    if (looksLikeLegacyGmiDefault && (!displayName || displayName === 'GMI Gemini')) {
+        nextProviders.google = {
+            ...googleProvider,
+            name: 'GMI Gemini Proxy'
+        };
+    }
+
+    return nextProviders;
+}
+
 // Helper to load initial settings from local storage
 const loadInitialSettings = () => {
     try {
@@ -23,7 +42,7 @@ const loadInitialSettings = () => {
             const parsed = JSON.parse(stored);
             settings = {
                 ...settings,
-                providers: parsed.providers || DEFAULT_PROVIDERS,
+                providers: normalizeProviders(parsed.providers || DEFAULT_PROVIDERS),
                 activeId: parsed.activeId || 'google',
                 lastUpdated: parsed.lastUpdated || 0,
                 globalRoles: parsed.globalRoles || settings.globalRoles,
@@ -43,7 +62,7 @@ const loadInitialSettings = () => {
     }
 
     return {
-        providers: DEFAULT_PROVIDERS,
+        providers: normalizeProviders(DEFAULT_PROVIDERS),
         activeId: 'google',
         lastUpdated: 0,
         quickChatModel: null,
@@ -225,8 +244,9 @@ export const createSettingsSlice = (set, get) => ({
     // Used by Cloud Sync
     setFullConfig: (config) => {
         const now = config.lastUpdated || Date.now();
+        const normalizedProviders = normalizeProviders(config.providers || DEFAULT_PROVIDERS);
         const newState = {
-            providers: config.providers || DEFAULT_PROVIDERS,
+            providers: normalizedProviders,
             activeId: config.activeId || 'google',
             lastUpdated: now,
             globalRoles: config.globalRoles || initialState.globalRoles
@@ -258,7 +278,7 @@ export const createSettingsSlice = (set, get) => ({
     // Reset settings state on logout
     resetSettingsState: () => {
         const defaultState = {
-            providers: DEFAULT_PROVIDERS,
+            providers: normalizeProviders(DEFAULT_PROVIDERS),
             activeId: 'google',
             isSettingsOpen: false,
             quickChatModel: null,
@@ -270,4 +290,3 @@ export const createSettingsSlice = (set, get) => ({
         set(defaultState);
     }
 });
-

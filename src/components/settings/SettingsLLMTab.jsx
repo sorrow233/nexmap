@@ -20,6 +20,27 @@ export default function SettingsLLMTab({
     const providerList = Object.values(providers || {});
     const globalRoles = useStore(state => state.globalRoles);
     const setGlobalRole = useStore(state => state.setGlobalRole);
+    const providerKeys = String(currentProvider?.apiKey || '')
+        .split(',')
+        .map(key => key.trim())
+        .filter(Boolean);
+    const hasMultipleKeys = providerKeys.length > 1;
+    const hasGoogleOfficialKey = providerKeys.some(key => key.startsWith('AIza'));
+    const currentBaseUrl = String(currentProvider?.baseUrl || '');
+    const isGeminiProvider = currentProvider?.protocol === 'gemini';
+
+    let routeHint = null;
+    if (isGeminiProvider) {
+        if (currentBaseUrl.includes('generativelanguage.googleapis.com')) {
+            routeHint = '当前链路：Google 官方 Gemini 直连';
+        } else if (currentBaseUrl.includes('api.gmi-serving.com') && hasGoogleOfficialKey) {
+            routeHint = '当前链路：配置写的是 GMI，但运行时会自动切到 Google 官方 Gemini 直连';
+        } else if (currentBaseUrl.includes('api.gmi-serving.com')) {
+            routeHint = '当前链路：GMI 代理。这里如果填了多个 Key，会启用多 Key 轮询';
+        } else if (currentBaseUrl) {
+            routeHint = `当前链路：自定义 Gemini 基地址 ${currentBaseUrl}`;
+        }
+    }
 
     return (
         <div className="flex gap-6 h-full">
@@ -154,6 +175,17 @@ export default function SettingsLLMTab({
                 </div>
 
                 <div className="space-y-5">
+                    {isGeminiProvider && routeHint && (
+                        <div className="p-3 rounded-xl border border-amber-200/70 bg-amber-50/80 dark:bg-amber-900/10 dark:border-amber-500/20">
+                            <div className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                                {routeHint}
+                            </div>
+                            <div className="mt-1 text-[11px] text-amber-700/90 dark:text-amber-200/80">
+                                Key 数量：{providerKeys.length || 0}{hasMultipleKeys ? '（已启用轮询）' : '（单 Key，不会轮询）'}
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.settings.providerName}</label>
                         <div className="relative">

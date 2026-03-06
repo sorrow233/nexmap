@@ -43,6 +43,10 @@ function getModelDisplayName(modelId, customModels = []) {
     return name.replace(/-preview$/, '').replace(/-/g, ' ');
 }
 
+function buildModelEntryKey(model) {
+    return `${model.providerId || 'default'}::${model.id}`;
+}
+
 /**
  * ModelSwitcher V2 - 极简主义设计
  * 核心理念：用户配置优先，隐藏不必要的复杂性
@@ -56,7 +60,7 @@ export default function ModelSwitcher({ compact = false }) {
     const providers = useStore(state => state.providers);
     const quickChatModel = useStore(state => state.quickChatModel);
     const setQuickChatModel = useStore(state => state.setQuickChatModel);
-    const getEffectiveChatModel = useStore(state => state.getEffectiveChatModel);
+    const effectiveChatConfig = useStore(state => state.getEffectiveChatConfig?.());
 
     // 动态提取用户在所有厂商配置中定义的模型
     const userModels = useMemo(() => {
@@ -92,7 +96,7 @@ export default function ModelSwitcher({ compact = false }) {
             }
         });
 
-        const unique = (arr) => Array.from(new Map(arr.map(item => [item.id, item])).values());
+        const unique = (arr) => Array.from(new Map(arr.map(item => [buildModelEntryKey(item), item])).values());
         return unique(chatModels);
     }, [providers]);
 
@@ -100,21 +104,24 @@ export default function ModelSwitcher({ compact = false }) {
     const groupedModels = useMemo(() => {
         const groups = {};
         userModels.forEach(model => {
-            const providerName = model.provider || 'Other';
-            if (!groups[providerName]) {
-                groups[providerName] = {
-                    name: providerName,
+            const providerKey = model.providerId || model.provider || 'other';
+            if (!groups[providerKey]) {
+                groups[providerKey] = {
+                    name: model.provider || 'Other',
                     providerId: model.providerId,
                     models: []
                 };
             }
-            groups[providerName].models.push(model);
+            groups[providerKey].models.push(model);
         });
         return Object.values(groups);
     }, [userModels]);
 
-    const currentChatModel = useStore(state => state.getEffectiveChatModel?.() || state.quickChatModel);
-    const displayModel = currentChatModel;
+    const displayModel = effectiveChatConfig?.model || quickChatModel;
+    const displayProviderId = effectiveChatConfig?.providerId || effectiveChatConfig?.id || null;
+    const selectedEntry = useMemo(() => {
+        return userModels.find(model => model.id === displayModel && model.providerId === displayProviderId) || null;
+    }, [displayModel, displayProviderId, userModels]);
 
     // 判断是否使用预设模型
     const isUsingPresets = groupedModels.length === 0;
@@ -162,6 +169,11 @@ export default function ModelSwitcher({ compact = false }) {
                         <span className="max-w-[120px] truncate">
                             {getModelDisplayName(displayModel, userModels)}
                         </span>
+                        {selectedEntry?.provider && (
+                            <span className="max-w-[88px] truncate text-[10px] text-slate-400">
+                                {selectedEntry.provider}
+                            </span>
+                        )}
                         <ChevronDown size={12} className={`opacity-50 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                     </>
                 )}
@@ -205,7 +217,7 @@ export default function ModelSwitcher({ compact = false }) {
                         <div className="max-h-[300px] overflow-y-auto custom-scrollbar py-1">
                             {groupedModels.length > 0 ? (
                                 groupedModels.map((group, groupIndex) => (
-                                    <div key={group.name} className={groupIndex > 0 ? 'mt-2 pt-2 border-t border-slate-100 dark:border-white/5' : ''}>
+                                    <div key={group.providerId || group.name} className={groupIndex > 0 ? 'mt-2 pt-2 border-t border-slate-100 dark:border-white/5' : ''}>
                                         {/* Provider 分组标题 */}
                                         <div className="px-2 py-1.5 flex items-center gap-2">
                                             <Globe size={10} className="text-slate-400" />
@@ -216,10 +228,10 @@ export default function ModelSwitcher({ compact = false }) {
                                         {/* Provider 下的模型列表 */}
                                         <div className="space-y-0.5">
                                             {group.models.map((model) => {
-                                                const isSelected = displayModel === model.id;
+                                                const isSelected = displayModel === model.id && displayProviderId === model.providerId;
                                                 return (
                                                     <button
-                                                        key={model.id}
+                                                        key={buildModelEntryKey(model)}
                                                         onClick={() => handleModelSelect(model)}
                                                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left
                                                             transition-all duration-200 group
@@ -232,7 +244,10 @@ export default function ModelSwitcher({ compact = false }) {
                                                             <div className={`p-1 rounded-lg ${isSelected ? 'bg-white dark:bg-slate-800 shadow-sm' : 'bg-slate-200/50 dark:bg-white/5'}`}>
                                                                 {model.icon ? <model.icon size={12} className={model.color} /> : <Bot size={12} />}
                                                             </div>
-                                                            <span className="truncate text-xs">{getModelDisplayName(model.id, userModels)}</span>
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="truncate text-xs">{getModelDisplayName(model.id, userModels)}</span>
+                                                                <span className="truncate text-[9px] text-slate-400">{model.providerId}</span>
+                                                            </div>
                                                         </div>
                                                         {isSelected && <Check size={14} className="text-cyan-500 flex-shrink-0" />}
                                                     </button>
