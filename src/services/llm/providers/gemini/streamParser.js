@@ -1,4 +1,5 @@
 import { isRetryableError } from './errorUtils';
+import { extractCandidateText } from './partUtils.js';
 
 /**
  * Detect whether a Gemini candidate includes grounding/search metadata.
@@ -26,9 +27,32 @@ export function didCandidateUseSearch(candidate) {
  */
 export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     const decoder = new TextDecoder();
-    let lastFullText = ''; // Track cumulative text
+    let lastVisibleText = '';
+    let lastFallbackText = '';
     let buffer = '';
     let usedSearch = false;
+    let hasVisibleText = false;
+
+    const emitVisibleDelta = (candidate) => {
+        const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
+        const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
+        lastFallbackText = fallbackText || lastFallbackText;
+
+        if (!visibleText) return;
+
+        let delta = '';
+        if (visibleText.startsWith(lastVisibleText)) {
+            delta = visibleText.substring(lastVisibleText.length);
+        } else {
+            delta = visibleText;
+        }
+
+        lastVisibleText = visibleText;
+        if (delta) {
+            hasVisibleText = true;
+            onToken(delta);
+        }
+    };
 
     try {
         onLog('[Gemini] Stream response OK, processing chunks...');
@@ -79,24 +103,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                         usedSearch = true;
                     }
 
-                    // Gemini stream format: candidate content parts
-                    const currentText = candidate?.content?.parts?.[0]?.text;
-
-                    if (currentText) {
-                        // Robust Delta Calculation
-                        let delta = '';
-                        if (currentText.startsWith(lastFullText)) {
-                            delta = currentText.substring(lastFullText.length);
-                            lastFullText = currentText;
-                        } else {
-                            delta = currentText;
-                            lastFullText += currentText;
-                        }
-
-                        if (delta) {
-                            onToken(delta);
-                        }
-                    }
+                    emitVisibleDelta(candidate);
                 } catch (jsonErr) {
                     // Handle retryable errors thrown above
                     if (jsonErr.retryable) {
@@ -134,18 +141,20 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     usedSearch = true;
                 }
 
-                const text = candidate?.content?.parts?.[0]?.text;
-                if (text) {
-                    const delta = text.startsWith(lastFullText) ? text.substring(lastFullText.length) : text;
-                    if (delta) {
-                        onToken(delta);
-                    }
-                }
+                emitVisibleDelta(candidate);
             } catch (e) {
                 if (e.retryable) throw e;
                 if (e.message && !e.message.includes('JSON')) throw e;
             }
         }
+
+        if (!hasVisibleText && lastFallbackText) {
+            const error = new Error('Gemini stream ended without visible text');
+            error.code = 'EMPTY_VISIBLE_STREAM';
+            error.fallbackText = lastFallbackText;
+            throw error;
+        }
+
         return { usedSearch };
     } finally {
         // Reader release is handled by caller or automatic cleanup if properly structured, 

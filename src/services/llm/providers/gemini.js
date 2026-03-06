@@ -501,6 +501,9 @@ export class GeminiProvider extends LLMProvider {
 
     _isFallbackEligible(error) {
         if (!error) return false;
+        if (error?.code === 'EMPTY_VISIBLE_STREAM') {
+            return true;
+        }
         const errorMessage = error?.message || String(error);
         // Check error.statusCode directly (set by _createHandledApiError) AND
         // parse from message text — both paths must be covered.
