@@ -59,8 +59,9 @@ export default function ModelSwitcher({ compact = false }) {
     // Store state
     const providers = useStore(state => state.providers);
     const quickChatModel = useStore(state => state.quickChatModel);
+    const quickChatProviderId = useStore(state => state.quickChatProviderId);
+    const globalChatRole = useStore(state => state.globalRoles?.chat);
     const setQuickChatModel = useStore(state => state.setQuickChatModel);
-    const effectiveChatConfig = useStore(state => state.getEffectiveChatConfig?.());
 
     // 动态提取用户在所有厂商配置中定义的模型
     const userModels = useMemo(() => {
@@ -117,8 +118,13 @@ export default function ModelSwitcher({ compact = false }) {
         return Object.values(groups);
     }, [userModels]);
 
-    const displayModel = effectiveChatConfig?.model || quickChatModel;
-    const displayProviderId = effectiveChatConfig?.providerId || effectiveChatConfig?.id || null;
+    const displayProviderId = quickChatModel
+        ? (quickChatProviderId || globalChatRole?.providerId || 'google')
+        : (globalChatRole?.providerId || 'google');
+    const displayModel = quickChatModel
+        || globalChatRole?.model
+        || providers?.[displayProviderId]?.model
+        || 'google/gemini-3-pro-preview';
     const selectedEntry = useMemo(() => {
         return userModels.find(model => model.id === displayModel && model.providerId === displayProviderId) || null;
     }, [displayModel, displayProviderId, userModels]);
