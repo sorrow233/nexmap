@@ -27,6 +27,18 @@ const transportCircuitState = {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiProvider extends LLMProvider {
+    _hasGoogleOfficialKey() {
+        const keysString = this.config?.apiKeys || this.config?.apiKey || '';
+        return String(keysString)
+            .split(',')
+            .map(k => k.trim())
+            .some(k => k.startsWith('AIza'));
+    }
+
+    _isOfficialGeminiBaseUrl(baseUrl = '') {
+        return String(baseUrl).includes('generativelanguage.googleapis.com');
+    }
+
     _isGemini3FlashModel(modelName = '') {
         const lower = String(modelName).toLowerCase();
         return lower.includes('gemini-3-flash');
@@ -289,11 +301,7 @@ export class GeminiProvider extends LLMProvider {
 
     _getResolvedBaseUrl() {
         const base = this.config?.baseUrl?.trim();
-        const keysString = this.config?.apiKeys || this.config?.apiKey || '';
-        const hasGoogleKey = String(keysString)
-            .split(',')
-            .map(k => k.trim())
-            .some(k => k.startsWith('AIza'));
+        const hasGoogleKey = this._hasGoogleOfficialKey();
 
         if (base && base.includes('api.gmi-serving.com') && hasGoogleKey) {
             console.warn('[Gemini] Legacy GMI baseUrl detected with Google API key, auto-switching to official Gemini endpoint');
@@ -318,8 +326,16 @@ export class GeminiProvider extends LLMProvider {
             return ['proxy'];
         }
 
-        // Always prefer proxy first to avoid exposing API keys in URL.
-        // Only fall back to direct when proxy is temporarily degraded.
+        // For official Gemini API keys, direct transport must be primary.
+        // The user explicitly configured Google's official endpoint; routing
+        // through /api/gmi-serving first adds an unnecessary failure point and
+        // is exactly what caused "official provider still POSTs /api/gmi-serving".
+        if (this._isOfficialGeminiBaseUrl(baseUrl) && this._hasGoogleOfficialKey()) {
+            return ['direct', 'proxy'];
+        }
+
+        // For proxy/bearer-style providers, keep proxy-first to avoid exposing
+        // provider-specific bearer tokens in the browser.
         if (this._isProxyTemporarilyDegraded()) {
             return ['direct', 'proxy'];
         }
