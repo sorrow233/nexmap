@@ -320,24 +320,40 @@ export const createAISlice = (set, get) => {
                 } else {
                     // Provide user-friendly error messages based on error type
                     const errorMsg = e.message || 'Generation failed';
+                    const lowerErrorMsg = errorMsg.toLowerCase();
                     let userMessage;
 
-                    if (errorMsg.toLowerCase().includes('upstream') ||
-                        errorMsg.toLowerCase().includes('unavailable') ||
-                        errorMsg.toLowerCase().includes('service')) {
+                    if (
+                        lowerErrorMsg.includes('high demand') ||
+                        (lowerErrorMsg.includes('503') && lowerErrorMsg.includes('unavailable'))
+                    ) {
+                        userMessage = lang.startsWith('zh')
+                            ? `\n\n**⚠️ Gemini 3.1 当前高负载**\n\nGoogle 官方的 Gemini 3.1 Pro Preview 当前负载较高，这次请求被上游拒绝了。\n这不是你的 Key 问题，也不是你把额度打爆了。请直接重试一次。`
+                            : `\n\n**⚠️ Gemini 3.1 is under high demand**\n\nGoogle's official Gemini 3.1 Pro Preview is currently overloaded and rejected this request.\nThis is not a key problem and not a quota blow-up. Please retry once.`;
+                    } else if (
+                        lowerErrorMsg.includes('generative language api has not been used') ||
+                        lowerErrorMsg.includes('service_disabled') ||
+                        lowerErrorMsg.includes('api key not valid')
+                    ) {
+                        userMessage = lang.startsWith('zh')
+                            ? `\n\n**⚠️ 官方 Gemini Key 配置有问题**\n\n当前这把 Google 官方 Key 不能直接调用 Gemini API。\n请确认这个 Key 所属的 Google Cloud 项目已经启用 Generative Language API，或者换一把已经开通的官方 Key。`
+                            : `\n\n**⚠️ Official Gemini key is not configured correctly**\n\nThis Google official key cannot call the Gemini API directly.\nPlease make sure the Google Cloud project behind this key has Generative Language API enabled, or use another official key that is already enabled.`;
+                    } else if (lowerErrorMsg.includes('upstream') ||
+                        lowerErrorMsg.includes('unavailable') ||
+                        lowerErrorMsg.includes('service')) {
                         // Service unavailable
                         const info = notifications?.serviceUnavailable;
                         userMessage = `\n\n**${info?.title || "⚠️ AI Service Unavailable"}**\n\n` +
                             `${info?.message}\n` +
                             `${info?.englishMessage ? info.englishMessage + '\n\n' : ''}` +
                             `${info?.action}`;
-                    } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+                    } else if (lowerErrorMsg.includes('rate limit') || errorMsg.includes('429')) {
                         // Rate limited
                         const info = notifications?.rateLimit;
                         userMessage = `\n\n**${info?.title || "⚠️ Rate Limited"}**\n\n` +
                             `${info?.message}\n` +
                             `${info?.englishMessage || ''}`;
-                    } else if (errorMsg.includes('timeout')) {
+                    } else if (lowerErrorMsg.includes('timeout')) {
                         // Timeout
                         const info = notifications?.timeout;
                         userMessage = `\n\n**${info?.title || "⚠️ Request Timeout"}**\n\n` +

@@ -20,6 +20,7 @@ const KEY_ACQUIRE_MAX_WAIT_MS = 75 * 1000;
 const KEY_ACQUIRE_POLL_MAX_MS = 5000;
 const MAX_CHAT_ATTEMPTS = 2;
 const MAX_STREAM_ATTEMPTS = 2;
+const OFFICIAL_GEMINI_31_STREAM_ATTEMPTS = 4;
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -27,23 +28,72 @@ const transportCircuitState = {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiProvider extends LLMProvider {
-    _hasGoogleOfficialKey() {
+    _getConfiguredKeys() {
         const keysString = this.config?.apiKeys || this.config?.apiKey || '';
         return String(keysString)
             .split(',')
             .map(k => k.trim())
-            .some(k => k.startsWith('AIza'));
+            .filter(Boolean);
+    }
+
+    _hasGoogleOfficialKey() {
+        return this._getConfiguredKeys().some(k => k.startsWith('AIza'));
+    }
+
+    _hasOnlyGoogleOfficialKeys() {
+        const keys = this._getConfiguredKeys();
+        return keys.length > 0 && keys.every(k => k.startsWith('AIza'));
     }
 
     _isOfficialGeminiBaseUrl(baseUrl = '') {
         return String(baseUrl).includes('generativelanguage.googleapis.com');
     }
 
-    _shouldForceNonStreamForOfficialGemini(baseUrl = '', cleanModel = '') {
+    _isOfficialGeminiProviderConfig(baseUrl = '') {
+        return this._isOfficialGeminiBaseUrl(baseUrl) && this._hasOnlyGoogleOfficialKeys();
+    }
+
+    _isOfficialGemini31PreviewRequest(baseUrl = '', cleanModel = '') {
         const lowerModel = String(cleanModel || '').toLowerCase();
-        return this._isOfficialGeminiBaseUrl(baseUrl) &&
-            this._hasGoogleOfficialKey() &&
+        return this._isOfficialGeminiProviderConfig(baseUrl) &&
             lowerModel.includes('gemini-3.1-pro-preview');
+    }
+
+    _isHighDemandUnavailable(statusCode, errorMessage = '') {
+        const code = Number(statusCode);
+        if (code !== 503) return false;
+
+        const lower = String(errorMessage || '').toLowerCase();
+        return lower.includes('high demand') ||
+            lower.includes('currently experiencing high demand') ||
+            lower.includes('status\": \"unavailable') ||
+            lower.includes('status":"unavailable') ||
+            lower.includes('temporarily unavailable') ||
+            lower.includes('please try again later');
+    }
+
+    _getMaxStreamAttempts(baseUrl = '', cleanModel = '') {
+        if (this._isOfficialGemini31PreviewRequest(baseUrl, cleanModel)) {
+            return OFFICIAL_GEMINI_31_STREAM_ATTEMPTS;
+        }
+        return MAX_STREAM_ATTEMPTS;
+    }
+
+    _shouldUseNonStreamFallback({ baseUrl = '', cleanModel = '', error = null } = {}) {
+        if (!error) return false;
+        if (error?.code === 'EMPTY_VISIBLE_STREAM') return true;
+
+        const errorMessage = error?.message || String(error);
+        const statusCode = Number.isFinite(Number(error?.statusCode))
+            ? Number(error.statusCode)
+            : this._extractStatusCodeFromMessage(errorMessage);
+
+        if (this._isOfficialGemini31PreviewRequest(baseUrl, cleanModel) &&
+            this._isHighDemandUnavailable(statusCode, errorMessage)) {
+            return false;
+        }
+
+        return this._isFallbackEligible(error);
     }
 
     _isGemini3FlashModel(modelName = '') {
@@ -303,6 +353,10 @@ export class GeminiProvider extends LLMProvider {
             return 60 * 1000;
         }
 
+        if (this._isHighDemandUnavailable(statusCode, errorMessage)) {
+            return computeBackoffDelay(attempt, 2500, 15000);
+        }
+
         return computeBackoffDelay(attempt);
     }
 
@@ -337,8 +391,8 @@ export class GeminiProvider extends LLMProvider {
         // The user explicitly configured Google's official endpoint; routing
         // through /api/gmi-serving first adds an unnecessary failure point and
         // is exactly what caused "official provider still POSTs /api/gmi-serving".
-        if (this._isOfficialGeminiBaseUrl(baseUrl) && this._hasGoogleOfficialKey()) {
-            return ['direct', 'proxy'];
+        if (this._isOfficialGeminiProviderConfig(baseUrl)) {
+            return ['direct'];
         }
 
         // For proxy/bearer-style providers, keep proxy-first to avoid exposing
@@ -756,18 +810,6 @@ export class GeminiProvider extends LLMProvider {
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
-        if (this._shouldForceNonStreamForOfficialGemini(baseUrl, cleanModel)) {
-            console.warn('[Gemini] Official Gemini 3.1 Pro stream disabled for stability, using non-stream generateContent');
-            const text = await this.chat(messages, model, {
-                ...options,
-                signal: options.signal
-            });
-            if (text) {
-                onToken(text);
-            }
-            return;
-        }
-
         const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
 
@@ -809,7 +851,7 @@ export class GeminiProvider extends LLMProvider {
             });
 
         try {
-            const maxAttempts = MAX_STREAM_ATTEMPTS;
+            const maxAttempts = this._getMaxStreamAttempts(baseUrl, cleanModel);
             let attempt = 0;
             let lastError = null;
             let activeApiKey = null;
@@ -941,7 +983,11 @@ export class GeminiProvider extends LLMProvider {
                     }
 
                     lastError = error;
-                    if (options.allowNonStreamFallback !== false && retryableLike) {
+                    if (
+                        options.allowNonStreamFallback !== false &&
+                        retryableLike &&
+                        this._shouldUseNonStreamFallback({ baseUrl, cleanModel, error })
+                    ) {
                         break;
                     }
 
@@ -949,7 +995,11 @@ export class GeminiProvider extends LLMProvider {
                 }
             }
 
-            if (!options.signal?.aborted && options.allowNonStreamFallback !== false && this._isFallbackEligible(lastError)) {
+            if (
+                !options.signal?.aborted &&
+                options.allowNonStreamFallback !== false &&
+                this._shouldUseNonStreamFallback({ baseUrl, cleanModel, error: lastError })
+            ) {
                 console.warn('[Gemini] Stream failed after retries, fallback to non-stream generateContent');
                 const text = await this.chat(messages, model, {
                     ...options,
