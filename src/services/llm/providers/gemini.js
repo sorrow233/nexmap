@@ -39,6 +39,13 @@ export class GeminiProvider extends LLMProvider {
         return String(baseUrl).includes('generativelanguage.googleapis.com');
     }
 
+    _shouldForceNonStreamForOfficialGemini(baseUrl = '', cleanModel = '') {
+        const lowerModel = String(cleanModel || '').toLowerCase();
+        return this._isOfficialGeminiBaseUrl(baseUrl) &&
+            this._hasGoogleOfficialKey() &&
+            lowerModel.includes('gemini-3.1-pro-preview');
+    }
+
     _isGemini3FlashModel(modelName = '') {
         const lower = String(modelName).toLowerCase();
         return lower.includes('gemini-3-flash');
@@ -748,6 +755,18 @@ export class GeminiProvider extends LLMProvider {
         const baseUrl = this._getResolvedBaseUrl();
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
+
+        if (this._shouldForceNonStreamForOfficialGemini(baseUrl, cleanModel)) {
+            console.warn('[Gemini] Official Gemini 3.1 Pro stream disabled for stability, using non-stream generateContent');
+            const text = await this.chat(messages, model, {
+                ...options,
+                signal: options.signal
+            });
+            if (text) {
+                onToken(text);
+            }
+            return;
+        }
 
         const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
