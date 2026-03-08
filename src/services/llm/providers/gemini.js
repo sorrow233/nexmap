@@ -96,6 +96,17 @@ export class GeminiProvider extends LLMProvider {
         return this._isFallbackEligible(error);
     }
 
+    _shouldAttachGoogleSearchTool(baseUrl = '', options = {}) {
+        if (options?.tools) return false;
+        if (options?.useSearch === true) return true;
+        if (options?.useSearch === false) return false;
+
+        // Restore the old default only for official Gemini direct providers.
+        // Proxy/GMI chains stay search-off by default to avoid reintroducing
+        // the 429/high-load amplification that previously forced this off.
+        return this._isOfficialGeminiProviderConfig(baseUrl);
+    }
+
     _isGemini3FlashModel(modelName = '') {
         const lower = String(modelName).toLowerCase();
         return lower.includes('gemini-3-flash');
@@ -615,8 +626,7 @@ export class GeminiProvider extends LLMProvider {
 
         if (options.tools) {
             requestBody.tools = options.tools;
-        } else if (options.useSearch === true) {
-            // Search tool is opt-in for stability under heavy context/concurrency workloads.
+        } else if (this._shouldAttachGoogleSearchTool(baseUrl, options)) {
             requestBody.tools = [{ google_search: {} }];
         }
 
@@ -822,8 +832,7 @@ export class GeminiProvider extends LLMProvider {
 
         if (options.tools) {
             requestBody.tools = options.tools;
-        } else if (options.useSearch === true) {
-            // Search tool is opt-in for stability under heavy context/concurrency workloads.
+        } else if (this._shouldAttachGoogleSearchTool(baseUrl, options)) {
             requestBody.tools = [{ google_search: {} }];
         }
 
