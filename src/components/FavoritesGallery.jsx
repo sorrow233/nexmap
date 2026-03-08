@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Star, MessageSquare, ArrowRight, ExternalLink, Share2, X } from 'lucide-react';
 import favoritesService from '../services/favoritesService';
 import { useNavigate } from 'react-router-dom';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 import ShareModal from './share/ShareModal';
 import { useLanguage } from '../contexts/LanguageContext';
+import { renderMarkdownToHtml } from '../utils/markdownRenderer';
 
 export default function FavoritesGallery() {
     const [favorites, setFavorites] = useState([]);
@@ -42,8 +41,7 @@ export default function FavoritesGallery() {
 
     const renderMarkdown = (content) => {
         if (!content) return '';
-        const html = marked.parse(content);
-        return DOMPurify.sanitize(html);
+        return renderMarkdownToHtml(content);
     };
 
     if (favorites.length === 0) {

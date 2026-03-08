@@ -5,8 +5,7 @@ import { isSafari, isIOS } from '../utils/browser';
 import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
 
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
+import { renderMarkdownToHtml } from '../utils/markdownRenderer';
 
 const StickyNote = React.memo(function StickyNote({
     data,
@@ -281,7 +280,7 @@ const StickyNote = React.memo(function StickyNote({
                         onMouseDown={(e) => e.stopPropagation()} // Allow selecting text
                         onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }} // Enter edit mode on double click
                         dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(marked(data.data?.content || '', { breaks: true }))
+                            __html: renderMarkdownToHtml(data.data?.content || '')
                         }}
                     />
                 )}

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, Clipboard, Star, Check } from 'lucide-react';
 import { formatTime } from '../utils/format';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 import { isSafari, isIOS } from '../utils/browser';
+import { renderMarkdownToHtml } from '../utils/markdownRenderer';
 
 import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
@@ -138,8 +137,7 @@ const Card = React.memo(function Card({
     // Render Markdown
     const markdownHtml = React.useMemo(() => {
         try {
-            const rawHtml = marked.parse(previewText, { breaks: true, gfm: true });
-            return { __html: DOMPurify.sanitize(rawHtml) };
+            return { __html: renderMarkdownToHtml(previewText) };
         } catch (e) {
             return { __html: previewText };
         }

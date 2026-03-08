@@ -1,7 +1,7 @@
 {
   "name": "mixboard-canvas",
   "private": false,
-  "version": "2.2.187",
+  "version": "2.2.188",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,8 +30,10 @@
     "highlight.js": "^11.11.1",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
+    "katex": "^0.16.37",
     "lucide-react": "^0.294.0",
     "marked": "^11.0.0",
+    "marked-katex-extension": "^5.1.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^2.0.5",

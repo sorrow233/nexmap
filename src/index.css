@@ -462,6 +462,39 @@ body,
         margin-bottom: 0.6em;
     }
 
+    .markdown-content .katex-display,
+    .markdown-preview .katex-display,
+    .markdown-body .katex-display,
+    .prose .katex-display {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin: 0.75em 0;
+        padding: 0.15em 0 0.3em;
+    }
+
+    .markdown-content .katex-display::-webkit-scrollbar,
+    .markdown-preview .katex-display::-webkit-scrollbar,
+    .markdown-body .katex-display::-webkit-scrollbar,
+    .prose .katex-display::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .markdown-content .katex-display::-webkit-scrollbar-thumb,
+    .markdown-preview .katex-display::-webkit-scrollbar-thumb,
+    .markdown-body .katex-display::-webkit-scrollbar-thumb,
+    .prose .katex-display::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.45);
+        border-radius: 999px;
+    }
+
+    .markdown-content .katex,
+    .markdown-preview .katex,
+    .markdown-body .katex,
+    .prose .katex {
+        font-size: 1em;
+    }
+
     @media (prefers-color-scheme: dark) {
         :root {
             --luminous-white: #ffffff;

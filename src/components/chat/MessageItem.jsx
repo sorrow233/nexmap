@@ -1,19 +1,15 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { createRoot } from 'react-dom/client';
+import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { marked } from 'marked';
 import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe } from 'lucide-react';
 import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
-import DOMPurify from 'dompurify';
 import CodeBlock from './CodeBlock';
+import { createMarkdownRenderer, parseMarkdown, sanitizeMarkdownHtml } from '../../utils/markdownRenderer';
 
-// Configure marked to use placeholder for code blocks
-const codeBlockPlaceholder = '___CODE_BLOCK_PLACEHOLDER_';
 let codeBlockCounter = 0;
 let codeBlocks = [];
 
-const markedRenderer = new marked.Renderer();
+const markedRenderer = createMarkdownRenderer();
 markedRenderer.code = function (code, language) {
     const id = codeBlockCounter++;
     codeBlocks.push({ id, code, language });
@@ -22,8 +18,6 @@ markedRenderer.code = function (code, language) {
 
 // Component to render message content with code blocks as React components
 const MessageContentWithCodeBlocks = React.memo(({ html, codeBlocks, onClick }) => {
-    const containerRef = React.useRef(null);
-
     // Parse HTML and split by code block placeholders
     const parts = React.useMemo(() => {
         if (!html) return [];
@@ -202,7 +196,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         codeBlockCounter = 0;
         codeBlocks = [];
 
-        let html = marked ? marked.parse(cnt, { renderer: markedRenderer }) : cnt;
+        let html = parseMarkdown(cnt, { renderer: markedRenderer });
         const capturedCodeBlocks = [...codeBlocks];
 
         if ((!currentMarks || currentMarks.length === 0) && (!currentNotes || currentNotes.length === 0)) {
@@ -430,7 +424,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                         <div className="font-sans break-words leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
                             {streamingRenderedHtml && (
                                 <MessageContentWithCodeBlocks
-                                    html={DOMPurify.sanitize(streamingRenderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
+                                    html={sanitizeMarkdownHtml(streamingRenderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
                                     codeBlocks={streamingCodeBlocksToRender}
                                     onClick={handleMessageClick}
                                 />
@@ -443,7 +437,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                         </div>
                     ) : (
                         <MessageContentWithCodeBlocks
-                            html={DOMPurify.sanitize(renderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
+                            html={sanitizeMarkdownHtml(renderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
                             codeBlocks={codeBlocksToRender}
                             onClick={handleMessageClick}
                         />

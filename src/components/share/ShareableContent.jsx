@@ -1,12 +1,6 @@
 import React, { useEffect } from 'react';
-import { marked } from 'marked';
 import { THEME_CONFIGS, LAYOUT_CONFIGS, THEME_MAP, generateThemeCSS } from './themeConfigs';
-
-// Configure marked options
-marked.setOptions({
-    breaks: true, // Enable line breaks
-    gfm: true,    // Enable GitHub Flavored Markdown
-});
+import { renderMarkdownToHtml } from '../../utils/markdownRenderer';
 
 const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout = 'card', showWatermark }, ref) => {
     // Map theme IDs using imported THEME_MAP
@@ -27,7 +21,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         }
     }, []);
 
-    const htmlContent = marked(content || 'No content provided');
+    const htmlContent = renderMarkdownToHtml(content || 'No content provided');
 
     // CSS Generator
     const generateThemeStyles = () => {

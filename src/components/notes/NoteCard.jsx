@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, PencilLine, Copy, Trash2, ChevronDown, ChevronUp, Maximize2 } from 'lucide-react';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
+import { renderMarkdownToHtml } from '../../utils/markdownRenderer';
 
 const formatDateTime = (ts) => {
     if (!ts) return '-';
@@ -80,8 +79,7 @@ function NoteCardGrid({
 
     const renderedContent = useMemo(() => {
         if (!note.content) return null;
-        const rawHtml = marked(note.content, { breaks: true, gfm: true });
-        return DOMPurify.sanitize(rawHtml);
+        return renderMarkdownToHtml(note.content);
     }, [note.content]);
 
     return (
@@ -186,8 +184,7 @@ function NoteCardList({
 
     const renderedContent = useMemo(() => {
         if (!note.content) return null;
-        const rawHtml = marked(note.content, { breaks: true, gfm: true });
-        return DOMPurify.sanitize(rawHtml);
+        return renderMarkdownToHtml(note.content);
     }, [note.content]);
 
     return (

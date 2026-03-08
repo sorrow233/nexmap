@@ -7,6 +7,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { setupMobileViewportFix } from './utils/browser.js';
 import './index.css'
 import './styles/hljs-theme.css'
+import 'katex/dist/katex.min.css'
 
 import packageJson from '../package.json';
 console.log(`%c NexMap v${packageJson.version} - Loaded at ${new Date().toISOString()}`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
