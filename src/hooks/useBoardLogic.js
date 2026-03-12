@@ -627,6 +627,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         setQuickPrompt,
         setCustomSproutPrompt,
         setExpandedCardId,
+        setSelectedIds,
         setTempInstructions,
         setIsInstructionPanelOpen,
         navigate,

@@ -1,9 +1,18 @@
 // Browser detection utilities
 export const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 export const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+export const isIPhone = /iPhone|iPod/.test(navigator.userAgent);
 export const isMobile = isIOS || /Android/i.test(navigator.userAgent);
 export const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 export const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export function isCompactViewport(width = window.innerWidth) {
+    return width <= 640;
+}
+
+export function shouldUseIOSCompactBoard(width = window.innerWidth) {
+    return isIPhone && isSafari && isCompactViewport(width);
+}
 
 // iOS Safari 100vh fix - sets CSS custom property for true viewport height
 export function setupMobileViewportFix() {
