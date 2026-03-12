@@ -17,7 +17,7 @@ import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
  *    - Uses `pathCacheRef` to draw.
  *    - Clears and transforms canvas context.
  */
-const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections, offset, scale }) {
+const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, connections, offset, scale }) {
     const canvasRef = useRef(null);
 
     // =========================================================================
@@ -58,17 +58,20 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
     useEffect(() => {
         const pathCache = pathCacheRef.current;
         const prevCardsMap = prevCardsMapRef.current;
-        const nextCardsMap = new Map();
+        const nextCardsMap = cardMap || new Map();
+        const activeCardIds = new Set();
 
-        // Index current cards for O(1) lookup - skip soft deleted cards
-        for (const c of cards) {
-            if (c.deletedAt) continue; // Skip soft-deleted cards
-            nextCardsMap.set(c.id, c);
+        if (!cardMap) {
+            for (const card of cards) {
+                if (card.deletedAt) continue;
+                nextCardsMap.set(card.id, card);
+            }
         }
 
         // 1. Detect which cards actually moved/resized OR changed color
         const movedCardIds = new Set();
         for (const [id, card] of nextCardsMap) {
+            activeCardIds.add(id);
             const prev = prevCardsMap.get(id);
             if (!prev ||
                 prev.x !== card.x ||
@@ -131,6 +134,13 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             }
         }
 
+        for (const [id] of prevCardsMap) {
+            if (!activeCardIds.has(id)) {
+                hasUpdates = true;
+                break;
+            }
+        }
+
         // 4. Update previous state map for next run
         prevCardsMapRef.current = nextCardsMap;
 
@@ -139,7 +149,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
             pathVersionRef.current += 1;
         }
 
-    }, [cards, connections]); // <--- STRICT DEPENDENCIES
+    }, [cardMap, cards, connections]); // <--- STRICT DEPENDENCIES
 
 
     // =========================================================================
@@ -299,7 +309,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, connections
         if (canvasRef.current && canvasRef.current.__wakeUp) {
             canvasRef.current.__wakeUp();
         }
-    }, [offset, scale, cards, connections]);
+    }, [offset, scale, cardMap, cards, connections]);
 
     return (
         <canvas

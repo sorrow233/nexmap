@@ -1,4 +1,5 @@
 import { uuid } from '../../utils/uuid';
+import { buildGroupData } from '../../utils/groupGeometry';
 
 export const createGroupSlice = (set, get) => ({
     groups: [],
@@ -34,28 +35,18 @@ export const createGroupSlice = (set, get) => ({
 
     // NEW: Move all cards in a group by delta (for drag-to-move entire zone)
     moveGroupCards: (groupId, deltaX, deltaY) => {
-        const { groups, cards, setCards } = get();
+        const { groups, moveCardsByIds } = get();
         const group = groups.find(g => g.id === groupId);
         if (!group) return;
-
-        const updatedCards = cards.map(card => {
-            if (group.cardIds.includes(card.id)) {
-                return {
-                    ...card,
-                    x: (card.x || 0) + deltaX,
-                    y: (card.y || 0) + deltaY
-                };
-            }
-            return card;
-        });
-        setCards(updatedCards);
+        moveCardsByIds(group.cardIds, deltaX, deltaY);
     },
 
     // NEW: Find zone near a card position (for magnetic snap)
     findZoneNearCard: (cardId, threshold = 80) => {
-        const { groups, cards } = get();
-        const card = cards.find(c => c.id === cardId);
+        const { groups, getCardById, getCardMap } = get();
+        const card = getCardById(cardId);
         if (!card) return null;
+        const cardMap = getCardMap();
 
         const cardX = card.x || 0;
         const cardY = card.y || 0;
@@ -66,27 +57,15 @@ export const createGroupSlice = (set, get) => ({
             // Skip if card is already in this zone
             if (group.cardIds.includes(cardId)) continue;
 
-            // Calculate zone bounding box
-            const zoneCards = cards.filter(c => group.cardIds.includes(c.id));
-            if (zoneCards.length === 0) continue;
-
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            zoneCards.forEach(c => {
-                const x = c.x || 0;
-                const y = c.y || 0;
-                const w = c.width || (c.type === 'note' ? 280 : 400);
-                const h = c.height || 200;
-                minX = Math.min(minX, x);
-                minY = Math.min(minY, y);
-                maxX = Math.max(maxX, x + w);
-                maxY = Math.max(maxY, y + h);
-            });
+            const groupData = buildGroupData(group, cardMap);
+            if (!groupData) continue;
+            const zoneRect = groupData.rect;
 
             // Expand zone bounds by threshold for detection
-            const expandedMinX = minX - threshold;
-            const expandedMinY = minY - threshold;
-            const expandedMaxX = maxX + threshold;
-            const expandedMaxY = maxY + threshold;
+            const expandedMinX = zoneRect.x - threshold;
+            const expandedMinY = zoneRect.y - threshold;
+            const expandedMaxX = zoneRect.x + zoneRect.width + threshold;
+            const expandedMaxY = zoneRect.y + zoneRect.height + threshold;
 
             // Check if card overlaps with expanded zone
             const cardRight = cardX + cardWidth;

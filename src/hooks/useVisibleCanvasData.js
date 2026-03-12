@@ -1,12 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import {
     buildViewportRect,
-    createCardSpatialIndex,
+    getCardMapByIds,
     getCardsByIds,
-    getCardsInRect,
-    getVisibleConnectionData
+    getCardsInRect
 } from '../utils/canvasSpatialIndex';
-import { getVisibleGroups } from '../utils/groupGeometry';
+import { createGroupGeometryCache, getVisibleGroups } from '../utils/groupGeometry';
+import { useIncrementalCardSpatialIndex } from './useIncrementalCardSpatialIndex';
+import {
+    createConnectionVisibilityIndex,
+    getTargetCardIdsFromIndex,
+    getVisibleConnectionDataFromIndex
+} from '../utils/connectionVisibility';
 
 export function useVisibleCanvasData({
     cards,
@@ -17,7 +22,8 @@ export function useVisibleCanvasData({
     selectedIds,
     generatingCardIds
 }) {
-    const cardSpatialIndex = useMemo(() => createCardSpatialIndex(cards), [cards]);
+    const cardSpatialIndex = useIncrementalCardSpatialIndex(cards);
+    const groupGeometryCacheRef = useRef(createGroupGeometryCache());
 
     const viewportRect = useMemo(
         () => buildViewportRect(offset, scale),
@@ -25,6 +31,10 @@ export function useVisibleCanvasData({
     );
 
     const selectedIdSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
+    const connectionIndex = useMemo(
+        () => createConnectionVisibilityIndex(connections),
+        [connections]
+    );
 
     const persistentVisibleCardIds = useMemo(() => {
         const ids = new Set(selectedIds || []);
@@ -36,7 +46,7 @@ export function useVisibleCanvasData({
 
     const visibleCards = useMemo(
         () => getCardsInRect(cardSpatialIndex, viewportRect, persistentVisibleCardIds),
-        [cardSpatialIndex, viewportRect, persistentVisibleCardIds]
+        [cardSpatialIndex, cards, viewportRect, persistentVisibleCardIds]
     );
 
     const visibleCardIds = useMemo(() => {
@@ -47,29 +57,33 @@ export function useVisibleCanvasData({
 
     const targetCardIds = useMemo(() => {
         if (selectedIdSet.size === 0) return new Set();
-
-        const targets = new Set();
-        connections.forEach((conn) => {
-            if (selectedIdSet.has(conn.from)) targets.add(conn.to);
-            if (selectedIdSet.has(conn.to)) targets.add(conn.from);
-        });
-        selectedIdSet.forEach((id) => targets.delete(id));
-        return targets;
-    }, [connections, selectedIdSet]);
+        return getTargetCardIdsFromIndex(connectionIndex, selectedIdSet);
+    }, [connectionIndex, selectedIdSet]);
 
     const { visibleConnections, connectionCardIds } = useMemo(
-        () => getVisibleConnectionData(connections, visibleCardIds, selectedIdSet),
-        [connections, selectedIdSet, visibleCardIds]
+        () => getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, selectedIdSet),
+        [connectionIndex, selectedIdSet, visibleCardIds]
     );
 
     const connectionCards = useMemo(
         () => getCardsByIds(cardSpatialIndex, connectionCardIds),
-        [cardSpatialIndex, connectionCardIds]
+        [cardSpatialIndex, cards, connectionCardIds]
+    );
+
+    const connectionCardMap = useMemo(
+        () => getCardMapByIds(cardSpatialIndex, connectionCardIds),
+        [cardSpatialIndex, cards, connectionCardIds]
     );
 
     const visibleGroups = useMemo(
-        () => getVisibleGroups(groups, cardSpatialIndex.cardMap, viewportRect, visibleCardIds),
-        [cardSpatialIndex.cardMap, groups, viewportRect, visibleCardIds]
+        () => getVisibleGroups(
+            groups,
+            cardSpatialIndex.cardMap,
+            viewportRect,
+            visibleCardIds,
+            groupGeometryCacheRef.current
+        ),
+        [cardSpatialIndex.cardMap, cards, groups, viewportRect, visibleCardIds]
     );
 
     return {
@@ -77,6 +91,7 @@ export function useVisibleCanvasData({
         visibleCards,
         visibleConnections,
         connectionCards,
+        connectionCardMap,
         visibleGroups,
         selectedIdSet,
         targetCardIds

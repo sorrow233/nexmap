@@ -11,6 +11,8 @@ const CLOUD_SAVE_DELAY_MS = 30000;
 const VIEWPORT_SAVE_DELAY_MS = 220;
 const VIEWPORT_MOVE_THRESHOLD = 24;
 const VIEWPORT_SCALE_THRESHOLD = 0.015;
+const LOCAL_RESCHEDULE_COALESCE_MS = 120;
+const CLOUD_RESCHEDULE_COALESCE_MS = 1000;
 
 const createSaveTracker = (boardId) => ({
     boardId,
@@ -69,6 +71,11 @@ export function useBoardPersistence({
     const localSaveTimerRef = useRef(null);
     const cloudSaveTimerRef = useRef(null);
     const viewportSaveTimerRef = useRef(null);
+    const queuedLocalRevisionRef = useRef(0);
+    const queuedCloudRevisionRef = useRef(0);
+    const lastLocalScheduleAtRef = useRef(0);
+    const lastCloudScheduleAtRef = useRef(0);
+    const dirtyFlagsRef = useRef({ local: false, cloud: false });
     const pendingViewportRef = useRef(null);
     const lastSavedViewportRef = useRef(null);
 
@@ -106,6 +113,7 @@ export function useBoardPersistence({
             if (tracker.boardId === boardId && typeof revision === 'number') {
                 tracker.savedRevision = Math.max(tracker.savedRevision, revision);
             }
+            dirtyFlagsRef.current.local = false;
 
             if (!isUnmount) {
                 debugLog.storage(`Local autosave complete for board: ${boardId}`, { timestamp: now });
@@ -132,13 +140,24 @@ export function useBoardPersistence({
     }, []);
 
     const scheduleLocalSave = useCallback((revision) => {
+        queuedLocalRevisionRef.current = revision;
+        dirtyFlagsRef.current.local = true;
+
+        const now = Date.now();
+        if (localSaveTimerRef.current && now - lastLocalScheduleAtRef.current < LOCAL_RESCHEDULE_COALESCE_MS) {
+            return;
+        }
+        lastLocalScheduleAtRef.current = now;
+
         if (localSaveTimerRef.current) {
             clearTimeout(localSaveTimerRef.current);
         }
 
         localSaveTimerRef.current = setTimeout(() => {
             localSaveTimerRef.current = null;
-            void performSave(latestBoardDataRef.current, { revision });
+            void performSave(latestBoardDataRef.current, {
+                revision: queuedLocalRevisionRef.current
+            });
         }, LOCAL_SAVE_DELAY_MS);
     }, [performSave]);
 
@@ -150,6 +169,15 @@ export function useBoardPersistence({
             }
             return;
         }
+
+        queuedCloudRevisionRef.current = revision;
+        dirtyFlagsRef.current.cloud = true;
+
+        const now = Date.now();
+        if (cloudSaveTimerRef.current && now - lastCloudScheduleAtRef.current < CLOUD_RESCHEDULE_COALESCE_MS) {
+            return;
+        }
+        lastCloudScheduleAtRef.current = now;
 
         if (cloudSaveTimerRef.current) {
             clearTimeout(cloudSaveTimerRef.current);
@@ -165,8 +193,9 @@ export function useBoardPersistence({
 
                 const tracker = trackerRef.current;
                 if (tracker.boardId === boardId) {
-                    tracker.savedRevision = Math.max(tracker.savedRevision, revision);
+                    tracker.savedRevision = Math.max(tracker.savedRevision, queuedCloudRevisionRef.current);
                 }
+                dirtyFlagsRef.current.cloud = false;
 
                 debugLog.sync(`Cloud autosave complete for board: ${boardId}`);
             } catch (error) {
@@ -232,6 +261,11 @@ export function useBoardPersistence({
     useEffect(() => {
         trackerRef.current = createSaveTracker(boardId);
         clearContentSaveTimers();
+        queuedLocalRevisionRef.current = 0;
+        queuedCloudRevisionRef.current = 0;
+        lastLocalScheduleAtRef.current = 0;
+        lastCloudScheduleAtRef.current = 0;
+        dirtyFlagsRef.current = { local: false, cloud: false };
         if (viewportSaveTimerRef.current) {
             clearTimeout(viewportSaveTimerRef.current);
             viewportSaveTimerRef.current = null;

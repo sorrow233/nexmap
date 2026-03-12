@@ -10,6 +10,7 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
     contentRef,
     visibleGroups,
     connectionCards,
+    connectionCardMap,
     visibleConnections,
     visibleCards,
     selectedIdSet,
@@ -33,10 +34,17 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
 }) {
     return (
         <>
-            <ConnectionLayer cards={connectionCards} connections={visibleConnections} offset={offset} scale={scale} />
+            <ConnectionLayer
+                cards={connectionCards}
+                cardMap={connectionCardMap}
+                connections={visibleConnections}
+                offset={offset}
+                scale={scale}
+            />
 
             <ActiveConnectionLayer
                 cards={connectionCards}
+                cardMap={connectionCardMap}
                 connections={visibleConnections}
                 selectedIdSet={selectedIdSet}
                 offset={offset}

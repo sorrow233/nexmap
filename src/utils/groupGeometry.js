@@ -57,13 +57,49 @@ export function buildGroupData(group, cardMap) {
     };
 }
 
-export function getVisibleGroups(groups, cardMap, viewportRect, alwaysVisibleCardIds = new Set()) {
+export function createGroupGeometryCache() {
+    return new Map();
+}
+
+const getCachedGroupData = (cache, group, cardMap) => {
+    const activeCards = (group.cardIds || [])
+        .map((id) => cardMap.get(id))
+        .filter((card) => card && !card.deletedAt);
+
+    if (!cache) {
+        return buildGroupData(group, cardMap);
+    }
+
+    const cachedEntry = cache.get(group.id);
+    const canReuse = cachedEntry &&
+        cachedEntry.group === group &&
+        cachedEntry.cards.length === activeCards.length &&
+        cachedEntry.cards.every((card, index) => card === activeCards[index]);
+
+    if (canReuse) {
+        return cachedEntry.data;
+    }
+
+    const data = activeCards.length === 0 ? null : buildGroupData(group, cardMap);
+    cache.set(group.id, {
+        group,
+        cards: activeCards,
+        data
+    });
+    return data;
+};
+
+export function getVisibleGroups(groups, cardMap, viewportRect, alwaysVisibleCardIds = new Set(), cache = null) {
     if (!groups || groups.length === 0) return [];
 
     const visibleGroups = [];
+    const activeGroupIds = cache ? new Set() : null;
 
     groups.forEach((group) => {
-        const groupData = buildGroupData(group, cardMap);
+        if (activeGroupIds) {
+            activeGroupIds.add(group.id);
+        }
+        const groupData = getCachedGroupData(cache, group, cardMap);
         if (!groupData) return;
 
         const hasAlwaysVisibleCard = (group.cardIds || []).some((id) => alwaysVisibleCardIds.has(id));
@@ -78,6 +114,14 @@ export function getVisibleGroups(groups, cardMap, viewportRect, alwaysVisibleCar
             visibleGroups.push(groupData);
         }
     });
+
+    if (cache && activeGroupIds) {
+        Array.from(cache.keys()).forEach((groupId) => {
+            if (!activeGroupIds.has(groupId)) {
+                cache.delete(groupId);
+            }
+        });
+    }
 
     return visibleGroups;
 }

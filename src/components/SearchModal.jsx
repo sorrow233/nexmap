@@ -259,20 +259,3 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
         </div >
     );
 }
-
-/**
- * Hook for global search shortcut
- */
-export function useSearchShortcut(callback) {
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                callback();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [callback]);
-}

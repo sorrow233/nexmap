@@ -2,6 +2,19 @@ import { renderMarkdownToHtml } from './markdownRenderer';
 
 const MAX_CACHE_ENTRIES = 500;
 const markdownHtmlCache = new Map();
+const SIMPLE_MARKDOWN_PATTERN = /[`*_[\]#>|~\-]|\n|\d+\.\s|!\[|\|/;
+
+const escapeHtml = (value) => value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const renderPlainTextToHtml = (content) => {
+    if (!content) return '';
+    return escapeHtml(content).replaceAll('\n', '<br />');
+};
 
 const touchEntry = (key, value) => {
     if (markdownHtmlCache.has(key)) {
@@ -29,9 +42,11 @@ export function renderCachedMarkdownToHtml(content, namespace = 'default') {
 
     let html;
     try {
-        html = renderMarkdownToHtml(normalizedContent);
+        html = SIMPLE_MARKDOWN_PATTERN.test(normalizedContent)
+            ? renderMarkdownToHtml(normalizedContent)
+            : renderPlainTextToHtml(normalizedContent);
     } catch (error) {
-        html = normalizedContent;
+        html = renderPlainTextToHtml(normalizedContent);
     }
 
     touchEntry(cacheKey, html);

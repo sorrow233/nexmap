@@ -1,5 +1,6 @@
-import React, { Suspense, lazy, useEffect, useRef } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Star, RefreshCw, Trash2, Sprout, BoxSelect, AlertCircle } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -7,40 +8,32 @@ import Loading from '../components/Loading';
 import StatusBar from '../components/StatusBar';
 import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
-import BoardInstructionPanel from '../components/board/BoardInstructionPanel';
-import MobileBoardShell from '../components/board/mobile/MobileBoardShell';
-import QuickPromptModal from '../components/QuickPromptModal';
-import useBoardBackground from '../hooks/useBoardBackground';
-import { useStore } from '../store/useStore';
+import BoardSideEffects from '../components/board/BoardSideEffects';
+import MobileBoardRuntime from '../components/board/mobile/MobileBoardRuntime';
 import { useTabLock } from '../hooks/useTabLock';
 import { useBoardSync } from '../hooks/useBoardSync';
-import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
+import { useBoardLogic } from '../hooks/useBoardLogic';
 
 const NotePage = lazy(() => import('./NotePage'));
 const ChatModal = lazy(() => import('../components/ChatModal'));
 const SettingsModal = lazy(() => import('../components/SettingsModal'));
-
-import { useBoardLogic } from '../hooks/useBoardLogic';
-
-const AUTO_IMAGE_TRIGGERED_BOARDS = new Set();
-const AUTO_SUMMARY_TRIGGERED_BOARDS = new Set();
+const BoardInstructionPanel = lazy(() => import('../components/board/BoardInstructionPanel'));
+const QuickPromptModal = lazy(() => import('../components/QuickPromptModal'));
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
 
-    // 监听单画板云端同步（每个标签页只监听自己的画板）
     useBoardSync(boardId, isReadOnly);
 
-    // Extracted Logic
     const {
-        // Data
-        cards,
         generatingCardIds,
         selectedIds,
         expandedCardId,
+        expandedCard,
+        selectedPrimaryCardHasMarks,
         currentBoard,
         cloudSyncStatus,
         globalImages,
@@ -59,36 +52,27 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         t,
         noteId,
         currentBoardId,
-
-        // Refs
         canvasContainerRef,
-
-        // Actions
         setIsSettingsOpen,
         setGlobalImages,
         setQuickPrompt,
         setExpandedCardId,
-        setSelectedIds,
+        setCloudSyncStatus,
         setTempInstructions,
         setIsInstructionPanelOpen,
         navigate,
         toggleFavorite,
         updateCardFull,
-
         handleRegenerate,
         handleBatchDelete,
         handleGlobalImageUpload,
         removeGlobalImage,
         createGroup,
-        arrangeSelectionGrid,
         handleBatchChat,
-
-        // Complex Handlers
         handleCanvasDoubleClick,
         handleQuickPromptSubmit,
         handleFullScreen,
         handleChatModalGenerate,
-        handleSelectConnected,
         handleChatSubmitWithInstructions,
         handleAgentSubmit,
         handlePromptDropOnChat,
@@ -103,114 +87,22 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handleCreateNote,
         createStandaloneNote,
         handleExpandTopics,
-        // NEW
         customSproutPrompt,
         setCustomSproutPrompt,
         handleCustomSprout,
-        handleCustomSproutSubmit,
-        handleGlobalPaste
-
-    } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly });
-
-    // Background Generation
-    const { generateBoardSummary, generateBoardImage, generatingBoardId } = useBoardBackground();
-    const hasAutoImageGeneratedRef = useRef(false);
-    const hasAutoSummaryGeneratedRef = useRef(false);
-
-    useEffect(() => {
-        if (!currentBoardId) return;
-        hasAutoImageGeneratedRef.current = AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
-        hasAutoSummaryGeneratedRef.current = AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
-    }, [currentBoardId]);
-
-    useEffect(() => {
-        if (!currentBoardId) return;
-        if (currentBoard?.summary) {
-            AUTO_SUMMARY_TRIGGERED_BOARDS.add(currentBoardId);
-            hasAutoSummaryGeneratedRef.current = true;
-        }
-        if (currentBoard?.backgroundImage) {
-            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
-            hasAutoImageGeneratedRef.current = true;
-        }
-    }, [currentBoardId, currentBoard?.summary, currentBoard?.backgroundImage]);
-
-    // Optimized: Calculate active count separately to avoid re-running effect on every card move/drag
-    // cards array changes on every drag frame, but count remains stable
-    const activeCardCount = React.useMemo(() => {
-        return cards.filter(c => !c.deletedAt).length;
-    }, [cards]);
-
-    // Auto-generate background when active cards > 10
-    // Auto-generation Logic
-    useEffect(() => {
-        if (isReadOnly) return; // Skip auto-generation in Read-Only mode
-
-        if (!currentBoardId) return;
-
-        const hasSummaryTriggered = hasAutoSummaryGeneratedRef.current || AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
-        const hasImageTriggered = hasAutoImageGeneratedRef.current || AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
-
-        // 1. Text Summary (Cards > 3)
-        // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
-        if (activeCardCount > 3 && !hasSummaryTriggered && !currentBoard?.summary && !currentBoard?.backgroundImage) {
-            console.log(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
-            generateBoardSummary(currentBoardId, (id, updates) => {
-                if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
-            });
-            hasAutoSummaryGeneratedRef.current = true;
-            AUTO_SUMMARY_TRIGGERED_BOARDS.add(currentBoardId);
-        }
-
-        // 2. Visual Background (Cards > 10)
-        // Trigger if: Enough cards, not generated this session, and no existing image
-        if (activeCardCount > 10 && !hasImageTriggered && !currentBoard?.backgroundImage) {
-            console.log(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
-            generateBoardImage(currentBoardId, (id, updates) => {
-                if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
-            });
-            hasAutoImageGeneratedRef.current = true;
-            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
-        }
-    }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
-
-    const handleMobileOpenCard = React.useCallback((cardId) => {
-        const targetCard = cards.find(card => card.id === cardId && !card.deletedAt);
-        if (!targetCard) return;
-
-        if (targetCard.type === 'note') {
-            handleFullScreen(cardId);
-            return;
-        }
-
-        setExpandedCardId(cardId);
-    }, [cards, handleFullScreen, setExpandedCardId]);
-
-    const handleMobileEnterSelectionMode = React.useCallback((cardId) => {
-        if (isReadOnly) return;
-        setSelectedIds((prev) => {
-            const current = Array.isArray(prev) ? prev : [];
-            return current.includes(cardId) ? current : [...current, cardId];
-        });
-    }, [isReadOnly, setSelectedIds]);
-
-    const handleMobileToggleSelection = React.useCallback((cardId) => {
-        if (isReadOnly) return;
-        setSelectedIds((prev) => {
-            const current = Array.isArray(prev) ? prev : [];
-            return current.includes(cardId)
-                ? current.filter((id) => id !== cardId)
-                : [...current, cardId];
-        });
-    }, [isReadOnly, setSelectedIds]);
-
-    const handleMobileClearSelection = React.useCallback(() => {
-        setSelectedIds([]);
-    }, [setSelectedIds]);
-
+        handleCustomSproutSubmit
+    } = useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly });
 
     return (
         <div className={`${isIPhoneBoardMode ? 'h-screen-safe' : 'h-screen'} w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative`}>
+            <BoardSideEffects
+                board={currentBoard}
+                boardId={currentBoardId}
+                user={user}
+                isReadOnly={isReadOnly}
+                onUpdateBoardMetadata={onUpdateBoardMetadata}
+                setCloudSyncStatus={setCloudSyncStatus}
+            />
 
             <div className="absolute inset-0 h-full overflow-hidden">
                 {isReadOnly && (
@@ -229,11 +121,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 )}
 
                 {isIPhoneBoardMode ? (
-                    <MobileBoardShell
+                    <MobileBoardRuntime
                         board={currentBoard}
-                        cards={cards}
-                        selectedIds={isReadOnly ? [] : selectedIds}
-                        generatingCardIds={generatingCardIds}
                         syncStatus={cloudSyncStatus}
                         untitledLabel={t.gallery?.untitledBoard || 'Untitled Board'}
                         onBack={onBack}
@@ -243,13 +132,12 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         }}
                         onOpenInstructions={handleOpenInstructionPanel}
                         onOpenSettings={() => setIsSettingsOpen(true)}
-                        onOpenCard={handleMobileOpenCard}
-                        onEnterSelectionMode={handleMobileEnterSelectionMode}
-                        onToggleSelection={handleMobileToggleSelection}
-                        onClearSelection={handleMobileClearSelection}
+                        onOpenConversationCard={setExpandedCardId}
+                        onOpenNote={handleFullScreen}
                         onQuickSprout={handleQuickSprout}
                         onExpandTopics={handleExpandTopics}
                         onDeleteSelection={handleBatchDelete}
+                        isReadOnly={isReadOnly}
                     />
                 ) : (
                     <>
@@ -281,24 +169,29 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
                 {!isIPhoneBoardMode && (
                     <>
-                        {/* Quick Prompt Modal */}
-                        <QuickPromptModal
-                            isOpen={quickPrompt.isOpen}
-                            onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
-                            onSubmit={handleQuickPromptSubmit}
-                            initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
-                        />
+                        {quickPrompt.isOpen && (
+                            <Suspense fallback={null}>
+                                <QuickPromptModal
+                                    isOpen={quickPrompt.isOpen}
+                                    onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
+                                    onSubmit={handleQuickPromptSubmit}
+                                    initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
+                                />
+                            </Suspense>
+                        )}
 
-                        {/* Custom Sprout Modal */}
-                        <QuickPromptModal
-                            isOpen={customSproutPrompt.isOpen}
-                            onClose={() => setCustomSproutPrompt(prev => ({ ...prev, isOpen: false }))}
-                            onSubmit={handleCustomSproutSubmit}
-                            initialPosition={{ x: customSproutPrompt.x, y: customSproutPrompt.y }}
-                            placeholder="Tell AI how to generate cards from this..."
-                        />
+                        {customSproutPrompt.isOpen && (
+                            <Suspense fallback={null}>
+                                <QuickPromptModal
+                                    isOpen={customSproutPrompt.isOpen}
+                                    onClose={() => setCustomSproutPrompt(prev => ({ ...prev, isOpen: false }))}
+                                    onSubmit={handleCustomSproutSubmit}
+                                    initialPosition={{ x: customSproutPrompt.x, y: customSproutPrompt.y }}
+                                    placeholder="Tell AI how to generate cards from this..."
+                                />
+                            </Suspense>
+                        )}
 
-                        {/* Top Bar */}
                         <BoardTopBar
                             onBack={onBack}
                             board={currentBoard}
@@ -309,18 +202,22 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     </>
                 )}
 
-                <BoardInstructionPanel
-                    isOpen={isInstructionPanelOpen}
-                    onClose={() => setIsInstructionPanelOpen(false)}
-                    instructions={customInstructionCatalog.items || []}
-                    boardInstructionSettings={boardInstructionSettings}
-                    instructionPanelSummary={instructionPanelSummary}
-                    onToggleInstruction={handleToggleBoardInstruction}
-                    onRunAutoRecommend={handleRunAutoInstructionRecommendNow}
-                    onOpenSettings={handleOpenInstructionSettings}
-                    isAutoRecommending={isAutoRecommending}
-                    conversationCount={conversationCount}
-                />
+                {isInstructionPanelOpen && (
+                    <Suspense fallback={null}>
+                        <BoardInstructionPanel
+                            isOpen={isInstructionPanelOpen}
+                            onClose={() => setIsInstructionPanelOpen(false)}
+                            instructions={customInstructionCatalog.items || []}
+                            boardInstructionSettings={boardInstructionSettings}
+                            instructionPanelSummary={instructionPanelSummary}
+                            onToggleInstruction={handleToggleBoardInstruction}
+                            onRunAutoRecommend={handleRunAutoInstructionRecommendNow}
+                            onOpenSettings={handleOpenInstructionSettings}
+                            isAutoRecommending={isAutoRecommending}
+                            conversationCount={conversationCount}
+                        />
+                    </Suspense>
+                )}
 
                 <ChatBar
                     selectedIds={selectedIds}
@@ -347,11 +244,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         </span>
                         <div className="h-4 w-px bg-slate-100 dark:bg-white/5"></div>
 
-                        {selectedIds.length === 1 && cards.find(c => c.id === selectedIds[0])?.data?.marks?.length > 0 && (
+                        {selectedIds.length === 1 && selectedPrimaryCardHasMarks && (
                             <button
                                 onClick={() => handleExpandTopics(selectedIds[0])}
                                 className="p-2 rounded-full text-cyan-500 bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-all active:scale-90"
-                                title={t.toolbar?.expand || "Expand Topics"}
+                                title={t.toolbar?.expand || 'Expand Topics'}
                             >
                                 <Star size={18} fill="currentColor" />
                             </button>
@@ -360,7 +257,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         <button
                             onClick={handleRegenerate}
                             className="p-2 rounded-full text-blue-500 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all active:scale-90"
-                            title={t.toolbar?.retry || "Retry Generation"}
+                            title={t.toolbar?.retry || 'Retry Generation'}
                         >
                             <RefreshCw size={18} />
                         </button>
@@ -368,7 +265,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         <button
                             onClick={() => selectedIds.forEach(id => handleQuickSprout(id))}
                             className="p-2 rounded-full text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all active:scale-90"
-                            title={t.toolbar?.sprout || "Sprout Inspiration"}
+                            title={t.toolbar?.sprout || 'Sprout Inspiration'}
                         >
                             <Sprout size={18} />
                         </button>
@@ -376,7 +273,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         <button
                             onClick={() => createGroup(selectedIds)}
                             className="p-2 rounded-full text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all active:scale-90"
-                            title={t.toolbar?.zone || "Create Zone"}
+                            title={t.toolbar?.zone || 'Create Zone'}
                         >
                             <BoxSelect size={18} />
                         </button>
@@ -384,7 +281,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         <button
                             onClick={handleBatchDelete}
                             className="p-2 rounded-full text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-all active:scale-90"
-                            title={t.toolbar?.delete || "Delete Selected"}
+                            title={t.toolbar?.delete || 'Delete Selected'}
                         >
                             <Trash2 size={18} />
                         </button>
@@ -394,7 +291,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 {expandedCardId && (
                     <Suspense fallback={null}>
                         <ChatModal
-                            card={cards.find(c => c.id === expandedCardId)}
+                            card={expandedCard}
                             isOpen={!!expandedCardId}
                             onClose={() => setExpandedCardId(null)}
                             onUpdate={updateCardFull}
@@ -417,7 +314,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     />
                 )}
 
-                {/* Settings Modal */}
                 <Suspense fallback={null}>
                     <SettingsModal
                         isOpen={isSettingsOpen}

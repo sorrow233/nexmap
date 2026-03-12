@@ -12,6 +12,7 @@ import { isIOS, isSafari, prefersReducedMotion } from '../utils/browser';
  */
 const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
     cards,
+    cardMap,
     connections,
     selectedIdSet,
     offset,
@@ -30,7 +31,7 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
     if (activeConnections.length === 0) return null;
 
     // Helper to find card by ID - filter out soft-deleted cards
-    const cardMap = new Map(cards.filter(c => !c.deletedAt).map(c => [c.id, c]));
+    const resolvedCardMap = cardMap || new Map(cards.filter(c => !c.deletedAt).map(c => [c.id, c]));
 
     return (
         <svg
@@ -54,8 +55,8 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
 
             <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
                 {activeConnections.map(conn => {
-                    const fromCard = cardMap.get(conn.from);
-                    const toCard = cardMap.get(conn.to);
+                    const fromCard = resolvedCardMap.get(conn.from);
+                    const toCard = resolvedCardMap.get(conn.to);
 
                     if (!fromCard || !toCard) return null;
 

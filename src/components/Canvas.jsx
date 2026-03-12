@@ -66,6 +66,7 @@ export default function Canvas({
         visibleCards,
         visibleConnections,
         connectionCards,
+        connectionCardMap,
         visibleGroups,
         selectedIdSet,
         targetCardIds
@@ -273,7 +274,11 @@ export default function Canvas({
             const isArray = Array.isArray(prev);
             if (isAdditive) {
                 if (!isArray) return [id];
-                return prev.indexOf(id) !== -1 ? prev.filter(sid => sid !== id) : [...prev, id];
+                const selectedSet = new Set(prev);
+                if (selectedSet.has(id)) {
+                    return prev.filter(sid => sid !== id);
+                }
+                return [...prev, id];
             }
             return [id];
         });
@@ -495,6 +500,7 @@ export default function Canvas({
                 contentRef={contentRef}
                 visibleGroups={visibleGroups}
                 connectionCards={connectionCards}
+                connectionCardMap={connectionCardMap}
                 visibleConnections={visibleConnections}
                 visibleCards={visibleCards}
                 selectedIdSet={selectedIdSet}

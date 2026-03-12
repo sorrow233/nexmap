@@ -21,49 +21,137 @@ export function buildViewportRect(offset, scale, margin = DEFAULT_VIEWPORT_MARGI
     };
 }
 
-export function createCardSpatialIndex(cards, bucketSize = DEFAULT_BUCKET_SIZE) {
-    const buckets = new Map();
-    const cardMap = new Map();
-    const rectMap = new Map();
-    const invalidCardIds = new Set();
-    const orderMap = new Map();
-
-    cards.forEach((card, index) => {
-        if (card.deletedAt) return;
-
-        cardMap.set(card.id, card);
-        orderMap.set(card.id, index);
-
-        if (!Number.isFinite(card.x) || !Number.isFinite(card.y)) {
-            invalidCardIds.add(card.id);
-            return;
+const getBucketKeys = (rect, bucketSize) => {
+    const keys = [];
+    const { minX, maxX, minY, maxY } = getBucketRange(rect, bucketSize);
+    for (let x = minX; x <= maxX; x += 1) {
+        for (let y = minY; y <= maxY; y += 1) {
+            keys.push(getCellKey(x, y));
         }
+    }
+    return keys;
+};
 
-        const rect = getCardRect(card);
-        rectMap.set(card.id, rect);
+export function createEmptyCardSpatialIndex(bucketSize = DEFAULT_BUCKET_SIZE) {
+    return {
+        bucketSize,
+        buckets: new Map(),
+        cardMap: new Map(),
+        rectMap: new Map(),
+        invalidCardIds: new Set(),
+        orderMap: new Map(),
+        bucketKeysByCardId: new Map()
+    };
+}
 
-        const { minX, maxX, minY, maxY } = getBucketRange(rect, bucketSize);
-        for (let x = minX; x <= maxX; x += 1) {
-            for (let y = minY; y <= maxY; y += 1) {
-                const key = getCellKey(x, y);
-                let ids = buckets.get(key);
-                if (!ids) {
-                    ids = new Set();
-                    buckets.set(key, ids);
-                }
-                ids.add(card.id);
-            }
+const removeCardBuckets = (spatialIndex, id) => {
+    const bucketKeys = spatialIndex.bucketKeysByCardId.get(id);
+    if (!bucketKeys) return;
+
+    bucketKeys.forEach((key) => {
+        const bucket = spatialIndex.buckets.get(key);
+        if (!bucket) return;
+        bucket.delete(id);
+        if (bucket.size === 0) {
+            spatialIndex.buckets.delete(key);
         }
     });
 
-    return {
-        bucketSize,
-        buckets,
-        cardMap,
-        rectMap,
-        invalidCardIds,
-        orderMap
-    };
+    spatialIndex.bucketKeysByCardId.delete(id);
+};
+
+const removeCardFromIndex = (spatialIndex, id) => {
+    removeCardBuckets(spatialIndex, id);
+    spatialIndex.cardMap.delete(id);
+    spatialIndex.rectMap.delete(id);
+    spatialIndex.invalidCardIds.delete(id);
+    spatialIndex.orderMap.delete(id);
+};
+
+const upsertCardInIndex = (spatialIndex, card, order) => {
+    const previousCard = spatialIndex.cardMap.get(card.id);
+    const previousRect = spatialIndex.rectMap.get(card.id);
+    const previousBucketKeys = spatialIndex.bucketKeysByCardId.get(card.id) || [];
+    const previousWasInvalid = spatialIndex.invalidCardIds.has(card.id);
+    const previousOrder = spatialIndex.orderMap.get(card.id);
+
+    if (card.deletedAt) {
+        if (!previousCard && !previousWasInvalid) {
+            return false;
+        }
+        removeCardFromIndex(spatialIndex, card.id);
+        return true;
+    }
+
+    spatialIndex.cardMap.set(card.id, card);
+    spatialIndex.orderMap.set(card.id, order);
+
+    if (!Number.isFinite(card.x) || !Number.isFinite(card.y)) {
+        removeCardBuckets(spatialIndex, card.id);
+        spatialIndex.rectMap.delete(card.id);
+        spatialIndex.invalidCardIds.add(card.id);
+        return !previousWasInvalid || previousCard !== card;
+    }
+
+    spatialIndex.invalidCardIds.delete(card.id);
+
+    const nextRect = getCardRect(card);
+    const nextBucketKeys = getBucketKeys(nextRect, spatialIndex.bucketSize);
+    const rectChanged =
+        !previousRect ||
+        previousRect.left !== nextRect.left ||
+        previousRect.top !== nextRect.top ||
+        previousRect.right !== nextRect.right ||
+        previousRect.bottom !== nextRect.bottom;
+
+    if (previousWasInvalid) {
+        removeCardBuckets(spatialIndex, card.id);
+    }
+
+    if (
+        previousBucketKeys.length !== nextBucketKeys.length ||
+        previousBucketKeys.some((key, index) => key !== nextBucketKeys[index])
+    ) {
+        removeCardBuckets(spatialIndex, card.id);
+        nextBucketKeys.forEach((key) => {
+            let bucket = spatialIndex.buckets.get(key);
+            if (!bucket) {
+                bucket = new Set();
+                spatialIndex.buckets.set(key, bucket);
+            }
+            bucket.add(card.id);
+        });
+        spatialIndex.bucketKeysByCardId.set(card.id, nextBucketKeys);
+    }
+
+    spatialIndex.rectMap.set(card.id, nextRect);
+    return previousCard !== card || rectChanged || previousWasInvalid || previousOrder !== order;
+};
+
+export function syncCardSpatialIndex(spatialIndex, cards) {
+    const index = spatialIndex || createEmptyCardSpatialIndex();
+    const staleIds = new Set(index.cardMap.keys());
+    let changed = false;
+
+    cards.forEach((card, order) => {
+        staleIds.delete(card.id);
+        if (upsertCardInIndex(index, card, order)) {
+            changed = true;
+        }
+    });
+
+    staleIds.forEach((id) => {
+        removeCardFromIndex(index, id);
+        changed = true;
+    });
+
+    return changed;
+}
+
+export function createCardSpatialIndex(cards, bucketSize = DEFAULT_BUCKET_SIZE) {
+    const spatialIndex = createEmptyCardSpatialIndex(bucketSize);
+    syncCardSpatialIndex(spatialIndex, cards);
+    return spatialIndex;
 }
 
 export function queryCardIdsInRect(spatialIndex, rect) {
@@ -122,6 +210,20 @@ export function getCardsByIds(spatialIndex, ids) {
         const orderB = spatialIndex.orderMap.get(b.id) ?? 0;
         return orderA - orderB;
     });
+}
+
+export function getCardMapByIds(spatialIndex, ids) {
+    const cardMap = new Map();
+    if (!spatialIndex || !ids) return cardMap;
+
+    ids.forEach((id) => {
+        const card = spatialIndex.cardMap.get(id);
+        if (card) {
+            cardMap.set(id, card);
+        }
+    });
+
+    return cardMap;
 }
 
 export function getIntersectedCardIds(spatialIndex, rect) {

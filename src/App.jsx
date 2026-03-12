@@ -9,8 +9,8 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
-import SearchModal, { useSearchShortcut } from './components/SearchModal';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { useSearchShortcut } from './hooks/useSearchShortcut';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -23,6 +23,7 @@ const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
 const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
+const SearchModal = lazyWithRetry(() => import('./components/SearchModal'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -526,13 +527,17 @@ function AppContent() {
             />
 
             {/* Global Search Modal */}
-            <SearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                boardsList={boardsList}
-                allBoardsData={allBoardsData}
-                searchLoadState={searchLoadState}
-            />
+            {isSearchOpen && (
+                <Suspense fallback={null}>
+                    <SearchModal
+                        isOpen={isSearchOpen}
+                        onClose={() => setIsSearchOpen(false)}
+                        boardsList={boardsList}
+                        allBoardsData={allBoardsData}
+                        searchLoadState={searchLoadState}
+                    />
+                </Suspense>
+            )}
 
             {/* Logout Confirmation Dialog */}
             <ModernDialog

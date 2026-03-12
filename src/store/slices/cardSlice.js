@@ -2,9 +2,62 @@ import { calculateLayout, calculateGridLayout } from '../../utils/autoLayout';
 import { getConnectedGraph } from '../../utils/graphUtils';
 import { debugLog } from '../../utils/debugLogger';
 
-const findCardIndexById = (cards, id) => cards.findIndex((card) => card.id === id);
+const createCardLookupCache = () => {
+    let cachedCardsRef = null;
+    let cachedIndexById = new Map();
+    let cachedCardMap = new Map();
 
-export const createCardSlice = (set, get) => ({
+    const rebuild = (cards = []) => {
+        cachedIndexById = new Map();
+        cachedCardMap = new Map();
+        cards.forEach((card, index) => {
+            cachedIndexById.set(card.id, index);
+            cachedCardMap.set(card.id, card);
+        });
+        cachedCardsRef = cards;
+        return {
+            indexById: cachedIndexById,
+            cardMap: cachedCardMap
+        };
+    };
+
+    return {
+        ensure(cards = []) {
+            if (cachedCardsRef === cards) {
+                return {
+                    indexById: cachedIndexById,
+                    cardMap: cachedCardMap
+                };
+            }
+
+            return rebuild(cards);
+        },
+        rebuild,
+        patch(nextCards, updatedCards = []) {
+            if (cachedCardsRef === null) {
+                rebuild(nextCards);
+                return;
+            }
+
+            cachedCardsRef = nextCards;
+            updatedCards.forEach((card) => {
+                if (card) {
+                    cachedCardMap.set(card.id, card);
+                }
+            });
+        },
+        clear() {
+            cachedCardsRef = null;
+            cachedIndexById = new Map();
+            cachedCardMap = new Map();
+        }
+    };
+};
+
+export const createCardSlice = (set, get) => {
+    const cardLookup = createCardLookupCache();
+
+    return {
     cards: [],
     expandedCardId: null,
     lastSavedAt: 0,
@@ -19,6 +72,7 @@ export const createCardSlice = (set, get) => ({
     setCards: (cardsOrUpdater) => {
         const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
         debugLog.store('Bulk setting cards', { count: nextCards.length });
+        cardLookup.rebuild(nextCards);
         set({ cards: nextCards });
     },
 
@@ -26,10 +80,61 @@ export const createCardSlice = (set, get) => ({
     // This prevents the save loop: cloud -> setCards -> autosave -> cloud
     setCardsFromCloud: (cards) => {
         debugLog.store('Setting cards from cloud sync (hydrating)', { count: cards?.length || 0 });
+        cardLookup.rebuild(cards || []);
         set({ cards: cards || [], isHydratingFromCloud: true });
         // Clear flag after a short delay to allow BoardPage effect to skip
         setTimeout(() => set({ isHydratingFromCloud: false }), 500);
     },
+
+    getCardById: (id) => {
+        if (!id) return null;
+        const { cardMap } = cardLookup.ensure(get().cards);
+        return cardMap.get(id) || null;
+    },
+
+    getCardsByIds: (ids = []) => {
+        const { cardMap, indexById } = cardLookup.ensure(get().cards);
+        return Array.from(ids)
+            .map((id) => cardMap.get(id))
+            .filter(Boolean)
+            .sort((a, b) => (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0));
+    },
+
+    getCardMap: () => cardLookup.ensure(get().cards).cardMap,
+
+    moveCardsByIds: (cardIds, deltaX, deltaY) => set((state) => {
+        if (!Number.isFinite(deltaX) || !Number.isFinite(deltaY) || (deltaX === 0 && deltaY === 0)) {
+            return state;
+        }
+
+        const moveIdSet = cardIds instanceof Set ? cardIds : new Set(cardIds || []);
+        if (moveIdSet.size === 0) return state;
+
+        const { indexById } = cardLookup.ensure(state.cards);
+        const nextCards = state.cards.slice();
+        const updatedCards = [];
+
+        moveIdSet.forEach((cardId) => {
+            const index = indexById.get(cardId);
+            if (index === undefined) return;
+            const card = nextCards[index];
+            if (!card || card.deletedAt) return;
+
+            const nextCard = {
+                ...card,
+                x: (card.x || 0) + deltaX,
+                y: (card.y || 0) + deltaY
+            };
+
+            nextCards[index] = nextCard;
+            updatedCards.push(nextCard);
+        });
+
+        if (updatedCards.length === 0) return state;
+
+        cardLookup.patch(nextCards, updatedCards);
+        return { cards: nextCards };
+    }),
 
     setExpandedCardId: (id) => {
         debugLog.ui(`Focusing/Expanding card: ${id}`);
@@ -42,9 +147,13 @@ export const createCardSlice = (set, get) => ({
             createdAt: card.createdAt || Date.now()
         };
         debugLog.store(`Adding new card: ${newCard.id}`, newCard);
-        set((state) => ({
-            cards: [...state.cards, newCard]
-        }));
+        set((state) => {
+            const nextCards = [...state.cards, newCard];
+            cardLookup.rebuild(nextCards);
+            return {
+                cards: nextCards
+            };
+        });
         // Removed: position-based auto-add to zone
         // Cards now only join zones via connections
     },
@@ -52,8 +161,9 @@ export const createCardSlice = (set, get) => ({
     updateCard: (id, updater) => {
         debugLog.store(`Updating card data: ${id}`, updater);
         set((state) => {
-            const index = findCardIndexById(state.cards, id);
-            if (index === -1) return state;
+            const { indexById } = cardLookup.ensure(state.cards);
+            const index = indexById.get(id);
+            if (index === undefined) return state;
 
             const nextCards = state.cards.slice();
             const currentCard = nextCards[index];
@@ -66,6 +176,7 @@ export const createCardSlice = (set, get) => ({
                 data: { ...currentCard.data, ...updatedData }
             };
 
+            cardLookup.patch(nextCards, [nextCards[index]]);
             return { cards: nextCards };
         });
     },
@@ -74,8 +185,9 @@ export const createCardSlice = (set, get) => ({
     updateCardFull: (id, updater) => {
         debugLog.store(`Full update for card: ${id}`, updater);
         set((state) => {
-            const index = findCardIndexById(state.cards, id);
-            if (index === -1) return state;
+            const { indexById } = cardLookup.ensure(state.cards);
+            const index = indexById.get(id);
+            if (index === undefined) return state;
 
             const nextCards = state.cards.slice();
             const currentCard = nextCards[index];
@@ -91,6 +203,7 @@ export const createCardSlice = (set, get) => ({
                 }
             };
 
+            cardLookup.patch(nextCards, [nextCards[index]]);
             return { cards: nextCards };
         });
     },
@@ -102,14 +215,20 @@ export const createCardSlice = (set, get) => ({
             const nextGenerating = new Set(state.generatingCardIds);
             nextGenerating.delete(id);
             const nextSelected = state.selectedIds ? state.selectedIds.filter(sid => sid !== id) : [];
-            const index = findCardIndexById(state.cards, id);
+            const { indexById } = cardLookup.ensure(state.cards);
+            const index = indexById.get(id);
             const nextCards = state.cards.slice();
-            if (index !== -1) {
+            const patchedCards = [];
+            if (index !== undefined) {
                 nextCards[index] = { ...nextCards[index], deletedAt: Date.now() };
+                patchedCards.push(nextCards[index]);
+            }
+            if (patchedCards.length > 0) {
+                cardLookup.patch(nextCards, patchedCards);
             }
 
             return {
-                cards: index === -1 ? state.cards : nextCards,
+                cards: index === undefined ? state.cards : nextCards,
                 // Still remove connections for soft-deleted cards (they'll be restored if card is restored)
                 connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
                 generatingCardIds: nextGenerating,
@@ -123,12 +242,14 @@ export const createCardSlice = (set, get) => ({
     restoreCard: (id) => {
         debugLog.store(`Restoring card: ${id}`);
         set((state) => {
-            const index = findCardIndexById(state.cards, id);
-            if (index === -1) return state;
+            const { indexById } = cardLookup.ensure(state.cards);
+            const index = indexById.get(id);
+            if (index === undefined) return state;
 
             const nextCards = state.cards.slice();
             nextCards[index] = { ...nextCards[index], deletedAt: undefined };
 
+            cardLookup.patch(nextCards, [nextCards[index]]);
             return { cards: nextCards };
         });
     },
@@ -136,9 +257,13 @@ export const createCardSlice = (set, get) => ({
     // Permanently delete a card (used for cleanup after retention period)
     permanentlyDeleteCard: (id) => {
         debugLog.store(`Permanently deleting card: ${id}`);
-        set((state) => ({
-            cards: state.cards.filter(c => c.id !== id)
-        }));
+        set((state) => {
+            const nextCards = state.cards.filter(c => c.id !== id);
+            cardLookup.rebuild(nextCards);
+            return {
+                cards: nextCards
+            };
+        });
     },
 
     arrangeCards: () => {
@@ -178,15 +303,19 @@ export const createCardSlice = (set, get) => ({
 
             if (newPositions.size === 0) return;
 
-            set(state => ({
-                cards: state.cards.map(card => {
+            set(state => {
+                const nextCards = state.cards.map(card => {
                     const newPos = newPositions.get(card.id);
                     if (newPos) {
                         return { ...card, x: newPos.x, y: newPos.y };
                     }
                     return card;
-                })
-            }));
+                });
+                cardLookup.rebuild(nextCards);
+                return {
+                    cards: nextCards
+                };
+            });
             return;
         }
 
@@ -196,15 +325,19 @@ export const createCardSlice = (set, get) => ({
             const newPositions = calculateLayout(cards, connections);
             if (newPositions.size === 0) return;
 
-            set(state => ({
-                cards: state.cards.map(card => {
+            set(state => {
+                const nextCards = state.cards.map(card => {
                     const newPos = newPositions.get(card.id);
                     if (newPos) {
                         return { ...card, x: newPos.x, y: newPos.y };
                     }
                     return card;
-                })
-            }));
+                });
+                cardLookup.rebuild(nextCards);
+                return {
+                    cards: nextCards
+                };
+            });
         } else {
             // Grid Layout (Start at top-left of current view? Or average position?)
             // Filter out cards that are already connected (part of a mind map)
@@ -232,21 +365,25 @@ export const createCardSlice = (set, get) => ({
             const newPositions = calculateGridLayout(looseCards, minX, minY);
             if (newPositions.size === 0) return;
 
-            set(state => ({
-                cards: state.cards.map(card => {
+            set(state => {
+                const nextCards = state.cards.map(card => {
                     const newPos = newPositions.get(card.id);
                     if (newPos) {
                         return { ...card, x: newPos.x, y: newPos.y };
                     }
                     return card;
-                })
-            }));
+                });
+                cardLookup.rebuild(nextCards);
+                return {
+                    cards: nextCards
+                };
+            });
         }
     },
 
     handleCardMove: (id, newX, newY, moveWithConnections = false) => {
         const { cards, connections, selectedIds } = get();
-        const sourceCard = cards.find(c => c.id === id);
+        const sourceCard = get().getCardById(id);
         if (!sourceCard) return;
 
         const dx = newX - sourceCard.x;
@@ -275,24 +412,7 @@ export const createCardSlice = (set, get) => ({
             moveIds = isSelected ? selectedIdSet : new Set([id]);
         }
 
-        set((state) => {
-            const nextCards = state.cards.slice();
-            const movedCardIndexes = new Map();
-
-            state.cards.forEach((card, index) => {
-                if (moveIds.has(card.id)) {
-                    movedCardIndexes.set(card.id, index);
-                }
-            });
-
-            movedCardIndexes.forEach((index, movedId) => {
-                const card = nextCards[index];
-                if (!card || card.id !== movedId) return;
-                nextCards[index] = { ...card, x: card.x + dx, y: card.y + dy };
-            });
-
-            return { cards: nextCards };
-        });
+        get().moveCardsByIds(moveIds, dx, dy);
     },
 
     // Alias for explicit drag end handling + Magnetic snap to zones
@@ -315,9 +435,13 @@ export const createCardSlice = (set, get) => ({
     },
 
     // Reset card state on logout
-    resetCardState: () => set({
-        cards: [],
-        expandedCardId: null,
-        lastSavedAt: 0
-    })
-});
+    resetCardState: () => {
+        cardLookup.clear();
+        set({
+            cards: [],
+            expandedCardId: null,
+            lastSavedAt: 0
+        });
+    }
+    };
+};
