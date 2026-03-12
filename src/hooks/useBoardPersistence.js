@@ -184,6 +184,11 @@ export function useBoardPersistence({
         }
 
         const tracker = trackerRef.current;
+        if (tracker.boardId !== boardId) {
+            trackerRef.current = createSaveTracker(boardId);
+            return;
+        }
+
         if (!tracker.isPrimed) {
             if (!tracker.hasSeenLoading) return;
             tracker.isPrimed = true;
