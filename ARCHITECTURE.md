@@ -1,60 +1,67 @@
-# Project Architecture & Logic Map
+# Project Architecture Map
 
-This document outlines the high-level architecture, directory structure, and key logic locations for the project. It is designed to assist AI agents and developers in navigating the codebase.
+This file is a quick navigation map for developers and coding agents. It reflects the codebase as of `2026-03-13`.
 
-## 1. Technology Stack
-- **Framework**: React + Vite
-- **State Management**: Zustand (using Slices pattern + Zundo for undo/redo)
-- **Styling**: Tailwind CSS
-- **Testing**: Vitest
-- **AI Integration**: Custom service layer wrapping LLM providers
-- **Deployment**: Cloudflare Pages
+## Runtime Structure
 
-## 2. Directory Structure
+- `src/App.jsx`
+  Handles routes, board loading, global search, login/logout, board CRUD handoff, and top-level dialogs.
+- `src/pages/GalleryPage.jsx`
+  Hosts gallery, notes center, favorites, statistics, trash, feedback, and settings entry points.
+- `src/pages/BoardPage.jsx`
+  The board runtime shell. Composes canvas, chat bar, note overlay, board instruction panel, sidebar, and top bar.
+- `src/hooks/useBoardLogic.js`
+  Main board orchestration hook. It pulls together store state, board actions, AI actions, routing, and canvas interactions.
 
-### Root (`/src`)
-| Directory | Description |
-|-----------|-------------|
-| **`components/`** | Shared, reusable UI components. |
-| **`contexts/`** | React Context Providers (Global app state not in store, e.g., `LanguageContext`). |
-| **`hooks/`** | Custom React hooks (e.g., UI logic, keyboard shortcuts). |
-| **`modules/`** | Feature-specific domains (e.g., `landing` page). |
-| **`services/`** | **[CRITICAL]** Business logic, API calls, and external integrations. |
-| **`store/`** | **[CRITICAL]** Global state management (Zustand). |
-| **`utils/`** | Helper functions (formatting, validation, debug loggers). |
+## Where Major Logic Lives
 
-## 3. Key Logic Locations
+### State
 
-### 🧠 State Management (Zustand)
-Located in `src/store/`.
-- **Entry Point**: `src/store/useStore.js` (Combines slices, adds temporal middleware).
-- **Slices** (`src/store/slices/`):
-  - `canvasSlice.js`: Viewport, scale, and canvas interactions.
-  - `cardSlice.js`: CRUD operations for cards/notes on the board.
-  - `aiSlice.js`: AI generation state and message history.
-  - `selectionSlice.js`: Managing selected items.
-  - `connectionSlice.js`: Lines/connections between cards.
+- `src/store/useStore.js`: root Zustand store with temporal history
+- `src/store/slices/`: canvas, cards, connections, groups, selection, AI, settings, share, credits, board metadata
 
-### 🤖 AI & LLM Services
-Located in `src/services/`.
-- **Main Entry**: `src/services/llm.js` (Chat completion, streaming, image generation wrappers).
-- **Factory/Registry**: `src/services/llm/` (Model provider configuration).
-- **Prompts**: Logic often resides within `llm.js` or specialized handlers in `aiSlice.js`.
+### AI
 
-### 💾 Data & Board Management
-- **Board Logic**: `src/services/boardService.js` (Loading/saving boards, data transformation).
-- **Synchronization**: `src/services/syncService.js` (Syncs state with remote storage/DB).
-- **Persistence**: `src/services/storage.js`, `firebase.js`, `s3.js`.
+- `src/services/llm.js`: public chat/stream/image entry points
+- `src/services/llm/factory.js`: provider selection
+- `src/services/llm/providers/gemini.js`: Gemini native transport, retries, search tool behavior, concurrency gate, fallback rules
+- `src/services/ai/AIManager.js`: centralized task queue with card-level concurrency
 
-### 🎨 UI & Interaction
-- **Main Canvas**: Likely in `src/components/` (e.g., `Canvas`, `Board`).
-- **Tools**: Interaction handlers often found in `src/hooks/` (e.g., generic drag/drop) or `slices/` (state updates).
+### Persistence And Sync
 
-## 4. Conventions
-- **State Updates**: Logic for modifying application state should primarily reside in **Zustand Slices** (`src/store/slices/*.js`). Components should dispatch actions from these slices.
-- **Business Logic**: Complex logic (e.g., parsing files, talking to APIs) belongs in **Services** (`src/services/*.js`), called by Slices or Components.
-- **Debug**: `src/utils/debugLogger.js` is used for conditional logging in Beta/Dev environments.
+- `src/services/boardService.js`: local board CRUD and metadata persistence
+- `src/services/storage.js`: compatibility facade
+- `src/services/syncService.js`: Firestore listeners, cloud writes, offline fallback, retry scheduling
+- `src/services/imageStore.js`: IndexedDB image persistence
 
-## 5. Deployment Workflow
-- **Beta**: `npm run ship:beta` (Builds & Deploys to Cloudflare Beta -> Pushes to Git `beta` branch).
-- **Main**: Production releases.
+### Board Intelligence
+
+- `src/services/customInstructionsService.js`: instruction catalog normalization and board-level enablement
+- `src/services/boardTitle/metadata.js`: placeholder/manual/auto title rules
+- `src/hooks/useAutoBoardNaming.js`: async automatic board naming
+- `src/hooks/useAutoBoardSummaries.js`: auto summary / background trigger queue
+- `src/hooks/useBoardBackground.js`: summary/background generation entry
+
+### Edge / Server
+
+- `functions/api/gmi-serving.js`: AI proxy
+- `functions/api/system-credits.js`: free quota and image quota service
+- `functions/api/create-checkout.js`, `webhook.js`, `order-details.js`: payments
+- `functions/api/redeem.js`, `functions/api/admin/codes.js`: redemption code lifecycle
+- `functions/api/feedback.js`: feedback and comments API
+- `functions/_middleware.js`: bot-only SEO tag injection
+
+## Editing Guide
+
+- Canvas interaction bugs: inspect `src/components/Canvas.jsx`, `src/hooks/useCanvasGestures.js`, `src/hooks/useSelection.js`, and the canvas/card slices.
+- AI transport bugs: inspect `src/services/llm/providers/gemini.js`, `src/services/llm/keyPoolManager.js`, `src/services/llm/providers/gemini/*`, and `functions/api/gmi-serving.js`.
+- Sync/data loss bugs: inspect `src/services/syncService.js`, `src/services/boardService.js`, and `src/hooks/useBoardSync.js`.
+- Settings/model selection bugs: inspect `src/store/slices/settingsSlice.js`, `src/components/settings/*`, and `src/components/ModelSwitcher.jsx`.
+
+## Important Current Behaviors
+
+- History only tracks `cards`, `connections`, `groups`, and `boardPrompts`.
+- AI concurrency is globally scheduled and additionally constrained per card/model path.
+- Official Gemini direct mode and proxy mode now follow different retry/search defaults.
+- Search modal loads board content lazily with bounded concurrency instead of eager full hydration.
+- Cloud sync can auto-switch into offline mode when quota/network failures are detected.

@@ -1,41 +1,53 @@
 # 常见问题与注意事项
 
-## 1. 状态持久化
+## 1. 数据都存在哪里
 
-| 数据类型 | 存储位置 | 备注 |
-|---------|---------|------|
-| 画板内容 (cards, connections, groups) | IndexedDB + Firestore | 自动同步 |
-| Provider 设置 | localStorage (`mixboard_providers_v3`) | 敏感信息 |
-| 视口状态 (offset, scale) | localStorage | 每个画板独立 |
-| 系统额度 | Cloudflare KV | 服务端管理 |
+| 数据 | 位置 | 说明 |
+| --- | --- | --- |
+| 画板正文 | IndexedDB + Firestore | 本地优先，登录后可同步 |
+| 画板列表元数据 | localStorage + Firestore | 包括标题、摘要、背景、删除状态 |
+| 视口状态 | localStorage | 每个画板单独记录 |
+| Provider 配置 | localStorage (`mixboard_providers_v3`) | 包含模型和协议配置 |
+| 快速模型切换 | localStorage (`mixboard_quick_models`) | 只影响当前对话角色 |
+| 全局 Prompt | localStorage | 在 `boardSlice` 管理 |
+| 自定义指令 | localStorage（带时间戳包装）+ 云端设置 | 画板启用状态另有缓存 |
+| 图片 | IndexedDB / 对象存储 / base64 回退 | 取决于配置和链路 |
+| 系统额度 / 兑换码 | Cloudflare KV | 服务端管理 |
 
-## 2. 图片存储
+## 2. 为什么有时候会自动进入离线模式
 
-- **上传图片：** 转为 Base64 存入卡片 data
-- **云同步：** 可选上传到 S3/云存储
-- **限制：** Base64 会增大数据体积
+这是同步层的保护机制：
 
-## 3. 性能优化点
+- Firestore 配额异常
+- 短时间网络异常
+- 后台写入反复失败
 
-1. **AI 任务队列** - 并发控制防止过载
-2. **防抖保存** - 减少存储操作
-3. **虚拟化渲染** - 大量卡片时考虑
-4. **图片懒加载** - 减少初始加载
+系统会自动触发 `offlineMode`，避免继续打崩同步链路。恢复后可再尝试云同步。
 
-## 4. 安全注意事项
+## 3. 为什么同样是 Gemini，有时会直连，有时会走代理
 
-1. **API Key 保护** - 用户 Key 仅存本地，系统 Key 在 Cloudflare 环境变量
-2. **Firebase Token 验证** - 系统额度 API 验证用户身份
-3. **CORS** - Cloudflare Functions 正确配置
+因为当前代码会按以下条件区分：
 
-## 5. 调试日志
+- `baseUrl`
+- Key 类型是否为官方 `AIza`
+- provider 协议与模型名
 
-使用 `debugLogger.js`:
-```javascript
-import { debugLog } from '../utils/debugLogger';
+所以“我选了 google”并不等于“一定直连 Google 官方接口”。
 
-debugLog.ai('AI 相关日志', data);
-debugLog.ui('UI 事件日志', data);
-debugLog.storage('存储操作日志', data);
-debugLog.error('错误日志', error);
-```
+## 4. 为什么开两个标签页会有一个只读
+
+这是 `useTabLock` 的保护设计：
+
+- 同一画板默认只允许一个主编辑标签页
+- 其他标签页会提示只读
+- 需要时可以手动点击 `Take Over`
+
+## 5. 为什么没配 API Key 也能用
+
+因为当前项目有系统额度链路，会在用户未配置自有 Key 时切到 `SystemCreditsProvider`。
+
+## 6. 开发时最容易踩的坑
+
+- 在 Zustand selector 里返回新对象，容易触发高频重渲染甚至死循环
+- 在组件中直接追加复杂 AI / 同步逻辑，会把业务边界重新打乱
+- 修改 Gemini 链路时如果没同时考虑代理、重试、搜索工具和 KeyPool，很容易引入回归

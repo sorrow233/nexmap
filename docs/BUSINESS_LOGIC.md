@@ -1,183 +1,92 @@
-# 关键业务逻辑详解
+# 关键业务逻辑
 
-## 1. 多 Provider 支持
+## 1. Provider 与模型选择规则
 
-**配置结构：**
-```javascript
-{
-    providers: {
-        'google': {
-            id: 'google',
-            name: 'GMI Gemini',
-            baseUrl: 'https://api.gmi-serving.com/v1',
-            apiKey: 'YOUR_KEY',
-            model: 'google/gemini-3-pro-preview',
-            protocol: 'gemini',  // 'gemini' | 'openai'
-            roles: {
-                chat: 'google/gemini-3-pro-preview',
-                analysis: 'google/gemini-3-flash-preview',
-                image: 'gemini-3-pro-image-preview'
-            }
-        },
-        'custom': {
-            id: 'custom',
-            name: '自定义 OpenAI',
-            baseUrl: 'https://api.openai.com/v1',
-            apiKey: '...',
-            model: 'gpt-4',
-            protocol: 'openai'
-        }
-    },
-    activeId: 'google'
-}
-```
+当前项目不是“只支持一个 Gemini Provider”。
 
-**角色模型：**
-- `chat` - 主对话模型
-- `analysis` - 分析/后续问题生成 (较快的模型)
-- `image` - 图片生成模型
+实际规则在 `settingsSlice + llm/factory + provider` 三层共同决定：
 
-## 2. 免费额度系统
+- 用户没有 API Key 时，文本类能力默认退回系统额度链路
+- `protocol = gemini` 且模型名看起来是 Gemini/Gemma，走 Gemini 原生协议
+- 其他模型即便挂在同一个 provider 下，也可能自动按 OpenAI Compatible 协议发送
+- `quickChatModel` 会临时覆盖画布对话模型，但不会直接改掉全局配置
 
-**流程：**
-1. 用户未配置 API Key
-2. `ModelFactory.getProvider()` 返回 `SystemCreditsProvider`
-3. Provider 发送请求到 `/api/system-credits`
-4. Cloudflare Function 验证 Firebase Token
-5. 检查 KV 中用户额度
-6. 使用系统 API Key 调用 AI
-7. 计算消耗 Token 并扣除额度
-8. 返回响应和剩余额度
+## 2. 官方 Gemini 直连与代理链路不是同一条规则
 
-**额度计算：**
-```javascript
-function calculateCreditsUsed(inputTokens, outputTokens) {
-    const inputCost = (inputTokens / 1_000_000) * PRICING.INPUT_PER_MILLION;
-    const outputCost = (outputTokens / 1_000_000) * PRICING.OUTPUT_PER_MILLION;
-    return inputCost + outputCost;
-}
-```
+近期代码已经明确区分两种运行方式：
 
-## 3. 撤销/重做
+- 官方直连：`generativelanguage.googleapis.com + AIza Key`
+- 代理/GMI：`api.gmi-serving.com` 或 bearer token 链
 
-**实现：** Zundo middleware
+这会影响：
 
-**配置：**
-```javascript
-temporal(storeCreator, {
-    limit: 50,  // 最多 50 步历史
-    equality: (a, b) => a.cards === b.cards && a.connections === b.connections,
-    partialize: (state) => ({
-        cards: state.cards,
-        connections: state.connections,
-        groups: state.groups,
-        boardPrompts: state.boardPrompts
-    })
-})
-```
+- 搜索工具默认是否开启
+- 失败时是否允许 fallback
+- 重试次数
+- 是否优先直连还是优先代理
 
-**使用：**
-```javascript
-import { undo, redo } from './store/useStore';
+因此排查问题时，不能只看“providerId = google”，必须看真实 `baseUrl` 和 Key 类型。
 
-// 撤销
-undo();
+## 3. AI 并发与消息排队
 
-// 重做
-redo();
-```
+当前 AI 相关并发至少有四层规则：
 
-## 4. 自动布局
+1. `AIManager` 的全局任务队列
+2. 卡片级互斥，避免同一张卡片同时跑多个主任务
+3. Gemini provider 的并发闸门
+4. KeyPool / 冷却等待 / 重试节流
 
-**两种布局：**
+另外，`aiSlice.pendingMessages` 允许用户在当前流式回答未结束时继续发消息，系统会在前一条完成后自动串行处理。
 
-1. **树形布局** (`calculateLayout`)
-   - 识别连接关系
-   - 找到根节点
-   - 递归布局子节点
-   - 从左到右展开
+## 4. 云同步与数据安全
 
-2. **网格布局** (`calculateGridLayout`)
-   - 按选中顺序排列
-   - 固定列数
-   - 等间距网格
+当前同步逻辑不是“本地改一下就直接 Firestore setDoc”这么简单：
 
-## 5. 卡片连接
+- 有本地保存和云保存两条链路
+- 监听元数据与监听单画板正文是分开的
+- 同步会检查版本号、更新时间和加载阶段
+- 网络/配额异常会把应用切到离线模式
+- 离线模式恢复后再尝试继续同步
 
-**创建连接：**
-1. 点击卡片连接按钮 → `handleConnect(sourceId)`
-2. 进入连接模式
-3. 点击目标卡片 → `handleConnect(targetId)`
-4. 自动检查重复
-5. 添加连接并退出连接模式
+这也是近期大量修复“空白画板覆盖真实画板”“首帧保存误判”“卡片高频丢失”的根因所在。
 
-**连接时自动分组：**
-- 如果源卡片在 Zone 中，目标自动加入
-- 如果目标在 Zone 中，源自动加入
-- 如果都在不同 Zone，合并到源的 Zone
+## 5. 标题、摘要、背景图规则
 
-- 如果都在不同 Zone，合并到源的 Zone
+### 标题
 
-## 6. 核心算法细节 (Core Algorithms)
+- 占位标题、自动标题、手动标题被明确区分
+- 用户手动输入后，后续自动命名不应覆盖
+- 占位标题且卡片数足够时，后台可自动生成标题
 
-### 6.1 智能卡片定位 (`geometry.js`)
-新卡片创建时，系统通过 `findOptimalPosition` 寻找最佳位置，包含三种回退策略：
-1.  **上下文关联**: 如果有选中卡片，优先寻找其右侧 `(Right + Margin)` 的空闲区域。
-2.  **螺旋搜索**: 以视口中心为原点，进行网格化螺旋搜索 (Spiral Search)，找到第一个无重叠的空位。
-3.  **随机回退**: 如果前两者都失败，在视口中心附近添加微小随机偏移。
+### 摘要与背景
 
-### 6.2 语义化连接点 (`getBestAnchorPair`)
-连线并非简单连接两个中心，而是计算最佳锚点 (Top/Bottom/Left/Right)。
-- **惩罚系统**: 引入 `penalty` 机制强制语义流向。
-    - **水平布局**: 如果 A 在 B 左侧，强制使用 (A.Right -> B.Left)，其他方向增加 5000 距离惩罚。
-    - **垂直布局**: 类似地，强制使用 (A.Bottom -> B.Top)。
+- `3-9` 张卡优先生成文字摘要
+- `10+` 张卡优先生成背景图
+- 当前会话中尽量避免重复触发
 
-### 6.3 树形自动布局 (`autoLayout.js`)
-实现了类 MindNode 的思维导图布局算法：
-- **递归高度计算**: 计算每个子树的 `totalHeight`。
-- **垂直居中**: 父节点定位于其所有子节点高度集合的垂直中心。
-- **森林堆叠**: 如果有断开的图 (Forest)，将它们垂直堆叠，避免重叠。
+## 6. 自定义指令规则
 
-### 6.4 网格布局算法
-使用 `Math.sqrt(N)` 计算最佳列数，并实现了**视觉顺序排序**：
-- 在重排前，先根据原位置的 (Y, X) 进行排序，确保原本在左上角的卡片重排后依然在前面，保持用户的视觉心智模型。
+当前自定义指令分两类：
 
-## 7. 性能监控 (`performanceMonitor.js`)
+- 全局指令：始终生效
+- 可选指令：按画板启用/自动推荐结果启用
 
-**功能：**
-- 追踪 LLM 响应时间 (TTFT - Time To First Token)
-- 计算 tokens/sec (生成速率)
-- 估算 chunk 大小与 token 的关系 (约 1.5 chars/token)
-- 自动记录性能日志供分析
+项目还会缓存当前画板的指令启用状态，因此切板后仍能恢复。
 
-## 8. AI 生态与进化 (AI Services)
+## 7. 回收站与删除规则
 
-**核心服务 (`src/services/llm.js`):**
+- 删除画板默认是软删除
+- 画板进入回收站后可恢复
+- 永久删除才会真正移除数据
 
-1. **Sprout (深度追问):** `generateFollowUpTopics`
-   - 基于对话历史生成 5 个深度后续问题
-   - 使用 `analysis` 角色模型进行推理
-   - 输出格式: JSON 数组
+这套规则同时作用于本地与云端元数据。
 
-2. **Quick Sprout (快速话题):** `generateQuickSproutTopics`
-   - 快速提取 3 个核心子话题
-   - 独立于主对话流，用于工具栏快速引导
-   - 采用话题拆解策略 (Topic Decomposition)
+## 8. 系统额度与兑换码
 
-3. **Branching (话题分叉):** `extractConversationTopics`
-   - **功能**: 将长对话拆解为独立的主题卡片
-   - **逻辑**: 分析上下文提取所有独立讨论点 (Limit: 4)
-   - **用途**: `UseAISprouting` 钩子中处理分叉逻辑
+系统额度不是简单 token 计费器，而是包含：
 
-4. **Continue (自然追问):** `generateContinueTopic`
-   - 模拟自然语言追问 (例如: "这个具体是怎么实现的？")
-   - 用于卡片内的快速延续对话
-   - 限制 20 字以内的口语化提问
-
-## 9. 用户引导 (`onboarding.js`)
-
-**功能：**
-- 定义首次加载时的欢迎卡片数据结构
-- 预设连接关系 (Guide 1 -> Guide 2)
-- 介绍核心功能 (双击创建、智能连线、快捷键)
-- 区分不同分发渠道 (Alpha/Beta/Main) 的引导内容
+- 每周免费对话额度
+- 每周免费图片额度
+- Stripe 增购 bonus credits
+- 兑换码补充 credits / 开通 Pro
+- 管理员后台生成兑换码

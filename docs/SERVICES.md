@@ -1,331 +1,156 @@
-# 服务层 (Services)
+# 服务层
 
-## 1. LLM 服务架构
+## 1. 服务层现状
 
-```mermaid
-graph TB
-    subgraph EntryPoint["入口"]
-        LLM["llm.js"]
-    end
-    
-    subgraph Factory["工厂"]
-        MF["ModelFactory"]
-    end
-    
-    subgraph Providers["Provider 实现"]
-        GP["GeminiProvider"]
-        OP["OpenAIProvider"]
-        SP["SystemCreditsProvider"]
-    end
-    
-    subgraph Base["基类"]
-        BP["LLMProvider (base.js)"]
-    end
-    
-    LLM --> MF
-    MF --> GP
-    MF --> OP
-    MF --> SP
-    GP --> BP
-    OP --> BP
-    SP --> BP
-```
+当前 `src/services/` 已经不是简单的 API 包装目录，而是项目的主要业务中台。真正的“产品规则”大量存在于这里。
 
-### 1.1 `llm.js` - 统一入口
+主要模块如下：
 
-```javascript
-// 主要导出函数：
+| 模块 | 作用 |
+| --- | --- |
+| `llm.js` | AI 文本/流式/图片统一入口 |
+| `llm/` | Provider 工厂、注册表、协议实现、解析器、并发闸门、KeyPool |
+| `ai/AIManager.js` | AI 任务调度中心 |
+| `boardService.js` | 本地画板 CRUD、回收站、视口、搜索加载 |
+| `storage.js` | 对旧调用保持兼容的 facade |
+| `syncService.js` | Firestore 同步、监听、重试、离线模式 |
+| `customInstructionsService.js` | 自定义指令目录与画板启用规则 |
+| `boardTitle/metadata.js` | 自动/手动/占位标题规则 |
+| `search/searchDataLoader.js` | 受控并发的画板搜索加载器 |
+| `stats/userStatsService.js` | 用户统计 |
+| `favoritesService.js` | 收藏能力 |
+| `notesService.js` | 笔记中心数据 |
+| `s3.js` | 可选对象存储上传 |
+| `linkageService.js` | FlowStudio 联动 |
 
-// 1. 聊天补全 (非流式)
-export async function chatCompletion(messages, config, model = null, options = {})
+## 2. LLM 体系
 
-// 2. 流式聊天 (主对话用)
-export async function streamChatCompletion(messages, config, onToken, model = null, options = {})
+### 2.1 统一入口
 
-// 3. 图片生成
-export async function imageGeneration(prompt, config, model = null, options = {})
+`src/services/llm.js` 负责导出：
 
-// 4. 生成后续话题 (分析角色)
-export async function generateFollowUpTopics(messages, config, model = null, options = {})
-```
+- 文本补全
+- 流式对话
+- 图片生成
+- 其他分析类调用
 
-### 1.2 `factory.js` - Provider 工厂
+组件和 slice 不应直接耦合具体 provider 细节，而是尽量通过这里进入。
 
-```javascript
-export class ModelFactory {
-    static getProvider(config, options = {}) {
-        // 1. 无 API Key → SystemCreditsProvider (免费试用)
-        if (!hasApiKey && !options.skipSystemCredits) {
-            return new SystemCreditsProvider();
-        }
-        
-        // 2. 根据协议选择 Provider
-        switch (config.protocol) {
-            case 'gemini': return new GeminiProvider(config);
-            case 'openai': return new OpenAIProvider(config);
-            default: return new OpenAIProvider(config);
-        }
-    }
-    
-    static shouldUseSystemCredits(config) {
-        return !config?.apiKey || config.apiKey.trim() === '';
-    }
-}
-```
+### 2.2 Provider 选择
 
-### 1.3 `providers/gemini.js` - Gemini 原生协议
+`src/services/llm/factory.js` 当前规则：
 
-**特点：**
-- 支持 Gemini 原生 API 格式
-- 支持多模态 (文本 + 图片)
-- 支持 Google Search 工具
-- 支持流式响应
-- 图片生成使用专门的模型
+- 没有用户 API Key 时，默认走 `SystemCreditsProvider`
+- `protocol === gemini` 且模型名确实是 Gemini/Gemma，走 `GeminiProvider`
+- 其他情况走 `OpenAIProvider`
 
-**关键方法：**
-```javascript
-class GeminiProvider extends LLMProvider {
-    // 消息格式转换 (OpenAI → Gemini)
-    formatMessages(messages) { /* ... */ }
-    
-    // 非流式聊天
-    async chat(messages, model, options = {}) { /* ... */ }
-    
-    // 流式聊天
-    async stream(messages, onToken, model, options = {}) {
-        // 1. 构造 tools (Google Search)
-        // 2. 通过 Cloudflare Proxy 请求
-        // 3. 解析 SSE 流
-        // 4. 处理 functionCall 和 text 响应
-    }
-    
-    // 图片生成 (GMI Cloud)
-    async generateImage(prompt, model, options = {}) { /* ... */ }
-}
-```
+### 2.3 Gemini 链路是当前最复杂的服务
 
-### 1.4 `providers/openai.js` - OpenAI Compatible
+`src/services/llm/providers/gemini.js` 已经承载很多关键规则：
 
-**特点：**
-- 兼容所有 OpenAI 格式 API
-- 支持自定义 baseUrl
-- 支持 DALL-E 和 Gemini 风格图片生成
+- 官方 Gemini 直连与 GMI 代理的链路区分
+- KeyPool 冷却与等待
+- 模型级/请求级重试
+- `gemini-3.1-pro-preview` 的特殊 fallback 与高负载处理
+- 搜索工具默认策略
+- 流式解析与非流式降级协作
+- 图片生成入口
 
-### 1.5 `providers/systemCredits.js` - 免费额度
+配套文件：
 
-**特点：**
-- 无需用户 API Key
-- 通过 Cloudflare Function 代理
-- 自动计算 Token 消耗
-- 扣除用户额度
+- `providers/gemini/errorUtils.js`
+- `providers/gemini/streamParser.js`
+- `providers/gemini/concurrencyGate.js`
+- `providers/gemini/partUtils.js`
 
-## 2. `AIManager.js` - 任务队列
+## 3. AI 调度中心
 
-```javascript
-// 优先级定义
-export const PRIORITY = {
-    CRITICAL: 3,  // 用户直接等待 (如 Modal Chat)
-    HIGH: 2,      // 可见 UI 更新 (如卡片生成)
-    LOW: 1        // 后台任务
-};
+`src/services/ai/AIManager.js` 当前承担：
 
-// 任务状态
-export const STATUS = {
-    PENDING: 'pending',
-    RUNNING: 'running',
-    COMPLETED: 'completed',
-    FAILED: 'failed',
-    CANCELLED: 'cancelled'
-};
+- 按优先级排队
+- 卡片级并发上限（当前 `MAX_CONCURRENT_CARDS = 8`）
+- 重复任务去重（非 chat 类型）
+- 按 `card:{id}` 标签取消运行中任务
+- 在任务完成/失败/取消后自动继续 drain 队列
 
-class AIManager {
-    constructor() {
-        this.queue = [];           // 待执行任务队列
-        this.activeTasks = new Map(); // 正在执行的任务
-        this.maxConcurrent = 3;    // 最大并发数
-    }
-    
-    // 提交任务
-    async requestTask({ type, priority, payload, tags, onProgress }) {
-        // 1. 取消队列中冲突的任务 (按 tags 匹配)
-        // 2. 创建任务对象
-        // 3. 加入队列并排序
-        // 4. 触发队列处理
-        // 5. 返回 Promise
-    }
-    
-    // 队列处理
-    _processQueue() {
-        // 按优先级排序取任务
-        // 并发控制
-    }
-    
-    // 执行任务
-    async _executeTask(task, signal) {
-        // 根据 type 调用对应的 LLM 方法
-        // type: 'chat' | 'image'
-    }
-}
+这层设计的意义是把“请求稳定性”从 UI 组件里拿出来，避免一堆按钮逻辑各自实现并发控制。
 
-// 单例导出
-export const aiManager = new AIManager();
-```
+## 4. 本地存储与画板服务
 
-## 3. `boardService.js` - 画板服务
+### 4.1 `boardService.js`
 
-```javascript
-// 存储 Key 常量
-const BOARD_PREFIX = 'mixboard_board_';
-const BOARDS_LIST_KEY = 'mixboard_boards_list';
-const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
+负责：
 
-// 主要函数
+- 画板元数据列表
+- 画板正文保存/加载
+- 软删除、恢复、永久删除
+- 视口状态
+- 给搜索模块提供板内容加载接口
 
-// 画板元数据管理
-export function getCurrentBoardId() { /* localStorage */ }
-export function setCurrentBoardId(id) { /* localStorage */ }
-export async function getBoardsList() { /* 过滤已删除 */ }
-export async function getTrashBoards() { /* 回收站 */ }
-export async function loadBoardsMetadata() { /* IndexedDB */ }
+### 4.2 `storage.js`
 
-// CRUD
-export async function createBoard(name) {
-    // 1. 生成 ID
-    // 2. 创建元数据 { id, name, createdAt, updatedAt }
-    // 3. 存入 IndexedDB
-    // 4. 更新画板列表
-}
+它是兼容层，不是新的业务中心。很多旧代码仍通过这里访问：
 
-export async function saveBoard(id, data) {
-    // 1. 存入 IndexedDB (带时间戳)
-    // 2. 更新列表元数据
-}
+- `createBoard`
+- `saveBoard`
+- `loadBoard`
+- `saveBoardToCloud`
+- `updateUserSettings`
 
-export async function loadBoard(id) {
-    // 1. 从 IndexedDB 加载
-    // 2. 处理旧格式数据迁移
-    // 3. 处理图片 base64 恢复
-    // 4. 返回 { cards, connections, groups, background }
-}
+真实实现则已经拆到 `boardService.js` / `syncService.js` / `imageStore.js`。
 
-// 软删除/恢复/永久删除
-export async function deleteBoard(id) { /* 标记 deletedAt */ }
-export async function restoreBoard(id) { /* 清除 deletedAt */ }
-export async function permanentlyDeleteBoard(id) { /* 彻底删除 */ }
+## 5. 云同步与离线兜底
 
-// 视口状态
-export function saveViewportState(boardId, viewport) { /* localStorage */ }
-export function loadViewportState(boardId) { /* localStorage */ }
-```
+`syncService.js` 现在非常关键，当前包含：
 
-## 4. `syncService.js` - 云同步
+- 画板元数据监听
+- 当前活跃画板监听
+- 云端写入排队
+- 重试定时器
+- 快照游标
+- 离线模式自动切换
+- 配额 / 网络问题检测
+- 同步成功后的离线状态恢复
 
-```javascript
-// --- 实时监听 ---
-export function listenForBoardUpdates(userId, onUpdate) {
-    // 1. 监听 Firestore 用户画板集合
-    // 2. 对比 IndexedDB 本地数据
-    // 3. 自动同步到本地
-    // 4. 处理冲突 (以较新的为准)
-    // 返回 unsubscribe 函数
-}
+这是最近几个月重构最重的模块之一，也是画板“不丢数据”的核心。
 
-// --- 上传 ---
-export async function saveBoardToCloud(userId, boardId, boardContent) {
-    // 1. 清理 undefined 值
-    // 2. 处理图片 (上传到云存储或跳过)
-    // 3. 写入 Firestore
-}
+## 6. 指令、自动命名与自动摘要
 
-export async function updateBoardMetadataInCloud(userId, boardId, metadata) { /* ... */ }
-export async function deleteBoardFromCloud(userId, boardId) { /* ... */ }
+### 6.1 自定义指令
 
-// --- 用户设置同步 ---
-export async function saveUserSettings(userId, settings) {
-    // 保存到 Firestore users/{userId}/settings/main
-}
+`customInstructionsService.js` 提供：
 
-export async function loadUserSettings(userId) {
-    // 从 Firestore 加载设置
-}
-```
+- 指令条目标准化
+- 全局/可选指令拆分
+- 画板已启用指令集合清洗
+- 当前画板有效指令解析
+- 本地缓存读写
 
-## 5. `db/indexedDB.js` - 本地数据库
+### 6.2 自动命名
 
-```javascript
-const IDB_NAME = 'MixBoardDB';
-const IDB_STORE = 'boards';
+`useAutoBoardNaming.js` 结合：
 
-// 基础操作
-export async function idbGet(key) { /* ... */ }
-export async function idbSet(key, value) { /* ... */ }
-export async function idbDel(key) { /* ... */ }
-export async function idbClear() { /* 清空所有数据 (登出用) */ }
-```
+- `boardTitle/metadata.js`
+- `services/ai/boardAutoTitleService.js`
 
-## 6. `clearAllUserData.js` - 登出清理
+来判断：
 
-```javascript
-export async function clearAllUserData() {
-    console.log('[Cleanup] Starting comprehensive data cleanup...');
-    
-    // 1. 清除 localStorage (保留部分 UI 状态)
-    const keysToKeep = ['gemini_system_prompt']; // 示例
-    // ...
-    
-    // 2. 清除 IndexedDB
-    await idbClear();
-    
-    // 3. 重置 Redux Store
-    useStoreBase.getState().resetAllState();
-    
-    // 4. 清除历史记录
-    clearHistory();
-    
-    console.log('[Cleanup] All user data cleared');
-}
-```
-    console.log('[Cleanup] All user data cleared');
-}
-```
+- 当前标题是不是占位标题
+- 是否已被用户手动命名
+- 是否达到自动命名阈值
 
-### 6.3 LLM Provider 健壮性设计 (`GeminiProvider`)
-- **指数退避重试**: 实现了 `Delay * 1.5` (Stream) 和 `Delay * 2` (Chat) 的指数退避策略。
-- **特殊错误处理**:
-    - **404 Proxy Error**: 明确提示部署问题。
-    - **Image Validation**: 自动过滤没有 `data` 的 image parts，防止 API 400 错误。
-- **实验性特性**: 支持 `thinkingLevel` (思考模型) 和 `mediaResolution` 参数透传。
+### 6.3 自动摘要与背景
 
-## 7. `redeemService.js` - 兑换服务
+`useAutoBoardSummaries.js` / `useBoardBackground.js` 当前负责：
 
-**功能：** 处理兑换码逻辑
-- `redeemCode(code)`: 调用 API 兑换
-- `generateCodes(...)`: 管理员生成兑换码
+- `3-9` 张卡时尝试生成摘要
+- `10+` 张卡时尝试生成背景图
+- 避免同一画板在会话中重复触发
 
-## 8. `s3.js` - S3 存储服务
+## 7. 其他值得注意的服务
 
-**功能：** 处理图片上传到 S3/R2/OBS
-- `uploadImageToS3(file)`: 直接前端直传 (Web Cryptography API)
-- 支持 AWS S3, Cloudflare R2, Huawei OBS 等兼容 S3 的存储
-- 配置存储在 localStorage `mixboard_s3_config`
-
-## 9. `scheduledBackupService.js` - 定时备份
-
-**机制：**
-- **独立于云同步**，纯本地 IndexedDB 备份
-- **时间点：** 每日 3:00 和 16:00 (可配置)
-- **保留策略：** 保留最近 5 天 (最多 10 份 snapshot)
-
-**核心方法：**
-- `performScheduledBackup()`: 执行全量备份 (Boards + Settings)
-- `restoreFromBackup(backupId)`: 恢复指定备份
-- `initScheduledBackup()`: 应用启动时初始化定时器
-
-## 10. `syncUtils.js` - 同步工具
-
-**功能：** 解决多端数据冲突
-- `reconcileCards(cloud, local)`: 智能合并算法
-    - 使用 `syncVersion` (逻辑时钟) 识别最新变更
-    - 智能识别 "远程新增" vs "本地删除"
-    - 文本内容差异合并
-    - 消息流式合并
+- `s3.js`: 没配对象存储时会退回本地 Base64/IDB 存储
+- `linkageService.js`: 会把 FlowStudio UID 本地缓存并尽量同步云端
+- `dataExportService.js`: 导出/分享相关逻辑
+- `scheduledBackupService.js`: 定时备份相关能力
+- `systemCredits/systemCreditsService.js`: 额度查询与错误类型

@@ -1,143 +1,140 @@
 # 核心架构
 
-## 1. 架构图
+## 1. 高层架构图
 
 ```mermaid
 graph TB
-    subgraph Frontend["前端 (React + Vite)"]
-        App[App.jsx]
-        Pages[Pages]
-        Components[Components]
-        Hooks[Hooks]
-        Store[Zustand Store]
-        Services[Services]
+    subgraph Frontend["Frontend (React + Vite)"]
+        App["App / Pages"]
+        Board["BoardPage + useBoardLogic"]
+        Gallery["GalleryPage"]
+        Store["Zustand Store"]
+        Hooks["Hooks"]
+        Services["Services Layer"]
     end
-    
-    subgraph CloudflareEdge["Cloudflare Edge"]
-        CFPages[Cloudflare Pages]
-        CFFunc[Cloudflare Functions]
+
+    subgraph Local["Local Persistence"]
+        IDB["IndexedDB"]
+        LS["localStorage / sessionStorage"]
     end
-    
-    subgraph ExternalServices["外部服务"]
-        Firebase[Firebase Auth/Firestore]
-        GMI[GMI Gemini API]
-        OpenAI[OpenAI Compatible API]
+
+    subgraph Cloud["Cloud Services"]
+        CF["Cloudflare Pages Functions"]
+        Firebase["Firebase Auth + Firestore"]
+        Stripe["Stripe REST API"]
     end
-    
-    subgraph LocalStorage["本地存储"]
-        IDB[(IndexedDB)]
-        LS[(localStorage)]
+
+    subgraph AI["AI Providers"]
+        Gemini["Gemini Direct / GMI Proxy"]
+        OpenAI["OpenAI Compatible"]
+        System["System Credits Models"]
     end
-    
-    App --> Pages
-    Pages --> Components
-    Components --> Hooks
-    Components --> Store
+
+    App --> Board
+    App --> Gallery
+    Board --> Hooks
+    Gallery --> Hooks
+    Board --> Store
+    Gallery --> Store
     Hooks --> Store
     Hooks --> Services
     Store --> Services
-    
-    Services --> CFFunc
-    Services --> Firebase
+
     Services --> IDB
     Services --> LS
-    
-    CFFunc --> GMI
-    CFFunc --> OpenAI
+    Services --> Firebase
+    Services --> CF
+
+    CF --> Gemini
+    CF --> Stripe
+    Services --> OpenAI
+    Services --> Gemini
+    Services --> System
 ```
 
-### 4.2 数据流概述
+## 2. 前端分层
 
-1. **用户交互** → 触发组件事件
-2. **组件** → 调用 Hooks 或 Store Actions
-3. **Store Actions** → 更新状态 & 调用 Services
-4. **Services** → 
-   - 本地：IndexedDB / localStorage
-   - 远程：Firebase / Cloudflare Functions
-5. **Cloudflare Functions** → 代理 AI 请求，保护 API Key
+### 路由层
 
----
+- `App.jsx` 负责路由、登录登出、画板切换、搜索模态框和全局对话框。
+- `GalleryPage.jsx` 是“产品主页”，不是单纯列表页，里面还承载笔记中心、统计、反馈、支付成功回流。
+- `BoardPage.jsx` 是画板运行时外壳，负责把 `Canvas`、`ChatBar`、`BoardTopBar`、`Sidebar`、`BoardInstructionPanel`、`NotePage` 等组合起来。
 
-## 2. 详细数据流
+### 状态层
 
-### 2.1 用户发送消息流程
+- `src/store/useStore.js` 通过 slices 组合全局状态，并使用 Zundo 维护历史记录。
+- 画布、卡片、AI、配置、积分、分享、画板 Prompt 等状态都已独立切片，不再集中堆在单个组件。
+
+### 服务层
+
+- `llm/` 负责 Provider 选择、协议转换、流式处理、重试、并发闸门。
+- `syncService.js` 负责监听、冲突处理、写入重试、离线模式降级。
+- `boardService.js` 负责本地画板数据、回收站、视口状态、搜索加载数据。
+
+## 3. 关键数据流
+
+### 3.1 AI 对话流
 
 ```mermaid
 sequenceDiagram
     participant User
     participant ChatBar
-    participant useCardCreator
-    participant aiSlice
+    participant AISlice
     participant AIManager
-    participant ModelFactory
+    participant Factory
     participant Provider
-    participant CloudflareProxy
-    participant GMIAPI
-    
-    User->>ChatBar: 输入消息
-    ChatBar->>useCardCreator: handleCreateCard()
-    useCardCreator->>aiSlice: createAICard()
-    aiSlice->>aiSlice: addCard() 创建空卡片
-    aiSlice->>AIManager: requestTask()
-    AIManager->>ModelFactory: getProvider()
-    ModelFactory-->>AIManager: Provider实例
-    AIManager->>Provider: stream()
-    Provider->>CloudflareProxy: /api/gmi-proxy
-    CloudflareProxy->>GMIAPI: 实际请求
-    GMIAPI-->>CloudflareProxy: SSE流
-    CloudflareProxy-->>Provider: SSE流
-    loop 每个chunk
-        Provider-->>AIManager: onProgress(chunk)
-        AIManager-->>aiSlice: onProgress(chunk)
-        aiSlice->>aiSlice: updateCardContent()
+    participant Function
+    participant Upstream
+
+    User->>ChatBar: 输入消息 / 批量操作
+    ChatBar->>AISlice: createAICard / handleChatGenerate
+    AISlice->>AIManager: requestTask()
+    AIManager->>Factory: getProvider()
+    Factory-->>AIManager: Gemini/OpenAI/SystemCredits
+    AIManager->>Provider: stream/chat
+    alt 需要代理
+        Provider->>Function: /api/gmi-serving or /api/system-credits
+        Function->>Upstream: 上游 AI 请求
+    else 直连
+        Provider->>Upstream: 官方 API
     end
-    AIManager-->>aiSlice: 完成
-    aiSlice->>aiSlice: setCardGenerating(false)
+    Upstream-->>Provider: chunk / response
+    Provider-->>AIManager: onProgress
+    AIManager-->>AISlice: onProgress
+    AISlice-->>ChatBar: UI 更新
 ```
 
-### 2.2 画板保存流程
+### 3.2 画板加载与保存
 
 ```mermaid
 sequenceDiagram
-    participant Component
-    participant Store
-    participant boardService
-    participant IndexedDB
-    participant syncService
-    participant Firestore
-    
-    Component->>Store: 修改状态
-    Store->>Store: 触发防抖保存
-    Store->>boardService: saveBoard()
-    boardService->>IndexedDB: idbSet()
-    alt 用户已登录
-        boardService->>syncService: saveBoardToCloud()
-        syncService->>Firestore: setDoc()
-    end
-```
-
-### 2.3 应用启动流程
-
-```mermaid
-sequenceDiagram
-    participant Browser
     participant App
-    participant Firebase
-    participant useAppInit
-    participant boardService
-    participant syncService
+    participant BoardService
     participant Store
-    
-    Browser->>App: 加载应用
-    App->>Firebase: onAuthStateChanged监听
-    Firebase-->>App: 用户状态
-    App->>useAppInit: 初始化
-    useAppInit->>boardService: loadBoardsMetadata()
-    alt 用户已登录
-        useAppInit->>syncService: listenForBoardUpdates()
-        useAppInit->>syncService: loadUserSettings()
-        syncService-->>Store: 更新设置
+    participant Sync
+    participant Firestore
+
+    App->>BoardService: loadBoard(boardId)
+    BoardService-->>Store: cards/connections/groups/prompts
+    App->>Store: restoreViewport()
+
+    Store->>BoardService: saveBoard()
+    BoardService->>BoardService: 更新本地元数据与 IndexedDB
+    alt 已登录且允许同步
+        BoardService->>Sync: saveBoardToCloud()
+        Sync->>Firestore: setDoc / updateDoc
     end
-    App->>boardService: loadBoard(currentBoardId)
-    boardService-->>Store: 恢复状态
 ```
+
+### 3.3 画廊搜索流
+
+- 打开 `SearchModal` 后，不会一次性把所有画板完整注入内存。
+- `loadBoardsSearchData()` 会按受控并发逐个加载缺失画板内容，并用缓冲区批量刷新 UI。
+- 这条链路是近期性能优化重点之一。
+
+## 4. 当前架构里最重要的稳定性策略
+
+- AI 请求存在“两层并发控制”：`AIManager` 的卡片级调度 + Gemini provider/model 级并发闸门。
+- Firestore 同步存在“两层保护”：写入重试/排队 + 自动离线模式降级。
+- 画板切换存在“加载期空状态保护”：避免加载中的空数组覆盖真实数据。
+- 多标签页编辑存在“主标签锁”：非主标签页进入只读，并允许手动接管。
