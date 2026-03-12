@@ -1,17 +1,11 @@
-import React, { useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
-import { Sparkles, Crosshair, Hand, MousePointer2, Bot } from 'lucide-react';
-import Card from './Card';
-import StickyNote from './StickyNote';
-import Zone from './Zone'; // NEW: Zone Component
-import ConnectionLayer from './ConnectionLayer';
-import ActiveConnectionLayer from './ActiveConnectionLayer';
-import { getCardRect, isRectIntersect } from '../utils/geometry';
+import React, { useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { Sparkles, Crosshair, Hand, MousePointer2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import ErrorBoundary from './ErrorBoundary';
+import CanvasViewportLayer from './canvas/CanvasViewportLayer';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useCanvasPanSync } from '../hooks/useCanvasPanSync';
+import { useVisibleCanvasData } from '../hooks/useVisibleCanvasData';
 import { useSelection } from '../hooks/useSelection';
-import favoritesService from '../services/favoritesService';
 import InstantTooltip from './InstantTooltip';
 
 const isTextInputElement = (element) => {
@@ -67,6 +61,22 @@ export default function Canvas({
     const isSpaceHoldPanningRef = useRef(false);
     const suppressNextContextToggleRef = useRef(false);
 
+    const {
+        cardSpatialIndex,
+        visibleCards,
+        visibleConnections,
+        connectionCards,
+        selectedIdSet,
+        targetCardIds
+    } = useVisibleCanvasData({
+        cards,
+        connections,
+        offset,
+        scale,
+        selectedIds,
+        generatingCardIds
+    });
+
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
     useEffect(() => {
         stateRef.current = { offset, scale };
@@ -91,7 +101,7 @@ export default function Canvas({
         stateRef,
         setOffset
     });
-    const { performSelectionCheck } = useSelection();
+    const { performSelectionCheck } = useSelection(cardSpatialIndex);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -308,43 +318,6 @@ export default function Canvas({
         lastTouchRef.current = null;
     };
 
-    // Viewport culling optimization from beta
-    const visibleCards = useMemo(() => {
-        const viewportRect = {
-            left: (0 - offset.x) / scale - 400,
-            top: (0 - offset.y) / scale - 400,
-            right: (window.innerWidth - offset.x) / scale + 400,
-            bottom: (window.innerHeight - offset.y) / scale + 400
-        };
-
-        return cards.filter(card => {
-            // SOFT DELETE: Hide cards that are deleted
-            if (card.deletedAt) return false;
-
-            // Guard: Always show cards with invalid coordinates (they need to be visible for debugging/fixing)
-            if (!Number.isFinite(card.x) || !Number.isFinite(card.y)) return true;
-            if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;
-            if (generatingCardIds && generatingCardIds.has(card.id)) return true;
-            return isRectIntersect(viewportRect, getCardRect(card));
-        });
-    }, [cards, offset, scale, selectedIds, generatingCardIds]);
-
-    // Identify "Target" cards (connected to selected cards) for Luminous Guide
-    const targetCardIds = useMemo(() => {
-        if (!selectedIds || selectedIds.length === 0) return new Set();
-
-        const targets = new Set();
-        connections.forEach(conn => {
-            if (selectedIds.includes(conn.from)) targets.add(conn.to);
-            if (selectedIds.includes(conn.to)) targets.add(conn.from);
-        });
-
-        // Exclude selected cards themselves from being "targets"
-        selectedIds.forEach(id => targets.delete(id));
-
-        return targets;
-    }, [selectedIds, connections]);
-
     const handleDoubleClick = useCallback((e) => {
         const target = e.target;
         const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
@@ -516,60 +489,31 @@ export default function Canvas({
                 backgroundSize: '24px 24px'
             }}
         >
-            {/* ConnectionLayer from beta - optimized Canvas rendering */}
-            <ConnectionLayer cards={cards} connections={connections} offset={offset} scale={scale} />
-
-            {/* NEW: Active "Liquid Light" Connection Layer */}
-            <ActiveConnectionLayer
-                cards={cards}
-                connections={connections}
-                selectedIds={selectedIds}
+            <CanvasViewportLayer
+                contentRef={contentRef}
+                groups={groups}
+                connectionCards={connectionCards}
+                visibleConnections={visibleConnections}
+                visibleCards={visibleCards}
+                selectedIdSet={selectedIdSet}
+                targetCardIds={targetCardIds}
+                isConnecting={isConnecting}
+                connectionStartId={connectionStartId}
+                onSelect={handleCardSelect}
+                onMove={handleCardMove}
+                onDelete={deleteCard}
+                onUpdate={updateCardFull}
+                onDragEnd={handleCardMoveEnd}
+                onConnect={handleConnect}
+                onExpand={setExpandedCardId}
+                onCreateNote={onCreateNote}
+                onCardFullScreen={onCardFullScreen}
+                onPromptDrop={onCardPromptDrop}
+                onCustomSprout={onCustomSprout}
+                onSummarize={handleSingleSummary}
                 offset={offset}
                 scale={scale}
             />
-
-            <div
-                ref={contentRef}
-                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
-            >
-                {/* Zones Layer (Behind Cards) */}
-                {groups && groups.map(group => (
-                    <div key={group.id} className="pointer-events-auto">
-                        <Zone
-                            group={group}
-                            isSelected={false} // Zones selection separate from cards for now? Or maybe just visual?
-                        />
-                    </div>
-                ))}
-
-                {/* Cards Layer with viewport culling from beta */}
-                {visibleCards.map(card => {
-                    const Component = card.type === 'note' ? StickyNote : Card;
-                    return (
-                        <ErrorBoundary key={card.id} level="card">
-                            <Component
-                                data={card}
-                                isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
-                                isTarget={targetCardIds.has(card.id)}
-                                onSelect={handleCardSelect}
-                                onMove={handleCardMove}
-                                onDelete={deleteCard}
-                                onUpdate={updateCardFull}
-                                onDragEnd={handleCardMoveEnd}
-                                onConnect={handleConnect}
-                                onExpand={setExpandedCardId}
-                                isConnecting={isConnecting}
-                                isConnectionStart={connectionStartId === card.id}
-                                onCreateNote={onCreateNote}
-                                onCardFullScreen={onCardFullScreen}
-                                onPromptDrop={onCardPromptDrop}
-                                onCustomSprout={onCustomSprout}
-                                onSummarize={handleSingleSummary} // Pass the single summary handler
-                            />
-                        </ErrorBoundary>
-                    );
-                })}
-            </div>
 
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
             <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">
