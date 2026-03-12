@@ -10,14 +10,9 @@ const createSaveTracker = (boardId) => ({
     boardId,
     revision: 0,
     savedRevision: 0,
-    isPrimed: false
+    isPrimed: false,
+    hasSeenLoading: false
 });
-
-const hasInstructionState = (settings) => (
-    settings.enabledInstructionIds.length > 0 ||
-    settings.autoEnabledInstructionIds.length > 0 ||
-    settings.autoSelection.lastRunAt > 0
-);
 
 const buildBoardPayload = (data) => ({
     cards: data.cards || [],
@@ -68,6 +63,9 @@ export function useBoardPersistence({
 
     useEffect(() => {
         isBoardLoadingRef.current = isBoardLoading;
+        if (isBoardLoading) {
+            trackerRef.current.hasSeenLoading = true;
+        }
     }, [isBoardLoading]);
 
     useEffect(() => {
@@ -112,17 +110,16 @@ export function useBoardPersistence({
         if (isReadOnly) return;
 
         const tracker = trackerRef.current;
-        if (!tracker.isPrimed) return;
+        if (!tracker.isPrimed) {
+            if (!tracker.hasSeenLoading) return;
+            tracker.isPrimed = true;
+            tracker.savedRevision = tracker.revision;
+            return;
+        }
 
         const normalizedSettings = normalizeBoardInstructionSettings(
             boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
         );
-        const hasPersistableState =
-            cards.length > 0 ||
-            boardPrompts.length > 0 ||
-            hasInstructionState(normalizedSettings);
-
-        if (!hasPersistableState) return;
 
         tracker.revision += 1;
         const revision = tracker.revision;
@@ -179,19 +176,6 @@ export function useBoardPersistence({
         setCloudSyncStatus,
         toast
     ]);
-
-    useEffect(() => {
-        if (!boardId) return;
-        if (isBoardLoading) return;
-        if (isHydratingFromCloud) return;
-        if (isReadOnly) return;
-
-        const tracker = trackerRef.current;
-        if (!tracker.isPrimed) {
-            tracker.isPrimed = true;
-            tracker.savedRevision = tracker.revision;
-        }
-    }, [boardId, isBoardLoading, isHydratingFromCloud, isReadOnly]);
 
     useEffect(() => {
         return () => {
