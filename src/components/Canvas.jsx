@@ -66,11 +66,13 @@ export default function Canvas({
         visibleCards,
         visibleConnections,
         connectionCards,
+        visibleGroups,
         selectedIdSet,
         targetCardIds
     } = useVisibleCanvasData({
         cards,
         connections,
+        groups,
         offset,
         scale,
         selectedIds,
@@ -491,7 +493,7 @@ export default function Canvas({
         >
             <CanvasViewportLayer
                 contentRef={contentRef}
-                groups={groups}
+                visibleGroups={visibleGroups}
                 connectionCards={connectionCards}
                 visibleConnections={visibleConnections}
                 visibleCards={visibleCards}

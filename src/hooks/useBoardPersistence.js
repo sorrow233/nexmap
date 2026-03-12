@@ -6,6 +6,12 @@ import {
     normalizeBoardInstructionSettings
 } from '../services/customInstructionsService';
 
+const LOCAL_SAVE_DELAY_MS = 1000;
+const CLOUD_SAVE_DELAY_MS = 30000;
+const VIEWPORT_SAVE_DELAY_MS = 220;
+const VIEWPORT_MOVE_THRESHOLD = 24;
+const VIEWPORT_SCALE_THRESHOLD = 0.015;
+
 const createSaveTracker = (boardId) => ({
     boardId,
     revision: 0,
@@ -13,6 +19,16 @@ const createSaveTracker = (boardId) => ({
     isPrimed: false,
     hasSeenLoading: false
 });
+
+const hasViewportMeaningfulChange = (previousViewport, nextViewport) => {
+    if (!previousViewport) return true;
+
+    return (
+        Math.abs((previousViewport.offset?.x || 0) - (nextViewport.offset?.x || 0)) >= VIEWPORT_MOVE_THRESHOLD ||
+        Math.abs((previousViewport.offset?.y || 0) - (nextViewport.offset?.y || 0)) >= VIEWPORT_MOVE_THRESHOLD ||
+        Math.abs((previousViewport.scale || 1) - (nextViewport.scale || 1)) >= VIEWPORT_SCALE_THRESHOLD
+    );
+};
 
 const buildBoardPayload = (data) => ({
     cards: data.cards || [],
@@ -50,6 +66,11 @@ export function useBoardPersistence({
         boardInstructionSettings
     });
     const isBoardLoadingRef = useRef(isBoardLoading);
+    const localSaveTimerRef = useRef(null);
+    const cloudSaveTimerRef = useRef(null);
+    const viewportSaveTimerRef = useRef(null);
+    const pendingViewportRef = useRef(null);
+    const lastSavedViewportRef = useRef(null);
 
     useEffect(() => {
         latestBoardDataRef.current = {
@@ -67,10 +88,6 @@ export function useBoardPersistence({
             trackerRef.current.hasSeenLoading = true;
         }
     }, [isBoardLoading]);
-
-    useEffect(() => {
-        trackerRef.current = createSaveTracker(boardId);
-    }, [boardId]);
 
     const performSave = useCallback(async (data, options = {}) => {
         const { isUnmount = false, revision = null } = options;
@@ -103,11 +120,68 @@ export function useBoardPersistence({
         }
     }, [boardId, setLastSavedAt, toast]);
 
+    const clearContentSaveTimers = useCallback(() => {
+        if (localSaveTimerRef.current) {
+            clearTimeout(localSaveTimerRef.current);
+            localSaveTimerRef.current = null;
+        }
+        if (cloudSaveTimerRef.current) {
+            clearTimeout(cloudSaveTimerRef.current);
+            cloudSaveTimerRef.current = null;
+        }
+    }, []);
+
+    const scheduleLocalSave = useCallback((revision) => {
+        if (localSaveTimerRef.current) {
+            clearTimeout(localSaveTimerRef.current);
+        }
+
+        localSaveTimerRef.current = setTimeout(() => {
+            localSaveTimerRef.current = null;
+            void performSave(latestBoardDataRef.current, { revision });
+        }, LOCAL_SAVE_DELAY_MS);
+    }, [performSave]);
+
+    const scheduleCloudSave = useCallback((revision) => {
+        if (!user || !boardId) {
+            if (cloudSaveTimerRef.current) {
+                clearTimeout(cloudSaveTimerRef.current);
+                cloudSaveTimerRef.current = null;
+            }
+            return;
+        }
+
+        if (cloudSaveTimerRef.current) {
+            clearTimeout(cloudSaveTimerRef.current);
+        }
+
+        cloudSaveTimerRef.current = setTimeout(async () => {
+            cloudSaveTimerRef.current = null;
+            setCloudSyncStatus('syncing');
+
+            try {
+                await saveBoardToCloud(user.uid, boardId, buildBoardPayload(latestBoardDataRef.current));
+                setCloudSyncStatus('synced');
+
+                const tracker = trackerRef.current;
+                if (tracker.boardId === boardId) {
+                    tracker.savedRevision = Math.max(tracker.savedRevision, revision);
+                }
+
+                debugLog.sync(`Cloud autosave complete for board: ${boardId}`);
+            } catch (error) {
+                setCloudSyncStatus('error');
+                console.error('[BoardPersistence] Cloud sync failed:', error);
+                toast?.error?.('云同步失败');
+            }
+        }, CLOUD_SAVE_DELAY_MS);
+    }, [boardId, setCloudSyncStatus, toast, user]);
+
     useEffect(() => {
-        if (!boardId) return;
-        if (isBoardLoading) return;
-        if (isHydratingFromCloud) return;
-        if (isReadOnly) return;
+        if (!boardId || isBoardLoading || isHydratingFromCloud || isReadOnly) {
+            clearContentSaveTimers();
+            return;
+        }
 
         const tracker = trackerRef.current;
         if (!tracker.isPrimed) {
@@ -131,36 +205,9 @@ export function useBoardPersistence({
             boardInstructionSettings: normalizedSettings
         };
 
-        const saveTimeout = setTimeout(() => {
-            void performSave(snapshot, { revision });
-        }, 1000);
-
-        let cloudTimeout = null;
-        if (user) {
-            cloudTimeout = setTimeout(async () => {
-                setCloudSyncStatus('syncing');
-                try {
-                    await saveBoardToCloud(user.uid, boardId, buildBoardPayload(snapshot));
-                    setCloudSyncStatus('synced');
-
-                    const trackerForCloud = trackerRef.current;
-                    if (trackerForCloud.boardId === boardId) {
-                        trackerForCloud.savedRevision = Math.max(trackerForCloud.savedRevision, revision);
-                    }
-
-                    debugLog.sync(`Cloud autosave complete for board: ${boardId}`);
-                } catch (error) {
-                    setCloudSyncStatus('error');
-                    console.error('[BoardPersistence] Cloud sync failed:', error);
-                    toast?.error?.('云同步失败');
-                }
-            }, 30000);
-        }
-
-        return () => {
-            clearTimeout(saveTimeout);
-            if (cloudTimeout) clearTimeout(cloudTimeout);
-        };
+        latestBoardDataRef.current = snapshot;
+        scheduleLocalSave(revision);
+        scheduleCloudSave(revision);
     }, [
         boardId,
         user,
@@ -172,13 +219,30 @@ export function useBoardPersistence({
         isBoardLoading,
         isHydratingFromCloud,
         isReadOnly,
-        performSave,
-        setCloudSyncStatus,
-        toast
+        clearContentSaveTimers,
+        scheduleCloudSave,
+        scheduleLocalSave
     ]);
 
     useEffect(() => {
+        trackerRef.current = createSaveTracker(boardId);
+        clearContentSaveTimers();
+        if (viewportSaveTimerRef.current) {
+            clearTimeout(viewportSaveTimerRef.current);
+            viewportSaveTimerRef.current = null;
+        }
+        pendingViewportRef.current = null;
+        lastSavedViewportRef.current = null;
+    }, [boardId, clearContentSaveTimers]);
+
+    useEffect(() => {
         return () => {
+            clearContentSaveTimers();
+            if (viewportSaveTimerRef.current) {
+                clearTimeout(viewportSaveTimerRef.current);
+                viewportSaveTimerRef.current = null;
+            }
+
             if (isBoardLoadingRef.current) {
                 debugLog.storage('[BoardPersistence] Skip unmount save because board is still loading');
                 return;
@@ -194,15 +258,43 @@ export function useBoardPersistence({
                 revision: tracker.revision
             });
         };
-    }, [boardId, performSave]);
+    }, [boardId, clearContentSaveTimers, performSave]);
+
+    useEffect(() => {
+        if (isBoardLoading && viewportSaveTimerRef.current) {
+            clearTimeout(viewportSaveTimerRef.current);
+            viewportSaveTimerRef.current = null;
+            pendingViewportRef.current = null;
+        }
+    }, [isBoardLoading]);
 
     useEffect(() => {
         if (!boardId || isBoardLoading) return;
 
-        const timer = setTimeout(() => {
-            saveViewportState(boardId, { offset, scale });
-        }, 120);
+        const nextViewport = { offset, scale };
+        const comparisonViewport = pendingViewportRef.current || lastSavedViewportRef.current;
 
-        return () => clearTimeout(timer);
+        if (!hasViewportMeaningfulChange(comparisonViewport, nextViewport)) {
+            return;
+        }
+
+        pendingViewportRef.current = nextViewport;
+
+        if (viewportSaveTimerRef.current) {
+            return;
+        }
+
+        viewportSaveTimerRef.current = setTimeout(() => {
+            viewportSaveTimerRef.current = null;
+            const viewportToSave = pendingViewportRef.current;
+            pendingViewportRef.current = null;
+
+            if (!viewportToSave || !hasViewportMeaningfulChange(lastSavedViewportRef.current, viewportToSave)) {
+                return;
+            }
+
+            saveViewportState(boardId, viewportToSave);
+            lastSavedViewportRef.current = viewportToSave;
+        }, VIEWPORT_SAVE_DELAY_MS);
     }, [boardId, offset, scale, isBoardLoading]);
 }

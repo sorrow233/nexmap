@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, Clipboard, Star, Check } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { isSafari, isIOS } from '../utils/browser';
-import { renderMarkdownToHtml } from '../utils/markdownRenderer';
+import { renderCachedMarkdownToHtml } from '../utils/markdownCache';
 
-import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
 import { useContextMenu } from './ContextMenu';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -133,13 +132,9 @@ const Card = React.memo(function Card({
 
 
     // Render Markdown
-    const markdownHtml = React.useMemo(() => {
-        try {
-            return { __html: renderMarkdownToHtml(previewText) };
-        } catch (e) {
-            return { __html: previewText };
-        }
-    }, [previewText]);
+    const markdownHtml = React.useMemo(() => ({
+        __html: renderCachedMarkdownToHtml(previewText, 'card-preview')
+    }), [previewText]);
 
     const handleCopyFullCard = async (e) => {
         e.stopPropagation();
@@ -175,9 +170,8 @@ const Card = React.memo(function Card({
             clearTimeout(copyResetTimerRef.current);
         }
     }, []);
-
-
     const zIndex = isSelected ? 60 : (isTarget ? 55 : 1);
+    const layerZIndex = isDragging ? 100 : zIndex;
 
     // Context menu for card
     const { showContextMenu, getCardMenuItems } = useContextMenu();
@@ -210,18 +204,11 @@ const Card = React.memo(function Card({
     return (
         <div
             ref={cardRef}
-            className={`absolute w-[calc(100vw-2rem)] xs:w-[300px] sm:w-[320px] rounded-3xl flex flex-col select-none pointer-events-auto group 
-                ${isDragging ? 'transition-none duration-0 shadow-2xl scale-[1.02] cursor-grabbing z-[100]' : 'transition-all duration-300 cursor-grab hover:glass-card-hover hover:shadow-[0_8px_40px_-8px_rgba(255,180,162,0.25)]'}
-                glass-card
-                ${isSafari || isIOS ? 'bg-white/90 dark:bg-slate-900/90' : ''}
-                ${isSelected ? 'card-sharp-selected ring-2 ring-brand-500/50 shadow-[0_0_40px_-5px_rgba(139,92,246,0.3)]' : 'hover:border-brand-300/50 dark:hover:border-white/20'}
-                ${isConnecting && !isConnectionStart ? 'hover:ring-4 hover:ring-green-400/30 hover:cursor-crosshair' : ''}
-                ${isDragOver ? 'ring-2 ring-brand-500 scale-[1.02] bg-brand-50/80 dark:bg-brand-900/20' : ''}`}
+            className="absolute top-0 left-0 pointer-events-auto group"
             style={{
-                left: data.x,
-                top: data.y,
-                zIndex: zIndex,
-                willChange: isDragging ? 'left, top' : 'auto'
+                transform: `translate3d(${data.x}px, ${data.y}px, 0)`,
+                zIndex: layerZIndex,
+                willChange: isDragging ? 'transform' : 'auto'
             }}
             onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
@@ -236,6 +223,15 @@ const Card = React.memo(function Card({
             onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
         >
+            <div
+                className={`w-[calc(100vw-2rem)] xs:w-[300px] sm:w-[320px] rounded-3xl flex flex-col select-none relative
+                    ${isDragging ? 'transition-none duration-0 shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 cursor-grab hover:glass-card-hover hover:shadow-[0_8px_40px_-8px_rgba(255,180,162,0.25)]'}
+                    glass-card
+                    ${isSafari || isIOS ? 'bg-white/90 dark:bg-slate-900/90' : ''}
+                    ${isSelected ? 'card-sharp-selected ring-2 ring-brand-500/50 shadow-[0_0_40px_-5px_rgba(139,92,246,0.3)]' : 'hover:border-brand-300/50 dark:hover:border-white/20'}
+                    ${isConnecting && !isConnectionStart ? 'hover:ring-4 hover:ring-green-400/30 hover:cursor-crosshair' : ''}
+                    ${isDragOver ? 'ring-2 ring-brand-500 scale-[1.02] bg-brand-50/80 dark:bg-brand-900/20' : ''}`}
+            >
             {/* Quick Actions (Absolute Top Right) - Fade in on hover */}
             <div className="absolute top-4 right-4 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
@@ -332,7 +328,8 @@ const Card = React.memo(function Card({
                 </div>
             )}
 
-        </div >
+            </div>
+        </div>
     );
 });
 

@@ -8,7 +8,7 @@ import ErrorBoundary from '../ErrorBoundary';
 
 const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
     contentRef,
-    groups,
+    visibleGroups,
     connectionCards,
     visibleConnections,
     visibleCards,
@@ -38,7 +38,7 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
             <ActiveConnectionLayer
                 cards={connectionCards}
                 connections={visibleConnections}
-                selectedIds={Array.from(selectedIdSet)}
+                selectedIdSet={selectedIdSet}
                 offset={offset}
                 scale={scale}
             />
@@ -47,10 +47,12 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
                 ref={contentRef}
                 className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
             >
-                {groups && groups.map(group => (
+                {visibleGroups && visibleGroups.map(({ group, rect, stats }) => (
                     <div key={group.id} className="pointer-events-auto">
                         <Zone
                             group={group}
+                            rect={rect}
+                            stats={stats}
                             isSelected={false}
                         />
                     </div>

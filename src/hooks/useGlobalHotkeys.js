@@ -16,11 +16,12 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         offset,
         scale
     } = useStore();
+    const selectedIdSet = new Set(selectedIds);
 
     // Helper for Copy
     const handleCopy = async () => {
         if (selectedIds.length === 0) return;
-        const selectedCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
+        const selectedCards = cards.filter(c => selectedIdSet.has(c.id));
         setClipboard(selectedCards);
         try {
             const textContent = selectedCards.map(c => {
@@ -86,7 +87,7 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         if (e.metaKey || e.ctrlKey) return;
         if (selectedIds.length > 1) {
             setConnections(connections.filter(c =>
-                !(selectedIds.indexOf(c.from) !== -1 && selectedIds.indexOf(c.to) !== -1)
+                !(selectedIdSet.has(c.from) && selectedIdSet.has(c.to))
             ));
         } else if (selectedIds.length === 1) {
             setConnections(connections.filter(c => c.from !== selectedIds[0] && c.to !== selectedIds[0]));

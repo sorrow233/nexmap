@@ -13,18 +13,18 @@ import { isIOS, isSafari, prefersReducedMotion } from '../utils/browser';
 const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
     cards,
     connections,
-    selectedIds,
+    selectedIdSet,
     offset,
     scale
 }) {
     const shouldAnimate = !isIOS && !isSafari && !prefersReducedMotion;
 
     // If no selection, render nothing
-    if (!selectedIds || selectedIds.length === 0) return null;
+    if (!selectedIdSet || selectedIdSet.size === 0) return null;
 
     // 1. Identify active connections (connected to any selected card)
     const activeConnections = connections.filter(conn =>
-        selectedIds.includes(conn.from) || selectedIds.includes(conn.to)
+        selectedIdSet.has(conn.from) || selectedIdSet.has(conn.to)
     );
 
     if (activeConnections.length === 0) return null;

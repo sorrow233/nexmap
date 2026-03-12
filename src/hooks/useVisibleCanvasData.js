@@ -6,10 +6,12 @@ import {
     getCardsInRect,
     getVisibleConnectionData
 } from '../utils/canvasSpatialIndex';
+import { getVisibleGroups } from '../utils/groupGeometry';
 
 export function useVisibleCanvasData({
     cards,
     connections,
+    groups,
     offset,
     scale,
     selectedIds,
@@ -65,11 +67,17 @@ export function useVisibleCanvasData({
         [cardSpatialIndex, connectionCardIds]
     );
 
+    const visibleGroups = useMemo(
+        () => getVisibleGroups(groups, cardSpatialIndex.cardMap, viewportRect, visibleCardIds),
+        [cardSpatialIndex.cardMap, groups, viewportRect, visibleCardIds]
+    );
+
     return {
         cardSpatialIndex,
         visibleCards,
         visibleConnections,
         connectionCards,
+        visibleGroups,
         selectedIdSet,
         targetCardIds
     };

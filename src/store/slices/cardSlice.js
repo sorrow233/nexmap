@@ -103,13 +103,13 @@ export const createCardSlice = (set, get) => ({
             nextGenerating.delete(id);
             const nextSelected = state.selectedIds ? state.selectedIds.filter(sid => sid !== id) : [];
             const index = findCardIndexById(state.cards, id);
-            if (index === -1) return state;
-
             const nextCards = state.cards.slice();
-            nextCards[index] = { ...nextCards[index], deletedAt: Date.now() };
+            if (index !== -1) {
+                nextCards[index] = { ...nextCards[index], deletedAt: Date.now() };
+            }
 
             return {
-                cards: nextCards,
+                cards: index === -1 ? state.cards : nextCards,
                 // Still remove connections for soft-deleted cards (they'll be restored if card is restored)
                 connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
                 generatingCardIds: nextGenerating,
@@ -258,12 +258,13 @@ export const createCardSlice = (set, get) => ({
         }
 
         // Determine which cards to move based on mode
-        const isSelected = selectedIds ? selectedIds.indexOf(id) !== -1 : false;
+        const selectedIdSet = new Set(selectedIds || []);
+        const isSelected = selectedIdSet.has(id);
         let moveIds;
 
         if (moveWithConnections) {
             // Cmd pressed: Move entire connected graph
-            const sourceIds = isSelected ? selectedIds : [id];
+            const sourceIds = isSelected ? [...selectedIdSet] : [id];
             moveIds = new Set();
             sourceIds.forEach(sourceId => {
                 const connectedParams = getConnectedGraph(sourceId, connections || []);
@@ -271,7 +272,7 @@ export const createCardSlice = (set, get) => ({
             });
         } else {
             // Default: Move only the selected card(s) independently
-            moveIds = new Set(isSelected ? selectedIds : [id]);
+            moveIds = isSelected ? selectedIdSet : new Set([id]);
         }
 
         set((state) => {
