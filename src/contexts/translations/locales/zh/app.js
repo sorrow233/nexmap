@@ -113,7 +113,8 @@ export const app = {
         cards: "卡片",
         navigate: "导航",
         open: "打开",
-        inBoard: "在"
+        inBoard: "在",
+        indexingProgress: "搜索索引 {loaded}/{total}"
     },
     chat: {
         conversation: "对话",

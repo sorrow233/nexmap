@@ -3,14 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
-import { saveBoard, saveBoardToCloud, saveViewportState } from '../services/storage';
-import { debugLog } from '../utils/debugLogger';
 import { useToast } from '../components/Toast';
 // import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
-import { recommendBoardInstructionIds } from '../services/ai/boardInstructionRecommender';
 import { useCurrentBoardAutoNaming } from './useCurrentBoardAutoNaming';
+import { useBoardPersistence } from './useBoardPersistence';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings,
@@ -78,13 +76,16 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     } = useAISprouting();
 
     // Derived State
-    const currentBoard = boardsList.find(b => b.id === currentBoardId);
+    const currentBoard = useMemo(
+        () => boardsList.find(b => b.id === currentBoardId),
+        [boardsList, currentBoardId]
+    );
     const hasBackgroundImage = !!currentBoard?.backgroundImage;
-    const conversationCount = cards.reduce((total, card) => {
+    const conversationCount = useMemo(() => cards.reduce((total, card) => {
         const messages = card?.data?.messages || [];
         const userCount = messages.filter(msg => msg?.role === 'user').length;
         return total + userCount;
-    }, 0);
+    }, 0), [cards]);
     const normalizedBoardInstructionSettings = useMemo(
         () => normalizeBoardInstructionSettings(boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS),
         [boardInstructionSettings]
@@ -142,6 +143,24 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         onUpdateBoardMetadata
     });
 
+    useBoardPersistence({
+        boardId: currentBoardId,
+        user,
+        cards,
+        connections,
+        groups,
+        boardPrompts,
+        boardInstructionSettings: normalizedBoardInstructionSettings,
+        offset,
+        scale,
+        isBoardLoading,
+        isHydratingFromCloud,
+        isReadOnly,
+        setCloudSyncStatus,
+        setLastSavedAt,
+        toast
+    });
+
     // --- PASTE LOGIC ---
 
     const handleGlobalPaste = useCallback((e) => {
@@ -177,164 +196,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         }
         return () => { document.title = 'NexMap'; };
     }, [currentBoardId, boardsList, t.gallery?.untitledBoard]);
-
-    // Keep a ref of the latest data for unmount saving
-    const latestBoardDataRef = useRef({ cards, connections, groups, boardPrompts, boardInstructionSettings });
-    useEffect(() => {
-        latestBoardDataRef.current = { cards, connections, groups, boardPrompts, boardInstructionSettings };
-    }, [cards, connections, groups, boardPrompts, boardInstructionSettings]);
-    const isBoardLoadingRef = useRef(isBoardLoading);
-    useEffect(() => {
-        isBoardLoadingRef.current = isBoardLoading;
-    }, [isBoardLoading]);
-
-    // Autosave Logic (Debounced)
-    const lastSavedState = useRef('');
-
-    // Save function reused for both debounce and unmount
-    const performSave = useCallback(async (data, isUnmount = false) => {
-        if (!currentBoardId) return;
-
-        try {
-            const now = Date.now();
-            await saveBoard(currentBoardId, data);
-
-            if (setLastSavedAt && typeof setLastSavedAt === 'function') {
-                setLastSavedAt(now);
-            }
-
-            // Update ref
-            const stateCustom = {
-                cards: data.cards.map(c => ({ ...c, data: { ...c.data } })),
-                connections: data.connections || [],
-                groups: data.groups || [],
-                boardPrompts: data.boardPrompts || [],
-                boardInstructionSettings: normalizeBoardInstructionSettings(
-                    data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-                )
-            };
-            lastSavedState.current = JSON.stringify(stateCustom);
-
-            if (!isUnmount) {
-                debugLog.storage(`Local autosave complete for board: ${currentBoardId}`, { timestamp: now });
-            } else {
-                debugLog.storage(`Unmount save complete for board: ${currentBoardId}`);
-            }
-        } catch (e) {
-            console.error("[BoardPage] Save failed", e);
-            if (!isUnmount) toast.error('保存失败，请检查存储空间');
-        }
-    }, [currentBoardId, setLastSavedAt, toast]);
-
-    // 1. Debounced Autosave Effect
-    useEffect(() => {
-        if (isBoardLoading) return;
-        if (isHydratingFromCloud) return;
-        if (isReadOnly) return; // CRITICAL: Skip all writes in Read-Only mode
-
-        const hasInstructionState =
-            normalizedBoardInstructionSettings.enabledInstructionIds.length > 0 ||
-            normalizedBoardInstructionSettings.autoEnabledInstructionIds.length > 0 ||
-            normalizedBoardInstructionSettings.autoSelection.lastRunAt > 0;
-
-        if (currentBoardId && (cards.length > 0 || boardPrompts.length > 0 || hasInstructionState)) {
-            const currentStateObj = {
-                cards: cards.map(c => ({ ...c, data: { ...c.data } })),
-                connections: connections || [],
-                groups: groups || [],
-                boardPrompts: boardPrompts || [],
-                boardInstructionSettings: normalizedBoardInstructionSettings
-            };
-            const currentState = JSON.stringify(currentStateObj);
-
-            if (currentState === lastSavedState.current) return;
-
-            const saveTimeout = setTimeout(() => {
-                void performSave({
-                    cards,
-                    connections,
-                    groups,
-                    boardPrompts,
-                    boardInstructionSettings: normalizedBoardInstructionSettings
-                });
-            }, 1000);
-
-            // Cloud sync (keep existing logic)
-            let cloudTimeout;
-            if (user) {
-                cloudTimeout = setTimeout(async () => {
-                    setCloudSyncStatus('syncing');
-                    try {
-                        await saveBoardToCloud(user.uid, currentBoardId, {
-                            cards,
-                            connections,
-                            groups,
-                            boardPrompts,
-                            boardInstructionSettings: normalizedBoardInstructionSettings
-                        });
-                        setCloudSyncStatus('synced');
-                        debugLog.sync(`Cloud autosave complete for board: ${currentBoardId}`);
-                    } catch (e) {
-                        setCloudSyncStatus('error');
-                        console.error('[BoardPage] Cloud sync failed:', e);
-                        toast.error('云同步失败');
-                    }
-                }, 30000);
-            }
-
-            return () => {
-                clearTimeout(saveTimeout);
-                if (cloudTimeout) clearTimeout(cloudTimeout);
-            };
-        }
-    }, [cards, connections, groups, boardPrompts, boardInstructionSettings, currentBoardId, user, isBoardLoading, isHydratingFromCloud, performSave, isReadOnly, toast]);
-
-    // 2. Unmount / Navigation Save Effect
-    useEffect(() => {
-        return () => {
-            if (isBoardLoadingRef.current) {
-                debugLog.storage('[BoardLogic] Skip unmount save because board is still loading');
-                return;
-            }
-
-            // Check if we have unsaved changes on unmount
-            const data = latestBoardDataRef.current;
-            const currentStateObj = {
-                cards: data.cards.map(c => ({ ...c, data: { ...c.data } })),
-                connections: data.connections || [],
-                groups: data.groups || [],
-                boardPrompts: data.boardPrompts || [],
-                boardInstructionSettings: normalizeBoardInstructionSettings(
-                    data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-                )
-            };
-            const currentState = JSON.stringify(currentStateObj);
-
-            // If strictly different from last saved, force save
-            if (currentState !== lastSavedState.current && currentBoardId) {
-                console.log('[BoardLogic] Unmount detected with unsaved changes. Saving immediately.');
-                void saveBoard(currentBoardId, {
-                    ...data,
-                    boardInstructionSettings: normalizeBoardInstructionSettings(
-                        data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-                    )
-                }).catch((error) => {
-                    debugLog.error(`[BoardLogic] Unmount save failed for board ${currentBoardId}`, error);
-                });
-            }
-        };
-    }, [currentBoardId]);
-
-    // Persist Viewport (debounced to avoid sync localStorage writes on every pan frame)
-    useEffect(() => {
-        if (!currentBoardId || isBoardLoading) return;
-
-        const timer = setTimeout(() => {
-            saveViewportState(currentBoardId, { offset, scale });
-        }, 120);
-
-        return () => clearTimeout(timer);
-    }, [offset, scale, currentBoardId, isBoardLoading]);
 
     // Hotkeys
     useGlobalHotkeys(clipboard, setClipboard);
@@ -440,6 +301,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         try {
             const state = useStore.getState();
             const analysisConfig = state.getRoleConfig?.('analysis') || state.getRoleConfig?.('chat');
+            const { recommendBoardInstructionIds } = await import('../services/ai/boardInstructionRecommender');
             const recommendedIds = await recommendBoardInstructionIds({
                 cards,
                 instructions: latestCatalog.items || [],

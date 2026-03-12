@@ -113,7 +113,8 @@ export const app = {
         cards: "cards",
         navigate: "Navigate",
         open: "Open",
-        inBoard: "in"
+        inBoard: "in",
+        indexingProgress: "Search index {loaded}/{total}"
     },
     chat: {
         conversation: "Conversation",

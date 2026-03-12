@@ -13,7 +13,6 @@ import { useCanvasPanSync } from '../hooks/useCanvasPanSync';
 import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
 import InstantTooltip from './InstantTooltip';
-import { aiSummaryService } from '../services/aiSummaryService';
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -397,6 +396,7 @@ export default function Canvas({
         try {
             const cards = useStore.getState().cards;
             const config = useStore.getState().getActiveConfig();
+            const { aiSummaryService } = await import('../services/aiSummaryService');
 
             // define simple chunk helper
             const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
@@ -448,6 +448,7 @@ export default function Canvas({
         setIsSummarizing(true);
         try {
             const baseConfig = useStore.getState().getActiveConfig();
+            const { aiSummaryService } = await import('../services/aiSummaryService');
             // Get the 'sprouting' role model (🌱 想法发芽 / Analysis)
             const sproutingModel = useStore.getState().getRoleModel('sprouting');
 

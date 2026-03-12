@@ -300,7 +300,8 @@ export const ja = {
         cards: "カード",
         navigate: "ナビゲート",
         open: "開く",
-        inBoard: "内"
+        inBoard: "内",
+        indexingProgress: "検索インデックス {loaded}/{total}"
     },
     chat: {
         conversation: "会話",
