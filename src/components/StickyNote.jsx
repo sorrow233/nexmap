@@ -41,7 +41,7 @@ const StickyNote = React.memo(function StickyNote({
         isSelected,
         onSelect,
         onMove,
-        onDragEnd: () => onDragEnd && onDragEnd(data.id),
+        onDragEnd,
         onClick: () => {
             if (clickTimeoutRef.current) {
                 // Double Click Detected

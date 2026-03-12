@@ -1,5 +1,6 @@
 import React from 'react';
 import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
+import { isIOS, isSafari, prefersReducedMotion } from '../utils/browser';
 
 /**
  * ActiveConnectionLayer
@@ -16,6 +17,8 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
     offset,
     scale
 }) {
+    const shouldAnimate = !isIOS && !isSafari && !prefersReducedMotion;
+
     // If no selection, render nothing
     if (!selectedIds || selectedIds.length === 0) return null;
 
@@ -36,16 +39,18 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
                 overflow: 'visible'
             }}
         >
-            <defs>
-                {/* Glow Filter for the light beam */}
-                <filter id="light-flow-glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                    <feMerge>
-                        <feMergeNode in="coloredBlur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
-            </defs>
+            {shouldAnimate && (
+                <defs>
+                    {/* Safari/iPad 对 SVG 滤镜动画开销偏高，这里只在更稳的环境启用 */}
+                    <filter id="light-flow-glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
+            )}
 
             <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
                 {activeConnections.map(conn => {
@@ -90,10 +95,12 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
                                 stroke="var(--active-flow-color)"
                                 strokeWidth="2"
                                 strokeLinecap="round"
-                                strokeDasharray="100 1000" // Comet tail length vs gap
-                                filter="url(#light-flow-glow)"
-                                style={{
+                                strokeDasharray={shouldAnimate ? '100 1000' : undefined}
+                                filter={shouldAnimate ? 'url(#light-flow-glow)' : undefined}
+                                style={shouldAnimate ? {
                                     animation: 'liquidFlow 2s linear infinite'
+                                } : {
+                                    opacity: 0.7
                                 }}
                             />
                         </g>

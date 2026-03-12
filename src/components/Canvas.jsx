@@ -9,6 +9,7 @@ import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
 import ErrorBoundary from './ErrorBoundary';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
+import { useCanvasPanSync } from '../hooks/useCanvasPanSync';
 import { useSelection } from '../hooks/useSelection';
 import favoritesService from '../services/favoritesService';
 import InstantTooltip from './InstantTooltip';
@@ -22,7 +23,13 @@ const isTextInputElement = (element) => {
     return Boolean(element.closest('[contenteditable="true"]'));
 };
 
-export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
+export default function Canvas({
+    onCreateNote,
+    onCustomSprout,
+    onCanvasDoubleClick,
+    onCardFullScreen,
+    onCardPromptDrop
+}) {
     const RIGHT_BUTTON_LONG_PRESS_MS = 220;
     // Granular selectors to prevent unnecessary re-renders
     const cards = useStore(state => state.cards);
@@ -79,6 +86,12 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
     // Extracted Logic - Now with Direct DOM capabilities
     useCanvasGestures(canvasRef, contentRef, stateRef, setScale, setOffset);
+    const { applyPanDelta, flushPanSync } = useCanvasPanSync({
+        canvasRef,
+        contentRef,
+        stateRef,
+        setOffset
+    });
     const { performSelectionCheck } = useSelection();
 
     useEffect(() => {
@@ -194,7 +207,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
     const handleMouseMove = (e) => {
         if (interactionMode === 'panning') {
-            setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
+            applyPanDelta(e.movementX, e.movementY);
         } else if (interactionMode === 'selecting' && selectionRect) {
             const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
             setSelectionRect(newSelectionRect);
@@ -212,6 +225,10 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         if (rightPressTimerRef.current) {
             clearTimeout(rightPressTimerRef.current);
             rightPressTimerRef.current = null;
+        }
+
+        if (interactionMode === 'panning') {
+            flushPanSync();
         }
 
         if (isRightHoldPanningRef.current) {
@@ -278,13 +295,16 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             if (lastTouch) {
                 const deltaX = touch.clientX - lastTouch.x;
                 const deltaY = touch.clientY - lastTouch.y;
-                setOffset(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+                applyPanDelta(deltaX, deltaY);
                 lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
             }
         }
     };
 
     const handleTouchEnd = () => {
+        if (interactionMode === 'panning') {
+            flushPanSync();
+        }
         setInteractionMode('none');
         lastTouchRef.current = null;
     };
@@ -326,7 +346,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         return targets;
     }, [selectedIds, connections]);
 
-    const handleDoubleClick = (e) => {
+    const handleDoubleClick = useCallback((e) => {
         const target = e.target;
         const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
 
@@ -335,8 +355,8 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
             const canvasX = (e.clientX - offset.x) / scale;
             const canvasY = (e.clientY - offset.y) / scale;
 
-            if (props.onCanvasDoubleClick) {
-                props.onCanvasDoubleClick({
+            if (onCanvasDoubleClick) {
+                onCanvasDoubleClick({
                     screenX: e.clientX,
                     screenY: e.clientY,
                     canvasX,
@@ -344,10 +364,10 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                 });
             }
         }
-    };
+    }, [offset.x, offset.y, onCanvasDoubleClick, scale]);
 
     // Handle Drop on Canvas (similar to Paste)
-    const handleDrop = (e) => {
+    const handleDrop = useCallback((e) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -356,8 +376,8 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
 
         // Try to get text/url data
         const text = e.dataTransfer.getData('text/plain');
-        if (text && props.onCanvasDoubleClick) {
-            props.onCanvasDoubleClick({
+        if (text && onCanvasDoubleClick) {
+            onCanvasDoubleClick({
                 screenX: e.clientX,
                 screenY: e.clientY,
                 canvasX,
@@ -365,12 +385,12 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                 pastedText: text
             });
         }
-    };
+    }, [offset.x, offset.y, onCanvasDoubleClick, scale]);
 
     // AI Batch Summary Handler
     const [isSummarizing, setIsSummarizing] = React.useState(false);
 
-    const handleBatchSummary = async () => {
+    const handleBatchSummary = useCallback(async () => {
         if (isSummarizing) return;
         setIsSummarizing(true);
 
@@ -415,10 +435,10 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         } finally {
             setIsSummarizing(false);
         }
-    };
+    }, [isSummarizing, updateCardFull]);
 
     // Single Card Summary Handler (for manual testing)
-    const handleSingleSummary = async (cardId) => {
+    const handleSingleSummary = useCallback(async (cardId) => {
         if (isSummarizing) return;
 
         // Find the card
@@ -467,7 +487,7 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
         } finally {
             setIsSummarizing(false);
         }
-    }
+    }, [isSummarizing, updateCardFull]);
 
     return (
         <div
@@ -531,17 +551,17 @@ export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
                                 isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
                                 isTarget={targetCardIds.has(card.id)}
                                 onSelect={handleCardSelect}
-                                onMove={(id, x, y, withConnections) => handleCardMove(id, x, y, withConnections)}
-                                onDelete={() => deleteCard(card.id)}
+                                onMove={handleCardMove}
+                                onDelete={deleteCard}
                                 onUpdate={updateCardFull}
-                                onDragEnd={(id, x, y, withConnections) => handleCardMoveEnd(id, x, y, withConnections)}
-                                onConnect={() => handleConnect(card.id)}
-                                onExpand={() => setExpandedCardId(card.id)}
+                                onDragEnd={handleCardMoveEnd}
+                                onConnect={handleConnect}
+                                onExpand={setExpandedCardId}
                                 isConnecting={isConnecting}
                                 isConnectionStart={connectionStartId === card.id}
                                 onCreateNote={onCreateNote}
-                                onCardFullScreen={props.onCardFullScreen ? () => props.onCardFullScreen(card.id) : undefined}
-                                onPromptDrop={props.onCardPromptDrop}
+                                onCardFullScreen={onCardFullScreen}
+                                onPromptDrop={onCardPromptDrop}
                                 onCustomSprout={onCustomSprout}
                                 onSummarize={handleSingleSummary} // Pass the single summary handler
                             />

@@ -58,7 +58,7 @@ const Card = React.memo(function Card({
         if (now - lastTouchTimeRef.current < 300) {
             e.preventDefault();
             e.stopPropagation();
-            onExpand(data.id);
+            onExpand && onExpand(data.id);
             lastTouchTimeRef.current = 0;
             return;
         }
@@ -74,9 +74,7 @@ const Card = React.memo(function Card({
         try {
             const dropData = JSON.parse(e.dataTransfer.getData('application/json'));
             if (dropData.type === 'prompt') {
-                if (onPromptDrop) {
-                    onPromptDrop(data.id, dropData);
-                }
+                if (onPromptDrop) onPromptDrop(data.id, dropData);
             }
         } catch (err) {
             console.error("Card drop error", err);
@@ -228,7 +226,10 @@ const Card = React.memo(function Card({
             onDragStart={handleDragStart}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStartWithDoubleTap}
-            onDoubleClick={(e) => { e.stopPropagation(); onExpand(data.id); }}
+            onDoubleClick={(e) => {
+                e.stopPropagation();
+                onExpand && onExpand(data.id);
+            }}
             onContextMenu={handleContextMenu}
 
             onDrop={handleCardDrop}
@@ -252,7 +253,10 @@ const Card = React.memo(function Card({
                         : <Clipboard size={14} />}
                 </button>
                 <button
-                    onClick={(e) => { e.stopPropagation(); onConnect(data.id); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onConnect && onConnect(data.id);
+                    }}
                     className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-white/50 dark:hover:bg-white/10 rounded-lg transition-all"
                     title={t.card?.createConnection || "Create connection"}
                 >
