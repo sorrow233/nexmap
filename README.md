@@ -72,11 +72,6 @@ npm run ext:zip
 ## Documentation
 
 - [Chinese README](./README_zh-CN.md)
-- [Codebase Index](./docs/CODEBASE_DOCUMENTATION.md)
-- [Overview](./docs/OVERVIEW.md)
-- [Architecture](./docs/ARCHITECTURE.md)
-- [State Management](./docs/STATE_MANAGEMENT.md)
-- [Services](./docs/SERVICES.md)
+- [Codebase Documentation](./docs/CODEBASE_DOCUMENTATION.md)
 - [API / Functions](./docs/API.md)
-- [Deployment](./docs/DEPLOYMENT.md)
 - [History](./docs/HISTORY.md)

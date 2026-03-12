@@ -69,11 +69,6 @@ npm run ext:zip
 
 ## 建议先读这些文档
 
-- [代码库总索引](./docs/CODEBASE_DOCUMENTATION.md)
-- [项目概述](./docs/OVERVIEW.md)
-- [核心架构](./docs/ARCHITECTURE.md)
-- [状态管理](./docs/STATE_MANAGEMENT.md)
-- [服务层说明](./docs/SERVICES.md)
+- [代码库总文档](./docs/CODEBASE_DOCUMENTATION.md)
 - [Cloudflare API 文档](./docs/API.md)
-- [部署说明](./docs/DEPLOYMENT.md)
 - [近期演进历史](./docs/HISTORY.md)
