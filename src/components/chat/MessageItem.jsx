@@ -316,6 +316,12 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     }, [isAssistantStreaming, streamingStableText]);
 
     const handleMessageClick = (e) => {
+        const externalLink = e.target.closest('a[data-external-link="true"]');
+        if (externalLink) {
+            e.stopPropagation();
+            return;
+        }
+
         const link = e.target.closest('.card-ref-link');
         if (link) {
             const cardId = link.getAttribute('data-card-id');
