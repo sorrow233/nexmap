@@ -3,8 +3,8 @@ import { THEME_CONFIGS } from './themeConfigs';
 export const DEFAULT_SHARE_PRESET = {
     theme: 'modern',
     layout: 'card',
-    resolution: 'hd',
-    showWatermark: false
+    resolution: 'print',
+    showWatermark: true
 };
 
 const SIMPLE_THEME_IDS = ['modern', 'editorial', 'zen', 'night'];
@@ -24,13 +24,14 @@ export const SHARE_DOWNLOAD_FORMAT = {
     id: 'webp',
     mime: 'image/webp',
     ext: 'webp',
-    quality: 0.96
+    quality: 0.92
 };
 
 export const SHARE_CLIPBOARD_FORMAT = {
-    id: 'png',
-    mime: 'image/png',
-    ext: 'png'
+    id: 'webp',
+    mime: 'image/webp',
+    ext: 'webp',
+    quality: 0.92
 };
 
 function buildThemeMeta(themeId) {

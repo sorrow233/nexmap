@@ -6,7 +6,6 @@ import {
     Image as ImageIcon,
     LayoutTemplate,
     Loader2,
-    ShieldCheck,
     Sparkles
 } from 'lucide-react';
 
@@ -16,15 +15,27 @@ const STATUS_STYLES = {
     info: 'border-sky-200 bg-sky-50 text-sky-700'
 };
 
-function Section({ title, subtitle, children }) {
+function Surface({ children, className = '' }) {
     return (
-        <section className="space-y-3">
-            <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-                {subtitle ? <p className="text-xs leading-5 text-slate-500">{subtitle}</p> : null}
-            </div>
+        <section
+            className={`overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/92 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${className}`}
+        >
             {children}
         </section>
+    );
+}
+
+function SectionHeading({ title, subtitle, accent }) {
+    return (
+        <div className="space-y-1.5">
+            {accent ? (
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600">
+                    {accent}
+                </div>
+            ) : null}
+            <h3 className="text-base font-semibold tracking-tight text-slate-950">{title}</h3>
+            {subtitle ? <p className="text-sm leading-6 text-slate-500">{subtitle}</p> : null}
+        </div>
     );
 }
 
@@ -38,68 +49,92 @@ function FeedbackBanner({ feedback }) {
     );
 }
 
+function SummaryPill({ icon: Icon, label }) {
+    return (
+        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
+            <Icon size={14} className="text-slate-900" />
+            {label}
+        </span>
+    );
+}
+
 function ThemeOption({ option, active, onClick }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`rounded-2xl border p-3 text-left transition-all ${
+            aria-pressed={active}
+            className={`group flex items-start justify-between gap-4 rounded-[22px] border px-4 py-4 text-left transition-all duration-200 ${
                 active
-                    ? 'border-slate-900 bg-slate-950 text-white shadow-[0_12px_30px_rgba(15,23,42,0.16)]'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    ? 'border-slate-900 bg-slate-950 text-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]'
+                    : 'border-slate-200 bg-slate-50/80 text-slate-900 hover:border-slate-300 hover:bg-white'
             }`}
         >
-            <div
-                className="mb-3 h-12 rounded-2xl border"
-                style={{
-                    background: `linear-gradient(135deg, ${option.bg} 0%, ${option.bg} 62%, ${option.accent} 100%)`,
-                    borderColor: active ? 'rgba(255,255,255,0.18)' : 'rgba(15,23,42,0.08)'
-                }}
-            />
-            <div className="flex items-center justify-between gap-3">
-                <div>
-                    <div className={`text-sm font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>
-                        {option.label}
-                    </div>
-                    <div className={`mt-1 text-xs ${active ? 'text-white/65' : 'text-slate-500'}`}>
-                        {option.description}
-                    </div>
+            <div className="min-w-0">
+                <div className={`text-base font-semibold tracking-tight ${active ? 'text-white' : 'text-slate-950'}`}>
+                    {option.label}
                 </div>
-                {active ? (
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-950">
-                        <Check size={14} />
+                <div className={`mt-1 text-sm leading-6 ${active ? 'text-white/68' : 'text-slate-500'}`}>
+                    {option.description}
+                </div>
+            </div>
+            <span
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all ${
+                    active
+                        ? 'border-white/18 bg-white text-slate-950'
+                        : 'border-slate-200 bg-white text-transparent group-hover:text-slate-300'
+                }`}
+            >
+                <Check size={15} />
+            </span>
+        </button>
+    );
+}
+
+function CompactOption({ option, active, onClick, icon: Icon, meta }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-pressed={active}
+            className={`rounded-[22px] border p-3 text-left transition-all duration-200 ${
+                active
+                    ? 'border-slate-900 bg-slate-950 text-white shadow-[0_18px_40px_rgba(15,23,42,0.16)]'
+                    : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-white'
+            }`}
+        >
+            <div className="flex items-center justify-between gap-3">
+                <span
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${
+                        active ? 'bg-white/14 text-white' : 'bg-white text-slate-900'
+                    }`}
+                >
+                    <Icon size={18} />
+                </span>
+                {meta ? (
+                    <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                            active ? 'bg-white/12 text-white/80' : 'bg-slate-200/70 text-slate-500'
+                        }`}
+                    >
+                        {meta}
                     </span>
                 ) : null}
+            </div>
+            <div className={`mt-4 text-sm font-semibold ${active ? 'text-white' : 'text-slate-950'}`}>
+                {option.label}
             </div>
         </button>
     );
 }
 
-function ChoiceOption({ option, active, onClick, icon: Icon }) {
+function DescriptionNote({ text }) {
+    if (!text) return null;
+
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`rounded-2xl border px-4 py-3 text-left transition-all ${
-                active
-                    ? 'border-sky-300 bg-sky-50 text-slate-950'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-            }`}
-        >
-            <div className="flex items-center gap-3">
-                <span
-                    className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${
-                        active ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-500'
-                    }`}
-                >
-                    <Icon size={18} />
-                </span>
-                <div className="min-w-0">
-                    <div className="text-sm font-semibold">{option.label}</div>
-                    <div className="mt-1 text-xs text-slate-500">{option.description}</div>
-                </div>
-            </div>
-        </button>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-500">
+            {text}
+        </div>
     );
 }
 
@@ -110,11 +145,6 @@ export default function ShareControls({
     layouts,
     currentLayout,
     setLayout,
-    resolutions,
-    currentResolution,
-    setResolution,
-    showWatermark,
-    setShowWatermark,
     onCopy,
     onDownload,
     isCopying,
@@ -122,30 +152,52 @@ export default function ShareControls({
     canCopy,
     canExport,
     feedback,
-    copy
+    copy,
+    autoQualityLabel,
+    autoQualityHint
 }) {
     const isBusy = isCopying || isGenerating;
+    const currentLayoutMeta = layouts.find((option) => option.id === currentLayout) || layouts[0];
 
     return (
-        <aside className="flex min-h-0 w-full flex-col bg-[#f8fafc] md:w-full">
+        <aside className="flex min-h-0 w-full flex-col bg-[radial-gradient(circle_at_top,#eef6ff_0%,#f8fafc_42%,#f4f7fb_100%)]">
             <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-                <div className="space-y-6">
-                    <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
-                        <div className="flex items-start gap-3">
-                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                                <Sparkles size={18} />
-                            </span>
-                            <div>
-                                <div className="text-sm font-semibold text-slate-950">{copy.controlTitle}</div>
-                                <div className="mt-1 text-xs leading-5 text-slate-500">{copy.controlSubtitle}</div>
+                <div className="space-y-5">
+                    <Surface className="bg-[linear-gradient(145deg,rgba(255,255,255,0.96)_0%,rgba(245,250,255,0.96)_100%)]">
+                        <div className="border-b border-slate-200/80 px-5 py-5">
+                            <div className="flex items-start gap-4">
+                                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] bg-slate-950 text-white shadow-[0_16px_30px_rgba(15,23,42,0.18)]">
+                                    <Sparkles size={18} />
+                                </span>
+                                <div className="min-w-0">
+                                    <SectionHeading
+                                        accent="WebP First"
+                                        title={copy.controlTitle}
+                                        subtitle={copy.controlSubtitle}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        <div className="space-y-4 px-5 py-4">
+                            <div className="flex flex-wrap gap-2">
+                                <SummaryPill icon={Download} label={copy.download} />
+                                <SummaryPill icon={Copy} label={copy.copy} />
+                                <SummaryPill icon={ImageIcon} label={autoQualityLabel} />
+                            </div>
+                            <p className="text-sm leading-6 text-slate-500">
+                                {autoQualityHint}
+                            </p>
+                        </div>
+                    </Surface>
 
                     <FeedbackBanner feedback={feedback} />
 
-                    <Section title={copy.themeTitle} subtitle={copy.themeSubtitle}>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Surface className="px-5 py-5">
+                        <SectionHeading
+                            title={copy.themeTitle}
+                            subtitle={copy.themeSubtitle}
+                        />
+                        <div className="mt-4 grid grid-cols-1 gap-3">
                             {themeOptions.map((option) => (
                                 <ThemeOption
                                     key={option.id}
@@ -155,98 +207,60 @@ export default function ShareControls({
                                 />
                             ))}
                         </div>
-                    </Section>
+                    </Surface>
 
-                    <Section title={copy.layoutTitle} subtitle={copy.layoutSubtitle}>
-                        <div className="grid grid-cols-1 gap-3">
+                    <Surface className="px-5 py-5">
+                        <SectionHeading
+                            title={copy.layoutTitle}
+                            subtitle={copy.layoutSubtitle}
+                        />
+                        <div className="mt-4 grid grid-cols-3 gap-3">
                             {layouts.map((option) => (
-                                <ChoiceOption
+                                <CompactOption
                                     key={option.id}
                                     option={option}
                                     active={option.id === currentLayout}
                                     onClick={() => setLayout(option.id)}
                                     icon={LayoutTemplate}
+                                    meta={option.size}
                                 />
                             ))}
                         </div>
-                    </Section>
-
-                    <Section title={copy.exportTitle} subtitle={copy.exportSubtitle}>
-                        <div className="grid grid-cols-1 gap-3">
-                            {resolutions.map((option) => (
-                                <ChoiceOption
-                                    key={option.id}
-                                    option={option}
-                                    active={option.id === currentResolution}
-                                    onClick={() => setResolution(option.id)}
-                                    icon={ImageIcon}
-                                />
-                            ))}
-                        </div>
-                    </Section>
-
-                    <Section title={copy.formatHintTitle} subtitle={copy.formatHintSubtitle}>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                            <div className="font-semibold text-slate-900">{copy.formatHintBody}</div>
-                            <div className="mt-2 text-xs leading-5 text-slate-500">{copy.safeHint}</div>
-                        </div>
-                    </Section>
-
-                    <Section title={copy.brandingTitle} subtitle={copy.brandingSubtitle}>
-                        <button
-                            type="button"
-                            onClick={() => setShowWatermark(!showWatermark)}
-                            className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition-colors hover:bg-slate-50"
-                        >
-                            <div className="flex items-center gap-3">
-                                <span
-                                    className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${
-                                        showWatermark ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-500'
-                                    }`}
-                                >
-                                    <ShieldCheck size={18} />
-                                </span>
-                                <div>
-                                    <div className="text-sm font-semibold text-slate-900">{copy.brandingToggle}</div>
-                                    <div className="mt-1 text-xs leading-5 text-slate-500">{copy.brandingHint}</div>
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                            <DescriptionNote text={currentLayoutMeta?.description} />
+                            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
+                                {copy.exportTitle}
+                                <div className="mt-1 text-lg font-semibold tracking-tight text-slate-950">
+                                    {autoQualityLabel}
                                 </div>
                             </div>
-                            <div
-                                className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
-                                    showWatermark ? 'bg-slate-950' : 'bg-slate-200'
-                                }`}
-                            >
-                                <div
-                                    className={`h-5 w-5 rounded-full bg-white transition-transform ${
-                                        showWatermark ? 'translate-x-5' : 'translate-x-0'
-                                    }`}
-                                />
-                            </div>
-                        </button>
-                    </Section>
+                        </div>
+                    </Surface>
                 </div>
             </div>
 
-            <div className="border-t border-slate-200 bg-white px-5 py-5 sm:px-6">
-                <div className="grid grid-cols-1 gap-3">
-                    <button
-                        type="button"
-                        onClick={onDownload}
-                        disabled={isBusy || !canExport}
-                        className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-base font-semibold text-white transition-transform duration-200 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-                        {isGenerating ? copy.downloading : canExport ? copy.download : copy.downloadDisabled}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onCopy}
-                        disabled={isBusy || !canCopy || !canExport}
-                        className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {isCopying ? <Loader2 size={18} className="animate-spin" /> : <Copy size={18} />}
-                        {isCopying ? copy.copying : !canExport ? copy.copyNoContent : canCopy ? copy.copy : copy.copyDisabled}
-                    </button>
+            <div className="border-t border-slate-200/80 bg-white/92 px-5 py-5 backdrop-blur sm:px-6">
+                <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_20px_45px_rgba(15,23,42,0.08)]">
+                    <div className="grid grid-cols-1 gap-3">
+                        <button
+                            type="button"
+                            onClick={onDownload}
+                            disabled={isBusy || !canExport}
+                            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#020617_0%,#0f172a_58%,#1d4ed8_100%)] px-4 text-base font-semibold text-white shadow-[0_20px_35px_rgba(29,78,216,0.18)] transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                            {isGenerating ? copy.downloading : canExport ? copy.download : copy.downloadDisabled}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onCopy}
+                            disabled={isBusy || !canCopy || !canExport}
+                            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isCopying ? <Loader2 size={18} className="animate-spin" /> : <Copy size={18} />}
+                            {isCopying ? copy.copying : !canExport ? copy.copyNoContent : canCopy ? copy.copy : copy.copyDisabled}
+                        </button>
+                    </div>
                 </div>
             </div>
         </aside>

@@ -27,12 +27,12 @@ function getShareCopy(t) {
 
     return {
         title: locale.title || '导出回答',
-        subtitle: locale.subtitle || '默认导出清晰 WebP，只保留真正有用的选项。',
+        subtitle: locale.subtitle || '默认固定高分辨率渲染，保存和复制都输出 WebP。',
         previewLabel: locale.previewLabel || '最终预览',
         previewHint: locale.previewHint || '这里看到的，就是最终导出的画面。',
         calculating: locale.calculating || '正在计算预览尺寸...',
         controlTitle: locale.controlTitle || '导出选项',
-        controlSubtitle: locale.controlSubtitle || '保存时默认输出 WebP，复制时自动转成 PNG。',
+        controlSubtitle: locale.controlSubtitle || '只保留风格和画布，清晰度与格式全部由系统固定处理。',
         themeTitle: locale.themeTitle || '风格',
         themeSubtitle: locale.themeSubtitle || '只保留最常用的几种风格。',
         themes: locale.themes || {},
@@ -49,16 +49,17 @@ function getShareCopy(t) {
         brandingSubtitle: locale.brandingSubtitle || '只有在需要署名时再打开品牌标记。',
         brandingToggle: locale.brandingToggle || '附带 NexMap 标记',
         brandingHint: locale.brandingHint || '会在导出图底部加入产品标识。',
-        safeHint: locale.safeHint || '如果内容特别长，系统会自动降低导出倍率，优先保证导出成功。',
+        safeHint: locale.safeHint || '默认固定高分辨率渲染，宁可文件更大，也优先保证导出清晰度。',
+        qualityPinnedHint: locale.qualityPinnedHint || '渲染固定使用超清档位，下载与复制都输出 WebP 92% 压缩。',
         download: locale.download || '保存 WebP',
         downloadDisabled: locale.downloadDisabled || '没有可导出的内容',
         downloading: locale.downloading || '正在生成 WebP...',
         downloadSuccess: locale.downloadSuccess || 'WebP 图片已开始下载。',
-        copy: locale.copy || '复制 PNG',
+        copy: locale.copy || '复制 WebP',
         copyNoContent: locale.copyNoContent || '没有可复制的内容',
-        copying: locale.copying || '正在复制 PNG...',
+        copying: locale.copying || '正在复制 WebP...',
         copyDisabled: locale.copyDisabled || '当前环境不支持复制图片',
-        copySuccess: locale.copySuccess || 'PNG 图片已复制到剪贴板。',
+        copySuccess: locale.copySuccess || 'WebP 图片已复制到剪贴板。',
         emptyTitle: locale.emptyTitle || '没有可导出的内容',
         emptyDescription: locale.emptyDescription || '当前这次导出没有拿到正文内容。请关闭后重新打开导出面板，再试一次。',
         emptyContent: locale.emptyContent || '当前没有可导出的正文内容。',
@@ -80,11 +81,10 @@ export default function ShareModal({ isOpen, onClose, content }) {
 
     const [theme, setTheme] = useState(DEFAULT_SHARE_PRESET.theme);
     const [layout, setLayout] = useState(DEFAULT_SHARE_PRESET.layout);
-    const [showWatermark, setShowWatermark] = useState(DEFAULT_SHARE_PRESET.showWatermark);
-    const [resolution, setResolution] = useState(DEFAULT_SHARE_PRESET.resolution);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
     const [feedback, setFeedback] = useState(null);
+    const showWatermark = true;
 
     const canCopy = typeof navigator !== 'undefined' && !!navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
 
@@ -127,14 +127,13 @@ export default function ShareModal({ isOpen, onClose, content }) {
 
     const selectedThemeLabel = themes.find((item) => item.id === theme)?.label || theme;
     const selectedLayoutLabel = layouts.find((item) => item.id === layout)?.label || layout;
+    const fixedResolutionMeta = resolutions.find((item) => item.id === 'print') || resolutions[resolutions.length - 1];
 
     useEffect(() => {
         if (!isOpen) return undefined;
 
         setTheme(DEFAULT_SHARE_PRESET.theme);
         setLayout(DEFAULT_SHARE_PRESET.layout);
-        setShowWatermark(DEFAULT_SHARE_PRESET.showWatermark);
-        setResolution(DEFAULT_SHARE_PRESET.resolution);
         setFeedback(null);
 
         const handleKeyDown = (event) => {
@@ -160,7 +159,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
     };
 
     const getExportBlob = async (formatMeta) => {
-        const resolutionMeta = getShareResolutionMeta(resolution);
+        const resolutionMeta = getShareResolutionMeta(fixedResolutionMeta.id);
         const { canvas, wasScaledDown } = await generateShareCanvas(captureRef.current, {
             themeId: theme,
             requestedScale: resolutionMeta.scale
@@ -223,6 +222,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
             console.error('[ShareModal] Clipboard export failed:', error);
             if (error.message === 'clipboard-unsupported') {
                 showFeedback('info', copy.copyUnsupported);
+            } else if (error.message === 'unsupported-export-format') {
+                showFeedback('error', copy.webpUnsupported);
             } else {
                 showFeedback('error', copy.copyError);
             }
@@ -273,11 +274,6 @@ export default function ShareModal({ isOpen, onClose, content }) {
                         layouts={layouts}
                         currentLayout={layout}
                         setLayout={setLayout}
-                        resolutions={resolutions}
-                        currentResolution={resolution}
-                        setResolution={setResolution}
-                        showWatermark={showWatermark}
-                        setShowWatermark={setShowWatermark}
                         onCopy={handleCopy}
                         onDownload={handleDownload}
                         isCopying={isCopying}
@@ -286,6 +282,8 @@ export default function ShareModal({ isOpen, onClose, content }) {
                         canExport={canExport}
                         feedback={feedback}
                         copy={copy}
+                        autoQualityLabel={`${fixedResolutionMeta.label}${fixedResolutionMeta.shortLabel ? ` · ${fixedResolutionMeta.shortLabel}` : ''}`}
+                        autoQualityHint={copy.qualityPinnedHint}
                     />
                 </div>
             </div>
