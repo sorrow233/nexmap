@@ -17,8 +17,13 @@ export function isCompactViewport(width = window.innerWidth) {
     return width <= 640;
 }
 
-export function shouldUseIOSCompactBoard(width = window.innerWidth) {
-    return isIPhone && isSafari && isCompactViewport(width);
+export function shouldUseIPhoneSafariCompactLayout() {
+    // iPhone Safari should keep the dedicated mobile shell even after rotation.
+    return isIPhone && isSafari;
+}
+
+export function shouldUseIOSCompactBoard() {
+    return shouldUseIPhoneSafariCompactLayout();
 }
 
 export function isStandaloneDisplayMode() {
