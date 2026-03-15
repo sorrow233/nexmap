@@ -9,6 +9,7 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
+import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { useSearchShortcut } from './hooks/useSearchShortcut';
 
@@ -548,6 +549,8 @@ function AppContent() {
                 message="Are you sure you want to sign out? This will clear all local data for security. Ensure your boards are synced to the cloud."
                 type="confirm"
             />
+
+            <IPadInstallPrompt />
         </>
     );
 }

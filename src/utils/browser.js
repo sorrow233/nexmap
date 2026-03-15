@@ -1,9 +1,16 @@
 // Browser detection utilities
-export const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-export const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-export const isIPhone = /iPhone|iPod/.test(navigator.userAgent);
-export const isMobile = isIOS || /Android/i.test(navigator.userAgent);
-export const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const userAgent = navigator.userAgent || '';
+const platform = navigator.platform || '';
+const maxTouchPoints = navigator.maxTouchPoints || 0;
+const isIPadDesktopMode = platform === 'MacIntel' && maxTouchPoints > 1;
+const matchesIOSUserAgent = /iPad|iPhone|iPod/.test(userAgent);
+
+export const isSafari = /Safari/i.test(userAgent) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|Android/i.test(userAgent);
+export const isIOS = (matchesIOSUserAgent || isIPadDesktopMode) && !window.MSStream;
+export const isIPhone = /iPhone|iPod/.test(userAgent);
+export const isIPad = /iPad/.test(userAgent) || isIPadDesktopMode;
+export const isMobile = isIOS || /Android/i.test(userAgent);
+export const isTouch = 'ontouchstart' in window || maxTouchPoints > 0;
 export const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function isCompactViewport(width = window.innerWidth) {
@@ -12,6 +19,18 @@ export function isCompactViewport(width = window.innerWidth) {
 
 export function shouldUseIOSCompactBoard(width = window.innerWidth) {
     return isIPhone && isSafari && isCompactViewport(width);
+}
+
+export function isStandaloneDisplayMode() {
+    const isStandaloneMedia = typeof window.matchMedia === 'function'
+        ? window.matchMedia('(display-mode: standalone)').matches
+        : false;
+
+    return isStandaloneMedia || window.navigator?.standalone === true;
+}
+
+export function shouldShowIPadInstallPrompt() {
+    return isIPad && isSafari && !isStandaloneDisplayMode();
 }
 
 // iOS Safari 100vh fix - sets CSS custom property for true viewport height
