@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { THEME_CONFIGS, LAYOUT_CONFIGS, THEME_MAP, generateThemeCSS } from './themeConfigs';
 import { renderMarkdownToHtml } from '../../utils/markdownRenderer';
+import { normalizeShareContent } from './shareContent';
 
 const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout = 'card', showWatermark }, ref) => {
     // Map theme IDs using imported THEME_MAP
@@ -21,7 +22,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         }
     }, []);
 
-    const htmlContent = renderMarkdownToHtml(content || '');
+    const htmlContent = renderMarkdownToHtml(normalizeShareContent(content));
 
     // CSS Generator
     const generateThemeStyles = () => {

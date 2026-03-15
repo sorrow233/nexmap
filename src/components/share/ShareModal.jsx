@@ -21,6 +21,7 @@ import {
     downloadBlob,
     generateShareCanvas
 } from './shareExport';
+import { hasShareableContent, normalizeShareContent } from './shareContent';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 function getShareCopy(t) {
@@ -64,38 +65,13 @@ function getShareCopy(t) {
     };
 }
 
-function normalizeShareContent(content) {
-    if (typeof content === 'string') {
-        return content.trim();
-    }
-
-    if (Array.isArray(content)) {
-        return content
-            .map((item) => {
-                if (typeof item === 'string') return item.trim();
-                if (item && typeof item.text === 'string') return item.text.trim();
-                if (item && typeof item.content === 'string') return item.content.trim();
-                return '';
-            })
-            .filter(Boolean)
-            .join('\n\n');
-    }
-
-    if (content && typeof content === 'object') {
-        if (typeof content.text === 'string') return content.text.trim();
-        if (typeof content.content === 'string') return content.content.trim();
-    }
-
-    return '';
-}
-
 export default function ShareModal({ isOpen, onClose, content }) {
     const { t } = useLanguage();
     const copy = getShareCopy(t);
     const themeSections = getShareThemeSections();
     const captureRef = useRef(null);
     const normalizedContent = normalizeShareContent(content);
-    const canExport = Boolean(normalizedContent);
+    const canExport = hasShareableContent(content);
 
     const [theme, setTheme] = useState(DEFAULT_SHARE_PRESET.theme);
     const [layout, setLayout] = useState(DEFAULT_SHARE_PRESET.layout);

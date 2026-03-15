@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FileText, Loader2, Maximize2, Sparkles } from 'lucide-react';
 import ShareableContent from './ShareableContent';
+import { hasShareableContent } from './shareContent';
 
 export default function SharePreview({
     content,
@@ -16,7 +17,7 @@ export default function SharePreview({
     const contentRef = useRef(null);
     const [scale, setScale] = useState(0.42);
     const [isCalculating, setIsCalculating] = useState(true);
-    const hasContent = Boolean(content && String(content).trim());
+    const hasContent = hasShareableContent(content);
 
     useEffect(() => {
         let frameId = 0;
