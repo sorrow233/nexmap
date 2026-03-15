@@ -59,7 +59,7 @@ export default function MobileBoardShell({
                 untitledLabel={untitledLabel}
             />
 
-            <div className="absolute inset-0 overflow-y-auto px-4 pb-[8.5rem] pt-[5.9rem] ios-scroll-fix">
+            <div className="absolute inset-0 overflow-y-auto px-4 pb-[7.25rem] pt-[5.9rem] ios-scroll-fix">
                 <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
                     {FILTERS.map((item) => (
                         <button
@@ -88,7 +88,7 @@ export default function MobileBoardShell({
                         </p>
                     </section>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="columns-2 gap-3 [column-fill:_balance]">
                         {visibleCards.map((card) => (
                             <MobileBoardFeedCard
                                 key={card.id}

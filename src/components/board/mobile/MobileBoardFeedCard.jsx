@@ -16,7 +16,7 @@ export default function MobileBoardFeedCard({
     const isNote = card.type === 'note';
 
     return (
-        <article className="rounded-[1.5rem] border border-white/70 bg-white/92 p-4 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/88">
+        <article className="mb-3 break-inside-avoid rounded-[1.35rem] border border-white/70 bg-white/92 p-3.5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/88">
             <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <div className="mb-2 flex items-center gap-2">
@@ -38,7 +38,7 @@ export default function MobileBoardFeedCard({
                         onClick={() => onOpen(card.id)}
                         className="block text-left"
                     >
-                        <h3 className="line-clamp-3 text-[1.1rem] font-semibold leading-8 tracking-tight text-slate-900 dark:text-slate-50">
+                        <h3 className="line-clamp-3 text-[1rem] font-semibold leading-7 tracking-tight text-slate-900 dark:text-slate-50">
                             {title}
                         </h3>
                     </button>
@@ -57,12 +57,12 @@ export default function MobileBoardFeedCard({
                 onClick={() => onOpen(card.id)}
                 className="block w-full text-left"
             >
-                <p className="whitespace-pre-wrap break-words text-[0.97rem] leading-7 text-slate-600 dark:text-slate-300">
-                    {preview.length > 180 ? `${preview.slice(0, 180)}...` : preview}
+                <p className="whitespace-pre-wrap break-words text-[0.9rem] leading-6 text-slate-600 dark:text-slate-300">
+                    {preview.length > 120 ? `${preview.slice(0, 120)}...` : preview}
                 </p>
             </button>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 dark:bg-white/5">
                     <MessageSquare size={12} />
                     {metrics.messageCount}
@@ -78,7 +78,7 @@ export default function MobileBoardFeedCard({
             </div>
 
             {!isNote && (
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
                     <ActionButton
                         icon={ArrowUpRight}
                         label="打开全文"
@@ -107,9 +107,9 @@ function ActionButton({ icon: Icon, label, onClick, wide = false }) {
     return (
         <button
             onClick={onClick}
-            className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-3 py-3 text-sm font-semibold text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100 ${wide ? 'col-span-2' : ''}`}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-2xl bg-slate-100 px-2.5 py-2.5 text-[12px] font-semibold text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100 ${wide ? 'col-span-2' : ''}`}
         >
-            <Icon size={16} />
+            <Icon size={14} />
             {label}
         </button>
     );

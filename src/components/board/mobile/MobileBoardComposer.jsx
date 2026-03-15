@@ -12,6 +12,7 @@ export default function MobileBoardComposer({
 }) {
     const [promptInput, setPromptInput] = useState('');
     const fileInputRef = useRef(null);
+    const inputRef = useRef(null);
 
     const handleSubmit = () => {
         if (isReadOnly) return;
@@ -23,8 +24,8 @@ export default function MobileBoardComposer({
     };
 
     return (
-        <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[max(env(safe-area-inset-bottom),0.85rem)]">
-            <div className="rounded-[1.5rem] border border-white/70 bg-white/94 p-3 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/92">
+        <div className="fixed inset-x-0 bottom-0 z-[70] px-4 pb-[max(env(safe-area-inset-bottom),0.85rem)] pointer-events-auto">
+            <div className="rounded-[1.35rem] border border-white/70 bg-white/96 p-2.5 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/94">
                 {globalImages.length > 0 && (
                     <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
                         {globalImages.map((img, idx) => (
@@ -47,13 +48,13 @@ export default function MobileBoardComposer({
                     </div>
                 )}
 
-                <div className="flex items-end gap-2">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={() => !isReadOnly && fileInputRef.current?.click()}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100"
                         title="上传图片"
                     >
-                        <ImageIcon size={18} />
+                        <ImageIcon size={17} />
                     </button>
                     <input
                         ref={fileInputRef}
@@ -67,31 +68,42 @@ export default function MobileBoardComposer({
 
                     <button
                         onClick={() => !isReadOnly && onCreateNote()}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100"
                         title="新建便签"
                     >
-                        <Plus size={18} />
+                        <Plus size={17} />
                     </button>
 
-                    <textarea
+                    <input
+                        ref={inputRef}
                         value={promptInput}
                         onChange={(e) => setPromptInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSubmit();
+                            }
+                        }}
                         readOnly={isReadOnly}
-                        rows={1}
+                        type="text"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="sentences"
+                        enterKeyHint="send"
                         placeholder={isReadOnly ? '当前为只读模式' : '输入一句话，新建一张卡片'}
-                        className={`min-h-[44px] flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-[15px] leading-6 text-slate-800 outline-none placeholder:text-slate-400 dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-500 ${isReadOnly ? 'cursor-not-allowed' : ''}`}
+                        className={`h-10 flex-1 rounded-2xl bg-slate-100 px-4 text-[15px] text-slate-800 outline-none placeholder:text-slate-400 dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-500 ${isReadOnly ? 'cursor-not-allowed' : ''}`}
                     />
 
                     <button
                         onClick={handleSubmit}
                         disabled={isReadOnly || (!promptInput.trim() && globalImages.length === 0)}
-                        className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all ${isReadOnly || (!promptInput.trim() && globalImages.length === 0)
+                        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-all ${isReadOnly || (!promptInput.trim() && globalImages.length === 0)
                             ? 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-slate-600'
                             : 'bg-cyan-500 text-white active:scale-95'
                             }`}
                         title="发送"
                     >
-                        <Send size={18} />
+                        <Send size={17} />
                     </button>
                 </div>
             </div>
