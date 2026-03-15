@@ -1,5 +1,6 @@
 
 import { chatCompletion } from './llm';
+import { GEMINI_RECOMMENDED_TEMPERATURE } from './llm/temperature';
 import {
     readCustomInstructionsFromLocalStorage,
     extractCustomInstructionsPlainText
@@ -76,7 +77,7 @@ OUTPUT FORMAT:
                 [{ role: 'user', content: prompt }],
                 config,
                 sproutingModel, // Use 'sprouting' model
-                { temperature: 0.3 } // Lower temperature for consistent formatting
+                { temperature: GEMINI_RECOMMENDED_TEMPERATURE }
             );
 
             if (!response) return {};
@@ -171,7 +172,7 @@ OUTPUT FORMAT (JSON ONLY):
                 [{ role: 'user', content: prompt }],
                 config,
                 config.model, // Use the active model
-                { temperature: 0.7 }
+                { temperature: GEMINI_RECOMMENDED_TEMPERATURE }
             );
 
             if (!response) return null;
