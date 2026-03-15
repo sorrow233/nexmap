@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ShareModal from './share/ShareModal';
 import { useLanguage } from '../contexts/LanguageContext';
 import { renderMarkdownToHtml } from '../utils/markdownRenderer';
+import { ensureLatestBuildOrRefresh } from '../utils/buildVersion';
 
 export default function FavoritesGallery() {
     const [favorites, setFavorites] = useState([]);
@@ -34,9 +35,12 @@ export default function FavoritesGallery() {
         favoritesService.removeFavoriteById(favId);
     };
 
-    const handleShare = (e, content) => {
+    const handleShare = async (e, content) => {
         e.stopPropagation();
-        setShareContent(content);
+        const isLatestBuild = await ensureLatestBuildOrRefresh({ force: true });
+        if (isLatestBuild) {
+            setShareContent(content);
+        }
     };
 
     const renderMarkdown = (content) => {

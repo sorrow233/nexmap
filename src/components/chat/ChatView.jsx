@@ -9,6 +9,7 @@ import { htmlToMarkdown } from '../../utils/htmlToMarkdown';
 import { aiManager } from '../../services/ai/AIManager';
 import { useAISprouting } from '../../hooks/useAISprouting';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { ensureLatestBuildOrRefresh } from '../../utils/buildVersion';
 
 import SproutModal from './SproutModal';
 import ChatInput from './ChatInput';
@@ -400,6 +401,13 @@ export default function ChatView({
         setSelection(null);
     };
 
+    const handleShareOpen = async (content) => {
+        const isLatestBuild = await ensureLatestBuildOrRefresh({ force: true });
+        if (isLatestBuild) {
+            setShareContent(content);
+        }
+    };
+
     return (
         <div
             ref={modalRef}
@@ -458,7 +466,7 @@ export default function ChatView({
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
                         onUpdate={onUpdate}
-                        onShare={(content) => setShareContent(content)}
+                        onShare={handleShareOpen}
                         onToggleFavorite={onToggleFavorite}
                         pendingCount={pendingCount}
                         pendingMessages={pendingMessages}

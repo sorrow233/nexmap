@@ -12,6 +12,7 @@ import { ContextMenuProvider } from './components/ContextMenu';
 import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { useSearchShortcut } from './hooks/useSearchShortcut';
+import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -98,6 +99,8 @@ function AppContent() {
     const searchLoadTokenRef = useRef(0);
     const searchBufferedDataRef = useRef({});
     const searchFlushTimerRef = useRef(null);
+
+    useBuildVersionRefresh();
 
     // Cmd+K shortcut for search
     useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
