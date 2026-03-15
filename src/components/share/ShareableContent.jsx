@@ -21,7 +21,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         }
     }, []);
 
-    const htmlContent = renderMarkdownToHtml(content || 'No content provided');
+    const htmlContent = renderMarkdownToHtml(content || '');
 
     // CSS Generator
     const generateThemeStyles = () => {

@@ -503,6 +503,7 @@ export default function ChatView({
             <ShareModal
                 isOpen={!!shareContent}
                 onClose={() => setShareContent(null)}
+                content={shareContent}
             />
         </div>
     );

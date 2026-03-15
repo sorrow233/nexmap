@@ -133,11 +133,12 @@ export default function ShareControls({
     isCopying,
     isGenerating,
     canCopy,
+    canExport,
     feedback,
     copy
 }) {
     return (
-        <aside className="flex w-full flex-col bg-[#07111b]/94 text-white xl:w-[430px]">
+        <aside className="flex w-full min-h-0 flex-col bg-[#07111b]/94 text-white md:w-full">
             <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
                 <div className="space-y-6">
                     <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
@@ -265,20 +266,20 @@ export default function ShareControls({
                     <button
                         type="button"
                         onClick={onDownload}
-                        disabled={isGenerating}
+                        disabled={isGenerating || !canExport}
                         className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 text-sm font-semibold text-slate-950 transition-transform duration-200 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                        {isGenerating ? copy.downloading : copy.download}
+                        {isGenerating ? copy.downloading : canExport ? copy.download : copy.downloadDisabled}
                     </button>
                     <button
                         type="button"
                         onClick={onCopy}
-                        disabled={isCopying || !canCopy}
+                        disabled={isCopying || !canCopy || !canExport}
                         className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isCopying ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
-                        {isCopying ? copy.copying : canCopy ? copy.copy : copy.copyDisabled}
+                        {isCopying ? copy.copying : !canExport ? copy.copyNoContent : canCopy ? copy.copy : copy.copyDisabled}
                     </button>
                 </div>
             </div>

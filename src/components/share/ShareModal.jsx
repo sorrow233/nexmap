@@ -48,12 +48,15 @@ function getShareCopy(t) {
         brandingHint: locale.brandingHint || '会在导出图底部附带产品标识。',
         safeHint: locale.safeHint || '如果内容特别长，系统会自动降低导出倍率，避免旧版那种大图直接失败的问题。',
         download: locale.download || '保存图片',
+        downloadDisabled: locale.downloadDisabled || '没有可导出的内容',
         downloading: locale.downloading || '正在生成图片...',
         downloadSuccess: locale.downloadSuccess || '图片已开始下载。',
         copy: locale.copy || '复制到剪贴板',
+        copyNoContent: locale.copyNoContent || '没有可复制的内容',
         copying: locale.copying || '正在复制...',
         copyDisabled: locale.copyDisabled || '当前环境不支持复制图片',
         copySuccess: locale.copySuccess || '图片已复制到剪贴板。',
+        emptyContent: locale.emptyContent || '当前没有可导出的正文内容。',
         copyUnsupported: locale.copyUnsupported || '当前浏览器暂不支持图片复制，请改用下载。',
         copyError: locale.copyError || '复制失败，请稍后重试。',
         exportError: locale.exportError || '导出失败，请稍后重试。',
@@ -61,11 +64,38 @@ function getShareCopy(t) {
     };
 }
 
+function normalizeShareContent(content) {
+    if (typeof content === 'string') {
+        return content.trim();
+    }
+
+    if (Array.isArray(content)) {
+        return content
+            .map((item) => {
+                if (typeof item === 'string') return item.trim();
+                if (item && typeof item.text === 'string') return item.text.trim();
+                if (item && typeof item.content === 'string') return item.content.trim();
+                return '';
+            })
+            .filter(Boolean)
+            .join('\n\n');
+    }
+
+    if (content && typeof content === 'object') {
+        if (typeof content.text === 'string') return content.text.trim();
+        if (typeof content.content === 'string') return content.content.trim();
+    }
+
+    return '';
+}
+
 export default function ShareModal({ isOpen, onClose, content }) {
     const { t } = useLanguage();
     const copy = getShareCopy(t);
     const themeSections = getShareThemeSections();
     const captureRef = useRef(null);
+    const normalizedContent = normalizeShareContent(content);
+    const canExport = Boolean(normalizedContent);
 
     const [theme, setTheme] = useState(DEFAULT_SHARE_PRESET.theme);
     const [layout, setLayout] = useState(DEFAULT_SHARE_PRESET.layout);
@@ -168,6 +198,11 @@ export default function ShareModal({ isOpen, onClose, content }) {
         setFeedback(null);
 
         try {
+            if (!canExport) {
+                showFeedback('info', copy.emptyContent);
+                return;
+            }
+
             const { blob, formatMeta, wasScaledDown } = await getExportBlob(format);
             downloadBlob(
                 blob,
@@ -193,6 +228,11 @@ export default function ShareModal({ isOpen, onClose, content }) {
         setFeedback(null);
 
         try {
+            if (!canExport) {
+                showFeedback('info', copy.emptyContent);
+                return;
+            }
+
             const { blob, wasScaledDown } = await getExportBlob('png');
             await copyBlobToClipboard(blob);
             showFeedback('success', copy.copySuccess, wasScaledDown);
@@ -215,7 +255,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
                 onClick={onClose}
             />
 
-            <div className="relative mx-auto flex h-full max-h-[960px] w-full max-w-[1480px] flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#020913]/96 shadow-[0_30px_120px_rgba(0,0,0,0.55)]">
+            <div className="relative mx-auto flex h-full max-h-[960px] w-full max-w-[1500px] flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#020913]/96 shadow-[0_30px_120px_rgba(0,0,0,0.55)]">
                 <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-5 sm:px-8">
                     <div>
                         <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{copy.title}</h2>
@@ -230,10 +270,10 @@ export default function ShareModal({ isOpen, onClose, content }) {
                     </button>
                 </header>
 
-                <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-                    <div className="min-h-[360px] flex-1 border-b border-white/10 xl:border-b-0 xl:border-r">
+                <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
+                    <div className="min-h-[300px] max-h-[44vh] flex-1 border-b border-white/10 md:max-h-none md:border-b-0 md:border-r">
                         <SharePreview
-                            content={content}
+                            content={normalizedContent}
                             theme={theme}
                             layout={layout}
                             showWatermark={showWatermark}
@@ -264,6 +304,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
                         isCopying={isCopying}
                         isGenerating={isGenerating}
                         canCopy={canCopy}
+                        canExport={canExport}
                         feedback={feedback}
                         copy={copy}
                     />
@@ -273,7 +314,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
             <div className="pointer-events-none fixed left-[-20000px] top-0">
                 <ShareableContent
                     ref={captureRef}
-                    content={content}
+                    content={normalizedContent}
                     theme={theme}
                     layout={layout}
                     showWatermark={showWatermark}
