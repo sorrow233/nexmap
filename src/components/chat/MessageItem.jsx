@@ -5,7 +5,7 @@ import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import CodeBlock from './CodeBlock';
 import { createMarkdownRenderer, parseMarkdown, sanitizeMarkdownHtml } from '../../utils/markdownRenderer';
-import { normalizeShareContent } from '../share/shareContent';
+import { isShareableMessageContent, normalizeShareContent } from '../share/shareContent';
 
 let codeBlockCounter = 0;
 let codeBlocks = [];
@@ -189,10 +189,8 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         return parseModelOutput(displayText);
     }, [displayText, isAssistantStreaming, isUser, parseModelOutput, textContent]);
 
-    const normalizedShareContent = React.useMemo(
-        () => normalizeShareContent(content || textContent),
-        [content, textContent]
-    );
+    const normalizedShareContent = React.useMemo(() => normalizeShareContent(content), [content]);
+    const canShareMessage = React.useMemo(() => isShareableMessageContent(content), [content]);
 
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
@@ -451,7 +449,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                 </div>
 
                 {/* Action Bar (Share, etc.) */}
-                {!isUser && !isStreaming && normalizedShareContent && !content.includes("⚠️ Error") && (
+                {!isUser && !isStreaming && canShareMessage && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={() => onToggleFavorite && onToggleFavorite(index, textContent)}

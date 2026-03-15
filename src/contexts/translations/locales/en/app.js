@@ -170,58 +170,71 @@ export const app = {
         goToBoard: "Go to Board"
     },
     shareExport: {
-        title: "Export Image",
-        subtitle: "The rebuilt export panel now prioritizes reliability first, then style and sharpness.",
-        previewLabel: "Live Preview",
-        livePreview: "Live Preview",
-        previewHint: "The preview updates instantly when you change theme or layout.",
+        title: "Export Answer",
+        subtitle: "Clear WebP by default, with only the options that still matter.",
+        previewLabel: "Final Preview",
+        livePreview: "Final Preview",
+        previewHint: "What you see here is what gets exported.",
         calculating: "Calculating preview size...",
-        controlTitle: "Export Settings",
-        controlSubtitle: "Themes, layouts, and output settings are now decoupled from the old export logic.",
-        themeTitle: "Themes",
-        themeSubtitle: "Reads from the shared theme system so UI and renderer stay aligned.",
+        controlTitle: "Export Options",
+        controlSubtitle: "Downloads use WebP by default, while clipboard copy stays on PNG.",
+        themeTitle: "Style",
+        themeSubtitle: "Only the most useful styles remain.",
+        themes: {
+            modern: {
+                title: "Clean",
+                description: "Bright and neutral for most answers."
+            },
+            editorial: {
+                title: "Editorial",
+                description: "Feels more like a polished article page."
+            },
+            zen: {
+                title: "Zen",
+                description: "Softer spacing with calmer contrast."
+            },
+            night: {
+                title: "Night",
+                description: "Dark presentation for high-contrast sharing."
+            }
+        },
         themeSections: {
             featured: "Featured",
             reading: "Reading",
             atmosphere: "Atmosphere",
             expressive: "Expressive"
         },
-        layoutTitle: "Layouts",
-        layoutSubtitle: "Choose between chat snippets, long-form reading, social squares, or slide decks.",
+        layoutTitle: "Canvas",
+        layoutSubtitle: "Pick the frame that matches how you want to share it.",
         layouts: {
             card: {
-                title: "Card",
-                description: "Auto-height, ideal for chat excerpts."
-            },
-            full: {
-                title: "Document",
-                description: "Tighter spacing for longer reads."
+                title: "Adaptive",
+                description: "Best for answers and longer excerpts."
             },
             social: {
                 title: "Square",
-                description: "1:1 canvas for social posts."
+                description: "Better for social reposting."
             },
             slide: {
-                title: "Slide",
-                description: "16:9 horizontal presentation."
+                title: "Wide",
+                description: "Better for landscape presentations."
             }
         },
-        exportTitle: "Output",
-        exportSubtitle: "Long content automatically scales down before the browser fails the export.",
+        exportTitle: "Sharpness",
+        exportSubtitle: "HD is the default. Extra-long content auto-scales down before export fails.",
         resolutions: {
-            standard: {
-                title: "Standard",
-                description: "Faster, good for everyday sharing."
-            },
             hd: {
                 title: "HD",
-                description: "Best balance, recommended by default."
+                description: "Best balance between detail and speed."
             },
             print: {
                 title: "Ultra",
-                description: "Prioritizes detail, but auto-downgrades for long content."
+                description: "Pushes detail higher, but still auto-downgrades when needed."
             }
         },
+        formatHintTitle: "Format",
+        formatHintSubtitle: "Download and clipboard use different formats on purpose.",
+        formatHintBody: "Downloads use WebP. Clipboard copy automatically stays on PNG.",
         formats: {
             png: {
                 description: "Best compatibility for original-quality saves.",
@@ -233,23 +246,26 @@ export const app = {
             }
         },
         brandingTitle: "Branding",
-        brandingSubtitle: "Keep the NexMap mark when you want attribution.",
-        brandingToggle: "Show branding",
+        brandingSubtitle: "Turn it on only when you want attribution.",
+        brandingToggle: "Add NexMap mark",
         brandingHint: "Adds the product mark to the footer of the export.",
-        safeHint: "If the content gets too tall, the export scale is reduced automatically so the browser can still finish the job.",
-        download: "Save Image",
+        safeHint: "If the content gets too tall, the export scale is reduced automatically so the export can still finish.",
+        download: "Save WebP",
         downloadDisabled: "No content to export",
-        downloading: "Rendering image...",
-        downloadSuccess: "The image download has started.",
-        copy: "Copy to Clipboard",
+        downloading: "Rendering WebP...",
+        downloadSuccess: "The WebP download has started.",
+        copy: "Copy PNG",
         copyNoContent: "No content to copy",
-        copying: "Copying...",
+        copying: "Copying PNG...",
         copyDisabled: "Image copy is unavailable here",
-        copySuccess: "Image copied to clipboard.",
+        copySuccess: "The PNG image was copied to the clipboard.",
+        emptyTitle: "Nothing to export",
+        emptyDescription: "This export did not receive any answer text. Close the panel and try opening it again.",
         emptyContent: "There is no text content to export right now.",
         copyUnsupported: "This browser cannot copy images directly. Please download instead.",
         copyError: "Copy failed. Please try again.",
         exportError: "Export failed. Please try again.",
+        webpUnsupported: "This browser did not successfully generate a WebP image. Please try another browser.",
         autoScaleApplied: "The content was long, so the export scale was reduced automatically to keep the export stable."
     },
     notesCenter: {

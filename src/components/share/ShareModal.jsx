@@ -5,14 +5,12 @@ import SharePreview from './SharePreview';
 import ShareControls from './ShareControls';
 import {
     DEFAULT_SHARE_PRESET,
-    SHARE_FORMATS,
+    SHARE_CLIPBOARD_FORMAT,
+    SHARE_DOWNLOAD_FORMAT,
     SHARE_LAYOUTS,
     SHARE_RESOLUTIONS,
-    getShareFormatMeta,
-    getShareLayoutMeta,
     getShareResolutionMeta,
-    getShareThemeMeta,
-    getShareThemeSections
+    getShareThemeOptions
 } from './shareCatalog';
 import {
     buildShareFilename,
@@ -28,39 +26,46 @@ function getShareCopy(t) {
     const locale = t.shareExport || {};
 
     return {
-        title: locale.title || '导出图片',
-        subtitle: locale.subtitle || '重做后的导出面板会优先保证稳定性，再兼顾风格与清晰度。',
-        previewLabel: locale.previewLabel || '实时预览',
-        livePreview: locale.livePreview || '实时预览',
-        previewHint: locale.previewHint || '左侧预览会随着主题和版式即时更新。',
+        title: locale.title || '导出回答',
+        subtitle: locale.subtitle || '默认导出清晰 WebP，只保留真正有用的选项。',
+        previewLabel: locale.previewLabel || '最终预览',
+        previewHint: locale.previewHint || '这里看到的，就是最终导出的画面。',
         calculating: locale.calculating || '正在计算预览尺寸...',
-        controlTitle: locale.controlTitle || '导出设置',
-        controlSubtitle: locale.controlSubtitle || '主题、版式和输出参数已经从旧逻辑里拆开，后续更容易维护。',
-        themeTitle: locale.themeTitle || '主题',
-        themeSubtitle: locale.themeSubtitle || '直接读取现有主题系统，避免 UI 和底层配置继续分叉。',
-        themeSections: locale.themeSections || {},
-        layoutTitle: locale.layoutTitle || '版式',
-        layoutSubtitle: locale.layoutSubtitle || '为聊天摘录、长文分享、社媒封面和横版演示准备了不同画布。',
-        exportTitle: locale.exportTitle || '导出参数',
-        exportSubtitle: locale.exportSubtitle || '当内容过长时会自动降低倍率，优先保证成功导出。',
-        brandingTitle: locale.brandingTitle || '品牌标记',
-        brandingSubtitle: locale.brandingSubtitle || '需要保留 NexMap 标识时打开即可。',
-        brandingToggle: locale.brandingToggle || '显示品牌标记',
-        brandingHint: locale.brandingHint || '会在导出图底部附带产品标识。',
-        safeHint: locale.safeHint || '如果内容特别长，系统会自动降低导出倍率，避免旧版那种大图直接失败的问题。',
-        download: locale.download || '保存图片',
+        controlTitle: locale.controlTitle || '导出选项',
+        controlSubtitle: locale.controlSubtitle || '保存时默认输出 WebP，复制时自动转成 PNG。',
+        themeTitle: locale.themeTitle || '风格',
+        themeSubtitle: locale.themeSubtitle || '只保留最常用的几种风格。',
+        themes: locale.themes || {},
+        layoutTitle: locale.layoutTitle || '画布',
+        layoutSubtitle: locale.layoutSubtitle || '按阅读场景选择合适的画幅。',
+        layouts: locale.layouts || {},
+        exportTitle: locale.exportTitle || '清晰度',
+        exportSubtitle: locale.exportSubtitle || '默认高清，内容过长时会自动降级避免失败。',
+        resolutions: locale.resolutions || {},
+        formatHintTitle: locale.formatHintTitle || '输出格式',
+        formatHintSubtitle: locale.formatHintSubtitle || '下载和复制会分别使用更合适的格式。',
+        formatHintBody: locale.formatHintBody || '保存时输出 WebP，复制到剪贴板时自动使用 PNG。',
+        brandingTitle: locale.brandingTitle || '品牌',
+        brandingSubtitle: locale.brandingSubtitle || '只有在需要署名时再打开品牌标记。',
+        brandingToggle: locale.brandingToggle || '附带 NexMap 标记',
+        brandingHint: locale.brandingHint || '会在导出图底部加入产品标识。',
+        safeHint: locale.safeHint || '如果内容特别长，系统会自动降低导出倍率，优先保证导出成功。',
+        download: locale.download || '保存 WebP',
         downloadDisabled: locale.downloadDisabled || '没有可导出的内容',
-        downloading: locale.downloading || '正在生成图片...',
-        downloadSuccess: locale.downloadSuccess || '图片已开始下载。',
-        copy: locale.copy || '复制到剪贴板',
+        downloading: locale.downloading || '正在生成 WebP...',
+        downloadSuccess: locale.downloadSuccess || 'WebP 图片已开始下载。',
+        copy: locale.copy || '复制 PNG',
         copyNoContent: locale.copyNoContent || '没有可复制的内容',
-        copying: locale.copying || '正在复制...',
+        copying: locale.copying || '正在复制 PNG...',
         copyDisabled: locale.copyDisabled || '当前环境不支持复制图片',
-        copySuccess: locale.copySuccess || '图片已复制到剪贴板。',
+        copySuccess: locale.copySuccess || 'PNG 图片已复制到剪贴板。',
+        emptyTitle: locale.emptyTitle || '没有可导出的内容',
+        emptyDescription: locale.emptyDescription || '当前这次导出没有拿到正文内容。请关闭后重新打开导出面板，再试一次。',
         emptyContent: locale.emptyContent || '当前没有可导出的正文内容。',
         copyUnsupported: locale.copyUnsupported || '当前浏览器暂不支持图片复制，请改用下载。',
         copyError: locale.copyError || '复制失败，请稍后重试。',
         exportError: locale.exportError || '导出失败，请稍后重试。',
+        webpUnsupported: locale.webpUnsupported || '当前浏览器没有成功生成 WebP，请换个浏览器后再试。',
         autoScaleApplied: locale.autoScaleApplied || '内容较长，已自动降低导出倍率以保证成功。'
     };
 }
@@ -68,69 +73,69 @@ function getShareCopy(t) {
 export default function ShareModal({ isOpen, onClose, content }) {
     const { t } = useLanguage();
     const copy = getShareCopy(t);
-    const themeSections = getShareThemeSections();
     const captureRef = useRef(null);
     const normalizedContent = normalizeShareContent(content);
-    const canExport = hasShareableContent(content);
+    const canExport = hasShareableContent(normalizedContent);
+    const themeOptions = getShareThemeOptions();
 
     const [theme, setTheme] = useState(DEFAULT_SHARE_PRESET.theme);
     const [layout, setLayout] = useState(DEFAULT_SHARE_PRESET.layout);
     const [showWatermark, setShowWatermark] = useState(DEFAULT_SHARE_PRESET.showWatermark);
     const [resolution, setResolution] = useState(DEFAULT_SHARE_PRESET.resolution);
-    const [format, setFormat] = useState(DEFAULT_SHARE_PRESET.format);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
     const [feedback, setFeedback] = useState(null);
 
-    const themeMeta = getShareThemeMeta(theme) || themeSections[0]?.themes?.[0] || null;
-    const layoutMeta = getShareLayoutMeta(layout);
     const canCopy = typeof navigator !== 'undefined' && !!navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
 
     const layouts = SHARE_LAYOUTS.map((item) => ({
         ...item,
         label: t.shareExport?.layouts?.[item.id]?.title || {
-            card: '卡片',
-            full: '长文',
+            card: '自适应',
             social: '方图',
-            slide: '演示'
+            slide: '横图'
         }[item.id],
         description: t.shareExport?.layouts?.[item.id]?.description || {
-            card: '高度自适应，适合聊天摘录。',
-            full: '更紧凑的长文排版。',
-            social: '1:1 方图，适合社媒。',
-            slide: '16:9 横版展示。'
+            card: '适合聊天回答和长内容。',
+            social: '更适合社交媒体转发。',
+            slide: '适合横版展示和汇报。'
         }[item.id]
     }));
 
     const resolutions = SHARE_RESOLUTIONS.map((item) => ({
         ...item,
         label: t.shareExport?.resolutions?.[item.id]?.title || {
-            standard: '标准',
             hd: '高清',
             print: '超清'
         }[item.id],
         description: t.shareExport?.resolutions?.[item.id]?.description || {
-            standard: '更快，适合日常分享。',
-            hd: '细节更稳，默认推荐。',
-            print: '优先清晰度，长内容会自动降级。'
+            hd: '默认推荐，清晰度和速度更平衡。',
+            print: '优先细节，但长内容会自动降级。'
         }[item.id]
     }));
 
-    const formats = SHARE_FORMATS.map((item) => ({
+    const themes = themeOptions.map((item) => ({
         ...item,
-        label: item.id.toUpperCase(),
-        description: t.shareExport?.formats?.[item.id]?.description || {
-            png: '兼容性最好，适合保存原图。',
-            webp: '体积更小，适合网页分享。'
-        }[item.id],
-        meta: t.shareExport?.formats?.[item.id]?.meta || {
-            png: 'LOSSLESS',
-            webp: 'SMALLER'
+        label: t.shareExport?.themes?.[item.id]?.title || item.label,
+        description: t.shareExport?.themes?.[item.id]?.description || {
+            modern: '干净明亮，适合大多数回答。',
+            editorial: '更像一页精排文章。',
+            zen: '更柔和的留白感。',
+            night: '暗底展示，适合深色内容。'
         }[item.id]
     }));
+
+    const selectedThemeLabel = themes.find((item) => item.id === theme)?.label || theme;
+    const selectedLayoutLabel = layouts.find((item) => item.id === layout)?.label || layout;
 
     useEffect(() => {
         if (!isOpen) return undefined;
+
+        setTheme(DEFAULT_SHARE_PRESET.theme);
+        setLayout(DEFAULT_SHARE_PRESET.layout);
+        setShowWatermark(DEFAULT_SHARE_PRESET.showWatermark);
+        setResolution(DEFAULT_SHARE_PRESET.resolution);
+        setFeedback(null);
 
         const handleKeyDown = (event) => {
             if (event.key === 'Escape') {
@@ -138,7 +143,6 @@ export default function ShareModal({ isOpen, onClose, content }) {
             }
         };
 
-        setFeedback(null);
         window.addEventListener('keydown', handleKeyDown);
 
         return () => {
@@ -155,20 +159,19 @@ export default function ShareModal({ isOpen, onClose, content }) {
         });
     };
 
-    const getExportBlob = async (formatId) => {
+    const getExportBlob = async (formatMeta) => {
         const resolutionMeta = getShareResolutionMeta(resolution);
-        const formatMeta = getShareFormatMeta(formatId);
         const { canvas, wasScaledDown } = await generateShareCanvas(captureRef.current, {
             themeId: theme,
             requestedScale: resolutionMeta.scale
         });
         const blob = await canvasToBlob(canvas, formatMeta.mime, formatMeta.quality);
 
-        return { blob, formatMeta, wasScaledDown };
+        return { blob, wasScaledDown };
     };
 
     const handleDownload = async () => {
-        if (isGenerating) return;
+        if (isGenerating || isCopying) return;
 
         setIsGenerating(true);
         setFeedback(null);
@@ -179,26 +182,30 @@ export default function ShareModal({ isOpen, onClose, content }) {
                 return;
             }
 
-            const { blob, formatMeta, wasScaledDown } = await getExportBlob(format);
+            const { blob, wasScaledDown } = await getExportBlob(SHARE_DOWNLOAD_FORMAT);
             downloadBlob(
                 blob,
                 buildShareFilename({
                     themeId: theme,
                     layoutId: layout,
-                    extension: formatMeta.ext
+                    extension: SHARE_DOWNLOAD_FORMAT.ext
                 })
             );
             showFeedback('success', copy.downloadSuccess, wasScaledDown);
         } catch (error) {
             console.error('[ShareModal] Download export failed:', error);
-            showFeedback('error', copy.exportError);
+            if (error.message === 'unsupported-export-format') {
+                showFeedback('error', copy.webpUnsupported);
+            } else {
+                showFeedback('error', copy.exportError);
+            }
         } finally {
             setIsGenerating(false);
         }
     };
 
     const handleCopy = async () => {
-        if (isCopying) return;
+        if (isCopying || isGenerating) return;
 
         setIsCopying(true);
         setFeedback(null);
@@ -209,7 +216,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
                 return;
             }
 
-            const { blob, wasScaledDown } = await getExportBlob('png');
+            const { blob, wasScaledDown } = await getExportBlob(SHARE_CLIPBOARD_FORMAT);
             await copyBlobToClipboard(blob);
             showFeedback('success', copy.copySuccess, wasScaledDown);
         } catch (error) {
@@ -225,43 +232,42 @@ export default function ShareModal({ isOpen, onClose, content }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[200] p-3 sm:p-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6">
             <div
-                className="absolute inset-0 bg-slate-950/72 backdrop-blur-xl"
+                className="absolute inset-0 bg-slate-950/45 backdrop-blur-xl"
                 onClick={onClose}
             />
 
-            <div className="relative mx-auto flex h-full max-h-[960px] w-full max-w-[1500px] flex-col overflow-hidden rounded-[30px] border border-white/10 bg-[#020913]/96 shadow-[0_30px_120px_rgba(0,0,0,0.55)]">
-                <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-5 sm:px-8">
+            <div className="relative mx-auto flex h-full max-h-[920px] w-full max-w-[1280px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_35px_120px_rgba(15,23,42,0.22)]">
+                <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
                     <div>
-                        <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{copy.title}</h2>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{copy.subtitle}</p>
+                        <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{copy.title}</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{copy.subtitle}</p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-colors hover:bg-white/[0.08] hover:text-white"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
                     >
                         <X size={20} />
                     </button>
                 </header>
 
-                <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
-                    <div className="min-h-[300px] max-h-[44vh] flex-1 border-b border-white/10 md:max-h-none md:border-b-0 md:border-r">
+                <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px]">
+                    <div className="min-h-[320px] border-b border-slate-200 lg:border-b-0 lg:border-r">
                         <SharePreview
                             content={normalizedContent}
                             theme={theme}
                             layout={layout}
                             showWatermark={showWatermark}
-                            themeLabel={themeMeta?.label || theme}
-                            layoutLabel={layouts.find((item) => item.id === layout)?.label || layout}
-                            layoutSize={layoutMeta.size}
+                            themeLabel={selectedThemeLabel}
+                            layoutLabel={selectedLayoutLabel}
                             copy={copy}
                         />
                     </div>
 
                     <ShareControls
-                        themeSections={themeSections}
+                        themeOptions={themes}
                         currentTheme={theme}
                         setTheme={setTheme}
                         layouts={layouts}
@@ -270,9 +276,6 @@ export default function ShareModal({ isOpen, onClose, content }) {
                         resolutions={resolutions}
                         currentResolution={resolution}
                         setResolution={setResolution}
-                        formats={formats}
-                        currentFormat={format}
-                        setFormat={setFormat}
                         showWatermark={showWatermark}
                         setShowWatermark={setShowWatermark}
                         onCopy={handleCopy}

@@ -170,58 +170,71 @@ export const app = {
         goToBoard: "查看原文"
     },
     shareExport: {
-        title: "导出图片",
-        subtitle: "重做后的导出面板会优先保证稳定性，再兼顾风格与清晰度。",
-        previewLabel: "实时预览",
-        livePreview: "实时预览",
-        previewHint: "左侧预览会随着主题和版式即时更新。",
+        title: "导出回答",
+        subtitle: "默认导出清晰 WebP，只保留真正有用的选项。",
+        previewLabel: "最终预览",
+        livePreview: "最终预览",
+        previewHint: "这里看到的，就是最终导出的画面。",
         calculating: "正在计算预览尺寸...",
-        controlTitle: "导出设置",
-        controlSubtitle: "主题、版式和输出参数已经从旧逻辑里拆开，后续更容易维护。",
-        themeTitle: "主题",
-        themeSubtitle: "直接读取现有主题系统，避免 UI 和底层配置继续分叉。",
+        controlTitle: "导出选项",
+        controlSubtitle: "保存时默认输出 WebP，复制时自动转成 PNG。",
+        themeTitle: "风格",
+        themeSubtitle: "只保留最常用的几种风格。",
+        themes: {
+            modern: {
+                title: "净白",
+                description: "干净明亮，适合大多数回答。"
+            },
+            editorial: {
+                title: "杂志",
+                description: "更像一页精排文章。"
+            },
+            zen: {
+                title: "留白",
+                description: "更柔和的留白感。"
+            },
+            night: {
+                title: "夜间",
+                description: "暗底展示，适合深色内容。"
+            }
+        },
         themeSections: {
             featured: "精选",
             reading: "阅读",
             atmosphere: "氛围",
             expressive: "个性"
         },
-        layoutTitle: "版式",
-        layoutSubtitle: "为聊天摘录、长文分享、社媒封面和横版演示准备了不同画布。",
+        layoutTitle: "画布",
+        layoutSubtitle: "按阅读场景选择合适的画幅。",
         layouts: {
             card: {
-                title: "卡片",
-                description: "高度自适应，适合聊天摘录。"
-            },
-            full: {
-                title: "长文",
-                description: "更紧凑的长文排版。"
+                title: "自适应",
+                description: "适合聊天回答和长内容。"
             },
             social: {
                 title: "方图",
-                description: "1:1 方图，适合社媒。"
+                description: "更适合社交媒体转发。"
             },
             slide: {
-                title: "演示",
-                description: "16:9 横版展示。"
+                title: "横图",
+                description: "适合横版展示和汇报。"
             }
         },
-        exportTitle: "导出参数",
-        exportSubtitle: "当内容过长时会自动降低倍率，优先保证成功导出。",
+        exportTitle: "清晰度",
+        exportSubtitle: "默认高清，内容过长时会自动降级避免失败。",
         resolutions: {
-            standard: {
-                title: "标准",
-                description: "更快，适合日常分享。"
-            },
             hd: {
                 title: "高清",
-                description: "细节更稳，默认推荐。"
+                description: "默认推荐，清晰度和速度更平衡。"
             },
             print: {
                 title: "超清",
-                description: "优先清晰度，长内容会自动降级。"
+                description: "优先细节，但长内容会自动降级。"
             }
         },
+        formatHintTitle: "输出格式",
+        formatHintSubtitle: "下载和复制会分别使用更合适的格式。",
+        formatHintBody: "保存时输出 WebP，复制到剪贴板时自动使用 PNG。",
         formats: {
             png: {
                 description: "兼容性最好，适合保存原图。",
@@ -232,24 +245,27 @@ export const app = {
                 meta: "更小"
             }
         },
-        brandingTitle: "品牌标记",
-        brandingSubtitle: "需要保留 NexMap 标识时打开即可。",
-        brandingToggle: "显示品牌标记",
-        brandingHint: "会在导出图底部附带产品标识。",
-        safeHint: "如果内容特别长，系统会自动降低导出倍率，避免旧版那种大图直接失败的问题。",
-        download: "保存图片",
+        brandingTitle: "品牌",
+        brandingSubtitle: "只有在需要署名时再打开品牌标记。",
+        brandingToggle: "附带 NexMap 标记",
+        brandingHint: "会在导出图底部加入产品标识。",
+        safeHint: "如果内容特别长，系统会自动降低导出倍率，优先保证导出成功。",
+        download: "保存 WebP",
         downloadDisabled: "没有可导出的内容",
-        downloading: "正在生成图片...",
-        downloadSuccess: "图片已开始下载。",
-        copy: "复制到剪贴板",
+        downloading: "正在生成 WebP...",
+        downloadSuccess: "WebP 图片已开始下载。",
+        copy: "复制 PNG",
         copyNoContent: "没有可复制的内容",
-        copying: "正在复制...",
+        copying: "正在复制 PNG...",
         copyDisabled: "当前环境不支持复制图片",
-        copySuccess: "图片已复制到剪贴板。",
+        copySuccess: "PNG 图片已复制到剪贴板。",
+        emptyTitle: "没有可导出的内容",
+        emptyDescription: "当前这次导出没有拿到正文内容。请关闭后重新打开导出面板，再试一次。",
         emptyContent: "当前没有可导出的正文内容。",
         copyUnsupported: "当前浏览器暂不支持图片复制，请改用下载。",
         copyError: "复制失败，请稍后重试。",
         exportError: "导出失败，请稍后重试。",
+        webpUnsupported: "当前浏览器没有成功生成 WebP，请换个浏览器后再试。",
         autoScaleApplied: "内容较长，已自动降低导出倍率以保证成功。"
     },
     notesCenter: {

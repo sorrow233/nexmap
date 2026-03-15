@@ -64,6 +64,11 @@ export function canvasToBlob(canvas, mimeType, quality) {
                 return;
             }
 
+            if (mimeType === 'image/webp' && blob.type !== mimeType) {
+                reject(new Error('unsupported-export-format'));
+                return;
+            }
+
             resolve(blob);
         }, mimeType, quality);
     });
