@@ -25,7 +25,7 @@ export default function MobileBoardHeader({
 
     return (
         <header className="fixed inset-x-0 top-0 z-40 px-4 pt-[max(env(safe-area-inset-top),0.75rem)]">
-            <div className="rounded-[1.4rem] border border-white/70 bg-white/88 px-3.5 py-3 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.68)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/78">
+            <div className="rounded-[1.35rem] border border-white/70 bg-white/88 px-3 py-2.5 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.68)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/78">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}
@@ -36,9 +36,9 @@ export default function MobileBoardHeader({
 
                     <div className="min-w-0 flex-1">
                         <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-                            iPhone Board
+                            画板
                         </div>
-                        <div className="mt-0.5 truncate text-[1.05rem] font-semibold tracking-tight text-slate-900 dark:text-white">
+                        <div className="mt-0.5 truncate text-[1rem] font-semibold tracking-tight text-slate-900 dark:text-white">
                             {displayTitle}
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">

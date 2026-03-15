@@ -61,3 +61,16 @@ export function getCardMetrics(card) {
         noteCount: card?.data?.capturedNotes?.length || 0
     };
 }
+
+export function estimateCardWeight(card) {
+    const titleLength = getCardTitle(card).length;
+    const previewLength = getCardPreview(card).length;
+    const metrics = getCardMetrics(card);
+    const baseWeight = card?.type === 'note' ? 1.8 : 2.2;
+
+    return baseWeight
+        + Math.ceil(titleLength / 18) * 0.55
+        + Math.ceil(previewLength / 70) * 0.75
+        + metrics.markCount * 0.18
+        + metrics.noteCount * 0.12;
+}

@@ -41,23 +41,23 @@ export default function MobileGalleryHeader({
     };
 
     return (
-        <div className="md:hidden relative z-30 mb-6">
-            <div className="rounded-[2rem] border border-white/10 bg-[#0a1020]/92 p-4 shadow-[0_24px_80px_-42px_rgba(2,8,23,0.9)] backdrop-blur-xl">
+        <div className="md:hidden relative z-30 mb-4">
+            <div className="rounded-[1.7rem] border border-white/10 bg-[#0a1020]/92 p-3.5 shadow-[0_24px_80px_-42px_rgba(2,8,23,0.9)] backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-3">
                     <button
                         type="button"
                         onClick={() => navigate('/gallery')}
                         className="flex min-w-0 items-center gap-3 text-left"
                     >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.2rem] bg-white text-slate-950 shadow-[0_18px_34px_-20px_rgba(255,255,255,0.45)]">
-                            <Star size={22} fill="currentColor" strokeWidth={2.2} />
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-white text-slate-950 shadow-[0_18px_34px_-20px_rgba(255,255,255,0.45)]">
+                            <Star size={20} fill="currentColor" strokeWidth={2.2} />
                         </div>
                         <div className="min-w-0">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                                iPhone Home
-                            </div>
-                            <div className="truncate text-[2rem] font-black tracking-[-0.06em] text-white">
+                            <div className="truncate text-[1.6rem] font-black tracking-[-0.06em] text-white">
                                 NexMap
+                            </div>
+                            <div className="text-[12px] font-medium text-slate-400">
+                                画廊首页
                             </div>
                         </div>
                     </button>
@@ -68,7 +68,7 @@ export default function MobileGalleryHeader({
                                 type="button"
                                 onClick={() => setShowUserMenu(!showUserMenu)}
                                 aria-label="User Menu"
-                                className="flex h-12 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-2.5 pr-3 text-white/75"
+                                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-2.5 pr-3 text-white/75"
                             >
                                 {user.photoURL ? (
                                     <img
@@ -131,7 +131,7 @@ export default function MobileGalleryHeader({
                     )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                     {navItems.map((tab) => {
                         const Icon = iconMap[tab.id] || LayoutGrid;
                         const isActive = activeTab === tab.id;
@@ -141,13 +141,13 @@ export default function MobileGalleryHeader({
                                 key={tab.id}
                                 to={tab.path}
                                 end={tab.end}
-                                className={`flex min-h-[4.2rem] flex-col items-start justify-between rounded-[1.35rem] border px-3 py-3 text-left transition-all ${isActive
+                                className={`flex min-h-[3.8rem] flex-col items-start justify-between rounded-[1.15rem] border px-3 py-2.5 text-left transition-all ${isActive
                                     ? 'border-cyan-300/20 bg-cyan-400/14 text-white shadow-[0_18px_40px_-24px_rgba(34,211,238,0.48)]'
                                     : 'border-white/8 bg-white/[0.03] text-slate-300'
                                     }`}
                             >
                                 <Icon size={17} strokeWidth={2.2} className={isActive ? 'text-cyan-100' : 'text-slate-500'} />
-                                <span className="text-[13px] font-bold tracking-tight">
+                                <span className="text-[12px] font-bold tracking-tight">
                                     {tab.label}
                                 </span>
                             </NavLink>

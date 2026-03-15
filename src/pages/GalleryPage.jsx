@@ -167,7 +167,7 @@ export default function GalleryPage({
             {/* Ambient Background Glow */}
             <div className="fixed top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none z-0" />
 
-            <div className="max-w-[1800px] mx-auto relative z-10 px-4 md:px-8 py-6">
+            <div className={`max-w-[1800px] mx-auto relative z-10 ${isIPhoneGalleryMode ? 'px-3 py-4' : 'px-4 md:px-8 py-6'}`}>
 
                 {isIPhoneGalleryMode ? (
                     <MobileGalleryHeader

@@ -63,6 +63,7 @@ export default function BoardGallery({
                         greetingTitle={`${greeting === 'morning' ? t.gallery.greetingMorning : greeting === 'afternoon' ? t.gallery.greetingAfternoon : t.gallery.greetingEvening}，${t.gallery.creator}`}
                         readyText={t.gallery.readyToCreate}
                         onCreateBoard={onCreateBoard}
+                        boardCount={validBoards.length}
                     />
                 ) : (
                     <div className="relative pt-2 pb-8 px-2 max-w-[1800px] mx-auto">

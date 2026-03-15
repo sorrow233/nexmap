@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { MessageSquarePlus, StickyNote } from 'lucide-react';
-import MobileBoardFeedCard from './MobileBoardFeedCard';
 import MobileBoardHeader from './MobileBoardHeader';
+import MobileBoardWaterfall from './MobileBoardWaterfall';
 
 const FILTERS = [
     { id: 'all', label: '全部' },
@@ -88,18 +88,13 @@ export default function MobileBoardShell({
                         </p>
                     </section>
                 ) : (
-                    <div className="columns-2 gap-3 [column-fill:_balance]">
-                        {visibleCards.map((card) => (
-                            <MobileBoardFeedCard
-                                key={card.id}
-                                card={card}
-                                isGenerating={generatingCardIds.has(card.id)}
-                                onOpen={onOpenCard}
-                                onQuickSprout={onQuickSprout}
-                                onExpandTopics={onExpandTopics}
-                            />
-                        ))}
-                    </div>
+                    <MobileBoardWaterfall
+                        cards={visibleCards}
+                        generatingCardIds={generatingCardIds}
+                        onOpen={onOpenCard}
+                        onQuickSprout={onQuickSprout}
+                        onExpandTopics={onExpandTopics}
+                    />
                 )}
             </div>
         </div>
