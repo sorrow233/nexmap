@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Layers3, MessageSquarePlus, StickyNote } from 'lucide-react';
+import { MessageSquarePlus, StickyNote } from 'lucide-react';
 import MobileBoardFeedCard from './MobileBoardFeedCard';
 import MobileBoardHeader from './MobileBoardHeader';
-import MobileBoardSelectionBar from './MobileBoardSelectionBar';
 
 const FILTERS = [
     { id: 'all', label: '全部' },
@@ -21,21 +20,15 @@ const sortCards = (cards) => {
 export default function MobileBoardShell({
     board,
     cards,
-    selectedIds,
     generatingCardIds,
     syncStatus,
     untitledLabel,
     onBack,
-    onCreateNote,
     onOpenInstructions,
     onOpenSettings,
     onOpenCard,
-    onEnterSelectionMode,
-    onToggleSelection,
-    onClearSelection,
     onQuickSprout,
-    onExpandTopics,
-    onDeleteSelection
+    onExpandTopics
 }) {
     const [filter, setFilter] = useState('all');
 
@@ -54,20 +47,6 @@ export default function MobileBoardShell({
         [cards]
     );
 
-    const openSelectedCard = () => {
-        if (selectedIds.length === 0) return;
-        onOpenCard(selectedIds[0]);
-    };
-
-    const sproutSelectedCards = () => {
-        selectedIds.forEach((cardId) => onQuickSprout(cardId));
-    };
-
-    const expandSelectedCardTopics = () => {
-        if (selectedIds.length !== 1) return;
-        onExpandTopics(selectedIds[0]);
-    };
-
     return (
         <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_top,#e0f2fe,transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_45%,#f8fafc_100%)] dark:bg-[radial-gradient(circle_at_top,#0f172a,transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_50%,#020617_100%)]">
             <MobileBoardHeader
@@ -75,23 +54,12 @@ export default function MobileBoardShell({
                 syncStatus={syncStatus}
                 cardCount={activeCardCount}
                 onBack={onBack}
-                onCreateNote={onCreateNote}
                 onOpenInstructions={onOpenInstructions}
                 onOpenSettings={onOpenSettings}
                 untitledLabel={untitledLabel}
             />
 
-            <div className="absolute inset-0 overflow-y-auto px-4 pb-[13rem] pt-[9.5rem] ios-scroll-fix">
-                <section className="mb-4 rounded-[1.75rem] border border-white/70 bg-white/72 p-4 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/48">
-                    <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-300">
-                        <Layers3 size={14} />
-                        iPhone 信息流画板
-                    </div>
-                    <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                        已为小屏关闭自由画布，卡片改为直接浏览和打开。点按进入全屏，长按进入编辑态。
-                    </p>
-                </section>
-
+            <div className="absolute inset-0 overflow-y-auto px-4 pb-[8.5rem] pt-[5.9rem] ios-scroll-fix">
                 <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
                     {FILTERS.map((item) => (
                         <button
@@ -116,43 +84,24 @@ export default function MobileBoardShell({
                             {filter === 'note' ? '还没有笔记' : '还没有卡片'}
                         </h2>
                         <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            用底部输入框生成新卡片，或者先创建一张便签开始整理想法。
+                            先打开一张卡片看看内容，或者用底部输入条直接生成新卡片。
                         </p>
-                        <button
-                            onClick={onCreateNote}
-                            className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white active:scale-95 dark:bg-white dark:text-slate-900"
-                        >
-                            <StickyNote size={16} />
-                            新建便签
-                        </button>
                     </section>
                 ) : (
-                    <div style={{ columnWidth: '17rem', columnGap: '1rem' }}>
+                    <div className="space-y-3">
                         {visibleCards.map((card) => (
                             <MobileBoardFeedCard
                                 key={card.id}
                                 card={card}
-                                isSelected={selectedIds.includes(card.id)}
-                                isSelectionMode={selectedIds.length > 0}
                                 isGenerating={generatingCardIds.has(card.id)}
                                 onOpen={onOpenCard}
-                                onToggleSelect={onToggleSelection}
-                                onEnterSelectionMode={onEnterSelectionMode}
+                                onQuickSprout={onQuickSprout}
+                                onExpandTopics={onExpandTopics}
                             />
                         ))}
                     </div>
                 )}
             </div>
-
-            <MobileBoardSelectionBar
-                cards={cards.filter((card) => !card.deletedAt)}
-                selectedIds={selectedIds}
-                onClearSelection={onClearSelection}
-                onOpenSelection={openSelectedCard}
-                onQuickSprout={sproutSelectedCards}
-                onExpandTopics={expandSelectedCardTopics}
-                onDeleteSelection={onDeleteSelection}
-            />
         </div>
     );
 }

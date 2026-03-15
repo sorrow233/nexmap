@@ -7,7 +7,8 @@ import { useToast } from '../components/Toast';
 // import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useStoreStateRef } from './useStoreStateRef';
+import { useCurrentBoardAutoNaming } from './useCurrentBoardAutoNaming';
+import { useBoardPersistence } from './useBoardPersistence';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings,
@@ -27,37 +28,25 @@ const isSameStringArray = (a = [], b = []) => {
     return true;
 };
 
-export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = false }) {
+export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
     const navigate = useNavigate();
 
     // Store Selectors
+    const cards = useStore(state => state.cards);
+    const connections = useStore(state => state.connections);
+    const groups = useStore(state => state.groups);
     const selectedIds = useStore(state => state.selectedIds);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const expandedCardId = useStore(state => state.expandedCardId);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
+    const isBoardLoading = useStore(state => state.isBoardLoading);
+    const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
     const boardPrompts = useStore(state => state.boardPrompts);
     const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const globalPrompts = useStore(state => state.globalPrompts);
-    const conversationCount = useStore(state => state.cards.reduce((total, card) => {
-        const messages = card?.data?.messages || [];
-        let userCount = 0;
-        for (const message of messages) {
-            if (message?.role === 'user') {
-                userCount += 1;
-            }
-        }
-        return total + userCount;
-    }, 0));
-    const selectedPrimaryCardHasMarks = useStore(state => {
-        if (!state.selectedIds || state.selectedIds.length !== 1) return false;
-        const selectedCard = state.cards.find(card => card.id === state.selectedIds[0]);
-        return Boolean(selectedCard?.data?.marks?.length);
-    });
-    const expandedCard = useStore(state => {
-        if (!state.expandedCardId) return null;
-        return state.cards.find(card => card.id === state.expandedCardId) || null;
-    });
-    const storeStateRef = useStoreStateRef();
+    const isHydratingFromCloud = useStore(state => state.isHydratingFromCloud);
 
     // Store Actions
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
@@ -68,6 +57,10 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
     const updateCardContent = useStore(state => state.updateCardContent);
     const toggleFavorite = useStore(state => state.toggleFavorite);
     const createGroup = useStore(state => state.createGroup);
+    const getConnectedCards = useStore(state => state.getConnectedCards);
+    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
+    const setLastSavedAt = useStore(state => state.setLastSavedAt);
     const updateBoardInstructionSettings = useStore(state => state.updateBoardInstructionSettings);
 
     // Custom Hooks
@@ -87,6 +80,12 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
         () => boardsList.find(b => b.id === currentBoardId),
         [boardsList, currentBoardId]
     );
+    const hasBackgroundImage = !!currentBoard?.backgroundImage;
+    const conversationCount = useMemo(() => cards.reduce((total, card) => {
+        const messages = card?.data?.messages || [];
+        const userCount = messages.filter(msg => msg?.role === 'user').length;
+        return total + userCount;
+    }, 0), [cards]);
     const normalizedBoardInstructionSettings = useMemo(
         () => normalizeBoardInstructionSettings(boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS),
         [boardInstructionSettings]
@@ -134,6 +133,33 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
             lastRunAt: normalizedBoardInstructionSettings.autoSelection?.lastRunAt || 0
         };
     }, [instructionCatalogBreakdown, normalizedBoardInstructionSettings]);
+
+    useCurrentBoardAutoNaming({
+        board: currentBoard,
+        boardId: currentBoardId,
+        cards,
+        generatingCardIds,
+        isReadOnly,
+        onUpdateBoardMetadata
+    });
+
+    useBoardPersistence({
+        boardId: currentBoardId,
+        user,
+        cards,
+        connections,
+        groups,
+        boardPrompts,
+        boardInstructionSettings: normalizedBoardInstructionSettings,
+        offset,
+        scale,
+        isBoardLoading,
+        isHydratingFromCloud,
+        isReadOnly,
+        setCloudSyncStatus,
+        setLastSavedAt,
+        toast
+    });
 
     // --- PASTE LOGIC ---
 
@@ -277,7 +303,7 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
             const analysisConfig = state.getRoleConfig?.('analysis') || state.getRoleConfig?.('chat');
             const { recommendBoardInstructionIds } = await import('../services/ai/boardInstructionRecommender');
             const recommendedIds = await recommendBoardInstructionIds({
-                cards: storeStateRef.current.cards,
+                cards,
                 instructions: latestCatalog.items || [],
                 config: analysisConfig
             });
@@ -329,10 +355,10 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
             autoRecommendLockRef.current = false;
         }
     }, [
+        cards,
         conversationCount,
         currentBoardId,
         isReadOnly,
-        storeStateRef,
         t,
         toast,
         updateBoardInstructionSettings
@@ -387,7 +413,8 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
 
     const handleChatModalGenerate = async (cardId, text, images = []) => {
         if (isReadOnly) return;
-        const card = useStore.getState().getCardById?.(cardId) || null;
+        const freshCards = useStore.getState().cards;
+        const card = freshCards.find(c => c.id === cardId);
 
         if (!card) return;
 
@@ -434,6 +461,12 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
             updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);
         }
+    };
+
+    const handleSelectConnected = (startId) => {
+        const connectedIds = getConnectedCards(startId);
+        const uniqueIds = Array.from(new Set([...connectedIds, startId]));
+        setSelectedIds(uniqueIds);
     };
 
     const handlePromptDropOnChat = (prompt) => {
@@ -526,14 +559,12 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
 
     const handleCustomSprout = (sourceId) => {
         if (isReadOnly) return;
-        const sourceCard = storeStateRef.current.getCardById?.(sourceId) || null;
+        const sourceCard = cards.find(c => c.id === sourceId);
         if (!sourceCard) return;
 
         // Position modal to the right of the card, with bounds checking
-        const currentScale = storeStateRef.current.scale || 1;
-        const currentOffset = storeStateRef.current.offset || { x: 0, y: 0 };
-        let screenX = (sourceCard.x * currentScale) + currentOffset.x + 350 * currentScale;
-        let screenY = (sourceCard.y * currentScale) + currentOffset.y;
+        let screenX = (sourceCard.x * scale) + offset.x + 350 * scale;
+        let screenY = (sourceCard.y * scale) + offset.y;
 
         // Ensure modal stays within viewport
         screenX = Math.max(10, Math.min(screenX, window.innerWidth - 340));
@@ -556,11 +587,16 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
 
     return {
         // Data
+        cards,
+        connections,
+        groups,
         selectedIds,
         generatingCardIds,
         expandedCardId,
-        expandedCard,
-        selectedPrimaryCardHasMarks,
+        offset,
+        scale,
+        isBoardLoading,
+        favoritesLastUpdate,
         boardPrompts,
         boardInstructionSettings: normalizedBoardInstructionSettings,
         customInstructionCatalog,
@@ -591,18 +627,19 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
         setQuickPrompt,
         setCustomSproutPrompt,
         setExpandedCardId,
+        setSelectedIds,
         setTempInstructions,
         setIsInstructionPanelOpen,
         navigate,
         toggleFavorite,
         updateCardFull,
-        setCloudSyncStatus,
 
         handleRegenerate,
         handleBatchDelete,
         handleGlobalImageUpload,
         removeGlobalImage,
         createGroup,
+        arrangeSelectionGrid,
 
         // Complex Handlers
         handleCanvasDoubleClick,
@@ -611,6 +648,7 @@ export function useBoardLogic({ boardsList, onUpdateBoardMetadata, isReadOnly = 
         handleCustomSproutSubmit, // Exported Handler
         handleFullScreen,
         handleChatModalGenerate,
+        handleSelectConnected,
         handleChatSubmitWithInstructions,
         handleAgentSubmit,
         handlePromptDropOnChat,
