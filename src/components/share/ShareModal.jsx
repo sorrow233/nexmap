@@ -8,7 +8,6 @@ import {
     SHARE_CLIPBOARD_FORMAT,
     SHARE_DOWNLOAD_FORMAT,
     SHARE_LAYOUTS,
-    SHARE_RESOLUTIONS,
     getShareResolutionMeta,
     getShareThemeOptions
 } from './shareCatalog';
@@ -102,18 +101,6 @@ export default function ShareModal({ isOpen, onClose, content }) {
         }[item.id]
     }));
 
-    const resolutions = SHARE_RESOLUTIONS.map((item) => ({
-        ...item,
-        label: t.shareExport?.resolutions?.[item.id]?.title || {
-            hd: '高清',
-            print: '超清'
-        }[item.id],
-        description: t.shareExport?.resolutions?.[item.id]?.description || {
-            hd: '默认推荐，清晰度和速度更平衡。',
-            print: '优先细节，但长内容会自动降级。'
-        }[item.id]
-    }));
-
     const themes = themeOptions.map((item) => ({
         ...item,
         label: t.shareExport?.themes?.[item.id]?.title || item.label,
@@ -127,7 +114,7 @@ export default function ShareModal({ isOpen, onClose, content }) {
 
     const selectedThemeLabel = themes.find((item) => item.id === theme)?.label || theme;
     const selectedLayoutLabel = layouts.find((item) => item.id === layout)?.label || layout;
-    const fixedResolutionMeta = resolutions.find((item) => item.id === 'print') || resolutions[resolutions.length - 1];
+    const fixedResolutionMeta = getShareResolutionMeta('print');
 
     useEffect(() => {
         if (!isOpen) return undefined;
@@ -282,8 +269,6 @@ export default function ShareModal({ isOpen, onClose, content }) {
                         canExport={canExport}
                         feedback={feedback}
                         copy={copy}
-                        autoQualityLabel={`${fixedResolutionMeta.label}${fixedResolutionMeta.shortLabel ? ` · ${fixedResolutionMeta.shortLabel}` : ''}`}
-                        autoQualityHint={copy.qualityPinnedHint}
                     />
                 </div>
             </div>

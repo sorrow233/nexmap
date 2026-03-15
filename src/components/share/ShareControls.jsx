@@ -3,7 +3,6 @@ import {
     Check,
     Copy,
     Download,
-    Image as ImageIcon,
     LayoutTemplate,
     Loader2,
     Sparkles
@@ -152,9 +151,7 @@ export default function ShareControls({
     canCopy,
     canExport,
     feedback,
-    copy,
-    autoQualityLabel,
-    autoQualityHint
+    copy
 }) {
     const isBusy = isCopying || isGenerating;
     const currentLayoutMeta = layouts.find((option) => option.id === currentLayout) || layouts[0];
@@ -182,11 +179,7 @@ export default function ShareControls({
                             <div className="flex flex-wrap gap-2">
                                 <SummaryPill icon={Download} label={copy.download} />
                                 <SummaryPill icon={Copy} label={copy.copy} />
-                                <SummaryPill icon={ImageIcon} label={autoQualityLabel} />
                             </div>
-                            <p className="text-sm leading-6 text-slate-500">
-                                {autoQualityHint}
-                            </p>
                         </div>
                     </Surface>
 
@@ -226,14 +219,8 @@ export default function ShareControls({
                                 />
                             ))}
                         </div>
-                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="mt-4">
                             <DescriptionNote text={currentLayoutMeta?.description} />
-                            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
-                                {copy.exportTitle}
-                                <div className="mt-1 text-lg font-semibold tracking-tight text-slate-950">
-                                    {autoQualityLabel}
-                                </div>
-                            </div>
                         </div>
                     </Surface>
                 </div>
