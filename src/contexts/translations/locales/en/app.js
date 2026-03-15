@@ -169,6 +169,86 @@ export const app = {
         source: "Source",
         goToBoard: "Go to Board"
     },
+    shareExport: {
+        title: "Export Image",
+        subtitle: "The rebuilt export panel now prioritizes reliability first, then style and sharpness.",
+        previewLabel: "Live Preview",
+        livePreview: "Live Preview",
+        previewHint: "The preview updates instantly when you change theme or layout.",
+        calculating: "Calculating preview size...",
+        controlTitle: "Export Settings",
+        controlSubtitle: "Themes, layouts, and output settings are now decoupled from the old export logic.",
+        themeTitle: "Themes",
+        themeSubtitle: "Reads from the shared theme system so UI and renderer stay aligned.",
+        themeSections: {
+            featured: "Featured",
+            reading: "Reading",
+            atmosphere: "Atmosphere",
+            expressive: "Expressive"
+        },
+        layoutTitle: "Layouts",
+        layoutSubtitle: "Choose between chat snippets, long-form reading, social squares, or slide decks.",
+        layouts: {
+            card: {
+                title: "Card",
+                description: "Auto-height, ideal for chat excerpts."
+            },
+            full: {
+                title: "Document",
+                description: "Tighter spacing for longer reads."
+            },
+            social: {
+                title: "Square",
+                description: "1:1 canvas for social posts."
+            },
+            slide: {
+                title: "Slide",
+                description: "16:9 horizontal presentation."
+            }
+        },
+        exportTitle: "Output",
+        exportSubtitle: "Long content automatically scales down before the browser fails the export.",
+        resolutions: {
+            standard: {
+                title: "Standard",
+                description: "Faster, good for everyday sharing."
+            },
+            hd: {
+                title: "HD",
+                description: "Best balance, recommended by default."
+            },
+            print: {
+                title: "Ultra",
+                description: "Prioritizes detail, but auto-downgrades for long content."
+            }
+        },
+        formats: {
+            png: {
+                description: "Best compatibility for original-quality saves.",
+                meta: "LOSSLESS"
+            },
+            webp: {
+                description: "Smaller file size for web sharing.",
+                meta: "SMALLER"
+            }
+        },
+        brandingTitle: "Branding",
+        brandingSubtitle: "Keep the NexMap mark when you want attribution.",
+        brandingToggle: "Show branding",
+        brandingHint: "Adds the product mark to the footer of the export.",
+        safeHint: "If the content gets too tall, the export scale is reduced automatically so the browser can still finish the job.",
+        download: "Save Image",
+        downloading: "Rendering image...",
+        downloadSuccess: "The image download has started.",
+        copy: "Copy to Clipboard",
+        copying: "Copying...",
+        copyDisabled: "Image copy is unavailable here",
+        copySuccess: "Image copied to clipboard.",
+        copyUnsupported: "This browser cannot copy images directly. Please download instead.",
+        copyError: "Copy failed. Please try again.",
+        exportError: "Export failed. Please try again.",
+        autoScaleApplied: "The content was long, so the export scale was reduced automatically to keep the export stable."
+    },
     notesCenter: {
         title: "Notes Center",
         subtitle: "One note per board, managed in one place.",

@@ -1,106 +1,138 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Loader2, Maximize2, Sparkles } from 'lucide-react';
 import ShareableContent from './ShareableContent';
-import { Loader2 } from 'lucide-react';
 
-const SharePreview = ({ content, theme, layout, showWatermark }) => {
+export default function SharePreview({
+    content,
+    theme,
+    layout,
+    showWatermark,
+    themeLabel,
+    layoutLabel,
+    layoutSize,
+    copy
+}) {
     const containerRef = useRef(null);
     const contentRef = useRef(null);
-    const [scale, setScale] = useState(0.5);
+    const [scale, setScale] = useState(0.42);
     const [isCalculating, setIsCalculating] = useState(true);
 
-    // Calculate scale to fit container
     useEffect(() => {
+        let frameId = 0;
+        let timeoutId = 0;
+
         const calculateScale = () => {
             if (!containerRef.current || !contentRef.current) return;
 
             const container = containerRef.current.getBoundingClientRect();
-            const content = contentRef.current.getBoundingClientRect();
+            const contentWidth = Math.max(contentRef.current.scrollWidth, contentRef.current.offsetWidth, 1);
+            const contentHeight = Math.max(contentRef.current.scrollHeight, contentRef.current.offsetHeight, 1);
 
-            // Get unscaled dimensions (revert previous scale to get true size)
-            // Since we apply scale via transform, getBoundingClientRect might remain affected if we don't be careful.
-            // Better: We know the fixed width of ShareableContent (1179 or 1920)
-            const baseWidth = layout === 'slide' ? 1920 : 1179;
-            // Height is dynamic, so we need to measure the DOM element's scrollHeight or offsetHeight *unscaled*.
-            // But we can't easily unscale without rendering at 1.
-            // Workaround: Use a wrapper with known width and measure height?
-            // Actually, we can just read `offsetWidth` and `offsetHeight` of contentRef.current
-            // assuming it has `transform: none` initially or we adjust.
+            const availableWidth = Math.max(container.width - 64, 1);
+            const availableHeight = Math.max(container.height - 104, 1);
+            const nextScale = Math.max(0.18, Math.min(availableWidth / contentWidth, availableHeight / contentHeight, 1));
 
-            const contentWidth = contentRef.current.offsetWidth;
-            const contentHeight = contentRef.current.offsetHeight;
-
-            const padding = 64; // 32px padding on each side
-            const availableWidth = container.width - padding;
-            const availableHeight = container.height - padding;
-
-            const scaleX = availableWidth / contentWidth;
-            const scaleY = availableHeight / contentHeight;
-
-            // Fit containment
-            const newScale = Math.min(scaleX, scaleY, 0.85); // Cap at 0.85 to avoid too large
-            setScale(newScale);
+            setScale(nextScale);
             setIsCalculating(false);
         };
 
-        // Initial calc
-        // We need a small delay to let ShareableContent render its markdown height
-        const timer = setTimeout(calculateScale, 100);
+        const scheduleScale = () => {
+            setIsCalculating(true);
+            cancelAnimationFrame(frameId);
+            clearTimeout(timeoutId);
 
-        // Resize observer
-        const observer = new ResizeObserver(calculateScale);
+            frameId = requestAnimationFrame(() => {
+                timeoutId = window.setTimeout(calculateScale, 80);
+            });
+        };
+
+        scheduleScale();
+
+        const observer = new ResizeObserver(scheduleScale);
         if (containerRef.current) observer.observe(containerRef.current);
         if (contentRef.current) observer.observe(contentRef.current);
 
         return () => {
-            clearTimeout(timer);
+            cancelAnimationFrame(frameId);
+            clearTimeout(timeoutId);
             observer.disconnect();
         };
-    }, [content, theme, layout, showWatermark]); // Re-calc on any prop change
+    }, [content, theme, layout, showWatermark]);
 
     return (
-        <div ref={containerRef} className="flex-1 relative overflow-hidden bg-zinc-900/50 flex items-center justify-center p-8">
-            {/* Background Effects */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(120,119,198,0.1),transparent_50%)]" />
-                <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_100%_100%,rgba(74,86,160,0.1),transparent_50%)]" />
+        <div
+            ref={containerRef}
+            className="relative flex min-h-[360px] flex-1 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,#17304e_0%,#08121d_48%,#04070d_100%)] px-4 py-6 sm:px-8 sm:py-8"
+        >
+            <div className="pointer-events-none absolute inset-0">
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:42px_42px] opacity-20" />
+                <div className="absolute left-[12%] top-[10%] h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
+                <div className="absolute bottom-[12%] right-[8%] h-48 w-48 rounded-full bg-fuchsia-500/10 blur-3xl" />
             </div>
 
-            {/* Grid Pattern */}
-            <div className="absolute inset-0 opacity-[0.2]" style={{
-                backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)`,
-                backgroundSize: '40px 40px'
-            }} />
-
-            {/* Loading Cover */}
-            <div className={`absolute inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm transition-opacity duration-300 ${isCalculating ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                {/* Only show loader if it takes > 200ms, effectively mostly invisible for fast renders */}
+            <div className="absolute left-4 right-4 top-4 z-20 flex flex-wrap items-center gap-2 sm:left-6 sm:right-6">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/90 backdrop-blur-xl">
+                    <Sparkles size={12} className="text-cyan-300" />
+                    {copy.previewLabel}
+                </span>
+                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-medium text-white/70 backdrop-blur-xl">
+                    {themeLabel}
+                </span>
+                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-medium text-white/70 backdrop-blur-xl">
+                    {layoutLabel}
+                </span>
             </div>
 
-            {/* Scales Container */}
+            <div className="relative z-10 flex h-full w-full items-center justify-center pt-10">
+                <div
+                    className="relative transition-transform duration-500 ease-out"
+                    style={{
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'center center'
+                    }}
+                >
+                    <div
+                        ref={contentRef}
+                        className="overflow-hidden rounded-[28px] shadow-[0_35px_80px_rgba(0,0,0,0.45)] ring-1 ring-black/10"
+                    >
+                        <ShareableContent
+                            content={content}
+                            theme={theme}
+                            layout={layout}
+                            showWatermark={showWatermark}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 sm:left-6 sm:right-6">
+                <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white/70 backdrop-blur-xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                        {copy.livePreview}
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-white/90">
+                        {copy.previewHint}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-medium text-white/85 backdrop-blur-xl">
+                    <Maximize2 size={15} className="text-cyan-300" />
+                    <span>{layoutSize}</span>
+                    <span className="text-white/35">/</span>
+                    <span>{Math.round(scale * 100)}%</span>
+                </div>
+            </div>
+
             <div
-                className="relative z-10 transition-transform duration-500 ease-out shadow-2xl shadow-black/50 rounded-xl ring-1 ring-white/10"
-                style={{
-                    transform: `scale(${scale})`,
-                    transformOrigin: 'center center'
-                }}
+                className={`absolute inset-0 z-30 flex items-center justify-center bg-[#050a12]/45 backdrop-blur-sm transition-opacity duration-200 ${
+                    isCalculating ? 'opacity-100' : 'pointer-events-none opacity-0'
+                }`}
             >
-                {/* 
-                    We need a wrapper for ShareableContent that allows it to render at full size 
-                    but doesn't constrain the parent flex container incorrectly.
-                    The parent `div` (scaled) will have the size of the child.
-                    The `transform` scales it visually.
-                */}
-                <div ref={contentRef} className="origin-center">
-                    <ShareableContent
-                        content={content}
-                        theme={theme}
-                        layout={layout}
-                        showWatermark={showWatermark}
-                    />
+                <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-xl">
+                    <Loader2 size={16} className="animate-spin text-cyan-300" />
+                    {copy.calculating}
                 </div>
             </div>
         </div>
     );
-};
-
-export default SharePreview;
+}

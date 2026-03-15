@@ -835,6 +835,8 @@ export function generateThemeCSS(themeConfig) {
             color: ${themeConfig.text};
             line-height: ${s['--line-height']};
             font-feature-settings: "kern" 1, "liga" 1;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         /* --- Typography Hierarchy --- */
@@ -901,6 +903,8 @@ export function generateThemeCSS(themeConfig) {
             padding: 1.5em;
             border-radius: ${currentThemeId === 'handwritten' ? '8px' : '6px'};
             overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
             margin: 1.5em 0;
             ${currentThemeId === 'terminal' || currentThemeId === 'editorial' ? `border: 1px solid rgba(0,0,0,0.08);` : ''}
         }
@@ -995,5 +999,23 @@ export function generateThemeCSS(themeConfig) {
 
         /* Link override (if any) */
         .markdown-body a { color: ${themeConfig.accent}; text-decoration: none; border-bottom: 1px solid ${themeConfig.accent}; }
+        .markdown-body img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 1.5em auto;
+            border-radius: ${themeConfig.radius || 12}px;
+        }
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.92em;
+        }
+        .markdown-body th, .markdown-body td {
+            border: 1px solid ${themeConfig.text}22;
+            padding: 0.75em 0.9em;
+            text-align: left;
+        }
     `;
 }

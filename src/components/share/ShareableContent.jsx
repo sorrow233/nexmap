@@ -34,6 +34,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : 'auto',
             backgroundColor: themeConfig.bg,
             color: themeConfig.text,
+            borderRadius: `${themeConfig.radius || 0}px`,
             padding: `${layoutConfig.paddingOverride || (themeConfig.padding * (layoutConfig.paddingScale || 1))}px`,
             display: 'flex',
             flexDirection: 'column',
@@ -42,6 +43,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             boxSizing: 'border-box',
             fontFeatureSettings: '"kern" 1, "liga" 1',
             textRendering: 'optimizeLegibility',
+            overflow: 'hidden',
         }}>
             <style>{generateThemeStyles()}</style>
 

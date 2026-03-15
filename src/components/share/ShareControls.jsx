@@ -1,21 +1,120 @@
 import React from 'react';
 import {
-    X, Check, Download, Copy, Palette, Layout,
-    Settings, Maximize2, Loader2, Sparkles,
-    Image as ImageIcon, FileType
+    Check,
+    Copy,
+    Download,
+    FileText,
+    Image as ImageIcon,
+    Loader2,
+    Maximize2,
+    MessageSquare,
+    Monitor,
+    ShieldCheck,
+    Square,
+    Wand2
 } from 'lucide-react';
 
-const ControlSection = ({ title, children, className = "" }) => (
-    <div className={`space-y-4 ${className}`}>
-        <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-500 uppercase tracking-widest px-1">
-            <span>{title}</span>
-        </div>
-        {children}
-    </div>
-);
+const LAYOUT_ICONS = {
+    card: MessageSquare,
+    full: FileText,
+    social: Square,
+    slide: Monitor
+};
 
-const ShareControls = ({
-    themes,
+const STATUS_STYLES = {
+    success: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100',
+    error: 'border-rose-400/20 bg-rose-500/10 text-rose-100',
+    info: 'border-cyan-400/20 bg-cyan-500/10 text-cyan-100'
+};
+
+function Section({ title, subtitle, children }) {
+    return (
+        <section className="space-y-4">
+            <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-white">{title}</h3>
+                {subtitle ? <p className="text-xs leading-5 text-slate-400">{subtitle}</p> : null}
+            </div>
+            {children}
+        </section>
+    );
+}
+
+function ThemeCard({ theme, active, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`group relative overflow-hidden rounded-2xl border p-3 text-left transition-all duration-200 ${
+                active
+                    ? 'border-cyan-400/40 bg-white/10 shadow-[0_12px_32px_rgba(18,205,255,0.12)]'
+                    : 'border-white/8 bg-white/[0.04] hover:border-white/16 hover:bg-white/[0.07]'
+            }`}
+        >
+            <div
+                className="mb-3 h-16 rounded-xl border border-black/10 shadow-inner"
+                style={{
+                    background: `linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg} 62%, ${theme.accent} 100%)`
+                }}
+            />
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <div className="text-sm font-semibold text-white">{theme.label}</div>
+                    <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">{theme.id}</div>
+                </div>
+                {active ? (
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400 text-slate-950">
+                        <Check size={14} />
+                    </span>
+                ) : null}
+            </div>
+        </button>
+    );
+}
+
+function ChoiceCard({ title, description, meta, active, onClick, icon: Icon }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`rounded-2xl border p-4 text-left transition-all duration-200 ${
+                active
+                    ? 'border-cyan-400/40 bg-cyan-400/10 text-white shadow-[0_10px_28px_rgba(18,205,255,0.08)]'
+                    : 'border-white/8 bg-white/[0.04] text-slate-200 hover:border-white/16 hover:bg-white/[0.07]'
+            }`}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <span
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${
+                        active ? 'bg-cyan-400 text-slate-950' : 'bg-white/8 text-slate-300'
+                    }`}
+                >
+                    <Icon size={18} />
+                </span>
+                {active ? (
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400 text-slate-950">
+                        <Check size={14} />
+                    </span>
+                ) : null}
+            </div>
+            <div className="mt-4 text-sm font-semibold">{title}</div>
+            <div className="mt-1 text-xs leading-5 text-slate-400">{description}</div>
+            {meta ? <div className="mt-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">{meta}</div> : null}
+        </button>
+    );
+}
+
+function StatusBanner({ feedback }) {
+    if (!feedback) return null;
+
+    return (
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${STATUS_STYLES[feedback.type] || STATUS_STYLES.info}`}>
+            {feedback.message}
+        </div>
+    );
+}
+
+export default function ShareControls({
+    themeSections,
     currentTheme,
     setTheme,
     layouts,
@@ -29,262 +128,160 @@ const ShareControls = ({
     setFormat,
     showWatermark,
     setShowWatermark,
-    onClose,
     onCopy,
     onDownload,
     isCopying,
     isGenerating,
-    copySuccess
-}) => {
+    canCopy,
+    feedback,
+    copy
+}) {
     return (
-        <div className="w-[380px] bg-zinc-950/90 backdrop-blur-2xl border-l border-white/5 flex flex-col h-full text-zinc-100 shadow-2xl relative">
-            {/* Visual Flair: Top Gradient */}
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
-
-            {/* Header */}
-            <div className="h-20 px-6 border-b border-white/5 flex items-center justify-between shrink-0 relative z-10">
-                <div className="flex flex-col">
-                    <span className="font-bold text-lg tracking-tight flex items-center gap-2 text-white">
-                        Export Image
-                    </span>
-                    <span className="text-xs text-zinc-500">Customize your snapshot</span>
-                </div>
-                <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-all active:scale-95"
-                >
-                    <X size={20} />
-                </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-8 custom-scrollbar relative z-10">
-
-                {/* Theme Selection */}
-                <div className="space-y-8">
-                    {themes.categories ? (
-                        themes.categories.map((category, catIdx) => (
-                            <ControlSection key={catIdx} title={category.name}>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {category.themes.map(t => {
-                                        const Icon = t.icon;
-                                        const isActive = currentTheme === t.id;
-                                        return (
-                                            <button
-                                                key={t.id}
-                                                onClick={() => setTheme(t.id)}
-                                                className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
-                                                    ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
-                                                    : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
-                                                    }`}
-                                            >
-                                                {/* Theme preview dot */}
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
-                                                    <Icon size={14} />
-                                                </div>
-
-                                                <div className="flex flex-col items-start z-10">
-                                                    <span className={`text-[11px] font-bold leading-tight transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
-                                                        {t.label}
-                                                    </span>
-                                                </div>
-
-                                                {/* Active Indicator */}
-                                                {isActive && (
-                                                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </ControlSection>
-                        ))
-                    ) : (
-                        <ControlSection title="Theme">
-                            <div className="grid grid-cols-2 gap-3">
-                                {themes.map(t => {
-                                    const Icon = t.icon;
-                                    const isActive = currentTheme === t.id;
-                                    return (
-                                        <button
-                                            key={t.id}
-                                            onClick={() => setTheme(t.id)}
-                                            className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
-                                                ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
-                                                : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
-                                                }`}
-                                        >
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
-                                                <Icon size={14} />
-                                            </div>
-                                            <div className="flex flex-col items-start z-10">
-                                                <span className={`text-[11px] font-bold leading-tight transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
-                                                    {t.label}
-                                                </span>
-                                            </div>
-                                            {isActive && (
-                                                <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
-                                            )}
-                                        </button>
-                                    );
-                                })}
+        <aside className="flex w-full flex-col bg-[#07111b]/94 text-white xl:w-[430px]">
+            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                <div className="space-y-6">
+                    <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                        <div className="flex items-center gap-3">
+                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/14 text-cyan-200">
+                                <Wand2 size={18} />
+                            </span>
+                            <div>
+                                <div className="text-sm font-semibold text-white">{copy.controlTitle}</div>
+                                <div className="mt-1 text-xs leading-5 text-slate-400">{copy.controlSubtitle}</div>
                             </div>
-                        </ControlSection>
-                    )}
-                </div>
-
-                {/* Layout Selection */}
-                <ControlSection title="Layout">
-                    <div className="grid grid-cols-2 gap-3">
-                        {layouts.map(l => {
-                            const isActive = currentLayout === l.id;
-                            // Aspect ratio visualization
-                            const aspectRatioClass =
-                                l.id === 'card' ? 'aspect-[4/3] w-5' :
-                                    l.id === 'full' ? 'aspect-[3/4] w-4' :
-                                        l.id === 'social' ? 'aspect-square w-5' :
-                                            'aspect-video w-6';
-
-                            return (
-                                <button
-                                    key={l.id}
-                                    onClick={() => setLayout(l.id)}
-                                    className={`relative flex flex-col items-start p-4 rounded-xl border transition-all duration-300 ${isActive
-                                        ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 border-indigo-500/50 text-white shadow-lg shadow-black/20'
-                                        : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:bg-white/5 hover:border-white/10'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between w-full mb-3">
-                                        <div className={`rounded border ${aspectRatioClass} ${isActive ? 'bg-indigo-500 border-indigo-400' : 'bg-zinc-800 border-zinc-700'}`} />
-                                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,1)]" />}
-                                    </div>
-
-                                    <span className={`text-xs font-bold ${isActive ? 'text-white' : 'text-zinc-400'}`}>{l.label}</span>
-                                    <span className="text-[10px] text-zinc-500 font-medium">{l.desc}</span>
-                                </button>
-                            );
-                        })}
+                        </div>
                     </div>
-                </ControlSection>
 
-                {/* Export Settings */}
-                <ControlSection title="Settings">
-                    <div className="space-y-4 p-5 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
+                    <StatusBanner feedback={feedback} />
 
-                        {/* Resolution */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1.5">
-                                    <Maximize2 size={10} /> Scale
-                                </label>
-                                <span className="text-[10px] text-zinc-500">{resolutions.find(r => r.id === currentResolution)?.desc}</span>
+                    <Section title={copy.themeTitle} subtitle={copy.themeSubtitle}>
+                        <div className="space-y-5">
+                            {themeSections.map((section) => (
+                                <div key={section.id} className="space-y-3">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                        {copy.themeSections?.[section.id] || section.id}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {section.themes.map((theme) => (
+                                            <ThemeCard
+                                                key={theme.id}
+                                                theme={theme}
+                                                active={theme.id === currentTheme}
+                                                onClick={() => setTheme(theme.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section title={copy.layoutTitle} subtitle={copy.layoutSubtitle}>
+                        <div className="grid grid-cols-2 gap-3">
+                            {layouts.map((layout) => {
+                                const Icon = LAYOUT_ICONS[layout.id] || FileText;
+                                return (
+                                    <ChoiceCard
+                                        key={layout.id}
+                                        title={layout.label}
+                                        description={layout.description}
+                                        meta={layout.size}
+                                        active={layout.id === currentLayout}
+                                        onClick={() => setLayout(layout.id)}
+                                        icon={Icon}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </Section>
+
+                    <Section title={copy.exportTitle} subtitle={copy.exportSubtitle}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            {resolutions.map((resolution) => (
+                                <ChoiceCard
+                                    key={resolution.id}
+                                    title={resolution.label}
+                                    description={resolution.description}
+                                    meta={resolution.shortLabel}
+                                    active={resolution.id === currentResolution}
+                                    onClick={() => setResolution(resolution.id)}
+                                    icon={Maximize2}
+                                />
+                            ))}
+                            {formats.map((format) => (
+                                <ChoiceCard
+                                    key={format.id}
+                                    title={format.label}
+                                    description={format.description}
+                                    meta={format.meta}
+                                    active={format.id === currentFormat}
+                                    onClick={() => setFormat(format.id)}
+                                    icon={ImageIcon}
+                                />
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section title={copy.brandingTitle} subtitle={copy.brandingSubtitle}>
+                        <button
+                            type="button"
+                            onClick={() => setShowWatermark(!showWatermark)}
+                            className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left transition-colors hover:bg-white/[0.07]"
+                        >
+                            <div className="flex items-center gap-3">
+                                <span
+                                    className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${
+                                        showWatermark ? 'bg-cyan-400/14 text-cyan-200' : 'bg-white/8 text-slate-400'
+                                    }`}
+                                >
+                                    <ShieldCheck size={18} />
+                                </span>
+                                <div>
+                                    <div className="text-sm font-semibold text-white">{copy.brandingToggle}</div>
+                                    <div className="mt-1 text-xs leading-5 text-slate-400">{copy.brandingHint}</div>
+                                </div>
                             </div>
-                            <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5 relative">
-                                {resolutions.map(r => (
-                                    <button
-                                        key={r.id}
-                                        onClick={() => setResolution(r.id)}
-                                        className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all relative z-10 ${currentResolution === r.id
-                                            ? 'text-white'
-                                            : 'text-zinc-500 hover:text-zinc-300'
-                                            }`}
-                                    >
-                                        {r.label}
-                                    </button>
-                                ))}
-                                {/* Sliding Pill Background could be implemented with framer-motion, using simple placement for now */}
+                            <div
+                                className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
+                                    showWatermark ? 'bg-cyan-400' : 'bg-white/12'
+                                }`}
+                            >
                                 <div
-                                    className="absolute top-1 bottom-1 bg-zinc-700/80 rounded-md transition-all duration-300 shadow-sm"
-                                    style={{
-                                        width: `${100 / resolutions.length - 2}%`,
-                                        left: `${(resolutions.findIndex(r => r.id === currentResolution) * (100 / resolutions.length)) + 1}%`
-                                    }}
+                                    className={`h-5 w-5 rounded-full bg-white transition-transform ${
+                                        showWatermark ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
                                 />
                             </div>
-                        </div>
-
-                        {/* Format */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1.5">
-                                    <FileType size={10} /> Format
-                                </label>
-                            </div>
-                            <div className="flex gap-2">
-                                {formats.map(f => {
-                                    const isActive = currentFormat === f.id;
-                                    return (
-                                        <button
-                                            key={f.id}
-                                            onClick={() => setFormat(f.id)}
-                                            className={`flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 ${isActive
-                                                ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.1)]'
-                                                : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-700 hover:bg-zinc-800'
-                                                }`}
-                                        >
-                                            {f.label}
-                                            {isActive && <Check size={10} />}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Branding Toggle */}
-                        <button
-                            onClick={() => setShowWatermark(!showWatermark)}
-                            className="w-full flex items-center justify-between pt-2 border-t border-white/5 mt-2 group"
-                        >
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase group-hover:text-zinc-300 transition-colors">Show Branding</span>
-                            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-300 ${showWatermark ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
-                                <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-300 ${showWatermark ? 'translate-x-4' : 'translate-x-0'}`} />
-                            </div>
                         </button>
-
-                    </div>
-                </ControlSection>
-
+                    </Section>
+                </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-white/5 bg-zinc-900/50 backdrop-blur-xl shrink-0">
-                <div className="flex flex-col gap-3">
+            <div className="border-t border-white/10 bg-[#050c15]/95 px-5 py-5 sm:px-6">
+                <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs leading-5 text-slate-400">
+                    {copy.safeHint}
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
                     <button
+                        type="button"
                         onClick={onDownload}
                         disabled={isGenerating}
-                        className="w-full h-12 relative bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-bold text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden group"
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 text-sm font-semibold text-slate-950 transition-transform duration-200 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {/* Shimmer effect */}
-                        <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-                        {isGenerating ? (
-                            <>
-                                <Loader2 size={18} className="animate-spin" />
-                                <span>Exporting Landscape...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Download size={18} />
-                                <span>Save Image</span>
-                            </>
-                        )}
+                        {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                        {isGenerating ? copy.downloading : copy.download}
                     </button>
-
                     <button
+                        type="button"
                         onClick={onCopy}
-                        disabled={isCopying}
-                        className={`w-full h-10 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${copySuccess
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-transparent text-zinc-400 border border-transparent hover:bg-white/5 hover:text-white'
-                            }`}
+                        disabled={isCopying || !canCopy}
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {isCopying ? <Loader2 size={14} className="animate-spin" /> : copySuccess ? <Check size={14} /> : <Copy size={14} />}
-                        {copySuccess ? 'Copied to Clipboard' : 'Copy to Clipboard'}
+                        {isCopying ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
+                        {isCopying ? copy.copying : canCopy ? copy.copy : copy.copyDisabled}
                     </button>
                 </div>
             </div>
-        </div>
+        </aside>
     );
-};
-
-export default ShareControls;
+}
