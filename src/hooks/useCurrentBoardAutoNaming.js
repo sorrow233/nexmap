@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { getRawBoardsList } from '../services/boardService';
+import { generateBoardAutoTitle } from '../services/ai/boardAutoTitleService';
 import {
     getEffectiveBoardCardCount,
     shouldAutoNameBoard
@@ -32,7 +33,6 @@ export function useCurrentBoardAutoNaming({
                 if (!shouldAutoNameBoard(latestBoard, activeCardCount)) return;
 
                 const config = useStore.getState().getRoleConfig('analysis');
-                const { generateBoardAutoTitle } = await import('../services/ai/boardAutoTitleService');
                 const result = await generateBoardAutoTitle({
                     boardId,
                     boardMeta: latestBoard,

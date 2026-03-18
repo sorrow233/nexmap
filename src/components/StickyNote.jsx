@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Trash2, Link, ListOrdered } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
 
+import { useStore } from '../store/useStore';
 import { useDraggable } from '../hooks/useDraggable';
 
-import { renderCachedMarkdownToHtml } from '../utils/markdownCache';
+import { renderMarkdownToHtml } from '../utils/markdownRenderer';
 
 const StickyNote = React.memo(function StickyNote({
     data,
@@ -40,7 +41,7 @@ const StickyNote = React.memo(function StickyNote({
         isSelected,
         onSelect,
         onMove,
-        onDragEnd,
+        onDragEnd: () => onDragEnd && onDragEnd(data.id),
         onClick: () => {
             if (clickTimeoutRef.current) {
                 // Double Click Detected
@@ -170,20 +171,21 @@ const StickyNote = React.memo(function StickyNote({
         }
     };
 
-    const renderedContent = React.useMemo(() => ({
-        __html: renderCachedMarkdownToHtml(data.data?.content || '', 'sticky-note')
-    }), [data.data?.content]);
-
-    const layerZIndex = isDragging ? 60 : (isSelected ? 50 : 10);
-
     return (
         <div
             ref={cardRef}
-            className="absolute top-0 left-0 pointer-events-auto group"
+            className={`absolute w-[336px] ${isExpanded ? 'min-h-[364px] max-h-[780px]' : 'h-[364px]'} rounded-[2rem] flex flex-col select-none pointer-events-auto group
+                ${glassStyle}
+                ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 hover:scale-[1.01] cursor-grab'}
+                ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:border-white/50'}
+                ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
+                ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
+            `}
             style={{
-                transform: `translate3d(${data.x}px, ${data.y}px, 0)`,
-                zIndex: layerZIndex,
-                willChange: isDragging ? 'transform' : 'auto'
+                left: data.x,
+                top: data.y,
+                zIndex: isSelected ? 50 : 10,
+                willChange: isDragging ? 'left, top' : 'auto'
             }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
@@ -192,15 +194,6 @@ const StickyNote = React.memo(function StickyNote({
             onPaste={handlePaste}
         // onDoubleClick removed - handled in mouseUp
         >
-            <div
-                className={`w-[336px] ${isExpanded ? 'min-h-[364px] max-h-[780px]' : 'h-[364px]'} rounded-[2rem] flex flex-col select-none
-                    ${glassStyle}
-                    ${isDragging ? 'shadow-2xl scale-[1.02] cursor-grabbing' : 'transition-all duration-300 hover:scale-[1.01] cursor-grab'}
-                    ${isSelected ? 'ring-2 ring-brand-500/50' : 'hover:border-white/50'}
-                    ${isConnectionStart ? 'ring-2 ring-green-500 ring-dashed cursor-crosshair' : ''}
-                    ${isConnecting && !isConnectionStart ? 'hover:ring-2 hover:ring-green-400 hover:cursor-crosshair' : ''}
-                `}
-            >
             {/* Header / Controls */}
             <div className="flex justify-between items-center p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div className="flex gap-2">
@@ -286,13 +279,14 @@ const StickyNote = React.memo(function StickyNote({
                         onWheel={handleWheel}
                         onMouseDown={(e) => e.stopPropagation()} // Allow selecting text
                         onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }} // Enter edit mode on double click
-                        dangerouslySetInnerHTML={renderedContent}
+                        dangerouslySetInnerHTML={{
+                            __html: renderMarkdownToHtml(data.data?.content || '')
+                        }}
                     />
                 )}
             </div>
 
             <div className="h-2 w-12 bg-white/20 dark:bg-white/10 mx-auto mb-2 rounded-full opacity-50"></div>
-            </div>
         </div>
     );
 });

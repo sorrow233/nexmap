@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { THEME_CONFIGS, LAYOUT_CONFIGS, THEME_MAP, generateThemeCSS } from './themeConfigs';
 import { renderMarkdownToHtml } from '../../utils/markdownRenderer';
-import { normalizeShareContent } from './shareContent';
 
 const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout = 'card', showWatermark }, ref) => {
     // Map theme IDs using imported THEME_MAP
@@ -22,7 +21,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         }
     }, []);
 
-    const htmlContent = renderMarkdownToHtml(normalizeShareContent(content));
+    const htmlContent = renderMarkdownToHtml(content || 'No content provided');
 
     // CSS Generator
     const generateThemeStyles = () => {
@@ -35,7 +34,6 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : 'auto',
             backgroundColor: themeConfig.bg,
             color: themeConfig.text,
-            borderRadius: `${themeConfig.radius || 0}px`,
             padding: `${layoutConfig.paddingOverride || (themeConfig.padding * (layoutConfig.paddingScale || 1))}px`,
             display: 'flex',
             flexDirection: 'column',
@@ -44,7 +42,6 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             boxSizing: 'border-box',
             fontFeatureSettings: '"kern" 1, "liga" 1',
             textRendering: 'optimizeLegibility',
-            overflow: 'hidden',
         }}>
             <style>{generateThemeStyles()}</style>
 

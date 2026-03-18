@@ -74,8 +74,8 @@ export const createCanvasSlice = (set, get) => ({
     // Smoothly focus/zoom on a specific card
     focusOnCard: (cardId) => {
         debugLog.ui(`focusOnCard animate start for ID: ${cardId}`);
-        const { offset, scale, setOffset, setScale, getCardById } = get();
-        const card = getCardById(cardId);
+        const { cards, offset, scale, setOffset, setScale } = get();
+        const card = cards.find(c => c.id === cardId);
         if (!card) {
             debugLog.error(`focusOnCard: Card NOT found in state! ID: ${cardId}`);
             return;

@@ -1,30 +1,9 @@
-import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-const packageJson = JSON.parse(
-    readFileSync(new URL('./package.json', import.meta.url), 'utf8')
-);
-
-function buildVersionManifestPlugin() {
-    return {
-        name: 'build-version-manifest',
-        generateBundle() {
-            this.emitFile({
-                type: 'asset',
-                fileName: 'version.json',
-                source: JSON.stringify({
-                    version: packageJson.version,
-                    builtAt: new Date().toISOString()
-                }, null, 2)
-            });
-        }
-    };
-}
-
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react(), buildVersionManifestPlugin()],
+    plugins: [react()],
     build: {
         chunkSizeWarningLimit: 1000,
         cssCodeSplit: true,

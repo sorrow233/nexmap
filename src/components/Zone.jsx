@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { Trash2, Palette, Smile, FileText, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -128,10 +128,8 @@ const COLORS = {
 
 const EMOJI_PRESETS = ['📁', '💡', '🎯', '⭐', '🔥', '💎', '🚀', '📌', '🎨', '💻', '📊', '🌟', '🧠', '⚙️', '📝', '✨'];
 
-const Zone = React.memo(function Zone({ group, rect, stats, isSelected }) {
-    const updateGroup = useStore(state => state.updateGroup);
-    const deleteGroup = useStore(state => state.deleteGroup);
-    const moveGroupCards = useStore(state => state.moveGroupCards);
+const Zone = ({ group, isSelected }) => {
+    const { cards, updateGroup, deleteGroup, moveGroupCards } = useStore();
     const { t } = useLanguage();
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(group.title || 'New Zone');
@@ -141,17 +139,45 @@ const Zone = React.memo(function Zone({ group, rect, stats, isSelected }) {
     const [description, setDescription] = useState(group.description || '');
     const [customColorInput, setCustomColorInput] = useState(group.customColor || '');
 
-    useEffect(() => {
-        setTitle(group.title || 'New Zone');
-    }, [group.title]);
+    // Calculate Bounding Box
+    const rect = useMemo(() => {
+        // Filter out soft-deleted cards
+        const groupCards = cards.filter(c => group.cardIds.includes(c.id) && !c.deletedAt);
+        if (groupCards.length === 0) return null;
 
-    useEffect(() => {
-        setDescription(group.description || '');
-    }, [group.description]);
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    useEffect(() => {
-        setCustomColorInput(group.customColor || '');
-    }, [group.customColor]);
+        groupCards.forEach(c => {
+            const x = c.x || 0;
+            const y = c.y || 0;
+            let width = c.type === 'note' ? (c.width || 280) : 400;
+            let height = c.type === 'note' ? (c.height || 280) : 200;
+
+            if (c.type !== 'note') {
+                const msgCount = c.data?.messages?.length || 0;
+                height = 200 + (msgCount * 50);
+                height = Math.min(height, 800);
+            }
+
+            if (c.width) width = c.width;
+            if (c.height) height = c.height;
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x + width);
+            maxY = Math.max(maxY, y + height);
+        });
+
+        const PADDING_X = 80;
+        const PADDING_Y = 80;
+
+        return {
+            x: minX - PADDING_X,
+            y: minY - PADDING_Y - 40,
+            width: (maxX - minX) + (PADDING_X * 2),
+            height: (maxY - minY) + (PADDING_Y * 2) + 40
+        };
+    }, [cards, group.cardIds]);
 
     // Make Zone Draggable via Title Bar
     const { handleMouseDown, isDragging } = useDraggable({
@@ -167,6 +193,20 @@ const Zone = React.memo(function Zone({ group, rect, stats, isSelected }) {
             moveGroupCards(id, deltaX, deltaY);
         }
     });
+
+    // Calculate stats
+    const stats = useMemo(() => {
+        // Filter out soft-deleted cards
+        const groupCards = cards.filter(c => group.cardIds.includes(c.id) && !c.deletedAt);
+        const cardCount = groupCards.length;
+        let messageCount = 0;
+        groupCards.forEach(c => {
+            if (c.data?.messages) {
+                messageCount += c.data.messages.length;
+            }
+        });
+        return { cardCount, messageCount };
+    }, [cards, group.cardIds]);
 
     if (!rect) return null;
 
@@ -227,13 +267,11 @@ const Zone = React.memo(function Zone({ group, rect, stats, isSelected }) {
                 ${isDragging ? 'cursor-grabbing' : ''}
             `}
             style={{
-                left: 0,
-                top: 0,
-                transform: `translate3d(${rect.x}px, ${rect.y}px, 0)`,
+                left: rect.x,
+                top: rect.y,
                 width: rect.width,
                 height: rect.height,
                 zIndex: 0,
-                willChange: isDragging ? 'transform' : 'auto',
                 ...customBgStyle,
                 ...customBorderStyle,
                 ...(isSelected && hasCustomColor ? { boxShadow: `0 0 0 4px ${group.customColor}20` } : {})
@@ -444,6 +482,6 @@ const Zone = React.memo(function Zone({ group, rect, stats, isSelected }) {
             </div>
         </div>
     );
-});
+};
 
 export default Zone;

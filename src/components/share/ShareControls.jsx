@@ -1,255 +1,290 @@
 import React from 'react';
 import {
-    Check,
-    Copy,
-    Download,
-    LayoutTemplate,
-    Loader2,
-    Sparkles
+    X, Check, Download, Copy, Palette, Layout,
+    Settings, Maximize2, Loader2, Sparkles,
+    Image as ImageIcon, FileType
 } from 'lucide-react';
 
-const STATUS_STYLES = {
-    success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    error: 'border-rose-200 bg-rose-50 text-rose-700',
-    info: 'border-sky-200 bg-sky-50 text-sky-700'
-};
-
-function Surface({ children, className = '' }) {
-    return (
-        <section
-            className={`overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/92 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur ${className}`}
-        >
-            {children}
-        </section>
-    );
-}
-
-function SectionHeading({ title, subtitle, accent }) {
-    return (
-        <div className="space-y-1.5">
-            {accent ? (
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-600">
-                    {accent}
-                </div>
-            ) : null}
-            <h3 className="text-base font-semibold tracking-tight text-slate-950">{title}</h3>
-            {subtitle ? <p className="text-sm leading-6 text-slate-500">{subtitle}</p> : null}
+const ControlSection = ({ title, children, className = "" }) => (
+    <div className={`space-y-4 ${className}`}>
+        <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-500 uppercase tracking-widest px-1">
+            <span>{title}</span>
         </div>
-    );
-}
+        {children}
+    </div>
+);
 
-function FeedbackBanner({ feedback }) {
-    if (!feedback) return null;
-
-    return (
-        <div className={`rounded-2xl border px-4 py-3 text-sm ${STATUS_STYLES[feedback.type] || STATUS_STYLES.info}`}>
-            {feedback.message}
-        </div>
-    );
-}
-
-function SummaryPill({ icon: Icon, label }) {
-    return (
-        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
-            <Icon size={14} className="text-slate-900" />
-            {label}
-        </span>
-    );
-}
-
-function ThemeOption({ option, active, onClick }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-pressed={active}
-            className={`group flex items-start justify-between gap-4 rounded-[22px] border px-4 py-4 text-left transition-all duration-200 ${
-                active
-                    ? 'border-slate-900 bg-slate-950 text-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]'
-                    : 'border-slate-200 bg-slate-50/80 text-slate-900 hover:border-slate-300 hover:bg-white'
-            }`}
-        >
-            <div className="min-w-0">
-                <div className={`text-base font-semibold tracking-tight ${active ? 'text-white' : 'text-slate-950'}`}>
-                    {option.label}
-                </div>
-                <div className={`mt-1 text-sm leading-6 ${active ? 'text-white/68' : 'text-slate-500'}`}>
-                    {option.description}
-                </div>
-            </div>
-            <span
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all ${
-                    active
-                        ? 'border-white/18 bg-white text-slate-950'
-                        : 'border-slate-200 bg-white text-transparent group-hover:text-slate-300'
-                }`}
-            >
-                <Check size={15} />
-            </span>
-        </button>
-    );
-}
-
-function CompactOption({ option, active, onClick, icon: Icon, meta }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-pressed={active}
-            className={`rounded-[22px] border p-3 text-left transition-all duration-200 ${
-                active
-                    ? 'border-slate-900 bg-slate-950 text-white shadow-[0_18px_40px_rgba(15,23,42,0.16)]'
-                    : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-white'
-            }`}
-        >
-            <div className="flex items-center justify-between gap-3">
-                <span
-                    className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${
-                        active ? 'bg-white/14 text-white' : 'bg-white text-slate-900'
-                    }`}
-                >
-                    <Icon size={18} />
-                </span>
-                {meta ? (
-                    <span
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                            active ? 'bg-white/12 text-white/80' : 'bg-slate-200/70 text-slate-500'
-                        }`}
-                    >
-                        {meta}
-                    </span>
-                ) : null}
-            </div>
-            <div className={`mt-4 text-sm font-semibold ${active ? 'text-white' : 'text-slate-950'}`}>
-                {option.label}
-            </div>
-        </button>
-    );
-}
-
-function DescriptionNote({ text }) {
-    if (!text) return null;
-
-    return (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-500">
-            {text}
-        </div>
-    );
-}
-
-export default function ShareControls({
-    themeOptions,
+const ShareControls = ({
+    themes,
     currentTheme,
     setTheme,
     layouts,
     currentLayout,
     setLayout,
+    resolutions,
+    currentResolution,
+    setResolution,
+    formats,
+    currentFormat,
+    setFormat,
+    showWatermark,
+    setShowWatermark,
+    onClose,
     onCopy,
     onDownload,
     isCopying,
     isGenerating,
-    canCopy,
-    canExport,
-    feedback,
-    copy
-}) {
-    const isBusy = isCopying || isGenerating;
-    const currentLayoutMeta = layouts.find((option) => option.id === currentLayout) || layouts[0];
-
+    copySuccess
+}) => {
     return (
-        <aside className="flex min-h-0 w-full flex-col bg-[radial-gradient(circle_at_top,#eef6ff_0%,#f8fafc_42%,#f4f7fb_100%)]">
-            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-                <div className="space-y-5">
-                    <Surface className="bg-[linear-gradient(145deg,rgba(255,255,255,0.96)_0%,rgba(245,250,255,0.96)_100%)]">
-                        <div className="border-b border-slate-200/80 px-5 py-5">
-                            <div className="flex items-start gap-4">
-                                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[20px] bg-slate-950 text-white shadow-[0_16px_30px_rgba(15,23,42,0.18)]">
-                                    <Sparkles size={18} />
-                                </span>
-                                <div className="min-w-0">
-                                    <SectionHeading
-                                        accent="WebP First"
-                                        title={copy.controlTitle}
-                                        subtitle={copy.controlSubtitle}
-                                    />
+        <div className="w-[380px] bg-zinc-950/90 backdrop-blur-2xl border-l border-white/5 flex flex-col h-full text-zinc-100 shadow-2xl relative">
+            {/* Visual Flair: Top Gradient */}
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
+
+            {/* Header */}
+            <div className="h-20 px-6 border-b border-white/5 flex items-center justify-between shrink-0 relative z-10">
+                <div className="flex flex-col">
+                    <span className="font-bold text-lg tracking-tight flex items-center gap-2 text-white">
+                        Export Image
+                    </span>
+                    <span className="text-xs text-zinc-500">Customize your snapshot</span>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-all active:scale-95"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-8 custom-scrollbar relative z-10">
+
+                {/* Theme Selection */}
+                <div className="space-y-8">
+                    {themes.categories ? (
+                        themes.categories.map((category, catIdx) => (
+                            <ControlSection key={catIdx} title={category.name}>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {category.themes.map(t => {
+                                        const Icon = t.icon;
+                                        const isActive = currentTheme === t.id;
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                onClick={() => setTheme(t.id)}
+                                                className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
+                                                    ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
+                                                    : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
+                                                    }`}
+                                            >
+                                                {/* Theme preview dot */}
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                    <Icon size={14} />
+                                                </div>
+
+                                                <div className="flex flex-col items-start z-10">
+                                                    <span className={`text-[11px] font-bold leading-tight transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
+                                                        {t.label}
+                                                    </span>
+                                                </div>
+
+                                                {/* Active Indicator */}
+                                                {isActive && (
+                                                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
+                            </ControlSection>
+                        ))
+                    ) : (
+                        <ControlSection title="Theme">
+                            <div className="grid grid-cols-2 gap-3">
+                                {themes.map(t => {
+                                    const Icon = t.icon;
+                                    const isActive = currentTheme === t.id;
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => setTheme(t.id)}
+                                            className={`group relative h-16 rounded-xl border transition-all duration-300 overflow-hidden flex items-center px-4 gap-3 ${isActive
+                                                ? 'border-indigo-500/50 bg-zinc-800/80 shadow-[0_0_20px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20'
+                                                : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10'
+                                                }`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                <Icon size={14} />
+                                            </div>
+                                            <div className="flex flex-col items-start z-10">
+                                                <span className={`text-[11px] font-bold leading-tight transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
+                                                    {t.label}
+                                                </span>
+                                            </div>
+                                            {isActive && (
+                                                <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        </div>
-                        <div className="space-y-4 px-5 py-4">
-                            <div className="flex flex-wrap gap-2">
-                                <SummaryPill icon={Download} label={copy.download} />
-                                <SummaryPill icon={Copy} label={copy.copy} />
-                            </div>
-                        </div>
-                    </Surface>
-
-                    <FeedbackBanner feedback={feedback} />
-
-                    <Surface className="px-5 py-5">
-                        <SectionHeading
-                            title={copy.themeTitle}
-                            subtitle={copy.themeSubtitle}
-                        />
-                        <div className="mt-4 grid grid-cols-1 gap-3">
-                            {themeOptions.map((option) => (
-                                <ThemeOption
-                                    key={option.id}
-                                    option={option}
-                                    active={option.id === currentTheme}
-                                    onClick={() => setTheme(option.id)}
-                                />
-                            ))}
-                        </div>
-                    </Surface>
-
-                    <Surface className="px-5 py-5">
-                        <SectionHeading
-                            title={copy.layoutTitle}
-                            subtitle={copy.layoutSubtitle}
-                        />
-                        <div className="mt-4 grid grid-cols-3 gap-3">
-                            {layouts.map((option) => (
-                                <CompactOption
-                                    key={option.id}
-                                    option={option}
-                                    active={option.id === currentLayout}
-                                    onClick={() => setLayout(option.id)}
-                                    icon={LayoutTemplate}
-                                    meta={option.size}
-                                />
-                            ))}
-                        </div>
-                        <div className="mt-4">
-                            <DescriptionNote text={currentLayoutMeta?.description} />
-                        </div>
-                    </Surface>
+                        </ControlSection>
+                    )}
                 </div>
-            </div>
 
-            <div className="border-t border-slate-200/80 bg-white/92 px-5 py-5 backdrop-blur sm:px-6">
-                <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_20px_45px_rgba(15,23,42,0.08)]">
-                    <div className="grid grid-cols-1 gap-3">
-                        <button
-                            type="button"
-                            onClick={onDownload}
-                            disabled={isBusy || !canExport}
-                            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#020617_0%,#0f172a_58%,#1d4ed8_100%)] px-4 text-base font-semibold text-white shadow-[0_20px_35px_rgba(29,78,216,0.18)] transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-                            {isGenerating ? copy.downloading : canExport ? copy.download : copy.downloadDisabled}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onCopy}
-                            disabled={isBusy || !canCopy || !canExport}
-                            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {isCopying ? <Loader2 size={18} className="animate-spin" /> : <Copy size={18} />}
-                            {isCopying ? copy.copying : !canExport ? copy.copyNoContent : canCopy ? copy.copy : copy.copyDisabled}
-                        </button>
+                {/* Layout Selection */}
+                <ControlSection title="Layout">
+                    <div className="grid grid-cols-2 gap-3">
+                        {layouts.map(l => {
+                            const isActive = currentLayout === l.id;
+                            // Aspect ratio visualization
+                            const aspectRatioClass =
+                                l.id === 'card' ? 'aspect-[4/3] w-5' :
+                                    l.id === 'full' ? 'aspect-[3/4] w-4' :
+                                        l.id === 'social' ? 'aspect-square w-5' :
+                                            'aspect-video w-6';
+
+                            return (
+                                <button
+                                    key={l.id}
+                                    onClick={() => setLayout(l.id)}
+                                    className={`relative flex flex-col items-start p-4 rounded-xl border transition-all duration-300 ${isActive
+                                        ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 border-indigo-500/50 text-white shadow-lg shadow-black/20'
+                                        : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:bg-white/5 hover:border-white/10'
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between w-full mb-3">
+                                        <div className={`rounded border ${aspectRatioClass} ${isActive ? 'bg-indigo-500 border-indigo-400' : 'bg-zinc-800 border-zinc-700'}`} />
+                                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,1)]" />}
+                                    </div>
+
+                                    <span className={`text-xs font-bold ${isActive ? 'text-white' : 'text-zinc-400'}`}>{l.label}</span>
+                                    <span className="text-[10px] text-zinc-500 font-medium">{l.desc}</span>
+                                </button>
+                            );
+                        })}
                     </div>
+                </ControlSection>
+
+                {/* Export Settings */}
+                <ControlSection title="Settings">
+                    <div className="space-y-4 p-5 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
+
+                        {/* Resolution */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1.5">
+                                    <Maximize2 size={10} /> Scale
+                                </label>
+                                <span className="text-[10px] text-zinc-500">{resolutions.find(r => r.id === currentResolution)?.desc}</span>
+                            </div>
+                            <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5 relative">
+                                {resolutions.map(r => (
+                                    <button
+                                        key={r.id}
+                                        onClick={() => setResolution(r.id)}
+                                        className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all relative z-10 ${currentResolution === r.id
+                                            ? 'text-white'
+                                            : 'text-zinc-500 hover:text-zinc-300'
+                                            }`}
+                                    >
+                                        {r.label}
+                                    </button>
+                                ))}
+                                {/* Sliding Pill Background could be implemented with framer-motion, using simple placement for now */}
+                                <div
+                                    className="absolute top-1 bottom-1 bg-zinc-700/80 rounded-md transition-all duration-300 shadow-sm"
+                                    style={{
+                                        width: `${100 / resolutions.length - 2}%`,
+                                        left: `${(resolutions.findIndex(r => r.id === currentResolution) * (100 / resolutions.length)) + 1}%`
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Format */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1.5">
+                                    <FileType size={10} /> Format
+                                </label>
+                            </div>
+                            <div className="flex gap-2">
+                                {formats.map(f => {
+                                    const isActive = currentFormat === f.id;
+                                    return (
+                                        <button
+                                            key={f.id}
+                                            onClick={() => setFormat(f.id)}
+                                            className={`flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 ${isActive
+                                                ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.1)]'
+                                                : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-700 hover:bg-zinc-800'
+                                                }`}
+                                        >
+                                            {f.label}
+                                            {isActive && <Check size={10} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Branding Toggle */}
+                        <button
+                            onClick={() => setShowWatermark(!showWatermark)}
+                            className="w-full flex items-center justify-between pt-2 border-t border-white/5 mt-2 group"
+                        >
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase group-hover:text-zinc-300 transition-colors">Show Branding</span>
+                            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-300 ${showWatermark ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
+                                <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-300 ${showWatermark ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </div>
+                        </button>
+
+                    </div>
+                </ControlSection>
+
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-6 border-t border-white/5 bg-zinc-900/50 backdrop-blur-xl shrink-0">
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={onDownload}
+                        disabled={isGenerating}
+                        className="w-full h-12 relative bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-bold text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden group"
+                    >
+                        {/* Shimmer effect */}
+                        <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                        {isGenerating ? (
+                            <>
+                                <Loader2 size={18} className="animate-spin" />
+                                <span>Exporting Landscape...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Download size={18} />
+                                <span>Save Image</span>
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={onCopy}
+                        disabled={isCopying}
+                        className={`w-full h-10 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${copySuccess
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-transparent text-zinc-400 border border-transparent hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        {isCopying ? <Loader2 size={14} className="animate-spin" /> : copySuccess ? <Check size={14} /> : <Copy size={14} />}
+                        {copySuccess ? 'Copied to Clipboard' : 'Copy to Clipboard'}
+                    </button>
                 </div>
             </div>
-        </aside>
+        </div>
     );
-}
+};
+
+export default ShareControls;

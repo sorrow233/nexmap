@@ -27,8 +27,6 @@ export function useDraggable({
     const cmdKeyPressedRef = useRef(false);
     const longPressTriggeredRef = useRef(false);
     const longPressTimerRef = useRef(null);
-    const moveFrameRef = useRef(null);
-    const pendingMoveRef = useRef(null);
 
     // Internal state for drag calculations
     const dragDataRef = useRef({
@@ -46,34 +44,6 @@ export function useDraggable({
             clearTimeout(longPressTimerRef.current);
             longPressTimerRef.current = null;
         }
-    };
-
-    const flushPendingMove = () => {
-        if (moveFrameRef.current) {
-            cancelAnimationFrame(moveFrameRef.current);
-            moveFrameRef.current = null;
-        }
-
-        if (pendingMoveRef.current && onMove) {
-            const { nextX, nextY, moveWithConnections } = pendingMoveRef.current;
-            pendingMoveRef.current = null;
-            onMove(id, nextX, nextY, moveWithConnections);
-        }
-    };
-
-    const scheduleMove = (nextX, nextY, moveWithConnections) => {
-        pendingMoveRef.current = { nextX, nextY, moveWithConnections };
-
-        if (moveFrameRef.current) return;
-
-        moveFrameRef.current = requestAnimationFrame(() => {
-            moveFrameRef.current = null;
-            if (!pendingMoveRef.current || !onMove) return;
-
-            const { nextX: frameX, nextY: frameY, moveWithConnections: frameMoveWithConnections } = pendingMoveRef.current;
-            pendingMoveRef.current = null;
-            onMove(id, frameX, frameY, frameMoveWithConnections);
-        });
     };
 
     const handleStart = (e, clientX, clientY, isTouch = false) => {
@@ -182,7 +152,7 @@ export function useDraggable({
             }
 
             if (hasDraggedRef.current && onMove) {
-                scheduleMove(origX + dx, origY + dy, cmdKeyPressedRef.current);
+                onMove(id, origX + dx, origY + dy, cmdKeyPressedRef.current);
             }
 
             // Track last known good coordinates
@@ -209,8 +179,6 @@ export function useDraggable({
             }
 
             if (dragHappened && onDragEnd) {
-                flushPendingMove();
-
                 let clientX, clientY;
                 if (e.type === 'touchend' || e.type === 'touchcancel') {
                     if (e.changedTouches && e.changedTouches.length > 0) {
@@ -249,11 +217,6 @@ export function useDraggable({
         window.addEventListener('touchcancel', handleEnd);
 
         return () => {
-            if (moveFrameRef.current) {
-                cancelAnimationFrame(moveFrameRef.current);
-                moveFrameRef.current = null;
-            }
-            pendingMoveRef.current = null;
             window.removeEventListener('mousemove', handleMove);
             window.removeEventListener('mouseup', handleEnd);
             window.removeEventListener('touchmove', handleMove);

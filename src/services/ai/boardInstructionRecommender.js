@@ -1,5 +1,4 @@
 import { chatCompletion } from '../llm';
-import { GEMINI_RECOMMENDED_TEMPERATURE } from '../llm/temperature';
 
 const extractTextFromMessageContent = (content) => {
     if (typeof content === 'string') return content;
@@ -145,7 +144,7 @@ ${context}
             [{ role: 'user', content: prompt }],
             config,
             model || config.model,
-            { temperature: GEMINI_RECOMMENDED_TEMPERATURE }
+            { temperature: 0.2 }
         );
 
         const parsed = parseJsonResponse(response);

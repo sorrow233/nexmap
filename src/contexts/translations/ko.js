@@ -300,8 +300,7 @@ export const ko = {
         cards: "카드",
         navigate: "탐색",
         open: "열기",
-        inBoard: "내",
-        indexingProgress: "검색 인덱스 {loaded}/{total}"
+        inBoard: "내"
     },
     chat: {
         conversation: "대화",

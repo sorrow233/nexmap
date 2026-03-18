@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, useCallback, useRef } from 'react';
+import React, { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -9,10 +9,8 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
-import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
+import SearchModal, { useSearchShortcut } from './components/SearchModal';
 import { lazyWithRetry } from './utils/lazyWithRetry';
-import { useSearchShortcut } from './hooks/useSearchShortcut';
-import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -25,7 +23,6 @@ const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
 const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
-const SearchModal = lazyWithRetry(() => import('./components/SearchModal'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -58,7 +55,6 @@ import {
     normalizeBoardTitleMeta,
     pickBoardTitleMetadata
 } from './services/boardTitle/metadata';
-import { loadBoardsSearchData } from './services/search/searchDataLoader';
 
 export default function App() {
     return (
@@ -73,7 +69,6 @@ export default function App() {
 }
 
 const SESSION_START_TIME = Date.now();
-const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 
 function AppContent() {
     const navigate = useNavigate();
@@ -90,122 +85,35 @@ function AppContent() {
     // Search Modal State
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [allBoardsData, setAllBoardsData] = useState({});
-    const [searchLoadState, setSearchLoadState] = useState({
-        isLoading: false,
-        loadedCount: 0,
-        totalCount: 0
-    });
-    const allBoardsDataRef = useRef(allBoardsData);
-    const searchLoadTokenRef = useRef(0);
-    const searchBufferedDataRef = useRef({});
-    const searchFlushTimerRef = useRef(null);
-
-    useBuildVersionRefresh();
+    const [isSearchDataLoaded, setIsSearchDataLoaded] = useState(false);
 
     // Cmd+K shortcut for search
     useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
 
+    // Load all boards data for search (lazy load when search opens)
+    // Load all boards data for search (lazy load when search opens)
     useEffect(() => {
-        allBoardsDataRef.current = allBoardsData;
-    }, [allBoardsData]);
-
-    const flushSearchDataBuffer = useCallback(() => {
-        const pendingChunk = searchBufferedDataRef.current;
-        if (Object.keys(pendingChunk).length === 0) return;
-
-        searchBufferedDataRef.current = {};
-        setAllBoardsData(prev => ({ ...prev, ...pendingChunk }));
-    }, []);
-
-    const queueSearchDataChunk = useCallback((boardId, data) => {
-        searchBufferedDataRef.current[boardId] = data;
-        if (searchFlushTimerRef.current) return;
-
-        searchFlushTimerRef.current = setTimeout(() => {
-            searchFlushTimerRef.current = null;
-            flushSearchDataBuffer();
-        }, SEARCH_DATA_FLUSH_DELAY_MS);
-    }, [flushSearchDataBuffer]);
-
-    useEffect(() => {
-        return () => {
-            if (searchFlushTimerRef.current) {
-                clearTimeout(searchFlushTimerRef.current);
-                searchFlushTimerRef.current = null;
-            }
-            flushSearchDataBuffer();
-        };
-    }, [flushSearchDataBuffer]);
-
-    useEffect(() => {
-        if (!isSearchOpen) return;
-
-        const existingBoardIds = new Set(
-            boardsList
-                .filter(board => Object.prototype.hasOwnProperty.call(allBoardsDataRef.current, board.id))
-                .map(board => board.id)
-        );
-        const totalCount = boardsList.length;
-        const missingCount = boardsList.filter(board => (
-            board?.id && !existingBoardIds.has(board.id)
-        )).length;
-
-        if (missingCount === 0) {
-            setSearchLoadState({
-                isLoading: false,
-                loadedCount: existingBoardIds.size,
-                totalCount
-            });
-            return;
-        }
-
-        const loadToken = searchLoadTokenRef.current + 1;
-        searchLoadTokenRef.current = loadToken;
-        let loadedDelta = 0;
-
-        setSearchLoadState({
-            isLoading: true,
-            loadedCount: existingBoardIds.size,
-            totalCount
-        });
-
-        void loadBoardsSearchData({
-            boards: boardsList,
-            loadBoardData: loadBoardDataForSearch,
-            existingBoardIds,
-            shouldCancel: () => searchLoadTokenRef.current !== loadToken || !isSearchOpen,
-            onBoardLoaded: (boardId, data) => {
-                if (searchLoadTokenRef.current !== loadToken || !isSearchOpen) return;
-                loadedDelta += 1;
-                queueSearchDataChunk(boardId, data);
-                setSearchLoadState({
-                    isLoading: true,
-                    loadedCount: existingBoardIds.size + loadedDelta,
-                    totalCount
+        if (isSearchOpen && !isSearchDataLoaded) {
+            const loadSearchData = async () => {
+                const loadedData = {};
+                const promises = boardsList.map(async (board) => {
+                    try {
+                        const data = await loadBoardDataForSearch(board.id);
+                        if (data) {
+                            loadedData[board.id] = data;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load board data for search:', board.id);
+                    }
                 });
-            }
-        }).finally(() => {
-            if (searchLoadTokenRef.current !== loadToken || !isSearchOpen) return;
 
-            flushSearchDataBuffer();
-            setSearchLoadState({
-                isLoading: false,
-                loadedCount: existingBoardIds.size + loadedDelta,
-                totalCount
-            });
-        });
-
-        return () => {
-            if (searchLoadTokenRef.current === loadToken) {
-                searchLoadTokenRef.current += 1;
-            }
-            if (searchFlushTimerRef.current) {
-                clearTimeout(searchFlushTimerRef.current);
-                searchFlushTimerRef.current = null;
-            }
-            flushSearchDataBuffer();
-        };
-    }, [isSearchOpen, boardsList, queueSearchDataChunk, flushSearchDataBuffer]);
+                await Promise.all(promises);
+                setAllBoardsData(loadedData);
+                setIsSearchDataLoaded(true);
+            };
+            loadSearchData();
+        }
+    }, [isSearchOpen, boardsList, isSearchDataLoaded]);
 
     const showDialog = (title, message, type = 'info', onConfirm = () => { }) => {
         setDialog({ isOpen: true, title, message, type, onConfirm });
@@ -531,17 +439,12 @@ function AppContent() {
             />
 
             {/* Global Search Modal */}
-            {isSearchOpen && (
-                <Suspense fallback={null}>
-                    <SearchModal
-                        isOpen={isSearchOpen}
-                        onClose={() => setIsSearchOpen(false)}
-                        boardsList={boardsList}
-                        allBoardsData={allBoardsData}
-                        searchLoadState={searchLoadState}
-                    />
-                </Suspense>
-            )}
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                boardsList={boardsList}
+                allBoardsData={allBoardsData}
+            />
 
             {/* Logout Confirmation Dialog */}
             <ModernDialog
@@ -552,8 +455,6 @@ function AppContent() {
                 message="Are you sure you want to sign out? This will clear all local data for security. Ensure your boards are synced to the cloud."
                 type="confirm"
             />
-
-            <IPadInstallPrompt />
         </>
     );
 }

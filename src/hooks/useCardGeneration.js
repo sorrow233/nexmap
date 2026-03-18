@@ -133,9 +133,8 @@ export function useCardGeneration() {
         // Robustness Check: Ensure text is a string
         const safeText = (typeof text === 'string' ? text : (text?.toString() || '')).trim();
         if (!safeText && (!images || images.length === 0)) return;
-        const selectedIdSet = new Set(selectedIds);
 
-        const targetCards = cards.filter(c => selectedIdSet.has(c.id) && c.data && Array.isArray(c.data.messages));
+        const targetCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
         if (targetCards.length === 0) return false;
 
         debugLog.ai('Starting batch chat', { text: safeText, targetCount: targetCards.length });
@@ -170,7 +169,7 @@ export function useCardGeneration() {
 
         // Optimistic UI Update
         setCards(prev => prev.map(c => {
-            if (selectedIdSet.has(c.id) && c.data && Array.isArray(c.data.messages)) {
+            if (selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages)) {
                 return {
                     ...c,
                     data: { ...c.data, messages: [...c.data.messages, userMsg, assistantMsg] }

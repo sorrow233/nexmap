@@ -1,6 +1,5 @@
 import React from 'react';
 import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
-import { isIOS, isSafari, prefersReducedMotion } from '../utils/browser';
 
 /**
  * ActiveConnectionLayer
@@ -12,26 +11,23 @@ import { isIOS, isSafari, prefersReducedMotion } from '../utils/browser';
  */
 const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
     cards,
-    cardMap,
     connections,
-    selectedIdSet,
+    selectedIds,
     offset,
     scale
 }) {
-    const shouldAnimate = !isIOS && !isSafari && !prefersReducedMotion;
-
     // If no selection, render nothing
-    if (!selectedIdSet || selectedIdSet.size === 0) return null;
+    if (!selectedIds || selectedIds.length === 0) return null;
 
     // 1. Identify active connections (connected to any selected card)
     const activeConnections = connections.filter(conn =>
-        selectedIdSet.has(conn.from) || selectedIdSet.has(conn.to)
+        selectedIds.includes(conn.from) || selectedIds.includes(conn.to)
     );
 
     if (activeConnections.length === 0) return null;
 
     // Helper to find card by ID - filter out soft-deleted cards
-    const resolvedCardMap = cardMap || new Map(cards.filter(c => !c.deletedAt).map(c => [c.id, c]));
+    const cardMap = new Map(cards.filter(c => !c.deletedAt).map(c => [c.id, c]));
 
     return (
         <svg
@@ -40,23 +36,21 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
                 overflow: 'visible'
             }}
         >
-            {shouldAnimate && (
-                <defs>
-                    {/* Safari/iPad 对 SVG 滤镜动画开销偏高，这里只在更稳的环境启用 */}
-                    <filter id="light-flow-glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                        <feMerge>
-                            <feMergeNode in="coloredBlur" />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                    </filter>
-                </defs>
-            )}
+            <defs>
+                {/* Glow Filter for the light beam */}
+                <filter id="light-flow-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                    <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
 
             <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
                 {activeConnections.map(conn => {
-                    const fromCard = resolvedCardMap.get(conn.from);
-                    const toCard = resolvedCardMap.get(conn.to);
+                    const fromCard = cardMap.get(conn.from);
+                    const toCard = cardMap.get(conn.to);
 
                     if (!fromCard || !toCard) return null;
 
@@ -96,12 +90,10 @@ const ActiveConnectionLayer = React.memo(function ActiveConnectionLayer({
                                 stroke="var(--active-flow-color)"
                                 strokeWidth="2"
                                 strokeLinecap="round"
-                                strokeDasharray={shouldAnimate ? '100 1000' : undefined}
-                                filter={shouldAnimate ? 'url(#light-flow-glow)' : undefined}
-                                style={shouldAnimate ? {
+                                strokeDasharray="100 1000" // Comet tail length vs gap
+                                filter="url(#light-flow-glow)"
+                                style={{
                                     animation: 'liquidFlow 2s linear infinite'
-                                } : {
-                                    opacity: 0.7
                                 }}
                             />
                         </g>

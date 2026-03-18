@@ -1,84 +1,138 @@
-# Cloudflare API
+# API 端点 (Cloudflare Functions)
 
-当前服务端接口位于 `functions/`，由 Cloudflare Pages Functions 承载。
+## 1. `gmi-proxy.js` - 通用 AI 代理
 
-## 1. 接口清单
+**路径：** `/api/gmi-proxy`
 
-| 路径 | 方法 | 作用 | 认证 |
-| --- | --- | --- | --- |
-| `/api/gmi-serving` | `POST` | 通用 AI 代理，支持流式/非流式，保护 API Key | 否，由请求体提供目标参数 |
-| `/api/system-credits` | `POST` | 系统额度对话、额度查询、免费图片生成 | Firebase Bearer Token |
-| `/api/image-gen` | `POST` | GMI 图片生成 submit/poll 代理 | 请求体 API Key |
-| `/api/image-proxy` | `GET` | 代理 GMI 存储图片，解决 CORS | 否 |
-| `/api/feedback` | `GET/POST/PUT` | 反馈列表、提交反馈、投票；带 `feedbackId` 时也处理评论 | 可选/部分依赖登录 |
-| `/api/create-checkout` | `POST` | 创建 Stripe Checkout Session | Firebase Bearer Token |
-| `/api/order-details` | `GET` | 查询支付成功后的订单信息 | Firebase Bearer Token |
-| `/api/webhook` | `POST` | Stripe Webhook，发放 credits 或 Pro | Stripe |
-| `/api/redeem` | `POST` | 兑换码兑换积分或 Pro | Firebase Bearer Token |
-| `/api/admin/codes` | `POST` | 生成兑换码 | Firebase Bearer Token + 管理员 UID |
-| `/api/test` | `GET` | 基础健康检查 | 否 |
+**功能：** 代理所有 GMI Cloud API 请求，保护 API Key
 
-## 2. 关键接口说明
+**请求格式：**
+```javascript
+POST /api/gmi-proxy
+{
+    apiKey: '...',
+    baseUrl: 'https://api.gmi-serving.com/v1',
+    endpoint: '/models/google/gemini-3-pro-preview:generateContent',
+    method: 'POST',
+    requestBody: { ... },
+    stream: true/false
+}
+```
 
-### 2.1 `/api/gmi-serving`
+**响应：** 透传上游响应
 
-用途：
+## 2. `system-credits.js` - 免费额度 API
 
-- 代理 GMI / Gemini 相关请求
-- 在代理层做超时、有限重试、错误透传
-- 对 `429/401/403` 明确不做代理重试，避免放大问题
+**路径：** `/api/system-credits`
 
-关键点：
+**功能：** 
+- 为无 API Key 用户提供免费 AI 访问
+- 跟踪 Token 消耗
+- 扣除用户额度
 
-- 流式和非流式有不同超时与尝试次数
-- 会修正非法 `thinkingLevel`
-- 会透传 `Retry-After` / `X-RateLimit-Reset`
+**认证：** Firebase ID Token (Header: `Authorization: Bearer <token>`)
 
-### 2.2 `/api/system-credits`
+**初始额度：** 100 credits ($1 等值)
 
-当前系统额度规则来自代码：
+**定价模型：**
+```javascript
+const PRICING = {
+    INPUT_PER_MILLION: 0.40,   // $0.40/M tokens
+    OUTPUT_PER_MILLION: 2.40   // $2.40/M tokens
+};
+```
 
-- 对话模型：`moonshotai/Kimi-K2-Thinking`
-- 分析模型：`deepseek-ai/DeepSeek-V3.2`
-- 免费对话额度：每周 `200`
-- 免费图片额度：每周 `20`
-- 图片模型：`seedream-4-0-250828`
+**额度存储：** Cloudflare KV (`SYSTEM_CREDITS` binding)
 
-支持动作：
+**请求格式：**
+```javascript
+POST /api/system-credits
+{
+    action: 'chat' | 'check',
+    model: '...',
+    messages: [...],
+    stream: true/false
+}
+```
 
-- `action: "check"` 查询额度
-- `action: "image"` 生成图片
-- 默认对话链路由前端 provider 调用
+**响应格式：**
+```javascript
+{
+    // 流式：返回 text/event-stream
+    // 非流式：
+    content: '...',
+    credits: {
+        used: 0.5,
+        remaining: 99.5
+    }
+}
+```
 
-### 2.3 支付链路
+## 3. `image-gen.js` - 图片生成代理
 
-- `/api/create-checkout` 使用 Stripe REST API 创建结账会话
-- `/api/order-details` 在支付成功页拉取订单详情
-- `/api/webhook` 根据 Stripe 元数据为用户增加 bonus credits 或开通 Pro
+**路径：** `/api/image-gen`
 
-### 2.4 反馈链路
+**功能：** 代理图片生成请求
 
-`/api/feedback` 当前同时承担：
+## 4. `image-proxy.js` - 图片加载代理
 
-- 反馈列表排序（`hot/top/recent`）
-- 提交新反馈
-- 点赞 / 取消点赞
-- 按 `feedbackId` 处理评论读写
+**路径：** `/api/image-proxy`
 
-## 3. Middleware
+**功能：** 代理外部图片加载，解决 CORS
 
-`functions/_middleware.js` 不是 API，但同样属于 Edge 层逻辑：
+## 5. `create-checkout.js` - Stripe 支付
 
-- 只对 bot/crawler 生效
-- 根据路径和语言注入 SEO meta
-- 静态资源和普通用户请求直接放行
+**路径：** `/api/create-checkout`
 
-## 4. 当前依赖的主要环境变量 / Binding
+**功能：**
+- 创建 Stripe Checkout Session
+- 处理不同的产品套餐 (Credits 500/2000/5000, Pro License)
+- 验证 Firebase Token
 
-| 名称 | 用途 |
-| --- | --- |
-| `SYSTEM_GMI_API_KEY` | 系统额度与免费图片生成所用上游 Key |
-| `SYSTEM_CREDITS_KV` | 用户额度与兑换码存储 |
-| `STRIPE_SECRET_KEY` | 创建支付会话、查询订单 |
-| `STRIPE_WEBHOOK_SECRET` | Webhook 配置 |
-| `ADMIN_UIDS` | 管理员 UID 白名单 |
+**请求格式：**
+```javascript
+POST /api/create-checkout
+{
+    productId: 'credits_500' | 'pro_lifetime',
+    successUrl: '...',
+    cancelUrl: '...'
+}
+```
+
+## 6. `feedback.js` - 用户反馈系统
+
+**路径：** `/api/feedback`
+
+**功能：**
+- `GET`: 获取反馈列表 (支持 sort=hot/top/recent)
+- `POST`: 提交新反馈 (需验证邮箱)
+- `PUT`: 投票 (Upvote/Downvote)
+- 子资源 `/comments`: 获取或提交评论
+
+**存储：** Firestore `feedback` 集合
+
+## 7. `redeem.js` - 兑换码系统
+
+**路径：** `/api/redeem`
+
+**功能：**
+- 验证并消耗兑换码
+- 增加用户积分或升级 Pro
+- 防止重复兑换 (KV 存储状态)
+
+**请求格式：**
+```javascript
+POST /api/redeem
+{
+    code: 'PRO-2024-XYZ'
+}
+```
+
+## 8. `webhook.js` - Stripe Webhook
+
+**路径：** `/api/webhook`
+
+**功能：**
+- 监听 `checkout.session.completed` 事件
+- 自动发货 (增加积分或开通 Pro)
+- 更新 System Credits KV

@@ -113,8 +113,7 @@ export const app = {
         cards: "卡片",
         navigate: "导航",
         open: "打开",
-        inBoard: "在",
-        indexingProgress: "搜索索引 {loaded}/{total}"
+        inBoard: "在"
     },
     chat: {
         conversation: "对话",
@@ -168,106 +167,6 @@ export const app = {
         share: "分享",
         source: "来源",
         goToBoard: "查看原文"
-    },
-    shareExport: {
-        title: "导出回答",
-        subtitle: "默认固定高分辨率渲染，保存和复制都输出 WebP。",
-        previewLabel: "最终预览",
-        livePreview: "最终预览",
-        previewHint: "这里看到的，就是最终导出的画面。",
-        calculating: "正在计算预览尺寸...",
-        controlTitle: "导出选项",
-        controlSubtitle: "只保留风格和画布，清晰度与格式全部由系统固定处理。",
-        themeTitle: "风格",
-        themeSubtitle: "只保留最常用的几种风格。",
-        themes: {
-            modern: {
-                title: "净白",
-                description: "干净明亮，适合大多数回答。"
-            },
-            editorial: {
-                title: "杂志",
-                description: "更像一页精排文章。"
-            },
-            zen: {
-                title: "留白",
-                description: "更柔和的留白感。"
-            },
-            night: {
-                title: "夜间",
-                description: "暗底展示，适合深色内容。"
-            }
-        },
-        themeSections: {
-            featured: "精选",
-            reading: "阅读",
-            atmosphere: "氛围",
-            expressive: "个性"
-        },
-        layoutTitle: "画布",
-        layoutSubtitle: "按阅读场景选择合适的画幅。",
-        layouts: {
-            card: {
-                title: "自适应",
-                description: "适合聊天回答和长内容。"
-            },
-            social: {
-                title: "方图",
-                description: "更适合社交媒体转发。"
-            },
-            slide: {
-                title: "横图",
-                description: "适合横版展示和汇报。"
-            }
-        },
-        exportTitle: "清晰度",
-        exportSubtitle: "默认高清，内容过长时会自动降级避免失败。",
-        resolutions: {
-            hd: {
-                title: "高清",
-                description: "默认推荐，清晰度和速度更平衡。"
-            },
-            print: {
-                title: "超清",
-                description: "优先细节，但长内容会自动降级。"
-            }
-        },
-        formatHintTitle: "输出格式",
-        formatHintSubtitle: "下载和复制会分别使用更合适的格式。",
-        formatHintBody: "保存时输出 WebP，复制到剪贴板时自动使用 PNG。",
-        formats: {
-            png: {
-                description: "兼容性最好，适合保存原图。",
-                meta: "无损"
-            },
-            webp: {
-                description: "体积更小，适合网页分享。",
-                meta: "更小"
-            }
-        },
-        brandingTitle: "品牌",
-        brandingSubtitle: "只有在需要署名时再打开品牌标记。",
-        brandingToggle: "附带 NexMap 标记",
-        brandingHint: "会在导出图底部加入产品标识。",
-        safeHint: "默认固定高分辨率渲染，宁可文件更大，也优先保证导出清晰度。",
-        qualityPinnedHint: "渲染固定使用超清档位，下载与复制都输出 WebP 92% 压缩。",
-        download: "保存 WebP",
-        downloadDisabled: "没有可导出的内容",
-        downloading: "正在生成 WebP...",
-        downloadSuccess: "WebP 图片已开始下载。",
-        copy: "复制 WebP",
-        copyNoContent: "没有可复制的内容",
-        copying: "正在复制 WebP...",
-        copyDisabled: "当前环境不支持复制图片",
-        copySuccess: "WebP 图片已复制到剪贴板。",
-        emptyTitle: "没有可导出的内容",
-        emptyDescription: "当前这次导出没有拿到正文内容。请关闭后重新打开导出面板，再试一次。",
-        emptyContent: "当前没有可导出的正文内容。",
-        copyUnsupported: "当前浏览器暂不支持图片复制，请改用下载。",
-        copyError: "复制失败，请稍后重试。",
-        exportError: "导出失败，请稍后重试。",
-        webpUnsupported: "当前浏览器没有成功生成 WebP，请换个浏览器后再试。",
-        autoScaleApplied: "内容较长，已自动降低导出倍率以保证成功。"
     },
     notesCenter: {
         title: "笔记管理中心",

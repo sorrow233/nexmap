@@ -20,20 +20,13 @@ setupMobileViewportFix();
 // This is critical for canvas-based apps where swipe gestures should not trigger browser back/forward
 let touchStartX = 0;
 let touchStartY = 0;
-let touchStartedNearEdge = false;
-const EDGE_SWIPE_GUARD_PX = 24;
 
 document.addEventListener('touchstart', (e) => {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
-    touchStartedNearEdge =
-        touchStartX <= EDGE_SWIPE_GUARD_PX ||
-        touchStartX >= window.innerWidth - EDGE_SWIPE_GUARD_PX;
 }, { passive: false });
 
 document.addEventListener('touchmove', (e) => {
-    if (!touchStartedNearEdge) return;
-
     const touchEndX = e.touches[0].clientX;
     const touchEndY = e.touches[0].clientY;
     const deltaX = Math.abs(touchEndX - touchStartX);
@@ -44,14 +37,6 @@ document.addEventListener('touchmove', (e) => {
         e.preventDefault();
     }
 }, { passive: false });
-
-document.addEventListener('touchend', () => {
-    touchStartedNearEdge = false;
-}, { passive: true });
-
-document.addEventListener('touchcancel', () => {
-    touchStartedNearEdge = false;
-}, { passive: true });
 
 // Prevent mouse wheel from triggering browser navigation
 document.addEventListener('wheel', (e) => {

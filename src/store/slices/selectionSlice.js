@@ -8,9 +8,8 @@ export const createSelectionSlice = (set, get) => ({
     // However, if we want to move handleBatchDelete here, we can.
 
     arrangeSelectionGrid: () => {
-        const { selectedIds, connections, getCardsByIds } = get();
+        const { cards, selectedIds, connections } = get();
         if (!selectedIds || selectedIds.length === 0) return;
-        const selectedIdSet = new Set(selectedIds);
 
         // 1. Identify all card IDs that are part of any connection
         const connectedCardIds = new Set();
@@ -22,7 +21,9 @@ export const createSelectionSlice = (set, get) => ({
         }
 
         // 2. Filter selected cards to exclude those with connections
-        const selectedCards = getCardsByIds(selectedIds).filter(c => !connectedCardIds.has(c.id));
+        const selectedCards = cards.filter(c =>
+            selectedIds.includes(c.id) && !connectedCardIds.has(c.id)
+        );
 
         if (selectedCards.length === 0) return;
 
@@ -54,22 +55,21 @@ export const createSelectionSlice = (set, get) => ({
     handleBatchDelete: () => {
         const { selectedIds } = get();
         if (!selectedIds || selectedIds.length === 0) return;
-        const selectedIdSet = new Set(selectedIds);
 
         set(state => ({
-            cards: state.cards.filter(c => !selectedIdSet.has(c.id)),
+            cards: state.cards.filter(c => selectedIds.indexOf(c.id) === -1),
             connections: state.connections.filter(conn =>
-                !selectedIdSet.has(conn.from) && !selectedIdSet.has(conn.to)
+                selectedIds.indexOf(conn.from) === -1 && selectedIds.indexOf(conn.to) === -1
             ),
             // Clean up groups that might lose all their cards? 
             // Currently we keep empty groups or groups with missing cards, 
             // but let's filter cardIds inside groups to keep it clean.
             groups: state.groups.map(g => ({
                 ...g,
-                cardIds: g.cardIds.filter(id => !selectedIdSet.has(id))
+                cardIds: g.cardIds.filter(id => selectedIds.indexOf(id) === -1)
             })).filter(g => g.cardIds.length > 0), // Remove empty groups
             selectedIds: [],
-            expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId
+            expandedCardId: selectedIds.indexOf(state.expandedCardId) !== -1 ? null : state.expandedCardId
         }));
     },
 });

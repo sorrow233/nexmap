@@ -1,12 +1,18 @@
-import React, { useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { Sparkles, Crosshair, Hand, MousePointer2 } from 'lucide-react';
+import React, { useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import { Sparkles, Crosshair, Hand, MousePointer2, Bot } from 'lucide-react';
+import Card from './Card';
+import StickyNote from './StickyNote';
+import Zone from './Zone'; // NEW: Zone Component
+import ConnectionLayer from './ConnectionLayer';
+import ActiveConnectionLayer from './ActiveConnectionLayer';
+import { getCardRect, isRectIntersect } from '../utils/geometry';
 import { useStore } from '../store/useStore';
-import CanvasViewportLayer from './canvas/CanvasViewportLayer';
+import ErrorBoundary from './ErrorBoundary';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
-import { useCanvasPanSync } from '../hooks/useCanvasPanSync';
-import { useVisibleCanvasData } from '../hooks/useVisibleCanvasData';
 import { useSelection } from '../hooks/useSelection';
+import favoritesService from '../services/favoritesService';
 import InstantTooltip from './InstantTooltip';
+import { aiSummaryService } from '../services/aiSummaryService';
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -16,13 +22,7 @@ const isTextInputElement = (element) => {
     return Boolean(element.closest('[contenteditable="true"]'));
 };
 
-export default function Canvas({
-    onCreateNote,
-    onCustomSprout,
-    onCanvasDoubleClick,
-    onCardFullScreen,
-    onCardPromptDrop
-}) {
+export default function Canvas({ onCreateNote, onCustomSprout, ...props }) {
     const RIGHT_BUTTON_LONG_PRESS_MS = 220;
     // Granular selectors to prevent unnecessary re-renders
     const cards = useStore(state => state.cards);
@@ -61,25 +61,6 @@ export default function Canvas({
     const isSpaceHoldPanningRef = useRef(false);
     const suppressNextContextToggleRef = useRef(false);
 
-    const {
-        cardSpatialIndex,
-        visibleCards,
-        visibleConnections,
-        connectionCards,
-        connectionCardMap,
-        visibleGroups,
-        selectedIdSet,
-        targetCardIds
-    } = useVisibleCanvasData({
-        cards,
-        connections,
-        groups,
-        offset,
-        scale,
-        selectedIds,
-        generatingCardIds
-    });
-
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
     useEffect(() => {
         stateRef.current = { offset, scale };
@@ -98,13 +79,7 @@ export default function Canvas({
 
     // Extracted Logic - Now with Direct DOM capabilities
     useCanvasGestures(canvasRef, contentRef, stateRef, setScale, setOffset);
-    const { applyPanDelta, flushPanSync } = useCanvasPanSync({
-        canvasRef,
-        contentRef,
-        stateRef,
-        setOffset
-    });
-    const { performSelectionCheck } = useSelection(cardSpatialIndex);
+    const { performSelectionCheck } = useSelection();
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -219,7 +194,7 @@ export default function Canvas({
 
     const handleMouseMove = (e) => {
         if (interactionMode === 'panning') {
-            applyPanDelta(e.movementX, e.movementY);
+            setOffset(prev => ({ x: prev.x + e.movementX, y: prev.y + e.movementY }));
         } else if (interactionMode === 'selecting' && selectionRect) {
             const newSelectionRect = { ...selectionRect, x2: e.clientX, y2: e.clientY };
             setSelectionRect(newSelectionRect);
@@ -237,10 +212,6 @@ export default function Canvas({
         if (rightPressTimerRef.current) {
             clearTimeout(rightPressTimerRef.current);
             rightPressTimerRef.current = null;
-        }
-
-        if (interactionMode === 'panning') {
-            flushPanSync();
         }
 
         if (isRightHoldPanningRef.current) {
@@ -274,11 +245,7 @@ export default function Canvas({
             const isArray = Array.isArray(prev);
             if (isAdditive) {
                 if (!isArray) return [id];
-                const selectedSet = new Set(prev);
-                if (selectedSet.has(id)) {
-                    return prev.filter(sid => sid !== id);
-                }
-                return [...prev, id];
+                return prev.indexOf(id) !== -1 ? prev.filter(sid => sid !== id) : [...prev, id];
             }
             return [id];
         });
@@ -311,21 +278,55 @@ export default function Canvas({
             if (lastTouch) {
                 const deltaX = touch.clientX - lastTouch.x;
                 const deltaY = touch.clientY - lastTouch.y;
-                applyPanDelta(deltaX, deltaY);
+                setOffset(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
                 lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
             }
         }
     };
 
     const handleTouchEnd = () => {
-        if (interactionMode === 'panning') {
-            flushPanSync();
-        }
         setInteractionMode('none');
         lastTouchRef.current = null;
     };
 
-    const handleDoubleClick = useCallback((e) => {
+    // Viewport culling optimization from beta
+    const visibleCards = useMemo(() => {
+        const viewportRect = {
+            left: (0 - offset.x) / scale - 400,
+            top: (0 - offset.y) / scale - 400,
+            right: (window.innerWidth - offset.x) / scale + 400,
+            bottom: (window.innerHeight - offset.y) / scale + 400
+        };
+
+        return cards.filter(card => {
+            // SOFT DELETE: Hide cards that are deleted
+            if (card.deletedAt) return false;
+
+            // Guard: Always show cards with invalid coordinates (they need to be visible for debugging/fixing)
+            if (!Number.isFinite(card.x) || !Number.isFinite(card.y)) return true;
+            if (Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1) return true;
+            if (generatingCardIds && generatingCardIds.has(card.id)) return true;
+            return isRectIntersect(viewportRect, getCardRect(card));
+        });
+    }, [cards, offset, scale, selectedIds, generatingCardIds]);
+
+    // Identify "Target" cards (connected to selected cards) for Luminous Guide
+    const targetCardIds = useMemo(() => {
+        if (!selectedIds || selectedIds.length === 0) return new Set();
+
+        const targets = new Set();
+        connections.forEach(conn => {
+            if (selectedIds.includes(conn.from)) targets.add(conn.to);
+            if (selectedIds.includes(conn.to)) targets.add(conn.from);
+        });
+
+        // Exclude selected cards themselves from being "targets"
+        selectedIds.forEach(id => targets.delete(id));
+
+        return targets;
+    }, [selectedIds, connections]);
+
+    const handleDoubleClick = (e) => {
         const target = e.target;
         const isInteractive = target.closest('button') || target.closest('.no-drag') || target.closest('.card-sharp-selected') || target.classList.contains('card-ref-link');
 
@@ -334,8 +335,8 @@ export default function Canvas({
             const canvasX = (e.clientX - offset.x) / scale;
             const canvasY = (e.clientY - offset.y) / scale;
 
-            if (onCanvasDoubleClick) {
-                onCanvasDoubleClick({
+            if (props.onCanvasDoubleClick) {
+                props.onCanvasDoubleClick({
                     screenX: e.clientX,
                     screenY: e.clientY,
                     canvasX,
@@ -343,10 +344,10 @@ export default function Canvas({
                 });
             }
         }
-    }, [offset.x, offset.y, onCanvasDoubleClick, scale]);
+    };
 
     // Handle Drop on Canvas (similar to Paste)
-    const handleDrop = useCallback((e) => {
+    const handleDrop = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -355,8 +356,8 @@ export default function Canvas({
 
         // Try to get text/url data
         const text = e.dataTransfer.getData('text/plain');
-        if (text && onCanvasDoubleClick) {
-            onCanvasDoubleClick({
+        if (text && props.onCanvasDoubleClick) {
+            props.onCanvasDoubleClick({
                 screenX: e.clientX,
                 screenY: e.clientY,
                 canvasX,
@@ -364,19 +365,18 @@ export default function Canvas({
                 pastedText: text
             });
         }
-    }, [offset.x, offset.y, onCanvasDoubleClick, scale]);
+    };
 
     // AI Batch Summary Handler
     const [isSummarizing, setIsSummarizing] = React.useState(false);
 
-    const handleBatchSummary = useCallback(async () => {
+    const handleBatchSummary = async () => {
         if (isSummarizing) return;
         setIsSummarizing(true);
 
         try {
             const cards = useStore.getState().cards;
             const config = useStore.getState().getActiveConfig();
-            const { aiSummaryService } = await import('../services/aiSummaryService');
 
             // define simple chunk helper
             const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
@@ -415,10 +415,10 @@ export default function Canvas({
         } finally {
             setIsSummarizing(false);
         }
-    }, [isSummarizing, updateCardFull]);
+    };
 
     // Single Card Summary Handler (for manual testing)
-    const handleSingleSummary = useCallback(async (cardId) => {
+    const handleSingleSummary = async (cardId) => {
         if (isSummarizing) return;
 
         // Find the card
@@ -428,7 +428,6 @@ export default function Canvas({
         setIsSummarizing(true);
         try {
             const baseConfig = useStore.getState().getActiveConfig();
-            const { aiSummaryService } = await import('../services/aiSummaryService');
             // Get the 'sprouting' role model (🌱 想法发芽 / Analysis)
             const sproutingModel = useStore.getState().getRoleModel('sprouting');
 
@@ -468,7 +467,7 @@ export default function Canvas({
         } finally {
             setIsSummarizing(false);
         }
-    }, [isSummarizing, updateCardFull]);
+    }
 
     return (
         <div
@@ -496,32 +495,60 @@ export default function Canvas({
                 backgroundSize: '24px 24px'
             }}
         >
-            <CanvasViewportLayer
-                contentRef={contentRef}
-                visibleGroups={visibleGroups}
-                connectionCards={connectionCards}
-                connectionCardMap={connectionCardMap}
-                visibleConnections={visibleConnections}
-                visibleCards={visibleCards}
-                selectedIdSet={selectedIdSet}
-                targetCardIds={targetCardIds}
-                isConnecting={isConnecting}
-                connectionStartId={connectionStartId}
-                onSelect={handleCardSelect}
-                onMove={handleCardMove}
-                onDelete={deleteCard}
-                onUpdate={updateCardFull}
-                onDragEnd={handleCardMoveEnd}
-                onConnect={handleConnect}
-                onExpand={setExpandedCardId}
-                onCreateNote={onCreateNote}
-                onCardFullScreen={onCardFullScreen}
-                onPromptDrop={onCardPromptDrop}
-                onCustomSprout={onCustomSprout}
-                onSummarize={handleSingleSummary}
+            {/* ConnectionLayer from beta - optimized Canvas rendering */}
+            <ConnectionLayer cards={cards} connections={connections} offset={offset} scale={scale} />
+
+            {/* NEW: Active "Liquid Light" Connection Layer */}
+            <ActiveConnectionLayer
+                cards={cards}
+                connections={connections}
+                selectedIds={selectedIds}
                 offset={offset}
                 scale={scale}
             />
+
+            <div
+                ref={contentRef}
+                className="absolute top-0 left-0 w-full h-full origin-top-left will-change-transform pointer-events-none"
+            >
+                {/* Zones Layer (Behind Cards) */}
+                {groups && groups.map(group => (
+                    <div key={group.id} className="pointer-events-auto">
+                        <Zone
+                            group={group}
+                            isSelected={false} // Zones selection separate from cards for now? Or maybe just visual?
+                        />
+                    </div>
+                ))}
+
+                {/* Cards Layer with viewport culling from beta */}
+                {visibleCards.map(card => {
+                    const Component = card.type === 'note' ? StickyNote : Card;
+                    return (
+                        <ErrorBoundary key={card.id} level="card">
+                            <Component
+                                data={card}
+                                isSelected={Array.isArray(selectedIds) && selectedIds.indexOf(card.id) !== -1}
+                                isTarget={targetCardIds.has(card.id)}
+                                onSelect={handleCardSelect}
+                                onMove={(id, x, y, withConnections) => handleCardMove(id, x, y, withConnections)}
+                                onDelete={() => deleteCard(card.id)}
+                                onUpdate={updateCardFull}
+                                onDragEnd={(id, x, y, withConnections) => handleCardMoveEnd(id, x, y, withConnections)}
+                                onConnect={() => handleConnect(card.id)}
+                                onExpand={() => setExpandedCardId(card.id)}
+                                isConnecting={isConnecting}
+                                isConnectionStart={connectionStartId === card.id}
+                                onCreateNote={onCreateNote}
+                                onCardFullScreen={props.onCardFullScreen ? () => props.onCardFullScreen(card.id) : undefined}
+                                onPromptDrop={props.onCardPromptDrop}
+                                onCustomSprout={onCustomSprout}
+                                onSummarize={handleSingleSummary} // Pass the single summary handler
+                            />
+                        </ErrorBoundary>
+                    );
+                })}
+            </div>
 
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}
             <div className="absolute bottom-20 sm:bottom-4 left-4 flex items-center gap-2 pointer-events-none select-none">

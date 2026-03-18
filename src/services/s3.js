@@ -1,3 +1,6 @@
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import imageCompression from 'browser-image-compression';
+
 const S3_CONFIG_KEY = 'mixboard_s3_config';
 
 export const getS3Config = () => {
@@ -71,7 +74,6 @@ const compressImage = async (file) => {
     };
 
     try {
-        const { default: imageCompression } = await import('browser-image-compression');
         console.log(`[Compression] Starting compression for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
         const compressedBlob = await imageCompression(file, options);
 
@@ -118,7 +120,6 @@ export const uploadImageToS3 = async (file, folder = 'uploads') => {
         throw new Error("Invalid S3 configuration");
     }
 
-    const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
     const client = new S3Client({
         region: region || "auto",
         endpoint: endpoint, // Optional for AWS, required for R2/OBS/MinIO

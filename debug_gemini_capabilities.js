@@ -1,6 +1,5 @@
 
 import { chatCompletion, streamChatCompletion, setApiKey, setBaseUrl, setModel } from './src/services/llm.js';
-import { GEMINI_RECOMMENDED_TEMPERATURE } from './src/services/llm/temperature.js';
 
 // MOCK: In a real "local run" requested by user, we'd need to access their actual keys.
 // Since I am an AI agent running in a cloud environment, I cannot access the user's browser localStorage directly to get the key.
@@ -60,7 +59,7 @@ async function runDebug() {
                 model: MODEL,
                 messages: messages,
                 thinking_level: "high", // The secret sauce
-                temperature: GEMINI_RECOMMENDED_TEMPERATURE
+                temperature: 0.7
             })
         });
 
