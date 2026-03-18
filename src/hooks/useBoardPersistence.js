@@ -7,7 +7,7 @@ import {
 } from '../services/customInstructionsService';
 
 const LOCAL_SAVE_DELAY_MS = 1000;
-const CLOUD_SAVE_DELAY_MS = 8000;
+const CLOUD_SAVE_DELAY_MS = 30000;
 const VIEWPORT_SAVE_DELAY_MS = 220;
 const VIEWPORT_MOVE_THRESHOLD = 24;
 const VIEWPORT_SCALE_THRESHOLD = 0.015;
@@ -275,36 +275,7 @@ export function useBoardPersistence({
     }, [boardId, clearContentSaveTimers]);
 
     useEffect(() => {
-        const handleEmergencySave = () => {
-            const tracker = trackerRef.current;
-            // 只有当存在有效更改且处于尚未保存状态时才执行抢救
-            if (boardId && tracker.isPrimed && tracker.revision > tracker.savedRevision && !isBoardLoadingRef.current) {
-                clearContentSaveTimers();
-                
-                // 本地同步执行
-                void performSave(latestBoardDataRef.current, {
-                    isUnmount: true, // 使用 isUnmount 标志区分
-                    revision: tracker.revision
-                });
-                
-                // 云端触发（不等待完成）
-                if (user) {
-                    saveBoardToCloud(user.uid, boardId, buildBoardPayload(latestBoardDataRef.current)).catch(e => {
-                        console.error('Emergency cloud save failed', e);
-                    });
-                }
-            }
-        };
-
-        window.addEventListener('pagehide', handleEmergencySave);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                handleEmergencySave();
-            }
-        });
-
         return () => {
-            window.removeEventListener('pagehide', handleEmergencySave);
             clearContentSaveTimers();
             if (viewportSaveTimerRef.current) {
                 clearTimeout(viewportSaveTimerRef.current);
@@ -326,7 +297,7 @@ export function useBoardPersistence({
                 revision: tracker.revision
             });
         };
-    }, [boardId, user, clearContentSaveTimers, performSave]);
+    }, [boardId, clearContentSaveTimers, performSave]);
 
     useEffect(() => {
         if (isBoardLoading && viewportSaveTimerRef.current) {
