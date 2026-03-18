@@ -263,6 +263,7 @@ export const ko = {
         account: "계정",
         whatToCreate: "무엇을 만들고 싶으신가요?",
         start: "시작",
+        creating: "생성 중...",
         releaseToUpload: "놓아서 업로드",
         recycleBin: "휴지통",
         trashHint: "30일이 지난 삭제된 항목은 영구적으로 제거됩니다",
@@ -300,7 +301,8 @@ export const ko = {
         cards: "카드",
         navigate: "탐색",
         open: "열기",
-        inBoard: "내"
+        inBoard: "내",
+        indexingProgress: "검색 인덱스 {loaded}/{total}"
     },
     chat: {
         conversation: "대화",

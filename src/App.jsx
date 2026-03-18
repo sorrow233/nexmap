@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, lazy, useCallback } from 'react';
+import React, { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -9,8 +9,12 @@ import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
-import SearchModal, { useSearchShortcut } from './components/SearchModal';
+import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { useSearchShortcut } from './hooks/useSearchShortcut';
+import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
+import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceTrace';
+import { runtimeLog, runtimeWarn } from './utils/runtimeLogging';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -23,6 +27,7 @@ const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
 const HistoryPage = lazyWithRetry(() => import('./pages/HistoryPage'));
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
+const SearchModal = lazyWithRetry(() => import('./components/SearchModal'));
 
 
 import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
@@ -55,6 +60,7 @@ import {
     normalizeBoardTitleMeta,
     pickBoardTitleMetadata
 } from './services/boardTitle/metadata';
+import { loadBoardsSearchData } from './services/search/searchDataLoader';
 
 export default function App() {
     return (
@@ -69,12 +75,21 @@ export default function App() {
 }
 
 const SESSION_START_TIME = Date.now();
+const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
-    const { setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings } = useStore();
+    const {
+        setCards,
+        setConnections,
+        setGroups,
+        setBoardPrompts,
+        setBoardInstructionSettings,
+        setLastSavedAt,
+        setActiveBoardPersistence
+    } = useStore();
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
 
@@ -85,35 +100,122 @@ function AppContent() {
     // Search Modal State
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [allBoardsData, setAllBoardsData] = useState({});
-    const [isSearchDataLoaded, setIsSearchDataLoaded] = useState(false);
+    const [searchLoadState, setSearchLoadState] = useState({
+        isLoading: false,
+        loadedCount: 0,
+        totalCount: 0
+    });
+    const allBoardsDataRef = useRef(allBoardsData);
+    const searchLoadTokenRef = useRef(0);
+    const searchBufferedDataRef = useRef({});
+    const searchFlushTimerRef = useRef(null);
+
+    useBuildVersionRefresh();
 
     // Cmd+K shortcut for search
     useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
 
-    // Load all boards data for search (lazy load when search opens)
-    // Load all boards data for search (lazy load when search opens)
     useEffect(() => {
-        if (isSearchOpen && !isSearchDataLoaded) {
-            const loadSearchData = async () => {
-                const loadedData = {};
-                const promises = boardsList.map(async (board) => {
-                    try {
-                        const data = await loadBoardDataForSearch(board.id);
-                        if (data) {
-                            loadedData[board.id] = data;
-                        }
-                    } catch (e) {
-                        console.warn('Failed to load board data for search:', board.id);
-                    }
-                });
+        allBoardsDataRef.current = allBoardsData;
+    }, [allBoardsData]);
 
-                await Promise.all(promises);
-                setAllBoardsData(loadedData);
-                setIsSearchDataLoaded(true);
-            };
-            loadSearchData();
+    const flushSearchDataBuffer = useCallback(() => {
+        const pendingChunk = searchBufferedDataRef.current;
+        if (Object.keys(pendingChunk).length === 0) return;
+
+        searchBufferedDataRef.current = {};
+        setAllBoardsData(prev => ({ ...prev, ...pendingChunk }));
+    }, []);
+
+    const queueSearchDataChunk = useCallback((boardId, data) => {
+        searchBufferedDataRef.current[boardId] = data;
+        if (searchFlushTimerRef.current) return;
+
+        searchFlushTimerRef.current = setTimeout(() => {
+            searchFlushTimerRef.current = null;
+            flushSearchDataBuffer();
+        }, SEARCH_DATA_FLUSH_DELAY_MS);
+    }, [flushSearchDataBuffer]);
+
+    useEffect(() => {
+        return () => {
+            if (searchFlushTimerRef.current) {
+                clearTimeout(searchFlushTimerRef.current);
+                searchFlushTimerRef.current = null;
+            }
+            flushSearchDataBuffer();
+        };
+    }, [flushSearchDataBuffer]);
+
+    useEffect(() => {
+        if (!isSearchOpen) return;
+
+        const existingBoardIds = new Set(
+            boardsList
+                .filter(board => Object.prototype.hasOwnProperty.call(allBoardsDataRef.current, board.id))
+                .map(board => board.id)
+        );
+        const totalCount = boardsList.length;
+        const missingCount = boardsList.filter(board => (
+            board?.id && !existingBoardIds.has(board.id)
+        )).length;
+
+        if (missingCount === 0) {
+            setSearchLoadState({
+                isLoading: false,
+                loadedCount: existingBoardIds.size,
+                totalCount
+            });
+            return;
         }
-    }, [isSearchOpen, boardsList, isSearchDataLoaded]);
+
+        const loadToken = searchLoadTokenRef.current + 1;
+        searchLoadTokenRef.current = loadToken;
+        let loadedDelta = 0;
+
+        setSearchLoadState({
+            isLoading: true,
+            loadedCount: existingBoardIds.size,
+            totalCount
+        });
+
+        void loadBoardsSearchData({
+            boards: boardsList,
+            loadBoardData: loadBoardDataForSearch,
+            existingBoardIds,
+            shouldCancel: () => searchLoadTokenRef.current !== loadToken || !isSearchOpen,
+            onBoardLoaded: (boardId, data) => {
+                if (searchLoadTokenRef.current !== loadToken || !isSearchOpen) return;
+                loadedDelta += 1;
+                queueSearchDataChunk(boardId, data);
+                setSearchLoadState({
+                    isLoading: true,
+                    loadedCount: existingBoardIds.size + loadedDelta,
+                    totalCount
+                });
+            }
+        }).finally(() => {
+            if (searchLoadTokenRef.current !== loadToken || !isSearchOpen) return;
+
+            flushSearchDataBuffer();
+            setSearchLoadState({
+                isLoading: false,
+                loadedCount: existingBoardIds.size + loadedDelta,
+                totalCount
+            });
+        });
+
+        return () => {
+            if (searchLoadTokenRef.current === loadToken) {
+                searchLoadTokenRef.current += 1;
+            }
+            if (searchFlushTimerRef.current) {
+                clearTimeout(searchFlushTimerRef.current);
+                searchFlushTimerRef.current = null;
+            }
+            flushSearchDataBuffer();
+        };
+    }, [isSearchOpen, boardsList, queueSearchDataChunk, flushSearchDataBuffer]);
 
     const showDialog = (title, message, type = 'info', onConfirm = () => { }) => {
         setDialog({ isOpen: true, title, message, type, onConfirm });
@@ -122,7 +224,7 @@ function AppContent() {
     // Board Management Handlers
     const handleLogin = useCallback(async () => {
         try {
-            console.log('[Auth] handleLogin initiated');
+            runtimeLog('[Auth] handleLogin initiated');
             await signInWithPopup(auth, googleProvider);
         }
         catch (e) {
@@ -133,13 +235,13 @@ function AppContent() {
 
     const handleLogout = useCallback((intent = 'manual') => {
         console.group('[Logout Trace]');
-        console.log(`[Logout] handleLogout called with intent: ${intent}`);
+        runtimeLog(`[Logout] handleLogout called with intent: ${intent}`);
         console.trace('[Logout] Caller detail:');
 
         // SAFETY LOCK: Block any automatic logout in first 15 seconds unless manual
         const timeSinceLoad = (Date.now() - SESSION_START_TIME) / 1000;
         if (timeSinceLoad < 15 && intent !== 'manual_user_click') {
-            console.warn(`[Logout] ABORTED: Session too fresh (${timeSinceLoad.toFixed(1)}s) and intent is ${intent}`);
+            runtimeWarn(`[Logout] ABORTED: Session too fresh (${timeSinceLoad.toFixed(1)}s) and intent is ${intent}`);
             console.groupEnd();
             return;
         }
@@ -151,14 +253,14 @@ function AppContent() {
     const performActualLogout = useCallback(async () => {
         try {
             const timeSinceLoad = (Date.now() - SESSION_START_TIME) / 1000;
-            console.log(`[Logout] performActualLogout verified at ${timeSinceLoad.toFixed(1)}s`);
+            runtimeLog(`[Logout] performActualLogout verified at ${timeSinceLoad.toFixed(1)}s`);
 
             // Double check: if user just logged in, this is likely a misclick/bug
             if (user && timeSinceLoad < 30) {
-                console.warn('[Logout] DANGER: User is logged in and session is very fresh. Proceeding with caution...');
+                runtimeWarn('[Logout] DANGER: User is logged in and session is very fresh. Proceeding with caution...');
             }
 
-            console.log('[Logout] User confirmed logout, initiating cleanup...');
+            runtimeLog('[Logout] User confirmed logout, initiating cleanup...');
             const { clearAllUserData } = await import('./services/clearAllUserData');
             await clearAllUserData();
             await signOut(auth);
@@ -214,15 +316,20 @@ function AppContent() {
                 setGroups([]);
                 setBoardPrompts([]);
                 setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
+                setActiveBoardPersistence({ updatedAt: 0, syncVersion: 0, clientRevision: 0, dirty: false });
 
                 try {
                     // 2. Load new data
                     const data = await loadBoard(currentBoardId);
+                    logPersistenceTrace('app:load-board-finished', {
+                        boardId: currentBoardId,
+                        cursor: buildBoardCursorTrace(data)
+                    });
 
                     // CRITICAL: Check if user has navigated away during load
                     // If so, discard this result to prevent data bleed-over
                     if (isCancelled) {
-                        console.log(`[Board] Load cancelled: user navigated away from ${currentBoardId}`);
+                        runtimeLog(`[Board] Load cancelled: user navigated away from ${currentBoardId}`);
                         return;
                     }
 
@@ -235,6 +342,13 @@ function AppContent() {
                     );
                     setBoardInstructionSettings(boardInstructionSettings);
                     saveBoardInstructionSettingsCache(currentBoardId, boardInstructionSettings);
+                    setLastSavedAt(data.updatedAt || 0);
+                    setActiveBoardPersistence({
+                        updatedAt: data.updatedAt || 0,
+                        syncVersion: data.syncVersion || 0,
+                        clientRevision: data.clientRevision || 0,
+                        dirty: false
+                    });
                     storageSetCurrentBoardId(currentBoardId);
 
                     // 3. Restore viewport state
@@ -256,7 +370,7 @@ function AppContent() {
         return () => {
             isCancelled = true;
         };
-    }, [currentBoardId, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings]); // Rely on currentBoardId changing
+    }, [currentBoardId, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings, setLastSavedAt, setActiveBoardPersistence]); // Rely on currentBoardId changing
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
@@ -298,7 +412,14 @@ function AppContent() {
     const handleBackToGallery = useCallback(async () => {
         if (currentBoardId && !isBoardLoading) {
             // Save handled by Autosave in BoardPage mostly
-            const { cards, connections, groups, boardPrompts, boardInstructionSettings } = useStore.getState();
+            const {
+                cards,
+                connections,
+                groups,
+                boardPrompts,
+                boardInstructionSettings,
+                activeBoardPersistence
+            } = useStore.getState();
             await saveBoard(currentBoardId, {
                 cards,
                 connections,
@@ -306,10 +427,11 @@ function AppContent() {
                 boardPrompts,
                 boardInstructionSettings: normalizeBoardInstructionSettings(
                     boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-                )
+                ),
+                clientRevision: activeBoardPersistence?.clientRevision || 0
             });
         } else if (currentBoardId && isBoardLoading) {
-            console.warn(`[Board] Skip save while loading board ${currentBoardId} to avoid overwriting with transient state`);
+            runtimeWarn(`[Board] Skip save while loading board ${currentBoardId} to avoid overwriting with transient state`);
         }
 
         // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
@@ -439,12 +561,17 @@ function AppContent() {
             />
 
             {/* Global Search Modal */}
-            <SearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                boardsList={boardsList}
-                allBoardsData={allBoardsData}
-            />
+            {isSearchOpen && (
+                <Suspense fallback={null}>
+                    <SearchModal
+                        isOpen={isSearchOpen}
+                        onClose={() => setIsSearchOpen(false)}
+                        boardsList={boardsList}
+                        allBoardsData={allBoardsData}
+                        searchLoadState={searchLoadState}
+                    />
+                </Suspense>
+            )}
 
             {/* Logout Confirmation Dialog */}
             <ModernDialog
@@ -455,6 +582,8 @@ function AppContent() {
                 message="Are you sure you want to sign out? This will clear all local data for security. Ensure your boards are synced to the cloud."
                 type="confirm"
             />
+
+            <IPadInstallPrompt />
         </>
     );
 }

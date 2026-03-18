@@ -73,7 +73,11 @@ export function useNeuralNotepad() {
                 const latestState = useStore.getState();
                 saveBoard(currentBoardId, {
                     cards: latestState.cards,
-                    connections: latestState.connections
+                    connections: latestState.connections,
+                    groups: latestState.groups,
+                    boardPrompts: latestState.boardPrompts,
+                    boardInstructionSettings: latestState.boardInstructionSettings,
+                    clientRevision: latestState.activeBoardPersistence?.clientRevision || 0
                 });
             }, 50);
         }
@@ -114,7 +118,11 @@ export function useNeuralNotepad() {
                 const latestState = useStore.getState();
                 saveBoard(currentBoardId, {
                     cards: latestState.cards,
-                    connections: latestState.connections
+                    connections: latestState.connections,
+                    groups: latestState.groups,
+                    boardPrompts: latestState.boardPrompts,
+                    boardInstructionSettings: latestState.boardInstructionSettings,
+                    clientRevision: latestState.activeBoardPersistence?.clientRevision || 0
                 });
             }, 50);
         }

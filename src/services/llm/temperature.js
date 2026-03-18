@@ -1,0 +1,1 @@
+export const GEMINI_RECOMMENDED_TEMPERATURE = 1.0;

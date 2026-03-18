@@ -1,9 +1,34 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const packageJson = JSON.parse(
+    readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+);
+const buildTimestamp = new Date().toISOString();
+
+function buildVersionManifestPlugin() {
+    return {
+        name: 'build-version-manifest',
+        generateBundle() {
+            this.emitFile({
+                type: 'asset',
+                fileName: 'version.json',
+                source: JSON.stringify({
+                    version: packageJson.version,
+                    builtAt: buildTimestamp
+                }, null, 2)
+            });
+        }
+    };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    define: {
+        __APP_BUILD_TIMESTAMP__: JSON.stringify(buildTimestamp)
+    },
+    plugins: [react(), buildVersionManifestPlugin()],
     build: {
         chunkSizeWarningLimit: 1000,
         cssCodeSplit: true,

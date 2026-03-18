@@ -96,6 +96,7 @@ export const app = {
         account: "Account",
         whatToCreate: "What would you like to create?",
         start: "Start",
+        creating: "Creating...",
         releaseToUpload: "Release to upload",
         recycleBin: "Recycle Bin",
         trashHint: "Items deleted longer than 30 days are removed forever",
@@ -113,7 +114,8 @@ export const app = {
         cards: "cards",
         navigate: "Navigate",
         open: "Open",
-        inBoard: "in"
+        inBoard: "in",
+        indexingProgress: "Search index {loaded}/{total}"
     },
     chat: {
         conversation: "Conversation",
@@ -167,6 +169,107 @@ export const app = {
         share: "Share",
         source: "Source",
         goToBoard: "Go to Board"
+    },
+    shareExport: {
+        title: "Export Answer",
+        subtitle: "High-resolution rendering is fixed by default. Downloads prefer WebP, and clipboard copy auto-selects a compatible format.",
+        previewLabel: "Final Preview",
+        livePreview: "Final Preview",
+        previewHint: "What you see here is what gets exported.",
+        calculating: "Calculating preview size...",
+        controlTitle: "Export Options",
+        controlSubtitle: "Style, canvas, and branding can all be adjusted directly, while export still prioritizes clarity and reliability.",
+        themeTitle: "Style",
+        themeSubtitle: "Only the most useful styles remain.",
+        themes: {
+            modern: {
+                title: "Clean",
+                description: "Bright and neutral for most answers."
+            },
+            editorial: {
+                title: "Editorial",
+                description: "Feels more like a polished article page."
+            },
+            zen: {
+                title: "Zen",
+                description: "Softer spacing with calmer contrast."
+            },
+            night: {
+                title: "Night",
+                description: "Dark presentation for high-contrast sharing."
+            }
+        },
+        themeSections: {
+            featured: "Featured",
+            reading: "Reading",
+            atmosphere: "Atmosphere",
+            expressive: "Expressive"
+        },
+        layoutTitle: "Canvas",
+        layoutSubtitle: "Pick the frame that matches how you want to share it.",
+        layouts: {
+            card: {
+                title: "Adaptive",
+                description: "Best for answers and longer excerpts."
+            },
+            social: {
+                title: "Square",
+                description: "Better for social reposting."
+            },
+            slide: {
+                title: "Wide",
+                description: "Better for landscape presentations."
+            }
+        },
+        exportTitle: "Sharpness",
+        exportSubtitle: "HD is the default. Extra-long content auto-scales down before export fails.",
+        resolutions: {
+            hd: {
+                title: "HD",
+                description: "Best balance between detail and speed."
+            },
+            print: {
+                title: "Ultra",
+                description: "Pushes detail higher, but still auto-downgrades when needed."
+            }
+        },
+        formatHintTitle: "Format",
+        formatHintSubtitle: "Download and clipboard use different formats on purpose.",
+        formatHintBody: "Downloads use WebP. Clipboard copy tries WebP first and automatically falls back to PNG when needed.",
+        formats: {
+            png: {
+                description: "Best compatibility for original-quality saves.",
+                meta: "LOSSLESS"
+            },
+            webp: {
+                description: "Smaller file size for web sharing.",
+                meta: "SMALLER"
+            }
+        },
+        brandingTitle: "Branding",
+        brandingSubtitle: "Turn it on only when you want attribution.",
+        brandingToggle: "Add NexMap mark",
+        brandingHint: "Adds the product mark to the footer of the export.",
+        safeHint: "Rendering stays pinned to high resolution by default. Larger files are preferred over softer output.",
+        qualityPinnedHint: "Downloads stay on WebP first, while clipboard copy automatically matches the best format the browser supports.",
+        download: "Save WebP",
+        downloadDisabled: "No content to export",
+        downloading: "Rendering WebP...",
+        downloadSuccess: "The WebP download has started.",
+        copy: "Copy Image",
+        copyNoContent: "No content to copy",
+        copying: "Copying image...",
+        copyDisabled: "Image copy is unavailable here",
+        copySuccess: "The image was copied to the clipboard.",
+        copyFallbackHint: "This browser can't copy WebP, so PNG was used automatically.",
+        emptyTitle: "Nothing to export",
+        emptyDescription: "This export did not receive any answer text. Close the panel and try opening it again.",
+        emptyContent: "There is no text content to export right now.",
+        copyUnsupported: "This browser cannot copy images directly. Please download instead.",
+        copyError: "Copy failed. Please try again.",
+        exportError: "Export failed. Please try again.",
+        webpUnsupported: "This browser did not successfully generate a WebP image. Please try another browser.",
+        autoScaleApplied: "The content was long, so the export scale was reduced automatically to keep the export stable."
     },
     notesCenter: {
         title: "Notes Center",

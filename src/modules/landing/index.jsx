@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import VisualHero from './components/VisualHero';
 import TopNav from './components/TopNav';
 import SEO from '../../components/SEO';
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
 
 // Lazy Load Heavy Sections
-const FeatureBento = React.lazy(() => import('./components/FeatureBento'));
-const ConcurrencySection = React.lazy(() => import('./components/ConcurrencySection'));
-const SpatialSection = React.lazy(() => import('./components/SpatialSection'));
-const DemoInfinite = React.lazy(() => import('./components/DemoInfinite'));
-const SproutSection = React.lazy(() => import('./components/SproutSection'));
-const GraphSection = React.lazy(() => import('./components/GraphSection'));
-const FooterSection = React.lazy(() => import('./components/FooterSection'));
+const FeatureBento = lazyWithRetry(() => import('./components/FeatureBento'));
+const ConcurrencySection = lazyWithRetry(() => import('./components/ConcurrencySection'));
+const SpatialSection = lazyWithRetry(() => import('./components/SpatialSection'));
+const DemoInfinite = lazyWithRetry(() => import('./components/DemoInfinite'));
+const SproutSection = lazyWithRetry(() => import('./components/SproutSection'));
+const GraphSection = lazyWithRetry(() => import('./components/GraphSection'));
+const FooterSection = lazyWithRetry(() => import('./components/FooterSection'));
 
 
 

@@ -6,8 +6,19 @@ import BoardDropZone from './BoardDropZone';
 import BoardCard from './BoardCard';
 import { useStore } from '../store/useStore';
 import { useLanguage } from '../contexts/LanguageContext';
+import MobileGalleryHero from './gallery/mobile/MobileGalleryHero';
 
-export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onDeleteBoard, onRestoreBoard, onPermanentlyDeleteBoard, onUpdateBoardMetadata, isTrashView = false }) {
+export default function BoardGallery({
+    boards,
+    onSelectBoard,
+    onCreateBoard,
+    onDeleteBoard,
+    onRestoreBoard,
+    onPermanentlyDeleteBoard,
+    onUpdateBoardMetadata,
+    isTrashView = false,
+    isIPhoneGalleryMode = false
+}) {
     const { generatingBoardId, generateBoardImage } = useBoardBackground();
     const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, boardId: null, isPermanent: false });
     // NOTE: freeUserDialog removed - free users now have 20 images/week quota
@@ -47,21 +58,28 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
         <div className="min-h-full animate-fade-in custom-scrollbar pb-40">
             {/* Hero Section & Greeting */}
             {!isTrashView && (
-                <div className="relative pt-2 pb-8 px-2 max-w-[1800px] mx-auto">
-                    <div className="flex flex-col md:flex-row items-end md:items-center justify-between mb-8 animate-fade-in-up">
-                        <div>
-                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-slate-900 dark:text-white font-inter-tight">
-                                {greeting === 'morning' ? t.gallery.greetingMorning : greeting === 'afternoon' ? t.gallery.greetingAfternoon : t.gallery.greetingEvening}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">{t.gallery.creator}.</span>
-                            </h1>
-                            <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">
-                                {t.gallery.readyToCreate}
-                            </p>
+                isIPhoneGalleryMode ? (
+                    <MobileGalleryHero
+                        greetingTitle={`${greeting === 'morning' ? t.gallery.greetingMorning : greeting === 'afternoon' ? t.gallery.greetingAfternoon : t.gallery.greetingEvening}，${t.gallery.creator}`}
+                        readyText={t.gallery.readyToCreate}
+                        onCreateBoard={onCreateBoard}
+                    />
+                ) : (
+                    <div className="relative pt-2 pb-8 px-2 max-w-[1800px] mx-auto">
+                        <div className="flex flex-col md:flex-row items-end md:items-center justify-between mb-8 animate-fade-in-up">
+                            <div>
+                                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter mb-2 text-slate-900 dark:text-white font-inter-tight">
+                                    {greeting === 'morning' ? t.gallery.greetingMorning : greeting === 'afternoon' ? t.gallery.greetingAfternoon : t.gallery.greetingEvening}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">{t.gallery.creator}.</span>
+                                </h1>
+                                <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                                    {t.gallery.readyToCreate}
+                                </p>
+                            </div>
                         </div>
-                        {/* DropZone is now more compact or integrated if needed, keeping as creates new board */}
-                    </div>
 
-                    <BoardDropZone onCreateBoard={onCreateBoard} />
-                </div>
+                        <BoardDropZone onCreateBoard={onCreateBoard} />
+                    </div>
+                )
             )}
 
             {/* Trash View Header */}
@@ -78,7 +96,7 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
             )}
 
             {/* Content Container */}
-            <div className="max-w-[1800px] mx-auto px-1 md:px-2 space-y-12">
+            <div className={`max-w-[1800px] mx-auto px-1 md:px-2 ${isIPhoneGalleryMode ? 'space-y-8' : 'space-y-12'}`}>
 
                 {/* Recently Visited - Horizontal Carousel */}
                 {!isTrashView && recentBoards.length > 0 && (
@@ -89,9 +107,9 @@ export default function BoardGallery({ boards, onSelectBoard, onCreateBoard, onD
                         </div>
 
                         <div className="relative group/carousel">
-                            <div className="flex overflow-x-auto gap-4 pb-4 pt-2 px-1 custom-scrollbar snap-x snap-mandatory mask-gradient-right">
+                            <div className={`flex overflow-x-auto gap-4 pb-4 pt-2 px-1 custom-scrollbar snap-x snap-mandatory ${isIPhoneGalleryMode ? '' : 'mask-gradient-right'}`}>
                                 {recentBoards.map((board, index) => (
-                                    <div key={`recent-${board.id}`} className="snap-start shrink-0 w-[240px] md:w-[280px]">
+                                    <div key={`recent-${board.id}`} className={`snap-start shrink-0 ${isIPhoneGalleryMode ? 'w-[248px]' : 'w-[240px] md:w-[280px]'}`}>
                                         <BoardCard
                                             board={board}
                                             index={index}

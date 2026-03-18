@@ -18,6 +18,7 @@ export function useCardCreator() {
         scale,
         selectedIds
     } = useStore();
+    const selectedIdSet = new Set(selectedIds);
 
     const { handleExpandTopics, handleSprout } = useAISprouting();
     const { _generateAICard, handleBatchChat } = useCardGeneration();
@@ -88,7 +89,7 @@ export function useCardCreator() {
 
         // 3. Context Construction - Include actual card content for better AI understanding
         let contextPrefix = "";
-        const contextCards = cards.filter(c => selectedIds.indexOf(c.id) !== -1);
+        const contextCards = cards.filter(c => selectedIdSet.has(c.id));
         if (contextCards.length > 0) {
             contextPrefix = contextCards.map(c => {
                 // Build context from card's conversation history

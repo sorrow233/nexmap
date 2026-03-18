@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { Star, RefreshCw, Trash2, Sprout, BoxSelect, AlertCircle } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
@@ -8,16 +8,21 @@ import StatusBar from '../components/StatusBar';
 import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
 import BoardInstructionPanel from '../components/board/BoardInstructionPanel';
+import MobileBoardComposer from '../components/board/mobile/MobileBoardComposer';
+import MobileBoardShell from '../components/board/mobile/MobileBoardShell';
 import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
 import { useStore } from '../store/useStore';
 import { useTabLock } from '../hooks/useTabLock';
 import { useBoardSync } from '../hooks/useBoardSync';
 import { useParams } from 'react-router-dom';
+import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
+import { runtimeLog } from '../utils/runtimeLogging';
 
-const NotePage = lazy(() => import('./NotePage'));
-const ChatModal = lazy(() => import('../components/ChatModal'));
-const SettingsModal = lazy(() => import('../components/SettingsModal'));
+const NotePage = lazyWithRetry(() => import('./NotePage'));
+const ChatModal = lazyWithRetry(() => import('../components/ChatModal'));
+const SettingsModal = lazyWithRetry(() => import('../components/SettingsModal'));
 
 import { useBoardLogic } from '../hooks/useBoardLogic';
 
@@ -27,6 +32,7 @@ const AUTO_SUMMARY_TRIGGERED_BOARDS = new Set();
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
+    const isIPhoneBoardMode = useIPhoneBoardMode();
 
     // 监听单画板云端同步（每个标签页只监听自己的画板）
     useBoardSync(boardId, isReadOnly);
@@ -65,6 +71,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         setGlobalImages,
         setQuickPrompt,
         setExpandedCardId,
+        setSelectedIds,
         setTempInstructions,
         setIsInstructionPanelOpen,
         navigate,
@@ -150,7 +157,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         // 1. Text Summary (Cards > 3)
         // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
         if (activeCardCount > 3 && !hasSummaryTriggered && !currentBoard?.summary && !currentBoard?.backgroundImage) {
-            console.log(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
+            runtimeLog(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
             generateBoardSummary(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
             });
@@ -161,7 +168,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         // 2. Visual Background (Cards > 10)
         // Trigger if: Enough cards, not generated this session, and no existing image
         if (activeCardCount > 10 && !hasImageTriggered && !currentBoard?.backgroundImage) {
-            console.log(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
+            runtimeLog(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
             generateBoardImage(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
             });
@@ -170,11 +177,27 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         }
     }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
 
+    useEffect(() => {
+        if (!isIPhoneBoardMode) return;
+        if (selectedIds.length === 0) return;
+        setSelectedIds([]);
+    }, [isIPhoneBoardMode, selectedIds.length, setSelectedIds]);
+
+    const handleMobileOpenCard = React.useCallback((cardId) => {
+        const targetCard = cards.find(card => card.id === cardId && !card.deletedAt);
+        if (!targetCard) return;
+
+        if (targetCard.type === 'note') {
+            handleFullScreen(cardId);
+            return;
+        }
+
+        setExpandedCardId(cardId);
+    }, [cards, handleFullScreen, setExpandedCardId]);
 
 
     return (
-        <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative">
-            <Sidebar className="absolute left-4 top-24 z-40" />
+        <div className={`${isIPhoneBoardMode ? 'h-screen-safe' : 'h-screen'} w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative`}>
 
             <div className="absolute inset-0 h-full overflow-hidden">
                 {isReadOnly && (
@@ -192,19 +215,39 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     </div>
                 )}
 
-                <ErrorBoundary level="canvas">
-                    <div ref={canvasContainerRef} className="absolute inset-0">
-                        <Canvas
-                            onCreateNote={handleCreateNote}
-                            onCreateStandaloneNote={createStandaloneNote}
-                            onCanvasDoubleClick={handleCanvasDoubleClick}
-                            onCustomSprout={handleCustomSprout}
-                            onCardFullScreen={handleFullScreen}
-                            onPromptDrop={handlePromptDropOnCanvas}
-                            onCardPromptDrop={handlePromptDropOnCard}
-                        />
-                    </div>
-                </ErrorBoundary>
+                {isIPhoneBoardMode ? (
+                    <MobileBoardShell
+                        board={currentBoard}
+                        cards={cards}
+                        generatingCardIds={generatingCardIds}
+                        syncStatus={cloudSyncStatus}
+                        untitledLabel={t.gallery?.untitledBoard || 'Untitled Board'}
+                        onBack={onBack}
+                        onOpenInstructions={handleOpenInstructionPanel}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                        onOpenCard={handleMobileOpenCard}
+                        onQuickSprout={handleQuickSprout}
+                        onExpandTopics={handleExpandTopics}
+                    />
+                ) : (
+                    <>
+                        <Sidebar className="absolute left-4 top-24 z-40" />
+
+                        <ErrorBoundary level="canvas">
+                            <div ref={canvasContainerRef} className="absolute inset-0">
+                                <Canvas
+                                    onCreateNote={handleCreateNote}
+                                    onCreateStandaloneNote={createStandaloneNote}
+                                    onCanvasDoubleClick={handleCanvasDoubleClick}
+                                    onCustomSprout={handleCustomSprout}
+                                    onCardFullScreen={handleFullScreen}
+                                    onPromptDrop={handlePromptDropOnCanvas}
+                                    onCardPromptDrop={handlePromptDropOnCard}
+                                />
+                            </div>
+                        </ErrorBoundary>
+                    </>
+                )}
 
                 {noteId && (
                     <div className="fixed inset-0 z-[200]">
@@ -214,31 +257,35 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     </div>
                 )}
 
-                {/* Quick Prompt Modal */}
-                <QuickPromptModal
-                    isOpen={quickPrompt.isOpen}
-                    onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
-                    onSubmit={handleQuickPromptSubmit}
-                    initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
-                />
+                {!isIPhoneBoardMode && (
+                    <>
+                        {/* Quick Prompt Modal */}
+                        <QuickPromptModal
+                            isOpen={quickPrompt.isOpen}
+                            onClose={() => setQuickPrompt(prev => ({ ...prev, isOpen: false }))}
+                            onSubmit={handleQuickPromptSubmit}
+                            initialPosition={{ x: quickPrompt.x, y: quickPrompt.y }}
+                        />
 
-                {/* Custom Sprout Modal */}
-                <QuickPromptModal
-                    isOpen={customSproutPrompt.isOpen}
-                    onClose={() => setCustomSproutPrompt(prev => ({ ...prev, isOpen: false }))}
-                    onSubmit={handleCustomSproutSubmit}
-                    initialPosition={{ x: customSproutPrompt.x, y: customSproutPrompt.y }}
-                    placeholder="Tell AI how to generate cards from this..."
-                />
+                        {/* Custom Sprout Modal */}
+                        <QuickPromptModal
+                            isOpen={customSproutPrompt.isOpen}
+                            onClose={() => setCustomSproutPrompt(prev => ({ ...prev, isOpen: false }))}
+                            onSubmit={handleCustomSproutSubmit}
+                            initialPosition={{ x: customSproutPrompt.x, y: customSproutPrompt.y }}
+                            placeholder="Tell AI how to generate cards from this..."
+                        />
 
-                {/* Top Bar */}
-                <BoardTopBar
-                    onBack={onBack}
-                    board={currentBoard}
-                    onUpdateTitle={onUpdateBoardTitle}
-                    onOpenInstructions={handleOpenInstructionPanel}
-                    instructionPanelSummary={instructionPanelSummary}
-                />
+                        {/* Top Bar */}
+                        <BoardTopBar
+                            onBack={onBack}
+                            board={currentBoard}
+                            onUpdateTitle={onUpdateBoardTitle}
+                            onOpenInstructions={handleOpenInstructionPanel}
+                            instructionPanelSummary={instructionPanelSummary}
+                        />
+                    </>
+                )}
 
                 <BoardInstructionPanel
                     isOpen={isInstructionPanelOpen}
@@ -253,25 +300,37 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     conversationCount={conversationCount}
                 />
 
-                <ChatBar
-                    selectedIds={selectedIds}
-                    generatingCardIds={generatingCardIds}
-                    isAgentRunning={isAgentRunning}
-                    onSubmit={handleChatSubmitWithInstructions}
-                    onAgentSubmit={handleAgentSubmit}
-                    onBatchChat={handleBatchChat}
-                    onCreateNote={handleCreateNote}
-                    onImageUpload={handleGlobalImageUpload}
-                    globalImages={globalImages}
-                    onRemoveImage={removeGlobalImage}
-                    onClearImages={() => setGlobalImages([])}
-                    onPromptDrop={handlePromptDropOnChat}
-                    instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
-                    onClearInstructions={() => setTempInstructions([])}
-                    isReadOnly={isReadOnly}
-                />
+                {isIPhoneBoardMode ? (
+                    <MobileBoardComposer
+                        onSubmit={handleChatSubmitWithInstructions}
+                        onCreateNote={() => createStandaloneNote('')}
+                        onImageUpload={handleGlobalImageUpload}
+                        globalImages={globalImages}
+                        onRemoveImage={removeGlobalImage}
+                        onClearImages={() => setGlobalImages([])}
+                        isReadOnly={isReadOnly}
+                    />
+                ) : (
+                    <ChatBar
+                        selectedIds={selectedIds}
+                        generatingCardIds={generatingCardIds}
+                        isAgentRunning={isAgentRunning}
+                        onSubmit={handleChatSubmitWithInstructions}
+                        onAgentSubmit={handleAgentSubmit}
+                        onBatchChat={handleBatchChat}
+                        onCreateNote={handleCreateNote}
+                        onImageUpload={handleGlobalImageUpload}
+                        globalImages={globalImages}
+                        onRemoveImage={removeGlobalImage}
+                        onClearImages={() => setGlobalImages([])}
+                        onPromptDrop={handlePromptDropOnChat}
+                        instructions={[...globalPrompts, ...boardPrompts, ...tempInstructions]}
+                        onClearInstructions={() => setTempInstructions([])}
+                        isReadOnly={isReadOnly}
+                    />
+                )}
 
-                {!isReadOnly && selectedIds.length > 0 && (
+                {!isReadOnly && !isIPhoneBoardMode && selectedIds.length > 0 && (
                     <div className="fixed top-3 md:top-6 inset-x-0 mx-auto w-fit bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-cyan-100/50 dark:border-white/10 px-4 py-2 rounded-full flex items-center gap-3 z-50 animate-slide-up shadow-[0_8px_32px_rgba(6,182,212,0.15)] ring-1 ring-cyan-200/20 dark:ring-white/5">
                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">
                             {t.toolbar?.itemsSelected ? t.toolbar.itemsSelected.replace('{count}', selectedIds.length) : `${selectedIds.length} ITEMS`}
@@ -340,21 +399,24 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                     </Suspense>
                 )}
 
-                {/* Status Bar */}
-                <StatusBar
-                    boardName={boardsList.find(b => b.id === currentBoardId)?.name}
-                    syncStatus={cloudSyncStatus}
-                    onOpenSettings={() => setIsSettingsOpen(true)}
-                />
+                {!isIPhoneBoardMode && (
+                    <StatusBar
+                        boardName={boardsList.find(b => b.id === currentBoardId)?.name}
+                        syncStatus={cloudSyncStatus}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                    />
+                )}
 
                 {/* Settings Modal */}
-                <Suspense fallback={null}>
-                    <SettingsModal
-                        isOpen={isSettingsOpen}
-                        onClose={() => setIsSettingsOpen(false)}
-                        user={user}
-                    />
-                </Suspense>
+                {isSettingsOpen && (
+                    <Suspense fallback={null}>
+                        <SettingsModal
+                            isOpen={isSettingsOpen}
+                            onClose={() => setIsSettingsOpen(false)}
+                            user={user}
+                        />
+                    </Suspense>
+                )}
             </div>
         </div>
     );

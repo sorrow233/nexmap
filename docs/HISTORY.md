@@ -1,61 +1,55 @@
-# 项目演进历史 (Git History)
+# 项目演进历史
 
-> 以下是从 git 历史中提取的重要功能和修复记录，帮助理解项目发展方向。
+本文档不追求完整提交列表，而是记录最近几个月真正影响架构与产品心智的变化。
 
-## 1. 最近重点工作 (2025年12月)
+文档整理时间：`2026-03-13`
 
-### 🎁 系统额度功能
-- `feat(system-credits)`: 新用户免费试用积分系统
-- `fix(credits)`: 改进加载超时和错误处理
-- 为无 API Key 用户提供 100 积分 ($1 等值) 免费额度
+## 1. 2026-03：Gemini 稳定性与白板性能双线重构
 
-### 🔐 安全修复
-- `fix(security)`: 修复登出后数据未清理的安全隐患
-- 实现 `clearAllUserData.js` 全面清理 localStorage, IndexedDB, Redux Store
+### Gemini 链路
 
-### 🤖 多 Provider 支持
-- `feat: implement multi-provider support with per-provider roles`
-- 支持 Gemini 和 OpenAI Compatible 协议
-- 每个 Provider 可配置不同角色模型 (chat/analysis/image)
+- 修复官方 Gemini 3.1 Preview 在长思考场景下的流式空白、错误降级与代理污染问题
+- 区分“官方直连”与“GMI 代理”两条链路的默认策略
+- 恢复官方直连 Provider 的默认搜索工具能力，同时避免把代理侧高负载问题重新放大
+- 强化 `429 / 503 / 524 / 401 / 403` 等错误分类、重试与冷却等待
 
-### ⚡ AI 响应流畅度
-- `feat: implement smooth character-dripping effect for AI streaming`
-- `feat: improve AI response fluidity with flash speed and gray tail effect`
-- 20ms 节流批量更新优化
+### 白板性能
 
-### 🔧 Gemini 工具配置
-- `fix(gemini): disable code_execution to resolve tool conflict`
-- `fix(gemini): remove invalid url_context tool`
-- 优先使用 google_search 进行信息检索
+- 引入可视索引、连接裁剪与局部位置更新，降低大画板的渲染成本
+- 优化画板保存与搜索加载性能，避免一次性加载全部板内容
+- 修复空白画板/首帧加载阶段的持久化误判
+- 降低 iPad Safari 高频交互时的重渲染成本
 
-## 2. 关键架构变更
+## 2. 2026-02：同步层与 AI 编排的现代化改造
 
-| 提交 | 变更 |
-|------|------|
-| `7b2b2ca` | 重构: 统一拖拽逻辑，模块化 'God files' |
-| `c5a76fd` | 重建 debugLogger，支持环境感知彩色日志 |
-| `3d50e52` | 修复: 重构分区锁定逻辑为基于连接而非位置 |
-| `6f43e7e` | 文档: 添加 ARCHITECTURE.md |
+### 同步层
 
-## 3. 已解决的重要 Bug
+- 二次重写 `syncService`，补齐串行写入、快照去重、时间戳规范化、监听游标清理
+- 修复画布丢失、加载期空数组覆盖真实数据、高频卡片丢失等问题
+- 引入更明确的离线恢复与写入重试调度
 
-| 问题 | 解决方案 |
-|------|---------|
-| 登出后数据残留 | 实现全面数据清理 (`clearAllUserData.js`) |
-| 卡片拖动 NaN 错误 | 修复坐标计算逻辑 |
-| 云端同步死循环 | 使用 `createdAt` 和 `localUpdatedAt` 区分操作类型 |
-| 卡片删除后重现 | syncService 精确区分远程新增和本地删除 |
-| Provider 云同步丢失 | 修复 provider persistence 问题 |
-| 图片生成 ERR_BLOCKED | 改用本地 base64 解码 |
+### AI 调度
 
----
+- 引入全局 AI 任务队列，并把卡片级并发限制调整为 8
+- 支持流式回答期间消息排队，保证一张卡片能串行处理多轮消息
+- 重写流式输出体验、解析器和部分动画链路
+- 重做指令面板，提升画板级自定义指令能力
 
-## 更新日志
+### 产品功能
 
-| 日期 | 更新内容 |
-|------|---------|
-| 2025-12-27 | 初始版本，完整代码库扫描 |
+- 自动命名与标题来源优先级正式落地
+- 画布支持按住空格拖拽平移
+- 浏览器扩展从 MVP 迭代到更稳定的 0.3.x 系列
 
----
+## 3. 2026-01 之前累积下来的方向
 
-> 📝 **维护提示：** 当代码发生重大变更时，请同步更新此文档。
+- 项目逐步从“单画板 + 单 AI 入口”演进为“画廊 + 画板 + 设置 + 支付 + 反馈 + 扩展”的完整产品
+- Cloudflare Functions 从单一代理，扩展到额度、支付、反馈、兑换码、SEO middleware 等多条正式业务链路
+- 文档与代码一度脱节，旧文档中仍残留 Vercel、旧目录和早期状态结构，本次已按当前实现重整
+
+## 4. 近期值得回看的几个主题
+
+- `2026-02-25` 左右：同步层重构
+- `2026-02-27` 左右：AI 队列、指令面板、并发限制、Gemini 429 修复
+- `2026-03-06` 到 `2026-03-08`：官方 Gemini 3.1 直连稳定性与搜索工具恢复
+- `2026-03-13`：白板渲染、搜索加载、持久化首帧优化

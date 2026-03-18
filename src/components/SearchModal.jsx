@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, FileText, ArrowRight, Command } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -9,13 +9,17 @@ import { getBoardDisplayName } from '../services/boardTitle/metadata';
  * 支持 Cmd/Ctrl + K 快捷键触发
  * 跨画板搜索卡片内容
  */
-export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData }) {
+export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData, searchLoadState }) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef(null);
     const navigate = useNavigate();
     const { t } = useLanguage();
+    const boardMap = useMemo(
+        () => new Map(boardsList.map(board => [board.id, board])),
+        [boardsList]
+    );
 
     // Focus input when modal opens
     useEffect(() => {
@@ -39,7 +43,8 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
 
         // Search through all boards
         Object.entries(allBoardsData).forEach(([boardId, boardData]) => {
-            const board = boardsList.find(b => b.id === boardId);
+            const board = boardMap.get(boardId);
+            if (!board) return;
             const boardName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
 
             // Search cards in this board
@@ -81,7 +86,7 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
         // Limit results
         setResults(searchResults.slice(0, 10));
         setSelectedIndex(0);
-    }, [allBoardsData, boardsList, t]);
+    }, [allBoardsData, boardMap, boardsList, t]);
 
     // Get snippet around match
     const getSnippet = (content, query) => {
@@ -169,13 +174,27 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                 <div className="flex-1 sm:flex-none sm:max-h-[50vh] overflow-y-auto custom-scrollbar">
                     {results.length === 0 && query && (
                         <div className="px-4 py-8 text-center text-slate-400">
-                            {t.search.noResults}
+                            <p>{t.search.noResults}</p>
+                            {searchLoadState?.isLoading && searchLoadState.totalCount > 0 && (
+                                <p className="mt-2 text-xs text-slate-400">
+                                    {t.search.indexingProgress
+                                        .replace('{loaded}', String(searchLoadState.loadedCount))
+                                        .replace('{total}', String(searchLoadState.totalCount))}
+                                </p>
+                            )}
                         </div>
                     )}
 
                     {results.length === 0 && !query && (
                         <div className="px-4 py-8 text-center text-slate-400">
                             <p>{t.search.enterKeywords}</p>
+                            {searchLoadState?.totalCount > 0 && (
+                                <p className="mt-2 text-xs text-slate-400">
+                                    {t.search.indexingProgress
+                                        .replace('{loaded}', String(searchLoadState.loadedCount))
+                                        .replace('{total}', String(searchLoadState.totalCount))}
+                                </p>
+                            )}
                             <div className="flex items-center justify-center gap-2 mt-3 text-xs">
                                 <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 flex items-center gap-1">
                                     <Command size={12} /> K
@@ -227,26 +246,16 @@ export default function SearchModal({ isOpen, onClose, boardsList, allBoardsData
                     <div className="px-4 py-2 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-400 flex items-center gap-4">
                         <span><kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">↑↓</kbd> {t.search.navigate}</span>
                         <span><kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">Enter</kbd> {t.search.open}</span>
+                        {searchLoadState?.isLoading && searchLoadState.totalCount > 0 && (
+                            <span className="ml-auto">
+                                {t.search.indexingProgress
+                                    .replace('{loaded}', String(searchLoadState.loadedCount))
+                                    .replace('{total}', String(searchLoadState.totalCount))}
+                            </span>
+                        )}
                     </div>
                 )}
             </div>
         </div >
     );
-}
-
-/**
- * Hook for global search shortcut
- */
-export function useSearchShortcut(callback) {
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                callback();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [callback]);
 }

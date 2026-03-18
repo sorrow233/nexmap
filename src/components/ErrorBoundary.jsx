@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { isLikelyChunkLoadError, recoverFromChunkLoadError } from '../utils/chunkLoadRecovery';
 
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -13,6 +14,12 @@ export default class ErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         console.error("ErrorBoundary caught an error:", error, errorInfo);
+        if (isLikelyChunkLoadError(error)) {
+            void recoverFromChunkLoadError({
+                reason: error,
+                source: 'error-boundary'
+            });
+        }
         if (this.props.onError) {
             this.props.onError(error, errorInfo);
         }

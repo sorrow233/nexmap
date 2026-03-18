@@ -63,6 +63,12 @@ const clearAutoOfflineFlags = () => {
     localStorage.removeItem(OFFLINE_REASON_KEY);
 };
 
+const getAutoOfflineStartedAt = () => {
+    if (typeof localStorage === 'undefined') return 0;
+    const rawValue = Number(localStorage.getItem(OFFLINE_TIME_KEY) || 0);
+    return Number.isFinite(rawValue) ? rawValue : 0;
+};
+
 const updateStoreOfflineState = async (enabled) => {
     try {
         const { useStore } = await import('../store/useStore');
@@ -71,8 +77,8 @@ const updateStoreOfflineState = async (enabled) => {
             return;
         }
         useStore.getState().setOfflineMode?.(false);
-    } catch {
-        // Ignore store sync failure; localStorage is source of truth.
+    } catch (error) {
+        console.error('[SyncNetwork] Failed to update offline mode in store', error);
     }
 };
 
@@ -112,6 +118,22 @@ const scheduleNetworkRecovery = (db) => {
         recoveryTimer = null;
         void recoverFirestoreNetwork(db, 'scheduled');
     }, NETWORK_RECOVERY_DELAY_MS);
+};
+
+const resumeStartupRecovery = (db) => {
+    if (typeof window === 'undefined' || !isAutoOfflineMode() || recoveryTimer) return;
+
+    const startedAt = getAutoOfflineStartedAt();
+    const elapsed = startedAt > 0 ? Date.now() - startedAt : NETWORK_RECOVERY_DELAY_MS;
+    const remaining = Math.max(0, NETWORK_RECOVERY_DELAY_MS - elapsed);
+
+    recoveryTimer = window.setTimeout(() => {
+        recoveryTimer = null;
+        debugLog.sync('[SyncNetwork] Boot-delayed auto-offline recovery triggered');
+        void recoverFirestoreNetwork(db, 'startup.auto_offline').catch(error => {
+            console.error('[SyncNetwork] Startup auto-offline recovery failed', error);
+        });
+    }, remaining + 1000);
 };
 
 export const isLikelyNetworkError = (error) => {
@@ -159,4 +181,6 @@ export const setupFirestoreConnectivityMonitor = (db) => {
     if (!navigator.onLine) {
         handleOffline();
     }
+
+    resumeStartupRecovery(db);
 };

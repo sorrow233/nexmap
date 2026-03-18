@@ -7,12 +7,12 @@
 
 import { idbGet, idbSet } from './db/indexedDB';
 import { auth } from './firebase';
-import { updateBoardMetadataInCloud } from './storage';
+import { saveBoardToCloud } from './storage';
 import {
     getEffectiveBoardCardCount,
-    normalizeBoardMetadataList,
     normalizeBoardTitleMeta
 } from './boardTitle/metadata';
+import { persistBoardsMetadataList } from './boardPersistence/boardsListStorage';
 
 // localStorage keys to export
 const EXPORT_KEYS = [
@@ -262,10 +262,10 @@ export async function importData(data, options = { importSettings: false }) {
                         existingBoardsList.push(meta);
                     }
 
-                    // C. CRITICAL: If logged in, sync to cloud immediately to prevent overwrite
+                    // C. CRITICAL: If logged in, sync the full board to cloud immediately to prevent overwrite
                     if (user) {
                         try {
-                            await updateBoardMetadataInCloud(user.uid, board.id, meta);
+                            await saveBoardToCloud(user.uid, board.id, board.data);
                         } catch (cloudErr) {
                             console.error(`[Import] Cloud sync failed for ${board.id}`, cloudErr);
                             // We continue anyway, local storage might save it for a bit
@@ -277,7 +277,7 @@ export async function importData(data, options = { importSettings: false }) {
             }
 
             // Save updated list back to localStorage
-            localStorage.setItem('mixboard_boards_list', JSON.stringify(normalizeBoardMetadataList(existingBoardsList)));
+            persistBoardsMetadataList(existingBoardsList, { reason: 'importAllData' });
             console.log(`[Import] Restored ${boardCount} boards (Content + Metadata)`);
         }
 

@@ -141,7 +141,8 @@ export const parseCustomInstructionsFromStorageRaw = (raw) => {
             value: normalizeCustomInstructionsValue(parsed),
             lastModified: 0
         };
-    } catch {
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to parse custom instructions payload', error);
         return {
             value: normalizeCustomInstructionsValue(raw),
             lastModified: 0
@@ -215,7 +216,8 @@ const readBoardInstructionSettingsMap = () => {
     try {
         const parsed = JSON.parse(raw);
         return isObject(parsed) ? parsed : {};
-    } catch {
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to parse board instruction settings cache', error);
         return {};
     }
 };
@@ -236,7 +238,8 @@ export const loadBoardInstructionSettingsCache = (boardId) => {
 const getCurrentBoardId = () => {
     try {
         return sessionStorage.getItem(CURRENT_BOARD_ID_KEY);
-    } catch {
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to read current board id from sessionStorage', error);
         return null;
     }
 };

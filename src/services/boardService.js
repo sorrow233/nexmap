@@ -1,6 +1,7 @@
 import { idbGet, idbSet, idbDel } from './db/indexedDB';
 import { downloadImageAsBase64 } from './imageStore';
 import { debugLog } from '../utils/debugLogger';
+import { buildBoardCursorTrace, logPersistenceTrace } from '../utils/persistenceTrace';
 import { getSampleBoardData } from '../utils/sampleBoardsData';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
@@ -13,23 +14,59 @@ import {
     normalizeBoardTitleMeta,
     pickBoardTitleMetadata
 } from './boardTitle/metadata';
+import {
+    clearBoardShadowSnapshot,
+    loadMostRecentBoardShadowSnapshot,
+    pickMostRecentBoardSnapshot
+} from './boardPersistence/localBoardShadow';
+import {
+    persistBoardsMetadataList,
+    readBoardsMetadataListFromStorage
+} from './boardPersistence/boardsListStorage';
 
 const BOARD_PREFIX = 'mixboard_board_';
-const BOARDS_LIST_KEY = 'mixboard_boards_list';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 const MAX_IDB_SAVE_RETRIES = 2;
 const IDB_RETRY_DELAY_MS = 80;
 const TITLE_METADATA_KEYS = ['name', 'nameSource', 'autoTitle', 'autoTitleGeneratedAt', 'manualTitleUpdatedAt'];
+const BOARD_DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail', 'deletedAt'];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const loadLegacyBoardSnapshot = (id) => {
+    try {
+        const raw = localStorage.getItem(BOARD_PREFIX + id);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (error) {
+        debugLog.error(`Legacy localStorage load failed for board ${id}`, error);
+        return null;
+    }
+};
+
+const clearLegacyBoardSnapshot = (id) => {
+    try {
+        localStorage.removeItem(BOARD_PREFIX + id);
+    } catch {
+        // Ignore cleanup failures for best-effort legacy recovery keys.
+    }
+};
 
 const persistBoardToLegacyStorage = (id, payload) => {
     try {
         localStorage.setItem(BOARD_PREFIX + id, JSON.stringify(payload));
         debugLog.warn(`[Storage] IDB save failed, fallback to localStorage for board ${id}`);
+        logPersistenceTrace('save:legacy-fallback', {
+            boardId: id,
+            cursor: buildBoardCursorTrace(payload)
+        });
         return true;
     } catch (legacyErr) {
         debugLog.error(`[Storage] Legacy fallback save failed for board ${id}`, legacyErr);
+        logPersistenceTrace('save:legacy-fallback-failed', {
+            boardId: id,
+            error: legacyErr
+        });
         return false;
     }
 };
@@ -41,16 +78,50 @@ export const setCurrentBoardId = (id) => {
     else sessionStorage.removeItem(CURRENT_BOARD_ID_KEY);
 };
 
+// Emergency Synchronous Save for iOS/Safari Pagehide events
+export const emergencyLocalSave = (id, data) => {
+    if (!id || !data) return false;
+    try {
+        const timestamp = Date.now();
+        const list = getRawBoardsList();
+        const boardIndex = list.findIndex(b => b.id === id);
+        const currentVersion = boardIndex >= 0 ? (list[boardIndex].syncVersion || 0) : 0;
+        const currentClientRevision = boardIndex >= 0 ? (list[boardIndex].clientRevision || 0) : 0;
+        const effectiveSyncVersion = data.syncVersion !== undefined ? data.syncVersion : currentVersion;
+        const effectiveClientRevision = data.clientRevision !== undefined ? data.clientRevision : currentClientRevision;
+        const payload = {
+            ...data,
+            updatedAt: timestamp,
+            syncVersion: effectiveSyncVersion,
+            clientRevision: effectiveClientRevision
+        };
+
+        // Save to fallback localStorage immediately (synchronous)
+        localStorage.setItem(BOARD_PREFIX + id, JSON.stringify(payload));
+
+        // Update list metadata
+        if (boardIndex >= 0) {
+            list[boardIndex] = normalizeBoardTitleMeta({
+                ...list[boardIndex],
+                updatedAt: timestamp,
+                cardCount: getEffectiveBoardCardCount(data.cards),
+                syncVersion: effectiveSyncVersion,
+                clientRevision: effectiveClientRevision
+            });
+            persistBoardsMetadataList(list, { reason: `emergencyLocalSave:${id}` });
+        }
+        debugLog.storage(`[Storage] Emergency synchronous local save for board ${id}`);
+        return true;
+    } catch (e) {
+        debugLog.error(`[Storage] Emergency save failed for board ${id}`, e);
+        return false;
+    }
+};
+
+
 // Shared helper to get ALL boards (Active + Trash)
 export const getRawBoardsList = () => {
-    const list = localStorage.getItem(BOARDS_LIST_KEY);
-    try {
-        const parsed = list ? JSON.parse(list) : [];
-        return normalizeBoardMetadataList(Array.isArray(parsed) ? parsed : []);
-    } catch (e) {
-        console.error("Failed to parse boards list", e);
-        return [];
-    }
+    return readBoardsMetadataListFromStorage();
 };
 
 export const getBoardsList = () => {
@@ -80,12 +151,13 @@ export const createBoard = async (name) => {
         updatedAt: Date.now(),
         lastAccessedAt: Date.now(),
         cardCount: 0,
-        syncVersion: 0 // Initialize logical clock
+        syncVersion: 0, // Initialize logical clock
+        clientRevision: 0
     });
     debugLog.storage(`Creating new board: ${newBoard.name}`, { id: newBoard.id });
     const list = getRawBoardsList();
     const newList = normalizeBoardMetadataList([newBoard, ...list]);
-    localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(newList));
+    persistBoardsMetadataList(newList, { reason: `createBoard:${newBoard.id}` });
     // Init empty board in IDB with groups field
     await saveBoard(newBoard.id, {
         cards: [],
@@ -108,7 +180,7 @@ export const updateBoardMetadata = (id, metadata) => {
             ...metadata,
             updatedAt: Date.now()
         });
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
+        persistBoardsMetadataList(list, { reason: `updateBoardMetadata:${id}` });
         return true;
     }
     return false;
@@ -117,7 +189,6 @@ export const updateBoardMetadata = (id, metadata) => {
 export const saveBoard = async (id, data) => {
     // data: { cards, connections, updatedAt? }
     const timestamp = data.updatedAt || Date.now();
-    const payload = { ...data, updatedAt: timestamp, syncVersion: data.syncVersion };
     debugLog.storage(`Saving board: ${id}`, {
         cardsCount: data.cards?.length || 0,
         connectionsCount: data.connections?.length || 0,
@@ -126,14 +197,29 @@ export const saveBoard = async (id, data) => {
 
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
+    const currentVersion = boardIndex >= 0 ? (list[boardIndex].syncVersion || 0) : 0;
+    const currentClientRevision = boardIndex >= 0 ? (list[boardIndex].clientRevision || 0) : 0;
+    const effectiveSyncVersion = data.syncVersion !== undefined ? data.syncVersion : currentVersion;
+    const effectiveClientRevision = data.clientRevision !== undefined ? data.clientRevision : currentClientRevision;
+    const payload = {
+        ...data,
+        updatedAt: timestamp,
+        syncVersion: effectiveSyncVersion,
+        clientRevision: effectiveClientRevision
+    };
+    logPersistenceTrace('save:start', {
+        boardId: id,
+        cursor: buildBoardCursorTrace(payload),
+        source: data.syncVersion !== undefined ? 'explicit_sync_version' : 'inherited_sync_version'
+    });
+
     if (boardIndex >= 0) {
-        // Preserve and increment syncVersion for cloud sync
-        const currentVersion = list[boardIndex].syncVersion || 0;
         const nextBoardMeta = {
             ...list[boardIndex],
             updatedAt: timestamp,
             cardCount: getEffectiveBoardCardCount(data.cards),
-            syncVersion: data.syncVersion !== undefined ? data.syncVersion : currentVersion
+            syncVersion: effectiveSyncVersion,
+            clientRevision: effectiveClientRevision
         };
 
         if (hasBoardTitleMetadataPatch(data)) {
@@ -149,8 +235,14 @@ export const saveBoard = async (id, data) => {
             });
         }
 
+        BOARD_DISPLAY_METADATA_KEYS.forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                nextBoardMeta[key] = data[key];
+            }
+        });
+
         list[boardIndex] = normalizeBoardTitleMeta(nextBoardMeta);
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
+        persistBoardsMetadataList(list, { reason: `saveBoard:${id}` });
     }
 
     let lastError = null;
@@ -158,10 +250,20 @@ export const saveBoard = async (id, data) => {
         try {
             await idbSet(BOARD_PREFIX + id, payload);
             localStorage.removeItem(BOARD_PREFIX + id);
+            logPersistenceTrace('save:idb-success', {
+                boardId: id,
+                cursor: buildBoardCursorTrace(payload)
+            });
             return;
         } catch (e) {
             lastError = e;
             debugLog.error(`[Storage] IDB save attempt ${attempt}/${MAX_IDB_SAVE_RETRIES} failed for board ${id}`, e);
+            logPersistenceTrace('save:idb-retry-failed', {
+                boardId: id,
+                attempt,
+                cursor: buildBoardCursorTrace(payload),
+                error: e
+            });
             if (attempt < MAX_IDB_SAVE_RETRIES) {
                 await sleep(IDB_RETRY_DELAY_MS * attempt);
             }
@@ -195,26 +297,23 @@ export const loadBoard = async (id) => {
         debugLog.error(`IDB read failed for board ${id}`, e);
     }
 
-    if (!stored) {
-        // Fallback: Check localStorage (Migration path)
-        try {
-            const legacy = localStorage.getItem(BOARD_PREFIX + id);
-            if (legacy) {
-                debugLog.storage(`Found legacy data in localStorage for board: ${id}`);
-                const parsed = JSON.parse(legacy);
-                // Migrate to IDB in background with proper error handling
-                try {
-                    await idbSet(BOARD_PREFIX + id, parsed);
-                    debugLog.storage(`Migrated board ${id} from localStorage to IDB`);
-                } catch (migrationErr) {
-                    debugLog.error("Migration save failed", migrationErr);
-                }
-                stored = parsed;
-            }
-        } catch (e) {
-            debugLog.error(`Legacy localStorage load failed for board ${id}`, e);
-        }
-    }
+    const legacySnapshot = loadLegacyBoardSnapshot(id);
+    const { snapshot: shadowSnapshot, source: shadowSource } = loadMostRecentBoardShadowSnapshot(id);
+    const { snapshot: preferredSnapshot, source: preferredSource } = pickMostRecentBoardSnapshot([
+        { snapshot: stored, source: 'idb' },
+        { snapshot: legacySnapshot, source: 'legacy' },
+        { snapshot: shadowSnapshot, source: shadowSource }
+    ]);
+
+    logPersistenceTrace('load:source-selection', {
+        boardId: id,
+        preferredSource,
+        idb: buildBoardCursorTrace(stored),
+        legacy: buildBoardCursorTrace(legacySnapshot),
+        shadow: buildBoardCursorTrace(shadowSnapshot)
+    });
+
+    stored = preferredSnapshot;
 
     if (!stored) {
         debugLog.storage(`Board ${id} not found, returning empty template`);
@@ -225,6 +324,40 @@ export const loadBoard = async (id) => {
             boardPrompts: [],
             boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
         };
+    }
+
+    if (preferredSource !== 'idb') {
+        debugLog.storage(`[Storage] Recovering board ${id} from ${preferredSource}`);
+        try {
+            await saveBoard(id, stored);
+            clearLegacyBoardSnapshot(id);
+            clearBoardShadowSnapshot(id);
+            debugLog.storage(`[Storage] Recovered board ${id} promoted back to durable storage from ${preferredSource}`);
+            logPersistenceTrace('load:promotion-success', {
+                boardId: id,
+                preferredSource,
+                cursor: buildBoardCursorTrace(stored)
+            });
+        } catch (migrationErr) {
+            debugLog.error(`[Storage] Failed to promote recovered board ${id} from ${preferredSource}`, migrationErr);
+            logPersistenceTrace('load:promotion-failed', {
+                boardId: id,
+                preferredSource,
+                cursor: buildBoardCursorTrace(stored),
+                error: migrationErr
+            });
+        }
+    } else {
+        if (legacySnapshot) {
+            clearLegacyBoardSnapshot(id);
+        }
+        if (shadowSnapshot) {
+            clearBoardShadowSnapshot(id);
+        }
+        logPersistenceTrace('load:idb-direct', {
+            boardId: id,
+            cursor: buildBoardCursorTrace(stored)
+        });
     }
 
     // Process S3 URL images: download and convert to base64
@@ -278,7 +411,7 @@ export const loadBoard = async (id) => {
                 ...list[boardIndex],
                 lastAccessedAt: Date.now()
             };
-            localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
+            persistBoardsMetadataList(list, { reason: `loadBoard:lastAccessed:${id}` });
         }
     }
 
@@ -365,7 +498,7 @@ export const deleteBoard = async (id) => {
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
         list[boardIndex] = normalizeBoardTitleMeta({ ...list[boardIndex], deletedAt: Date.now() });
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
+        persistBoardsMetadataList(list, { reason: `deleteBoard:${id}` });
     } else {
         debugLog.error(`Board ${id} not found for soft deletion.`);
     }
@@ -378,7 +511,7 @@ export const restoreBoard = async (id) => {
     if (boardIndex >= 0) {
         const { deletedAt, ...rest } = list[boardIndex];
         list[boardIndex] = normalizeBoardTitleMeta(rest); // Remove deletedAt
-        localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(list)));
+        persistBoardsMetadataList(list, { reason: `restoreBoard:${id}` });
         return true;
     }
     return false;
@@ -388,7 +521,7 @@ export const permanentlyDeleteBoard = async (id) => {
     debugLog.storage(`Permanently deleting board: ${id}`);
     const list = getRawBoardsList();
     const newList = list.filter(b => b.id !== id);
-    localStorage.setItem(BOARDS_LIST_KEY, JSON.stringify(normalizeBoardMetadataList(newList)));
+    persistBoardsMetadataList(newList, { reason: `permanentlyDeleteBoard:${id}` });
 
     await idbDel(BOARD_PREFIX + id);
     localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy

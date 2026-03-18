@@ -25,7 +25,14 @@ import {
 export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false) {
     const unsubRef = useRef(null);
     const [userId, setUserId] = useState(auth?.currentUser?.uid || null);
-    const { setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings } = useStore();
+    const {
+        setCards,
+        setConnections,
+        setGroups,
+        setBoardPrompts,
+        setBoardInstructionSettings,
+        setActiveBoardPersistence
+    } = useStore();
     const storeIsBoardLoading = useStore(state => state.isBoardLoading);
 
     // 监听 auth 状态变化
@@ -97,6 +104,12 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
                     data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
                 )
             );
+            setActiveBoardPersistence({
+                updatedAt: data.updatedAt || 0,
+                syncVersion: data.syncVersion || 0,
+                clientRevision: data.clientRevision || 0,
+                dirty: false
+            });
 
             debugLog.sync(`[BoardSync] State updated for board ${boardId}`);
         });
@@ -108,5 +121,5 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
                 unsubRef.current = null;
             }
         };
-    }, [boardId, userId, isReadOnly, isBoardLoading, storeIsBoardLoading, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings]);
+    }, [boardId, userId, isReadOnly, isBoardLoading, storeIsBoardLoading, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings, setActiveBoardPersistence]);
 }

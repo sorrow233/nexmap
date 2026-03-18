@@ -5,6 +5,7 @@ import MessageImage from './MessageImage';
 import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import CodeBlock from './CodeBlock';
 import { createMarkdownRenderer, parseMarkdown, sanitizeMarkdownHtml } from '../../utils/markdownRenderer';
+import { isShareableMessageContent, normalizeShareContent } from '../share/shareContent';
 
 let codeBlockCounter = 0;
 let codeBlocks = [];
@@ -188,6 +189,9 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         return parseModelOutput(displayText);
     }, [displayText, isAssistantStreaming, isUser, parseModelOutput, textContent]);
 
+    const normalizedShareContent = React.useMemo(() => normalizeShareContent(content), [content]);
+    const canShareMessage = React.useMemo(() => isShareableMessageContent(content), [content]);
+
     // Helper to render content with highlights safely
     const renderMessageContent = (cnt, currentMarks, currentNotes) => {
         if (!cnt) return { html: '', codeBlocksData: [] };
@@ -312,6 +316,12 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     }, [isAssistantStreaming, streamingStableText]);
 
     const handleMessageClick = (e) => {
+        const externalLink = e.target.closest('a[data-external-link="true"]');
+        if (externalLink) {
+            e.stopPropagation();
+            return;
+        }
+
         const link = e.target.closest('.card-ref-link');
         if (link) {
             const cardId = link.getAttribute('data-card-id');
@@ -445,7 +455,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                 </div>
 
                 {/* Action Bar (Share, etc.) */}
-                {!isUser && !isStreaming && content && !content.includes("⚠️ Error") && (
+                {!isUser && !isStreaming && canShareMessage && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={() => onToggleFavorite && onToggleFavorite(index, textContent)}
@@ -466,7 +476,7 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                             {copySuccess ? <Check size={16} /> : <Copy size={16} />}
                         </button>
                         <button
-                            onClick={() => onShare && onShare(textContent)}
+                            onClick={() => onShare && onShare(normalizedShareContent)}
                             className="p-2 rounded-full text-slate-400 hover:text-blue-500 bg-slate-50/50 hover:bg-blue-50 ring-1 ring-transparent hover:ring-blue-200 dark:bg-white/5 dark:hover:bg-blue-500/10 transition-all ring-inset"
                             title="Share as Image"
                         >

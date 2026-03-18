@@ -6,7 +6,6 @@ import { uploadImageToS3 } from '../services/s3';
 import { useStore } from '../store/useStore';
 import { getAnalysisPrompt, getPromptGeneratorPrompt, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
 import { useToast } from '../components/Toast';
-import { aiSummaryService } from '../services/aiSummaryService';
 
 const MAX_CONTEXT_CHARS = 12000;
 const MAX_CARD_SNIPPET_CHARS = 600;
@@ -177,6 +176,7 @@ export default function useBoardBackground() {
             try {
                 const config = getRoleConfig('analysis');
                 const { boardData } = await extractBoardContext(boardId);
+                const { aiSummaryService } = await import('../services/aiSummaryService');
                 const summaryResult = await withRetry(
                     () => aiSummaryService.generateBoardSummary(boardData, boardData.cards, config),
                     // LLM provider itself already has retry/backoff; avoid nested retry storms here.

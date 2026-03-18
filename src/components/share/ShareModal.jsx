@@ -1,202 +1,310 @@
-import React, { useState, useRef } from 'react';
-import html2canvas from 'html2canvas';
-import { Star, Sparkles, MessageSquare, FileText, Instagram, Monitor, Feather, Coffee, Cloud, Music, Heart, Sun, Waves, Flower, Leaf, Mountain, Grid, Type, Box, Hash, AlignLeft, Maximize, Layout, Book, School, Palette, Moon, Wind, PenTool, LayoutTemplate, Ghost } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import ShareableContent from './ShareableContent';
 import SharePreview from './SharePreview';
 import ShareControls from './ShareControls';
-import { getThemeBackground } from './themeConfigs';
+import {
+    DEFAULT_SHARE_PRESET,
+    SHARE_CLIPBOARD_FORMATS,
+    SHARE_DOWNLOAD_FORMAT,
+    SHARE_LAYOUTS,
+    getShareResolutionMeta,
+    getShareThemeOptions
+} from './shareCatalog';
+import {
+    buildShareFilename,
+    canvasToBlob,
+    copyBlobToClipboard,
+    downloadBlob,
+    generateShareCanvas
+} from './shareExport';
+import { hasShareableContent, normalizeShareContent } from './shareContent';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-// Theme categories for the UI
-const THEME_CATEGORIES = [
-    {
-        name: 'Premium Themes',
-        themes: [
-            { id: 'editorial', label: 'Editorial', icon: Star, preview: 'bg-[#FDFBF7] border-slate-200', accent: 'bg-[#8B0000]' },
-            { id: 'zen', label: 'Zen', icon: Feather, preview: 'bg-[#F8F9FA] border-gray-100', accent: 'bg-[#ADB5BD]' },
-            { id: 'academia', label: 'Academia', icon: School, preview: 'bg-[#F5F5F0] border-[#C5A059]', accent: 'bg-[#C5A059]' },
-            { id: 'ghibli', label: 'Ghibli', icon: Mountain, preview: 'bg-[#F5F5DC] border-[#8F9779]', accent: 'bg-[#8F9779]' },
-            { id: 'rainy', label: 'Rainy', icon: Cloud, preview: 'bg-[#CFD8DC] border-[#455A64]', accent: 'bg-[#455A64]' },
-            { id: 'night', label: 'Night', icon: Moon, preview: 'bg-[#1a1a1a] border-zinc-700', accent: 'bg-[#BB86FC]' },
-        ]
-    }
-];
+function getShareCopy(t) {
+    const locale = t.shareExport || {};
 
-// Flatten for internal logic
-const THEMES = THEME_CATEGORIES.flatMap(cat => cat.themes);
-
-// Layout configurations
-const LAYOUTS = [
-    { id: 'card', label: 'Message', desc: 'Auto fit', icon: MessageSquare },
-    { id: 'full', label: 'Document', desc: 'A4 / Doc', icon: FileText },
-    { id: 'social', label: 'Social', desc: 'Square 1:1', icon: Instagram },
-    { id: 'slide', label: 'Presentation', desc: '16:9', icon: Monitor },
-];
-
-// Resolution options (Clarity Scale for html2canvas)
-// Safe range: 2-3x to prevent WebP encoding failures on large canvases
-const RESOLUTIONS = [
-    { id: 3, label: '1x', desc: 'Mobile', outputWidth: 3537 },      // Base: 3.0
-    { id: 3.45, label: '2x', desc: 'Desktop', outputWidth: 4067 },  // +15%: 3.45
-    { id: 3.97, label: '3x', desc: 'Print', outputWidth: 4680 },    // +15%: 3.97
-];
-
-// Format options
-const FORMATS = [
-    { id: 'webp', label: 'WebP', mime: 'image/webp', ext: 'webp' },
-    { id: 'png', label: 'PNG', mime: 'image/png', ext: 'png' },
-];
-
-// getThemeBackground is now imported from themeConfigs.js
-
+    return {
+        title: locale.title || '导出回答',
+        subtitle: locale.subtitle || '默认固定高分辨率渲染，下载优先 WebP，复制会自动选择当前浏览器支持的格式。',
+        previewLabel: locale.previewLabel || '最终预览',
+        previewHint: locale.previewHint || '这里看到的，就是最终导出的画面。',
+        calculating: locale.calculating || '正在计算预览尺寸...',
+        controlTitle: locale.controlTitle || '导出选项',
+        controlSubtitle: locale.controlSubtitle || '风格、画布和品牌标记都能直接调整，导出会优先保证清晰度和可用性。',
+        themeTitle: locale.themeTitle || '风格',
+        themeSubtitle: locale.themeSubtitle || '只保留最常用的几种风格。',
+        themes: locale.themes || {},
+        layoutTitle: locale.layoutTitle || '画布',
+        layoutSubtitle: locale.layoutSubtitle || '按阅读场景选择合适的画幅。',
+        layouts: locale.layouts || {},
+        exportTitle: locale.exportTitle || '清晰度',
+        exportSubtitle: locale.exportSubtitle || '默认高清，内容过长时会自动降级避免失败。',
+        resolutions: locale.resolutions || {},
+        formatHintTitle: locale.formatHintTitle || '输出格式',
+        formatHintSubtitle: locale.formatHintSubtitle || '下载和复制会分别使用更合适的格式。',
+        formatHintBody: locale.formatHintBody || '保存时输出 WebP，复制到剪贴板时自动使用 PNG。',
+        brandingTitle: locale.brandingTitle || '品牌',
+        brandingSubtitle: locale.brandingSubtitle || '只有在需要署名时再打开品牌标记。',
+        brandingToggle: locale.brandingToggle || '附带 NexMap 标记',
+        brandingHint: locale.brandingHint || '会在导出图底部加入产品标识。',
+        safeHint: locale.safeHint || '默认固定高分辨率渲染，宁可文件更大，也优先保证导出清晰度。',
+        qualityPinnedHint: locale.qualityPinnedHint || '下载优先输出 WebP，复制时会自动兼容当前浏览器支持的格式。',
+        download: locale.download || '保存 WebP',
+        downloadDisabled: locale.downloadDisabled || '没有可导出的内容',
+        downloading: locale.downloading || '正在生成 WebP...',
+        downloadSuccess: locale.downloadSuccess || 'WebP 图片已开始下载。',
+        copy: locale.copy || '复制图片',
+        copyNoContent: locale.copyNoContent || '没有可复制的内容',
+        copying: locale.copying || '正在复制图片...',
+        copyDisabled: locale.copyDisabled || '当前环境不支持复制图片',
+        copySuccess: locale.copySuccess || '图片已复制到剪贴板。',
+        copyFallbackHint: locale.copyFallbackHint || '当前浏览器不支持复制 WebP，已自动改为 PNG。',
+        emptyTitle: locale.emptyTitle || '没有可导出的内容',
+        emptyDescription: locale.emptyDescription || '当前这次导出没有拿到正文内容。请关闭后重新打开导出面板，再试一次。',
+        emptyContent: locale.emptyContent || '当前没有可导出的正文内容。',
+        copyUnsupported: locale.copyUnsupported || '当前浏览器暂不支持图片复制，请改用下载。',
+        copyError: locale.copyError || '复制失败，请稍后重试。',
+        exportError: locale.exportError || '导出失败，请稍后重试。',
+        webpUnsupported: locale.webpUnsupported || '当前浏览器没有成功生成 WebP，请换个浏览器后再试。',
+        autoScaleApplied: locale.autoScaleApplied || '内容较长，已自动降低导出倍率以保证成功。'
+    };
+}
 
 export default function ShareModal({ isOpen, onClose, content }) {
-    const [theme, setTheme] = useState('editorial');
-    const [layout, setLayout] = useState('card');
-    const [showWatermark, setShowWatermark] = useState(true);
-    const [resolution, setResolution] = useState(3);
-    const [format, setFormat] = useState('webp');
-    const [quality] = useState(0.88);
+    const { t } = useLanguage();
+    const copy = getShareCopy(t);
+    const captureRef = useRef(null);
+    const normalizedContent = normalizeShareContent(content);
+    const canExport = hasShareableContent(normalizedContent);
+    const themeOptions = getShareThemeOptions();
+
+    const [theme, setTheme] = useState(DEFAULT_SHARE_PRESET.theme);
+    const [layout, setLayout] = useState(DEFAULT_SHARE_PRESET.layout);
+    const [showWatermark, setShowWatermark] = useState(DEFAULT_SHARE_PRESET.showWatermark);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCopying, setIsCopying] = useState(false);
-    const [copySuccess, setCopySuccess] = useState(false);
+    const [feedback, setFeedback] = useState(null);
 
-    const captureRef = useRef(null);
+    const canCopy = typeof navigator !== 'undefined' && !!navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
+
+    const layouts = SHARE_LAYOUTS.map((item) => ({
+        ...item,
+        label: t.shareExport?.layouts?.[item.id]?.title || {
+            card: '自适应',
+            social: '方图',
+            slide: '横图'
+        }[item.id],
+        description: t.shareExport?.layouts?.[item.id]?.description || {
+            card: '适合聊天回答和长内容。',
+            social: '更适合社交媒体转发。',
+            slide: '适合横版展示和汇报。'
+        }[item.id]
+    }));
+
+    const themes = themeOptions.map((item) => ({
+        ...item,
+        label: t.shareExport?.themes?.[item.id]?.title || item.label,
+        description: t.shareExport?.themes?.[item.id]?.description || {
+            modern: '干净明亮，适合大多数回答。',
+            editorial: '更像一页精排文章。',
+            zen: '更柔和的留白感。',
+            night: '暗底展示，适合深色内容。'
+        }[item.id]
+    }));
+
+    const selectedThemeLabel = themes.find((item) => item.id === theme)?.label || theme;
+    const selectedLayoutLabel = layouts.find((item) => item.id === layout)?.label || layout;
+    const fixedResolutionMeta = getShareResolutionMeta('print');
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        setTheme(DEFAULT_SHARE_PRESET.theme);
+        setLayout(DEFAULT_SHARE_PRESET.layout);
+        setShowWatermark(DEFAULT_SHARE_PRESET.showWatermark);
+        setFeedback(null);
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
-    const generateCanvas = async () => {
-        if (!captureRef.current) return null;
-        await document.fonts.ready;
-        // Small delay to ensure rendering is complete
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        const canvas = await html2canvas(captureRef.current, {
-            scale: resolution,
-            backgroundColor: getThemeBackground(theme),
-            logging: false,
-            useCORS: true,
-            allowTaint: false,
+    const showFeedback = (type, message, wasScaledDown = false) => {
+        setFeedback({
+            type,
+            message: wasScaledDown ? `${message} ${copy.autoScaleApplied}` : message
         });
-        return canvas;
+    };
+
+    const getExportBlob = async (formatMeta) => {
+        const resolutionMeta = getShareResolutionMeta(fixedResolutionMeta.id);
+        const { canvas, wasScaledDown } = await generateShareCanvas(captureRef.current, {
+            themeId: theme,
+            requestedScale: resolutionMeta.scale
+        });
+        const blob = await canvasToBlob(canvas, formatMeta.mime, formatMeta.quality);
+
+        return { blob, wasScaledDown };
+    };
+
+    const getClipboardBlob = async () => {
+        let lastError = null;
+
+        for (const formatMeta of SHARE_CLIPBOARD_FORMATS) {
+            try {
+                const exportResult = await getExportBlob(formatMeta);
+                await copyBlobToClipboard(exportResult.blob);
+                return {
+                    ...exportResult,
+                    formatMeta
+                };
+            } catch (error) {
+                lastError = error;
+                if (error?.message === 'clipboard-unsupported') {
+                    throw error;
+                }
+            }
+        }
+
+        throw lastError || new Error('clipboard-copy-failed');
     };
 
     const handleDownload = async () => {
+        if (isGenerating || isCopying) return;
+
         setIsGenerating(true);
+        setFeedback(null);
+
         try {
-            const canvas = await generateCanvas();
-            if (!canvas) return;
+            if (!canExport) {
+                showFeedback('info', copy.emptyContent);
+                return;
+            }
 
-            const formatConfig = FORMATS.find(f => f.id === format);
-            const needsQuality = format !== 'png';
-
-            // Use toBlob for better performance and iOS compatibility
-            canvas.toBlob((blob) => {
-                if (!blob) {
-                    console.error("Canvas to Blob failed");
-                    return;
-                }
-
-                // Create Object URL (better for iOS than Data URL)
-                const url = URL.createObjectURL(blob);
-                const filename = `nexmap-${theme}-${Date.now()}.${formatConfig.ext}`;
-
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-
-                // Required for Firefox/some browsers to work properly
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // Cleanup
-                setTimeout(() => {
-                    URL.revokeObjectURL(url);
-                }, 1000);
-
-            }, formatConfig.mime, needsQuality ? quality : undefined);
-
-        } catch (err) {
-            console.error("Export failed:", err);
+            const { blob, wasScaledDown } = await getExportBlob(SHARE_DOWNLOAD_FORMAT);
+            downloadBlob(
+                blob,
+                buildShareFilename({
+                    themeId: theme,
+                    layoutId: layout,
+                    extension: SHARE_DOWNLOAD_FORMAT.ext
+                })
+            );
+            showFeedback('success', copy.downloadSuccess, wasScaledDown);
+        } catch (error) {
+            console.error('[ShareModal] Download export failed:', error);
+            if (error.message === 'unsupported-export-format') {
+                showFeedback('error', copy.webpUnsupported);
+            } else {
+                showFeedback('error', copy.exportError);
+            }
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const handleCopyToClipboard = async () => {
-        setIsCopying(true);
-        setCopySuccess(false);
-        try {
-            const canvas = await generateCanvas();
-            if (!canvas) return;
+    const handleCopy = async () => {
+        if (isCopying || isGenerating) return;
 
-            canvas.toBlob(async (blob) => {
-                try {
-                    await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': blob })
-                    ]);
-                    setCopySuccess(true);
-                    setTimeout(() => setCopySuccess(false), 2000);
-                } catch (err) {
-                    console.error("Copy failed:", err);
-                }
-                setIsCopying(false);
-            }, 'image/png');
-        } catch (err) {
-            console.error("Copy failed:", err);
+        setIsCopying(true);
+        setFeedback(null);
+
+        try {
+            if (!canExport) {
+                showFeedback('info', copy.emptyContent);
+                return;
+            }
+
+            const { wasScaledDown, formatMeta } = await getClipboardBlob();
+            const successMessage = formatMeta?.id === 'png'
+                ? `${copy.copySuccess} ${copy.copyFallbackHint}`
+                : copy.copySuccess;
+            showFeedback('success', successMessage, wasScaledDown);
+        } catch (error) {
+            console.error('[ShareModal] Clipboard export failed:', error);
+            if (error.message === 'clipboard-unsupported') {
+                showFeedback('info', copy.copyUnsupported);
+            } else if (error.message === 'unsupported-export-format') {
+                showFeedback('error', copy.webpUnsupported);
+            } else {
+                showFeedback('error', copy.copyError);
+            }
+        } finally {
             setIsCopying(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6">
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300"
+                className="absolute inset-0 bg-slate-950/45 backdrop-blur-xl"
                 onClick={onClose}
             />
 
-            {/* Modal Container */}
-            <div className="relative w-full max-w-6xl h-[85vh] bg-zinc-900 rounded-2xl shadow-2xl flex overflow-hidden ring-1 ring-white/10 animate-fade-in-up">
+            <div className="relative mx-auto flex h-full max-h-[920px] w-full max-w-[1280px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_35px_120px_rgba(15,23,42,0.22)]">
+                <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
+                    <div>
+                        <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{copy.title}</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{copy.subtitle}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    >
+                        <X size={20} />
+                    </button>
+                </header>
 
-                {/* Left: Preview */}
-                <SharePreview
-                    content={content}
-                    theme={theme}
-                    layout={layout}
-                    showWatermark={showWatermark}
-                />
+                <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px]">
+                    <div className="min-h-[320px] border-b border-slate-200 lg:border-b-0 lg:border-r">
+                        <SharePreview
+                            content={normalizedContent}
+                            theme={theme}
+                            layout={layout}
+                            showWatermark={showWatermark}
+                            themeLabel={selectedThemeLabel}
+                            layoutLabel={selectedLayoutLabel}
+                            copy={copy}
+                        />
+                    </div>
 
-                {/* Right: Controls */}
-                <ShareControls
-                    themes={{ categories: THEME_CATEGORIES }}
-                    currentTheme={theme}
-                    setTheme={setTheme}
-                    layouts={LAYOUTS}
-                    currentLayout={layout}
-                    setLayout={setLayout}
-                    resolutions={RESOLUTIONS}
-                    currentResolution={resolution}
-                    setResolution={setResolution}
-                    formats={FORMATS}
-                    currentFormat={format}
-                    setFormat={setFormat}
-                    showWatermark={showWatermark}
-                    setShowWatermark={setShowWatermark}
-                    onClose={onClose}
-                    onCopy={handleCopyToClipboard}
-                    onDownload={handleDownload}
-                    isCopying={isCopying}
-                    isGenerating={isGenerating}
-                    copySuccess={copySuccess}
-                />
+                    <ShareControls
+                        themeOptions={themes}
+                        currentTheme={theme}
+                        setTheme={setTheme}
+                        layouts={layouts}
+                        currentLayout={layout}
+                        setLayout={setLayout}
+                        showWatermark={showWatermark}
+                        setShowWatermark={setShowWatermark}
+                        onCopy={handleCopy}
+                        onDownload={handleDownload}
+                        isCopying={isCopying}
+                        isGenerating={isGenerating}
+                        canCopy={canCopy}
+                        canExport={canExport}
+                        feedback={feedback}
+                        copy={copy}
+                    />
+                </div>
             </div>
 
-            {/* Hidden Capture Target - Kept intact for functionality */}
-            <div className="fixed left-[-9999px] top-0 pointer-events-none opacity-0">
+            <div className="pointer-events-none fixed left-[-20000px] top-0">
                 <ShareableContent
                     ref={captureRef}
-                    content={content}
+                    content={normalizedContent}
                     theme={theme}
                     layout={layout}
                     showWatermark={showWatermark}

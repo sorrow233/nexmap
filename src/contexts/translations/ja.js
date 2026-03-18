@@ -263,6 +263,7 @@ export const ja = {
         account: "アカウント",
         whatToCreate: "何を作りたいですか?",
         start: "開始",
+        creating: "作成中...",
         releaseToUpload: "離してアップロード",
         recycleBin: "ゴミ箱",
         trashHint: "30日以上経過した削除項目は完全に削除されます",
@@ -300,7 +301,8 @@ export const ja = {
         cards: "カード",
         navigate: "ナビゲート",
         open: "開く",
-        inBoard: "内"
+        inBoard: "内",
+        indexingProgress: "検索インデックス {loaded}/{total}"
     },
     chat: {
         conversation: "会話",

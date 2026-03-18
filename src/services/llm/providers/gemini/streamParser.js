@@ -1,4 +1,4 @@
-import { isRetryableError } from './errorUtils';
+import { isRetryableError } from './errorUtils.js';
 import { extractCandidateText } from './partUtils.js';
 
 /**

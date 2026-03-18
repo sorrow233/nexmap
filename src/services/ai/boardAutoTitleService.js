@@ -1,5 +1,6 @@
 import { loadBoard } from '../storage';
 import { normalizeBoardTitleMeta, getEffectiveBoardCardCount } from '../boardTitle/metadata';
+import { GEMINI_RECOMMENDED_TEMPERATURE } from '../llm/temperature';
 
 const MAX_CONTEXT_CHARS = 4000;
 const MAX_CARD_SNIPPET_CHARS = 240;
@@ -238,7 +239,7 @@ const generateBoardAutoTitleInternal = async ({ boardId, boardMeta, boardData, c
         [{ role: 'user', content: prompt }],
         config,
         config.model,
-        { temperature: 0.3 }
+        { temperature: GEMINI_RECOMMENDED_TEMPERATURE }
     ));
     const title = parseGeneratedTitle(response);
 

@@ -4,6 +4,7 @@ const FAVORITES_KEY = 'mixboard_favorites_index';
 // Cloud sync integration
 import { saveFavoriteToCloud, deleteFavoriteFromCloud } from './syncService';
 import { auth } from './firebase';
+import { runtimeLog } from '../utils/runtimeLogging';
 
 // Helper to get raw favorites
 const getRawFavorites = () => {
@@ -53,7 +54,7 @@ const favoritesService = {
         };
 
         saveFavorites([newFavorite, ...list]);
-        console.log(`[Favorites] Snapshotted message ${messageIndex} from card ${card.id}`);
+        runtimeLog(`[Favorites] Snapshotted message ${messageIndex} from card ${card.id}`);
 
         // Cloud Sync
         if (auth.currentUser) {
@@ -72,7 +73,7 @@ const favoritesService = {
         // Remove by source identity
         const newList = list.filter(item => !(item.source?.cardId === cardId && item.source?.messageIndex === messageIndex));
         saveFavorites(newList);
-        console.log(`[Favorites] Removed snapshot for message ${messageIndex} of card ${cardId}`);
+        runtimeLog(`[Favorites] Removed snapshot for message ${messageIndex} of card ${cardId}`);
 
         // Cloud Sync
         if (auth.currentUser && itemToDelete) {
@@ -133,7 +134,7 @@ const favoritesService = {
 
         if (hasChanges) {
             saveFavorites(list);
-            console.log(`[Favorites] Updated local state with ${updates.length} changes from cloud`);
+            runtimeLog(`[Favorites] Updated local state with ${updates.length} changes from cloud`);
         }
     },
 

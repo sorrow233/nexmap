@@ -31,6 +31,8 @@ import {
     normalizeBoardMetadataList,
     normalizeBoardTitleMeta
 } from '../services/boardTitle/metadata';
+import { syncLinkageSettingsFromCloud } from '../services/linkageLocalStore';
+import { persistBoardsMetadataList } from '../services/boardPersistence/boardsListStorage';
 
 // --- Timestamp-aware localStorage utilities for smart sync ---
 const loadWithTimestamp = (key) => {
@@ -138,7 +140,7 @@ export function useAppInit() {
                     await saveBoard(sample.id, fullData);
                     persistedBoards.push(sample);
                 }
-                localStorage.setItem('mixboard_boards_list', JSON.stringify(normalizeBoardMetadataList(persistedBoards)));
+                persistBoardsMetadataList(persistedBoards, { reason: 'useAppInit:onboarding-samples' });
                 debugLog.auth(`Loaded & Persisted ${persistedBoards.length} sample boards for onboarding`);
             } else {
                 debugLog.storage(`Loaded metadata for ${list.length} boards`);
@@ -362,13 +364,15 @@ export function useAppInit() {
                             }
                         }
 
-                        // Sync FlowStudio User ID (跨设备同步)
-                        if (settings.flowStudioUserId) {
-                            const localFlowId = localStorage.getItem('flowstudio_user_id');
-                            if (!localFlowId || localFlowId !== settings.flowStudioUserId) {
-                                localStorage.setItem('flowstudio_user_id', settings.flowStudioUserId);
-                                debugLog.sync('FlowStudio UID restored from cloud:', settings.flowStudioUserId);
-                            }
+                        // Sync linkage IDs from cloud without overwriting missing legacy fields.
+                        const syncedLinkageSettings = syncLinkageSettingsFromCloud(settings, u.uid, {
+                            preserveMissing: true
+                        });
+                        if (syncedLinkageSettings.flowStudioUserId) {
+                            debugLog.sync('FlowStudio UID restored from cloud:', syncedLinkageSettings.flowStudioUserId);
+                        }
+                        if (syncedLinkageSettings.lightUserId) {
+                            debugLog.sync('Light UID restored from cloud:', syncedLinkageSettings.lightUserId);
                         }
 
                         // Sync language preference...
@@ -416,7 +420,7 @@ export function useAppInit() {
                                     await saveBoard(sample.id, data);
                                     persisted.push(sample);
                                 }
-                                localStorage.setItem('mixboard_boards_list', JSON.stringify(normalizeBoardMetadataList(persisted)));
+                                persistBoardsMetadataList(persisted, { reason: 'useAppInit:local-samples' });
                                 setBoardsList(normalizeBoardMetadataList(persisted));
                             } catch (err) {
                                 console.error("Failed to inject samples (local)", err);

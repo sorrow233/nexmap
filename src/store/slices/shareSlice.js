@@ -2,7 +2,7 @@ export const createShareSlice = (set) => ({
     shareModal: {
         isOpen: false,
         cardContent: null,
-        theme: 'business', // 'business' | 'tech'
+        theme: 'modern',
         showWatermark: true
     },
     openShareModal: (content) => set((state) => ({

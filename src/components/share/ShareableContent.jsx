@@ -1,12 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { THEME_CONFIGS, LAYOUT_CONFIGS, THEME_MAP, generateThemeCSS } from './themeConfigs';
 import { renderMarkdownToHtml } from '../../utils/markdownRenderer';
+import { normalizeShareContent } from './shareContent';
 
 const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout = 'card', showWatermark }, ref) => {
     // Map theme IDs using imported THEME_MAP
     const currentThemeId = THEME_CONFIGS[theme] ? theme : (THEME_MAP[theme] || 'modern');
     const themeConfig = THEME_CONFIGS[currentThemeId];
     const layoutConfig = LAYOUT_CONFIGS[layout] || LAYOUT_CONFIGS.card;
+    const fixedHeight = layoutConfig.aspectRatio ? layoutConfig.width / layoutConfig.aspectRatio : null;
+    const fitFrameRef = useRef(null);
+    const fitBodyRef = useRef(null);
+    const [contentScale, setContentScale] = useState(1);
+    const normalizedContent = normalizeShareContent(content);
+    const htmlContent = renderMarkdownToHtml(normalizedContent);
 
     // Load Fonts logic
     useEffect(() => {
@@ -21,7 +28,68 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
         }
     }, []);
 
-    const htmlContent = renderMarkdownToHtml(content || 'No content provided');
+    useEffect(() => {
+        if (!fixedHeight) {
+            setContentScale(1);
+            return undefined;
+        }
+
+        let frameId = 0;
+        let timeoutId = 0;
+
+        const calculateFitScale = () => {
+            if (!fitFrameRef.current || !fitBodyRef.current) return;
+
+            const frameRect = fitFrameRef.current.getBoundingClientRect();
+            const bodyRect = fitBodyRef.current.getBoundingClientRect();
+            const availableWidth = Math.max(frameRect.width, 1);
+            const availableHeight = Math.max(frameRect.height, 1);
+            const contentWidth = Math.max(fitBodyRef.current.scrollWidth, bodyRect.width, 1);
+            const contentHeight = Math.max(fitBodyRef.current.scrollHeight, bodyRect.height, 1);
+            const nextScale = Math.max(0.34, Math.min(1, availableWidth / contentWidth, availableHeight / contentHeight));
+
+            setContentScale((current) => (Math.abs(current - nextScale) < 0.01 ? current : nextScale));
+        };
+
+        const scheduleFitScale = () => {
+            cancelAnimationFrame(frameId);
+            clearTimeout(timeoutId);
+            frameId = requestAnimationFrame(() => {
+                timeoutId = window.setTimeout(calculateFitScale, 60);
+            });
+        };
+
+        if (document.fonts?.ready) {
+            document.fonts.ready.then(() => {
+                scheduleFitScale();
+            }).catch(() => {
+                scheduleFitScale();
+            });
+        } else {
+            scheduleFitScale();
+        }
+
+        const observer = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(() => scheduleFitScale())
+            : null;
+
+        if (observer) {
+            if (fitFrameRef.current) observer.observe(fitFrameRef.current);
+            if (fitBodyRef.current) observer.observe(fitBodyRef.current);
+        } else {
+            window.addEventListener('resize', scheduleFitScale);
+        }
+
+        return () => {
+            cancelAnimationFrame(frameId);
+            clearTimeout(timeoutId);
+            if (observer) {
+                observer.disconnect();
+            } else {
+                window.removeEventListener('resize', scheduleFitScale);
+            }
+        };
+    }, [fixedHeight, normalizedContent, showWatermark, theme, layout]);
 
     // CSS Generator
     const generateThemeStyles = () => {
@@ -31,9 +99,11 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
     return (
         <div ref={ref} style={{
             width: `${layoutConfig.width}px`,
-            minHeight: layoutConfig.aspectRatio ? `${layoutConfig.width / layoutConfig.aspectRatio}px` : 'auto',
+            minHeight: fixedHeight ? `${fixedHeight}px` : 'auto',
+            height: fixedHeight ? `${fixedHeight}px` : 'auto',
             backgroundColor: themeConfig.bg,
             color: themeConfig.text,
+            borderRadius: `${themeConfig.radius || 0}px`,
             padding: `${layoutConfig.paddingOverride || (themeConfig.padding * (layoutConfig.paddingScale || 1))}px`,
             display: 'flex',
             flexDirection: 'column',
@@ -42,6 +112,7 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
             boxSizing: 'border-box',
             fontFeatureSettings: '"kern" 1, "liga" 1',
             textRendering: 'optimizeLegibility',
+            overflow: 'hidden',
         }}>
             <style>{generateThemeStyles()}</style>
 
@@ -152,36 +223,60 @@ const ShareableContent = React.forwardRef(({ content, theme = 'modern', layout =
 
 
             {/* Content */}
-            <div className={`markdown-body flex-grow`} style={{ position: 'relative', zIndex: 10 }}>
-                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-            </div>
-
-            {/* Footer */}
-            {showWatermark && (
-                <div style={{
-                    marginTop: '80px',
-                    paddingTop: '20px',
-                    borderTop: currentThemeId === 'swiss' ? `4px solid ${themeConfig.accent}` : `1px solid ${themeConfig.text}15`,
+            <div
+                ref={fitFrameRef}
+                style={{
+                    position: 'relative',
+                    zIndex: 10,
+                    flexGrow: 1,
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontFamily: themeConfig.settings['--font-heading'],
-                    opacity: 0.7
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {/* Logo Mark */}
-                        <img
-                            src="/nexmap-icon.svg"
-                            alt="NexMap Logo"
-                            style={{
-                                width: '24px', height: '24px',
-                                objectFit: 'contain'
-                            }}
-                        />
-                        <span style={{ fontWeight: 'bold', letterSpacing: '-0.02em', fontSize: '1.1em' }}>NexMap</span>
+                    alignItems: layoutConfig.centered ? 'center' : 'stretch',
+                    justifyContent: layoutConfig.centered ? 'center' : 'flex-start',
+                    overflow: fixedHeight ? 'hidden' : 'visible'
+                }}
+            >
+                <div
+                    style={{
+                        width: '100%',
+                        transform: fixedHeight ? `scale(${contentScale})` : 'none',
+                        transformOrigin: layoutConfig.centered ? 'center top' : 'left top',
+                        transition: fixedHeight ? 'transform 180ms ease-out' : 'none'
+                    }}
+                >
+                    <div ref={fitBodyRef}>
+                        <div className={`markdown-body flex-grow`} style={{ position: 'relative', zIndex: 10 }}>
+                            <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                        </div>
+
+                        {/* Footer */}
+                        {showWatermark && (
+                            <div style={{
+                                marginTop: '80px',
+                                paddingTop: '20px',
+                                borderTop: currentThemeId === 'swiss' ? `4px solid ${themeConfig.accent}` : `1px solid ${themeConfig.text}15`,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontFamily: themeConfig.settings['--font-heading'],
+                                opacity: 0.7
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    {/* Logo Mark */}
+                                    <img
+                                        src="/nexmap-icon.svg"
+                                        alt="NexMap Logo"
+                                        style={{
+                                            width: '24px', height: '24px',
+                                            objectFit: 'contain'
+                                        }}
+                                    />
+                                    <span style={{ fontWeight: 'bold', letterSpacing: '-0.02em', fontSize: '1.1em' }}>NexMap</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 });

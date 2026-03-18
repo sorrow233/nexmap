@@ -1,17 +1,14 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../store/useStore';
 import { Plus, X, GripVertical, Check } from 'lucide-react';
-import { uuid } from '../../utils/uuid';
-import { useParams } from 'react-router-dom';
 import { updateUserSettings } from '../../services/syncService';
 import { auth } from '../../services/firebase';
 
-import { TAG_COLORS, getRandomColor, getColorForString } from '../../utils/colors';
+import { getRandomColor, getColorForString } from '../../utils/colors';
 
-const GLOBAL_PROMPTS_KEY = 'mixboard_global_prompts';
 const MAX_NAME_LENGTH = 10;
 
 // Moved outside Sidebar to prevent re-creation on every render
@@ -99,18 +96,27 @@ const AddInput = ({ type, onCancel, newName, setNewName, newContent, setNewConte
 );
 export default function Sidebar({ className = "" }) {
     const { t } = useLanguage();
-    const { id: boardId } = useParams();
     const boardPrompts = useStore(state => state.boardPrompts || []);
     const addBoardPrompt = useStore(state => state.addBoardPrompt);
     const removeBoardPrompt = useStore(state => state.removeBoardPrompt);
+    const updateBoardPrompt = useStore(state => state.updateBoardPrompt);
 
     const globalPrompts = useStore(state => state.globalPrompts || []);
-    const { addGlobalPrompt, removeGlobalPrompt, updateGlobalPrompt } = useStore();
+    const addGlobalPrompt = useStore(state => state.addGlobalPrompt);
+    const removeGlobalPrompt = useStore(state => state.removeGlobalPrompt);
+    const updateGlobalPrompt = useStore(state => state.updateGlobalPrompt);
     const [isAdding, setIsAdding] = useState(null); // 'global' | 'board' | null
 
     // Adding Form State
     const [newName, setNewName] = useState('');
     const [newContent, setNewContent] = useState('');
+
+    const syncGlobalPromptsToCloud = () => {
+        if (!auth?.currentUser) return;
+        updateUserSettings(auth.currentUser.uid, {
+            globalPrompts: useStore.getState().globalPrompts
+        });
+    };
 
     const handleAdd = (type) => {
         // Require at least a name
@@ -128,9 +134,7 @@ export default function Sidebar({ className = "" }) {
 
         if (type === 'global') {
             addGlobalPrompt(newPrompt);
-            if (auth?.currentUser) {
-                updateUserSettings(auth.currentUser.uid, { globalPrompts: useStore.getState().globalPrompts });
-            }
+            syncGlobalPromptsToCloud();
         } else {
             addBoardPrompt(newPrompt);
         }
@@ -143,9 +147,7 @@ export default function Sidebar({ className = "" }) {
     const handleDelete = (id, type) => {
         if (type === 'global') {
             removeGlobalPrompt(id);
-            if (auth?.currentUser) {
-                updateUserSettings(auth.currentUser.uid, { globalPrompts: useStore.getState().globalPrompts });
-            }
+            syncGlobalPromptsToCloud();
         } else {
             removeBoardPrompt(id);
         }
@@ -189,13 +191,9 @@ export default function Sidebar({ className = "" }) {
         };
 
         if (editingPrompt.type === 'global') {
-            const updated = globalPrompts.map(p =>
-                p.id === editingPrompt.id ? { ...p, ...updatedPrompt } : p
-            );
-            saveGlobalPrompts(updated);
+            updateGlobalPrompt(editingPrompt.id, updatedPrompt);
+            syncGlobalPromptsToCloud();
         } else {
-            // Call updateBoardPrompt from store
-            const updateBoardPrompt = useStore.getState().updateBoardPrompt;
             if (updateBoardPrompt) {
                 updateBoardPrompt(editingPrompt.id, updatedPrompt);
             }

@@ -128,17 +128,17 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <section className="relative overflow-hidden rounded-2xl border border-cyan-200/50 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-5 shadow-[0_12px_36px_rgba(6,182,212,0.12)] dark:border-cyan-400/20 dark:from-cyan-900/20 dark:via-slate-900/40 dark:to-emerald-900/10">
-                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full bg-cyan-300/30 blur-3xl dark:bg-cyan-500/20" />
+            <section className="relative overflow-hidden rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(247,241,235,0.92))] p-5 shadow-[0_14px_36px_rgba(95,74,50,0.07)] dark:border-white/10 dark:bg-white/6">
+                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#efe1f7]/60 blur-3xl dark:bg-white/10" />
                 <div className="relative">
-                    <h3 className="mb-2 flex items-center gap-2 text-xl font-black text-slate-800 dark:text-white">
-                        <FileText size={20} className="text-cyan-600 dark:text-cyan-300" />
+                    <h3 className="mb-2 flex items-center gap-2 text-xl font-semibold text-[#2f241a] dark:text-white">
+                        <FileText size={20} className="text-[#776496] dark:text-slate-200" />
                         {t.settings?.customInstructions || '自定义指令'}
                     </h3>
-                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-200">
+                    <p className="text-sm leading-relaxed text-[#7b6a58] dark:text-slate-200">
                         {t.settings?.customInstructionsHelp || '在此添加的指令将应用于所有卡片和画布中的每次 AI 交互。'}
                     </p>
-                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
+                    <p className="mt-2 text-xs text-[#8f7e6b] dark:text-slate-300">
                         {t.settings?.customInstructionsUnlimitedHint || '支持无限新增。可将单条指令设为“全局生效”，其余由每个画布单独选择开启。'}
                     </p>
                 </div>
@@ -174,8 +174,8 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <div className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 dark:border-white/10 dark:bg-white/5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#a08e7b]">
                         {t.settings?.exampleInstructions || '示例指令'}
                     </p>
                     <div className="grid gap-2">
@@ -183,25 +183,25 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
                             <button
                                 key={idx}
                                 onClick={() => handleAddInstruction(example)}
-                                className="inline-flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-cyan-300 hover:bg-cyan-50 dark:border-white/10 dark:bg-slate-900/30 dark:text-slate-100 dark:hover:border-cyan-400/40 dark:hover:bg-cyan-500/10"
+                                className="inline-flex items-start gap-2 rounded-2xl border border-[#eee3d7] bg-[#fffaf4] px-3 py-2 text-left text-sm text-[#5d503f] transition-colors hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:text-slate-100 dark:hover:border-white/20 dark:hover:bg-white/10"
                             >
-                                <Sparkles size={14} className="mt-0.5 text-cyan-500" />
+                                <Sparkles size={14} className="mt-0.5 text-[#af7c36]" />
                                 <span>{example}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="flex gap-3 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4 dark:border-cyan-400/20 dark:bg-cyan-900/10">
-                    <Info size={18} className="mt-0.5 flex-shrink-0 text-cyan-600 dark:text-cyan-300" />
-                    <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-200">
-                        <p className="mb-1 font-bold text-cyan-700 dark:text-cyan-200">
+                <div className="flex gap-3 rounded-[26px] border border-[#eee3d7] bg-[#f8f2e8] p-4 dark:border-white/10 dark:bg-white/8">
+                    <Info size={18} className="mt-0.5 flex-shrink-0 text-[#8d6d49] dark:text-slate-200" />
+                    <div className="text-sm leading-relaxed text-[#6f5f4e] dark:text-slate-200">
+                        <p className="mb-1 font-semibold text-[#8d6d49] dark:text-slate-200">
                             {t.settings?.customInstructionsNote || '工作原理'}
                         </p>
                         <p>
                             {t.settings?.customInstructionsInfo || '您的指令会被添加到每个 AI 请求的开头。用于设置语言偏好、回复风格或特定领域的上下文。'}
                         </p>
-                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
+                        <p className="mt-2 text-xs text-[#8f7e6b] dark:text-slate-300">
                             提示：优先写“可执行约束”，如格式、长度、语气、结构，避免写模糊目标。
                         </p>
                     </div>

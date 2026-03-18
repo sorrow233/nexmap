@@ -32,14 +32,14 @@ export default function InstructionListPanel({
     isEmptyState = false
 }) {
     return (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
+        <section className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 dark:border-white/10 dark:bg-white/5">
             <div className="mb-3 flex items-center justify-between gap-2">
-                <h4 className="text-sm font-black text-slate-700 dark:text-slate-100">
+                <h4 className="text-sm font-semibold text-[#4a3e33] dark:text-slate-100">
                     {t.settings?.customInstructions || '自定义指令'}
                 </h4>
                 <button
                     onClick={onAddInstruction}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500 px-2.5 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-400"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#efb65a] px-3 py-1.5 text-xs font-semibold text-[#332412] transition-colors hover:bg-[#f3bf6c]"
                 >
                     <Plus size={12} />
                     {t.settings?.addInstruction || '新增指令'}
@@ -47,38 +47,38 @@ export default function InstructionListPanel({
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-2 text-[11px]">
-                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-600 dark:bg-white/10 dark:text-slate-200">
+                <span className="rounded-xl bg-[#f4eee6] px-2 py-1 text-[#7d6c5a] dark:bg-white/10 dark:text-slate-200">
                     {(t.settings?.instructionMetricTotal || '总数')} {summary?.total ?? 0}
                 </span>
-                <span className="rounded-lg bg-cyan-50 px-2 py-1 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200">
+                <span className="rounded-xl bg-[#f8f2e8] px-2 py-1 text-[#8d6d49] dark:bg-white/10 dark:text-slate-200">
                     {(t.settings?.instructionMetricEnabled || '已启用')} {summary?.enabled ?? 0}
                 </span>
-                <span className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
+                <span className="rounded-xl bg-[#edf5ee] px-2 py-1 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
                     {(t.settings?.instructionMetricGlobal || '全局')} {summary?.global ?? 0}
                 </span>
-                <span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">
+                <span className="rounded-xl bg-[#fbf3e7] px-2 py-1 text-[#b17d31] dark:bg-amber-500/10 dark:text-amber-200">
                     {(t.settings?.instructionMetricEmpty || '空内容')} {summary?.empty ?? 0}
                 </span>
             </div>
 
             <div className="space-y-2">
                 <div className="relative">
-                    <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#baa996]" />
                     <input
                         value={query}
                         onChange={(e) => onQueryChange?.(e.target.value)}
                         placeholder={t.settings?.canvasInstructionOpenSettings ? '搜索标题或正文...' : '搜索...'}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-xs text-slate-700 outline-none transition-colors focus:border-cyan-400 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
+                        className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-8 pr-3 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="relative">
-                        <Filter size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Filter size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#baa996]" />
                         <select
                             value={filter}
                             onChange={(e) => onFilterChange?.(e.target.value)}
-                            className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-7 pr-2 text-xs text-slate-700 outline-none transition-colors focus:border-cyan-400 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
+                            className="w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
                         >
                             {FILTER_OPTIONS.map(option => (
                                 <option key={option.id} value={option.id}>
@@ -89,11 +89,11 @@ export default function InstructionListPanel({
                     </div>
 
                     <div className="relative">
-                        <ArrowUpDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <ArrowUpDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#baa996]" />
                         <select
                             value={sort}
                             onChange={(e) => onSortChange?.(e.target.value)}
-                            className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-7 pr-2 text-xs text-slate-700 outline-none transition-colors focus:border-cyan-400 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
+                            className="w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
                         >
                             {SORT_OPTIONS.map(option => (
                                 <option key={option.id} value={option.id}>{option.label}</option>
@@ -106,7 +106,7 @@ export default function InstructionListPanel({
                     {query && (
                         <button
                             onClick={() => onQueryChange?.('')}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-200 dark:hover:bg-slate-800"
+                            className="inline-flex items-center gap-1 rounded-full border border-[#eadfce] bg-[#fffaf4] px-2.5 py-1 text-[11px] text-[#6d5d4d] transition-colors hover:bg-white dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                             <XCircle size={11} />
                             清空搜索
@@ -115,7 +115,7 @@ export default function InstructionListPanel({
                     <button
                         onClick={onClearEmptyInstructions}
                         disabled={(summary?.empty || 0) === 0}
-                        className="inline-flex items-center gap-1 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500/10 dark:text-amber-200"
+                        className="inline-flex items-center gap-1 rounded-full border border-[#eed8ae] bg-[#fbf3e7] px-2.5 py-1 text-[11px] font-semibold text-[#b17d31] transition-colors hover:bg-[#fff7ed] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500/10 dark:text-amber-200"
                     >
                         <Trash2 size={11} />
                         清理空白
@@ -143,12 +143,12 @@ export default function InstructionListPanel({
                             key={item.id}
                             onClick={() => onSelect?.(item.id)}
                             className={`group w-full rounded-xl border px-3 py-2 text-left transition-all ${isActive
-                                ? 'border-cyan-300/60 bg-cyan-50 shadow-[0_8px_24px_rgba(6,182,212,0.18)] dark:border-cyan-400/40 dark:bg-cyan-500/10'
-                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20'
+                                ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)]'
+                                : 'border-[#eee3d7] bg-[#fffdf9] hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20'
                                 }`}
                         >
                             <div className="mb-1 flex items-center justify-between gap-2">
-                                <span className="truncate text-xs font-bold text-slate-700 dark:text-slate-100">
+                                <span className="truncate text-xs font-semibold text-[#4a3e33] dark:text-slate-100">
                                     #{idx + 1} {title}
                                 </span>
                                 <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -158,7 +158,7 @@ export default function InstructionListPanel({
                                             e.stopPropagation();
                                             onDuplicateInstruction?.(item.id);
                                         }}
-                                        className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-cyan-600 dark:hover:bg-slate-800"
+                                        className="rounded-md p-1 text-[#b0a08e] hover:bg-[#f8f1e6] hover:text-[#8d6d49] dark:hover:bg-slate-800"
                                         title="复制"
                                     >
                                         <Copy size={12} />
@@ -176,12 +176,12 @@ export default function InstructionListPanel({
                                     </span>
                                 </div>
                             </div>
-                            <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-300">
+                            <p className="line-clamp-2 text-[11px] leading-relaxed text-[#8f7e6b] dark:text-slate-300">
                                 {snippet}
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                 <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${item.enabled !== false
-                                    ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200'
+                                    ? 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/10 dark:text-slate-200'
                                     : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
                                     }`}>
                                     {item.enabled !== false ? '启用' : '停用'}
@@ -197,7 +197,7 @@ export default function InstructionListPanel({
                                     </span>
                                 )}
                                 {item.isGlobal !== true && item.enabled !== false && !isEmpty && (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-[#f4eee6] px-1.5 py-0.5 text-[10px] font-semibold text-[#7d6c5a] dark:bg-slate-800 dark:text-slate-300">
                                         <Sparkles size={10} />
                                         画布可选
                                     </span>

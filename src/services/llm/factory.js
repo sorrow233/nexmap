@@ -1,6 +1,7 @@
 import { GeminiProvider } from './providers/gemini';
 import { OpenAIProvider } from './providers/openai';
 import { SystemCreditsProvider } from './providers/systemCredits';
+import { runtimeLog, runtimeWarn } from '../../utils/runtimeLogging';
 
 export class ModelFactory {
     /**
@@ -56,7 +57,7 @@ export class ModelFactory {
         const hasApiKey = config.apiKey && config.apiKey.trim() !== '';
 
         if (!hasApiKey && !options.skipSystemCredits) {
-            console.log('[ModelFactory] No API key configured, using SystemCreditsProvider');
+            runtimeLog('[ModelFactory] No API key configured, using SystemCreditsProvider');
             return new SystemCreditsProvider();
         }
 
@@ -70,7 +71,7 @@ export class ModelFactory {
                 return new GeminiProvider(config);
             } else {
                 // Non-Gemini model on Gemini provider config → use OpenAI compatible
-                console.log(`[ModelFactory] Model '${model}' is not a Gemini model, using OpenAI compatible protocol`);
+                runtimeLog(`[ModelFactory] Model '${model}' is not a Gemini model, using OpenAI compatible protocol`);
                 return new OpenAIProvider(config);
             }
         }
@@ -81,7 +82,7 @@ export class ModelFactory {
             case 'system-credits':
                 return new SystemCreditsProvider();
             default:
-                console.warn(`[ModelFactory] Unknown protocol '${protocol}', falling back to OpenAI.`);
+                runtimeWarn(`[ModelFactory] Unknown protocol '${protocol}', falling back to OpenAI.`);
                 return new OpenAIProvider(config);
         }
     }
@@ -93,4 +94,3 @@ export class ModelFactory {
         return !config?.apiKey || config.apiKey.trim() === '';
     }
 }
-

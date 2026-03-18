@@ -10,6 +10,7 @@ export const createSelectionSlice = (set, get) => ({
     arrangeSelectionGrid: () => {
         const { cards, selectedIds, connections } = get();
         if (!selectedIds || selectedIds.length === 0) return;
+        const selectedIdSet = new Set(selectedIds);
 
         // 1. Identify all card IDs that are part of any connection
         const connectedCardIds = new Set();
@@ -22,7 +23,7 @@ export const createSelectionSlice = (set, get) => ({
 
         // 2. Filter selected cards to exclude those with connections
         const selectedCards = cards.filter(c =>
-            selectedIds.includes(c.id) && !connectedCardIds.has(c.id)
+            selectedIdSet.has(c.id) && !connectedCardIds.has(c.id)
         );
 
         if (selectedCards.length === 0) return;
@@ -55,21 +56,27 @@ export const createSelectionSlice = (set, get) => ({
     handleBatchDelete: () => {
         const { selectedIds } = get();
         if (!selectedIds || selectedIds.length === 0) return;
+        const selectedIdSet = new Set(selectedIds);
+        const deletedAt = Date.now();
 
         set(state => ({
-            cards: state.cards.filter(c => selectedIds.indexOf(c.id) === -1),
+            cards: state.cards.map(card => (
+                selectedIdSet.has(card.id)
+                    ? { ...card, deletedAt }
+                    : card
+            )),
             connections: state.connections.filter(conn =>
-                selectedIds.indexOf(conn.from) === -1 && selectedIds.indexOf(conn.to) === -1
+                !selectedIdSet.has(conn.from) && !selectedIdSet.has(conn.to)
             ),
-            // Clean up groups that might lose all their cards? 
-            // Currently we keep empty groups or groups with missing cards, 
-            // but let's filter cardIds inside groups to keep it clean.
             groups: state.groups.map(g => ({
                 ...g,
-                cardIds: g.cardIds.filter(id => selectedIds.indexOf(id) === -1)
-            })).filter(g => g.cardIds.length > 0), // Remove empty groups
+                cardIds: g.cardIds.filter(id => !selectedIdSet.has(id))
+            })).filter(g => g.cardIds.length > 0),
+            generatingCardIds: new Set(
+                Array.from(state.generatingCardIds || []).filter(id => !selectedIdSet.has(id))
+            ),
             selectedIds: [],
-            expandedCardId: selectedIds.indexOf(state.expandedCardId) !== -1 ? null : state.expandedCardId
+            expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId
         }));
     },
 });

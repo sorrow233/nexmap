@@ -7,6 +7,7 @@
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth } from '../firebase';
+import { runtimeLog } from '../../utils/runtimeLogging';
 
 const STORAGE_KEYS = {
     TOTAL_CHARS: 'nexmap_stats_total_chars',
@@ -131,7 +132,7 @@ class UserStatsService {
 
             await setDoc(statsRef, statsData, { merge: true });
             localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
-            console.log('[UserStats] Synced to cloud');
+            runtimeLog('[UserStats] Synced to cloud');
         } catch (error) {
             console.error('[UserStats] Failed to sync to cloud:', error);
         }
@@ -193,7 +194,7 @@ class UserStatsService {
                 localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, JSON.stringify(mergedSessions));
                 localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, JSON.stringify(mergedUsage));
 
-                console.log('[UserStats] Loaded and merged from cloud');
+                runtimeLog('[UserStats] Loaded and merged from cloud');
                 return true;
             }
         } catch (error) {

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2, Download, Upload } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { saveBoardToCloud, updateBoardMetadataInCloud } from '../../services/storage';
-import { auth, db } from '../../services/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { saveBoard, saveBoardToCloud, updateBoardMetadataInCloud } from '../../services/storage';
+import { auth } from '../../services/firebase';
 import {
     getBackupHistory,
     restoreFromBackup,
@@ -13,7 +12,6 @@ import {
 } from '../../services/scheduledBackupService';
 import DataMigrationSection from './DataMigrationSection';
 import {
-    getEffectiveBoardCardCount,
     normalizeBoardTitleMeta,
     pickBoardTitleMetadata
 } from '../../services/boardTitle/metadata';
@@ -153,27 +151,10 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 normalizedBoard.updatedAt = Date.now();
                 normalizedBoard.createdAt = normalizedBoard.createdAt || Date.now();
 
-                // CRITICAL FIX: Write directly to Firestore, bypassing saveBoardToCloud 
-                // which requires local metadata (empty in recovery scenario)
+                // 先写本地，再走统一的云快照保存，避免手写 Firestore 文档结构
                 try {
-                    const boardRef = doc(db, 'users', user.uid, 'boards', String(normalizedBoard.id));
-                    await setDoc(boardRef, {
-                        id: String(normalizedBoard.id),
-                        name: normalizedBoard.name,
-                        nameSource: normalizedBoard.nameSource,
-                        autoTitle: normalizedBoard.autoTitle,
-                        autoTitleGeneratedAt: normalizedBoard.autoTitleGeneratedAt,
-                        manualTitleUpdatedAt: normalizedBoard.manualTitleUpdatedAt,
-                        createdAt: normalizedBoard.createdAt,
-                        updatedAt: normalizedBoard.updatedAt,
-                        lastAccessedAt: normalizedBoard.lastAccessedAt || normalizedBoard.updatedAt,
-                        cardCount: getEffectiveBoardCardCount(normalizedBoard.cards) || normalizedBoard.cardCount || 0,
-                        cards: normalizedBoard.cards || [],
-                        connections: normalizedBoard.connections || [],
-                        groups: normalizedBoard.groups || [],
-                        backgroundImage: normalizedBoard.backgroundImage || null,
-                        thumbnail: normalizedBoard.thumbnail || null
-                    });
+                    await saveBoard(String(normalizedBoard.id), normalizedBoard);
+                    await saveBoardToCloud(user.uid, String(normalizedBoard.id), normalizedBoard);
                     successCount++;
                     console.log(`[Import] Successfully wrote board ${normalizedBoard.id} to Firestore`);
                 } catch (err) {
@@ -257,16 +238,16 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         <div className="space-y-6">
 
 
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl text-sm border border-blue-100 dark:border-blue-900/30">
+            <div className="rounded-[24px] border border-[#eadfce] bg-[#f8f2e8] p-4 text-sm text-[#7d6b57] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
                 <p className="font-bold mb-1">{t.settings.storageConfig?.byok || 'BYOK (Bring Your Own Key)'}</p>
                 <p>{t.settings.storageConfig?.byokDesc || 'Use your own S3 storage (AWS, Cloudflare R2, MinIO) to store images.'}</p>
             </div>
 
             {/* Enable Toggle */}
-            <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-white/10 rounded-2xl">
+            <div className="flex items-center justify-between rounded-[24px] border border-[#eee3d7] p-4 dark:border-white/10">
                 <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storageConfig?.enable || 'Enable S3 Storage'}</h3>
-                    <p className="text-xs text-slate-500">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
+                    <h3 className="font-semibold text-[#43372c] dark:text-slate-200">{t.settings.storageConfig?.enable || 'Enable S3 Storage'}</h3>
+                    <p className="text-xs text-[#8f7e6b]">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -275,7 +256,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         checked={s3Config.enabled}
                         onChange={e => setS3ConfigState({ ...s3Config, enabled: e.target.checked })}
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 dark:peer-focus:ring-brand-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-600"></div>
+                    <div className="h-6 w-11 rounded-full bg-[#e9dfd2] peer after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-[#e1d4c4] after:bg-white after:transition-all after:content-[''] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#f4e7d2] peer-checked:bg-[#efb65a] peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-700 dark:border-gray-600 dark:peer-focus:ring-white/10"></div>
                 </label>
             </div>
 
@@ -288,7 +269,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             value={s3Config.endpoint}
                             onChange={e => setS3ConfigState({ ...s3Config, endpoint: e.target.value })}
                             placeholder="https://<account>.r2.cloudflarestorage.com"
-                            className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                            className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -299,7 +280,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 value={s3Config.region}
                                 onChange={e => setS3ConfigState({ ...s3Config, region: e.target.value })}
                                 placeholder="auto"
-                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
                             />
                         </div>
                         <div>
@@ -308,7 +289,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 type="text"
                                 value={s3Config.bucket}
                                 onChange={e => setS3ConfigState({ ...s3Config, bucket: e.target.value })}
-                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
                             />
                         </div>
                     </div>
@@ -319,7 +300,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 type="text"
                                 value={s3Config.accessKeyId}
                                 onChange={e => setS3ConfigState({ ...s3Config, accessKeyId: e.target.value })}
-                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
                             />
                         </div>
                         <div>
@@ -328,7 +309,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 type="password"
                                 value={s3Config.secretAccessKey}
                                 onChange={e => setS3ConfigState({ ...s3Config, secretAccessKey: e.target.value })}
-                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
                             />
                         </div>
                     </div>
@@ -400,7 +381,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
                 <button
                     onClick={() => setShowManualImport(!showManualImport)}
-                    className="text-xs font-bold text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1"
+                    className="flex items-center gap-1 text-xs font-semibold text-[#a08e7b] transition-colors hover:text-[#8d6d49] dark:hover:text-slate-200"
                 >
                     {showManualImport ? (t.settings.storageConfig?.hideAdvancedRecovery || "Hide Advanced Recovery") : (t.settings.storageConfig?.advancedRecovery || "Show Advanced Recovery (Manual Import)")}
                 </button>
@@ -416,7 +397,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             value={manualJson}
                             onChange={(e) => setManualJson(e.target.value)}
                             placeholder='[{"id":"123", "name":"My Board"...}]'
-                            className="w-full h-32 p-3 text-xs font-mono bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-brand-500 mb-3 resize-none"
+                            className="mb-3 h-32 w-full resize-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-black/20"
                         />
 
                         <div className="flex items-center justify-between">
@@ -427,7 +408,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <button
                                 onClick={handleManualImport}
                                 disabled={manualRestoreStatus === 'restoring' || !manualJson.trim()}
-                                className="px-4 py-2 bg-brand-600 text-white font-bold rounded-lg text-xs hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                className="rounded-full bg-[#efb65a] px-4 py-2 text-xs font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {manualRestoreStatus === 'restoring' ? (t.settings.storageConfig?.importing || "Importing...") : (t.settings.storageConfig?.importRestore || "Import & Restore")}
                             </button>
@@ -446,7 +427,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     <button
                         onClick={handleForceBackup}
                         disabled={backupActionStatus === 'loading'}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white font-bold text-xs rounded-lg hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="flex items-center gap-1.5 rounded-full bg-[#efb65a] px-3 py-1.5 text-xs font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {backupActionStatus === 'loading' ? (
                             <><RotateCcw size={12} className="animate-spin" /> {t.settings.storageConfig?.backingUp || "Backing up..."}</>
@@ -466,7 +447,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 {backupActionStatus !== 'idle' && backupActionMsg && (
                     <div className={`mb-3 p-2 rounded-lg text-xs font-bold ${backupActionStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
                         backupActionStatus === 'error' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' :
-                            'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/8 dark:text-slate-200'
                         }`}>
                         {backupActionMsg}
                     </div>
@@ -484,7 +465,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="p-1.5 bg-brand-100 dark:bg-brand-800/30 text-brand-600 dark:text-brand-400 rounded-lg">
+                                    <div className="rounded-lg bg-[#f8f2e8] p-1.5 text-[#8d6d49] dark:bg-white/10 dark:text-slate-200">
                                         <Calendar size={14} />
                                     </div>
                                     <div>

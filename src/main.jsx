@@ -5,28 +5,48 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App.jsx'
 import { LanguageProvider } from './contexts/LanguageContext';
 import { setupMobileViewportFix } from './utils/browser.js';
+import { installChunkLoadRecovery } from './utils/chunkLoadRecovery.js';
+import { stripBuildReloadParams } from './utils/buildVersion.js';
+import {
+    installFetchErrorLogging,
+    installGlobalErrorLogging,
+    installRuntimeLoggingControls,
+    runtimeLog
+} from './utils/runtimeLogging.js';
 import './index.css'
 import './styles/hljs-theme.css'
 import 'katex/dist/katex.min.css'
 
 import packageJson from '../package.json';
-console.log(`%c NexMap v${packageJson.version} - Loaded at ${new Date().toISOString()}`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
+installRuntimeLoggingControls();
+installGlobalErrorLogging();
+installFetchErrorLogging();
+stripBuildReloadParams();
+runtimeLog(`%c NexMap v${packageJson.version} - Loaded at ${new Date().toISOString()} (build ${__APP_BUILD_TIMESTAMP__})`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
 
 // Initialize iOS Safari 100vh viewport fix
 setupMobileViewportFix();
+installChunkLoadRecovery();
 
 
 // Prevent browser navigation gestures globally
 // This is critical for canvas-based apps where swipe gestures should not trigger browser back/forward
 let touchStartX = 0;
 let touchStartY = 0;
+let touchStartedNearEdge = false;
+const EDGE_SWIPE_GUARD_PX = 24;
 
 document.addEventListener('touchstart', (e) => {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
+    touchStartedNearEdge =
+        touchStartX <= EDGE_SWIPE_GUARD_PX ||
+        touchStartX >= window.innerWidth - EDGE_SWIPE_GUARD_PX;
 }, { passive: false });
 
 document.addEventListener('touchmove', (e) => {
+    if (!touchStartedNearEdge) return;
+
     const touchEndX = e.touches[0].clientX;
     const touchEndY = e.touches[0].clientY;
     const deltaX = Math.abs(touchEndX - touchStartX);
@@ -37,6 +57,14 @@ document.addEventListener('touchmove', (e) => {
         e.preventDefault();
     }
 }, { passive: false });
+
+document.addEventListener('touchend', () => {
+    touchStartedNearEdge = false;
+}, { passive: true });
+
+document.addEventListener('touchcancel', () => {
+    touchStartedNearEdge = false;
+}, { passive: true });
 
 // Prevent mouse wheel from triggering browser navigation
 document.addEventListener('wheel', (e) => {

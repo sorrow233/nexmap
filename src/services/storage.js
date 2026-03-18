@@ -5,13 +5,15 @@ import {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
-    saveViewportState, loadViewportState, loadBoardDataForSearch
+    saveViewportState, loadViewportState, loadBoardDataForSearch,
+    emergencyLocalSave
 } from './boardService';
 
 import {
     listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard,
     saveBoardToCloud, deleteBoardFromCloud,
-    saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings
+    saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings,
+    CLOUD_SAVE_RESULT_OK, CLOUD_SAVE_RESULT_DEFERRED_OFFLINE, CLOUD_SAVE_RESULT_QUEUED_RETRY
 } from './syncService';
 
 import { saveImageToIDB, getImageFromIDB } from './imageStore';
@@ -20,10 +22,11 @@ export {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
-    saveViewportState, loadViewportState, loadBoardDataForSearch,
+    saveViewportState, loadViewportState, loadBoardDataForSearch, emergencyLocalSave,
     listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard,
     saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings,
+    CLOUD_SAVE_RESULT_OK, CLOUD_SAVE_RESULT_DEFERRED_OFFLINE, CLOUD_SAVE_RESULT_QUEUED_RETRY,
     saveImageToIDB, getImageFromIDB
 };
 
@@ -31,7 +34,7 @@ export {
 const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
-    saveViewportState, loadViewportState, loadBoardDataForSearch,
+    saveViewportState, loadViewportState, loadBoardDataForSearch, emergencyLocalSave,
     listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard,
     saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateUserSettings,

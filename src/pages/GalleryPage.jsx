@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, User, BarChart3, Sun, Moon, StickyNote } from 'lucide-react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Plus, Settings, Star, MessageSquare, CreditCard, LogOut, ChevronDown, BarChart3, StickyNote, LayoutGrid, Trash2 } from 'lucide-react';
 import BoardGallery from '../components/BoardGallery';
 import FavoritesGallery from '../components/FavoritesGallery';
 import NotesCenter from '../components/NotesCenter';
 import FeedbackView from '../components/FeedbackView';
-import SettingsModal from '../components/SettingsModal';
 import UsageStatsModal from '../components/UsageStatsModal';
 import StatisticsView from '../components/StatisticsView';
 import SEO from '../components/SEO';
@@ -20,6 +19,11 @@ import PaymentSuccessModal from '../components/PaymentSuccessModal';
 import { auth } from '../services/firebase';
 import { useAutoBoardSummaries } from '../hooks/useAutoBoardSummaries';
 import { useAutoBoardNaming } from '../hooks/useAutoBoardNaming';
+import { useIPhoneGalleryMode } from '../hooks/useIPhoneGalleryMode';
+import MobileGalleryHeader from '../components/gallery/mobile/MobileGalleryHeader';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
+
+const SettingsModal = lazyWithRetry(() => import('../components/SettingsModal'));
 
 export default function GalleryPage({
     boardsList,
@@ -44,6 +48,11 @@ export default function GalleryPage({
     const [searchParams, setSearchParams] = useSearchParams();
     const isPro = useStore(state => state.isPro);
     const refreshCredits = useStore(state => state.fetchSystemCredits);
+    const isIPhoneGalleryMode = useIPhoneGalleryMode();
+
+    useEffect(() => {
+        setShowUserMenu(false);
+    }, [location.pathname, user?.uid]);
 
 
     // Auto-generate summaries for eligible boards
@@ -127,11 +136,11 @@ export default function GalleryPage({
 
 
     const navItems = [
-        { id: 'active', label: t.gallery.gallery, path: '/gallery', end: true },
+        { id: 'active', label: t.gallery.gallery, icon: LayoutGrid, path: '/gallery', end: true },
         { id: 'notes', label: t.gallery.notesCenter || 'Notes', icon: StickyNote, path: '/gallery/notes' },
         { id: 'favorites', label: t.gallery.favorites, icon: Star, path: '/gallery/favorites' },
         { id: 'statistics', label: t.stats?.title || "Data", icon: BarChart3, path: '/gallery/statistics' },
-        { id: 'trash', label: t.gallery.trash, path: '/gallery/trash' },
+        { id: 'trash', label: t.gallery.trash, icon: Trash2, path: '/gallery/trash' },
         { id: 'feedback', label: t.feedback?.title || 'Feedback', icon: MessageSquare, path: '/gallery/feedback' }
     ];
 
@@ -160,128 +169,140 @@ export default function GalleryPage({
             {/* Ambient Background Glow */}
             <div className="fixed top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none z-0" />
 
-            <div className="max-w-[1800px] mx-auto relative z-10 px-4 md:px-8 py-6">
+            <div className={`max-w-[1800px] mx-auto relative z-10 ${isIPhoneGalleryMode ? 'px-3 py-4' : 'px-4 md:px-8 py-6'}`}>
 
-                {/* Modern Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 animate-fade-in-up relative z-20">
+                {isIPhoneGalleryMode ? (
+                    <MobileGalleryHeader
+                        activeTab={activeTab}
+                        navItems={navItems}
+                        navigate={navigate}
+                        user={user}
+                        t={t}
+                        onLogin={onLogin}
+                        onLogout={onLogout}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                        showUserMenu={showUserMenu}
+                        setShowUserMenu={setShowUserMenu}
+                    />
+                ) : (
+                    <>
+                        {/* Modern Header */}
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 animate-fade-in-up relative z-20">
 
-                    {/* Brand & View Switcher */}
-                    <div className="flex items-center gap-8">
-                        <div
-                            className="text-2xl font-bold tracking-tight cursor-pointer flex items-center gap-2 group"
-                            onClick={() => navigate('/gallery')}
-                        >
-                            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black transform transition-transform group-hover:rotate-12">
-                                <Star size={16} fill="currentColor" />
-                            </div>
-                            <span>NexMap</span>
-                        </div>
-
-                        {/* Navigation Pills with Spotlight */}
-                        <Spotlight spotColor="rgba(99, 102, 241, 0.1)" size={300} className="rounded-full">
-                            <div className="hidden md:flex bg-slate-200/50 dark:bg-white/5 p-1.5 rounded-full border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow duration-300">
-                                {navItems.map(tab => (
-                                    <NavLink
-                                        key={tab.id}
-                                        to={tab.path}
-                                        end={tab.end}
-                                        aria-label={tab.label}
-                                        className={({ isActive }) => `
-                                            px-5 py-2 rounded-full text-sm font-semibold transition-all relative overflow-hidden flex items-center gap-2
-                                            ${isActive
-                                                ? 'text-white bg-black dark:bg-white dark:text-black shadow-lg'
-                                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'}
-                                        `}
-                                    >
-                                        {tab.icon && <tab.icon size={14} className={activeTab === tab.id ? (tab.id === 'favorites' ? 'fill-current' : '') : ''} />}
-                                        {tab.label}
-                                    </NavLink>
-                                ))}
-                            </div>
-                        </Spotlight>
-                    </div>
-
-                    {/* User & Actions */}
-                    <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                        {/* Mobile View Switcher (Simple Dropdown visual or scroll) */}
-                        <div className="md:hidden flex-1 overflow-x-auto no-scrollbar flex gap-2">
-                            {/* Mobile tabs would go here if needed, keeping it simple for now */}
-                        </div>
-
-                        {activeTab === 'active' && (
-                            <button
-                                onClick={() => onCreateBoard()}
-                                className="hidden md:flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold shadow-lg hover:shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5"
-                            >
-                                <Plus size={18} strokeWidth={3} />
-                                <span>{t.gallery.newBoard || "New Board"}</span>
-                            </button>
-                        )}
-
-                        {user ? (
-                            <div className="relative z-50">
-                                <button
-                                    onClick={() => setShowUserMenu(!showUserMenu)}
-                                    aria-label="User Menu"
-                                    className="flex items-center gap-3 pl-2 pr-4 py-1.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full hover:bg-slate-50 dark:hover:bg-white/10 transition-all"
+                            {/* Brand & View Switcher */}
+                            <div className="flex items-center gap-8">
+                                <div
+                                    className="text-2xl font-bold tracking-tight cursor-pointer flex items-center gap-2 group"
+                                    onClick={() => navigate('/gallery')}
                                 >
-                                    {user.photoURL ? (
-                                        <img src={user.photoURL} className="w-8 h-8 rounded-full ring-2 ring-white dark:ring-black translate-x-[-4px]" alt="User" />
-                                    ) : (
-                                        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-black translate-x-[-4px]">
-                                            {user.displayName?.[0] || 'U'}
-                                        </div>
-                                    )}
-                                    <span className="text-sm font-bold truncate max-w-[100px] hidden sm:block">{user.displayName}</span>
-                                    {isPro && <ProBadge size="sm" />}
-                                    <ChevronDown size={14} className={`text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-                                </button>
+                                    <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black transform transition-transform group-hover:rotate-12">
+                                        <Star size={16} fill="currentColor" />
+                                    </div>
+                                    <span>NexMap</span>
+                                </div>
 
-                                {showUserMenu && (
-                                    <>
-                                        <div className="fixed inset-0 z-[100]" onClick={() => setShowUserMenu(false)} />
-                                        <div className="absolute top-full right-0 mt-3 w-56 z-[101] bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden animate-scale-in origin-top-right p-2">
-                                            <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t.gallery.account}</div>
-                                            <button onClick={() => navigate('/pricing')} className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
-                                                <CreditCard size={16} /> {t.gallery.pricing}
-                                            </button>
-                                            <button onClick={() => setIsSettingsOpen(true)} className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
-                                                <Settings size={16} /> {t.settings?.title || 'Settings'}
-                                            </button>
-                                            <div className="h-px bg-slate-100 dark:bg-white/5 my-1" />
-                                            <button onClick={() => onLogout('manual_user_click')} className="w-full text-left px-3 py-2 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2">
-                                                <LogOut size={16} /> {t.gallery.signOut}
-                                            </button>
-                                        </div>
-                                    </>
+                                {/* Navigation Pills with Spotlight */}
+                                <Spotlight spotColor="rgba(99, 102, 241, 0.1)" size={300} className="rounded-full">
+                                    <div className="hidden md:flex bg-slate-200/50 dark:bg-white/5 p-1.5 rounded-full border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow duration-300">
+                                        {navItems.map(tab => (
+                                            <NavLink
+                                                key={tab.id}
+                                                to={tab.path}
+                                                end={tab.end}
+                                                aria-label={tab.label}
+                                                className={({ isActive }) => `
+                                                    px-5 py-2 rounded-full text-sm font-semibold transition-all relative overflow-hidden flex items-center gap-2
+                                                    ${isActive
+                                                        ? 'text-white bg-black dark:bg-white dark:text-black shadow-lg'
+                                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'}
+                                                `}
+                                            >
+                                                {tab.icon && <tab.icon size={14} className={activeTab === tab.id ? (tab.id === 'favorites' ? 'fill-current' : '') : ''} />}
+                                                {tab.label}
+                                            </NavLink>
+                                        ))}
+                                    </div>
+                                </Spotlight>
+                            </div>
+
+                            {/* User & Actions */}
+                            <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                                {activeTab === 'active' && (
+                                    <button
+                                        onClick={() => onCreateBoard()}
+                                        className="hidden md:flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold shadow-lg hover:shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5"
+                                    >
+                                        <Plus size={18} strokeWidth={3} />
+                                        <span>{t.gallery.newBoard || "New Board"}</span>
+                                    </button>
+                                )}
+
+                                {user ? (
+                                    <div className="relative z-50">
+                                        <button
+                                            onClick={() => setShowUserMenu(!showUserMenu)}
+                                            aria-label="User Menu"
+                                            className="flex items-center gap-3 pl-2 pr-4 py-1.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full hover:bg-slate-50 dark:hover:bg-white/10 transition-all"
+                                        >
+                                            {user.photoURL ? (
+                                                <img src={user.photoURL} className="w-8 h-8 rounded-full ring-2 ring-white dark:ring-black translate-x-[-4px]" alt="User" />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-black translate-x-[-4px]">
+                                                    {user.displayName?.[0] || 'U'}
+                                                </div>
+                                            )}
+                                            <span className="text-sm font-bold truncate max-w-[100px] hidden sm:block">{user.displayName}</span>
+                                            {isPro && <ProBadge size="sm" />}
+                                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {showUserMenu && (
+                                            <>
+                                                <div className="fixed inset-0 z-[100]" onClick={() => setShowUserMenu(false)} />
+                                                <div className="absolute top-full right-0 mt-3 w-56 z-[101] bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden animate-scale-in origin-top-right p-2">
+                                                    <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t.gallery.account}</div>
+                                                    <button onClick={() => navigate('/pricing')} className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
+                                                        <CreditCard size={16} /> {t.gallery.pricing}
+                                                    </button>
+                                                    <button onClick={() => setIsSettingsOpen(true)} className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
+                                                        <Settings size={16} /> {t.settings?.title || 'Settings'}
+                                                    </button>
+                                                    <div className="h-px bg-slate-100 dark:bg-white/5 my-1" />
+                                                    <button onClick={() => onLogout('manual_user_click')} className="w-full text-left px-3 py-2 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2">
+                                                        <LogOut size={16} /> {t.gallery.signOut}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <button onClick={onLogin} className="px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm">
+                                        {t.gallery.signIn}
+                                    </button>
                                 )}
                             </div>
-                        ) : (
-                            <button onClick={onLogin} className="px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm">
-                                {t.gallery.signIn}
-                            </button>
-                        )}
-                    </div>
-                </div>
+                        </div>
 
-                {/* Mobile Tab Bar (Visible only on mobile) */}
-                <div className="md:hidden flex overflow-x-auto gap-2 mb-8 no-scrollbar pb-2">
-                    {navItems.map(tab => (
-                        <NavLink
-                            key={tab.id}
-                            to={tab.path}
-                            end={tab.end}
-                            className={({ isActive }) => `
-                                px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border
-                                ${isActive
-                                    ? 'bg-black dark:bg-white text-white dark:text-black border-transparent'
-                                    : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10'}
-                            `}
-                        >
-                            {tab.label}
-                        </NavLink>
-                    ))}
-                </div>
+                        {/* Mobile Tab Bar (Visible only on mobile) */}
+                        <div className="md:hidden flex overflow-x-auto gap-2 mb-8 no-scrollbar pb-2">
+                            {navItems.map(tab => (
+                                <NavLink
+                                    key={tab.id}
+                                    to={tab.path}
+                                    end={tab.end}
+                                    className={({ isActive }) => `
+                                        px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border
+                                        ${isActive
+                                            ? 'bg-black dark:bg-white text-white dark:text-black border-transparent'
+                                            : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10'}
+                                    `}
+                                >
+                                    {tab.label}
+                                </NavLink>
+                            ))}
+                        </div>
+                    </>
+                )}
 
                 {/* Main Content Area */}
                 <main className="animate-fade-in-up duration-500 delay-100 min-h-[60vh] pb-32">
@@ -296,6 +317,7 @@ export default function GalleryPage({
                                 onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
                                 onUpdateBoardMetadata={onUpdateBoardMetadata}
                                 isTrashView={false}
+                                isIPhoneGalleryMode={isIPhoneGalleryMode}
                                 onImportGuide={handleCreateGuide}
                             />
                         } />
@@ -318,6 +340,7 @@ export default function GalleryPage({
                                 onPermanentlyDeleteBoard={onPermanentlyDeleteBoard}
                                 onUpdateBoardMetadata={onUpdateBoardMetadata}
                                 isTrashView={true}
+                                isIPhoneGalleryMode={isIPhoneGalleryMode}
                                 onImportGuide={handleCreateGuide}
                             />
                         } />
@@ -337,12 +360,15 @@ export default function GalleryPage({
                 </button>
             </div>
 
-            <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                user={user}
-
-            />
+            {isSettingsOpen && (
+                <Suspense fallback={null}>
+                    <SettingsModal
+                        isOpen={isSettingsOpen}
+                        onClose={() => setIsSettingsOpen(false)}
+                        user={user}
+                    />
+                </Suspense>
+            )}
 
             <UsageStatsModal
                 isOpen={isStatsOpen}

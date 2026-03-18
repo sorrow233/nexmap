@@ -1,29 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle2, AlertCircle, Database, Layers, Cpu, Gift, Globe, FileText, Loader2, Cloud, CloudOff, Link2 } from 'lucide-react';
-// import { chatCompletion } from '../services/llm'; // Converted to dynamic import
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, Cloud, CloudOff, Cpu, Loader2, Settings, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
 import { updateUserSettings, loadUserSettings } from '../services/syncService';
-import { linkageService } from '../services/linkageService';
 import {
     CUSTOM_INSTRUCTIONS_KEY,
     normalizeCustomInstructionsValue
 } from '../services/customInstructionsService';
+import {
+    createEmptyLinkageSettings,
+    normalizeLinkageSettings
+} from '../services/linkageTargets';
+import {
+    getLocalLinkageSettings,
+    persistLinkageSettingsLocal,
+    syncLinkageSettingsFromCloud
+} from '../services/linkageLocalStore';
+import { getEditableItems } from './settings/instructions/helpers';
+import SettingsBasicSection from './settings/SettingsBasicSection';
+import SettingsAISection from './settings/SettingsAISection';
+import SettingsAdvancedSection from './settings/SettingsAdvancedSection';
+import { cloneGlobalRoles, getSuggestedRoleModel } from './settings/modelRoleUtils';
+import { useLanguage } from '../contexts/LanguageContext';
+import packageJson from '../../package.json';
 
-// --- Timestamp-aware localStorage utilities for smart sync ---
 const loadWithTimestamp = (key) => {
     const raw = localStorage.getItem(key);
     if (!raw) return { value: null, lastModified: 0 };
     try {
         const parsed = JSON.parse(raw);
-        // New format: { value, lastModified }
         if (parsed && typeof parsed === 'object' && parsed.value !== undefined) {
             return { value: parsed.value, lastModified: parsed.lastModified || 0 };
         }
-        // Old format was just a string, JSON.parse would fail or return non-object
         return { value: raw, lastModified: 0 };
     } catch {
-        // Old format: plain string
         return { value: raw, lastModified: 0 };
     }
 };
@@ -47,33 +57,6 @@ const normalizeUpdatedAt = (value) => {
     return 0;
 };
 
-import SettingsCreditsTab from './settings/SettingsCreditsTab';
-import SettingsLLMTab from './settings/SettingsLLMTab';
-import SettingsRolesTab from './settings/SettingsRolesTab';
-import SettingsStorageTab from './settings/SettingsStorageTab';
-import SettingsGeneralTab from './settings/SettingsGeneralTab';
-import SettingsInstructionsTab from './settings/SettingsInstructionsTab';
-import SettingsLinkageTab from './settings/SettingsLinkageTab';
-import { useLanguage } from '../contexts/LanguageContext';
-import packageJson from '../../package.json';
-
-const FLOWSTUDIO_USER_ID_KEY = 'flowstudio_user_id';
-const FLOWSTUDIO_USER_ID_KEY_PREFIX = 'flowstudio_user_id:';
-
-const persistFlowStudioUidLocal = (flowUid, appUid) => {
-    const normalized = flowUid?.trim?.() || '';
-    const scopedKey = appUid ? `${FLOWSTUDIO_USER_ID_KEY_PREFIX}${appUid}` : null;
-
-    if (normalized) {
-        localStorage.setItem(FLOWSTUDIO_USER_ID_KEY, normalized);
-        if (scopedKey) localStorage.setItem(scopedKey, normalized);
-        return;
-    }
-
-    localStorage.removeItem(FLOWSTUDIO_USER_ID_KEY);
-    if (scopedKey) localStorage.removeItem(scopedKey);
-};
-
 export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
 
@@ -81,28 +64,23 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     const offlineMode = useStore(state => state.offlineMode);
     const setOfflineMode = useStore(state => state.setOfflineMode);
 
-    const [activeTab, setActiveTab] = useState('credits');
-
-    // LLM State
+    const [activeTab, setActiveTab] = useState('basic');
     const [providers, setProviders] = useState({});
     const [activeId, setActiveId] = useState('google');
-
-    // Testing State
+    const [globalRoles, setGlobalRoles] = useState(cloneGlobalRoles());
     const [testStatus, setTestStatus] = useState('idle');
     const [testMessage, setTestMessage] = useState('');
-
-    // UI State  
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState({
-        type: 'idle', // idle | saving | success | warning | error
+        type: 'idle',
         title: '',
         message: '',
         code: ''
     });
     const [pendingCloudPayload, setPendingCloudPayload] = useState(null);
+    const [requestedAdvancedPanel, setRequestedAdvancedPanel] = useState(null);
 
-    // S3 Storage State
     const [s3Config, setS3ConfigState] = useState({
         enabled: false,
         endpoint: '',
@@ -113,30 +91,48 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         publicDomain: ''
     });
 
-    // Custom Instructions State
     const [customInstructions, setCustomInstructions] = useState(
         normalizeCustomInstructionsValue(null)
     );
-    const [flowStudioUserId, setFlowStudioUserId] = useState('');
+    const [linkageSettings, setLinkageSettings] = useState(createEmptyLinkageSettings());
 
-    // Load configuration on mount from Store
     useEffect(() => {
         const state = useStore.getState();
         setProviders(JSON.parse(JSON.stringify(state.providers)));
         setActiveId(state.activeId);
+        setGlobalRoles(cloneGlobalRoles(state.globalRoles));
 
         const s3 = getS3Config();
         if (s3) setS3ConfigState(s3);
 
-        // Load custom instructions (with timestamp support)
         const { value: savedInstructions } = loadWithTimestamp(CUSTOM_INSTRUCTIONS_KEY);
         setCustomInstructions(normalizeCustomInstructionsValue(savedInstructions));
-        setFlowStudioUserId(linkageService.getFlowStudioUserId() || '');
+        setLinkageSettings(getLocalLinkageSettings(user?.uid));
 
+        setTestStatus('idle');
+        setTestMessage('');
         setIsSaving(false);
         setSaveStatus({ type: 'idle', title: '', message: '', code: '' });
         setPendingCloudPayload(null);
-    }, [isOpen]);
+        setRequestedAdvancedPanel(null);
+        setActiveTab('basic');
+    }, [isOpen, user?.uid]);
+
+    const handleLinkageFieldChange = (field, value) => {
+        setLinkageSettings(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const currentProvider = providers[activeId] || {};
+
+    const extraInstructionCount = useMemo(() => {
+        const items = getEditableItems(customInstructions);
+        if (items.length === 0) return 0;
+        const primaryInstruction = items.find(item => item.isGlobal) || items[0];
+        return items.filter(item => item.id !== primaryInstruction?.id).length;
+    }, [customInstructions]);
 
     const handleUpdateProvider = (field, value) => {
         setProviders(prev => ({
@@ -148,13 +144,27 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         }));
     };
 
+    const handleGlobalRoleChange = (role, providerId, model) => {
+        setGlobalRoles(prev => ({
+            ...prev,
+            [role]: {
+                providerId,
+                model
+            }
+        }));
+
+        if (role === 'chat' && providerId !== activeId) {
+            setActiveId(providerId);
+        }
+    };
+
     const handleAddProvider = () => {
-        const newId = `custom - ${Date.now()} `;
+        const newId = `custom-${Date.now()}`;
         setProviders(prev => ({
             ...prev,
             [newId]: {
                 id: newId,
-                name: t.settings.newProvider,
+                name: t.settings.newProvider || '新建提供商',
                 baseUrl: 'https://api.openai.com/v1',
                 apiKey: '',
                 model: 'gpt-4o',
@@ -169,8 +179,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         const remainingIds = Object.keys(providers).filter(id => id !== idToRemove);
         if (remainingIds.length === 0) return;
 
+        const fallbackId = remainingIds[0];
+        const fallbackProvider = providers[fallbackId];
+
         if (activeId === idToRemove) {
-            setActiveId(remainingIds[0]);
+            setActiveId(fallbackId);
         }
 
         setProviders(prev => {
@@ -178,28 +191,45 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             delete next[idToRemove];
             return next;
         });
+
+        setGlobalRoles(prev => {
+            const nextRoles = cloneGlobalRoles(prev);
+            if (nextRoles.chat.providerId === idToRemove) {
+                nextRoles.chat = {
+                    providerId: fallbackId,
+                    model: getSuggestedRoleModel(fallbackProvider, 'chat')
+                };
+            }
+            if (nextRoles.image.providerId === idToRemove) {
+                nextRoles.image = {
+                    providerId: fallbackId,
+                    model: getSuggestedRoleModel(fallbackProvider, 'image')
+                };
+            }
+            return nextRoles;
+        });
     };
 
     const handleTestConnection = async () => {
         setTestStatus('testing');
         setTestMessage('');
         try {
-            const currentConfig = providers[activeId];
-            if (!currentConfig.apiKey) throw new Error("API Key is missing");
+            const providerConfig = providers[activeId];
+            if (!providerConfig?.apiKey) throw new Error('API Key is missing');
 
-            // Use the user's configured model for testing:
-            // Priority: roles.chat > model > default
-            const testModel = currentConfig.roles?.chat || currentConfig.model || null;
+            const testModel = activeId === globalRoles.chat.providerId
+                ? (globalRoles.chat.model || providerConfig.model || null)
+                : (providerConfig.model || getSuggestedRoleModel(providerConfig, 'chat'));
 
             const { chatCompletion } = await import('../services/llm');
             await chatCompletion(
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
-                currentConfig,
+                providerConfig,
                 testModel,
                 {}
             );
             setTestStatus('success');
-            setTestMessage(`${t.settings.connectionSuccess}(${testModel || 'default model'})`);
+            setTestMessage(`${t.settings.connectionSuccess} (${testModel || 'default model'})`);
         } catch (error) {
             setTestStatus('error');
             setTestMessage(error.message || t.settings.connectionFailed);
@@ -209,24 +239,24 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     const buildCloudPayload = (now) => ({
         providers,
         activeId,
-        globalRoles: useStore.getState().globalRoles,
+        globalRoles,
         s3Config,
         customInstructions: normalizeCustomInstructionsValue(customInstructions),
-        flowStudioUserId: flowStudioUserId?.trim?.() || '',
+        ...normalizeLinkageSettings(linkageSettings),
         lastUpdated: now,
-        customInstructionsModified: true // Signal to add serverTimestamp
+        customInstructionsModified: true
     });
 
     const saveLocalState = (now) => {
         useStore.getState().setFullConfig({
             providers,
             activeId,
-            globalRoles: useStore.getState().globalRoles,
+            globalRoles,
             lastUpdated: now
         });
         saveS3Config(s3Config);
         saveWithTimestamp(CUSTOM_INSTRUCTIONS_KEY, normalizeCustomInstructionsValue(customInstructions));
-        persistFlowStudioUidLocal(flowStudioUserId, user?.uid);
+        persistLinkageSettingsLocal(linkageSettings, user?.uid);
     };
 
     const handleSave = async () => {
@@ -234,8 +264,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setIsSaving(true);
         setSaveStatus({
             type: 'saving',
-            title: 'Saving Settings',
-            message: 'Applying local changes and syncing to cloud...',
+            title: '正在保存设置',
+            message: '正在写入本地并同步云端...',
             code: ''
         });
 
@@ -252,16 +282,16 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     if (cloudSaveResult?.reason === 'offline_mode') {
                         setSaveStatus({
                             type: 'warning',
-                            title: 'Saved Locally',
-                            message: 'Cloud sync is disabled (offline mode). Disable offline mode, then click Retry Cloud Sync.',
+                            title: '已保存到本地',
+                            message: '当前处于离线模式，关闭后可继续同步云端。',
                             code: 'offline_mode'
                         });
                         return;
                     }
                     setSaveStatus({
                         type: 'error',
-                        title: 'Saved Locally, Cloud Sync Failed',
-                        message: 'Your local settings are kept. Click Retry Cloud Sync to push to this account.',
+                        title: '本地已保存，云端同步失败',
+                        message: '你的本地改动还在，可以稍后重试同步。',
                         code: 'cloud_sync_failed'
                     });
                     return;
@@ -271,17 +301,17 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             setPendingCloudPayload(null);
             setSaveStatus({
                 type: 'success',
-                title: user?.uid ? 'Saved and Synced' : 'Saved Locally',
-                message: user?.uid ? 'Settings are now available on your other devices.' : 'Log in to sync these settings across devices.',
+                title: user?.uid ? '已保存并同步' : '已保存到本地',
+                message: user?.uid ? '设置已经同步到当前账号。' : '登录后可同步到其他设备。',
                 code: ''
             });
         } catch (error) {
-            console.error("Failed to save settings:", error);
+            console.error('Failed to save settings:', error);
             setPendingCloudPayload(prev => prev || buildCloudPayload(Date.now()));
             setSaveStatus({
                 type: 'error',
-                title: 'Saved Locally, Cloud Sync Failed',
-                message: error?.message || 'Please retry cloud sync.',
+                title: '本地已保存，云端同步失败',
+                message: error?.message || '请稍后重试云端同步。',
                 code: 'cloud_sync_failed'
             });
         } finally {
@@ -294,8 +324,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setIsSaving(true);
         setSaveStatus({
             type: 'saving',
-            title: 'Retrying Cloud Sync',
-            message: 'Uploading your latest settings...',
+            title: '正在重试云端同步',
+            message: '上传你最新的设置中...',
             code: ''
         });
         try {
@@ -304,16 +334,16 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 if (cloudSaveResult?.reason === 'offline_mode') {
                     setSaveStatus({
                         type: 'warning',
-                        title: 'Cloud Sync Still Disabled',
-                        message: 'Offline mode is still enabled. Disable it and retry.',
+                        title: '云端同步仍被禁用',
+                        message: '请先关闭离线模式，再重试同步。',
                         code: 'offline_mode'
                     });
                     return;
                 }
                 setSaveStatus({
                     type: 'error',
-                    title: 'Cloud Sync Failed Again',
-                    message: 'Please check network/auth and retry.',
+                    title: '云端同步再次失败',
+                    message: '请检查网络或登录状态后重试。',
                     code: 'cloud_sync_failed'
                 });
                 return;
@@ -322,8 +352,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             setPendingCloudPayload(null);
             setSaveStatus({
                 type: 'success',
-                title: 'Cloud Sync Complete',
-                message: 'Your settings are now synced to this account.',
+                title: '云端同步完成',
+                message: '当前账号已经拿到最新设置。',
                 code: ''
             });
         } finally {
@@ -336,8 +366,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         if (!user?.uid) {
             setSaveStatus({
                 type: 'warning',
-                title: 'Login Required',
-                message: 'Please log in first to pull settings from cloud.',
+                title: '需要先登录',
+                message: '请先登录，再从云端拉取设置。',
                 code: 'no_user'
             });
             return;
@@ -346,8 +376,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setIsSaving(true);
         setSaveStatus({
             type: 'saving',
-            title: 'Pulling Cloud Settings',
-            message: 'Fetching latest settings from this account...',
+            title: '正在拉取云端设置',
+            message: '正在获取当前账号的最新设置...',
             code: ''
         });
 
@@ -356,8 +386,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             if (!settings?.providers) {
                 setSaveStatus({
                     type: 'warning',
-                    title: 'No Cloud Settings Found',
-                    message: 'This account has no provider settings in cloud yet.',
+                    title: '云端还没有设置',
+                    message: '这个账号当前还没有可拉取的模型设置。',
                     code: 'no_cloud_settings'
                 });
                 return;
@@ -371,9 +401,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 globalRoles: settings.globalRoles || localState.globalRoles,
                 lastUpdated: cloudUpdated || Date.now()
             };
+
             useStore.getState().setFullConfig(nextConfig);
             setProviders(JSON.parse(JSON.stringify(nextConfig.providers)));
             setActiveId(nextConfig.activeId);
+            setGlobalRoles(cloneGlobalRoles(nextConfig.globalRoles));
 
             if (settings.s3Config) {
                 saveS3Config(settings.s3Config);
@@ -386,23 +418,20 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 setCustomInstructions(normalizedCloudInstructions);
             }
 
-            if (typeof settings.flowStudioUserId === 'string') {
-                setFlowStudioUserId(settings.flowStudioUserId);
-                persistFlowStudioUidLocal(settings.flowStudioUserId, user?.uid);
-            }
+            setLinkageSettings(syncLinkageSettingsFromCloud(settings, user?.uid));
 
             setPendingCloudPayload(null);
             setSaveStatus({
                 type: 'success',
-                title: 'Pulled from Cloud',
-                message: 'Cloud settings have been applied to this device.',
+                title: '云端设置已应用',
+                message: '当前设备已经切换到云端版本。',
                 code: ''
             });
-        } catch (e) {
+        } catch (error) {
             setSaveStatus({
                 type: 'error',
-                title: 'Pull Failed',
-                message: e?.message || 'Failed to pull settings from cloud.',
+                title: '拉取失败',
+                message: error?.message || '云端设置拉取失败。',
                 code: 'pull_failed'
             });
         } finally {
@@ -419,68 +448,72 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         window.location.reload();
     };
 
-    const currentProvider = providers[activeId] || {};
-
-    const primaryTabs = [
-        { id: 'credits', icon: Gift, label: t.settings.credits, description: t.settings.creditsDesc },
-        { id: 'language', icon: Globe, label: t.settings.language, description: t.settings.languageChoose || t.settings.language },
-        { id: 'instructions', icon: FileText, label: t.settings?.customInstructions || 'Custom Instructions', description: t.settings?.customInstructionsDesc || 'Global AI behavior' },
-        { id: 'linkage', icon: Link2, label: 'FlowStudio 绑定', description: '管理跨应用同步 UID' }
+    const tabs = [
+        {
+            id: 'basic',
+            icon: Sparkles,
+            label: '基础体验',
+            description: '语言、默认回复规则、基础额度',
+            accent: {
+                icon: 'bg-[#f7dfcf] text-[#9f6f4d]',
+                iconActive: 'bg-[#f3d5c0] text-[#8f6143]'
+            }
+        },
+        {
+            id: 'ai',
+            icon: Cpu,
+            label: 'AI 设置',
+            description: '模型、Key、连接与角色',
+            accent: {
+                icon: 'bg-[#ebe4f7] text-[#776496]',
+                iconActive: 'bg-[#e1d7f3] text-[#695784]'
+            }
+        },
+        {
+            id: 'advanced',
+            icon: SlidersHorizontal,
+            label: '高级设置',
+            description: '存储、指令库、绑定与同步',
+            accent: {
+                icon: 'bg-[#e5efe6] text-[#5f7666]',
+                iconActive: 'bg-[#dbe9de] text-[#4e6555]'
+            }
+        }
     ];
 
-    const aiTabs = [
-        { id: 'llm', icon: Cpu, label: t.settings.provider, description: t.settings.providerDesc },
-        { id: 'roles', icon: Layers, label: t.settings.modelRoles, description: t.settings.modelRolesDesc },
-        { id: 'storage', icon: Database, label: t.settings.storage, description: t.settings.storageDesc }
-    ];
-
-    const mobileTabs = [...primaryTabs, ...aiTabs];
-
-    const activeTabMetaMap = {
-        credits: {
-            title: t.settings.creditsUsage,
-            subtitle: '配额、兑换码和购买入口'
+    const activeMetaMap = {
+        basic: {
+            title: '基础体验',
+            subtitle: '常用偏好、语言和默认规则都集中在这里'
         },
-        language: {
-            title: t.settings.language,
-            subtitle: '界面显示语言与同步偏好'
+        ai: {
+            title: 'AI 设置',
+            subtitle: '模型、连接和角色配置统一收纳'
         },
-        instructions: {
-            title: t.settings?.customInstructions || 'Custom Instructions',
-            subtitle: '定义全局 AI 回复行为'
-        },
-        linkage: {
-            title: 'FlowStudio 绑定',
-            subtitle: '查看、修改或清除 FlowStudio Firebase UID'
-        },
-        llm: {
-            title: t.settings.modelProvider,
-            subtitle: '模型供应商与连接配置'
-        },
-        roles: {
-            title: t.settings.modelRoles,
-            subtitle: '按功能分配模型职责'
-        },
-        storage: {
-            title: t.settings.storageSettings,
-            subtitle: '存储、备份与恢复设置'
+        advanced: {
+            title: '高级设置',
+            subtitle: '同步、恢复和高级能力按需展开'
         }
     };
 
-    const activeMeta = activeTabMetaMap[activeTab] || activeTabMetaMap.credits;
+    const activeMeta = activeMetaMap[activeTab] || activeMetaMap.basic;
+    const activeTabMeta = tabs.find(tab => tab.id === activeTab) || tabs[0];
 
-    const TabButton = ({ id, icon: Icon, label, description, compact = false }) => {
+    const TabButton = ({ id, icon: Icon, label, description, accent, compact = false }) => {
         const isActive = activeTab === id;
+
         if (compact) {
             return (
                 <button
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${isActive
-                        ? 'border-cyan-300/70 bg-cyan-100 text-cyan-700 dark:border-cyan-400/50 dark:bg-cyan-400/20 dark:text-cyan-100'
-                        : 'border-slate-200 bg-white/85 text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-white/20 dark:hover:text-white'
+                        ? 'border-[#eadbc6] bg-[#fffaf3] text-[#5e4d3e] shadow-[0_10px_24px_rgba(92,74,50,0.10)]'
+                        : 'border-[#efe6da] bg-[rgba(255,252,247,0.84)] text-[#83705e] hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12 dark:hover:text-white'
                         }`}
                 >
-                    <Icon size={14} />
+                    <span className={`rounded-full p-1 ${isActive ? accent?.iconActive : accent?.icon}`}>
+                        <Icon size={12} />
+                    </span>
                     {label}
                 </button>
             );
@@ -489,21 +522,25 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         return (
             <button
                 onClick={() => setActiveTab(id)}
-                className={`group w-full rounded-2xl border px-3 py-3 text-left transition-all ${isActive
-                    ? 'border-cyan-300/60 bg-cyan-100/70 shadow-[0_0_0_1px_rgba(56,189,248,0.2)] dark:border-cyan-400/40 dark:bg-cyan-400/10'
-                    : 'border-slate-200/80 bg-white/75 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20 dark:hover:bg-slate-800/60'
+                className={`group w-full rounded-[22px] border px-3 py-3 text-left transition-all ${isActive
+                    ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)]'
+                    : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-white/6'
                     }`}
             >
                 <div className="flex items-center gap-3">
                     <div className={`rounded-xl p-2 transition-colors ${isActive
-                        ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-200'
-                        : 'bg-slate-100 text-slate-500 group-hover:text-slate-700 dark:bg-white/5 dark:text-slate-400 dark:group-hover:text-slate-200'
+                        ? accent?.iconActive
+                        : `${accent?.icon} opacity-80 group-hover:opacity-100`
                         }`}>
                         <Icon size={16} />
                     </div>
                     <div className="min-w-0">
-                        <div className={`truncate text-sm font-bold ${isActive ? 'text-cyan-800 dark:text-cyan-100' : 'text-slate-700 dark:text-slate-200'}`}>{label}</div>
-                        <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">{description}</div>
+                        <div className={`truncate text-sm font-semibold ${isActive ? 'text-[#2f241a] dark:text-white' : 'text-[#584c40] dark:text-slate-200'}`}>
+                            {label}
+                        </div>
+                        <div className="truncate text-[11px] text-[#938370] dark:text-slate-300/70">
+                            {description}
+                        </div>
                     </div>
                 </div>
             </button>
@@ -511,234 +548,231 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-slate-900/35 p-2 backdrop-blur-md dark:bg-slate-950/70 sm:p-6">
-            <div className="relative h-full w-full max-w-[1280px] overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_35px_120px_rgba(2,6,23,0.22)] dark:border-white/10 dark:bg-slate-950 dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
+        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-[rgba(104,92,78,0.18)] p-2 backdrop-blur-[18px] dark:bg-slate-950/80 sm:p-6">
+            <div className="relative h-full w-full max-w-[1320px] overflow-hidden rounded-[38px] border border-[#efe5d8] bg-[linear-gradient(180deg,rgba(248,244,238,0.98),rgba(241,235,228,0.98))] shadow-[0_34px_100px_rgba(82,67,49,0.18)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,22,30,0.96),rgba(12,16,23,0.94))] dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
                 <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl dark:bg-cyan-500/20" />
-                    <div className="absolute -bottom-24 left-8 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl dark:bg-blue-700/20" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(56,189,248,0.18),transparent_36%),radial-gradient(circle_at_85%_88%,rgba(59,130,246,0.18),transparent_34%)] dark:bg-[radial-gradient(circle_at_20%_15%,rgba(56,189,248,0.1),transparent_34%),radial-gradient(circle_at_85%_88%,rgba(14,116,144,0.16),transparent_33%)]" />
+                    <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5d5a8]/35 blur-3xl" />
+                    <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-[#ddd7ef]/40 blur-3xl" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(250,239,222,0.8),transparent_30%),radial-gradient(circle_at_82%_14%,rgba(239,228,246,0.6),transparent_28%),radial-gradient(circle_at_72%_86%,rgba(235,240,226,0.55),transparent_28%)]" />
                 </div>
 
                 <div className="relative flex h-full flex-col md:flex-row">
-                    <aside className="hidden w-[300px] shrink-0 border-r border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/65 md:flex">
+                    <aside className="hidden w-[280px] shrink-0 border-r border-[#ebe0d3] bg-[rgba(255,251,246,0.8)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 md:flex">
                         <div className="flex h-full w-full flex-col p-6">
                             <div className="mb-6 flex items-center gap-3">
-                                <div className="rounded-2xl bg-cyan-500/15 p-2.5 text-cyan-700 shadow-[0_0_20px_rgba(14,165,233,0.25)] dark:bg-cyan-500/20 dark:text-cyan-200 dark:shadow-[0_0_32px_rgba(14,165,233,0.35)]">
+                                <div className={`rounded-[18px] p-2.5 shadow-[0_10px_24px_rgba(94,73,51,0.10)] ${activeTabMeta.accent.iconActive}`}>
                                     <Settings size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">{t.settings.title}</h2>
-                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.settings.configuration}</p>
+                                    <h2 className="text-xl font-semibold text-[#2f241a] dark:text-white">{t.settings.title}</h2>
+                                    <p className="text-xs font-medium text-[#8f7e6b] dark:text-slate-300/70">轻一点，静一点，分类还在</p>
                                 </div>
                             </div>
 
-                            <div className="flex-1 space-y-5 overflow-y-auto pr-1 custom-scrollbar">
-                                <div className="space-y-2">
-                                    <p className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">基础</p>
-                                    {primaryTabs.map(tab => (
-                                        <TabButton key={tab.id} id={tab.id} icon={tab.icon} label={tab.label} description={tab.description} />
-                                    ))}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <p className="px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">AI 配置</p>
-                                    {aiTabs.map(tab => (
-                                        <TabButton key={tab.id} id={tab.id} icon={tab.icon} label={tab.label} description={tab.description} />
-                                    ))}
-                                </div>
+                            <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                                {tabs.map((tab) => (
+                                    <TabButton
+                                        key={tab.id}
+                                        id={tab.id}
+                                        icon={tab.icon}
+                                        label={tab.label}
+                                        description={tab.description}
+                                        accent={tab.accent}
+                                    />
+                                ))}
                             </div>
 
-                            <div className="mt-5 border-t border-slate-200/90 pt-4 dark:border-white/10">
-                                <p className="text-center font-mono text-[11px] text-slate-500 dark:text-slate-500">v{packageJson.version}</p>
+                            <div className="mt-5 border-t border-[#ece2d6] pt-4 dark:border-white/10">
+                                <p className="text-center font-mono text-[11px] text-[#ad9d8a] dark:text-slate-400/60">v{packageJson.version}</p>
                             </div>
                         </div>
                     </aside>
 
-                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-50/80 dark:bg-slate-950/70">
-                        <div className="border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/45 sm:px-8 sm:py-5">
-                            <div className="mb-3 flex gap-2 overflow-x-auto md:hidden custom-scrollbar">
-                                {mobileTabs.map(tab => (
-                                    <TabButton key={tab.id} id={tab.id} icon={tab.icon} label={tab.label} compact />
-                                ))}
+                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[rgba(248,244,238,0.66)] dark:bg-[#0f141c]/82">
+                    <header className="border-b border-[#ece1d4] bg-[rgba(255,251,246,0.72)] px-4 py-4 backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 sm:px-8 sm:py-6">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                            <div className="max-w-3xl">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-[#eadbc8] bg-[#f8eee3] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                                    <Settings size={13} />
+                                    {t.settings.title}
+                                </div>
+                                <div className="mb-3 flex gap-2 overflow-x-auto md:hidden custom-scrollbar">
+                                    {tabs.map((tab) => (
+                                        <TabButton
+                                            key={tab.id}
+                                            id={tab.id}
+                                            icon={tab.icon}
+                                            label={tab.label}
+                                            description={tab.description}
+                                            accent={tab.accent}
+                                            compact
+                                        />
+                                    ))}
+                                </div>
+                                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
+                                    {activeMeta.title}
+                                </h2>
+                                <p className="mt-2 text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
+                                    {activeMeta.subtitle}。当前版本 v{packageJson.version}
+                                </p>
                             </div>
 
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                                <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-600/80 dark:text-cyan-300/80">
-                                        {t.settings.title}
-                                    </p>
-                                    <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-                                        {activeMeta.title}
-                                    </h2>
-                                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                                        {activeMeta.subtitle}
-                                    </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={onClose}
+                                    disabled={isSaving}
+                                    className="rounded-[16px] border border-[#eaddca] bg-[#fffaf3] px-4 py-2 text-sm font-medium text-[#655545] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
+                                >
+                                    {t.settings.cancel}
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                    className="rounded-[16px] bg-[#efb65a] px-5 py-2 text-sm font-semibold text-[#322515] shadow-[0_14px_30px_rgba(226,174,92,0.28)] transition-all hover:bg-[#f3bf6c] disabled:opacity-60"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        {isSaving && <Loader2 size={14} className="animate-spin" />}
+                                        {isSaving ? '保存中...' : t.settings.saveChanges}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {saveStatus.type !== 'idle' && (
+                        <div className="px-4 pt-4 sm:px-8">
+                            <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${saveStatus.type === 'success'
+                                ? 'border-emerald-200/80 bg-[#f0f7f1]'
+                                : saveStatus.type === 'warning'
+                                    ? 'border-[#eed8ae] bg-[#fbf5e8]'
+                                    : saveStatus.type === 'error'
+                                        ? 'border-rose-200/80 bg-[#fbefef]'
+                                        : 'border-[#ece1d4] bg-[rgba(255,252,247,0.88)]'
+                                }`}>
+                                <div className="flex min-w-0 items-center gap-2">
+                                    {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-[#7b6a58] dark:text-slate-200" />}
+                                    {saveStatus.type === 'success' && <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300" />}
+                                    {saveStatus.type === 'warning' && <CloudOff size={16} className="text-[#b58834] dark:text-amber-300" />}
+                                    {saveStatus.type === 'error' && <AlertCircle size={16} className="text-rose-600 dark:text-rose-300" />}
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-[#34291f] dark:text-white">{saveStatus.title}</p>
+                                        <p className="truncate text-xs text-[#7a6956] dark:text-slate-300">{saveStatus.message}</p>
+                                    </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                        onClick={onClose}
-                                        disabled={isSaving}
-                                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-all hover:bg-slate-100 disabled:opacity-60 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                                    >
-                                        {t.settings.cancel}
-                                    </button>
-                                    {user?.uid && (
+                                <div className="flex items-center gap-2">
+                                    {saveStatus.code === 'offline_mode' && offlineMode && (
                                         <button
-                                            onClick={handlePullFromCloud}
+                                            onClick={() => {
+                                                setOfflineMode(false);
+                                                setSaveStatus({
+                                                    type: 'warning',
+                                                    title: '离线模式已关闭',
+                                                    message: '现在可以继续重试云端同步了。',
+                                                    code: 'offline_mode_disabled'
+                                                });
+                                            }}
                                             disabled={isSaving}
-                                            className="rounded-xl border border-cyan-300/70 bg-cyan-100 px-4 py-2 text-sm font-bold text-cyan-700 transition-all hover:bg-cyan-200 disabled:opacity-60 dark:border-cyan-300/25 dark:bg-cyan-400/10 dark:text-cyan-100 dark:hover:bg-cyan-400/20"
+                                            className="rounded-[12px] bg-[#e8b358] px-3 py-1.5 text-xs font-semibold text-[#332411] transition-colors hover:bg-[#efc06f] disabled:opacity-60"
                                         >
-                                            Pull Cloud
+                                            关闭离线模式
                                         </button>
                                     )}
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={isSaving}
-                                        className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-black text-slate-950 shadow-[0_8px_30px_rgba(6,182,212,0.35)] transition-all hover:bg-cyan-400 disabled:opacity-60"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            {isSaving && <Loader2 size={14} className="animate-spin" />}
-                                            {isSaving ? 'Saving...' : t.settings.saveChanges}
-                                        </span>
-                                    </button>
+                                    {user?.uid && pendingCloudPayload && saveStatus.type !== 'saving' && (
+                                        <button
+                                            onClick={handleRetryCloudSync}
+                                            disabled={isSaving}
+                                            className="flex items-center gap-1 rounded-[12px] border border-[#eadfcd] bg-[#fffaf4] px-3 py-1.5 text-xs font-medium text-[#675645] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:bg-white/12"
+                                        >
+                                            <Cloud size={12} />
+                                            重试云端同步
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                        {saveStatus.type !== 'idle' && (
-                            <div className="px-4 pt-4 sm:px-8">
-                                <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${saveStatus.type === 'success'
-                                    ? 'border-emerald-400/30 bg-emerald-400/10'
-                                    : saveStatus.type === 'warning'
-                                        ? 'border-amber-300/30 bg-amber-300/10'
-                                        : saveStatus.type === 'error'
-                                            ? 'border-rose-400/30 bg-rose-400/10'
-                                            : 'border-slate-200 bg-white/80 dark:border-white/15 dark:bg-slate-900/70'
-                                    }`}>
-                                    <div className="flex min-w-0 items-center gap-2">
-                                        {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-slate-600 dark:text-slate-200" />}
-                                        {saveStatus.type === 'success' && <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300" />}
-                                        {saveStatus.type === 'warning' && <CloudOff size={16} className="text-amber-600 dark:text-amber-300" />}
-                                        {saveStatus.type === 'error' && <AlertCircle size={16} className="text-rose-600 dark:text-rose-300" />}
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{saveStatus.title}</p>
-                                            <p className="truncate text-xs text-slate-600 dark:text-slate-300">{saveStatus.message}</p>
-                                        </div>
-                                    </div>
+                    <div className="relative z-10 min-h-0 flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+                        <div className={`mx-auto ${activeTab === 'ai' ? 'max-w-[1120px]' : 'max-w-5xl'}`}>
+                            {activeTab === 'basic' && (
+                                <SettingsBasicSection
+                                    customInstructions={customInstructions}
+                                    setCustomInstructions={setCustomInstructions}
+                                    advancedInstructionCount={extraInstructionCount}
+                                    onOpenAdvancedInstructions={() => {
+                                        setActiveTab('advanced');
+                                        setRequestedAdvancedPanel('instructions');
+                                    }}
+                                />
+                            )}
 
-                                    <div className="flex items-center gap-2">
-                                        {saveStatus.code === 'offline_mode' && offlineMode && (
-                                            <button
-                                                onClick={() => {
-                                                    setOfflineMode(false);
-                                                    setSaveStatus({
-                                                        type: 'warning',
-                                                        title: 'Offline Mode Disabled',
-                                                        message: 'Cloud sync is enabled again. Click Retry Cloud Sync.',
-                                                        code: 'offline_mode_disabled'
-                                                    });
-                                                }}
-                                                disabled={isSaving}
-                                                className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-400 disabled:opacity-60"
-                                            >
-                                                Disable Offline
-                                            </button>
-                                        )}
-                                        {user?.uid && pendingCloudPayload && saveStatus.type !== 'saving' && (
-                                            <button
-                                                onClick={handleRetryCloudSync}
-                                                disabled={isSaving}
-                                                className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-100 disabled:opacity-60 dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                                            >
-                                                <Cloud size={12} />
-                                                Retry Cloud Sync
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                            {activeTab === 'ai' && (
+                                <SettingsAISection
+                                    providers={providers}
+                                    activeId={activeId}
+                                    setActiveId={setActiveId}
+                                    currentProvider={currentProvider}
+                                    globalRoles={globalRoles}
+                                    onGlobalRoleChange={handleGlobalRoleChange}
+                                    handleUpdateProvider={handleUpdateProvider}
+                                    handleAddProvider={handleAddProvider}
+                                    handleRemoveProvider={handleRemoveProvider}
+                                    handleTestConnection={handleTestConnection}
+                                    testStatus={testStatus}
+                                    testMessage={testMessage}
+                                    handleReset={handleReset}
+                                />
+                            )}
 
-                        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
-                            <div className={`mx-auto ${activeTab === 'llm' ? 'max-w-[1100px]' : 'max-w-4xl'}`}>
-                                {activeTab === 'credits' && (
-                                    <SettingsCreditsTab onOpenAdvanced={() => {
-                                        setActiveTab('llm');
-                                    }} />
-                                )}
-
-                                {activeTab === 'language' && <SettingsGeneralTab />}
-
-                                {activeTab === 'instructions' && (
-                                    <SettingsInstructionsTab
-                                        customInstructions={customInstructions}
-                                        setCustomInstructions={setCustomInstructions}
-                                    />
-                                )}
-
-                                {activeTab === 'linkage' && (
-                                    <SettingsLinkageTab
-                                        flowStudioUserId={flowStudioUserId}
-                                        setFlowStudioUserId={setFlowStudioUserId}
-                                        appUserUid={user?.uid}
-                                    />
-                                )}
-
-                                {activeTab === 'llm' && (
-                                    <SettingsLLMTab
-                                        providers={providers}
-                                        activeId={activeId}
-                                        setActiveId={setActiveId}
-                                        currentProvider={currentProvider}
-                                        handleUpdateProvider={handleUpdateProvider}
-                                        handleAddProvider={handleAddProvider}
-                                        handleRemoveProvider={handleRemoveProvider}
-                                        handleTestConnection={handleTestConnection}
-                                        testStatus={testStatus}
-                                        testMessage={testMessage}
-                                        handleReset={handleReset}
-                                    />
-                                )}
-
-                                {activeTab === 'roles' && (
-                                    <SettingsRolesTab
-                                        currentProvider={currentProvider}
-                                        handleUpdateProvider={handleUpdateProvider}
-                                    />
-                                )}
-
-                                {activeTab === 'storage' && (
-                                    <SettingsStorageTab
-                                        s3Config={s3Config}
-                                        setS3ConfigState={setS3ConfigState}
-                                    />
-                                )}
-                            </div>
+                            {activeTab === 'advanced' && (
+                                <SettingsAdvancedSection
+                                    s3Config={s3Config}
+                                    setS3ConfigState={setS3ConfigState}
+                                    customInstructions={customInstructions}
+                                    setCustomInstructions={setCustomInstructions}
+                                    linkageSettings={linkageSettings}
+                                    onLinkageFieldChange={handleLinkageFieldChange}
+                                    appUserUid={user?.uid}
+                                    user={user}
+                                    isSaving={isSaving}
+                                    offlineMode={offlineMode}
+                                    setOfflineMode={setOfflineMode}
+                                    pendingCloudPayload={pendingCloudPayload}
+                                    saveStatus={saveStatus}
+                                    handlePullFromCloud={handlePullFromCloud}
+                                    handleRetryCloudSync={handleRetryCloudSync}
+                                    handleReset={handleReset}
+                                    onOpenAITab={() => setActiveTab('ai')}
+                                    openPanel={requestedAdvancedPanel}
+                                    onOpenPanelChange={setRequestedAdvancedPanel}
+                                />
+                            )}
                         </div>
+                    </div>
                     </section>
                 </div>
 
                 {showResetConfirm && (
-                    <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                        <div className="w-full max-w-sm rounded-3xl border border-rose-300/30 bg-white p-7 shadow-2xl dark:border-rose-400/20 dark:bg-slate-950">
-                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
+                    <div className="absolute inset-0 z-[150] flex items-center justify-center bg-[rgba(85,74,61,0.32)] p-4 backdrop-blur-sm">
+                        <div className="w-full max-w-sm rounded-[30px] border border-[#efe1d2] bg-[rgba(255,251,246,0.92)] p-7 shadow-[0_24px_60px_rgba(78,63,44,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#11161f]/92">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7e7e7] text-rose-500 dark:bg-rose-500/15 dark:text-rose-300">
                                 <AlertCircle size={32} />
                             </div>
-                            <h3 className="mb-2 text-center text-xl font-black text-slate-900 dark:text-white">{t.settings.resetConfiguration}</h3>
-                            <p className="mb-6 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                            <h3 className="mb-2 text-center text-xl font-semibold text-[#2f241a] dark:text-white">{t.settings.resetConfiguration}</h3>
+                            <p className="mb-6 text-center text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
                                 {t.settings.resetWarning}
                             </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowResetConfirm(false)}
-                                    className="flex-1 rounded-xl border border-slate-200 py-2.5 font-bold text-slate-700 transition-all hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
+                                    className="flex-1 rounded-[14px] border border-[#eadfcd] bg-[#fffaf3] py-2.5 font-medium text-[#655545] transition-all hover:bg-white dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/12"
                                 >
                                     {t.settings.cancel}
                                 </button>
                                 <button
                                     onClick={confirmReset}
-                                    className="flex-1 rounded-xl bg-rose-500 py-2.5 font-bold text-white transition-all hover:bg-rose-400"
+                                    className="flex-1 rounded-[14px] bg-[#e58b88] py-2.5 font-semibold text-white transition-all hover:bg-[#ea9a98]"
                                 >
                                     {t.settings.yesReset}
                                 </button>
