@@ -1,9 +1,8 @@
 import { uuid } from '../../utils/uuid.js';
 import { getSystemPrompt } from './promptUtils.js';
-import { chatCompletion, streamChatCompletion, imageGeneration } from '../llm.js';
+import { streamChatCompletion, imageGeneration } from '../llm.js';
 import { userStatsService } from '../stats/userStatsService.js';
 import { resolveActiveInstructionsForCurrentBoard } from '../customInstructionsService.js';
-import { isIPad, isSafari } from '../../utils/browser.js';
 
 /**
  * Task Priorities
@@ -26,7 +25,6 @@ export const STATUS = {
 };
 
 const MAX_CONCURRENT_CARDS = 8;
-const SHOULD_FORCE_NON_STREAM_CHAT = isIPad && isSafari;
 
 class AIManager {
     constructor() {
@@ -276,37 +274,23 @@ class AIManager {
             const timeSystemMsg = getSystemPrompt(activeInstructions);
             const enhancedMessages = [timeSystemMsg, ...messages];
 
-            const resolvedModel = model || config.model;
-            const resolvedOptions = {
-                providerId: config.id,
-                signal,
-                temperature,
-                ...task.payload.options
-            };
-
-            if (SHOULD_FORCE_NON_STREAM_CHAT) {
-                fullText = await chatCompletion(
-                    enhancedMessages,
-                    config,
-                    resolvedModel,
-                    resolvedOptions
-                );
-                if (!signal.aborted && fullText && task.onProgress) {
-                    task.onProgress(fullText);
+            // Wrapped streamChatCompletion that respects AbortSignal
+            await streamChatCompletion(
+                enhancedMessages,
+                config, // Pass config explicitly
+                (chunk) => {
+                    if (signal.aborted) return;
+                    fullText += chunk;
+                    if (task.onProgress) task.onProgress(chunk);
+                },
+                model || config.model,
+                {
+                    providerId: config.id,
+                    signal, // Need to pass signal to lower layer!
+                    temperature,
+                    ...task.payload.options // Pass other options
                 }
-            } else {
-                await streamChatCompletion(
-                    enhancedMessages,
-                    config,
-                    (chunk) => {
-                        if (signal.aborted) return;
-                        fullText += chunk;
-                        if (task.onProgress) task.onProgress(chunk);
-                    },
-                    resolvedModel,
-                    resolvedOptions
-                );
-            }
+            );
 
             // Track usage stats (characters generated)
             if (fullText && fullText.length > 0) {
