@@ -17,7 +17,6 @@ import { useStore } from '../store/useStore';
 import ProBadge from '../components/ProBadge';
 import PaymentSuccessModal from '../components/PaymentSuccessModal';
 import { auth } from '../services/firebase';
-import { useAutoBoardSummaries } from '../hooks/useAutoBoardSummaries';
 import { useAutoBoardNaming } from '../hooks/useAutoBoardNaming';
 import { useIPhoneGalleryMode } from '../hooks/useIPhoneGalleryMode';
 import MobileGalleryHeader from '../components/gallery/mobile/MobileGalleryHeader';
@@ -55,8 +54,8 @@ export default function GalleryPage({
     }, [location.pathname, user?.uid]);
 
 
-    // Auto-generate summaries for eligible boards
-    useAutoBoardSummaries(boardsList, onUpdateBoardMetadata);
+    // Only auto-process metadata for the current open board (handled in BoardPage).
+    // Avoid gallery-wide background/summary scans that can repeatedly trigger generations.
     useAutoBoardNaming(boardsList, onUpdateBoardMetadata);
 
 
