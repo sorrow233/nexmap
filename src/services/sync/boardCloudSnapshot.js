@@ -138,6 +138,7 @@ export const buildCloudBoardMetadata = (boardData = {}) => {
         summary: boardData.summary,
         backgroundImage: boardData.backgroundImage,
         thumbnail: boardData.thumbnail,
+        autoImageTriggeredAt: toEpochMillis(boardData.autoImageTriggeredAt),
         deletedAt: boardData.deletedAt
     });
 };

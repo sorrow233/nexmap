@@ -2,6 +2,10 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { loadBoard } from '../services/storage';
 import useBoardBackground from './useBoardBackground';
+import {
+    createAutoImageTriggeredPatch,
+    hasAutoImageTriggered
+} from '../services/boardAutoGeneration/metadata';
 
 export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
     const isProcessingRef = useRef(false);
@@ -33,8 +37,10 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
         const candidate = boardsList.find(b =>
             !b.deletedAt &&
             (b.cardCount >= 3) &&
-            !b.backgroundImage &&
-            !b.summary &&
+            (
+                ((b.cardCount || 0) >= 10 && !b.backgroundImage && !hasAutoImageTriggered(b)) ||
+                ((b.cardCount || 0) >= 3 && (b.cardCount || 0) < 10 && !b.backgroundImage && !b.summary)
+            ) &&
             !processedBoardIdsRef.current.has(b.id)
         );
 
@@ -80,6 +86,9 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
 
             } else if (cardCount >= 10) {
                 // Generate IMAGE background
+                if (onUpdateBoardMetadata) {
+                    await onUpdateBoardMetadata(candidate.id, createAutoImageTriggeredPatch());
+                }
                 await generateBackground(candidate.id, onUpdateBoardMetadata);
             }
 

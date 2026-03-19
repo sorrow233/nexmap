@@ -68,6 +68,7 @@ export const buildBoardMetadataListFromCloud = (allBoards = []) => {
                 const existingLocal = existingLocalBoards.find((localBoard) => localBoard.id === board.id);
                 const summaryToUse = board.summary || existingLocal?.summary;
                 const thumbnailToUse = board.thumbnail || existingLocal?.thumbnail;
+                const autoImageTriggeredAt = toEpochMillis(board.autoImageTriggeredAt) || toEpochMillis(existingLocal?.autoImageTriggeredAt) || 0;
                 const cardCountValue = Number(board.cardCount);
                 const cardCount = Number.isFinite(cardCountValue) && cardCountValue >= 0
                     ? cardCountValue
@@ -92,7 +93,8 @@ export const buildBoardMetadataListFromCloud = (allBoards = []) => {
                     deletedAt: board.deletedAt,
                     backgroundImage: board.backgroundImage,
                     thumbnail: thumbnailToUse,
-                    summary: summaryToUse
+                    summary: summaryToUse,
+                    autoImageTriggeredAt
                 });
             })
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))

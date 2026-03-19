@@ -19,6 +19,10 @@ import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { runtimeLog } from '../utils/runtimeLogging';
+import {
+    createAutoImageTriggeredPatch,
+    hasAutoImageTriggered
+} from '../services/boardAutoGeneration/metadata';
 
 const NotePage = lazyWithRetry(() => import('./NotePage'));
 const ChatModal = lazyWithRetry(() => import('../components/ChatModal'));
@@ -136,7 +140,11 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
             AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
             hasAutoImageGeneratedRef.current = true;
         }
-    }, [currentBoardId, currentBoard?.summary, currentBoard?.backgroundImage]);
+        if (hasAutoImageTriggered(currentBoard)) {
+            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
+            hasAutoImageGeneratedRef.current = true;
+        }
+    }, [currentBoardId, currentBoard?.summary, currentBoard?.backgroundImage, currentBoard?.autoImageTriggeredAt]);
 
     // Optimized: Calculate active count separately to avoid re-running effect on every card move/drag
     // cards array changes on every drag frame, but count remains stable
@@ -167,15 +175,21 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
         // 2. Visual Background (Cards > 10)
         // Trigger if: Enough cards, not generated this session, and no existing image
-        if (activeCardCount > 10 && !hasImageTriggered && !currentBoard?.backgroundImage) {
+        if (activeCardCount > 10 && !hasImageTriggered && !currentBoard?.backgroundImage && !hasAutoImageTriggered(currentBoard)) {
             runtimeLog(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
-            generateBoardImage(currentBoardId, (id, updates) => {
-                if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
-            });
             hasAutoImageGeneratedRef.current = true;
             AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
+            void (async () => {
+                const markPatch = createAutoImageTriggeredPatch();
+                if (onUpdateBoardMetadata) {
+                    await onUpdateBoardMetadata(currentBoardId, markPatch);
+                }
+                generateBoardImage(currentBoardId, (id, updates) => {
+                    if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
+                });
+            })();
         }
-    }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
+    }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
 
     useEffect(() => {
         if (!isIPhoneBoardMode) return;

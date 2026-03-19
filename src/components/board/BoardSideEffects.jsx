@@ -4,6 +4,10 @@ import { useBoardPersistence } from '../../hooks/useBoardPersistence';
 import { useCurrentBoardAutoNaming } from '../../hooks/useCurrentBoardAutoNaming';
 import { useStore } from '../../store/useStore';
 import { useToast } from '../Toast';
+import {
+    createAutoImageTriggeredPatch,
+    hasAutoImageTriggered
+} from '../../services/boardAutoGeneration/metadata';
 
 const AUTO_IMAGE_TRIGGERED_BOARDS = new Set();
 const AUTO_SUMMARY_TRIGGERED_BOARDS = new Set();
@@ -82,7 +86,11 @@ const BoardSideEffects = React.memo(function BoardSideEffects({
             AUTO_IMAGE_TRIGGERED_BOARDS.add(boardId);
             hasAutoImageGeneratedRef.current = true;
         }
-    }, [board?.backgroundImage, board?.summary, boardId]);
+        if (hasAutoImageTriggered(board)) {
+            AUTO_IMAGE_TRIGGERED_BOARDS.add(boardId);
+            hasAutoImageGeneratedRef.current = true;
+        }
+    }, [board?.backgroundImage, board?.summary, board?.autoImageTriggeredAt, boardId]);
 
     useEffect(() => {
         if (isReadOnly || !boardId) return;
@@ -101,20 +109,26 @@ const BoardSideEffects = React.memo(function BoardSideEffects({
             AUTO_SUMMARY_TRIGGERED_BOARDS.add(boardId);
         }
 
-        if (activeCardCount > 10 && !hasImageTriggered && !board?.backgroundImage) {
-            void generateBoardImage(boardId, (id, updates) => {
-                if (onUpdateBoardMetadata) {
-                    return onUpdateBoardMetadata(id, updates);
-                }
-                return Promise.resolve();
-            });
+        if (activeCardCount > 10 && !hasImageTriggered && !board?.backgroundImage && !hasAutoImageTriggered(board)) {
             hasAutoImageGeneratedRef.current = true;
             AUTO_IMAGE_TRIGGERED_BOARDS.add(boardId);
+            void (async () => {
+                if (onUpdateBoardMetadata) {
+                    await onUpdateBoardMetadata(boardId, createAutoImageTriggeredPatch());
+                }
+                return generateBoardImage(boardId, (id, updates) => {
+                    if (onUpdateBoardMetadata) {
+                        return onUpdateBoardMetadata(id, updates);
+                    }
+                    return Promise.resolve();
+                });
+            })();
         }
     }, [
         activeCardCount,
         board?.backgroundImage,
         board?.summary,
+        board?.autoImageTriggeredAt,
         boardId,
         generateBoardImage,
         generateBoardSummary,

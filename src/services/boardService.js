@@ -29,7 +29,7 @@ const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 const MAX_IDB_SAVE_RETRIES = 2;
 const IDB_RETRY_DELAY_MS = 80;
 const TITLE_METADATA_KEYS = ['name', 'nameSource', 'autoTitle', 'autoTitleGeneratedAt', 'manualTitleUpdatedAt'];
-const BOARD_DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail', 'deletedAt'];
+const BOARD_DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail', 'deletedAt', 'autoImageTriggeredAt'];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
