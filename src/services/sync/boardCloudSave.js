@@ -12,9 +12,17 @@ import {
 } from '../boardPersistence/persistenceCursor';
 import {
     buildCloudBoardDocument,
+    encodeBoardSnapshotData,
     materializeCloudBoardSnapshot,
     sanitizeBoardContentForCloud
 } from './boardCloudSnapshot';
+import {
+    buildCloudSnapshotPayloadForDocument,
+    buildCloudSnapshotStoragePlan,
+    cleanupStaleChunkedSnapshotSets,
+    hydrateCloudBoardSnapshotFromChunks,
+    persistChunkedSnapshotSet
+} from './boardCloudChunks';
 import {
     db,
     handleSyncError,
@@ -121,8 +129,21 @@ const persistBoardToCloudOnce = async (payload) => {
 
     debugLog.sync(`Saving board ${boardId} to cloud...`);
     const cleanedContent = sanitizeBoardContentForCloud(boardContent);
+    const encodedSnapshotPayload = encodeBoardSnapshotData(cleanedContent);
+    const snapshotStoragePlan = buildCloudSnapshotStoragePlan(encodedSnapshotPayload);
+    const documentSnapshotPayload = buildCloudSnapshotPayloadForDocument(snapshotStoragePlan);
     const boardRef = doc(db, 'users', userId, 'boards', boardId);
     const savedAt = Date.now();
+
+    if (snapshotStoragePlan.mode === 'chunked') {
+        await persistChunkedSnapshotSet({
+            userId,
+            boardId,
+            storagePlan: snapshotStoragePlan,
+            syncVersion: toSafeSyncVersion(metadata.syncVersion),
+            clientRevision
+        });
+    }
 
     const writeResult = await setBoardDocWithRetry(boardRef, (remoteBoard = {}, remoteExists = false) => {
         const remoteSnapshot = materializeCloudBoardSnapshot(remoteBoard);
@@ -130,10 +151,13 @@ const persistBoardToCloudOnce = async (payload) => {
             ...cleanedContent,
             updatedAt: savedAt,
             syncVersion: toSafeSyncVersion(metadata.syncVersion),
-            clientRevision
+            clientRevision,
+            contentHash
         };
-        const remoteHasContent = buildBoardContentHash(remoteSnapshot) !== EMPTY_CLOUD_CONTENT_HASH;
-        const remoteHash = buildBoardContentHash(remoteSnapshot);
+        const remoteHash = typeof remoteBoard.contentHash === 'string'
+            ? remoteBoard.contentHash
+            : buildBoardContentHash(remoteSnapshot);
+        const remoteHasContent = remoteHash !== EMPTY_CLOUD_CONTENT_HASH;
         const localHash = contentHash;
         const localClearlyNewer = isSnapshotClearlyNewer(localSnapshot, remoteSnapshot);
 
@@ -147,7 +171,9 @@ const persistBoardToCloudOnce = async (payload) => {
                 cardCount: getEffectiveBoardCardCount(cleanedContent.cards),
                 clientRevision,
                 syncVersion: toSafeSyncVersion(metadata.syncVersion) + 1,
-                serverUpdatedAt: serverTimestamp()
+                serverUpdatedAt: serverTimestamp(),
+                contentHash: localHash,
+                snapshotPayload: documentSnapshotPayload
             });
 
             return {
@@ -158,6 +184,8 @@ const persistBoardToCloudOnce = async (payload) => {
                     syncVersion: toSafeSyncVersion(metadata.syncVersion) + 1
                 },
                 contentHash: localHash,
+                snapshotStorage: documentSnapshotPayload.snapshotStorage,
+                snapshotSetId: documentSnapshotPayload.snapshotSetId || '',
                 reason: 'create_remote_board'
             };
         }
@@ -167,6 +195,7 @@ const persistBoardToCloudOnce = async (payload) => {
                 skipWrite: true,
                 snapshot: remoteSnapshot,
                 contentHash: remoteHash,
+                remoteDocument: remoteBoard,
                 reason: 'content_matches_remote'
             };
         }
@@ -176,6 +205,7 @@ const persistBoardToCloudOnce = async (payload) => {
                 skipWrite: true,
                 snapshot: remoteSnapshot,
                 contentHash: remoteHash,
+                remoteDocument: remoteBoard,
                 reason: 'remote_newer_or_equal'
             };
         }
@@ -194,7 +224,9 @@ const persistBoardToCloudOnce = async (payload) => {
             cardCount: getEffectiveBoardCardCount(cleanedContent.cards),
             clientRevision,
             syncVersion: baseSyncVersion + 1,
-            serverUpdatedAt: serverTimestamp()
+            serverUpdatedAt: serverTimestamp(),
+            contentHash: localHash,
+            snapshotPayload: documentSnapshotPayload
         });
 
         return {
@@ -205,6 +237,8 @@ const persistBoardToCloudOnce = async (payload) => {
                 syncVersion: baseSyncVersion + 1
             },
             contentHash: localHash,
+            snapshotStorage: documentSnapshotPayload.snapshotStorage,
+            snapshotSetId: documentSnapshotPayload.snapshotSetId || '',
             reason: 'local_ahead_write'
         };
     }, boardId);
@@ -213,18 +247,54 @@ const persistBoardToCloudOnce = async (payload) => {
     const finalContentHash = writeResult?.contentHash || contentHash;
 
     if (writeResult?.skipWrite) {
+        let snapshotForLocalRefresh = finalSnapshot;
+        const shouldHydrateChunkedRemote = (
+            writeResult?.remoteDocument?.snapshotStorage === 'chunked' &&
+            (!snapshotForLocalRefresh || buildBoardContentHash(snapshotForLocalRefresh) === EMPTY_CLOUD_CONTENT_HASH)
+        );
+
+        if (shouldHydrateChunkedRemote) {
+            try {
+                const hydratedRemoteBoard = await hydrateCloudBoardSnapshotFromChunks({
+                    userId,
+                    boardId,
+                    boardData: writeResult.remoteDocument
+                });
+                snapshotForLocalRefresh = materializeCloudBoardSnapshot(hydratedRemoteBoard);
+            } catch (hydrateError) {
+                debugLog.warn(
+                    `[Sync] Cloud save skipped and remote chunk hydration failed for board ${boardId}`,
+                    hydrateError
+                );
+            }
+        }
+
+        const canRefreshFromSnapshot = (
+            snapshotForLocalRefresh &&
+            buildBoardContentHash(snapshotForLocalRefresh) !== EMPTY_CLOUD_CONTENT_HASH
+        );
+
         try {
-            const localRefreshSnapshot = {
-                ...finalSnapshot,
-                updatedAt: finalSnapshot?.updatedAt || savedAt,
-                clientRevision: finalSnapshot?.clientRevision || clientRevision
-            };
-            await saveBoard(boardId, localRefreshSnapshot);
-            logPersistenceTrace('cloud-save:skip-write-refresh-local', {
-                boardId,
-                reason: writeResult.reason,
-                cursor: buildBoardCursorTrace(localRefreshSnapshot)
-            });
+            if (canRefreshFromSnapshot) {
+                const localRefreshSnapshot = {
+                    ...snapshotForLocalRefresh,
+                    updatedAt: snapshotForLocalRefresh?.updatedAt || savedAt,
+                    clientRevision: snapshotForLocalRefresh?.clientRevision || clientRevision
+                };
+                await saveBoard(boardId, localRefreshSnapshot);
+                logPersistenceTrace('cloud-save:skip-write-refresh-local', {
+                    boardId,
+                    reason: writeResult.reason,
+                    cursor: buildBoardCursorTrace(localRefreshSnapshot)
+                });
+            } else {
+                logPersistenceTrace('cloud-save:skip-write-refresh-local-skipped', {
+                    boardId,
+                    reason: writeResult.reason,
+                    hasSnapshot: Boolean(snapshotForLocalRefresh),
+                    remoteStorage: writeResult?.remoteDocument?.snapshotStorage || 'inline'
+                });
+            }
         } catch (localSaveError) {
             debugLog.warn(
                 `[Sync] Cloud save skipped but local refresh failed for board ${boardId}`,
@@ -237,9 +307,9 @@ const persistBoardToCloudOnce = async (payload) => {
         return {
             status: CLOUD_SAVE_RESULT_OK,
             skipped: true,
-            updatedAt: finalSnapshot?.updatedAt || savedAt,
-            syncVersion: finalSnapshot?.syncVersion || 0,
-            clientRevision: finalSnapshot?.clientRevision || clientRevision,
+            updatedAt: snapshotForLocalRefresh?.updatedAt || savedAt,
+            syncVersion: snapshotForLocalRefresh?.syncVersion || 0,
+            clientRevision: snapshotForLocalRefresh?.clientRevision || clientRevision,
             contentHash: finalContentHash
         };
     }
@@ -289,6 +359,24 @@ const persistBoardToCloudOnce = async (payload) => {
             `[Sync] Cloud save succeeded but local syncVersion refresh failed for board ${boardId}`,
             localSaveError
         );
+    }
+
+    if (snapshotStoragePlan.mode === 'chunked') {
+        void cleanupStaleChunkedSnapshotSets({
+            userId,
+            boardId,
+            keepSetId: writeResult?.snapshotSetId || snapshotStoragePlan.setId
+        }).catch((cleanupError) => {
+            debugLog.warn(`[Sync] Chunked snapshot cleanup failed for board ${boardId}`, cleanupError);
+        });
+    } else {
+        void cleanupStaleChunkedSnapshotSets({
+            userId,
+            boardId,
+            keepSetId: ''
+        }).catch((cleanupError) => {
+            debugLog.warn(`[Sync] Inline snapshot cleanup failed for board ${boardId}`, cleanupError);
+        });
     }
 
     lastSyncedContentHash.set(cacheKey, finalContentHash);

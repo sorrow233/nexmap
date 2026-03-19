@@ -7,6 +7,7 @@ import {
     normalizeBoardInstructionSettings
 } from '../customInstructionsService';
 import { materializeCloudBoardSnapshot } from './boardCloudSnapshot';
+import { hydrateCloudBoardSnapshotFromChunks } from './boardCloudChunks';
 import {
     buildPersistenceCursor,
     isIncomingCursorNewer,
@@ -21,6 +22,22 @@ import {
 } from './boardShared';
 import { applyIncomingBoardSnapshot } from './applyBoardSnapshot';
 import { persistBoardsMetadataList } from '../boardPersistence/boardsListStorage';
+
+const hydrateBoardSnapshotIfNeeded = async (userId, boardId, boardData = {}) => {
+    if (!boardData || typeof boardData !== 'object') return boardData;
+    if (boardData.snapshotStorage !== 'chunked') return boardData;
+
+    try {
+        return await hydrateCloudBoardSnapshotFromChunks({
+            userId,
+            boardId,
+            boardData
+        });
+    } catch (error) {
+        debugLog.warn(`[Sync] Failed to hydrate chunked snapshot for board ${boardId}`, error);
+        return boardData;
+    }
+};
 
 const buildPersistedCloudPayload = (boardData = {}, incomingCursor) => {
     const hydratedBoardData = materializeCloudBoardSnapshot(boardData);
@@ -62,7 +79,8 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                         return;
                     }
 
-                    const incomingCursor = buildPersistenceCursor(boardData);
+                    const hydratedBoardData = await hydrateBoardSnapshotIfNeeded(userId, boardId, boardData);
+                    const incomingCursor = buildPersistenceCursor(hydratedBoardData);
                     const { snapshot: persistedSnapshot } = await loadPersistedBoardSnapshotForSync(boardId);
                     const persistedCursor = buildPersistenceCursor(persistedSnapshot);
 
@@ -77,7 +95,7 @@ export const listenForBoardsMetadata = (userId, onUpdate) => {
                             incomingUpdatedAt: incomingCursor.updatedAt
                         })
                     ) {
-                        await saveBoard(boardId, buildPersistedCloudPayload(boardData, incomingCursor));
+                        await saveBoard(boardId, buildPersistedCloudPayload(hydratedBoardData, incomingCursor));
                     }
                 } catch (error) {
                     debugLog.error(`[BackgroundSync] Failed for ${boardData.id}`, error);
@@ -119,7 +137,9 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
                 return;
             }
 
-            const boardData = materializeCloudBoardSnapshot(docSnap.data() || {});
+            const rawBoardData = docSnap.data() || {};
+            const hydratedBoardData = await hydrateBoardSnapshotIfNeeded(userId, boardId, rawBoardData);
+            const boardData = materializeCloudBoardSnapshot(hydratedBoardData);
             const incomingCursor = buildPersistenceCursor(boardData);
             const previousCursor = singleBoardSnapshotCursor.get(cloudCursorKey);
             if (!isIncomingCursorNewer(incomingCursor, previousCursor)) {
@@ -178,7 +198,11 @@ export const listenForBoardUpdates = (userId, onUpdate) => {
             debugLog.sync(`Firestore snapshot received: ${snapshot.size} docs, ${snapshot.docChanges().length} changes`);
 
             for (const change of snapshot.docChanges()) {
-                const boardData = materializeCloudBoardSnapshot(change.doc.data() || {});
+                const rawBoardData = change.doc.data() || {};
+                const boardId = rawBoardData?.id;
+                if (!boardId) continue;
+                const hydratedBoardData = await hydrateBoardSnapshotIfNeeded(userId, boardId, rawBoardData);
+                const boardData = materializeCloudBoardSnapshot(hydratedBoardData);
                 if (!boardData?.id) continue;
 
                 if (change.type === 'added' || change.type === 'modified') {

@@ -11,8 +11,10 @@ import {
     toSafeSyncVersion
 } from '../boardPersistence/persistenceCursor';
 
-const CLOUD_SNAPSHOT_ENCODING = 'lz-string-base64';
-const CLOUD_SNAPSHOT_SCHEMA_VERSION = 1;
+export const CLOUD_SNAPSHOT_ENCODING = 'lz-string-base64';
+export const CLOUD_SNAPSHOT_SCHEMA_VERSION = 1;
+export const CLOUD_SNAPSHOT_STORAGE_INLINE = 'inline';
+export const CLOUD_SNAPSHOT_STORAGE_CHUNKED = 'chunked';
 
 const safeArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -84,6 +86,11 @@ const encodeSnapshotData = (content = {}) => {
     };
 };
 
+export const encodeBoardSnapshotData = (content = {}) => {
+    const normalizedContent = sanitizeBoardContentForCloud(content);
+    return encodeSnapshotData(normalizedContent);
+};
+
 const decodeSnapshotData = (boardData = {}) => {
     const encoded = typeof boardData.snapshotData === 'string' ? boardData.snapshotData : '';
     if (encoded) {
@@ -146,7 +153,16 @@ export const buildCloudBoardMetadata = (boardData = {}) => {
 export const buildCloudBoardDocument = (boardData = {}) => {
     const content = sanitizeBoardContentForCloud(boardData);
     const metadata = buildCloudBoardMetadata(boardData);
-    const encodedSnapshot = encodeSnapshotData(content);
+    const snapshotPayload = boardData.snapshotPayload && typeof boardData.snapshotPayload === 'object'
+        ? boardData.snapshotPayload
+        : encodeSnapshotData(content);
+    const snapshotStorage = snapshotPayload.snapshotStorage || CLOUD_SNAPSHOT_STORAGE_INLINE;
+    const snapshotChunkCount = Number.isFinite(Number(snapshotPayload.snapshotChunkCount)) && Number(snapshotPayload.snapshotChunkCount) >= 0
+        ? Number(snapshotPayload.snapshotChunkCount)
+        : 0;
+    const snapshotBytes = Number.isFinite(Number(snapshotPayload.snapshotBytes)) && Number(snapshotPayload.snapshotBytes) >= 0
+        ? Number(snapshotPayload.snapshotBytes)
+        : undefined;
     const inferredCardCount = getEffectiveBoardCardCount(content.cards);
     const cardCount = Number.isFinite(Number(metadata.cardCount)) && Number(metadata.cardCount) > 0
         ? Number(metadata.cardCount)
@@ -155,12 +171,17 @@ export const buildCloudBoardDocument = (boardData = {}) => {
     return removeUndefined({
         ...metadata,
         cardCount,
-        snapshotData: encodedSnapshot.snapshotData,
-        snapshotEncoding: encodedSnapshot.snapshotEncoding,
-        snapshotSchemaVersion: encodedSnapshot.snapshotSchemaVersion,
+        snapshotData: snapshotPayload.snapshotData,
+        snapshotEncoding: snapshotPayload.snapshotEncoding || CLOUD_SNAPSHOT_ENCODING,
+        snapshotSchemaVersion: snapshotPayload.snapshotSchemaVersion || CLOUD_SNAPSHOT_SCHEMA_VERSION,
+        snapshotStorage,
+        snapshotSetId: snapshotPayload.snapshotSetId,
+        snapshotChunkCount,
+        snapshotBytes,
         serverUpdatedAt: boardData.serverUpdatedAt,
         syncVersion: toSafeSyncVersion(boardData.syncVersion),
-        clientRevision: toSafeClientRevision(boardData.clientRevision)
+        clientRevision: toSafeClientRevision(boardData.clientRevision),
+        contentHash: typeof boardData.contentHash === 'string' ? boardData.contentHash : undefined
     });
 };
 
@@ -173,7 +194,18 @@ export const materializeCloudBoardSnapshot = (boardData = {}) => {
         ...content,
         updatedAt: toEpochMillis(boardData.updatedAt),
         syncVersion: toSafeSyncVersion(boardData.syncVersion),
-        clientRevision: toSafeClientRevision(boardData.clientRevision)
+        clientRevision: toSafeClientRevision(boardData.clientRevision),
+        contentHash: typeof boardData.contentHash === 'string' ? boardData.contentHash : undefined,
+        snapshotStorage: typeof boardData.snapshotStorage === 'string'
+            ? boardData.snapshotStorage
+            : CLOUD_SNAPSHOT_STORAGE_INLINE,
+        snapshotSetId: typeof boardData.snapshotSetId === 'string' ? boardData.snapshotSetId : '',
+        snapshotChunkCount: Number.isFinite(Number(boardData.snapshotChunkCount)) && Number(boardData.snapshotChunkCount) >= 0
+            ? Number(boardData.snapshotChunkCount)
+            : 0,
+        snapshotBytes: Number.isFinite(Number(boardData.snapshotBytes)) && Number(boardData.snapshotBytes) >= 0
+            ? Number(boardData.snapshotBytes)
+            : undefined
     });
 };
 
