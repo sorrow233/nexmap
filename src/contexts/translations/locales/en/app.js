@@ -377,7 +377,6 @@ export const app = {
         refresh: "Refresh",
         totalElements: "Total Cards",
         creativePower: "Total Token Count",
-        neuralCloud: "Local Save",
         aiQuota: "AI Quota",
         syncUnknown: "Status Unknown",
         clickToRefresh: "Click to check quota",

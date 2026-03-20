@@ -1,12 +1,12 @@
 import React from 'react';
-import { AlertCircle, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles, WifiOff } from 'lucide-react';
+import { AlertCircle, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../../services/boardTitle/metadata';
 import { getMobileBoardCopy } from './mobileBoardCopy';
 
 export default function MobileBoardHeader({
     board,
-    syncStatus,
+    saveStatus,
     cardCount,
     onBack,
     onOpenInstructions,
@@ -15,18 +15,16 @@ export default function MobileBoardHeader({
 }) {
     const { language } = useLanguage();
     const copy = getMobileBoardCopy(language);
-    const syncConfig = {
-        idle: { icon: HardDrive, label: copy.syncIdle, color: 'text-emerald-600 dark:text-emerald-300' },
-        syncing: { icon: RefreshCw, label: copy.syncing, color: 'text-cyan-600 dark:text-cyan-300', animate: true },
-        synced: { icon: HardDrive, label: copy.syncIdle, color: 'text-emerald-600 dark:text-emerald-300' },
+    const saveConfig = {
+        idle: { icon: HardDrive, label: copy.saveIdle, color: 'text-emerald-600 dark:text-emerald-300' },
+        saving: { icon: RefreshCw, label: copy.saving, color: 'text-cyan-600 dark:text-cyan-300', animate: true },
+        saved: { icon: HardDrive, label: copy.saveIdle, color: 'text-emerald-600 dark:text-emerald-300' },
         local_dirty: { icon: RefreshCw, label: '本地待保存', color: 'text-amber-600 dark:text-amber-300', animate: true },
-        persisting_local: { icon: RefreshCw, label: '保存本地中', color: 'text-sky-600 dark:text-sky-300', animate: true },
-        error: { icon: AlertCircle, label: copy.syncError, color: 'text-rose-600 dark:text-rose-300' },
-        offline: { icon: WifiOff, label: copy.syncOffline, color: 'text-slate-500 dark:text-slate-300' }
+        error: { icon: AlertCircle, label: copy.saveError, color: 'text-rose-600 dark:text-rose-300' }
     };
     const displayTitle = getBoardDisplayName(board, untitledLabel);
-    const syncState = syncConfig[syncStatus] || syncConfig.idle;
-    const SyncIcon = syncState.icon;
+    const saveState = saveConfig[saveStatus] || saveConfig.idle;
+    const SaveIcon = saveState.icon;
     const cardCountLabel = copy.cardCount.replace('{count}', cardCount);
 
     return (
@@ -49,9 +47,9 @@ export default function MobileBoardHeader({
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                             <span>{cardCountLabel}</span>
-                            <span className={`inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold dark:bg-white/5 ${syncState.color}`}>
-                                <SyncIcon size={11} className={syncState.animate ? 'animate-spin' : ''} />
-                                {syncState.label}
+                            <span className={`inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold dark:bg-white/5 ${saveState.color}`}>
+                                <SaveIcon size={11} className={saveState.animate ? 'animate-spin' : ''} />
+                                {saveState.label}
                             </span>
                         </div>
                     </div>

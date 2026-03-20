@@ -287,8 +287,6 @@ export const ja = {
         autoLayoutDesc: "乱雑？ワンクリックで整理。マインドマップアルゴリズムで即座にツリー構造に。",
         batchOperations: "一括操作",
         batchOperationsDesc: "複数のカードを選択し、一括で書き換え、削除、接続を作成。効率10倍アップ。",
-        cloudSync: "ローカル保存",
-        cloudSyncDesc: "データはこの端末に直接保存され、バックアップやインポート/エクスポートにも対応します。",
         startCreating: "作成を開始",
         firstVisitOnly: "💡 初回訪問時のみ表示 · ボタンをクリックしてキャンバスへ"
     },
@@ -477,7 +475,6 @@ export const ja = {
         refresh: "更新",
         totalElements: "カード総数",
         creativePower: "総トークン数",
-        neuralCloud: "ローカル保存",
         aiQuota: "AI割り当て",
         syncUnknown: "状態不明",
         clickToRefresh: "クリックして確認",

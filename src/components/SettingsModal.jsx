@@ -46,8 +46,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
 
     const { t } = useLanguage();
-    const offlineMode = useStore(state => state.offlineMode);
-    const setOfflineMode = useStore(state => state.setOfflineMode);
 
     const [activeTab, setActiveTab] = useState('basic');
     const [providers, setProviders] = useState({});
@@ -245,8 +243,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             const now = Date.now();
             saveLocalState(now);
             setSaveStatus({
-                type: offlineMode ? 'warning' : 'success',
-                title: offlineMode ? '已保存到本地（离线模式）' : '已保存到本地',
+                type: 'success',
+                title: '已保存到本地',
                 message: '当前设置只保存在这台设备上。',
                 code: ''
             });
@@ -484,25 +482,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    {saveStatus.code === 'offline_mode' && offlineMode && (
-                                        <button
-                                            onClick={() => {
-                                                setOfflineMode(false);
-                                                setSaveStatus({
-                                                    type: 'warning',
-                                                    title: '离线模式已关闭',
-                                                    message: '后续保存会继续按本地模式执行。',
-                                                    code: 'offline_mode_disabled'
-                                                });
-                                            }}
-                                            disabled={isSaving}
-                                            className="rounded-[12px] bg-[#e8b358] px-3 py-1.5 text-xs font-semibold text-[#332411] transition-colors hover:bg-[#efc06f] disabled:opacity-60"
-                                        >
-                                            关闭离线模式
-                                        </button>
-                                    )}
-                                </div>
                             </div>
                         </div>
                     )}
@@ -550,8 +529,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     appUserUid={user?.uid}
                                     user={user}
                                     isSaving={isSaving}
-                                    offlineMode={offlineMode}
-                                    setOfflineMode={setOfflineMode}
                                     saveStatus={saveStatus}
                                     handleReset={handleReset}
                                     onOpenAITab={() => setActiveTab('ai')}

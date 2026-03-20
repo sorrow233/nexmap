@@ -4,7 +4,7 @@ import { useStore } from '../../../store/useStore';
 
 const MobileBoardRuntime = React.memo(function MobileBoardRuntime({
     board,
-    syncStatus,
+    saveStatus,
     untitledLabel,
     onBack,
     onCreateNote,
@@ -62,7 +62,7 @@ const MobileBoardRuntime = React.memo(function MobileBoardRuntime({
             cards={cards}
             selectedIds={isReadOnly ? [] : selectedIds}
             generatingCardIds={generatingCardIds}
-            syncStatus={syncStatus}
+            saveStatus={saveStatus}
             untitledLabel={untitledLabel}
             onBack={onBack}
             onCreateNote={onCreateNote}

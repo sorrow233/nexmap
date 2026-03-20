@@ -227,8 +227,6 @@ export const landing = {
         autoLayoutDesc: "乱了？一键整理。思维导图算法，瞬间还原清晰树状结构。",
         batchOperations: "批量操作",
         batchOperationsDesc: "框选多张卡片，批量重写、删除或建立连接。效率提升不止十倍。",
-        cloudSync: "本地保存",
-        cloudSyncDesc: "当前设备的数据会直接保存在本地，并可配合备份与导入导出管理内容。",
         startCreating: "开始创作",
         firstVisitOnly: "💡 仅首次访问显示 · 点击按钮进入画布"
     }

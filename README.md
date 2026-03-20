@@ -10,7 +10,7 @@ Documentation snapshot: `v2.2.190` on `2026-03-13`
 - AI chat orchestration with per-card task isolation, streaming output, batch chat, sprout/branch workflows, and image generation
 - Multi-provider model settings: Gemini native, OpenAI-compatible providers, and built-in system credits for users without their own keys
 - Gallery workflows: search across boards, notes center, favorites, statistics, trash, pricing, feedback, and admin entry
-- Cloud sync with Firebase plus local IndexedDB caching, offline fallback, retry queues, and read-only tab locking
+- Local-first persistence with IndexedDB, localStorage recovery snapshots, emergency fallbacks, and read-only tab locking
 - Cloudflare Pages Functions for AI proxying, system credits, payments, redemption codes, feedback, and utility endpoints
 - Optional browser extension for sending selected web content into the broader workflow
 
@@ -21,7 +21,7 @@ Documentation snapshot: `v2.2.190` on `2026-03-13`
 | Frontend | React 18, Vite, React Router 7 |
 | State | Zustand slices + Zundo temporal history |
 | Styling | Tailwind CSS, Framer Motion, Lucide |
-| Persistence | IndexedDB, localStorage, Firebase Firestore/Auth |
+| Persistence | IndexedDB, localStorage, Firebase Auth |
 | AI | Gemini native protocol, OpenAI-compatible protocol, Cloudflare proxy chain |
 | Hosting | Cloudflare Pages + Cloudflare Functions |
 | Payments | Stripe REST API through Functions |
@@ -31,9 +31,9 @@ Documentation snapshot: `v2.2.190` on `2026-03-13`
 ```text
 src/
   components/        UI building blocks, board UI, chat UI, settings, share UI
-  hooks/             board orchestration, sync, gestures, naming, summaries
+  hooks/             board orchestration, persistence, gestures, naming, summaries
   pages/             gallery, board, pricing, feedback, admin, legal pages
-  services/          LLM, sync, storage, notes, linkage, exports, stats
+  services/          LLM, storage, notes, linkage, exports, stats
   store/             Zustand store and slices
   modules/landing/   marketing landing page
 functions/
@@ -67,7 +67,7 @@ npm run ext:zip
 - `src/pages/BoardPage.jsx` is the runtime shell for the canvas, chat bar, note overlay, board instruction panel, and settings modal.
 - `src/store/useStore.js` combines 10 Zustand slices and keeps temporal history for cards, connections, groups, and board prompts.
 - `src/services/llm/` contains the provider registry/factory plus the Gemini/OpenAI/system-credits implementations.
-- `src/services/syncService.js` now contains the heavier conflict handling, retry scheduling, offline fallback, and Firestore listeners.
+- `src/hooks/useBoardPersistence.js` now handles shadow snapshots, debounced local saves, viewport persistence, and emergency flushes.
 
 ## Documentation
 

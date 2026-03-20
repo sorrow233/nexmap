@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Coins, HardDrive, RefreshCw, WifiOff } from 'lucide-react';
+import { AlertCircle, Coins, HardDrive, RefreshCw } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 
@@ -7,44 +7,37 @@ import { useStore } from '../store/useStore';
  * StatusBar - 底部状态栏组件
  * 显示当前画板名称、本地保存状态和 AI 额度
  */
-export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettings }) {
+export default function StatusBar({ boardName, saveStatus = 'idle', onOpenSettings }) {
     // Use individual selectors to avoid object reference issues
     const systemCredits = useStore(state => state.systemCredits);
     const isSystemCreditsUser = useStore(state => state.isSystemCreditsUser);
-    const offlineMode = useStore(state => state.offlineMode);
-    const autoOfflineTriggered = useStore(state => state.autoOfflineTriggered);
 
-    const syncConfig = {
+    const saveConfig = {
         idle: { icon: HardDrive, label: '已保存', color: 'text-emerald-500' },
-        syncing: { icon: RefreshCw, label: '保存中...', color: 'text-blue-500', animate: true },
-        synced: { icon: HardDrive, label: '已保存', color: 'text-emerald-500' },
+        saving: { icon: RefreshCw, label: '保存中...', color: 'text-blue-500', animate: true },
+        saved: { icon: HardDrive, label: '已保存', color: 'text-emerald-500' },
         local_dirty: { icon: RefreshCw, label: '本地待保存', color: 'text-amber-500', animate: true },
-        persisting_local: { icon: RefreshCw, label: '保存本地中...', color: 'text-cyan-500', animate: true },
-        error: { icon: AlertCircle, label: '保存失败', color: 'text-red-500' },
-        offline: { icon: WifiOff, label: autoOfflineTriggered ? '配额已满，等待恢复' : '离线模式', color: 'text-slate-400' }
+        error: { icon: AlertCircle, label: '保存失败', color: 'text-red-500' }
     };
-
-    // Override status if offline mode is enabled
-    const effectiveStatus = offlineMode ? 'offline' : syncStatus;
-    const currentSync = syncConfig[effectiveStatus] || syncConfig.idle;
-    const SyncIcon = currentSync.icon;
+    const currentSave = saveConfig[saveStatus] || saveConfig.idle;
+    const SaveIcon = currentSave.icon;
 
     return (
         <React.Fragment>
             <div className="absolute bottom-20 sm:bottom-4 right-4 z-50 flex items-center gap-3 pointer-events-auto">
-                {/* Sync Status */}
+                {/* Save Status */}
                 <div className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
                 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md
                 border border-slate-200 dark:border-slate-700
                 shadow-sm
-                ${currentSync.color}
+                ${currentSave.color}
             `}>
-                    <SyncIcon
+                    <SaveIcon
                         size={14}
-                        className={currentSync.animate ? 'animate-spin' : ''}
+                        className={currentSave.animate ? 'animate-spin' : ''}
                     />
-                    <span>{currentSync.label}</span>
+                    <span>{currentSave.label}</span>
                 </div>
 
                 {isSystemCreditsUser && typeof systemCredits === 'number' && (

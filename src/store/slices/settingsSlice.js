@@ -77,22 +77,6 @@ export const createSettingsSlice = (set, get) => ({
     isSettingsOpen: false,
     setIsSettingsOpen: (val) => set((state) => ({ isSettingsOpen: typeof val === 'function' ? val(state.isSettingsOpen) : val })),
 
-    // ... Offline Mode ...
-    offlineMode: localStorage.getItem('mixboard_offline_mode') === 'true',
-    autoOfflineTriggered: false,
-
-    setOfflineMode: (enabled) => {
-        localStorage.setItem('mixboard_offline_mode', enabled ? 'true' : 'false');
-        set({ offlineMode: enabled, autoOfflineTriggered: false });
-    },
-
-    triggerAutoOffline: () => {
-        if (!get().offlineMode) {
-            localStorage.setItem('mixboard_offline_mode', 'true');
-            set({ offlineMode: true, autoOfflineTriggered: true });
-        }
-    },
-
     // Data State
     providers: initialState.providers,
     activeId: initialState.activeId,

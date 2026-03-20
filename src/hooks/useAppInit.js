@@ -26,6 +26,7 @@ export function useAppInit() {
             debugLog.auth('Initializing local app state...');
 
             try {
+                localStorage.removeItem('mixboard_offline_mode');
                 const now = Date.now();
                 const lastCleanup = Number(localStorage.getItem(TRASH_CLEANUP_LAST_KEY) || 0);
                 const shouldRunCleanup = !Number.isFinite(lastCleanup) || now - lastCleanup >= TRASH_CLEANUP_INTERVAL_MS;

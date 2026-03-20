@@ -49,8 +49,6 @@ export default function SettingsAdvancedSection({
     linkageSettings,
     onLinkageFieldChange,
     appUserUid,
-    offlineMode,
-    setOfflineMode,
     handleReset,
     onOpenAITab,
     openPanel,
@@ -87,15 +85,6 @@ export default function SettingsAdvancedSection({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                        {offlineMode && (
-                            <button
-                                onClick={() => setOfflineMode(false)}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#eed8ae] bg-[#fbf4e6] px-4 py-2 text-sm font-medium text-[#b17d31] transition-all hover:bg-[#fff8ee] dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/15"
-                            >
-                                <RefreshCw size={14} />
-                                关闭离线模式
-                            </button>
-                        )}
                         <button
                             onClick={handleReset}
                             className="inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"

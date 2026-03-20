@@ -88,9 +88,9 @@ const buildBoardPayload = (data, options = {}) => {
     };
 };
 
-const updateStatus = (setCloudSyncStatus, status) => {
-    if (typeof setCloudSyncStatus === 'function') {
-        setCloudSyncStatus(status);
+const applySaveStatus = (setSaveStatus, status) => {
+    if (typeof setSaveStatus === 'function') {
+        setSaveStatus(status);
     }
 };
 
@@ -106,7 +106,7 @@ export function useBoardPersistence({
     isBoardLoading,
     isReadOnly,
     hasGeneratingCards = false,
-    setCloudSyncStatus,
+    setSaveStatus,
     setLastSavedAt,
     setActiveBoardPersistence,
     toast
@@ -206,7 +206,7 @@ export function useBoardPersistence({
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
         const now = Date.now();
 
-        updateStatus(setCloudSyncStatus, 'persisting_local');
+        applySaveStatus(setSaveStatus, 'saving');
         updateActivePersistenceCursor({
             clientRevision: revision,
             dirty: true
@@ -233,7 +233,7 @@ export function useBoardPersistence({
                 clearBoardShadowSnapshot(boardId);
             }
 
-            updateStatus(setCloudSyncStatus, 'synced');
+            applySaveStatus(setSaveStatus, 'saved');
             updateActivePersistenceCursor({
                 updatedAt: now,
                 clientRevision: revision,
@@ -241,7 +241,7 @@ export function useBoardPersistence({
             });
         } catch (error) {
             console.error('[BoardPersistence] Local save failed:', error);
-            updateStatus(setCloudSyncStatus, 'error');
+            applySaveStatus(setSaveStatus, 'error');
             updateActivePersistenceCursor({
                 clientRevision: revision,
                 dirty: true
@@ -250,7 +250,7 @@ export function useBoardPersistence({
                 toast?.error?.('本地保存失败，请检查存储空间');
             }
         }
-    }, [boardId, saveBoard, setActiveBoardPersistence, setCloudSyncStatus, setLastSavedAt, toast, updateActivePersistenceCursor]);
+    }, [boardId, saveBoard, setActiveBoardPersistence, setLastSavedAt, setSaveStatus, toast, updateActivePersistenceCursor]);
 
     const performEmergencyLocalSave = useCallback((data, options = {}) => {
         if (!boardId) return false;
@@ -368,7 +368,7 @@ export function useBoardPersistence({
     useEffect(() => {
         if (!boardId || isBoardLoading || isReadOnly) {
             clearContentSaveTimers();
-            updateStatus(setCloudSyncStatus, 'idle');
+            applySaveStatus(setSaveStatus, 'idle');
             return;
         }
 
@@ -394,7 +394,7 @@ export function useBoardPersistence({
 
             latestBoardDataRef.current = baselineSnapshot;
             tracker.isPrimed = true;
-            updateStatus(setCloudSyncStatus, 'synced');
+            applySaveStatus(setSaveStatus, 'saved');
             updateActivePersistenceCursor({
                 updatedAt: Date.now(),
                 clientRevision: 0,
@@ -414,7 +414,7 @@ export function useBoardPersistence({
             clientRevision: revision
         };
 
-        updateStatus(setCloudSyncStatus, 'local_dirty');
+        applySaveStatus(setSaveStatus, 'local_dirty');
         updateActivePersistenceCursor({
             updatedAt: Date.now(),
             clientRevision: revision,
@@ -435,7 +435,7 @@ export function useBoardPersistence({
         clearContentSaveTimers,
         scheduleLocalSave,
         scheduleShadowSave,
-        setCloudSyncStatus,
+        setSaveStatus,
         updateActivePersistenceCursor
     ]);
 
@@ -457,13 +457,13 @@ export function useBoardPersistence({
             viewportSaveTimerRef.current = null;
         }
 
-        updateStatus(setCloudSyncStatus, boardId && !isReadOnly ? 'idle' : 'synced');
+        applySaveStatus(setSaveStatus, boardId && !isReadOnly ? 'idle' : 'saved');
         updateActivePersistenceCursor({
             updatedAt: 0,
             clientRevision: 0,
             dirty: false
         });
-    }, [boardId, clearContentSaveTimers, isReadOnly, setCloudSyncStatus, updateActivePersistenceCursor]);
+    }, [boardId, clearContentSaveTimers, isReadOnly, setSaveStatus, updateActivePersistenceCursor]);
 
     useEffect(() => {
         const isGeneratingNow = Boolean(hasGeneratingCards);

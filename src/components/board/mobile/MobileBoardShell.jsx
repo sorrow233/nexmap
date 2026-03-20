@@ -17,7 +17,7 @@ export default function MobileBoardShell({
     board,
     cards,
     generatingCardIds,
-    syncStatus,
+    saveStatus,
     untitledLabel,
     onBack,
     onOpenInstructions,
@@ -54,7 +54,7 @@ export default function MobileBoardShell({
         <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_top,#e0f2fe,transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_45%,#f8fafc_100%)] dark:bg-[radial-gradient(circle_at_top,#0f172a,transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_50%,#020617_100%)]">
             <MobileBoardHeader
                 board={board}
-                syncStatus={syncStatus}
+                saveStatus={saveStatus}
                 cardCount={activeCardCount}
                 onBack={onBack}
                 onOpenInstructions={onOpenInstructions}

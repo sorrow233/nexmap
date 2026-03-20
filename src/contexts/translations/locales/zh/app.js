@@ -377,7 +377,6 @@ export const app = {
         refresh: "刷新",
         totalElements: "总卡片",
         creativePower: "总 Token 数",
-        neuralCloud: "本地保存",
         aiQuota: "AI 配额",
         syncUnknown: "状态未知",
         clickToRefresh: "点击检查额度",

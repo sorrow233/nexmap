@@ -287,8 +287,6 @@ export const ko = {
         autoLayoutDesc: "어질러졌나요? 원클릭으로 정리. 마인드맵 알고리즘이 즉시 트리 구조로.",
         batchOperations: "일괄 작업",
         batchOperationsDesc: "여러 카드 선택, 일괄 재작성, 삭제 또는 연결 생성. 효율 10배 향상.",
-        cloudSync: "로컬 저장",
-        cloudSyncDesc: "데이터는 현재 기기에 직접 저장되며, 백업과 가져오기/내보내기도 지원합니다.",
         startCreating: "만들기 시작",
         firstVisitOnly: "💡 첫 방문시에만 표시 · 버튼을 클릭하여 캔버스로"
     },
@@ -477,7 +475,6 @@ export const ko = {
         refresh: "새로고침",
         totalElements: "총 카드",
         creativePower: "총 토큰 수",
-        neuralCloud: "로컬 저장",
         aiQuota: "AI 할당량",
         syncUnknown: "상태 알 수 없음",
         clickToRefresh: "클릭하여 확인",

@@ -156,7 +156,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         isBoardLoading,
         isReadOnly,
         hasGeneratingCards: generatingCardIds.size > 0,
-        setCloudSyncStatus: setSaveStatus,
+        setSaveStatus,
         setLastSavedAt,
         setActiveBoardPersistence,
         toast

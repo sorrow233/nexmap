@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -17,13 +16,12 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const auth = getAuth(app);
-const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Safe export
-export { app, auth, db, googleProvider };
+export { app, auth, googleProvider };
 
 // Local Preview Compatibility
 if (typeof window !== 'undefined') {
-    window.FirebaseService = { app, auth, db, googleProvider };
+    window.FirebaseService = { app, auth, googleProvider };
 }

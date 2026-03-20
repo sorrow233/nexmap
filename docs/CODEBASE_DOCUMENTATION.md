@@ -29,7 +29,7 @@ NexMap 是一个 AI 驱动的无限画布工作区，不是单纯的聊天工具
 - 画板增强：自动命名、自动摘要、自动背景图、画板级 Prompt、自定义指令面板
 - 画廊能力：搜索、收藏夹、笔记中心、统计、回收站、反馈、定价页
 - 配置能力：多 Provider、角色模型、系统额度、对象存储、FlowStudio 联动
-- 云端能力：Firebase 登录与同步、Cloudflare Functions、Stripe 支付
+- 云端能力：Firebase 登录、Cloudflare Functions、Stripe 支付
 - 附加模块：浏览器扩展、SEO middleware
 
 ### 1.2 技术栈
@@ -41,7 +41,7 @@ NexMap 是一个 AI 驱动的无限画布工作区，不是单纯的聊天工具
 | 状态管理 | Zustand slices + Zundo temporal |
 | 样式与动效 | Tailwind CSS + Framer Motion |
 | 本地存储 | IndexedDB、localStorage、sessionStorage |
-| 云服务 | Firebase Auth / Firestore |
+| 云服务 | Firebase Auth |
 | AI 协议 | Gemini Native、OpenAI Compatible、系统额度代理 |
 | 部署 | Cloudflare Pages + Cloudflare Functions |
 | 支付 | Stripe REST API（通过 Functions 调用） |
@@ -135,7 +135,7 @@ graph TB
     end
 
     subgraph Cloud["Cloud"]
-        Firebase["Firebase Auth + Firestore"]
+        Firebase["Firebase Auth"]
         CF["Cloudflare Functions"]
         Stripe["Stripe REST API"]
     end
@@ -204,19 +204,14 @@ sequenceDiagram
     participant App
     participant BoardService
     participant Store
-    participant Sync
-    participant Firestore
+    participant Local
 
     App->>BoardService: loadBoard(boardId)
     BoardService-->>Store: cards/connections/groups/prompts
     App->>Store: restoreViewport()
 
     Store->>BoardService: saveBoard()
-    BoardService->>BoardService: 更新本地 IndexedDB 与元数据
-    alt 已登录且允许同步
-        BoardService->>Sync: saveBoardToCloud()
-        Sync->>Firestore: setDoc / updateDoc
-    end
+    BoardService->>Local: 更新本地 IndexedDB、localStorage 与恢复快照
 ```
 
 #### 搜索加载
@@ -228,7 +223,7 @@ sequenceDiagram
 ### 3.3 当前最重要的稳定性策略
 
 - AI 并发是两层控制：`AIManager` 的卡片级调度 + Gemini provider 的模型级并发闸门
-- Firestore 同步有重试、队列、游标和自动离线模式
+- 本地持久化有影子快照、IDB 重试、紧急 localStorage 回退和视口分离保存
 - 画板切换时有加载期空状态保护，避免 transient 空数组覆盖真实数据
 - 多标签页编辑有只读锁和接管机制
 
@@ -278,7 +273,7 @@ sequenceDiagram
 - `providers` / `globalRoles` 是长期配置
 - `quickChatModel` / `quickChatProviderId` 是画布级临时覆盖
 - `getEffectiveChatConfig()` 先看会话覆盖，再看全局角色配置
-- `offlineMode` 既可能手动开启，也可能由同步异常自动触发
+- 这层现在只保留本地设置、快速模型切换与长期配置管理
 
 #### `boardSlice`
 
@@ -307,7 +302,7 @@ sequenceDiagram
 | `ai/AIManager.js` | AI 任务调度中心 |
 | `boardService.js` | 本地画板 CRUD、回收站、视口、搜索加载 |
 | `storage.js` | 对旧调用保持兼容的 facade |
-| `syncService.js` | Firestore 同步、监听、重试、离线模式 |
+| `userSettingsStorage.js` | 本地设置快照、恢复与兼容旧入口 |
 | `customInstructionsService.js` | 自定义指令目录与画板启用规则 |
 | `boardTitle/metadata.js` | 自动/手动/占位标题规则 |
 | `search/searchDataLoader.js` | 搜索数据并发加载器 |
@@ -383,23 +378,19 @@ sequenceDiagram
 - `createBoard`
 - `saveBoard`
 - `loadBoard`
-- `saveBoardToCloud`
+- `loadUserSettings`
 - `updateUserSettings`
 
-真实实现已拆到 `boardService.js` / `syncService.js` / `imageStore.js`。
+真实实现已拆到 `boardService.js` / `userSettingsStorage.js` / `imageStore.js`。
 
-#### `syncService.js`
+#### `userSettingsStorage.js`
 
 现在包含：
 
-- 画板元数据监听
-- 当前活跃画板监听
-- 云端写入排队
-- 重试定时器
-- 快照游标
-- 离线模式自动切换
-- 配额 / 网络问题检测
-- 同步成功后的离线状态恢复
+- Provider / 角色配置的本地快照
+- 自定义指令与全局 Prompt 的本地恢复
+- S3 配置与联动设置的本地写回
+- 与旧 `storage.js` 调用兼容的设置入口
 
 ### 5.5 指令、自动命名与自动摘要
 
@@ -467,7 +458,7 @@ sequenceDiagram
 | --- | --- |
 | `useAppInit` | 登录态初始化、画板列表、基础数据启动 |
 | `useBoardLogic` | 画板主编排 Hook |
-| `useBoardSync` | 当前画板云同步监听 |
+| `useBoardPersistence` | 当前画板本地持久化与恢复快照 |
 | `useTabLock` | 多标签页只读锁与接管 |
 | `useBoardBackground` | 画板摘要/背景生成 |
 | `useAutoBoardNaming` | 自动命名队列 |
@@ -492,13 +483,13 @@ sequenceDiagram
 - 路由、全屏便签、拖拽粘贴、Prompt Drop
 - 指令面板与设置联动
 
-#### `useBoardSync`
+#### `useBoardPersistence`
 
 负责：
 
-- 监听当前活跃画板的云端变化
-- 避免多标签页编辑冲突
-- 将实时更新写回本地状态
+- 维护画板影子快照与恢复数据
+- 统一防抖本地保存与视口保存
+- 在页面卸载等关键时机执行紧急本地落盘
 
 ## 7. 关键业务规则
 
@@ -534,15 +525,15 @@ sequenceDiagram
 
 另外 `aiSlice.pendingMessages` 允许用户在当前流式回答未结束时继续发消息，系统会在前一条完成后自动串行处理。
 
-### 7.4 云同步与数据安全
+### 7.4 本地保存与数据安全
 
-当前同步链不是“本地改一下就直接 Firestore setDoc”：
+当前保存链是本地优先：
 
-- 本地保存和云保存是两条链路
-- 监听元数据与监听单画板正文分离
-- 会检查版本号、更新时间和加载阶段
-- 网络/配额异常会把应用切到离线模式
-- 离线模式恢复后再尝试继续同步
+- 画板正文先写入 IndexedDB
+- 保存失败时会回退到 localStorage
+- 另有影子快照用于崩溃恢复
+- 视口状态与正文内容分链路保存
+- 多标签页仍通过 `useTabLock` 避免并发写同一画板
 
 ### 7.5 标题、摘要、背景图规则
 
@@ -623,7 +614,7 @@ npm run ext:zip
 
 ### 8.5 当前部署层面的事实
 
-- 前端 Firebase 配置当前直接写在 `src/services/firebase.js`
+- 前端 Firebase Auth 配置当前直接写在 `src/services/firebase.js`
 - 没有独立 `wrangler.toml` 参与脚本分支切换
 - `functions/_middleware.js` 会在 bot 访问时做 SEO meta 注入
 
@@ -633,19 +624,19 @@ npm run ext:zip
 
 | 数据 | 位置 | 说明 |
 | --- | --- | --- |
-| 画板正文 | IndexedDB + Firestore | 本地优先，登录后同步 |
-| 画板列表元数据 | localStorage + Firestore | 包括标题、摘要、背景、删除状态 |
+| 画板正文 | IndexedDB + localStorage 回退 | 本地优先，异常时保留恢复快照 |
+| 画板列表元数据 | localStorage | 包括标题、摘要、背景、删除状态 |
 | 视口状态 | localStorage | 每个画板单独记录 |
 | Provider 配置 | localStorage (`mixboard_providers_v3`) | 模型和协议配置 |
 | 快速模型切换 | localStorage (`mixboard_quick_models`) | 只影响对话角色 |
 | 全局 Prompt | localStorage | 由 `boardSlice` 管理 |
-| 自定义指令 | localStorage + 云端设置 | 画板启用状态另有缓存 |
+| 自定义指令 | localStorage | 画板启用状态另有缓存 |
 | 图片 | IndexedDB / 对象存储 / base64 回退 | 视配置而定 |
 | 系统额度 / 兑换码 | Cloudflare KV | 服务端管理 |
 
 ### 9.2 常见现象解释
 
-- 自动进入离线模式：通常是 Firestore 配额或网络异常的保护机制
+- 看到“本地待保存”：通常是当前编辑仍在防抖窗口内，稍后会自动落盘
 - 两个标签页有一个只读：`useTabLock` 在避免多标签页同时写同一画板
 - 同样叫 Gemini 却走不同链路：要看 `baseUrl`、Key 类型和 provider 配置
 - 没配 API Key 也能用：因为系统额度会兜底

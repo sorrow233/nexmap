@@ -230,7 +230,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         board={currentBoard}
                         cards={cards}
                         generatingCardIds={generatingCardIds}
-                        syncStatus={saveStatus}
+                        saveStatus={saveStatus}
                         untitledLabel={t.gallery?.untitledBoard || 'Untitled Board'}
                         onBack={onBack}
                         onOpenInstructions={handleOpenInstructionPanel}
@@ -412,7 +412,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 {!isIPhoneBoardMode && (
                     <StatusBar
                         boardName={boardsList.find(b => b.id === currentBoardId)?.name}
-                        syncStatus={saveStatus}
+                        saveStatus={saveStatus}
                         onOpenSettings={() => setIsSettingsOpen(true)}
                     />
                 )}
