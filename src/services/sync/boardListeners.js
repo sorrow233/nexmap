@@ -18,9 +18,12 @@ import {
     buildBoardMetadataListFromCloud,
     deprecatedBoardSnapshotCursor,
     loadPersistedBoardSnapshotForSync,
+    singleBoardPatchCursor,
     singleBoardSnapshotCursor
 } from './boardShared';
 import { applyIncomingBoardSnapshot } from './applyBoardSnapshot';
+import { applyIncomingBoardPatch } from './applyBoardPatch';
+import { listenForIncrementalBoardPatches } from './boardCloudPatches';
 import { persistBoardsMetadataList } from '../boardPersistence/boardsListStorage';
 
 const hydrateBoardSnapshotIfNeeded = async (userId, boardId, boardData = {}) => {
@@ -179,6 +182,73 @@ export const listenForSingleBoard = (userId, boardId, onUpdate) => {
         };
     } catch (error) {
         debugLog.error(`listenForSingleBoard fatal error for ${boardId}:`, error);
+        return () => { };
+    }
+};
+
+export const listenForBoardPatches = (userId, boardId, onUpdate, options = {}) => {
+    if (!db || !userId || !boardId || boardId.startsWith('sample-')) {
+        return () => { };
+    }
+
+    const normalizedStartRevision = Number(options?.fromClientRevision);
+    const patchCursorKey = `${userId}:${boardId}`;
+    let lastAppliedRevision = Number.isFinite(normalizedStartRevision) && normalizedStartRevision >= 0
+        ? normalizedStartRevision
+        : 0;
+
+    const cachedRevision = singleBoardPatchCursor.get(patchCursorKey);
+    if (Number.isFinite(cachedRevision) && cachedRevision > lastAppliedRevision) {
+        lastAppliedRevision = cachedRevision;
+    }
+
+    try {
+        debugLog.sync(
+            `[PatchSync] Starting patch listener for board ${boardId} from rev${lastAppliedRevision}`
+        );
+
+        const unsubscribe = listenForIncrementalBoardPatches({
+            userId,
+            boardId,
+            fromClientRevision: lastAppliedRevision,
+            onPatchBatch: async (patchBatch) => {
+                for (const patch of patchBatch) {
+                    if (!patch || patch.toClientRevision <= lastAppliedRevision) {
+                        continue;
+                    }
+
+                    try {
+                        const applyResult = await applyIncomingBoardPatch({
+                            boardId,
+                            patch,
+                            onUpdate,
+                            tracePrefix: 'single-board-patch',
+                            debugPrefix: 'PatchSync'
+                        });
+
+                        if (applyResult?.status === 'applied') {
+                            lastAppliedRevision = patch.toClientRevision;
+                            singleBoardPatchCursor.set(patchCursorKey, lastAppliedRevision);
+                        }
+                    } catch (error) {
+                        debugLog.error(
+                            `[PatchSync] Failed to apply patch rev${patch.toClientRevision} for board ${boardId}`,
+                            error
+                        );
+                    }
+                }
+            },
+            onError: (error) => {
+                handleSyncError(`[PatchSync] Listener failed for ${boardId}:`, error);
+            }
+        });
+
+        return () => {
+            singleBoardPatchCursor.delete(patchCursorKey);
+            unsubscribe();
+        };
+    } catch (error) {
+        debugLog.error(`listenForBoardPatches fatal error for ${boardId}:`, error);
         return () => { };
     }
 };

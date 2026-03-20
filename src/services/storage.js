@@ -10,7 +10,7 @@ import {
 } from './boardService';
 
 import {
-    listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard,
+    listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard, listenForBoardPatches,
     saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings,
     CLOUD_SAVE_RESULT_OK, CLOUD_SAVE_RESULT_DEFERRED_OFFLINE, CLOUD_SAVE_RESULT_QUEUED_RETRY
@@ -23,7 +23,7 @@ export {
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
     saveViewportState, loadViewportState, loadBoardDataForSearch, emergencyLocalSave,
-    listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard,
+    listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard, listenForBoardPatches,
     saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateBoardMetadataInCloud, updateUserSettings,
     CLOUD_SAVE_RESULT_OK, CLOUD_SAVE_RESULT_DEFERRED_OFFLINE, CLOUD_SAVE_RESULT_QUEUED_RETRY,
@@ -35,7 +35,7 @@ const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     saveViewportState, loadViewportState, loadBoardDataForSearch, emergencyLocalSave,
-    listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard,
+    listenForBoardUpdates, listenForBoardsMetadata, listenForSingleBoard, listenForBoardPatches,
     saveBoardToCloud, deleteBoardFromCloud,
     saveUserSettings, loadUserSettings, updateUserSettings,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash, updateBoardMetadataInCloud,

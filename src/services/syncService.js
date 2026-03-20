@@ -1,6 +1,7 @@
 export {
     listenForBoardsMetadata,
     listenForSingleBoard,
+    listenForBoardPatches,
     listenForBoardUpdates
 } from './sync/boardListeners';
 

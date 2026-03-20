@@ -28,6 +28,7 @@ export const pickLocalArray = (storeValue, persistedValue) => {
 };
 
 export const singleBoardSnapshotCursor = new Map();
+export const singleBoardPatchCursor = new Map();
 export const deprecatedBoardSnapshotCursor = new Map();
 
 const loadLegacyBoardSnapshotForSync = (boardId) => {

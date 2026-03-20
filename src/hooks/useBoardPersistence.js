@@ -26,6 +26,7 @@ import {
     markPendingCloudSync
 } from '../services/pendingCloudSync';
 import { buildBoardContentHash } from '../services/boardPersistence/boardContentHash';
+import { buildIncrementalPatchCandidate } from '../services/sync/boardIncrementalPatch';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -141,6 +142,7 @@ export function useBoardPersistence({
     const lastSavedViewportRef = useRef(null);
     const lastBlockedReasonRef = useRef('');
     const lastLoggedStructureSignatureRef = useRef('');
+    const lastCloudAckedSnapshotRef = useRef(null);
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -331,7 +333,27 @@ export function useBoardPersistence({
         try {
             const clientRevision = toSafeRevision(revision ?? tracker.revision);
             const cloudPayload = buildBoardPayload(latestBoardDataRef.current, { clientRevision });
-            const result = await saveBoardToCloud(user.uid, boardId, cloudPayload);
+            const baselineForPatch = buildBoardPayload(
+                lastCloudAckedSnapshotRef.current || cloudPayload,
+                {
+                    clientRevision: toSafeRevision(lastCloudAckedSnapshotRef.current?.clientRevision)
+                }
+            );
+            const patchCandidate = buildIncrementalPatchCandidate({
+                baseBoard: baselineForPatch,
+                nextBoard: cloudPayload,
+                fromClientRevision: baselineForPatch.clientRevision,
+                toClientRevision: clientRevision,
+                updatedAt: Date.now()
+            });
+            const result = await saveBoardToCloud(
+                user.uid,
+                boardId,
+                cloudPayload,
+                {
+                    incrementalPatch: patchCandidate?.eligible ? patchCandidate.patch : null
+                }
+            );
 
             if (result?.status === CLOUD_SAVE_RESULT_OK) {
                 clearPendingCloudSync(boardId);
@@ -351,6 +373,12 @@ export function useBoardPersistence({
                 const cloudAcknowledgedCurrentRevision = latestHash === result?.contentHash;
 
                 if (cloudAcknowledgedCurrentRevision) {
+                    lastCloudAckedSnapshotRef.current = buildBoardPayload(
+                        latestBoardDataRef.current,
+                        {
+                            clientRevision: trackerRef.current.revision
+                        }
+                    );
                     updateActivePersistenceCursor({
                         updatedAt: result?.updatedAt || Date.now(),
                         syncVersion: result?.syncVersion || getLastKnownSyncVersion(),
@@ -360,6 +388,7 @@ export function useBoardPersistence({
                     logPersistenceTrace('cloud-save:ack-current-revision', {
                         boardId,
                         revision: clientRevision,
+                        mode: result?.patched ? 'incremental_patch' : 'snapshot',
                         syncVersion: result?.syncVersion || 0,
                         updatedAt: result?.updatedAt || 0
                     });
@@ -635,6 +664,7 @@ export function useBoardPersistence({
             const baselineRevision = toSafeRevision(baselineSnapshot.clientRevision);
 
             latestBoardDataRef.current = baselineSnapshot;
+            lastCloudAckedSnapshotRef.current = baselineSnapshot;
             tracker.isPrimed = true;
             tracker.revision = baselineRevision;
             tracker.shadowSavedRevision = baselineRevision;
@@ -743,6 +773,7 @@ export function useBoardPersistence({
         lastSavedViewportRef.current = null;
         lastBlockedReasonRef.current = '';
         lastLoggedStructureSignatureRef.current = '';
+        lastCloudAckedSnapshotRef.current = null;
         if (!boardId || !user?.uid || isReadOnly) {
             setCloudSyncStatus('idle');
             return;

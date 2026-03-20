@@ -23,6 +23,7 @@ import {
     hydrateCloudBoardSnapshotFromChunks,
     persistChunkedSnapshotSet
 } from './boardCloudChunks';
+import { persistBoardIncrementalPatch } from './boardCloudPatches';
 import {
     db,
     handleSyncError,
@@ -112,7 +113,7 @@ const setBoardDocWithRetry = async (boardRef, payloadFactory, boardId) => {
 };
 
 const persistBoardToCloudOnce = async (payload) => {
-    const { userId, boardId, boardContent, cacheKey, contentHash } = payload;
+    const { userId, boardId, boardContent, cacheKey, contentHash, incrementalPatch = null } = payload;
     const clientRevision = toSafeClientRevision(boardContent?.clientRevision);
 
     if (isOfflineMode()) {
@@ -128,12 +129,67 @@ const persistBoardToCloudOnce = async (payload) => {
     const metadata = getRawBoardsList().find((board) => board.id === boardId) || { id: boardId };
 
     debugLog.sync(`Saving board ${boardId} to cloud...`);
+    const savedAt = Date.now();
+
+    if (
+        incrementalPatch &&
+        Array.isArray(incrementalPatch.ops) &&
+        incrementalPatch.ops.length > 0
+    ) {
+        try {
+            const patchResult = await persistBoardIncrementalPatch({
+                userId,
+                boardId,
+                patch: {
+                    ...incrementalPatch,
+                    updatedAt: incrementalPatch.updatedAt || savedAt,
+                    toClientRevision: toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision),
+                    contentHash
+                }
+            });
+
+            if (patchResult?.applied) {
+                lastSyncedContentHash.set(cacheKey, contentHash);
+                onSyncSuccess();
+                debugLog.sync(
+                    `Board ${boardId} incremental patch saved (rev: ${toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision)})`
+                );
+                return {
+                    status: CLOUD_SAVE_RESULT_OK,
+                    patched: true,
+                    updatedAt: incrementalPatch.updatedAt || savedAt,
+                    syncVersion: toSafeSyncVersion(boardContent?.syncVersion),
+                    clientRevision: toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision),
+                    contentHash
+                };
+            }
+
+            if (!patchResult?.fallbackToSnapshot) {
+                return {
+                    status: CLOUD_SAVE_RESULT_QUEUED_RETRY,
+                    errorCode: patchResult?.reason || 'patch_failed',
+                    contentHash
+                };
+            }
+
+            debugLog.sync(`[SyncPatch] Fallback to snapshot write for board ${boardId}`, patchResult);
+        } catch (patchError) {
+            if (isRetryableSyncWriteError(patchError)) {
+                return {
+                    status: CLOUD_SAVE_RESULT_QUEUED_RETRY,
+                    errorCode: patchError?.code || 'patch_retryable_error',
+                    contentHash
+                };
+            }
+            throw patchError;
+        }
+    }
+
     const cleanedContent = sanitizeBoardContentForCloud(boardContent);
     const encodedSnapshotPayload = encodeBoardSnapshotData(cleanedContent);
     const snapshotStoragePlan = buildCloudSnapshotStoragePlan(encodedSnapshotPayload);
     const documentSnapshotPayload = buildCloudSnapshotPayloadForDocument(snapshotStoragePlan);
     const boardRef = doc(db, 'users', userId, 'boards', boardId);
-    const savedAt = Date.now();
 
     if (snapshotStoragePlan.mode === 'chunked') {
         await persistChunkedSnapshotSet({
@@ -458,11 +514,12 @@ const startCloudSaveRunner = (cacheKey) => {
     return runner;
 };
 
-export const saveBoardToCloud = async (userId, boardId, boardContent) => {
+export const saveBoardToCloud = async (userId, boardId, boardContent, options = {}) => {
     if (!db || !userId) return null;
 
     const cacheKey = `${userId}:${boardId}`;
     const contentHash = buildBoardContentHash(boardContent);
+    const incrementalPatch = options?.incrementalPatch || null;
     logPersistenceTrace('cloud-save:queue', {
         boardId,
         cursor: buildBoardCursorTrace(boardContent)
@@ -473,7 +530,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent) => {
         boardId,
         boardContent,
         cacheKey,
-        contentHash
+        contentHash,
+        incrementalPatch
     });
 
     const retryTimer = cloudSaveRetryTimers.get(cacheKey);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { auth } from '../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { listenForSingleBoard } from '../services/syncService';
+import { listenForBoardPatches, listenForSingleBoard } from '../services/syncService';
 import { useStore } from '../store/useStore';
 import { debugLog } from '../utils/debugLogger';
 import {
@@ -72,15 +72,14 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
 
         debugLog.sync(`[BoardSync] Starting sync for board: ${boardId} (ReadOnly: ${isReadOnly})`);
 
-        // 监听单画板更新
-        unsubRef.current = listenForSingleBoard(userId, boardId, (updatedBoardId, data) => {
+        const applyCloudUpdate = (updatedBoardId, data, source = 'snapshot') => {
             // 确保是当前画板的更新
             if (updatedBoardId !== boardId) {
                 debugLog.sync(`[BoardSync] Ignoring update for different board: ${updatedBoardId}`);
                 return;
             }
 
-            debugLog.sync(`[BoardSync] Received update for ${boardId}`, {
+            debugLog.sync(`[BoardSync] Received ${source} update for ${boardId}`, {
                 cards: data.cards?.length || 0,
                 connections: data.connections?.length || 0,
                 groups: data.groups?.length || 0,
@@ -111,8 +110,38 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
                 dirty: false
             });
 
-            debugLog.sync(`[BoardSync] State updated for board ${boardId}`);
-        });
+            debugLog.sync(`[BoardSync] State updated for board ${boardId} via ${source}`);
+        };
+
+        const unsubscribers = [];
+
+        // 监听单画板快照更新（整板）
+        unsubscribers.push(
+            listenForSingleBoard(userId, boardId, (updatedBoardId, data) => {
+                applyCloudUpdate(updatedBoardId, data, 'snapshot');
+            })
+        );
+
+        const fromClientRevision = useStore.getState()?.activeBoardPersistence?.clientRevision || 0;
+        // 监听增量 patch 更新（高频）
+        unsubscribers.push(
+            listenForBoardPatches(
+                userId,
+                boardId,
+                (updatedBoardId, data) => {
+                    applyCloudUpdate(updatedBoardId, data, 'patch');
+                },
+                { fromClientRevision }
+            )
+        );
+
+        unsubRef.current = () => {
+            unsubscribers.forEach((unsubscribe) => {
+                if (typeof unsubscribe === 'function') {
+                    unsubscribe();
+                }
+            });
+        };
 
         return () => {
             if (unsubRef.current) {
