@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, useCallback, useRef } from 'react';
+import React, { useEffect, useState, Suspense, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -58,6 +58,19 @@ import {
     pickBoardTitleMetadata
 } from './services/boardTitle/metadata';
 import { loadBoardsSearchData } from './services/search/searchDataLoader';
+import { BoardSyncController } from './services/sync/boardSyncController';
+import {
+    FIREBASE_SYNC_LIMITS,
+    isSampleBoardId
+} from './services/sync/config';
+import {
+    loadRemoteBoardMetadataList,
+    mergeBoardMetadataLists,
+    syncBoardMetadataListToRemote
+} from './services/sync/boardMetadataSync';
+import { normalizeBoardSnapshot } from './services/sync/boardSnapshot';
+import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
+import { seedLocalBoardSnapshotIfRemoteEmpty } from './services/sync/firestoreBoardSync';
 
 export default function App() {
     return (
@@ -79,6 +92,11 @@ function AppContent() {
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
     const {
+        cards,
+        connections,
+        groups,
+        boardPrompts,
+        boardInstructionSettings,
         setCards,
         setConnections,
         setGroups,
@@ -89,6 +107,10 @@ function AppContent() {
     } = useStore();
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
+    const boardSyncControllerRef = useRef(null);
+    const metadataSyncTimerRef = useRef(null);
+    const seededBoardIdsRef = useRef(new Set());
+    const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
 
     // Dialog State
     const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => { } });
@@ -115,6 +137,29 @@ function AppContent() {
     useEffect(() => {
         allBoardsDataRef.current = allBoardsData;
     }, [allBoardsData]);
+
+    const applyBoardSnapshotToStore = useCallback((snapshot) => {
+        const normalized = normalizeBoardSnapshot(snapshot);
+        setCards(normalized.cards);
+        setConnections(normalized.connections);
+        setGroups(normalized.groups);
+        setBoardPrompts(normalized.boardPrompts);
+        setBoardInstructionSettings(normalized.boardInstructionSettings);
+        setLastSavedAt(normalized.updatedAt || 0);
+        setActiveBoardPersistence({
+            updatedAt: normalized.updatedAt || 0,
+            clientRevision: normalized.clientRevision || 0,
+            dirty: false
+        });
+    }, [
+        setActiveBoardPersistence,
+        setBoardInstructionSettings,
+        setBoardPrompts,
+        setCards,
+        setConnections,
+        setGroups,
+        setLastSavedAt
+    ]);
 
     const flushSearchDataBuffer = useCallback(() => {
         const pendingChunk = searchBufferedDataRef.current;
@@ -143,6 +188,96 @@ function AppContent() {
             flushSearchDataBuffer();
         };
     }, [flushSearchDataBuffer]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setHasHydratedRemoteBoards(false);
+        seededBoardIdsRef.current = new Set();
+
+        if (!user?.uid) {
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        void loadRemoteBoardMetadataList(user.uid)
+            .then((remoteBoards) => {
+                if (cancelled) return;
+                setBoardsList((prev) => {
+                    const merged = mergeBoardMetadataLists(prev, remoteBoards);
+                    if (merged.length > 0) {
+                        persistBoardsMetadataList(merged, { reason: 'firebase_sync:hydrate_remote_metadata' });
+                    }
+                    return merged.length > 0 ? merged : prev;
+                });
+            })
+            .catch((error) => {
+                console.error('[FirebaseSync] Failed to hydrate remote boards metadata:', error);
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setHasHydratedRemoteBoards(true);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.uid, setBoardsList]);
+
+    useEffect(() => {
+        if (!user?.uid || !hasHydratedRemoteBoards) return undefined;
+
+        if (metadataSyncTimerRef.current) {
+            clearTimeout(metadataSyncTimerRef.current);
+        }
+
+        metadataSyncTimerRef.current = setTimeout(() => {
+            void syncBoardMetadataListToRemote(user.uid, boardsList).catch((error) => {
+                console.error('[FirebaseSync] Failed to sync boards metadata:', error);
+            });
+        }, FIREBASE_SYNC_LIMITS.metadataSyncDebounceMs);
+
+        return () => {
+            if (metadataSyncTimerRef.current) {
+                clearTimeout(metadataSyncTimerRef.current);
+                metadataSyncTimerRef.current = null;
+            }
+        };
+    }, [boardsList, hasHydratedRemoteBoards, user?.uid]);
+
+    useEffect(() => {
+        if (!user?.uid || !hasHydratedRemoteBoards) return undefined;
+
+        let cancelled = false;
+
+        const seedBoards = async () => {
+            for (const board of boardsList) {
+                if (cancelled) return;
+                if (!board?.id || board.deletedAt || isSampleBoardId(board.id)) continue;
+                if (seededBoardIdsRef.current.has(board.id)) continue;
+
+                try {
+                    const localSnapshot = await loadBoardDataForSearch(board.id);
+                    await seedLocalBoardSnapshotIfRemoteEmpty({
+                        userId: user.uid,
+                        boardId: board.id,
+                        snapshot: localSnapshot,
+                        deviceId: 'initial_seed'
+                    });
+                    seededBoardIdsRef.current.add(board.id);
+                } catch (error) {
+                    console.error(`[FirebaseSync] Failed to seed board ${board.id}:`, error);
+                }
+            }
+        };
+
+        void seedBoards();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [boardsList, hasHydratedRemoteBoards, user?.uid]);
 
     useEffect(() => {
         if (!isSearchOpen) return;
@@ -297,6 +432,11 @@ function AppContent() {
 
         const load = async () => {
             if (currentBoardId) {
+                if (boardSyncControllerRef.current) {
+                    await boardSyncControllerRef.current.stop();
+                    boardSyncControllerRef.current = null;
+                }
+
                 // 1. Start loading state & clear existing data to prevent bleed-over
                 useStore.getState().setIsBoardLoading(true);
                 setCards([]);
@@ -321,26 +461,31 @@ function AppContent() {
                         return;
                     }
 
-                    setCards(data.cards || []);
-                    setConnections(data.connections || []);
-                    setGroups(data.groups || []);
-                    setBoardPrompts(data.boardPrompts || []);
-                    const boardInstructionSettings = normalizeBoardInstructionSettings(
-                        data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+                    applyBoardSnapshotToStore(data);
+                    saveBoardInstructionSettingsCache(
+                        currentBoardId,
+                        normalizeBoardInstructionSettings(data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
                     );
-                    setBoardInstructionSettings(boardInstructionSettings);
-                    saveBoardInstructionSettingsCache(currentBoardId, boardInstructionSettings);
-                    setLastSavedAt(data.updatedAt || 0);
-                    setActiveBoardPersistence({
-                        updatedAt: data.updatedAt || 0,
-                        clientRevision: data.clientRevision || 0,
-                        dirty: false
-                    });
                     storageSetCurrentBoardId(currentBoardId);
 
                     // 3. Restore viewport state
                     const viewport = loadViewportState(currentBoardId);
                     useStore.getState().restoreViewport(viewport);
+
+                    if (user?.uid && !isSampleBoardId(currentBoardId)) {
+                        const syncController = new BoardSyncController({
+                            boardId: currentBoardId,
+                            user,
+                            onSnapshot: (nextSnapshot) => {
+                                if (isCancelled) return;
+                                applyBoardSnapshotToStore(nextSnapshot);
+                            },
+                            onSyncStateChange: () => { }
+                        });
+
+                        boardSyncControllerRef.current = syncController;
+                        await syncController.start(data);
+                    }
                 } catch (error) {
                     console.error(`[Board] Failed to load board ${currentBoardId}:`, error);
                 } finally {
@@ -356,8 +501,37 @@ function AppContent() {
         // Cleanup function - mark as cancelled if effect re-runs
         return () => {
             isCancelled = true;
+            if (boardSyncControllerRef.current && boardSyncControllerRef.current.boardId === currentBoardId) {
+                void boardSyncControllerRef.current.stop();
+                boardSyncControllerRef.current = null;
+            }
         };
-    }, [currentBoardId, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings, setLastSavedAt, setActiveBoardPersistence]); // Rely on currentBoardId changing
+    }, [
+        applyBoardSnapshotToStore,
+        currentBoardId,
+        setActiveBoardPersistence,
+        setBoardInstructionSettings,
+        setBoardPrompts,
+        setCards,
+        setConnections,
+        setGroups,
+        setLastSavedAt,
+        user
+    ]); // Rely on currentBoardId changing
+
+    const currentBoardSnapshot = useMemo(() => normalizeBoardSnapshot({
+        cards,
+        connections,
+        groups,
+        boardPrompts,
+        boardInstructionSettings
+    }), [boardInstructionSettings, boardPrompts, cards, connections, groups]);
+
+    useEffect(() => {
+        const controller = boardSyncControllerRef.current;
+        if (!controller || !currentBoardId || isBoardLoading) return;
+        controller.applyLocalSnapshot(currentBoardSnapshot);
+    }, [currentBoardId, currentBoardSnapshot, isBoardLoading]);
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
