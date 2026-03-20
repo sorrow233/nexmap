@@ -218,6 +218,25 @@ function AppContent() {
         setDialog({ isOpen: true, title, message, type, onConfirm });
     };
 
+    const resetBoardSessionState = useCallback(() => {
+        setCards([]);
+        setConnections([]);
+        setGroups([]);
+        setBoardPrompts([]);
+        setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
+        setLastSavedAt(0);
+        setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
+        storageSetCurrentBoardId(null);
+    }, [
+        setCards,
+        setConnections,
+        setGroups,
+        setBoardPrompts,
+        setBoardInstructionSettings,
+        setLastSavedAt,
+        setActiveBoardPersistence
+    ]);
+
     // Board Management Handlers
     const handleLogin = useCallback(async () => {
         try {
@@ -359,6 +378,15 @@ function AppContent() {
         };
     }, [currentBoardId, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings, setLastSavedAt, setActiveBoardPersistence]); // Rely on currentBoardId changing
 
+    useEffect(() => {
+        if (currentBoardId) return;
+
+        // Important: only clear board store after we have already left the board route.
+        // Clearing it inside the back handler can race with persistence cleanup and
+        // accidentally write an empty board snapshot over real local data.
+        resetBoardSessionState();
+    }, [currentBoardId, resetBoardSessionState]);
+
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
         await deleteBoard(id); // Local soft delete
@@ -419,11 +447,7 @@ function AppContent() {
         setBoardsList(freshBoards);
 
         navigate('/gallery');
-        setCards([]);
-        setConnections([]);
-        setGroups([]);
-        setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
-    }, [currentBoardId, isBoardLoading, navigate, setBoardsList, setCards, setConnections, setGroups, setBoardInstructionSettings]);
+    }, [currentBoardId, isBoardLoading, navigate, setBoardsList]);
 
     const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
         const currentBoard = boardsList.find(board => board.id === boardId);
