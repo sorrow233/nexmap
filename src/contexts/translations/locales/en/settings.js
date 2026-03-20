@@ -126,7 +126,7 @@ export const settings = {
             secretKey: "Secret Access Key",
             recovery: "Data Recovery",
             backupFound: "Safety Backup Found",
-            backupFoundDesc: "We found a local backup of your boards created before the last logout. You can attempt to restore this data to your cloud account.",
+            backupFoundDesc: "We found a complete local backup created before the last logout. Restoring will write back board entries and their canvas content.",
             restoreComplete: "Restoration Complete!",
             restore: "Restore Backup",
             restoring: "Restoring...",
@@ -143,7 +143,7 @@ export const settings = {
             backingUp: "Backing up...",
             nextBackup: "Next backup:",
             noBackupsYet: "No backups yet. Auto saves every 30 minutes while online.",
-            restoreConfirm: "Restore missing boards from this backup? Only boards you don't currently have will be added.",
+            restoreConfirm: "Restore boards and canvas content from this backup? Local boards with the same ID will be overwritten, and boards outside this backup will be kept.",
             restoreSuccess: "Restored missing boards",
             dataExport: {
                 title: "Data Migration Center",

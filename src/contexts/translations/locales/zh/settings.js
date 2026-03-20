@@ -126,7 +126,7 @@ export const settings = {
             secretKey: "Secret Access Key",
             recovery: "数据恢复",
             backupFound: "发现安全备份",
-            backupFoundDesc: "我们发现了上次注销前创建的本地备份。您可以尝试将此数据恢复到您的云端账户。",
+            backupFoundDesc: "我们发现了上次注销前创建的本地完整备份。恢复后会写回画板条目与对应画布内容。",
             restoreComplete: "恢复完成！",
             restore: "恢复备份",
             restoring: "正在恢复...",
@@ -143,7 +143,7 @@ export const settings = {
             backingUp: "正在备份...",
             nextBackup: "下次备份：",
             noBackupsYet: "暂无备份。在线期间每30分钟自动保存。",
-            restoreConfirm: "从此备份恢复缺失的画板？只会添加您当前没有的画板。",
+            restoreConfirm: "从此备份恢复画板与画布内容？同 ID 的本地画板内容会被备份覆盖，不在备份内的画板会保留。",
             restoreSuccess: "已恢复缺失的画板",
             dataExport: {
                 title: "数据迁移中心",

@@ -1,4 +1,3 @@
-
 const IDB_NAME = 'MixBoardDB';
 const IDB_STORE = 'boards';
 const IDB_BACKUP_STORE = 'scheduled_backups';
@@ -31,18 +30,13 @@ const initDB = () => {
     return dbPromise;
 };
 
-export const idbGet = async (key) => {
+const withStore = async (storeName, mode, executor) => {
     const db = await initDB();
     return new Promise((resolve, reject) => {
         try {
-            const transaction = db.transaction(IDB_STORE, 'readonly');
-            const store = transaction.objectStore(IDB_STORE);
-            const request = store.get(key);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => {
-                console.error(`[IDB] Get error for ${key}:`, request.error);
-                reject(request.error);
-            };
+            const transaction = db.transaction(storeName, mode);
+            const store = transaction.objectStore(storeName);
+            executor({ transaction, store, resolve, reject });
         } catch (e) {
             // Handle cases where connection might be closed
             dbPromise = null;
@@ -51,59 +45,88 @@ export const idbGet = async (key) => {
     });
 };
 
+export const idbGetFromStore = async (storeName, key) => withStore(storeName, 'readonly', ({ store, resolve, reject }) => {
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => {
+        console.error(`[IDB] Get error for ${key} in ${storeName}:`, request.error);
+        reject(request.error);
+    };
+});
+
+export const idbSetInStore = async (storeName, key, value) => withStore(storeName, 'readwrite', ({ store, transaction, resolve, reject }) => {
+    store.put(value, key);
+    transaction.oncomplete = () => {
+        resolve();
+    };
+    transaction.onerror = () => {
+        console.error(`[IDB] Transaction error for ${key} in ${storeName}:`, transaction.error);
+        reject(transaction.error);
+    };
+});
+
+export const idbDelFromStore = async (storeName, key) => withStore(storeName, 'readwrite', ({ store, transaction, resolve, reject }) => {
+    store.delete(key);
+    transaction.oncomplete = () => {
+        if (IS_VERBOSE_IDB_LOG) {
+            console.log(`[IDB] Delete complete for ${key} in ${storeName}`);
+        }
+        resolve();
+    };
+    transaction.onerror = () => reject(transaction.error);
+});
+
+export const idbClearStore = async (storeName) => withStore(storeName, 'readwrite', ({ store, transaction, resolve, reject }) => {
+    store.clear();
+    transaction.oncomplete = () => {
+        console.log(`[IDB] Store cleared: ${storeName}`);
+        resolve();
+    };
+    transaction.onerror = () => reject(transaction.error);
+});
+
+export const idbGetEntriesByPrefixFromStore = async (storeName, prefix) => withStore(storeName, 'readonly', ({ store, resolve, reject }) => {
+    const request = store.openCursor();
+    const entries = [];
+
+    request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+            resolve(entries);
+            return;
+        }
+
+        const key = cursor.key;
+        if (typeof key === 'string' && key.startsWith(prefix)) {
+            entries.push({ key, value: cursor.value });
+        }
+        cursor.continue();
+    };
+
+    request.onerror = () => {
+        console.error(`[IDB] Cursor error for prefix ${prefix} in ${storeName}:`, request.error);
+        reject(request.error);
+    };
+});
+
+export const idbGet = async (key) => {
+    return idbGetFromStore(IDB_STORE, key);
+};
 
 export const idbSet = async (key, value) => {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(IDB_STORE, 'readwrite');
-        const store = transaction.objectStore(IDB_STORE);
-        const request = store.put(value, key);
-
-        transaction.oncomplete = () => {
-            resolve();
-        };
-
-        transaction.onerror = () => {
-            console.error(`[IDB] Transaction error for ${key}:`, transaction.error);
-            reject(transaction.error);
-        };
-    });
+    return idbSetInStore(IDB_STORE, key, value);
 };
 
 export const idbDel = async (key) => {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(IDB_STORE, 'readwrite');
-        const store = transaction.objectStore(IDB_STORE);
-        const request = store.delete(key);
-
-        transaction.oncomplete = () => {
-            if (IS_VERBOSE_IDB_LOG) {
-                console.log(`[IDB] Delete complete for ${key}`);
-            }
-            resolve();
-        };
-        transaction.onerror = () => reject(transaction.error);
-    });
+    return idbDelFromStore(IDB_STORE, key);
 };
 
 /**
- * Clear all data from the IndexedDB store.
- * Used during logout to ensure clean state.
+ * Clear all board/image data from the primary IndexedDB store.
+ * Backup store is intentionally preserved for local recovery.
  */
 export const idbClear = async () => {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(IDB_STORE, 'readwrite');
-        const store = transaction.objectStore(IDB_STORE);
-        const request = store.clear();
-
-        transaction.oncomplete = () => {
-            console.log('[IDB] Store cleared');
-            resolve();
-        };
-        transaction.onerror = () => reject(transaction.error);
-    });
+    return idbClearStore(IDB_STORE);
 };
 
 /**
@@ -112,30 +135,10 @@ export const idbClear = async () => {
  * @returns {Promise<Array<{ key: string, value: any }>>}
  */
 export const idbGetEntriesByPrefix = async (prefix) => {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(IDB_STORE, 'readonly');
-        const store = transaction.objectStore(IDB_STORE);
-        const request = store.openCursor();
-        const entries = [];
+    return idbGetEntriesByPrefixFromStore(IDB_STORE, prefix);
+};
 
-        request.onsuccess = () => {
-            const cursor = request.result;
-            if (!cursor) {
-                resolve(entries);
-                return;
-            }
-
-            const key = cursor.key;
-            if (typeof key === 'string' && key.startsWith(prefix)) {
-                entries.push({ key, value: cursor.value });
-            }
-            cursor.continue();
-        };
-
-        request.onerror = () => {
-            console.error(`[IDB] Cursor error for prefix ${prefix}:`, request.error);
-            reject(request.error);
-        };
-    });
+export const IDB_STORE_NAMES = {
+    BOARDS: IDB_STORE,
+    BACKUPS: IDB_BACKUP_STORE
 };

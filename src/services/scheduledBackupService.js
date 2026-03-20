@@ -7,11 +7,12 @@
  * These backups are completely local and are not affected by login state.
  */
 
-import { idbGet, idbSet, idbDel } from './db/indexedDB';
+import { idbGet, idbSet } from './db/indexedDB';
 import { getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
-import { normalizeBoardMetadataList } from './boardTitle/metadata';
+import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from './boardTitle/metadata';
 import { persistBoardsMetadataList } from './boardPersistence/boardsListStorage';
+import { backupStoreDel, backupStoreGet, backupStoreSet } from './db/backupStore';
 
 const BACKUP_KEY_PREFIX = 'scheduled_backup_';
 const BACKUP_INDEX_KEY = 'scheduled_backup_index';
@@ -26,10 +27,7 @@ let checkIntervalId = null;
  * Generate a unique backup ID based on timestamp
  */
 const generateBackupId = (timestamp = Date.now()) => {
-    const date = new Date(timestamp);
-    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
-    const hour = date.getHours();
-    return `${BACKUP_KEY_PREFIX}${dateStr}_${hour.toString().padStart(2, '0')}`;
+    return `${BACKUP_KEY_PREFIX}${timestamp}`;
 };
 
 /**
@@ -64,7 +62,7 @@ const shouldBackupNow = async () => {
  */
 const getBackupIndex = async () => {
     try {
-        const index = await idbGet(BACKUP_INDEX_KEY);
+        const index = await backupStoreGet(BACKUP_INDEX_KEY);
         return Array.isArray(index) ? index : [];
     } catch (e) {
         console.error('[ScheduledBackup] Failed to get backup index:', e);
@@ -77,7 +75,7 @@ const getBackupIndex = async () => {
  */
 const saveBackupIndex = async (index) => {
     try {
-        await idbSet(BACKUP_INDEX_KEY, index);
+        await backupStoreSet(BACKUP_INDEX_KEY, index);
     } catch (e) {
         console.error('[ScheduledBackup] Failed to save backup index:', e);
     }
@@ -129,7 +127,7 @@ export const performScheduledBackup = async () => {
         };
 
         // 5. Save backup
-        await idbSet(backupId, backup);
+        await backupStoreSet(backupId, backup);
 
         // 6. Update last backup time
         localStorage.setItem(LAST_BACKUP_TIME_KEY, Date.now().toString());
@@ -164,7 +162,7 @@ const cleanupOldBackups = async () => {
         // If we have more than MAX_BACKUPS, remove oldest ones
         while (index.length > MAX_BACKUPS) {
             const oldestId = index.shift();
-            await idbDel(oldestId);
+            await backupStoreDel(oldestId);
             debugLog.storage(`[ScheduledBackup] Removed old backup: ${oldestId}`);
         }
 
@@ -174,16 +172,16 @@ const cleanupOldBackups = async () => {
 
         for (const backupId of index) {
             try {
-                const backup = await idbGet(backupId);
+                const backup = await backupStoreGet(backupId);
                 if (backup && backup.timestamp && backup.timestamp >= sevenDaysAgo) {
                     validBackups.push(backupId);
                 } else {
-                    await idbDel(backupId);
+                    await backupStoreDel(backupId);
                     debugLog.storage(`[ScheduledBackup] Removed expired backup: ${backupId}`);
                 }
             } catch (e) {
                 // If we can't read it, try to delete it
-                await idbDel(backupId);
+                await backupStoreDel(backupId);
             }
         }
 
@@ -203,7 +201,7 @@ export const getBackupHistory = async () => {
 
         for (const backupId of index) {
             try {
-                const backup = await idbGet(backupId);
+                const backup = await backupStoreGet(backupId);
                 if (backup) {
                     backups.push({
                         id: backupId,
@@ -227,63 +225,56 @@ export const getBackupHistory = async () => {
 
 /**
  * Restore data from a specific backup
- * Only restores boards that the user doesn't currently have (non-destructive merge)
+ * Restores board metadata and card content from a snapshot.
+ * Existing boards with the same ID are overwritten with the backed-up content.
  */
 export const restoreFromBackup = async (backupId) => {
     try {
         debugLog.storage(`[ScheduledBackup] Restoring from backup: ${backupId}`);
 
-        const backup = await idbGet(backupId);
+        const backup = await backupStoreGet(backupId);
         if (!backup) {
             throw new Error('Backup not found');
         }
 
-        // Get current boards list
         const currentBoardsStr = localStorage.getItem('mixboard_boards_list');
         const currentBoards = currentBoardsStr ? JSON.parse(currentBoardsStr) : [];
-        const currentBoardIds = new Set(currentBoards.map(b => String(b.id)));
+        const mergedBoards = new Map(currentBoards.map((board) => [String(board.id), board]));
+        let restoredMetadataCount = 0;
+        let restoredContentCount = 0;
 
-        let restoredCount = 0;
-        const restoredBoards = [];
-
-        // 1. Only add boards that don't exist in current list
-        if (backup.boardsList) {
-            for (const board of backup.boardsList) {
-                const boardId = String(board.id);
-                if (!currentBoardIds.has(boardId)) {
-                    // This board doesn't exist in current data, restore it
-                    restoredBoards.push(board);
-                    currentBoardIds.add(boardId);
-                    restoredCount++;
-                }
+        for (const board of backup.boardsList || []) {
+            const boardId = String(board.id);
+            const normalizedBoard = normalizeBoardTitleMeta(board);
+            if (normalizedBoard.deletedAt) {
+                delete normalizedBoard.deletedAt;
             }
+            mergedBoards.set(boardId, normalizedBoard);
+            restoredMetadataCount += 1;
 
-            // Merge and save boards list
-            if (restoredBoards.length > 0) {
-                const mergedBoards = normalizeBoardMetadataList([...currentBoards, ...restoredBoards]);
-                persistBoardsMetadataList(mergedBoards, { reason: 'restoreFromBackup' });
+            if (backup.boardsData?.[boardId]) {
+                await idbSet(`mixboard_board_${boardId}`, backup.boardsData[boardId]);
+                restoredContentCount += 1;
             }
         }
 
-        // 2. Restore board content only for newly restored boards
-        if (backup.boardsData && restoredBoards.length > 0) {
-            for (const board of restoredBoards) {
-                const boardId = String(board.id);
-                if (backup.boardsData[boardId]) {
-                    await idbSet(`mixboard_board_${boardId}`, backup.boardsData[boardId]);
-                }
-            }
+        if (restoredMetadataCount > 0) {
+            persistBoardsMetadataList(
+                normalizeBoardMetadataList(Array.from(mergedBoards.values())),
+                { reason: 'restoreFromBackup' }
+            );
         }
 
-        debugLog.storage(`[ScheduledBackup] Restore complete: ${restoredCount} boards restored (non-destructive merge)`);
+        debugLog.storage(`[ScheduledBackup] Restore complete: metadata=${restoredMetadataCount}, content=${restoredContentCount}`);
 
         return {
             success: true,
-            boardCount: restoredCount,
+            boardCount: restoredMetadataCount,
+            restoredBoardContentCount: restoredContentCount,
             timestamp: backup.timestamp,
-            message: restoredCount > 0
-                ? `Restored ${restoredCount} missing boards`
-                : 'No new boards to restore - all boards already exist'
+            message: restoredMetadataCount > 0
+                ? `Restored ${restoredMetadataCount} boards and ${restoredContentCount} board snapshots`
+                : 'Backup contained no boards to restore'
         };
     } catch (e) {
         console.error('[ScheduledBackup] Restore failed:', e);
@@ -296,7 +287,7 @@ export const restoreFromBackup = async (backupId) => {
  */
 export const deleteBackup = async (backupId) => {
     try {
-        await idbDel(backupId);
+        await backupStoreDel(backupId);
 
         let index = await getBackupIndex();
         index = index.filter(id => id !== backupId);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2, Download, Upload } from 'lucide-react';
+import { RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { loadBoardsMetadata, saveBoard } from '../../services/storage';
 import {
@@ -9,6 +9,11 @@ import {
     forceBackup,
     getNextBackupTime
 } from '../../services/scheduledBackupService';
+import {
+    clearSafetyBackup,
+    hasSafetyBackup,
+    restoreSafetyBackup
+} from '../../services/safetyBackupService';
 import DataMigrationSection from './DataMigrationSection';
 import {
     normalizeBoardMetadataList,
@@ -35,7 +40,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
 
 
 
-    const hasBackup = !!localStorage.getItem('mixboard_safety_backup');
+    const [hasBackup, setHasBackup] = useState(() => hasSafetyBackup());
 
     // Load backup history on mount
     useEffect(() => {
@@ -50,32 +55,10 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const handleRestoreBackup = async () => {
         try {
             setRestoreStatus('restoring');
-            const backupStr = localStorage.getItem('mixboard_safety_backup');
-            if (!backupStr) throw new Error("No backup found");
-
-            const backup = JSON.parse(backupStr);
-            const currentBoards = loadBoardsMetadata();
-            const mergedBoards = new Map(currentBoards.map(board => [board.id, board]));
-
-            if (backup.boards && Array.isArray(backup.boards)) {
-                let restoredCount = 0;
-                for (const board of backup.boards) {
-                    const normalizedBoard = normalizeBoardTitleMeta(board);
-                    if (normalizedBoard.deletedAt) delete normalizedBoard.deletedAt;
-                    mergedBoards.set(normalizedBoard.id, normalizedBoard);
-                    restoredCount++;
-                }
-                persistBoardsMetadataList(
-                    normalizeBoardMetadataList(Array.from(mergedBoards.values())),
-                    { reason: 'settings:restore-safety-backup' }
-                );
-                setRestoreMsg(`已恢复 ${restoredCount} 个画板条目。`);
-            }
-
-            if (backup.activeBoardData) {
-                await saveBoard(backup.activeBoardData.id, backup.activeBoardData);
-                setRestoreMsg(prev => `${prev} 已恢复当前活跃画板内容“${backup.activeBoardData.name || backup.activeBoardData.id}”。`);
-            }
+            const result = await restoreSafetyBackup();
+            setRestoreMsg(`已恢复 ${result.restoredBoardCount} 个画板，写回 ${result.restoredBoardContentCount} 份画布内容。`);
+            await clearSafetyBackup();
+            setHasBackup(false);
 
             setRestoreStatus('success');
         } catch (e) {
@@ -197,6 +180,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 // Refresh list
                 const history = await getBackupHistory();
                 setBackupHistory(history);
+                setNextBackupTime(getNextBackupTime());
             } else {
                 throw new Error(result.error || 'Backup failed');
             }
