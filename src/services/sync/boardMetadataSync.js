@@ -15,11 +15,16 @@ import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail'];
 
 const normalizeOptionalString = (value) => {
-    if (value == null) return value;
+    if (value === undefined) return undefined;
+    if (value === null) return null;
     return typeof value === 'string' ? value : String(value);
 };
 
-const pickRemoteBoardMetadata = (board = {}) => ({
+const omitUndefinedFields = (payload = {}) => Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined)
+);
+
+const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     id: board.id,
     name: board.name || '',
     nameSource: board.nameSource || 'placeholder',
