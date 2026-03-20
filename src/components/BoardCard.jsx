@@ -18,6 +18,18 @@ export default function BoardCard({
 }) {
     const { t } = useLanguage();
     const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
+    const summaryPayload = board?.summary;
+    const summaryText = typeof summaryPayload === 'string'
+        ? summaryPayload
+        : (typeof summaryPayload?.summary === 'string' ? summaryPayload.summary : '');
+    const summaryTheme = typeof summaryPayload?.theme === 'string'
+        ? summaryPayload.theme
+        : 'slate';
+    const summaryTags = summaryText
+        .split(' · ')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+    const hasSummaryContent = summaryTags.length > 0;
 
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
@@ -90,7 +102,7 @@ export default function BoardCard({
                             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                             style={{ backgroundImage: `url(${optimizeImageUrl(board.backgroundImage || board.thumbnail, 600)})` }}
                         />
-                    ) : board.summary ? (
+                    ) : hasSummaryContent ? (
                         // Neural Clay Text Card Variant v3.0 (Stacked)
                         <div className={`absolute inset-0 transition-all duration-500 ${
                             // Theme-based Pastel Backgrounds
@@ -101,7 +113,7 @@ export default function BoardCard({
                                 'orange': 'bg-[#fff7ed]',  // orange-50
                                 'pink': 'bg-[#fdf2f8]',    // pink-50
                                 'slate': 'bg-[#f8fafc]',   // slate-50
-                            }[board.summary.theme || 'slate']
+                            }[summaryTheme]
                             }`}>
 
                             {/* Soft Inner Shadow (Clay Effect) */}
@@ -110,8 +122,7 @@ export default function BoardCard({
                             {/* Content - Concept Pills */}
                             <div className="relative z-10 h-full flex flex-col justify-center px-6">
                                 <div className="flex flex-wrap justify-center gap-2">
-                                    {(typeof board.summary === 'string' ? board.summary : board.summary.summary)
-                                        .split(' · ')
+                                    {summaryTags
                                         .slice(0, 4) // Limit to top 4 tags for stacked/compact view
                                         .map((tag, i) => (
                                             <span key={i} className={`
@@ -204,7 +215,7 @@ export default function BoardCard({
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     style={{ backgroundImage: `url(${optimizeImageUrl(board.backgroundImage || board.thumbnail, 600)})` }}
                 />
-            ) : board.summary ? (
+            ) : hasSummaryContent ? (
                 // Neural Clay Text Card Variant v3.0 (Soft & Tactile)
                 <div className={`absolute inset-0 transition-all duration-500 group-hover:-translate-y-1 ${
                     // Theme-based Pastel Backgrounds
@@ -215,7 +226,7 @@ export default function BoardCard({
                         'orange': 'bg-[#fff7ed]',  // orange-50
                         'pink': 'bg-[#fdf2f8]',    // pink-50
                         'slate': 'bg-[#f8fafc]',   // slate-50
-                    }[board.summary.theme || 'slate']
+                    }[summaryTheme]
                     }`}>
 
                     {/* Soft Inner Shadow (Clay Effect) */}
@@ -237,13 +248,13 @@ export default function BoardCard({
                                 'orange': 'bg-orange-500',
                                 'pink': 'bg-pink-500',
                                 'slate': 'bg-slate-500'
-                            }[board.summary.theme || 'slate']
+                            }[summaryTheme]
                                 }`} />
                         </div>
 
                         {/* Body: Concept Pills */}
                         <div className="flex flex-wrap gap-2 content-start">
-                            {board.summary.summary.split(' · ').map((tag, i) => (
+                            {summaryTags.map((tag, i) => (
                                 <span key={i} className={`
                                     px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm border
                                     ${getTagColor(tag)}
