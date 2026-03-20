@@ -218,25 +218,6 @@ function AppContent() {
         setDialog({ isOpen: true, title, message, type, onConfirm });
     };
 
-    const resetBoardSessionState = useCallback(() => {
-        setCards([]);
-        setConnections([]);
-        setGroups([]);
-        setBoardPrompts([]);
-        setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
-        setLastSavedAt(0);
-        setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
-        storageSetCurrentBoardId(null);
-    }, [
-        setCards,
-        setConnections,
-        setGroups,
-        setBoardPrompts,
-        setBoardInstructionSettings,
-        setLastSavedAt,
-        setActiveBoardPersistence
-    ]);
-
     // Board Management Handlers
     const handleLogin = useCallback(async () => {
         try {
@@ -378,15 +359,6 @@ function AppContent() {
         };
     }, [currentBoardId, setCards, setConnections, setGroups, setBoardPrompts, setBoardInstructionSettings, setLastSavedAt, setActiveBoardPersistence]); // Rely on currentBoardId changing
 
-    useEffect(() => {
-        if (currentBoardId) return;
-
-        // Important: only clear board store after we have already left the board route.
-        // Clearing it inside the back handler can race with persistence cleanup and
-        // accidentally write an empty board snapshot over real local data.
-        resetBoardSessionState();
-    }, [currentBoardId, resetBoardSessionState]);
-
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
         await deleteBoard(id); // Local soft delete
@@ -418,36 +390,15 @@ function AppContent() {
     };
 
     const handleBackToGallery = useCallback(async () => {
-        if (currentBoardId && !isBoardLoading) {
-            // Save handled by Autosave in BoardPage mostly
-            const {
-                cards,
-                connections,
-                groups,
-                boardPrompts,
-                boardInstructionSettings,
-                activeBoardPersistence
-            } = useStore.getState();
-            await saveBoard(currentBoardId, {
-                cards,
-                connections,
-                groups,
-                boardPrompts,
-                boardInstructionSettings: normalizeBoardInstructionSettings(
-                    boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-                ),
-                clientRevision: activeBoardPersistence?.clientRevision || 0
-            });
-        } else if (currentBoardId && isBoardLoading) {
-            runtimeWarn(`[Board] Skip save while loading board ${currentBoardId} to avoid overwriting with transient state`);
+        if (currentBoardId && isBoardLoading) {
+            runtimeWarn(`[Board] Skip direct leave-save while loading board ${currentBoardId} to avoid overwriting with transient state`);
         }
 
-        // Refresh boardsList to pick up any metadata changes (e.g., thumbnails)
-        const freshBoards = getBoardsList();
-        setBoardsList(freshBoards);
-
+        // Leaving a board should rely on the persistence hook's latest in-memory snapshot.
+        // Directly saving here is risky because route transitions can temporarily expose
+        // partially-reset store state and overwrite real board content with an empty payload.
         navigate('/gallery');
-    }, [currentBoardId, isBoardLoading, navigate, setBoardsList]);
+    }, [currentBoardId, isBoardLoading, navigate]);
 
     const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
         const currentBoard = boardsList.find(board => board.id === boardId);
