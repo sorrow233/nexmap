@@ -18,6 +18,27 @@ import {
   normalizeBoardContentHash
 } from '../src/services/boardPersistence/boardContentHash.js';
 
+const createMemoryStorage = ({ throwOnSet = false } = {}) => {
+  const map = new Map();
+
+  return {
+    getItem(key) {
+      return map.has(key) ? map.get(key) : null;
+    },
+    setItem(key, value) {
+      if (throwOnSet) {
+        const error = new Error('Quota exceeded');
+        error.name = 'QuotaExceededError';
+        throw error;
+      }
+      map.set(String(key), String(value));
+    },
+    removeItem(key) {
+      map.delete(String(key));
+    }
+  };
+};
+
 const baseBoard = {
   cards: [
     {
@@ -195,5 +216,37 @@ assert.equal(
   compactHash,
   '旧的超长序列化 contentHash 应该被自愈为短哈希'
 );
+
+const sessionStorageMock = createMemoryStorage();
+const localStorageMock = createMemoryStorage({ throwOnSet: true });
+localStorageMock.removeItem = function removeItem(key) {
+  this.__removedKeys = this.__removedKeys || [];
+  this.__removedKeys.push(String(key));
+};
+const windowMock = {
+  sessionStorage: sessionStorageMock,
+  localStorage: localStorageMock
+};
+
+globalThis.window = windowMock;
+globalThis.sessionStorage = sessionStorageMock;
+globalThis.localStorage = localStorageMock;
+delete globalThis.indexedDB;
+
+const pendingCloudSyncModule = await import(`../src/services/pendingCloudSync.js?pending-cloud-sync-test=${Date.now()}`);
+const pendingState = pendingCloudSyncModule.markPendingCloudSync('board-1', { reason: 'board_content_changed' });
+assert.equal(pendingState.reason, 'board_content_changed');
+assert.equal(
+  sessionStorageMock.getItem('mixboard_pending_cloud_sync_board-1') !== null,
+  true,
+  '待同步标记应该在 sessionStorage 中成功写入'
+);
+assert.equal(
+  pendingCloudSyncModule.hasPendingCloudSync('board-1'),
+  true,
+  'localStorage 爆配额时，待同步标记仍应可读'
+);
+pendingCloudSyncModule.clearPendingCloudSync('board-1');
+assert.equal(pendingCloudSyncModule.hasPendingCloudSync('board-1'), false);
 
 console.log('local-first sync regression checks passed');

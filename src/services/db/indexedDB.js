@@ -3,7 +3,7 @@ const IDB_NAME = 'MixBoardDB';
 const IDB_STORE = 'boards';
 const IDB_BACKUP_STORE = 'scheduled_backups';
 const IDB_VERSION = 2; // Upgraded for scheduled backups
-const IS_VERBOSE_IDB_LOG = import.meta.env.MODE === 'development';
+const IS_VERBOSE_IDB_LOG = import.meta?.env?.MODE === 'development';
 
 let dbPromise = null;
 

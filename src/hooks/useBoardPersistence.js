@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
     saveBoard,
     saveBoardToCloud,
@@ -22,6 +22,7 @@ import {
 } from '../services/boardPersistence/localBoardShadow';
 import {
     clearPendingCloudSync,
+    hydratePendingCloudSync,
     hasPendingCloudSync,
     markPendingCloudSync
 } from '../services/pendingCloudSync';
@@ -165,6 +166,7 @@ export function useBoardPersistence({
     setActiveBoardPersistence,
     toast
 }) {
+    const [isPendingCloudSyncHydrated, setIsPendingCloudSyncHydrated] = useState(() => !user?.uid || isReadOnly);
     const localActorIdRef = useRef('');
     if (!localActorIdRef.current) {
         localActorIdRef.current = getLocalActorId();
@@ -830,6 +832,11 @@ export function useBoardPersistence({
             return;
         }
 
+        if (user?.uid && !isPendingCloudSyncHydrated) {
+            logBlockedState('pending_cloud_sync_hydration');
+            return;
+        }
+
         clearBlockedState();
 
         const tracker = trackerRef.current;
@@ -979,6 +986,7 @@ export function useBoardPersistence({
         getLastKnownSyncVersion,
         appendLocalFirstEnvelope,
         applySyncEvent,
+        isPendingCloudSyncHydrated,
         scheduleCloudSave,
         scheduleLocalSave,
         scheduleShadowSave,
@@ -1011,6 +1019,7 @@ export function useBoardPersistence({
         lastCloudAckedSnapshotRef.current = null;
         operationBaseSnapshotRef.current = null;
         if (!boardId || !user?.uid || isReadOnly) {
+            setIsPendingCloudSyncHydrated(true);
             updateActivePersistenceCursor({
                 localActorId: localActorIdRef.current
             });
@@ -1020,6 +1029,7 @@ export function useBoardPersistence({
             });
             return;
         }
+        setIsPendingCloudSyncHydrated(false);
         updateActivePersistenceCursor({
             localActorId: localActorIdRef.current
         });
@@ -1034,6 +1044,7 @@ export function useBoardPersistence({
                     loadAckedBoardSnapshot(boardId),
                     readBoardOperationLogMeta(boardId)
                 ]);
+                await hydratePendingCloudSync(boardId);
                 if (cancelled) return;
                 lastCloudAckedSnapshotRef.current = ackedSnapshot
                     ? buildBoardPayload(ackedSnapshot, {
@@ -1047,8 +1058,12 @@ export function useBoardPersistence({
                     pendingOperationCount: operationMeta?.pendingOperationCount ?? 0,
                     localActorId: operationMeta?.actorId || localActorIdRef.current
                 });
+                setIsPendingCloudSyncHydrated(true);
             } catch (error) {
                 console.error(`[BoardPersistence] Failed to restore local-first sync state for board ${boardId}`, error);
+                if (!cancelled) {
+                    setIsPendingCloudSyncHydrated(true);
+                }
             }
         })();
         return () => {
@@ -1070,7 +1085,7 @@ export function useBoardPersistence({
     }, [flushPendingPersistence, hasGeneratingCards]);
 
     useEffect(() => {
-        if (!boardId || !user?.uid || isBoardLoading || isHydratingFromCloud || isReadOnly) {
+        if (!boardId || !user?.uid || isBoardLoading || isHydratingFromCloud || isReadOnly || !isPendingCloudSyncHydrated) {
             return;
         }
 
@@ -1101,6 +1116,7 @@ export function useBoardPersistence({
         flushCloudSave,
         isBoardLoading,
         isHydratingFromCloud,
+        isPendingCloudSyncHydrated,
         isReadOnly,
         applySyncEvent,
         user?.uid
