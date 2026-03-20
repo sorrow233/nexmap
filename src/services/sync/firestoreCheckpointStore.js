@@ -223,7 +223,7 @@ export const saveBoardCheckpoint = async ({
             checkpointByteLength: byteLength,
             checkpointSavedAtMs: savedAtMs,
             checkpointReason: reason,
-            updatedAt: savedAtMs,
+            syncTouchedAtMs: savedAtMs,
             serverUpdatedAt: serverTimestamp(),
             lastDeviceId: deviceId
             })
@@ -259,7 +259,7 @@ export const saveBoardCheckpoint = async ({
         checkpointByteLength: byteLength,
         checkpointSavedAtMs: savedAtMs,
         checkpointReason: reason,
-        updatedAt: savedAtMs,
+        syncTouchedAtMs: savedAtMs,
         serverUpdatedAt: serverTimestamp(),
         lastDeviceId: deviceId
         })

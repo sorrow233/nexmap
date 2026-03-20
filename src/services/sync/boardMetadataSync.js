@@ -20,6 +20,18 @@ const normalizeOptionalString = (value) => {
     return typeof value === 'string' ? value : String(value);
 };
 
+const normalizeOptionalMillis = (value, { allowNull = false } = {}) => {
+    if (value === undefined) return undefined;
+    if (value === null) return allowNull ? null : undefined;
+
+    const normalized = toFirestoreMillis(value, Number.NaN);
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+        return allowNull ? null : undefined;
+    }
+
+    return normalized;
+};
+
 const omitUndefinedFields = (payload = {}) => Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
 );
@@ -29,15 +41,15 @@ const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     name: board.name || '',
     nameSource: board.nameSource || 'placeholder',
     autoTitle: board.autoTitle || '',
-    autoTitleGeneratedAt: toFirestoreMillis(board.autoTitleGeneratedAt),
-    manualTitleUpdatedAt: toFirestoreMillis(board.manualTitleUpdatedAt),
-    createdAt: toFirestoreMillis(board.createdAt, Date.now()),
-    updatedAt: toFirestoreMillis(board.updatedAt),
-    lastAccessedAt: toFirestoreMillis(board.lastAccessedAt),
+    autoTitleGeneratedAt: normalizeOptionalMillis(board.autoTitleGeneratedAt),
+    manualTitleUpdatedAt: normalizeOptionalMillis(board.manualTitleUpdatedAt),
+    createdAt: normalizeOptionalMillis(board.createdAt),
+    updatedAt: normalizeOptionalMillis(board.updatedAt),
+    lastAccessedAt: normalizeOptionalMillis(board.lastAccessedAt),
     cardCount: Number(board.cardCount) || 0,
     clientRevision: Number(board.clientRevision) || 0,
-    deletedAt: toFirestoreMillis(board.deletedAt),
-    autoImageTriggeredAt: toFirestoreMillis(board.autoImageTriggeredAt),
+    deletedAt: normalizeOptionalMillis(board.deletedAt, { allowNull: true }),
+    autoImageTriggeredAt: normalizeOptionalMillis(board.autoImageTriggeredAt),
     listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : null,
     summary: normalizeOptionalString(board.summary),
     backgroundImage: normalizeOptionalString(board.backgroundImage),
@@ -81,6 +93,12 @@ const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
 
     const localUpdated = Number(localBoard.updatedAt) || 0;
     const remoteUpdated = Number(remoteBoard.updatedAt) || 0;
+    const localCreated = Number(localBoard.createdAt) || 0;
+    const remoteCreated = Number(remoteBoard.createdAt) || 0;
+    const localLastAccessed = Number(localBoard.lastAccessedAt) || 0;
+    const remoteLastAccessed = Number(remoteBoard.lastAccessedAt) || 0;
+    const localRevision = Number(localBoard.clientRevision) || 0;
+    const remoteRevision = Number(remoteBoard.clientRevision) || 0;
     const preferredBoard = remoteUpdated > localUpdated ? remoteBoard : localBoard;
     const fallbackBoard = preferredBoard === remoteBoard ? localBoard : remoteBoard;
 
@@ -100,6 +118,18 @@ const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
     if (!hasOwn(preferredBoard, 'listOrder') && hasOwn(fallbackBoard, 'listOrder')) {
         mergedBoard.listOrder = fallbackBoard.listOrder;
     }
+
+    mergedBoard.createdAt = localCreated && remoteCreated
+        ? Math.min(localCreated, remoteCreated)
+        : (localCreated || remoteCreated || undefined);
+
+    if (remoteRevision > localRevision) {
+        mergedBoard.updatedAt = remoteUpdated || localUpdated || undefined;
+    } else {
+        mergedBoard.updatedAt = localUpdated || remoteUpdated || undefined;
+    }
+
+    mergedBoard.lastAccessedAt = Math.max(localLastAccessed, remoteLastAccessed) || undefined;
 
     return normalizeBoardTitleMeta(mergedBoard);
 };

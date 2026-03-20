@@ -287,7 +287,7 @@ export class FirestoreBoardSync {
         await setDoc(createBoardRootRef(this.userId, this.boardId), {
             ...buildAuthoritativeRootPayload({
             id: this.boardId,
-            updatedAt: Date.now(),
+            syncTouchedAtMs: Date.now(),
             serverUpdatedAt: serverTimestamp(),
             lastDeviceId: this.deviceId
             })
