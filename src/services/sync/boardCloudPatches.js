@@ -20,6 +20,8 @@ const PATCH_LISTENER_LIMIT = 240;
 const PATCH_GC_BATCH_SIZE = 300;
 const PATCH_HISTORY_KEEP_COUNT = 240;
 const MAX_PATCH_BYTES = 300 * 1024;
+export const PATCH_CHECKPOINT_PATCH_LIMIT = 30;
+export const PATCH_CHECKPOINT_MAX_AGE_MS = 10 * 60 * 1000;
 
 const toSafeInt = (value, fallback = 0) => {
     const numeric = Number(value);
@@ -71,6 +73,12 @@ const shouldFallbackToSnapshot = ({
     remoteClientRevision > baseClientRevision
 );
 
+const resolveCheckpointUpdatedAt = (remoteBoard = {}) => {
+    const checkpointUpdatedAt = toSafeInt(remoteBoard?.checkpointUpdatedAt);
+    if (checkpointUpdatedAt > 0) return checkpointUpdatedAt;
+    return toSafeInt(remoteBoard?.updatedAt);
+};
+
 const cleanupStaleBoardPatches = async ({ userId, boardId, keepCount = PATCH_HISTORY_KEEP_COUNT }) => {
     if (!db || !userId || !boardId) return;
 
@@ -112,6 +120,12 @@ const cleanupStaleBoardPatches = async ({ userId, boardId, keepCount = PATCH_HIS
         }
     }
 };
+
+export const cleanupBoardPatchesHistory = async ({
+    userId,
+    boardId,
+    keepCount = PATCH_HISTORY_KEEP_COUNT
+}) => cleanupStaleBoardPatches({ userId, boardId, keepCount });
 
 export const persistBoardIncrementalPatch = async ({
     userId,
@@ -165,6 +179,12 @@ export const persistBoardIncrementalPatch = async ({
             toSafeClientRevision(remoteBoard.clientRevision),
             toSafeInt(remoteBoard.patchHeadClientRevision)
         );
+        const remotePatchSinceCheckpoint = toSafeInt(remoteBoard.patchSinceCheckpoint);
+        const nextPatchSinceCheckpoint = remotePatchSinceCheckpoint + 1;
+        const checkpointUpdatedAt = resolveCheckpointUpdatedAt(remoteBoard);
+        const checkpointAgeMs = checkpointUpdatedAt > 0
+            ? Math.max(0, Date.now() - checkpointUpdatedAt)
+            : Number.MAX_SAFE_INTEGER;
 
         if (shouldFallbackToSnapshot({
             remoteContentHash,
@@ -180,6 +200,19 @@ export const persistBoardIncrementalPatch = async ({
             };
         }
 
+        if (
+            nextPatchSinceCheckpoint >= PATCH_CHECKPOINT_PATCH_LIMIT ||
+            checkpointAgeMs >= PATCH_CHECKPOINT_MAX_AGE_MS
+        ) {
+            return {
+                applied: false,
+                fallbackToSnapshot: true,
+                reason: 'checkpoint_due',
+                nextPatchSinceCheckpoint,
+                checkpointAgeMs
+            };
+        }
+
         transaction.set(patchDocRef, {
             ...normalizedPatch,
             approxBytes,
@@ -191,7 +224,8 @@ export const persistBoardIncrementalPatch = async ({
             contentHash: normalizedPatch.contentHash || remoteContentHash || '',
             patchHeadClientRevision: normalizedPatch.toClientRevision,
             patchUpdatedAt: normalizedPatch.updatedAt,
-            patchOpCount: normalizedPatch.opCount
+            patchOpCount: normalizedPatch.opCount,
+            patchSinceCheckpoint: nextPatchSinceCheckpoint
         }, { merge: true });
 
         return {

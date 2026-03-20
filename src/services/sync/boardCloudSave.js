@@ -23,7 +23,10 @@ import {
     hydrateCloudBoardSnapshotFromChunks,
     persistChunkedSnapshotSet
 } from './boardCloudChunks';
-import { persistBoardIncrementalPatch } from './boardCloudPatches';
+import {
+    cleanupBoardPatchesHistory,
+    persistBoardIncrementalPatch
+} from './boardCloudPatches';
 import {
     db,
     handleSyncError,
@@ -231,6 +234,12 @@ const persistBoardToCloudOnce = async (payload) => {
                 contentHash: localHash,
                 snapshotPayload: documentSnapshotPayload
             });
+            payloadToWrite.patchSinceCheckpoint = 0;
+            payloadToWrite.checkpointUpdatedAt = savedAt;
+            payloadToWrite.checkpointClientRevision = clientRevision;
+            payloadToWrite.patchHeadClientRevision = clientRevision;
+            payloadToWrite.patchUpdatedAt = savedAt;
+            payloadToWrite.patchOpCount = 0;
 
             return {
                 skipWrite: false,
@@ -284,6 +293,12 @@ const persistBoardToCloudOnce = async (payload) => {
             contentHash: localHash,
             snapshotPayload: documentSnapshotPayload
         });
+        payloadToWrite.patchSinceCheckpoint = 0;
+        payloadToWrite.checkpointUpdatedAt = savedAt;
+        payloadToWrite.checkpointClientRevision = clientRevision;
+        payloadToWrite.patchHeadClientRevision = clientRevision;
+        payloadToWrite.patchUpdatedAt = savedAt;
+        payloadToWrite.patchOpCount = 0;
 
         return {
             skipWrite: false,
@@ -434,6 +449,14 @@ const persistBoardToCloudOnce = async (payload) => {
             debugLog.warn(`[Sync] Inline snapshot cleanup failed for board ${boardId}`, cleanupError);
         });
     }
+
+    void cleanupBoardPatchesHistory({
+        userId,
+        boardId,
+        keepCount: 40
+    }).catch((cleanupError) => {
+        debugLog.warn(`[Sync] Patch history cleanup failed for board ${boardId}`, cleanupError);
+    });
 
     lastSyncedContentHash.set(cacheKey, finalContentHash);
     onSyncSuccess();
