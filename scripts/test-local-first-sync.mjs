@@ -13,6 +13,10 @@ import {
   normalizeSyncMutationMetadata
 } from '../src/services/sync/boardSyncProtocol.js';
 import { rebaseBoardStateWithEnvelopes } from '../src/services/localFirst/boardRebaseCore.js';
+import {
+  buildBoardContentHash,
+  normalizeBoardContentHash
+} from '../src/services/boardPersistence/boardContentHash.js';
 
 const baseBoard = {
   cards: [
@@ -174,5 +178,22 @@ assert.equal(buildPatchDocumentId({
   mutationLamport: 9,
   toClientRevision: 8
 }), '000000000008_000000000009_actor-1_actor-1_9_8');
+
+const reversedOrderBoard = {
+  ...nextBoard,
+  cards: nextBoard.cards.slice().reverse(),
+  connections: nextBoard.connections.slice().reverse(),
+  groups: nextBoard.groups.slice().reverse(),
+  boardPrompts: nextBoard.boardPrompts.slice().reverse()
+};
+const compactHash = buildBoardContentHash(nextBoard);
+assert.ok(compactHash.startsWith('bh2_'));
+assert.ok(compactHash.length < 80, 'contentHash 应该是短哈希，而不是完整快照');
+assert.equal(compactHash, buildBoardContentHash(reversedOrderBoard), '顺序变化不应改变内容哈希');
+assert.equal(
+  normalizeBoardContentHash(JSON.stringify(nextBoard), nextBoard),
+  compactHash,
+  '旧的超长序列化 contentHash 应该被自愈为短哈希'
+);
 
 console.log('local-first sync regression checks passed');

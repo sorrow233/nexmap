@@ -10,6 +10,7 @@ import {
     toSafeClientRevision,
     toSafeSyncVersion
 } from '../boardPersistence/persistenceCursor.js';
+import { normalizeBoardContentHash } from '../boardPersistence/boardContentHash.js';
 import { buildSyncMutationMetadata, normalizeSyncMutationMetadata } from './boardSyncProtocol.js';
 
 export const CLOUD_SNAPSHOT_ENCODING = 'lz-string-base64';
@@ -172,6 +173,7 @@ export const buildCloudBoardDocument = (boardData = {}) => {
         ...(boardData.syncMetadata || {}),
         mutationSequence: boardData.mutationSequence ?? boardData.syncMetadata?.mutationSequence
     });
+    const contentHash = normalizeBoardContentHash(boardData.contentHash, content);
 
     return removeUndefined({
         ...metadata,
@@ -188,7 +190,7 @@ export const buildCloudBoardDocument = (boardData = {}) => {
         clientRevision: toSafeClientRevision(boardData.clientRevision),
         mutationSequence: syncMetadata.mutationSequence,
         ...syncMetadata,
-        contentHash: typeof boardData.contentHash === 'string' ? boardData.contentHash : undefined
+        contentHash: contentHash || undefined
     });
 };
 
@@ -196,6 +198,7 @@ export const materializeCloudBoardSnapshot = (boardData = {}) => {
     const content = decodeSnapshotData(boardData);
     const metadata = buildCloudBoardMetadata(boardData);
     const syncMetadata = normalizeSyncMutationMetadata(boardData);
+    const contentHash = normalizeBoardContentHash(boardData.contentHash, content);
 
     return removeUndefined({
         ...metadata,
@@ -205,7 +208,7 @@ export const materializeCloudBoardSnapshot = (boardData = {}) => {
         clientRevision: toSafeClientRevision(boardData.clientRevision),
         mutationSequence: syncMetadata.mutationSequence,
         syncMetadata,
-        contentHash: typeof boardData.contentHash === 'string' ? boardData.contentHash : undefined,
+        contentHash: contentHash || undefined,
         snapshotStorage: typeof boardData.snapshotStorage === 'string'
             ? boardData.snapshotStorage
             : CLOUD_SNAPSHOT_STORAGE_INLINE,

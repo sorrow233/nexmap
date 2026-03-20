@@ -25,7 +25,10 @@ import {
     hasPendingCloudSync,
     markPendingCloudSync
 } from '../services/pendingCloudSync';
-import { buildBoardContentHash } from '../services/boardPersistence/boardContentHash';
+import {
+    buildBoardContentHash,
+    normalizeBoardContentHash
+} from '../services/boardPersistence/boardContentHash';
 import { buildIncrementalPatchCandidate } from '../services/sync/boardIncrementalPatch';
 import {
     appendBoardOperationEnvelope,
@@ -106,14 +109,17 @@ const hasViewportMeaningfulChange = (previousViewport, nextViewport) => {
 
 const buildBoardPayload = (data, options = {}) => {
     const clientRevision = toSafeRevision(options.clientRevision ?? data?.clientRevision);
-    return {
+    const boardContent = {
         cards: data.cards || [],
         connections: data.connections || [],
         groups: data.groups || [],
         boardPrompts: data.boardPrompts || [],
         boardInstructionSettings: normalizeBoardInstructionSettings(
             data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-        ),
+        )
+    };
+    return {
+        ...boardContent,
         updatedAt: Number.isFinite(Number(options.updatedAt ?? data?.updatedAt))
             ? Number(options.updatedAt ?? data?.updatedAt)
             : 0,
@@ -124,9 +130,7 @@ const buildBoardPayload = (data, options = {}) => {
             ? Number(options.mutationSequence ?? data?.mutationSequence)
             : 0,
         syncMetadata: options.syncMetadata || data?.syncMetadata || null,
-        contentHash: typeof (options.contentHash ?? data?.contentHash) === 'string'
-            ? (options.contentHash ?? data?.contentHash)
-            : '',
+        contentHash: normalizeBoardContentHash(options.contentHash ?? data?.contentHash, boardContent),
         clientRevision
     };
 };
