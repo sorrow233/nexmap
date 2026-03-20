@@ -157,6 +157,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         isBoardLoading,
         isHydratingFromCloud,
         isReadOnly,
+        hasGeneratingCards: generatingCardIds.size > 0,
         setCloudSyncStatus,
         setLastSavedAt,
         setActiveBoardPersistence,

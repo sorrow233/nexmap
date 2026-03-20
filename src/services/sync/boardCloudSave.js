@@ -319,6 +319,7 @@ const persistBoardToCloudOnce = async (payload) => {
 
     if (writeResult?.skipWrite) {
         let snapshotForLocalRefresh = finalSnapshot;
+        const allowLocalRefreshOnSkipWrite = writeResult?.reason === 'content_matches_remote';
         const shouldHydrateChunkedRemote = (
             writeResult?.remoteDocument?.snapshotStorage === 'chunked' &&
             (!snapshotForLocalRefresh || buildBoardContentHash(snapshotForLocalRefresh) === EMPTY_CLOUD_CONTENT_HASH)
@@ -341,6 +342,7 @@ const persistBoardToCloudOnce = async (payload) => {
         }
 
         const canRefreshFromSnapshot = (
+            allowLocalRefreshOnSkipWrite &&
             snapshotForLocalRefresh &&
             buildBoardContentHash(snapshotForLocalRefresh) !== EMPTY_CLOUD_CONTENT_HASH
         );
@@ -362,6 +364,7 @@ const persistBoardToCloudOnce = async (payload) => {
                 logPersistenceTrace('cloud-save:skip-write-refresh-local-skipped', {
                     boardId,
                     reason: writeResult.reason,
+                    refreshAllowed: allowLocalRefreshOnSkipWrite,
                     hasSnapshot: Boolean(snapshotForLocalRefresh),
                     remoteStorage: writeResult?.remoteDocument?.snapshotStorage || 'inline'
                 });

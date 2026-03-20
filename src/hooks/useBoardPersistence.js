@@ -110,6 +110,7 @@ export function useBoardPersistence({
     isBoardLoading,
     isHydratingFromCloud,
     isReadOnly,
+    hasGeneratingCards = false,
     setCloudSyncStatus,
     setLastSavedAt,
     setActiveBoardPersistence,
@@ -143,6 +144,7 @@ export function useBoardPersistence({
     const lastBlockedReasonRef = useRef('');
     const lastLoggedStructureSignatureRef = useRef('');
     const lastCloudAckedSnapshotRef = useRef(null);
+    const wasGeneratingRef = useRef(Boolean(hasGeneratingCards));
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -780,6 +782,19 @@ export function useBoardPersistence({
         }
         setCloudSyncStatus(hasPendingCloudSync(boardId) ? 'syncing' : 'idle');
     }, [boardId, clearContentSaveTimers, isReadOnly, setCloudSyncStatus, user?.uid]);
+
+    useEffect(() => {
+        const isGeneratingNow = Boolean(hasGeneratingCards);
+        const wasGenerating = wasGeneratingRef.current;
+        wasGeneratingRef.current = isGeneratingNow;
+
+        if (wasGenerating && !isGeneratingNow) {
+            flushPendingPersistence('generation_complete_flush', {
+                forceCloud: false,
+                silent: true
+            });
+        }
+    }, [flushPendingPersistence, hasGeneratingCards]);
 
     useEffect(() => {
         if (!boardId || !user?.uid || isBoardLoading || isHydratingFromCloud || isReadOnly) {
