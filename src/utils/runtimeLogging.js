@@ -1,5 +1,14 @@
 const VERBOSE_CONSOLE_KEY = 'nexmap_verbose_console';
 const PERSISTENCE_TRACE_CONSOLE_KEY = 'nexmap_persistence_trace_console';
+const BLOCKED_RESOURCE_PATTERNS = [
+    'beacon.min.js',
+    '/beacon',
+    'googletagmanager',
+    'google-analytics',
+    'gtag/js',
+    'doubleclick',
+    'clarity.ms'
+];
 
 const isDebugBuild = import.meta.env.DEV || import.meta.env.MODE === 'development' || import.meta.env.MODE === 'beta';
 
@@ -77,6 +86,27 @@ const getResourceErrorDetails = (target) => {
     };
 };
 
+const isBlockedThirdPartyResourceNoise = (event, resourceDetails = {}) => {
+    const source = String(resourceDetails.source || '').toLowerCase();
+    const message = [
+        event?.message,
+        event?.error?.message
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (message.includes('err_blocked_by_client')) {
+        return true;
+    }
+
+    if (!source) {
+        return false;
+    }
+
+    return BLOCKED_RESOURCE_PATTERNS.some((pattern) => source.includes(pattern));
+};
+
 const normalizeFetchRequest = (input, init = {}) => {
     if (typeof Request !== 'undefined' && input instanceof Request) {
         return {
@@ -101,6 +131,10 @@ export const installGlobalErrorLogging = () => {
         const resourceDetails = getResourceErrorDetails(event.target);
 
         if (resourceDetails) {
+            if (isBlockedThirdPartyResourceNoise(event, resourceDetails)) {
+                runtimeWarn('[GlobalError] Ignored blocked third-party resource', resourceDetails);
+                return;
+            }
             console.error('[GlobalError] Resource load failed', resourceDetails);
             return;
         }
