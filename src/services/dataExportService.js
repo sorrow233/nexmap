@@ -28,7 +28,8 @@ const EXPORT_KEYS = [
 
 // Prefixes for dynamic keys
 const DYNAMIC_PREFIXES = [
-    'mixboard_viewport_'
+    'mixboard_viewport_',
+    'mixboard_board_instruction_settings_'
 ];
 
 /**
@@ -200,8 +201,9 @@ export async function importData(data, options = { importSettings: false }) {
             ];
 
             for (const [key, value] of Object.entries(data.localStorage)) {
+                const isBoardInstructionSettingsEntry = key.startsWith('mixboard_board_instruction_settings_');
                 // If this is a config key and user chose NOT to import settings, skip it
-                if (!options.importSettings && CONFIG_KEYS.includes(key)) {
+                if (!options.importSettings && (CONFIG_KEYS.includes(key) || isBoardInstructionSettingsEntry)) {
                     continue;
                 }
 

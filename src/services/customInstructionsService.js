@@ -1,6 +1,9 @@
 const CUSTOM_INSTRUCTIONS_KEY = 'mixboard_custom_instructions';
 const BOARD_INSTRUCTION_SETTINGS_CACHE_KEY = 'mixboard_board_instruction_settings_map';
+const BOARD_INSTRUCTION_SETTINGS_CACHE_PREFIX = 'mixboard_board_instruction_settings_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
+const MAX_BOARD_INSTRUCTION_MEMORY_CACHE = 24;
+const boardInstructionSettingsMemoryCache = new Map();
 
 const nowTs = () => Date.now();
 
@@ -25,6 +28,11 @@ export const DEFAULT_BOARD_INSTRUCTION_SETTINGS = Object.freeze({
 });
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const isQuotaExceededError = (error) => (
+    error?.name === 'QuotaExceededError' ||
+    error?.code === 22 ||
+    error?.code === 1014
+);
 
 const uniqueStrings = (list) => {
     const out = [];
@@ -211,7 +219,13 @@ export const sanitizeBoardInstructionSettingsForCatalog = (boardInstructionSetti
 };
 
 const readBoardInstructionSettingsMap = () => {
-    const raw = localStorage.getItem(BOARD_INSTRUCTION_SETTINGS_CACHE_KEY);
+    let raw = null;
+    try {
+        raw = localStorage.getItem(BOARD_INSTRUCTION_SETTINGS_CACHE_KEY);
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to read legacy board instruction settings cache', error);
+        return {};
+    }
     if (!raw) return {};
     try {
         const parsed = JSON.parse(raw);
@@ -222,17 +236,114 @@ const readBoardInstructionSettingsMap = () => {
     }
 };
 
+const getBoardInstructionSettingsStorageKey = (boardId) => `${BOARD_INSTRUCTION_SETTINGS_CACHE_PREFIX}${boardId}`;
+
+const rememberBoardInstructionSettings = (boardId, settings) => {
+    if (!boardId) return;
+    boardInstructionSettingsMemoryCache.delete(boardId);
+    boardInstructionSettingsMemoryCache.set(boardId, settings);
+
+    while (boardInstructionSettingsMemoryCache.size > MAX_BOARD_INSTRUCTION_MEMORY_CACHE) {
+        const oldestKey = boardInstructionSettingsMemoryCache.keys().next().value;
+        boardInstructionSettingsMemoryCache.delete(oldestKey);
+    }
+};
+
+const readBoardInstructionSettingsFromKey = (storageKey) => {
+    if (!storageKey) return null;
+
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return null;
+        return normalizeBoardInstructionSettings(JSON.parse(raw));
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to parse board instruction settings entry', error);
+        return null;
+    }
+};
+
+const clearLegacyBoardInstructionSettingsCache = () => {
+    try {
+        localStorage.removeItem(BOARD_INSTRUCTION_SETTINGS_CACHE_KEY);
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to clear legacy board instruction settings cache', error);
+    }
+};
+
+const clearOtherBoardInstructionSettingsEntries = (currentBoardId) => {
+    try {
+        const keysToRemove = [];
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (!key || !key.startsWith(BOARD_INSTRUCTION_SETTINGS_CACHE_PREFIX)) continue;
+            if (key === getBoardInstructionSettingsStorageKey(currentBoardId)) continue;
+            keysToRemove.push(key);
+        }
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+    } catch (error) {
+        console.error('[CustomInstructions] Failed to prune board instruction settings entries', error);
+    }
+};
+
 export const saveBoardInstructionSettingsCache = (boardId, settings) => {
     if (!boardId) return;
-    const map = readBoardInstructionSettingsMap();
-    map[boardId] = normalizeBoardInstructionSettings(settings);
-    localStorage.setItem(BOARD_INSTRUCTION_SETTINGS_CACHE_KEY, JSON.stringify(map));
+    const normalized = normalizeBoardInstructionSettings(settings);
+    const storageKey = getBoardInstructionSettingsStorageKey(boardId);
+    const serialized = JSON.stringify(normalized);
+
+    rememberBoardInstructionSettings(boardId, normalized);
+
+    try {
+        localStorage.setItem(storageKey, serialized);
+        return;
+    } catch (error) {
+        if (!isQuotaExceededError(error)) {
+            console.error('[CustomInstructions] Failed to persist board instruction settings cache', error);
+            return;
+        }
+    }
+
+    clearLegacyBoardInstructionSettingsCache();
+
+    try {
+        localStorage.setItem(storageKey, serialized);
+        return;
+    } catch (error) {
+        if (!isQuotaExceededError(error)) {
+            console.error('[CustomInstructions] Failed to persist board instruction settings cache after legacy cleanup', error);
+            return;
+        }
+    }
+
+    clearOtherBoardInstructionSettingsEntries(boardId);
+
+    try {
+        localStorage.setItem(storageKey, serialized);
+    } catch (error) {
+        console.warn('[CustomInstructions] Board instruction settings cache skipped because storage quota is exhausted', {
+            boardId,
+            error
+        });
+    }
 };
 
 export const loadBoardInstructionSettingsCache = (boardId) => {
     if (!boardId) return normalizeBoardInstructionSettings(null);
-    const map = readBoardInstructionSettingsMap();
-    return normalizeBoardInstructionSettings(map[boardId]);
+
+    if (boardInstructionSettingsMemoryCache.has(boardId)) {
+        return normalizeBoardInstructionSettings(boardInstructionSettingsMemoryCache.get(boardId));
+    }
+
+    const scopedValue = readBoardInstructionSettingsFromKey(getBoardInstructionSettingsStorageKey(boardId));
+    if (scopedValue) {
+        rememberBoardInstructionSettings(boardId, scopedValue);
+        return scopedValue;
+    }
+
+    const legacyMap = readBoardInstructionSettingsMap();
+    const legacyValue = normalizeBoardInstructionSettings(legacyMap[boardId]);
+    rememberBoardInstructionSettings(boardId, legacyValue);
+    return legacyValue;
 };
 
 const getCurrentBoardId = () => {

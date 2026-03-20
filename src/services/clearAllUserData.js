@@ -31,7 +31,8 @@ const STORAGE_KEYS_TO_REMOVE = [
 // Prefixes for dynamically created keys
 const STORAGE_PREFIXES = [
     'mixboard_viewport_',
-    'mixboard_board_'
+    'mixboard_board_',
+    'mixboard_board_instruction_settings_'
 ];
 
 /**

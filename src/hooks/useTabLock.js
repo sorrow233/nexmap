@@ -30,15 +30,41 @@ export function useTabLock(boardId) {
     const channelRef = useRef(null);
     const heartbeatTimerRef = useRef(null);
     const monitoringTimerRef = useRef(null);
+    const isPersistentLockDisabledRef = useRef(false);
 
     const getLockKey = () => `nexmap_lock_${boardId}`;
     const HEARTBEAT_INTERVAL = 2000;
     const LOCK_TIMEOUT = 6000; // If no heartbeat for 6s, lock is stale
+    const buildLockPayload = () => JSON.stringify({ tabId, timestamp: Date.now() });
+
+    const persistLockSafely = useCallback((lockKey) => {
+        if (!lockKey) return false;
+        if (isPersistentLockDisabledRef.current) return false;
+
+        try {
+            localStorage.setItem(lockKey, buildLockPayload());
+            return true;
+        } catch (error) {
+            isPersistentLockDisabledRef.current = true;
+            console.warn('[TabLock] localStorage quota/storage unavailable, falling back to optimistic single-tab mode', {
+                boardId,
+                error
+            });
+            return false;
+        }
+    }, [boardId, tabId]);
 
     // Check if current lock is still valid (not stale)
     const isLockValid = useCallback(() => {
+        if (isPersistentLockDisabledRef.current) return true;
+
         const lockKey = getLockKey();
-        const lockData = localStorage.getItem(lockKey);
+        let lockData = null;
+        try {
+            lockData = localStorage.getItem(lockKey);
+        } catch {
+            return false;
+        }
         if (!lockData) return false;
 
         try {
@@ -52,8 +78,15 @@ export function useTabLock(boardId) {
 
     // Get current lock owner
     const getLockOwner = useCallback(() => {
+        if (isPersistentLockDisabledRef.current) return tabId;
+
         const lockKey = getLockKey();
-        const lockData = localStorage.getItem(lockKey);
+        let lockData = null;
+        try {
+            lockData = localStorage.getItem(lockKey);
+        } catch {
+            return null;
+        }
         if (!lockData) return null;
 
         try {
@@ -77,7 +110,7 @@ export function useTabLock(boardId) {
 
         // If I already own it, just refresh
         if (currentOwner === tabId) {
-            localStorage.setItem(lockKey, JSON.stringify({ tabId, timestamp: Date.now() }));
+            persistLockSafely(lockKey);
             return true;
         }
 
@@ -87,10 +120,10 @@ export function useTabLock(boardId) {
         }
 
         // Lock is free or stale, acquire it
-        localStorage.setItem(lockKey, JSON.stringify({ tabId, timestamp: Date.now() }));
+        persistLockSafely(lockKey);
         debugLog.sync(`[TabLock] Acquired lock for board: ${boardId} (Tab: ${tabId})`);
         return true;
-    }, [boardId, getLockOwner, tabId]);
+    }, [boardId, getLockOwner, persistLockSafely, tabId]);
 
     // Release lock (only if I own it)
     const releaseLock = useCallback(() => {
@@ -106,19 +139,28 @@ export function useTabLock(boardId) {
 
     // Start heartbeat (master only)
     const startHeartbeat = useCallback(() => {
+        if (isPersistentLockDisabledRef.current) return;
         if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = setInterval(() => {
             const lockKey = getLockKey();
             const currentOwner = getLockOwner();
             if (currentOwner === tabId) {
                 // Refresh lock timestamp
-                localStorage.setItem(lockKey, JSON.stringify({ tabId, timestamp: Date.now() }));
+                const didPersist = persistLockSafely(lockKey);
+                if (!didPersist && heartbeatTimerRef.current) {
+                    clearInterval(heartbeatTimerRef.current);
+                    heartbeatTimerRef.current = null;
+                }
             }
         }, HEARTBEAT_INTERVAL);
-    }, [getLockOwner, tabId, boardId]);
+    }, [getLockOwner, persistLockSafely, tabId]);
 
     // Start monitoring (follower only)
     const startMonitoring = useCallback(() => {
+        if (isPersistentLockDisabledRef.current) {
+            setIsReadOnly(false);
+            return;
+        }
         if (monitoringTimerRef.current) clearInterval(monitoringTimerRef.current);
         monitoringTimerRef.current = setInterval(() => {
             const currentOwner = getLockOwner();
@@ -148,7 +190,7 @@ export function useTabLock(boardId) {
     const takeOverMaster = useCallback(() => {
         debugLog.sync(`[TabLock] Manual takeover initiated for board: ${boardId} (Tab: ${tabId})`);
         const lockKey = getLockKey();
-        localStorage.setItem(lockKey, JSON.stringify({ tabId, timestamp: Date.now() }));
+        persistLockSafely(lockKey);
         setIsReadOnly(false);
         startHeartbeat();
         if (monitoringTimerRef.current) {
@@ -156,7 +198,7 @@ export function useTabLock(boardId) {
             monitoringTimerRef.current = null;
         }
         channelRef.current?.postMessage({ type: 'TAKEOVER', tabId });
-    }, [boardId, tabId, startHeartbeat]);
+    }, [boardId, persistLockSafely, tabId, startHeartbeat]);
 
     useEffect(() => {
         if (!boardId || boardId.startsWith('sample-')) {
@@ -257,4 +299,3 @@ export function useTabLock(boardId) {
 
     return { isReadOnly, takeOverMaster };
 }
-
