@@ -2,6 +2,10 @@ import { ArrowRight, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock } fro
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
+import {
+    getBoardSummaryTags,
+    getBoardSummaryTheme
+} from '../services/boardTitle/displayMetadata';
 
 export default function BoardCard({
     board,
@@ -18,17 +22,8 @@ export default function BoardCard({
 }) {
     const { t } = useLanguage();
     const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
-    const summaryPayload = board?.summary;
-    const summaryText = typeof summaryPayload === 'string'
-        ? summaryPayload
-        : (typeof summaryPayload?.summary === 'string' ? summaryPayload.summary : '');
-    const summaryTheme = typeof summaryPayload?.theme === 'string'
-        ? summaryPayload.theme
-        : 'slate';
-    const summaryTags = summaryText
-        .split(' · ')
-        .map((tag) => tag.trim())
-        .filter(Boolean);
+    const summaryTheme = getBoardSummaryTheme(board?.summary);
+    const summaryTags = getBoardSummaryTags(board?.summary);
     const hasSummaryContent = summaryTags.length > 0;
 
     const handleImageButtonClick = (e, boardId) => {
@@ -109,6 +104,7 @@ export default function BoardCard({
                             {
                                 'blue': 'bg-[#eff6ff]',    // blue-50
                                 'purple': 'bg-[#f5f3ff]',  // violet-50
+                                'indigo': 'bg-[#eef2ff]',  // indigo-50
                                 'emerald': 'bg-[#ecfdf5]', // emerald-50
                                 'orange': 'bg-[#fff7ed]',  // orange-50
                                 'pink': 'bg-[#fdf2f8]',    // pink-50
@@ -222,6 +218,7 @@ export default function BoardCard({
                     {
                         'blue': 'bg-[#eff6ff]',    // blue-50
                         'purple': 'bg-[#f5f3ff]',  // violet-50
+                        'indigo': 'bg-[#eef2ff]',  // indigo-50
                         'emerald': 'bg-[#ecfdf5]', // emerald-50
                         'orange': 'bg-[#fff7ed]',  // orange-50
                         'pink': 'bg-[#fdf2f8]',    // pink-50
@@ -244,6 +241,7 @@ export default function BoardCard({
                             <div className={`mt-3 h-1 w-8 rounded-full opacity-30 ${{
                                 'blue': 'bg-blue-500',
                                 'purple': 'bg-violet-500',
+                                'indigo': 'bg-indigo-500',
                                 'emerald': 'bg-emerald-500',
                                 'orange': 'bg-orange-500',
                                 'pink': 'bg-pink-500',

@@ -8,6 +8,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
+import { normalizeBoardSummary } from '../boardTitle/displayMetadata';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
@@ -51,7 +52,7 @@ const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     deletedAt: normalizeOptionalMillis(board.deletedAt, { allowNull: true }),
     autoImageTriggeredAt: normalizeOptionalMillis(board.autoImageTriggeredAt),
     listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : null,
-    summary: normalizeOptionalString(board.summary),
+    summary: normalizeBoardSummary(board.summary),
     backgroundImage: normalizeOptionalString(board.backgroundImage),
     thumbnail: normalizeOptionalString(board.thumbnail)
 });

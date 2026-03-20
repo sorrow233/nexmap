@@ -1,3 +1,5 @@
+import { normalizeBoardDisplayMetadata } from './displayMetadata';
+
 const BOARD_NAME_SOURCES = new Set(['manual', 'auto', 'placeholder']);
 
 const PLACEHOLDER_TITLES = new Set([
@@ -55,6 +57,7 @@ export const inferNameSource = (board = {}) => {
 };
 
 export const normalizeBoardTitleMeta = (board = {}) => {
+    const normalizedDisplayBoard = normalizeBoardDisplayMetadata(board);
     const normalizedName = normalizeTitleString(board.name);
     const normalizedAutoTitle = normalizeTitleString(board.autoTitle);
     const autoTitleGeneratedAt = normalizeTimestamp(board.autoTitleGeneratedAt);
@@ -78,7 +81,7 @@ export const normalizeBoardTitleMeta = (board = {}) => {
     }
 
     return {
-        ...board,
+        ...normalizedDisplayBoard,
         name,
         nameSource,
         autoTitle: normalizedAutoTitle,
