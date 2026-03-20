@@ -4,14 +4,47 @@
  */
 import { SEO_CONFIG, DEFAULT_LANG, LANGUAGES } from '../seo-config.js';
 
+const STATIC_ASSET_PATTERN = /\.(?:js|mjs|css|map|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|txt|xml|json)$/i;
+
+function isStaticAssetRequest(pathname) {
+    return STATIC_ASSET_PATTERN.test(pathname);
+}
+
+function shouldConvertToAsset404(pathname, response) {
+    if (!pathname.startsWith('/assets/')) {
+        return false;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    return response.status === 200 && contentType.includes('text/html');
+}
+
+function createAssetNotFoundResponse() {
+    return new Response('Not Found', {
+        status: 404,
+        headers: {
+            'content-type': 'text/plain; charset=utf-8',
+            'cache-control': 'no-store',
+            'x-content-type-options': 'nosniff'
+        }
+    });
+}
+
 export async function onRequest(context) {
     const url = new URL(context.request.url);
     const userAgent = context.request.headers.get('User-Agent') || '';
     const isBot = /bot|spider|crawl|facebook|twitter|linkedin|discord/i.test(userAgent);
 
+    if (isStaticAssetRequest(url.pathname)) {
+        const response = await context.next();
+        if (shouldConvertToAsset404(url.pathname, response)) {
+            return createAssetNotFoundResponse();
+        }
+        return response;
+    }
+
     // If it's not a bot/crawler, simply pass through to the origin (SPA)
-    // Or if it's a static asset, pass through
-    if (!isBot || url.pathname.includes('.')) {
+    if (!isBot) {
         return context.next();
     }
 
