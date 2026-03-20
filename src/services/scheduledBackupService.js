@@ -4,7 +4,7 @@
  * Provides automatic local backups every 30 minutes while the user is online.
  * Keeps backups for 7 days.
  * 
- * This is INDEPENDENT of cloud sync - cloud operations do not affect these backups.
+ * These backups are completely local and are not affected by login state.
  */
 
 import { idbGet, idbSet, idbDel } from './db/indexedDB';

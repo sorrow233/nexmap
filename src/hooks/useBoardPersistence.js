@@ -1,16 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
-    saveBoard,
-    saveBoardToCloud,
-    saveViewportState,
     emergencyLocalSave,
-    CLOUD_SAVE_RESULT_OK,
-    CLOUD_SAVE_RESULT_DEFERRED_OFFLINE,
-    CLOUD_SAVE_RESULT_QUEUED_RETRY
+    saveBoard,
+    saveViewportState
 } from '../services/storage';
-import { getRawBoardsList } from '../services/boardService';
 import { debugLog } from '../utils/debugLogger';
-import { buildBoardCursorTrace, logPersistenceTrace } from '../utils/persistenceTrace';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
@@ -20,47 +14,16 @@ import {
     clearBoardShadowSnapshot,
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
-import {
-    clearPendingCloudSync,
-    hydratePendingCloudSync,
-    hasPendingCloudSync,
-    markPendingCloudSync
-} from '../services/pendingCloudSync';
-import {
-    buildBoardContentHash,
-    normalizeBoardContentHash
-} from '../services/boardPersistence/boardContentHash';
-import { buildIncrementalPatchCandidate } from '../services/sync/boardIncrementalPatch';
-import {
-    appendBoardOperationEnvelope,
-    getLocalActorId,
-    markBoardOperationsAcked,
-    pruneBoardOperationLog,
-    readBoardOperationLogMeta
-} from '../services/localFirst/boardOperationLog';
-import {
-    loadAckedBoardSnapshot,
-    persistAckedBoardSnapshot
-} from '../services/localFirst/boardAckedSnapshot';
-import {
-    BOARD_SYNC_EVENT,
-    createBoardSyncState,
-    mapBoardSyncPhaseToUiStatus,
-    transitionBoardSyncState
-} from '../services/localFirst/boardSyncStateMachine';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
 const LOCAL_SAVE_DELAY_MS = 1000;
 const LOCAL_SAVE_MAX_WAIT_MS = 4000;
-const CLOUD_SAVE_DELAY_MS = 8000;
-const CLOUD_SAVE_MAX_WAIT_MS = 20000;
 const VIEWPORT_SAVE_DELAY_MS = 220;
 const VIEWPORT_MOVE_THRESHOLD = 24;
 const VIEWPORT_SCALE_THRESHOLD = 0.015;
 const SHADOW_RESCHEDULE_COALESCE_MS = 120;
 const LOCAL_RESCHEDULE_COALESCE_MS = 120;
-const CLOUD_RESCHEDULE_COALESCE_MS = 1000;
 const CRITICAL_LOCAL_FALLBACK_REASONS = new Set([
     'pagehide_flush',
     'beforeunload_flush',
@@ -71,69 +34,6 @@ const CRITICAL_LOCAL_FALLBACK_REASONS = new Set([
 const toSafeRevision = (value) => {
     const numeric = Number(value);
     return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
-};
-
-const createSaveTracker = (boardId) => ({
-    boardId,
-    revision: 0,
-    shadowSavedRevision: 0,
-    localSavedRevision: 0,
-    cloudSavedRevision: 0,
-    isPrimed: false,
-    hasAttemptedPendingCloudResume: false
-});
-
-const createActivePersistenceCursor = () => ({
-    updatedAt: 0,
-    syncVersion: 0,
-    clientRevision: 0,
-    mutationSequence: 0,
-    dirty: false,
-    syncPhase: 'booting',
-    syncMessage: '',
-    syncReason: '',
-    pendingOperationCount: 0,
-    localActorId: '',
-    lastSyncEvent: 'RESET',
-    lastSyncEventAt: 0
-});
-
-const hasViewportMeaningfulChange = (previousViewport, nextViewport) => {
-    if (!previousViewport) return true;
-
-    return (
-        Math.abs((previousViewport.offset?.x || 0) - (nextViewport.offset?.x || 0)) >= VIEWPORT_MOVE_THRESHOLD ||
-        Math.abs((previousViewport.offset?.y || 0) - (nextViewport.offset?.y || 0)) >= VIEWPORT_MOVE_THRESHOLD ||
-        Math.abs((previousViewport.scale || 1) - (nextViewport.scale || 1)) >= VIEWPORT_SCALE_THRESHOLD
-    );
-};
-
-const buildBoardPayload = (data, options = {}) => {
-    const clientRevision = toSafeRevision(options.clientRevision ?? data?.clientRevision);
-    const boardContent = {
-        cards: data.cards || [],
-        connections: data.connections || [],
-        groups: data.groups || [],
-        boardPrompts: data.boardPrompts || [],
-        boardInstructionSettings: normalizeBoardInstructionSettings(
-            data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-        )
-    };
-    return {
-        ...boardContent,
-        updatedAt: Number.isFinite(Number(options.updatedAt ?? data?.updatedAt))
-            ? Number(options.updatedAt ?? data?.updatedAt)
-            : 0,
-        syncVersion: Number.isFinite(Number(options.syncVersion ?? data?.syncVersion))
-            ? Number(options.syncVersion ?? data?.syncVersion)
-            : 0,
-        mutationSequence: Number.isFinite(Number(options.mutationSequence ?? data?.mutationSequence))
-            ? Number(options.mutationSequence ?? data?.mutationSequence)
-            : 0,
-        syncMetadata: options.syncMetadata || data?.syncMetadata || null,
-        contentHash: normalizeBoardContentHash(options.contentHash ?? data?.contentHash, boardContent),
-        clientRevision
-    };
 };
 
 const resolveDebouncedSaveDelay = (windowStartedAt, now, debounceMs, maxWaitMs) => {
@@ -147,9 +47,55 @@ const resolveDebouncedSaveDelay = (windowStartedAt, now, debounceMs, maxWaitMs) 
     };
 };
 
+const hasViewportMeaningfulChange = (previousViewport, nextViewport) => {
+    if (!previousViewport) return true;
+
+    return (
+        Math.abs((previousViewport.offset?.x || 0) - (nextViewport.offset?.x || 0)) >= VIEWPORT_MOVE_THRESHOLD ||
+        Math.abs((previousViewport.offset?.y || 0) - (nextViewport.offset?.y || 0)) >= VIEWPORT_MOVE_THRESHOLD ||
+        Math.abs((previousViewport.scale || 1) - (nextViewport.scale || 1)) >= VIEWPORT_SCALE_THRESHOLD
+    );
+};
+
+const createSaveTracker = (boardId) => ({
+    boardId,
+    revision: 0,
+    shadowSavedRevision: 0,
+    localSavedRevision: 0,
+    isPrimed: false
+});
+
+const createActivePersistenceCursor = () => ({
+    updatedAt: 0,
+    clientRevision: 0,
+    dirty: false
+});
+
+const buildBoardPayload = (data, options = {}) => {
+    const clientRevision = toSafeRevision(options.clientRevision ?? data?.clientRevision);
+    return {
+        cards: data.cards || [],
+        connections: data.connections || [],
+        groups: data.groups || [],
+        boardPrompts: data.boardPrompts || [],
+        boardInstructionSettings: normalizeBoardInstructionSettings(
+            data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+        ),
+        updatedAt: Number.isFinite(Number(options.updatedAt ?? data?.updatedAt))
+            ? Number(options.updatedAt ?? data?.updatedAt)
+            : 0,
+        clientRevision
+    };
+};
+
+const updateStatus = (setCloudSyncStatus, status) => {
+    if (typeof setCloudSyncStatus === 'function') {
+        setCloudSyncStatus(status);
+    }
+};
+
 export function useBoardPersistence({
     boardId,
-    user,
     cards,
     connections,
     groups,
@@ -158,7 +104,6 @@ export function useBoardPersistence({
     offset,
     scale,
     isBoardLoading,
-    isHydratingFromCloud,
     isReadOnly,
     hasGeneratingCards = false,
     setCloudSyncStatus,
@@ -166,13 +111,7 @@ export function useBoardPersistence({
     setActiveBoardPersistence,
     toast
 }) {
-    const [isPendingCloudSyncHydrated, setIsPendingCloudSyncHydrated] = useState(() => !user?.uid || isReadOnly);
-    const localActorIdRef = useRef('');
-    if (!localActorIdRef.current) {
-        localActorIdRef.current = getLocalActorId();
-    }
     const trackerRef = useRef(createSaveTracker(boardId));
-    const syncStateRef = useRef(createBoardSyncState(boardId));
     const activePersistenceCursorRef = useRef(createActivePersistenceCursor());
     const latestBoardDataRef = useRef({
         cards,
@@ -181,28 +120,19 @@ export function useBoardPersistence({
         boardPrompts,
         boardInstructionSettings
     });
-    const operationBaseSnapshotRef = useRef(null);
     const isBoardLoadingRef = useRef(isBoardLoading);
+    const wasGeneratingRef = useRef(Boolean(hasGeneratingCards));
     const shadowSaveTimerRef = useRef(null);
     const localSaveTimerRef = useRef(null);
-    const cloudSaveTimerRef = useRef(null);
     const viewportSaveTimerRef = useRef(null);
     const queuedShadowRevisionRef = useRef(0);
     const queuedLocalRevisionRef = useRef(0);
-    const queuedCloudRevisionRef = useRef(0);
     const lastShadowScheduleAtRef = useRef(0);
     const lastLocalScheduleAtRef = useRef(0);
-    const lastCloudScheduleAtRef = useRef(0);
     const shadowSaveWindowStartedAtRef = useRef(0);
     const localSaveWindowStartedAtRef = useRef(0);
-    const cloudSaveWindowStartedAtRef = useRef(0);
-    const dirtyFlagsRef = useRef({ local: false, cloud: false });
     const pendingViewportRef = useRef(null);
     const lastSavedViewportRef = useRef(null);
-    const lastBlockedReasonRef = useRef('');
-    const lastLoggedStructureSignatureRef = useRef('');
-    const lastCloudAckedSnapshotRef = useRef(null);
-    const wasGeneratingRef = useRef(Boolean(hasGeneratingCards));
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -218,400 +148,16 @@ export function useBoardPersistence({
         isBoardLoadingRef.current = isBoardLoading;
     }, [isBoardLoading]);
 
-    const logBlockedState = useCallback((reason) => {
-        if (!boardId) return;
-        if (lastBlockedReasonRef.current === reason) return;
-        lastBlockedReasonRef.current = reason;
-        logPersistenceTrace('autosave:blocked-state', {
-            boardId,
-            reason
-        });
-    }, [boardId]);
-
-    const clearBlockedState = useCallback(() => {
-        if (!boardId) return;
-        if (!lastBlockedReasonRef.current) return;
-        logPersistenceTrace('autosave:blocked-state-cleared', {
-            boardId,
-            previousReason: lastBlockedReasonRef.current
-        });
-        lastBlockedReasonRef.current = '';
-    }, [boardId]);
-
-    const getLastKnownSyncVersion = useCallback(() => {
-        if (!boardId) return 0;
-
-        const boardMeta = getRawBoardsList().find((board) => board.id === boardId);
-        const numeric = Number(boardMeta?.syncVersion);
-        return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
-    }, [boardId]);
-
     const updateActivePersistenceCursor = useCallback((cursor = {}) => {
         if (typeof setActiveBoardPersistence !== 'function') return;
-        const mergedCursor = {
+
+        const nextCursor = {
             ...activePersistenceCursorRef.current,
             ...cursor
         };
-        activePersistenceCursorRef.current = mergedCursor;
-        setActiveBoardPersistence(mergedCursor);
+        activePersistenceCursorRef.current = nextCursor;
+        setActiveBoardPersistence(nextCursor);
     }, [setActiveBoardPersistence]);
-
-    const applySyncEvent = useCallback((type, payload = {}) => {
-        const nextSyncState = transitionBoardSyncState(syncStateRef.current, {
-            type,
-            payload
-        });
-        syncStateRef.current = nextSyncState;
-        setCloudSyncStatus?.(mapBoardSyncPhaseToUiStatus(nextSyncState.phase));
-        updateActivePersistenceCursor({
-            syncPhase: nextSyncState.phase,
-            syncMessage: nextSyncState.message,
-            syncReason: nextSyncState.reason,
-            pendingOperationCount: nextSyncState.pendingOperations,
-            localActorId: localActorIdRef.current,
-            lastSyncEvent: nextSyncState.lastEvent,
-            lastSyncEventAt: nextSyncState.lastEventAt
-        });
-        return nextSyncState;
-    }, [setCloudSyncStatus, updateActivePersistenceCursor]);
-
-    const persistRecoverySnapshot = useCallback((data, options = {}) => {
-        const {
-            revision = null,
-            reason = 'autosave',
-            scopes = ['session']
-        } = options;
-
-        if (!boardId) return false;
-
-        const clientRevision = toSafeRevision(revision ?? trackerRef.current.revision);
-        const payload = buildBoardRecoverySnapshot(buildBoardPayload(data, { clientRevision }), {
-            updatedAt: Date.now(),
-            syncVersion: getLastKnownSyncVersion(),
-            clientRevision
-        });
-
-        const persistScopes = Array.isArray(scopes) ? scopes : [scopes];
-        const didPersist = persistScopes.reduce((saved, scope) => (
-            persistBoardShadowSnapshot(boardId, payload, { scope }) || saved
-        ), false);
-
-        if (didPersist) {
-            const tracker = trackerRef.current;
-            if (tracker.boardId === boardId && typeof revision === 'number') {
-                tracker.shadowSavedRevision = Math.max(tracker.shadowSavedRevision, revision);
-            }
-            debugLog.storage(`[BoardPersistence] Recovery snapshot updated for board: ${boardId} (${reason})`, {
-                scopes: persistScopes,
-                updatedAt: payload.updatedAt
-            });
-            logPersistenceTrace('recovery-snapshot:write', {
-                boardId,
-                revision,
-                reason,
-                scopes: persistScopes,
-                cursor: buildBoardCursorTrace(payload)
-            });
-        }
-
-        return didPersist;
-    }, [boardId, getLastKnownSyncVersion]);
-
-    const performLocalSave = useCallback(async (data, options = {}) => {
-        const { revision = null, reason = 'autosave', silent = false } = options;
-        if (!boardId) return;
-
-        try {
-            applySyncEvent(BOARD_SYNC_EVENT.LOCAL_SAVE_STARTED, {
-                revision: toSafeRevision(revision ?? trackerRef.current.revision),
-                pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-                reason
-            });
-            const now = Date.now();
-            const clientRevision = toSafeRevision(revision ?? trackerRef.current.revision);
-            const payload = buildBoardPayload(data, { clientRevision });
-            await saveBoard(boardId, payload);
-
-            if (typeof setLastSavedAt === 'function') {
-                setLastSavedAt(now);
-            }
-
-            const tracker = trackerRef.current;
-            if (tracker.boardId === boardId && typeof revision === 'number') {
-                tracker.localSavedRevision = Math.max(tracker.localSavedRevision, revision);
-                if (tracker.localSavedRevision >= tracker.shadowSavedRevision) {
-                    clearBoardShadowSnapshot(boardId);
-                }
-            }
-            dirtyFlagsRef.current.local = false;
-            updateActivePersistenceCursor({
-                updatedAt: now,
-                syncVersion: getLastKnownSyncVersion(),
-                clientRevision,
-                dirty: Boolean(user?.uid) && !isReadOnly
-            });
-
-            debugLog.storage(`[BoardPersistence] Local save complete for board: ${boardId} (${reason})`, { timestamp: now });
-            logPersistenceTrace('local-save:success', {
-                boardId,
-                revision,
-                reason,
-                cursor: buildBoardCursorTrace({
-                    ...payload,
-                    updatedAt: now,
-                    syncVersion: getLastKnownSyncVersion()
-                })
-            });
-            applySyncEvent(BOARD_SYNC_EVENT.LOCAL_SAVE_COMPLETED, {
-                revision: clientRevision,
-                pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-                reason
-            });
-        } catch (error) {
-            console.error('[BoardPersistence] Save failed', error);
-            logPersistenceTrace('local-save:failed', {
-                boardId,
-                revision,
-                reason,
-                error
-            });
-            applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_FAILED, {
-                revision: toSafeRevision(revision ?? trackerRef.current.revision),
-                pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-                message: error?.message || 'local_save_failed',
-                reason: 'local_save_failed'
-            });
-            if (!silent) {
-                toast?.error?.('保存失败，请检查存储空间');
-            }
-        }
-    }, [applySyncEvent, boardId, getLastKnownSyncVersion, isReadOnly, setLastSavedAt, toast, updateActivePersistenceCursor, user?.uid]);
-
-    const performEmergencyLocalSave = useCallback((data, options = {}) => {
-        const { revision = null, reason = 'emergency_local_flush' } = options;
-        if (!boardId) return false;
-
-        const clientRevision = toSafeRevision(revision ?? trackerRef.current.revision);
-        const payload = buildBoardPayload(data, {
-            clientRevision
-        });
-        const didSave = emergencyLocalSave(boardId, {
-            ...payload,
-            syncVersion: getLastKnownSyncVersion(),
-            clientRevision
-        });
-
-        if (didSave) {
-            logPersistenceTrace('local-save:emergency-fallback', {
-                boardId,
-                revision: clientRevision,
-                reason,
-                cursor: buildBoardCursorTrace({
-                    ...payload,
-                    syncVersion: getLastKnownSyncVersion(),
-                    clientRevision,
-                    updatedAt: Date.now()
-                })
-            });
-        }
-
-        return didSave;
-    }, [boardId, emergencyLocalSave, getLastKnownSyncVersion]);
-
-    const appendLocalFirstEnvelope = useCallback(async ({ baseSnapshot, nextSnapshot, revision }) => {
-        if (!boardId) return null;
-
-        const result = await appendBoardOperationEnvelope({
-            boardId,
-            baseBoard: baseSnapshot,
-            nextBoard: nextSnapshot,
-            fromClientRevision: toSafeRevision(baseSnapshot?.clientRevision),
-            toClientRevision: toSafeRevision(revision)
-        });
-
-        if (result?.meta) {
-            updateActivePersistenceCursor({
-                pendingOperationCount: result.meta.pendingOperationCount,
-                localActorId: result.meta.actorId || localActorIdRef.current
-            });
-            applySyncEvent(BOARD_SYNC_EVENT.LOCAL_CHANGE, {
-                revision: toSafeRevision(revision),
-                pendingOperations: result.meta.pendingOperationCount,
-                reason: 'board_content_changed'
-            });
-        }
-
-        return result;
-    }, [applySyncEvent, boardId, updateActivePersistenceCursor]);
-
-    const flushCloudSave = useCallback(async (revision, options = {}) => {
-        const { force = false, reason = 'autosave', silent = false } = options;
-        if (!user?.uid || !boardId || isReadOnly) return null;
-
-        const tracker = trackerRef.current;
-        const hasPendingFlag = hasPendingCloudSync(boardId);
-        if (!force && revision <= tracker.cloudSavedRevision && !hasPendingFlag) {
-            return null;
-        }
-
-        applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_STARTED, {
-            revision: toSafeRevision(revision ?? tracker.revision),
-            pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-            reason
-        });
-
-        try {
-            const clientRevision = toSafeRevision(revision ?? tracker.revision);
-            const operationMetaBeforeSave = await readBoardOperationLogMeta(boardId);
-            const cloudPayload = buildBoardPayload(latestBoardDataRef.current, {
-                clientRevision,
-                mutationSequence: activePersistenceCursorRef.current.mutationSequence
-            });
-            const baselineForPatch = buildBoardPayload(
-                lastCloudAckedSnapshotRef.current || cloudPayload,
-                {
-                    clientRevision: toSafeRevision(lastCloudAckedSnapshotRef.current?.clientRevision),
-                    mutationSequence: Number(lastCloudAckedSnapshotRef.current?.mutationSequence || 0)
-                }
-            );
-            const patchCandidate = buildIncrementalPatchCandidate({
-                baseBoard: baselineForPatch,
-                nextBoard: cloudPayload,
-                fromClientRevision: baselineForPatch.clientRevision,
-                toClientRevision: clientRevision,
-                updatedAt: Date.now()
-            });
-            const result = await saveBoardToCloud(
-                user.uid,
-                boardId,
-                cloudPayload,
-                {
-                    incrementalPatch: patchCandidate?.eligible ? patchCandidate.patch : null,
-                    syncMetadata: {
-                        mutationActorId: localActorIdRef.current,
-                        mutationOpId: operationMetaBeforeSave.lastOpId,
-                        mutationLamport: operationMetaBeforeSave.lastLamport,
-                        ackedClientRevision: operationMetaBeforeSave.ackedRevision,
-                        ackedLamport: operationMetaBeforeSave.ackedLamport,
-                        pendingOperationCount: operationMetaBeforeSave.pendingOperationCount,
-                        mutationSequence: activePersistenceCursorRef.current.mutationSequence
-                    }
-                }
-            );
-
-            if (result?.status === CLOUD_SAVE_RESULT_OK) {
-                clearPendingCloudSync(boardId);
-                dirtyFlagsRef.current.cloud = false;
-
-                const activeTracker = trackerRef.current;
-                if (activeTracker.boardId === boardId && typeof revision === 'number') {
-                    activeTracker.cloudSavedRevision = Math.max(activeTracker.cloudSavedRevision, revision);
-                }
-
-                let operationMeta = null;
-                try {
-                    operationMeta = await markBoardOperationsAcked(boardId, result?.clientRevision || clientRevision);
-                    await pruneBoardOperationLog(boardId);
-                } catch (operationLogError) {
-                    console.error(`[BoardPersistence] Failed to ack local-first op log for board ${boardId}`, operationLogError);
-                }
-
-                const ackedSnapshot = result?.snapshot
-                    ? buildBoardPayload(result.snapshot, {
-                        clientRevision: toSafeRevision(result?.clientRevision || clientRevision),
-                        mutationSequence: Number(result?.mutationSequence || 0),
-                        syncMetadata: result?.syncMetadata || null
-                    })
-                    : null;
-                if (ackedSnapshot) {
-                    lastCloudAckedSnapshotRef.current = ackedSnapshot;
-                    try {
-                        await persistAckedBoardSnapshot(boardId, ackedSnapshot, {
-                            mutationSequence: Number(result?.mutationSequence || 0),
-                            syncMetadata: result?.syncMetadata || null
-                        });
-                    } catch (ackedSnapshotError) {
-                        console.error(`[BoardPersistence] Failed to persist acked snapshot for board ${boardId}`, ackedSnapshotError);
-                    }
-                }
-
-                const latestHash = buildBoardContentHash(
-                    buildBoardPayload(latestBoardDataRef.current, {
-                        clientRevision: trackerRef.current.revision
-                    })
-                );
-                const cloudAcknowledgedCurrentRevision = latestHash === result?.contentHash;
-
-                if (cloudAcknowledgedCurrentRevision) {
-                    updateActivePersistenceCursor({
-                        updatedAt: result?.updatedAt || Date.now(),
-                        syncVersion: result?.syncVersion || getLastKnownSyncVersion(),
-                        clientRevision,
-                        mutationSequence: Number(result?.mutationSequence || activePersistenceCursorRef.current.mutationSequence),
-                        dirty: false
-                    });
-                    logPersistenceTrace('cloud-save:ack-current-revision', {
-                        boardId,
-                        revision: clientRevision,
-                        mode: result?.patched ? 'incremental_patch' : 'snapshot',
-                        syncVersion: result?.syncVersion || 0,
-                        updatedAt: result?.updatedAt || 0
-                    });
-                } else {
-                    logPersistenceTrace('cloud-save:ack-stale-revision', {
-                        boardId,
-                        revision: clientRevision,
-                        latestRevision: trackerRef.current.revision,
-                        syncVersion: result?.syncVersion || 0,
-                        mutationSequence: Number(result?.mutationSequence || 0),
-                        updatedAt: result?.updatedAt || 0
-                    });
-                    updateActivePersistenceCursor({
-                        mutationSequence: Number(result?.mutationSequence || activePersistenceCursorRef.current.mutationSequence)
-                    });
-                }
-
-                debugLog.sync(`[BoardPersistence] Cloud save complete for board: ${boardId} (${reason})`);
-                applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_ACKED, {
-                    revision: clientRevision,
-                    ackedRevision: operationMeta?.ackedRevision || result?.clientRevision || clientRevision,
-                    pendingOperations: operationMeta?.pendingOperationCount ?? 0,
-                    reason,
-                    message: result?.patched ? 'incremental_patch_acked' : 'snapshot_acked'
-                });
-                return result;
-            }
-
-            if (
-                result?.status === CLOUD_SAVE_RESULT_DEFERRED_OFFLINE ||
-                result?.status === CLOUD_SAVE_RESULT_QUEUED_RETRY
-            ) {
-                debugLog.sync(`[BoardPersistence] Cloud save deferred for board: ${boardId} (${reason})`, result);
-                applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_DEFERRED, {
-                    revision: clientRevision,
-                    pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-                    reason,
-                    offline: result?.status === CLOUD_SAVE_RESULT_DEFERRED_OFFLINE,
-                    message: result?.status
-                });
-                return result;
-            }
-
-            return result;
-        } catch (error) {
-            applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_FAILED, {
-                revision: toSafeRevision(revision ?? tracker.revision),
-                pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-                reason,
-                message: error?.message || 'cloud_sync_failed'
-            });
-            console.error('[BoardPersistence] Cloud sync failed:', error);
-            if (!silent) {
-                toast?.error?.('云同步失败');
-            }
-            throw error;
-        }
-    }, [applySyncEvent, boardId, getLastKnownSyncVersion, isReadOnly, toast, updateActivePersistenceCursor, user]);
 
     const clearContentSaveTimers = useCallback(() => {
         if (shadowSaveTimerRef.current) {
@@ -619,17 +165,101 @@ export function useBoardPersistence({
             shadowSaveTimerRef.current = null;
         }
         shadowSaveWindowStartedAtRef.current = 0;
+
         if (localSaveTimerRef.current) {
             clearTimeout(localSaveTimerRef.current);
             localSaveTimerRef.current = null;
         }
         localSaveWindowStartedAtRef.current = 0;
-        if (cloudSaveTimerRef.current) {
-            clearTimeout(cloudSaveTimerRef.current);
-            cloudSaveTimerRef.current = null;
-        }
-        cloudSaveWindowStartedAtRef.current = 0;
     }, []);
+
+    const persistRecoverySnapshot = useCallback((data, options = {}) => {
+        if (!boardId) return false;
+
+        const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
+        const payload = buildBoardRecoverySnapshot(buildBoardPayload(data, {
+            clientRevision: revision,
+            updatedAt: Date.now()
+        }), {
+            updatedAt: Date.now(),
+            clientRevision: revision
+        });
+
+        const scopes = Array.isArray(options.scopes) ? options.scopes : ['session'];
+        const didPersist = scopes.reduce((saved, scope) => (
+            persistBoardShadowSnapshot(boardId, payload, { scope }) || saved
+        ), false);
+
+        if (didPersist && typeof options.revision === 'number') {
+            trackerRef.current.shadowSavedRevision = Math.max(
+                trackerRef.current.shadowSavedRevision,
+                options.revision
+            );
+        }
+
+        return didPersist;
+    }, [boardId]);
+
+    const performLocalSave = useCallback(async (data, options = {}) => {
+        if (!boardId) return;
+
+        const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
+        const now = Date.now();
+
+        updateStatus(setCloudSyncStatus, 'persisting_local');
+        updateActivePersistenceCursor({
+            clientRevision: revision,
+            dirty: true
+        });
+
+        try {
+            const payload = buildBoardPayload(data, {
+                clientRevision: revision,
+                updatedAt: now
+            });
+
+            await saveBoard(boardId, payload);
+
+            if (typeof setLastSavedAt === 'function') {
+                setLastSavedAt(now);
+            }
+
+            trackerRef.current.localSavedRevision = Math.max(
+                trackerRef.current.localSavedRevision,
+                revision
+            );
+
+            if (trackerRef.current.localSavedRevision >= trackerRef.current.shadowSavedRevision) {
+                clearBoardShadowSnapshot(boardId);
+            }
+
+            updateStatus(setCloudSyncStatus, 'synced');
+            updateActivePersistenceCursor({
+                updatedAt: now,
+                clientRevision: revision,
+                dirty: false
+            });
+        } catch (error) {
+            console.error('[BoardPersistence] Local save failed:', error);
+            updateStatus(setCloudSyncStatus, 'error');
+            updateActivePersistenceCursor({
+                clientRevision: revision,
+                dirty: true
+            });
+            if (!options.silent) {
+                toast?.error?.('本地保存失败，请检查存储空间');
+            }
+        }
+    }, [boardId, saveBoard, setActiveBoardPersistence, setCloudSyncStatus, setLastSavedAt, toast, updateActivePersistenceCursor]);
+
+    const performEmergencyLocalSave = useCallback((data, options = {}) => {
+        if (!boardId) return false;
+
+        return emergencyLocalSave(boardId, buildBoardPayload(data, {
+            clientRevision: toSafeRevision(options.revision ?? trackerRef.current.revision),
+            updatedAt: Date.now()
+        }));
+    }, [boardId]);
 
     const scheduleShadowSave = useCallback((revision) => {
         queuedShadowRevisionRef.current = revision;
@@ -665,7 +295,6 @@ export function useBoardPersistence({
 
     const scheduleLocalSave = useCallback((revision) => {
         queuedLocalRevisionRef.current = revision;
-        dirtyFlagsRef.current.local = true;
 
         const now = Date.now();
         const delayConfig = resolveDebouncedSaveDelay(
@@ -695,214 +324,57 @@ export function useBoardPersistence({
         }, delayConfig.delayMs);
     }, [performLocalSave]);
 
-    const scheduleCloudSave = useCallback((revision) => {
-        if (!user || !boardId) {
-            if (cloudSaveTimerRef.current) {
-                clearTimeout(cloudSaveTimerRef.current);
-                cloudSaveTimerRef.current = null;
-            }
-            cloudSaveWindowStartedAtRef.current = 0;
-            return;
-        }
-
-        queuedCloudRevisionRef.current = revision;
-        dirtyFlagsRef.current.cloud = true;
-        applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_SCHEDULED, {
-            revision,
-            pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-            reason: 'debounced_cloud'
-        });
-
-        const now = Date.now();
-        const delayConfig = resolveDebouncedSaveDelay(
-            cloudSaveWindowStartedAtRef.current,
-            now,
-            CLOUD_SAVE_DELAY_MS,
-            CLOUD_SAVE_MAX_WAIT_MS
-        );
-        cloudSaveWindowStartedAtRef.current = delayConfig.windowStartedAt;
-
-        if (cloudSaveTimerRef.current && now - lastCloudScheduleAtRef.current < CLOUD_RESCHEDULE_COALESCE_MS) {
-            return;
-        }
-        lastCloudScheduleAtRef.current = now;
-
-        if (cloudSaveTimerRef.current) {
-            clearTimeout(cloudSaveTimerRef.current);
-        }
-
-        cloudSaveTimerRef.current = setTimeout(async () => {
-            cloudSaveTimerRef.current = null;
-            cloudSaveWindowStartedAtRef.current = 0;
-            try {
-                await flushCloudSave(queuedCloudRevisionRef.current, { reason: 'debounced_cloud' });
-            } catch {
-                // 错误提示已在 flushCloudSave 内处理
-            }
-        }, delayConfig.delayMs);
-    }, [applySyncEvent, boardId, flushCloudSave, user]);
-
     const flushPendingPersistence = useCallback((reason, options = {}) => {
-        const { forceCloud = false, silent = true } = options;
         if (!boardId || isBoardLoadingRef.current) return;
 
         const tracker = trackerRef.current;
         if (!tracker.isPrimed) return;
 
         const revision = tracker.revision;
-        const shouldFlushLocal = revision > tracker.localSavedRevision;
-        const shouldFlushCloud =
-            Boolean(user?.uid) &&
-            !isReadOnly &&
-            (
-                forceCloud ||
-                hasPendingCloudSync(boardId) ||
-                revision > tracker.cloudSavedRevision
-            );
+        if (revision <= tracker.localSavedRevision) return;
 
-        logPersistenceTrace('flush:begin', {
-            boardId,
+        if (shadowSaveTimerRef.current) {
+            clearTimeout(shadowSaveTimerRef.current);
+            shadowSaveTimerRef.current = null;
+        }
+        shadowSaveWindowStartedAtRef.current = 0;
+
+        persistRecoverySnapshot(latestBoardDataRef.current, {
             revision,
             reason,
-            shouldFlushLocal,
-            shouldFlushCloud,
-            forceCloud
+            scopes: ['session', 'local']
         });
 
-        if (shouldFlushLocal) {
-            if (shadowSaveTimerRef.current) {
-                clearTimeout(shadowSaveTimerRef.current);
-                shadowSaveTimerRef.current = null;
-            }
-            shadowSaveWindowStartedAtRef.current = 0;
-            persistRecoverySnapshot(latestBoardDataRef.current, {
+        if (CRITICAL_LOCAL_FALLBACK_REASONS.has(reason)) {
+            performEmergencyLocalSave(latestBoardDataRef.current, {
                 revision,
-                reason,
-                scopes: ['session', 'local']
-            });
-
-            if (CRITICAL_LOCAL_FALLBACK_REASONS.has(reason)) {
-                performEmergencyLocalSave(latestBoardDataRef.current, {
-                    revision,
-                    reason
-                });
-            }
-        }
-
-        if (shouldFlushLocal) {
-            if (localSaveTimerRef.current) {
-                clearTimeout(localSaveTimerRef.current);
-                localSaveTimerRef.current = null;
-            }
-            localSaveWindowStartedAtRef.current = 0;
-            void performLocalSave(latestBoardDataRef.current, {
-                revision,
-                reason,
-                silent
+                reason
             });
         }
 
-        if (shouldFlushCloud) {
-            if (cloudSaveTimerRef.current) {
-                clearTimeout(cloudSaveTimerRef.current);
-                cloudSaveTimerRef.current = null;
-            }
-            cloudSaveWindowStartedAtRef.current = 0;
-            void flushCloudSave(revision, {
-                reason,
-                force: forceCloud || hasPendingCloudSync(boardId),
-                silent
-            }).catch((error) => {
-                console.error(`[BoardPersistence] Flush cloud save failed during ${reason} for board ${boardId}`, error);
-            });
+        if (localSaveTimerRef.current) {
+            clearTimeout(localSaveTimerRef.current);
+            localSaveTimerRef.current = null;
         }
-    }, [boardId, flushCloudSave, isReadOnly, performEmergencyLocalSave, performLocalSave, persistRecoverySnapshot, user?.uid]);
+        localSaveWindowStartedAtRef.current = 0;
+
+        void performLocalSave(latestBoardDataRef.current, {
+            revision,
+            reason,
+            silent: options.silent !== false
+        });
+    }, [boardId, performEmergencyLocalSave, performLocalSave, persistRecoverySnapshot]);
 
     useEffect(() => {
-        if (!boardId || isBoardLoading || isHydratingFromCloud || isReadOnly) {
-            const reason = !boardId
-                ? 'missing_board_id'
-                : isBoardLoading
-                    ? 'board_loading'
-                    : isHydratingFromCloud
-                        ? 'hydrating_from_cloud'
-                        : 'read_only';
-            logBlockedState(reason);
+        if (!boardId || isBoardLoading || isReadOnly) {
             clearContentSaveTimers();
+            updateStatus(setCloudSyncStatus, 'idle');
             return;
         }
-
-        if (user?.uid && !isPendingCloudSyncHydrated) {
-            logBlockedState('pending_cloud_sync_hydration');
-            return;
-        }
-
-        clearBlockedState();
 
         const tracker = trackerRef.current;
         if (tracker.boardId !== boardId) {
             trackerRef.current = createSaveTracker(boardId);
-            logPersistenceTrace('autosave:tracker-reset', { boardId });
-            return;
-        }
-
-        if (!tracker.isPrimed) {
-            const normalizedSettings = normalizeBoardInstructionSettings(
-                boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-            );
-            const baselineSnapshot = {
-                cards,
-                connections,
-                groups,
-                boardPrompts,
-                boardInstructionSettings: normalizedSettings,
-                clientRevision: toSafeRevision(tracker.revision)
-            };
-            const baselineCursor = buildBoardCursorTrace(baselineSnapshot);
-            const baselineRevision = toSafeRevision(baselineSnapshot.clientRevision);
-            const initialAckedSnapshot = lastCloudAckedSnapshotRef.current || (
-                hasPendingCloudSync(boardId)
-                    ? null
-                    : buildBoardPayload(baselineSnapshot, {
-                        clientRevision: baselineRevision,
-                        mutationSequence: activePersistenceCursorRef.current.mutationSequence
-                    })
-            );
-
-            latestBoardDataRef.current = baselineSnapshot;
-            lastCloudAckedSnapshotRef.current = initialAckedSnapshot;
-            operationBaseSnapshotRef.current = baselineSnapshot;
-            tracker.isPrimed = true;
-            tracker.revision = baselineRevision;
-            tracker.shadowSavedRevision = baselineRevision;
-            tracker.localSavedRevision = baselineRevision;
-            tracker.cloudSavedRevision = hasPendingCloudSync(boardId) ? 0 : baselineRevision;
-            updateActivePersistenceCursor({
-                updatedAt: Date.now(),
-                syncVersion: getLastKnownSyncVersion(),
-                clientRevision: baselineRevision,
-                mutationSequence: Number(initialAckedSnapshot?.mutationSequence || activePersistenceCursorRef.current.mutationSequence),
-                dirty: hasPendingCloudSync(boardId),
-                localActorId: localActorIdRef.current
-            });
-            applySyncEvent(BOARD_SYNC_EVENT.BOARD_READY, {
-                revision: baselineRevision,
-                ackedRevision: tracker.cloudSavedRevision,
-                pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-                reason: hasPendingCloudSync(boardId) ? 'resume_pending_cloud_sync' : 'board_ready'
-            });
-            lastLoggedStructureSignatureRef.current = [
-                baselineCursor.cards,
-                baselineCursor.totalMessages,
-                baselineCursor.connections,
-                baselineCursor.groups
-            ].join(':');
-            logPersistenceTrace('autosave:primed', {
-                boardId,
-                strategy: 'ready_state_baseline',
-                pendingCloudSync: hasPendingCloudSync(boardId),
-                cursor: baselineCursor
-            });
             return;
         }
 
@@ -910,166 +382,88 @@ export function useBoardPersistence({
             boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
         );
 
-        tracker.revision += 1;
-        const revision = tracker.revision;
-        const updatedAt = Date.now();
-            const snapshot = {
+        if (!tracker.isPrimed) {
+            const baselineSnapshot = {
                 cards,
                 connections,
                 groups,
                 boardPrompts,
                 boardInstructionSettings: normalizedSettings,
-                mutationSequence: activePersistenceCursorRef.current.mutationSequence,
-                clientRevision: revision
+                clientRevision: 0
             };
-        const snapshotCursor = buildBoardCursorTrace(snapshot);
-        const structureSignature = [
-            snapshotCursor.cards,
-            snapshotCursor.totalMessages,
-            snapshotCursor.connections,
-            snapshotCursor.groups
-        ].join(':');
 
-        latestBoardDataRef.current = snapshot;
-        updateActivePersistenceCursor({
-            updatedAt,
-            syncVersion: getLastKnownSyncVersion(),
-            clientRevision: revision,
-            dirty: Boolean(user?.uid) && !isReadOnly,
-            localActorId: localActorIdRef.current
-        });
-        if (lastLoggedStructureSignatureRef.current !== structureSignature) {
-            lastLoggedStructureSignatureRef.current = structureSignature;
-            logPersistenceTrace('autosave:change-detected', {
-                boardId,
-                revision,
-                cursor: snapshotCursor,
-                userLoggedIn: Boolean(user?.uid),
-                readOnly: isReadOnly
+            latestBoardDataRef.current = baselineSnapshot;
+            tracker.isPrimed = true;
+            updateStatus(setCloudSyncStatus, 'synced');
+            updateActivePersistenceCursor({
+                updatedAt: Date.now(),
+                clientRevision: 0,
+                dirty: false
             });
+            return;
         }
-        const baseSnapshot = operationBaseSnapshotRef.current || {
-            ...snapshot,
-            clientRevision: Math.max(0, revision - 1)
+
+        tracker.revision += 1;
+        const revision = tracker.revision;
+        latestBoardDataRef.current = {
+            cards,
+            connections,
+            groups,
+            boardPrompts,
+            boardInstructionSettings: normalizedSettings,
+            clientRevision: revision
         };
-        operationBaseSnapshotRef.current = snapshot;
-        applySyncEvent(BOARD_SYNC_EVENT.LOCAL_CHANGE, {
-            revision,
-            pendingOperations: Math.max(1, activePersistenceCursorRef.current.pendingOperationCount),
-            reason: 'board_content_changed'
+
+        updateStatus(setCloudSyncStatus, 'local_dirty');
+        updateActivePersistenceCursor({
+            updatedAt: Date.now(),
+            clientRevision: revision,
+            dirty: true
         });
-        void appendLocalFirstEnvelope({
-            baseSnapshot,
-            nextSnapshot: snapshot,
-            revision
-        }).catch((error) => {
-            console.error(`[BoardPersistence] Failed to append local-first envelope for board ${boardId}`, error);
-        });
-        if (user?.uid) {
-            markPendingCloudSync(boardId, { reason: 'board_content_changed' });
-        }
+
         scheduleShadowSave(revision);
         scheduleLocalSave(revision);
-        scheduleCloudSave(revision);
     }, [
         boardId,
-        user,
         cards,
         connections,
         groups,
         boardPrompts,
         boardInstructionSettings,
         isBoardLoading,
-        isHydratingFromCloud,
         isReadOnly,
         clearContentSaveTimers,
-        getLastKnownSyncVersion,
-        appendLocalFirstEnvelope,
-        applySyncEvent,
-        isPendingCloudSyncHydrated,
-        scheduleCloudSave,
         scheduleLocalSave,
         scheduleShadowSave,
+        setCloudSyncStatus,
         updateActivePersistenceCursor
     ]);
 
     useEffect(() => {
         trackerRef.current = createSaveTracker(boardId);
-        syncStateRef.current = createBoardSyncState(boardId);
         activePersistenceCursorRef.current = createActivePersistenceCursor();
         clearContentSaveTimers();
         queuedShadowRevisionRef.current = 0;
         queuedLocalRevisionRef.current = 0;
-        queuedCloudRevisionRef.current = 0;
         lastShadowScheduleAtRef.current = 0;
         lastLocalScheduleAtRef.current = 0;
-        lastCloudScheduleAtRef.current = 0;
         shadowSaveWindowStartedAtRef.current = 0;
         localSaveWindowStartedAtRef.current = 0;
-        cloudSaveWindowStartedAtRef.current = 0;
-        dirtyFlagsRef.current = { local: false, cloud: false };
+        pendingViewportRef.current = null;
+        lastSavedViewportRef.current = null;
+
         if (viewportSaveTimerRef.current) {
             clearTimeout(viewportSaveTimerRef.current);
             viewportSaveTimerRef.current = null;
         }
-        pendingViewportRef.current = null;
-        lastSavedViewportRef.current = null;
-        lastBlockedReasonRef.current = '';
-        lastLoggedStructureSignatureRef.current = '';
-        lastCloudAckedSnapshotRef.current = null;
-        operationBaseSnapshotRef.current = null;
-        if (!boardId || !user?.uid || isReadOnly) {
-            setIsPendingCloudSyncHydrated(true);
-            updateActivePersistenceCursor({
-                localActorId: localActorIdRef.current
-            });
-            applySyncEvent(BOARD_SYNC_EVENT.RESET, {
-                pendingOperations: 0,
-                reason: 'board_reset'
-            });
-            return;
-        }
-        setIsPendingCloudSyncHydrated(false);
+
+        updateStatus(setCloudSyncStatus, boardId && !isReadOnly ? 'idle' : 'synced');
         updateActivePersistenceCursor({
-            localActorId: localActorIdRef.current
+            updatedAt: 0,
+            clientRevision: 0,
+            dirty: false
         });
-        applySyncEvent(BOARD_SYNC_EVENT.RESET, {
-            pendingOperations: 0,
-            reason: hasPendingCloudSync(boardId) ? 'resume_pending_cloud_sync' : 'board_reset'
-        });
-        let cancelled = false;
-        void (async () => {
-            try {
-                const [ackedSnapshot, operationMeta] = await Promise.all([
-                    loadAckedBoardSnapshot(boardId),
-                    readBoardOperationLogMeta(boardId)
-                ]);
-                await hydratePendingCloudSync(boardId);
-                if (cancelled) return;
-                lastCloudAckedSnapshotRef.current = ackedSnapshot
-                    ? buildBoardPayload(ackedSnapshot, {
-                        clientRevision: ackedSnapshot.clientRevision,
-                        mutationSequence: ackedSnapshot.mutationSequence,
-                        syncMetadata: ackedSnapshot.syncMetadata
-                    })
-                    : null;
-                updateActivePersistenceCursor({
-                    mutationSequence: Number(ackedSnapshot?.mutationSequence || 0),
-                    pendingOperationCount: operationMeta?.pendingOperationCount ?? 0,
-                    localActorId: operationMeta?.actorId || localActorIdRef.current
-                });
-                setIsPendingCloudSyncHydrated(true);
-            } catch (error) {
-                console.error(`[BoardPersistence] Failed to restore local-first sync state for board ${boardId}`, error);
-                if (!cancelled) {
-                    setIsPendingCloudSyncHydrated(true);
-                }
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [applySyncEvent, boardId, clearContentSaveTimers, isReadOnly, updateActivePersistenceCursor, user?.uid]);
+    }, [boardId, clearContentSaveTimers, isReadOnly, setCloudSyncStatus, updateActivePersistenceCursor]);
 
     useEffect(() => {
         const isGeneratingNow = Boolean(hasGeneratingCards);
@@ -1078,66 +472,27 @@ export function useBoardPersistence({
 
         if (wasGenerating && !isGeneratingNow) {
             flushPendingPersistence('generation_complete_flush', {
-                forceCloud: false,
                 silent: true
             });
         }
     }, [flushPendingPersistence, hasGeneratingCards]);
 
     useEffect(() => {
-        if (!boardId || !user?.uid || isBoardLoading || isHydratingFromCloud || isReadOnly || !isPendingCloudSyncHydrated) {
-            return;
-        }
-
-        const tracker = trackerRef.current;
-        if (!tracker.isPrimed || tracker.hasAttemptedPendingCloudResume) {
-            return;
-        }
-
-        tracker.hasAttemptedPendingCloudResume = true;
-        if (!hasPendingCloudSync(boardId)) {
-            return;
-        }
-
-        applySyncEvent(BOARD_SYNC_EVENT.CLOUD_SYNC_SCHEDULED, {
-            revision: tracker.revision,
-            pendingOperations: activePersistenceCursorRef.current.pendingOperationCount,
-            reason: 'resume_pending_cloud_sync'
-        });
-        void flushCloudSave(tracker.revision, {
-            force: true,
-            reason: 'resume_pending_cloud_sync',
-            silent: true
-        }).catch((error) => {
-            console.error(`[BoardPersistence] Resume pending cloud sync failed for board ${boardId}`, error);
-        });
-    }, [
-        boardId,
-        flushCloudSave,
-        isBoardLoading,
-        isHydratingFromCloud,
-        isPendingCloudSyncHydrated,
-        isReadOnly,
-        applySyncEvent,
-        user?.uid
-    ]);
-
-    useEffect(() => {
         if (!boardId) return undefined;
 
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                flushPendingPersistence('visibility_hidden_flush', { forceCloud: hasPendingCloudSync(boardId) });
+                flushPendingPersistence('visibility_hidden_flush', { silent: true });
             }
         };
         const handlePageHide = () => {
-            flushPendingPersistence('pagehide_flush', { forceCloud: hasPendingCloudSync(boardId) });
+            flushPendingPersistence('pagehide_flush', { silent: true });
         };
         const handleBeforeUnload = () => {
-            flushPendingPersistence('beforeunload_flush', { forceCloud: hasPendingCloudSync(boardId) });
+            flushPendingPersistence('beforeunload_flush', { silent: true });
         };
         const handleFreeze = () => {
-            flushPendingPersistence('freeze_flush', { forceCloud: hasPendingCloudSync(boardId) });
+            flushPendingPersistence('freeze_flush', { silent: true });
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -1156,6 +511,7 @@ export function useBoardPersistence({
     useEffect(() => {
         return () => {
             clearContentSaveTimers();
+
             if (viewportSaveTimerRef.current) {
                 clearTimeout(viewportSaveTimerRef.current);
                 viewportSaveTimerRef.current = null;
@@ -1166,12 +522,11 @@ export function useBoardPersistence({
                 return;
             }
 
-            const tracker = trackerRef.current;
-            if (!tracker.isPrimed || !boardId) {
+            if (!boardId) {
                 return;
             }
 
-            flushPendingPersistence('unmount_flush', { forceCloud: hasPendingCloudSync(boardId) });
+            flushPendingPersistence('unmount_flush', { silent: true });
         };
     }, [boardId, clearContentSaveTimers, flushPendingPersistence]);
 
@@ -1211,5 +566,5 @@ export function useBoardPersistence({
             saveViewportState(boardId, viewportToSave);
             lastSavedViewportRef.current = viewportToSave;
         }, VIEWPORT_SAVE_DELAY_MS);
-    }, [boardId, offset, scale, isBoardLoading]);
+    }, [boardId, isBoardLoading, offset, scale]);
 }

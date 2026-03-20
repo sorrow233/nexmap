@@ -17,7 +17,6 @@ const CORE_BOARD_METADATA_KEYS = [
     'updatedAt',
     'lastAccessedAt',
     'cardCount',
-    'syncVersion',
     'clientRevision',
     'deletedAt',
     'autoImageTriggeredAt'

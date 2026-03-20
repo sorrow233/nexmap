@@ -6,7 +6,7 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
     const [pasteErrors, setPasteErrors] = useState({});
 
     const boundCount = useMemo(() => (
-        LINKAGE_TARGET_LIST.filter(target => (linkageSettings?.[target.cloudSettingsKey] || '').trim().length > 0).length
+        LINKAGE_TARGET_LIST.filter(target => (linkageSettings?.[target.settingsKey] || '').trim().length > 0).length
     ), [linkageSettings]);
 
     const handlePaste = async (field) => {
@@ -51,9 +51,9 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
 
             <div className="grid gap-4 xl:grid-cols-2">
                 {LINKAGE_TARGET_LIST.map((target) => {
-                    const value = linkageSettings?.[target.cloudSettingsKey] || '';
+                    const value = linkageSettings?.[target.settingsKey] || '';
                     const isBound = value.trim().length > 0;
-                    const pasteError = pasteErrors[target.cloudSettingsKey] || '';
+                    const pasteError = pasteErrors[target.settingsKey] || '';
 
                     return (
                         <div
@@ -88,21 +88,21 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
                             <input
                                 type="text"
                                 value={value}
-                                onChange={(e) => onLinkageFieldChange(target.cloudSettingsKey, e.target.value)}
+                                onChange={(e) => onLinkageFieldChange(target.settingsKey, e.target.value)}
                                 placeholder={`请输入 ${target.label} 用户 UID`}
                                 className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] px-4 py-3 text-sm text-[#40342a] placeholder:text-[#b0a08e] outline-none transition-colors focus:border-[#e7d4bb] focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                             />
 
                             <div className="mt-3 flex flex-wrap gap-2">
                                 <button
-                                    onClick={() => handlePaste(target.cloudSettingsKey)}
+                                    onClick={() => handlePaste(target.settingsKey)}
                                     className="inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-3 py-1.5 text-xs font-semibold text-[#6d5d4d] transition-all hover:bg-white dark:border-white/15 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                                 >
                                     <ClipboardPaste size={13} />
                                     从剪贴板粘贴
                                 </button>
                                 <button
-                                    onClick={() => onLinkageFieldChange(target.cloudSettingsKey, '')}
+                                    onClick={() => onLinkageFieldChange(target.settingsKey, '')}
                                     className="rounded-full border border-[#edcfce] bg-[#fbefee] px-3 py-1.5 text-xs font-semibold text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/25 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/20"
                                 >
                                     清除绑定
@@ -133,14 +133,14 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
                 <div className="rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.9)] p-4 dark:border-white/10 dark:bg-slate-900/60">
                     <p className="mb-2 text-sm font-semibold text-[#4e4237] dark:text-slate-100">保存提醒</p>
                     <p className="text-xs text-[#7b6a58] dark:text-slate-300">
-                        修改绑定后，请点击右上角“保存更改”，这样本地和云端都会同步。
+                        修改绑定后，请点击右上角“保存更改”，这样这台设备上的本地绑定才会更新。
                     </p>
                 </div>
 
                 <div className="rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.9)] p-4 dark:border-white/10 dark:bg-slate-900/60">
                     <p className="mb-2 text-sm font-semibold text-[#4e4237] dark:text-slate-100">当前 Aimainmap 账号</p>
                     <p className="break-all text-xs text-[#7b6a58] dark:text-slate-300">
-                        {appUserUid || '未登录（仅本地保存，无法云端同步）'}
+                        {appUserUid || '未登录（仍可本地保存绑定）'}
                     </p>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import { loadBoardDataForSearch, saveBoard, saveBoardToCloud } from './storage';
+import { loadBoardDataForSearch, saveBoard } from './storage';
 import { getBoardDisplayName } from './boardTitle/metadata';
 
 const FALLBACK_TITLE = 'Untitled Note';
@@ -115,11 +115,8 @@ const loadBoardSafe = async (boardId) => {
     };
 };
 
-const persistBoard = async (boardId, boardData, userId = null) => {
+const persistBoard = async (boardId, boardData) => {
     await saveBoard(boardId, boardData);
-    if (userId) {
-        await saveBoardToCloud(userId, boardId, boardData);
-    }
     emitNotesUpdated();
 };
 
@@ -144,7 +141,7 @@ const notesService = {
     },
 
 
-    async updateNoteContent({ boardId, noteId, content, userId = null }) {
+    async updateNoteContent({ boardId, noteId, content }) {
         const safeContent = normalizeText(content);
         const boardData = await loadBoardSafe(boardId);
         const noteIndex = findActiveNoteIndex(boardData.cards, noteId);
@@ -169,12 +166,12 @@ const notesService = {
             ...boardData,
             cards: nextCards,
             updatedAt: now
-        }, userId);
+        });
 
         return now;
     },
 
-    async softDeleteNote({ boardId, noteId, userId = null }) {
+    async softDeleteNote({ boardId, noteId }) {
         const boardData = await loadBoardSafe(boardId);
         const noteIndex = findActiveNoteIndex(boardData.cards, noteId);
         if (noteIndex < 0) {
@@ -195,7 +192,7 @@ const notesService = {
             ...boardData,
             cards: nextCards,
             updatedAt: now
-        }, userId);
+        });
 
         return now;
     }

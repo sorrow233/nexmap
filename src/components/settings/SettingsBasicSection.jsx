@@ -1,8 +1,6 @@
 import React, { useMemo } from 'react';
 import { Globe, Layers3, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { updateUserSettings } from '../../services/syncService';
-import { auth } from '../../services/firebase';
 import SettingsUsageSummaryCard from './SettingsUsageSummaryCard';
 import {
     createInstructionId,
@@ -48,10 +46,6 @@ export default function SettingsBasicSection({
     const handleLanguageChange = (code) => {
         setLanguage(code);
         localStorage.setItem('userLanguage', code);
-
-        if (auth?.currentUser) {
-            updateUserSettings(auth.currentUser.uid, { userLanguage: code });
-        }
     };
 
     const handlePrimaryInstructionChange = (value) => {

@@ -1,20 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, Cloud, CloudOff, Cpu, Loader2, Settings, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Cpu, Loader2, Settings, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getS3Config, saveS3Config } from '../services/s3';
-import { updateUserSettings, loadUserSettings } from '../services/syncService';
 import {
     CUSTOM_INSTRUCTIONS_KEY,
     normalizeCustomInstructionsValue
 } from '../services/customInstructionsService';
 import {
     createEmptyLinkageSettings,
-    normalizeLinkageSettings
 } from '../services/linkageTargets';
 import {
     getLocalLinkageSettings,
-    persistLinkageSettingsLocal,
-    syncLinkageSettingsFromCloud
+    persistLinkageSettingsLocal
 } from '../services/linkageLocalStore';
 import { getEditableItems } from './settings/instructions/helpers';
 import SettingsBasicSection from './settings/SettingsBasicSection';
@@ -45,18 +42,6 @@ const saveWithTimestamp = (key, value) => {
     }));
 };
 
-const normalizeUpdatedAt = (value) => {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (value && typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value === 'string') {
-        const asNum = Number(value);
-        if (Number.isFinite(asNum)) return asNum;
-        const asDate = Date.parse(value);
-        if (Number.isFinite(asDate)) return asDate;
-    }
-    return 0;
-};
-
 export default function SettingsModal({ isOpen, onClose, user }) {
     if (!isOpen) return null;
 
@@ -78,7 +63,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         message: '',
         code: ''
     });
-    const [pendingCloudPayload, setPendingCloudPayload] = useState(null);
     const [requestedAdvancedPanel, setRequestedAdvancedPanel] = useState(null);
 
     const [s3Config, setS3ConfigState] = useState({
@@ -113,7 +97,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setTestMessage('');
         setIsSaving(false);
         setSaveStatus({ type: 'idle', title: '', message: '', code: '' });
-        setPendingCloudPayload(null);
         setRequestedAdvancedPanel(null);
         setActiveTab('basic');
     }, [isOpen, user?.uid]);
@@ -236,17 +219,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         }
     };
 
-    const buildCloudPayload = (now) => ({
-        providers,
-        activeId,
-        globalRoles,
-        s3Config,
-        customInstructions: normalizeCustomInstructionsValue(customInstructions),
-        ...normalizeLinkageSettings(linkageSettings),
-        lastUpdated: now,
-        customInstructionsModified: true
-    });
-
     const saveLocalState = (now) => {
         useStore.getState().setFullConfig({
             providers,
@@ -265,174 +237,26 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setSaveStatus({
             type: 'saving',
             title: '正在保存设置',
-            message: '正在写入本地并同步云端...',
+            message: '正在写入本地配置...',
             code: ''
         });
 
         try {
             const now = Date.now();
-            const payload = buildCloudPayload(now);
-
             saveLocalState(now);
-
-            if (user?.uid) {
-                const cloudSaveResult = await updateUserSettings(user.uid, payload);
-                if (!cloudSaveResult?.ok) {
-                    setPendingCloudPayload(payload);
-                    if (cloudSaveResult?.reason === 'offline_mode') {
-                        setSaveStatus({
-                            type: 'warning',
-                            title: '已保存到本地',
-                            message: '当前处于离线模式，关闭后可继续同步云端。',
-                            code: 'offline_mode'
-                        });
-                        return;
-                    }
-                    setSaveStatus({
-                        type: 'error',
-                        title: '本地已保存，云端同步失败',
-                        message: '你的本地改动还在，可以稍后重试同步。',
-                        code: 'cloud_sync_failed'
-                    });
-                    return;
-                }
-            }
-
-            setPendingCloudPayload(null);
             setSaveStatus({
-                type: 'success',
-                title: user?.uid ? '已保存并同步' : '已保存到本地',
-                message: user?.uid ? '设置已经同步到当前账号。' : '登录后可同步到其他设备。',
+                type: offlineMode ? 'warning' : 'success',
+                title: offlineMode ? '已保存到本地（离线模式）' : '已保存到本地',
+                message: '当前设置只保存在这台设备上。',
                 code: ''
             });
         } catch (error) {
             console.error('Failed to save settings:', error);
-            setPendingCloudPayload(prev => prev || buildCloudPayload(Date.now()));
             setSaveStatus({
                 type: 'error',
-                title: '本地已保存，云端同步失败',
-                message: error?.message || '请稍后重试云端同步。',
-                code: 'cloud_sync_failed'
-            });
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleRetryCloudSync = async () => {
-        if (!user?.uid || !pendingCloudPayload || isSaving) return;
-        setIsSaving(true);
-        setSaveStatus({
-            type: 'saving',
-            title: '正在重试云端同步',
-            message: '上传你最新的设置中...',
-            code: ''
-        });
-        try {
-            const cloudSaveResult = await updateUserSettings(user.uid, pendingCloudPayload);
-            if (!cloudSaveResult?.ok) {
-                if (cloudSaveResult?.reason === 'offline_mode') {
-                    setSaveStatus({
-                        type: 'warning',
-                        title: '云端同步仍被禁用',
-                        message: '请先关闭离线模式，再重试同步。',
-                        code: 'offline_mode'
-                    });
-                    return;
-                }
-                setSaveStatus({
-                    type: 'error',
-                    title: '云端同步再次失败',
-                    message: '请检查网络或登录状态后重试。',
-                    code: 'cloud_sync_failed'
-                });
-                return;
-            }
-
-            setPendingCloudPayload(null);
-            setSaveStatus({
-                type: 'success',
-                title: '云端同步完成',
-                message: '当前账号已经拿到最新设置。',
-                code: ''
-            });
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handlePullFromCloud = async () => {
-        if (isSaving) return;
-        if (!user?.uid) {
-            setSaveStatus({
-                type: 'warning',
-                title: '需要先登录',
-                message: '请先登录，再从云端拉取设置。',
-                code: 'no_user'
-            });
-            return;
-        }
-
-        setIsSaving(true);
-        setSaveStatus({
-            type: 'saving',
-            title: '正在拉取云端设置',
-            message: '正在获取当前账号的最新设置...',
-            code: ''
-        });
-
-        try {
-            const settings = await loadUserSettings(user.uid);
-            if (!settings?.providers) {
-                setSaveStatus({
-                    type: 'warning',
-                    title: '云端还没有设置',
-                    message: '这个账号当前还没有可拉取的模型设置。',
-                    code: 'no_cloud_settings'
-                });
-                return;
-            }
-
-            const localState = useStore.getState();
-            const cloudUpdated = normalizeUpdatedAt(settings.lastUpdated);
-            const nextConfig = {
-                providers: settings.providers,
-                activeId: settings.activeId || 'google',
-                globalRoles: settings.globalRoles || localState.globalRoles,
-                lastUpdated: cloudUpdated || Date.now()
-            };
-
-            useStore.getState().setFullConfig(nextConfig);
-            setProviders(JSON.parse(JSON.stringify(nextConfig.providers)));
-            setActiveId(nextConfig.activeId);
-            setGlobalRoles(cloneGlobalRoles(nextConfig.globalRoles));
-
-            if (settings.s3Config) {
-                saveS3Config(settings.s3Config);
-                setS3ConfigState(settings.s3Config);
-            }
-
-            if (settings.customInstructions !== undefined) {
-                const normalizedCloudInstructions = normalizeCustomInstructionsValue(settings.customInstructions);
-                saveWithTimestamp(CUSTOM_INSTRUCTIONS_KEY, normalizedCloudInstructions);
-                setCustomInstructions(normalizedCloudInstructions);
-            }
-
-            setLinkageSettings(syncLinkageSettingsFromCloud(settings, user?.uid));
-
-            setPendingCloudPayload(null);
-            setSaveStatus({
-                type: 'success',
-                title: '云端设置已应用',
-                message: '当前设备已经切换到云端版本。',
-                code: ''
-            });
-        } catch (error) {
-            setSaveStatus({
-                type: 'error',
-                title: '拉取失败',
-                message: error?.message || '云端设置拉取失败。',
-                code: 'pull_failed'
+                title: '本地保存失败',
+                message: error?.message || '请稍后重试。',
+                code: 'local_save_failed'
             });
         } finally {
             setIsSaving(false);
@@ -473,7 +297,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             id: 'advanced',
             icon: SlidersHorizontal,
             label: '高级设置',
-            description: '存储、指令库、绑定与同步',
+            description: '存储、指令库、绑定与恢复',
             accent: {
                 icon: 'bg-[#e5efe6] text-[#5f7666]',
                 iconActive: 'bg-[#dbe9de] text-[#4e6555]'
@@ -492,7 +316,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         },
         advanced: {
             title: '高级设置',
-            subtitle: '同步、恢复和高级能力按需展开'
+            subtitle: '恢复、本地绑定和高级能力按需展开'
         }
     };
 
@@ -652,7 +476,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 <div className="flex min-w-0 items-center gap-2">
                                     {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-[#7b6a58] dark:text-slate-200" />}
                                     {saveStatus.type === 'success' && <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300" />}
-                                    {saveStatus.type === 'warning' && <CloudOff size={16} className="text-[#b58834] dark:text-amber-300" />}
+                                    {saveStatus.type === 'warning' && <AlertCircle size={16} className="text-[#b58834] dark:text-amber-300" />}
                                     {saveStatus.type === 'error' && <AlertCircle size={16} className="text-rose-600 dark:text-rose-300" />}
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold text-[#34291f] dark:text-white">{saveStatus.title}</p>
@@ -668,7 +492,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                                 setSaveStatus({
                                                     type: 'warning',
                                                     title: '离线模式已关闭',
-                                                    message: '现在可以继续重试云端同步了。',
+                                                    message: '后续保存会继续按本地模式执行。',
                                                     code: 'offline_mode_disabled'
                                                 });
                                             }}
@@ -676,16 +500,6 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                             className="rounded-[12px] bg-[#e8b358] px-3 py-1.5 text-xs font-semibold text-[#332411] transition-colors hover:bg-[#efc06f] disabled:opacity-60"
                                         >
                                             关闭离线模式
-                                        </button>
-                                    )}
-                                    {user?.uid && pendingCloudPayload && saveStatus.type !== 'saving' && (
-                                        <button
-                                            onClick={handleRetryCloudSync}
-                                            disabled={isSaving}
-                                            className="flex items-center gap-1 rounded-[12px] border border-[#eadfcd] bg-[#fffaf4] px-3 py-1.5 text-xs font-medium text-[#675645] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:bg-white/12"
-                                        >
-                                            <Cloud size={12} />
-                                            重试云端同步
                                         </button>
                                     )}
                                 </div>
@@ -738,10 +552,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     isSaving={isSaving}
                                     offlineMode={offlineMode}
                                     setOfflineMode={setOfflineMode}
-                                    pendingCloudPayload={pendingCloudPayload}
                                     saveStatus={saveStatus}
-                                    handlePullFromCloud={handlePullFromCloud}
-                                    handleRetryCloudSync={handleRetryCloudSync}
                                     handleReset={handleReset}
                                     onOpenAITab={() => setActiveTab('ai')}
                                     openPanel={requestedAdvancedPanel}

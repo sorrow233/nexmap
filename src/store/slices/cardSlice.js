@@ -60,25 +60,12 @@ export const createCardSlice = (set, get) => {
     const cardLookup = createCardLookupCache();
     const normalizePersistenceCursor = (cursor = {}) => {
         const updatedAt = Number(cursor.updatedAt);
-        const syncVersion = Number(cursor.syncVersion);
         const clientRevision = Number(cursor.clientRevision);
-        const mutationSequence = Number(cursor.mutationSequence);
-        const pendingOperationCount = Number(cursor.pendingOperationCount);
-        const lastSyncEventAt = Number(cursor.lastSyncEventAt);
 
         return {
             updatedAt: Number.isFinite(updatedAt) && updatedAt >= 0 ? updatedAt : 0,
-            syncVersion: Number.isFinite(syncVersion) && syncVersion >= 0 ? syncVersion : 0,
             clientRevision: Number.isFinite(clientRevision) && clientRevision >= 0 ? clientRevision : 0,
-            mutationSequence: Number.isFinite(mutationSequence) && mutationSequence >= 0 ? mutationSequence : 0,
-            dirty: cursor?.dirty === true,
-            syncPhase: typeof cursor?.syncPhase === 'string' ? cursor.syncPhase : 'booting',
-            syncMessage: typeof cursor?.syncMessage === 'string' ? cursor.syncMessage : '',
-            syncReason: typeof cursor?.syncReason === 'string' ? cursor.syncReason : '',
-            pendingOperationCount: Number.isFinite(pendingOperationCount) && pendingOperationCount >= 0 ? pendingOperationCount : 0,
-            localActorId: typeof cursor?.localActorId === 'string' ? cursor.localActorId : '',
-            lastSyncEvent: typeof cursor?.lastSyncEvent === 'string' ? cursor.lastSyncEvent : 'RESET',
-            lastSyncEventAt: Number.isFinite(lastSyncEventAt) && lastSyncEventAt >= 0 ? lastSyncEventAt : 0
+            dirty: cursor?.dirty === true
         };
     };
 
@@ -88,23 +75,9 @@ export const createCardSlice = (set, get) => {
     lastSavedAt: 0,
     activeBoardPersistence: {
         updatedAt: 0,
-        syncVersion: 0,
         clientRevision: 0,
-        mutationSequence: 0,
-        dirty: false,
-        syncPhase: 'booting',
-        syncMessage: '',
-        syncReason: '',
-        pendingOperationCount: 0,
-        localActorId: '',
-        lastSyncEvent: 'RESET',
-        lastSyncEventAt: 0
+        dirty: false
     },
-
-    // Flag to prevent cloud sync loops
-    // When true, BoardPage should skip saveBoardToCloud
-    isHydratingFromCloud: false,
-    setIsHydratingFromCloud: (val) => set({ isHydratingFromCloud: val }),
 
     setLastSavedAt: (val) => set({ lastSavedAt: val }),
     setActiveBoardPersistence: (cursor) => set((state) => ({
@@ -119,16 +92,6 @@ export const createCardSlice = (set, get) => {
         debugLog.store('Bulk setting cards', { count: nextCards.length });
         cardLookup.rebuild(nextCards);
         set({ cards: nextCards });
-    },
-
-    // Special setter that marks data as coming from cloud sync
-    // This prevents the save loop: cloud -> setCards -> autosave -> cloud
-    setCardsFromCloud: (cards) => {
-        debugLog.store('Setting cards from cloud sync (hydrating)', { count: cards?.length || 0 });
-        cardLookup.rebuild(cards || []);
-        set({ cards: cards || [], isHydratingFromCloud: true });
-        // Clear flag after a short delay to allow BoardPage effect to skip
-        setTimeout(() => set({ isHydratingFromCloud: false }), 500);
     },
 
     getCardById: (id) => {
@@ -476,16 +439,8 @@ export const createCardSlice = (set, get) => {
             lastSavedAt: 0,
             activeBoardPersistence: {
                 updatedAt: 0,
-                syncVersion: 0,
                 clientRevision: 0,
-                dirty: false,
-                syncPhase: 'booting',
-                syncMessage: '',
-                syncReason: '',
-                pendingOperationCount: 0,
-                localActorId: '',
-                lastSyncEvent: 'RESET',
-                lastSyncEventAt: 0
+                dirty: false
             }
         });
     }

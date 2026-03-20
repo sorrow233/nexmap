@@ -8,7 +8,7 @@ export const LINKAGE_TARGETS = {
         id: 'flowstudio',
         label: 'FlowStudio',
         buttonLabel: 'Flow',
-        cloudSettingsKey: 'flowStudioUserId',
+        settingsKey: 'flowStudioUserId',
         localStorageKey: 'flowstudio_user_id',
         localStorageScopedPrefix: 'flowstudio_user_id:',
         apiUrl: 'https://flowstudio.catzz.work/api/import',
@@ -20,7 +20,7 @@ export const LINKAGE_TARGETS = {
         id: 'light',
         label: 'Light',
         buttonLabel: 'Light',
-        cloudSettingsKey: 'lightUserId',
+        settingsKey: 'lightUserId',
         localStorageKey: 'light_user_id',
         localStorageScopedPrefix: 'light_user_id:',
         apiUrl: 'https://light.catzz.work/api/import',
@@ -34,7 +34,7 @@ export const LINKAGE_TARGET_LIST = Object.values(LINKAGE_TARGETS);
 export const getLinkageTarget = (targetId) => LINKAGE_TARGETS[targetId] || null;
 
 export const createEmptyLinkageSettings = () => LINKAGE_TARGET_LIST.reduce((acc, target) => {
-    acc[target.cloudSettingsKey] = '';
+    acc[target.settingsKey] = '';
     return acc;
 }, {});
 
@@ -42,8 +42,8 @@ export const normalizeLinkageSettings = (value) => {
     const next = createEmptyLinkageSettings();
 
     for (const target of LINKAGE_TARGET_LIST) {
-        const raw = value?.[target.cloudSettingsKey];
-        next[target.cloudSettingsKey] = typeof raw === 'string' ? raw.trim() : '';
+        const raw = value?.[target.settingsKey];
+        next[target.settingsKey] = typeof raw === 'string' ? raw.trim() : '';
     }
 
     return next;

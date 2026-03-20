@@ -133,7 +133,7 @@ const ChatSelectionMenu = ({ selection, onCaptureNote, onMarkTopic }) => {
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white">连接 {pendingTarget.label}</h3>
                     </div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                        请输入你的 {pendingTarget.label} 用户 ID (Firebase UID) 以启用静默同步功能。
+                        请输入你的 {pendingTarget.label} 用户 ID (Firebase UID) 以启用静默发送。
                     </p>
                     <input
                         type="text"

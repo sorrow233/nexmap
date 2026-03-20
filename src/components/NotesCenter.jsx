@@ -17,7 +17,7 @@ const REFRESH_INTERVAL_MS = 20000;
 
 const FALLBACK_LABELS = {
     title: 'Notes Center',
-    subtitle: 'One note per board. Review, edit and keep all board notes in sync.',
+    subtitle: 'One note per board. Review and edit everything in one place.',
     totalNotes: 'Total Notes',
     sourceBoards: 'Source Boards',
     filteredCount: 'Filtered',
@@ -31,7 +31,7 @@ const FALLBACK_LABELS = {
     searchPlaceholder: 'Search notes by title or content...',
     clearFilters: 'Reset',
     refresh: 'Refresh',
-    refreshHint: 'Auto-sync every 20s',
+    refreshHint: 'Refreshes every 20s while this page is open',
     empty: 'No notes yet',
     emptyDesc: 'Create a note in any board and it will appear here automatically.',
     noMatch: 'No matching notes',
@@ -64,7 +64,7 @@ const FALLBACK_LABELS = {
     copyFailed: 'Copy is unavailable in this browser.',
     deleteSuccess: 'Note deleted.',
     deleteFailed: 'Failed to delete note.',
-    syncing: 'Syncing...'
+    syncing: 'Refreshing...'
 };
 
 const copyToClipboard = async (text) => {

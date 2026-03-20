@@ -23,8 +23,6 @@ import {
     persistBoardsMetadataList,
     readBoardsMetadataListFromStorage
 } from './boardPersistence/boardsListStorage';
-import { rehydrateBoardFromOperationLog } from './localFirst/boardOperationLog';
-import { persistAckedBoardSnapshot } from './localFirst/boardAckedSnapshot';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
@@ -87,14 +85,11 @@ export const emergencyLocalSave = (id, data) => {
         const timestamp = Date.now();
         const list = getRawBoardsList();
         const boardIndex = list.findIndex(b => b.id === id);
-        const currentVersion = boardIndex >= 0 ? (list[boardIndex].syncVersion || 0) : 0;
         const currentClientRevision = boardIndex >= 0 ? (list[boardIndex].clientRevision || 0) : 0;
-        const effectiveSyncVersion = data.syncVersion !== undefined ? data.syncVersion : currentVersion;
         const effectiveClientRevision = data.clientRevision !== undefined ? data.clientRevision : currentClientRevision;
         const payload = {
             ...data,
             updatedAt: timestamp,
-            syncVersion: effectiveSyncVersion,
             clientRevision: effectiveClientRevision
         };
 
@@ -107,7 +102,6 @@ export const emergencyLocalSave = (id, data) => {
                 ...list[boardIndex],
                 updatedAt: timestamp,
                 cardCount: getEffectiveBoardCardCount(data.cards),
-                syncVersion: effectiveSyncVersion,
                 clientRevision: effectiveClientRevision
             });
             persistBoardsMetadataList(list, { reason: `emergencyLocalSave:${id}` });
@@ -153,7 +147,6 @@ export const createBoard = async (name) => {
         updatedAt: Date.now(),
         lastAccessedAt: Date.now(),
         cardCount: 0,
-        syncVersion: 0, // Initialize logical clock
         clientRevision: 0
     });
     debugLog.storage(`Creating new board: ${newBoard.name}`, { id: newBoard.id });
@@ -199,20 +192,17 @@ export const saveBoard = async (id, data) => {
 
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
-    const currentVersion = boardIndex >= 0 ? (list[boardIndex].syncVersion || 0) : 0;
     const currentClientRevision = boardIndex >= 0 ? (list[boardIndex].clientRevision || 0) : 0;
-    const effectiveSyncVersion = data.syncVersion !== undefined ? data.syncVersion : currentVersion;
     const effectiveClientRevision = data.clientRevision !== undefined ? data.clientRevision : currentClientRevision;
     const payload = {
         ...data,
         updatedAt: timestamp,
-        syncVersion: effectiveSyncVersion,
         clientRevision: effectiveClientRevision
     };
     logPersistenceTrace('save:start', {
         boardId: id,
         cursor: buildBoardCursorTrace(payload),
-        source: data.syncVersion !== undefined ? 'explicit_sync_version' : 'inherited_sync_version'
+        source: 'local_persistence'
     });
 
     if (boardIndex >= 0) {
@@ -220,7 +210,6 @@ export const saveBoard = async (id, data) => {
             ...list[boardIndex],
             updatedAt: timestamp,
             cardCount: getEffectiveBoardCardCount(data.cards),
-            syncVersion: effectiveSyncVersion,
             clientRevision: effectiveClientRevision
         };
 
@@ -316,34 +305,6 @@ export const loadBoard = async (id) => {
     });
 
     stored = preferredSnapshot;
-
-    if (stored) {
-        try {
-            const recoveryResult = await rehydrateBoardFromOperationLog(id, stored);
-            if (recoveryResult.recovered) {
-                stored = {
-                    ...stored,
-                    ...recoveryResult.board
-                };
-                logPersistenceTrace('load:local-first-replayed', {
-                    boardId: id,
-                    appliedEnvelopeCount: recoveryResult.appliedEnvelopes.length,
-                    cursor: buildBoardCursorTrace(stored)
-                });
-            } else if ((recoveryResult?.meta?.pendingOperationCount || 0) === 0) {
-                await persistAckedBoardSnapshot(id, stored, {
-                    mutationSequence: stored?.mutationSequence || 0,
-                    syncMetadata: stored?.syncMetadata || null
-                });
-            }
-        } catch (localFirstError) {
-            debugLog.error(`[Storage] Local-first replay failed for board ${id}`, localFirstError);
-            logPersistenceTrace('load:local-first-replay-failed', {
-                boardId: id,
-                error: localFirstError
-            });
-        }
-    }
 
     if (!stored) {
         debugLog.storage(`Board ${id} not found, returning empty template`);

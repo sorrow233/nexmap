@@ -14,7 +14,6 @@ import QuickPromptModal from '../components/QuickPromptModal';
 import useBoardBackground from '../hooks/useBoardBackground';
 import { useStore } from '../store/useStore';
 import { useTabLock } from '../hooks/useTabLock';
-import { useBoardSync } from '../hooks/useBoardSync';
 import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
@@ -38,9 +37,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
 
-    // 监听单画板云端同步（每个标签页只监听自己的画板）
-    useBoardSync(boardId, isReadOnly);
-
     // Extracted Logic
     const {
         // Data
@@ -49,7 +45,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         selectedIds,
         expandedCardId,
         currentBoard,
-        cloudSyncStatus,
+        saveStatus,
         globalImages,
         isSettingsOpen,
         quickPrompt,
@@ -234,7 +230,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         board={currentBoard}
                         cards={cards}
                         generatingCardIds={generatingCardIds}
-                        syncStatus={cloudSyncStatus}
+                        syncStatus={saveStatus}
                         untitledLabel={t.gallery?.untitledBoard || 'Untitled Board'}
                         onBack={onBack}
                         onOpenInstructions={handleOpenInstructionPanel}
@@ -416,7 +412,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 {!isIPhoneBoardMode && (
                     <StatusBar
                         boardName={boardsList.find(b => b.id === currentBoardId)?.name}
-                        syncStatus={cloudSyncStatus}
+                        syncStatus={saveStatus}
                         onOpenSettings={() => setIsSettingsOpen(true)}
                     />
                 )}

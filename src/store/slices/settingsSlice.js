@@ -241,7 +241,7 @@ export const createSettingsSlice = (set, get) => ({
         return state.getEffectiveChatConfig();
     },
 
-    // Used by Cloud Sync
+    // Used by full local settings restore
     setFullConfig: (config) => {
         const now = config.lastUpdated || Date.now();
         const normalizedProviders = normalizeProviders(config.providers || DEFAULT_PROVIDERS);

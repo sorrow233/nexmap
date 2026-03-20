@@ -9,7 +9,6 @@
     "ext:build": "rm -rf dist-extension && mkdir -p dist-extension && cp -R browser-extension/. dist-extension/",
     "ext:zip": "npm run ext:build && cd dist-extension && zip -r ../dist-extension.zip .",
     "test:gemini-parser": "node scripts/test-gemini-parser.mjs",
-    "test:local-first-sync": "node --experimental-specifier-resolution=node scripts/test-local-first-sync.mjs",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy:main": "npm run build && npx wrangler pages deploy dist --project-name aimainmap --branch main",

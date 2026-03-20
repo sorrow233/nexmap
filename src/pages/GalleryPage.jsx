@@ -9,7 +9,7 @@ import StatisticsView from '../components/StatisticsView';
 import SEO from '../components/SEO';
 import Spotlight from '../components/shared/Spotlight';
 import { getGuideBoardData } from '../utils/guideBoardData';
-import { createBoard, saveBoard, updateUserSettings, loadUserSettings } from '../services/storage';
+import { createBoard, saveBoard } from '../services/storage';
 import { useNavigate, useSearchParams, NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 

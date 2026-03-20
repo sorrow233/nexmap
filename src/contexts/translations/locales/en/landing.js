@@ -227,8 +227,8 @@ export const landing = {
         autoLayoutDesc: "Messy? One click to organize. Mind-map algorithm instantly restores clear tree structure.",
         batchOperations: "Batch Operations",
         batchOperationsDesc: "Select multiple cards, batch rewrite, delete or create connections. 10x efficiency boost.",
-        cloudSync: "Cloud Sync",
-        cloudSyncDesc: "Real-time sync via Firebase. Ideas on your phone appear instantly on your computer.",
+        cloudSync: "Local Save",
+        cloudSyncDesc: "Your data is saved directly on this device, with backup and import/export tools for safekeeping.",
         startCreating: "Start Creating",
         firstVisitOnly: "💡 Only shown on first visit · Click button to enter canvas"
     }

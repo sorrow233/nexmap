@@ -4,8 +4,6 @@ import { createPortal } from 'react-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../store/useStore';
 import { Plus, X, GripVertical, Check } from 'lucide-react';
-import { updateUserSettings } from '../../services/syncService';
-import { auth } from '../../services/firebase';
 
 import { getRandomColor, getColorForString } from '../../utils/colors';
 
@@ -111,13 +109,6 @@ export default function Sidebar({ className = "" }) {
     const [newName, setNewName] = useState('');
     const [newContent, setNewContent] = useState('');
 
-    const syncGlobalPromptsToCloud = () => {
-        if (!auth?.currentUser) return;
-        updateUserSettings(auth.currentUser.uid, {
-            globalPrompts: useStore.getState().globalPrompts
-        });
-    };
-
     const handleAdd = (type) => {
         // Require at least a name
         if (!newName.trim()) {
@@ -134,7 +125,6 @@ export default function Sidebar({ className = "" }) {
 
         if (type === 'global') {
             addGlobalPrompt(newPrompt);
-            syncGlobalPromptsToCloud();
         } else {
             addBoardPrompt(newPrompt);
         }
@@ -147,7 +137,6 @@ export default function Sidebar({ className = "" }) {
     const handleDelete = (id, type) => {
         if (type === 'global') {
             removeGlobalPrompt(id);
-            syncGlobalPromptsToCloud();
         } else {
             removeBoardPrompt(id);
         }
@@ -192,7 +181,6 @@ export default function Sidebar({ className = "" }) {
 
         if (editingPrompt.type === 'global') {
             updateGlobalPrompt(editingPrompt.id, updatedPrompt);
-            syncGlobalPromptsToCloud();
         } else {
             if (updateBoardPrompt) {
                 updateBoardPrompt(editingPrompt.id, updatedPrompt);

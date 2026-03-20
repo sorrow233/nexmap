@@ -287,7 +287,7 @@ export const app = {
         searchPlaceholder: "Search notes by title or content...",
         clearFilters: "Reset",
         refresh: "Refresh",
-        refreshHint: "Auto-sync every 20s",
+        refreshHint: "Refreshes every 20s while this page is open",
         empty: "No notes yet",
         emptyDesc: "Create a sticky note on canvas and it will appear here.",
         noMatch: "No matching notes",
@@ -322,7 +322,7 @@ export const app = {
         copyFailed: "Copy is unavailable in this browser.",
         deleteSuccess: "Note deleted.",
         deleteFailed: "Failed to delete note.",
-        syncing: "Syncing..."
+        syncing: "Refreshing..."
     },
     zone: {
         dragToMove: "Drag title to move zone",
@@ -377,7 +377,7 @@ export const app = {
         refresh: "Refresh",
         totalElements: "Total Cards",
         creativePower: "Total Token Count",
-        neuralCloud: "Cloud Sync",
+        neuralCloud: "Local Save",
         aiQuota: "AI Quota",
         syncUnknown: "Status Unknown",
         clickToRefresh: "Click to check quota",

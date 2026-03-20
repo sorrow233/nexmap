@@ -1,13 +1,8 @@
 /**
  * User Stats Service
  * Tracks client-side usage statistics like generated characters/tokens.
- * Data is persisted in localStorage AND synced to Firebase for cloud backup.
+ * Data is persisted in localStorage.
  */
-
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth } from '../firebase';
-import { runtimeLog } from '../../utils/runtimeLogging';
 
 const STORAGE_KEYS = {
     TOTAL_CHARS: 'nexmap_stats_total_chars',
@@ -21,15 +16,6 @@ const STORAGE_KEYS = {
 class UserStatsService {
     constructor() {
         this._initLocalStorage();
-        this._pendingSync = null;
-        this._syncDebounceMs = 60000; // Sync to cloud every 60 seconds (optimized for quota)
-
-        // Sync on page exit
-        if (typeof window !== 'undefined') {
-            window.addEventListener('beforeunload', () => {
-                this.syncToCloud();
-            });
-        }
     }
 
     _initLocalStorage() {
@@ -85,8 +71,6 @@ class UserStatsService {
         sessions[today] = (sessions[today] || 0) + 1;
         localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, JSON.stringify(sessions));
 
-        // 5. Trigger debounced cloud sync
-        this._debouncedSyncToCloud();
     }
 
     /**
@@ -98,109 +82,6 @@ class UserStatsService {
         const usage = this._getModelUsage();
         usage[modelName] = (usage[modelName] || 0) + 1;
         localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, JSON.stringify(usage));
-        this._debouncedSyncToCloud();
-    }
-
-    /**
-     * Sync stats to Firebase (debounced)
-     */
-    _debouncedSyncToCloud() {
-        if (this._pendingSync) {
-            clearTimeout(this._pendingSync);
-        }
-        this._pendingSync = setTimeout(() => {
-            this.syncToCloud();
-        }, this._syncDebounceMs);
-    }
-
-    /**
-     * Sync all stats to Firebase
-     */
-    async syncToCloud() {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        try {
-            const statsRef = doc(db, 'users', user.uid, 'stats', 'activity');
-            const statsData = {
-                totalChars: parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10),
-                dailyHistory: this._getHistory(),
-                dailySessions: this._getDailySessions(),
-                modelUsage: this._getModelUsage(),
-                lastUpdated: new Date().toISOString()
-            };
-
-            await setDoc(statsRef, statsData, { merge: true });
-            localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
-            runtimeLog('[UserStats] Synced to cloud');
-        } catch (error) {
-            console.error('[UserStats] Failed to sync to cloud:', error);
-        }
-    }
-
-    /**
-     * Load stats from Firebase (on login)
-     */
-    async loadFromCloud() {
-        const user = auth.currentUser;
-        if (!user) return false;
-
-        try {
-            const statsRef = doc(db, 'users', user.uid, 'stats', 'activity');
-            const snapshot = await getDoc(statsRef);
-
-            if (snapshot.exists()) {
-                const cloudData = snapshot.data();
-
-                // Merge cloud data with local data (cloud wins for conflicts)
-                const localHistory = this._getHistory();
-                const cloudHistory = cloudData.dailyHistory || {};
-                const mergedHistory = { ...localHistory };
-
-                // Merge histories - take the larger value for each day
-                Object.keys(cloudHistory).forEach(date => {
-                    if (!mergedHistory[date] || cloudHistory[date] > mergedHistory[date]) {
-                        mergedHistory[date] = cloudHistory[date];
-                    }
-                });
-
-                // Calculate new total from merged history
-                const newTotal = Object.values(mergedHistory).reduce((sum, val) => sum + val, 0);
-
-                // Merge sessions
-                const localSessions = this._getDailySessions();
-                const cloudSessions = cloudData.dailySessions || {};
-                const mergedSessions = { ...localSessions };
-                Object.keys(cloudSessions).forEach(date => {
-                    if (!mergedSessions[date] || cloudSessions[date] > mergedSessions[date]) {
-                        mergedSessions[date] = cloudSessions[date];
-                    }
-                });
-
-                // Merge model usage
-                const localUsage = this._getModelUsage();
-                const cloudUsage = cloudData.modelUsage || {};
-                const mergedUsage = { ...localUsage };
-                Object.keys(cloudUsage).forEach(model => {
-                    if (!mergedUsage[model] || cloudUsage[model] > mergedUsage[model]) {
-                        mergedUsage[model] = cloudUsage[model];
-                    }
-                });
-
-                // Save merged data locally
-                localStorage.setItem(STORAGE_KEYS.TOTAL_CHARS, newTotal.toString());
-                localStorage.setItem(STORAGE_KEYS.DAILY_HISTORY, JSON.stringify(mergedHistory));
-                localStorage.setItem(STORAGE_KEYS.DAILY_HISTORY, JSON.stringify(mergedHistory));
-                localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, JSON.stringify(mergedSessions));
-                localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, JSON.stringify(mergedUsage));
-
-                runtimeLog('[UserStats] Loaded and merged from cloud');
-                return true;
-            }
-        } catch (error) {
-            console.error('[UserStats] Failed to load from cloud:', error);
-        }
-        return false;
     }
 
     /**

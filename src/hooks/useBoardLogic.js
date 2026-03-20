@@ -46,7 +46,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const boardPrompts = useStore(state => state.boardPrompts);
     const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const globalPrompts = useStore(state => state.globalPrompts);
-    const isHydratingFromCloud = useStore(state => state.isHydratingFromCloud);
 
     // Store Actions
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
@@ -96,7 +95,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const canvasContainerRef = useRef(null);
 
     // Local State
-    const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
+    const [saveStatus, setSaveStatus] = useState('idle');
     const [globalImages, setGlobalImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -155,10 +154,9 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         offset,
         scale,
         isBoardLoading,
-        isHydratingFromCloud,
         isReadOnly,
         hasGeneratingCards: generatingCardIds.size > 0,
-        setCloudSyncStatus,
+        setCloudSyncStatus: setSaveStatus,
         setLastSavedAt,
         setActiveBoardPersistence,
         toast
@@ -606,7 +604,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         instructionPanelSummary,
         conversationCount,
         currentBoard,
-        cloudSyncStatus,
+        saveStatus,
         globalPrompts,
         globalImages,
         clipboard,

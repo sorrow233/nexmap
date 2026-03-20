@@ -35,15 +35,12 @@ import { Tokushoho, Privacy, Terms } from './pages/legal/LegalPages';
 import ModernDialog from './components/ModernDialog';
 import {
     createBoard,
-    saveBoardToCloud,
     saveBoard,
     loadBoard,
     deleteBoard, // This is now soft delete
     permanentlyDeleteBoard,
     restoreBoard,
-    deleteBoardFromCloud,
     updateBoardMetadata,
-    updateBoardMetadataInCloud,
     setCurrentBoardId as storageSetCurrentBoardId,
     getBoardsList,
     loadViewportState,
@@ -276,15 +273,6 @@ function AppContent() {
         const normalizedName = typeof customName === 'string' ? customName.trim() : '';
         const newBoard = await createBoard(normalizedName || null);
         setBoardsList(prev => [normalizeBoardTitleMeta(newBoard), ...prev]);
-        if (user) {
-            saveBoardToCloud(user.uid, newBoard.id, {
-                cards: [],
-                connections: [],
-                groups: [],
-                boardPrompts: [],
-                boardInstructionSettings: normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS)
-            });
-        }
 
         navigate(`/board/${newBoard.id}`);
 
@@ -316,7 +304,7 @@ function AppContent() {
                 setGroups([]);
                 setBoardPrompts([]);
                 setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
-                setActiveBoardPersistence({ updatedAt: 0, syncVersion: 0, clientRevision: 0, dirty: false });
+                setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
 
                 try {
                     // 2. Load new data
@@ -345,7 +333,6 @@ function AppContent() {
                     setLastSavedAt(data.updatedAt || 0);
                     setActiveBoardPersistence({
                         updatedAt: data.updatedAt || 0,
-                        syncVersion: data.syncVersion || 0,
                         clientRevision: data.clientRevision || 0,
                         dirty: false
                     });
@@ -375,7 +362,6 @@ function AppContent() {
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
         await deleteBoard(id); // Local soft delete
-        if (user) updateBoardMetadataInCloud(user.uid, id, { deletedAt: Date.now() });
 
         // Update state to reflect change (filter out moved item? No, just update its status)
         // or just re-fetch? easiest is to update local list state
@@ -387,11 +373,6 @@ function AppContent() {
     // Restore from Trash
     const handleRestoreBoard = async (id) => {
         await restoreBoard(id);
-        if (user) updateBoardMetadataInCloud(user.uid, id, { deletedAt: null }); // Remove field? Firestore update can use deleteField() but null is fine for now check
-        // Ideally we use deleteField import but for now simply checking truthiness of deletedAt works if we store null.
-        // Actually storage.js checks `deletedAt` existence or truthiness. `updateDoc` with `deleteField` is cleaner.
-        // But for simplicity sending `null` depends on how we check. `!b.deletedAt` works for null.
-
         setBoardsList(prev => prev.map(b => b.id === id ? normalizeBoardTitleMeta({ ...b, deletedAt: null }) : b));
     };
 
@@ -403,7 +384,6 @@ function AppContent() {
             "confirm",
             async () => {
                 await permanentlyDeleteBoard(id);
-                if (user) deleteBoardFromCloud(user.uid, id);
                 setBoardsList(prev => prev.filter(b => b.id !== id));
             }
         );
@@ -467,10 +447,7 @@ function AppContent() {
                 : board
         )));
 
-        if (user) {
-            updateBoardMetadataInCloud(user.uid, boardId, nextMetadata);
-        }
-    }, [boardsList, user, setBoardsList]);
+    }, [boardsList, setBoardsList]);
 
     const handleUpdateBoardTitle = useCallback(async (newTitle) => {
         if (!currentBoardId) return;
@@ -579,7 +556,7 @@ function AppContent() {
                 onClose={() => setIsLogoutConfirmOpen(false)}
                 onConfirm={performActualLogout}
                 title="Sign Out?"
-                message="Are you sure you want to sign out? This will clear all local data for security. Ensure your boards are synced to the cloud."
+                message="Are you sure you want to sign out? This will clear local data on this device for security."
                 type="confirm"
             />
 

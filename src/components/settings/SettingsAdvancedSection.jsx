@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import {
     ChevronDown,
     ChevronUp,
-    Cloud,
-    CloudOff,
     Database,
     FileText,
     Gift,
@@ -51,14 +49,8 @@ export default function SettingsAdvancedSection({
     linkageSettings,
     onLinkageFieldChange,
     appUserUid,
-    user,
-    isSaving,
     offlineMode,
     setOfflineMode,
-    pendingCloudPayload,
-    saveStatus,
-    handlePullFromCloud,
-    handleRetryCloudSync,
     handleReset,
     onOpenAITab,
     openPanel,
@@ -90,37 +82,17 @@ export default function SettingsAdvancedSection({
                             复杂能力都留在这里，但默认不打扰用户
                         </h3>
                         <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
-                            包含恢复、导入导出、复杂指令库、绑定、以及云端同步等能力。只有需要时再展开。
+                            包含恢复、导入导出、复杂指令库和本地绑定等能力。只有需要时再展开。
                         </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                        {user?.uid && (
-                            <button
-                                onClick={handlePullFromCloud}
-                                disabled={isSaving}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
-                            >
-                                <Cloud size={14} />
-                                拉取云端设置
-                            </button>
-                        )}
-                        {pendingCloudPayload && saveStatus.type !== 'saving' && (
-                            <button
-                                onClick={handleRetryCloudSync}
-                                disabled={isSaving}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
-                            >
-                                <Cloud size={14} />
-                                重试云端同步
-                            </button>
-                        )}
                         {offlineMode && (
                             <button
                                 onClick={() => setOfflineMode(false)}
                                 className="inline-flex items-center gap-1.5 rounded-full border border-[#eed8ae] bg-[#fbf4e6] px-4 py-2 text-sm font-medium text-[#b17d31] transition-all hover:bg-[#fff8ee] dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/15"
                             >
-                                <CloudOff size={14} />
+                                <RefreshCw size={14} />
                                 关闭离线模式
                             </button>
                         )}
@@ -176,7 +148,7 @@ export default function SettingsAdvancedSection({
 
             <AdvancedPanel
                 title="跨应用联动"
-                description="管理 FlowStudio 与 Light 的 UID 绑定和同步。"
+                description="管理 FlowStudio 与 Light 的 UID 本地绑定。"
                 icon={Link2}
                 tone="bg-[#e7eef4] text-[#6a7f90]"
                 open={activePanel === 'linkage'}

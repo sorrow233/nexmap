@@ -6,8 +6,6 @@ import {
     normalizeLinkageSettings
 } from './linkageTargets';
 
-const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
-
 const resolveAppUid = (appUid) => {
     if (typeof appUid === 'string') return appUid;
     return auth?.currentUser?.uid || null;
@@ -68,7 +66,7 @@ export const getLocalLinkageSettings = (appUid) => {
     const next = createEmptyLinkageSettings();
 
     for (const target of LINKAGE_TARGET_LIST) {
-        next[target.cloudSettingsKey] = getLocalLinkageUserId(target.id, appUid) || '';
+        next[target.settingsKey] = getLocalLinkageUserId(target.id, appUid) || '';
     }
 
     return next;
@@ -78,25 +76,8 @@ export const persistLinkageSettingsLocal = (settings, appUid) => {
     const normalized = normalizeLinkageSettings(settings);
 
     for (const target of LINKAGE_TARGET_LIST) {
-        persistLinkageUserIdLocal(target.id, normalized[target.cloudSettingsKey], appUid);
+        persistLinkageUserIdLocal(target.id, normalized[target.settingsKey], appUid);
     }
 
     return normalized;
-};
-
-export const syncLinkageSettingsFromCloud = (settings, appUid, { preserveMissing = false } = {}) => {
-    const next = preserveMissing ? getLocalLinkageSettings(appUid) : createEmptyLinkageSettings();
-
-    for (const target of LINKAGE_TARGET_LIST) {
-        const field = target.cloudSettingsKey;
-        if (preserveMissing && !hasOwn(settings, field)) {
-            continue;
-        }
-
-        const normalizedValue = typeof settings?.[field] === 'string' ? settings[field].trim() : '';
-        next[field] = normalizedValue;
-        persistLinkageUserIdLocal(target.id, normalizedValue, appUid);
-    }
-
-    return normalizeLinkageSettings(next);
 };

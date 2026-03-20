@@ -6,8 +6,6 @@
  */
 
 import { idbGet, idbSet } from './db/indexedDB';
-import { auth } from './firebase';
-import { saveBoardToCloud } from './storage';
 import {
     getEffectiveBoardCardCount,
     normalizeBoardTitleMeta
@@ -229,8 +227,6 @@ export async function importData(data, options = { importSettings: false }) {
             existingBoardsList = [];
         }
 
-        const user = auth.currentUser;
-
         if (data.boards && Array.isArray(data.boards)) {
             for (const board of data.boards) {
                 if (board.id && board.data) {
@@ -260,16 +256,6 @@ export async function importData(data, options = { importSettings: false }) {
                     } else {
                         // Add new entry
                         existingBoardsList.push(meta);
-                    }
-
-                    // C. CRITICAL: If logged in, sync the full board to cloud immediately to prevent overwrite
-                    if (user) {
-                        try {
-                            await saveBoardToCloud(user.uid, board.id, board.data);
-                        } catch (cloudErr) {
-                            console.error(`[Import] Cloud sync failed for ${board.id}`, cloudErr);
-                            // We continue anyway, local storage might save it for a bit
-                        }
                     }
 
                     boardCount++;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cloud, CloudOff, LayoutGrid, RefreshCw, Settings2, Sparkles, WifiOff } from 'lucide-react';
+import { AlertCircle, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles, WifiOff } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../../services/boardTitle/metadata';
 import { getMobileBoardCopy } from './mobileBoardCopy';
@@ -16,14 +16,12 @@ export default function MobileBoardHeader({
     const { language } = useLanguage();
     const copy = getMobileBoardCopy(language);
     const syncConfig = {
-        idle: { icon: Cloud, label: copy.syncIdle, color: 'text-emerald-600 dark:text-emerald-300' },
+        idle: { icon: HardDrive, label: copy.syncIdle, color: 'text-emerald-600 dark:text-emerald-300' },
         syncing: { icon: RefreshCw, label: copy.syncing, color: 'text-cyan-600 dark:text-cyan-300', animate: true },
-        synced: { icon: Cloud, label: copy.syncIdle, color: 'text-emerald-600 dark:text-emerald-300' },
-        local_dirty: { icon: RefreshCw, label: '本地待提交', color: 'text-amber-600 dark:text-amber-300', animate: true },
+        synced: { icon: HardDrive, label: copy.syncIdle, color: 'text-emerald-600 dark:text-emerald-300' },
+        local_dirty: { icon: RefreshCw, label: '本地待保存', color: 'text-amber-600 dark:text-amber-300', animate: true },
         persisting_local: { icon: RefreshCw, label: '保存本地中', color: 'text-sky-600 dark:text-sky-300', animate: true },
-        sync_scheduled: { icon: RefreshCw, label: '等待同步', color: 'text-cyan-600 dark:text-cyan-300', animate: true },
-        rebasing: { icon: RefreshCw, label: '回放本地操作', color: 'text-violet-600 dark:text-violet-300', animate: true },
-        error: { icon: CloudOff, label: copy.syncError, color: 'text-rose-600 dark:text-rose-300' },
+        error: { icon: AlertCircle, label: copy.syncError, color: 'text-rose-600 dark:text-rose-300' },
         offline: { icon: WifiOff, label: copy.syncOffline, color: 'text-slate-500 dark:text-slate-300' }
     };
     const displayTitle = getBoardDisplayName(board, untitledLabel);

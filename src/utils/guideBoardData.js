@@ -47,7 +47,7 @@ export const getGuideBoardData = () => {
 - 🌱 **AI Sprouting** 一键延伸多个相关话题
 - 🎨 **26+ 精美主题** 一键导出为图片
 - 🔗 **7 色智能连线** 建立思维关联
-- ☁️ **云端同步** 跨设备无缝衔接
+- 💾 **本地保存** 当前设备即时落盘
 - 🌐 **中/英/日** 三语支持
 
 👇 探索右侧卡片，了解强大功能
@@ -386,7 +386,7 @@ Playfair Display / Inter
                 }
             },
 
-            // 云同步多语言
+            // 本地保存与多语言
             {
                 id: 'guide-cloud',
                 x: startX + 4 * COL_STEP,
@@ -394,18 +394,19 @@ Playfair Display / Inter
                 w: CARD_WIDTH,
                 type: 'standard',
                 data: {
-                    title: '☁️ 云端同步 & 🌐 多语言',
+                    title: '💾 本地保存 & 🌐 多语言',
                     messages: [{
                         role: 'assistant',
-                        content: `**跨设备无缝衔接**
-登录后，数据自动同步到云端
-💻 电脑 → 📱 手机 → 🖥️ 平板
+                        content: `**当前设备即时保存**
+你的画板与设置会直接写入本地
+支持手动导入导出与定时备份
+💻 电脑 / 📱 手机 / 🖥️ 平板 各自独立保存
 
 **三语支持**
 🇺🇸 English | 🇨🇳 中文 | 🇯🇵 日本語
 自动检测浏览器语言
 
-☁️ 登录体验云同步`
+💾 打开设置查看本地备份`
                     }],
                     model: 'guide'
                 }

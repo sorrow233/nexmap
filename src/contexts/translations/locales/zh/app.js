@@ -273,7 +273,7 @@ export const app = {
     },
     notesCenter: {
         title: "笔记管理中心",
-        subtitle: "每个画板一条笔记，集中查看、编辑与同步。",
+        subtitle: "每个画板一条笔记，集中查看与编辑。",
         totalNotes: "笔记总数",
         sourceBoards: "来源画板",
         filteredCount: "筛选结果",
@@ -287,7 +287,7 @@ export const app = {
         searchPlaceholder: "搜索笔记内容或标题...",
         clearFilters: "重置",
         refresh: "刷新",
-        refreshHint: "每 20 秒自动同步",
+        refreshHint: "当前页面打开时每 20 秒自动刷新",
         empty: "还没有笔记",
         emptyDesc: "在画布中创建便签后会自动汇总到这里。",
         noMatch: "没有匹配的笔记",
@@ -322,7 +322,7 @@ export const app = {
         copyFailed: "当前浏览器不支持复制。",
         deleteSuccess: "笔记已删除。",
         deleteFailed: "删除失败，请稍后重试。",
-        syncing: "同步中..."
+        syncing: "刷新中..."
     },
     zone: {
         dragToMove: "拖拽标题移动分区",
@@ -377,7 +377,7 @@ export const app = {
         refresh: "刷新",
         totalElements: "总卡片",
         creativePower: "总 Token 数",
-        neuralCloud: "云端同步",
+        neuralCloud: "本地保存",
         aiQuota: "AI 配额",
         syncUnknown: "状态未知",
         clickToRefresh: "点击检查额度",

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Cloud, CloudOff, RefreshCw, Coins, Star, WifiOff } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, Coins, HardDrive, RefreshCw, WifiOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 
 /**
  * StatusBar - 底部状态栏组件
- * 显示当前画板名称、同步状态和 AI 额度
+ * 显示当前画板名称、本地保存状态和 AI 额度
  */
 export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettings }) {
     // Use individual selectors to avoid object reference issues
@@ -14,16 +14,13 @@ export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettin
     const offlineMode = useStore(state => state.offlineMode);
     const autoOfflineTriggered = useStore(state => state.autoOfflineTriggered);
 
-    // Sync status config
     const syncConfig = {
-        idle: { icon: Cloud, label: '已同步', color: 'text-emerald-500' },
-        syncing: { icon: RefreshCw, label: '同步中...', color: 'text-blue-500', animate: true },
-        synced: { icon: Cloud, label: '已同步', color: 'text-emerald-500' },
-        local_dirty: { icon: RefreshCw, label: '本地变更待落盘', color: 'text-amber-500', animate: true },
-        persisting_local: { icon: RefreshCw, label: '本地保存中...', color: 'text-cyan-500', animate: true },
-        sync_scheduled: { icon: RefreshCw, label: '等待云同步...', color: 'text-sky-500', animate: true },
-        rebasing: { icon: RefreshCw, label: '正在回放本地操作...', color: 'text-violet-500', animate: true },
-        error: { icon: CloudOff, label: '同步失败', color: 'text-red-500' },
+        idle: { icon: HardDrive, label: '已保存', color: 'text-emerald-500' },
+        syncing: { icon: RefreshCw, label: '保存中...', color: 'text-blue-500', animate: true },
+        synced: { icon: HardDrive, label: '已保存', color: 'text-emerald-500' },
+        local_dirty: { icon: RefreshCw, label: '本地待保存', color: 'text-amber-500', animate: true },
+        persisting_local: { icon: RefreshCw, label: '保存本地中...', color: 'text-cyan-500', animate: true },
+        error: { icon: AlertCircle, label: '保存失败', color: 'text-red-500' },
         offline: { icon: WifiOff, label: autoOfflineTriggered ? '配额已满，等待恢复' : '离线模式', color: 'text-slate-400' }
     };
 

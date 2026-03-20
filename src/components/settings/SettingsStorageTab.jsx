@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertCircle, RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2, Download, Upload } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { saveBoard, saveBoardToCloud, updateBoardMetadataInCloud } from '../../services/storage';
-import { auth } from '../../services/firebase';
+import { loadBoardsMetadata, saveBoard } from '../../services/storage';
 import {
     getBackupHistory,
     restoreFromBackup,
@@ -12,9 +11,10 @@ import {
 } from '../../services/scheduledBackupService';
 import DataMigrationSection from './DataMigrationSection';
 import {
+    normalizeBoardMetadataList,
     normalizeBoardTitleMeta,
-    pickBoardTitleMetadata
 } from '../../services/boardTitle/metadata';
+import { persistBoardsMetadataList } from '../../services/boardPersistence/boardsListStorage';
 
 export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const { t } = useLanguage();
@@ -54,54 +54,27 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             if (!backupStr) throw new Error("No backup found");
 
             const backup = JSON.parse(backupStr);
-            const user = auth.currentUser;
-            if (!user) throw new Error("You must be logged in to restore to cloud");
+            const currentBoards = loadBoardsMetadata();
+            const mergedBoards = new Map(currentBoards.map(board => [board.id, board]));
 
-            // 1. Restore Boards List & Content
             if (backup.boards && Array.isArray(backup.boards)) {
                 let restoredCount = 0;
                 for (const board of backup.boards) {
                     const normalizedBoard = normalizeBoardTitleMeta(board);
-                    // Remove soft delete marker if present
                     if (normalizedBoard.deletedAt) delete normalizedBoard.deletedAt;
-
-                    // We need full board content. 
-                    // If the backup was "shallow" (list only), we can't fully restore content unless it's in IDB.
-                    // But our safety backup logic tried to capture what it could.
-                    // Actually, the safety backup in clearAllUserData ONLY saved the list + active board data.
-                    // It relied on IDB NOT being cleared yet? No, IDB is cleared.
-                    // WAIT. The safety backup in clearAllUserData logic was:
-                    // 1. Save list. 2. Save active board data. 
-                    // It implies other boards' content might still be lost if not in cloud?
-                    // CORRECT. But "Guest" boards are in IDB. 
-                    // If IDB was cleared, and we only have the List... we can't restore content for non-active boards 
-                    // UNLESS we are in the "Migration" flow which runs BEFORE clear.
-                    //
-                    // However, for the user request, they pasted a JSON list.
-                    // If that's ALL they have, we can at least restore the board METADATA (cards count etc)
-                    // so they appear in the list. But if content is gone, it's empty.
-                    // 
-                    // LUCKILY: The user said "Guest -> Login" flow. 
-                    // If migration failed but backup ran... backup has the list.
-                    // If IDB was wiped, content is gone essentially.
-                    // BUT: The user's metadata shows "thumbnail" string data. 
-                    // AND: The backup logic I wrote `minimalBackup.activeBoardData = ...`
-                    // So we can definitely restore the ACTIVE board fully.
-                    // For others, we restore metadata. If they click it, it might be empty or load from cloud if a previous sync existed.
-
-                    await updateBoardMetadataInCloud(user.uid, normalizedBoard.id, {
-                        ...normalizedBoard,
-                        ...pickBoardTitleMetadata(normalizedBoard)
-                    }); // This saves metadata only (merge), preserving content if exists
+                    mergedBoards.set(normalizedBoard.id, normalizedBoard);
                     restoredCount++;
                 }
-                setRestoreMsg(`Restored metadata for ${restoredCount} boards.`);
+                persistBoardsMetadataList(
+                    normalizeBoardMetadataList(Array.from(mergedBoards.values())),
+                    { reason: 'settings:restore-safety-backup' }
+                );
+                setRestoreMsg(`已恢复 ${restoredCount} 个画板条目。`);
             }
 
-            // 2. Restore Active Board Data (Full Content)
             if (backup.activeBoardData) {
-                await saveBoardToCloud(user.uid, backup.activeBoardData.id, backup.activeBoardData);
-                setRestoreMsg(prev => prev + ` Fully recovered active board "${backup.activeBoardData.name}".`);
+                await saveBoard(backup.activeBoardData.id, backup.activeBoardData);
+                setRestoreMsg(prev => `${prev} 已恢复当前活跃画板内容“${backup.activeBoardData.name || backup.activeBoardData.id}”。`);
             }
 
             setRestoreStatus('success');
@@ -124,9 +97,6 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 throw new Error("Invalid JSON format. Please paste the exact code provided.");
             }
 
-            const user = auth.currentUser;
-            if (!user) throw new Error("You must be logged in to restore data");
-
             // Handle raw array input (like the user provided)
             let boardsToRestore = [];
             if (Array.isArray(data)) {
@@ -138,6 +108,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             }
 
             let successCount = 0;
+            const currentBoards = loadBoardsMetadata();
+            const mergedBoards = new Map(currentBoards.map(board => [board.id, board]));
             for (const board of boardsToRestore) {
                 // Ensure board has basic fields
                 if (!board.id) continue;
@@ -151,22 +123,24 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 normalizedBoard.updatedAt = Date.now();
                 normalizedBoard.createdAt = normalizedBoard.createdAt || Date.now();
 
-                // 先写本地，再走统一的云快照保存，避免手写 Firestore 文档结构
                 try {
+                    mergedBoards.set(normalizedBoard.id, normalizedBoard);
                     await saveBoard(String(normalizedBoard.id), normalizedBoard);
-                    await saveBoardToCloud(user.uid, String(normalizedBoard.id), normalizedBoard);
                     successCount++;
-                    console.log(`[Import] Successfully wrote board ${normalizedBoard.id} to Firestore`);
                 } catch (err) {
                     console.error(`[Import] Failed to write board ${normalizedBoard.id}:`, err);
                 }
             }
 
+            persistBoardsMetadataList(
+                normalizeBoardMetadataList(Array.from(mergedBoards.values())),
+                { reason: 'settings:manual-import' }
+            );
+
             setManualRestoreStatus('success');
-            setManualRestoreMsg(`Successfully imported ${successCount} boards! Reloading page...`);
+            setManualRestoreMsg(`成功导入 ${successCount} 个画板，页面即将刷新。`);
             setManualJson(''); // Clear input on success
 
-            // Force page refresh so UI picks up new cloud data
             setTimeout(() => window.location.reload(), 1500);
         } catch (e) {
             console.error(e);
@@ -329,7 +303,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <div>
                                 <h4 className="font-bold text-emerald-800 dark:text-emerald-300">{t.settings.storageConfig?.backupFound || 'Safety Backup Found'}</h4>
                                 <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
-                                    {t.settings.storageConfig?.backupFoundDesc || 'We found a local backup of your boards created before the last logout. You can attempt to restore this data to your cloud account.'}
+                                    {t.settings.storageConfig?.backupFoundDesc || 'We found a local backup of your boards created before the last logout. You can restore this data back to this device.'}
                                 </p>
                             </div>
                         </div>

@@ -1,10 +1,8 @@
 import { debugLog } from '../../utils/debugLogger';
 import {
-    buildPersistenceCursor,
     isPersistenceSnapshotNewer,
     toEpochMillis,
-    toSafeClientRevision,
-    toSafeSyncVersion
+    toSafeClientRevision
 } from './persistenceCursor';
 
 const BOARD_SHADOW_PREFIX = 'mixboard_board_shadow_';
@@ -21,7 +19,6 @@ const getScopedStorage = (scope = SHADOW_SCOPE_SESSION) => {
 export const buildBoardRecoverySnapshot = (payload = {}, options = {}) => ({
     ...payload,
     updatedAt: toEpochMillis(options.updatedAt ?? payload.updatedAt ?? Date.now()),
-    syncVersion: toSafeSyncVersion(options.syncVersion ?? payload.syncVersion),
     clientRevision: toSafeClientRevision(options.clientRevision ?? payload.clientRevision)
 });
 
