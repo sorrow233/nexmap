@@ -1,5 +1,5 @@
-import { idbDel, idbGet, idbGetEntriesByPrefix, idbSet } from '../db/indexedDB';
-import { applyBoardOperationEnvelope, buildBoardOperationEnvelope } from './boardOperationEnvelope';
+import { idbDel, idbGet, idbGetEntriesByPrefix, idbSet } from '../db/indexedDB.js';
+import { applyBoardOperationEnvelope, buildBoardOperationEnvelope } from './boardOperationEnvelope.js';
 
 const BOARD_OPLOG_ENTRY_PREFIX = 'mixboard_local_first_op_';
 const BOARD_OPLOG_META_PREFIX = 'mixboard_local_first_meta_';
@@ -30,8 +30,11 @@ const normalizeMeta = (boardId, meta = {}) => ({
     boardId,
     actorId: typeof meta.actorId === 'string' ? meta.actorId : getLocalActorId(),
     lastLamport: toSafeNumber(meta.lastLamport),
+    lastOpId: typeof meta.lastOpId === 'string' ? meta.lastOpId : '',
     latestClientRevision: toSafeNumber(meta.latestClientRevision),
     ackedRevision: toSafeNumber(meta.ackedRevision),
+    ackedLamport: toSafeNumber(meta.ackedLamport),
+    ackedOpId: typeof meta.ackedOpId === 'string' ? meta.ackedOpId : '',
     pendingOperationCount: toSafeNumber(meta.pendingOperationCount),
     latestCreatedAt: toSafeNumber(meta.latestCreatedAt),
     compactedAt: toSafeNumber(meta.compactedAt)
@@ -93,6 +96,13 @@ export const listBoardOperationEnvelopes = async (boardId, options = {}) => {
     }));
 };
 
+export const listPendingBoardOperationEnvelopes = async (boardId, options = {}) => (
+    listBoardOperationEnvelopes(boardId, {
+        ...options,
+        includeAcked: false
+    })
+);
+
 export const appendBoardOperationEnvelope = async ({
     boardId,
     baseBoard,
@@ -132,6 +142,7 @@ export const appendBoardOperationEnvelope = async ({
             ...previousMeta,
             actorId,
             lastLamport: lamport,
+            lastOpId: opId,
             latestClientRevision: Math.max(previousMeta.latestClientRevision, envelope.toClientRevision),
             pendingOperationCount: previousMeta.pendingOperationCount + 1,
             latestCreatedAt: Math.max(previousMeta.latestCreatedAt, envelope.createdAt)
@@ -149,6 +160,7 @@ export const markBoardOperationsAcked = async (boardId, ackedRevision) => {
         const entries = await listBoardOperationEnvelopes(boardId, { afterClientRevision: 0, includeAcked: true });
         let pendingOperationCount = 0;
         const ackedAt = Date.now();
+        let latestAckedEntry = null;
 
         await Promise.all(entries.map(async (entry) => {
             if (!entry || typeof entry !== 'object') return;
@@ -156,6 +168,19 @@ export const markBoardOperationsAcked = async (boardId, ackedRevision) => {
             const nextEntry = isAckable && toSafeNumber(entry.ackedAt) === 0
                 ? { ...entry, ackedAt }
                 : entry;
+
+            if (toSafeNumber(nextEntry.ackedAt) > 0) {
+                if (
+                    !latestAckedEntry ||
+                    toSafeNumber(nextEntry.toClientRevision) > toSafeNumber(latestAckedEntry.toClientRevision) ||
+                    (
+                        toSafeNumber(nextEntry.toClientRevision) === toSafeNumber(latestAckedEntry.toClientRevision) &&
+                        toSafeNumber(nextEntry.lamport) > toSafeNumber(latestAckedEntry.lamport)
+                    )
+                ) {
+                    latestAckedEntry = nextEntry;
+                }
+            }
 
             if (toSafeNumber(nextEntry.ackedAt) === 0) {
                 pendingOperationCount += 1;
@@ -170,6 +195,8 @@ export const markBoardOperationsAcked = async (boardId, ackedRevision) => {
         return writeBoardOperationLogMeta(boardId, {
             ...previousMeta,
             ackedRevision: Math.max(previousMeta.ackedRevision, targetRevision),
+            ackedLamport: Math.max(previousMeta.ackedLamport, toSafeNumber(latestAckedEntry?.lamport)),
+            ackedOpId: latestAckedEntry?.opId || previousMeta.ackedOpId || '',
             pendingOperationCount
         });
     });

@@ -27,12 +27,19 @@ export const toSafeClientRevision = (value) => {
     return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
 };
 
+export const toSafeMutationSequence = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
+};
+
 const hasUsableSyncVersion = (cursor = {}) => cursor.syncVersion > 0;
 const hasUsableClientRevision = (cursor = {}) => cursor.clientRevision > 0;
+const hasUsableMutationSequence = (cursor = {}) => cursor.mutationSequence > 0;
 
 export const buildPersistenceCursor = (boardData = {}) => ({
     clientRevision: toSafeClientRevision(boardData.clientRevision),
     syncVersion: toSafeSyncVersion(boardData.syncVersion),
+    mutationSequence: toSafeMutationSequence(boardData.mutationSequence),
     updatedAt: toEpochMillis(boardData.updatedAt)
 });
 
@@ -45,6 +52,12 @@ export const comparePersistenceCursorFreshness = (nextCursor, prevCursor) => {
     const prevHasVersion = hasUsableSyncVersion(prev);
     const nextHasClientRevision = hasUsableClientRevision(next);
     const prevHasClientRevision = hasUsableClientRevision(prev);
+    const nextHasMutationSequence = hasUsableMutationSequence(next);
+    const prevHasMutationSequence = hasUsableMutationSequence(prev);
+
+    if (nextHasMutationSequence && prevHasMutationSequence && next.mutationSequence !== prev.mutationSequence) {
+        return next.mutationSequence > prev.mutationSequence ? 1 : -1;
+    }
 
     if (nextHasClientRevision && prevHasClientRevision && next.clientRevision !== prev.clientRevision) {
         return next.clientRevision > prev.clientRevision ? 1 : -1;
@@ -66,12 +79,20 @@ export const comparePersistenceCursorFreshness = (nextCursor, prevCursor) => {
         return nextHasClientRevision ? 1 : -1;
     }
 
+    if (nextHasMutationSequence !== prevHasMutationSequence) {
+        return nextHasMutationSequence ? 1 : -1;
+    }
+
     if (next.clientRevision !== prev.clientRevision) {
         return next.clientRevision > prev.clientRevision ? 1 : -1;
     }
 
     if (next.syncVersion !== prev.syncVersion) {
         return next.syncVersion > prev.syncVersion ? 1 : -1;
+    }
+
+    if (next.mutationSequence !== prev.mutationSequence) {
+        return next.mutationSequence > prev.mutationSequence ? 1 : -1;
     }
 
     return 0;
@@ -84,6 +105,10 @@ export const isIncomingCursorNewer = (nextCursor, prevCursor) => (
 export const isSnapshotClearlyNewer = (nextSnapshot, prevSnapshot) => {
     const next = buildPersistenceCursor(nextSnapshot);
     const prev = buildPersistenceCursor(prevSnapshot);
+
+    if (next.mutationSequence !== prev.mutationSequence) {
+        return next.mutationSequence > prev.mutationSequence;
+    }
 
     if (next.clientRevision !== prev.clientRevision) {
         return next.clientRevision > prev.clientRevision;
@@ -101,9 +126,16 @@ export const shouldSkipApplyingIncomingSnapshot = ({
     incomingClientRevision = 0,
     localVersion = 0,
     incomingVersion = 0,
+    localMutationSequence = 0,
+    incomingMutationSequence = 0,
     localUpdatedAt = 0,
     incomingUpdatedAt = 0
 } = {}) => {
+    if (localMutationSequence !== incomingMutationSequence) {
+        if (localMutationSequence > incomingMutationSequence) return true;
+        if (localMutationSequence < incomingMutationSequence) return false;
+    }
+
     if (localClientRevision !== incomingClientRevision) {
         if (localClientRevision > incomingClientRevision) return true;
         if (localClientRevision < incomingClientRevision) return false;

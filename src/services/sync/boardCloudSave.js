@@ -28,6 +28,11 @@ import {
     persistBoardIncrementalPatch
 } from './boardCloudPatches';
 import {
+    buildSyncMutationMetadata,
+    getMutationSequence,
+    normalizeSyncMutationMetadata
+} from './boardSyncProtocol';
+import {
     db,
     handleSyncError,
     isOfflineMode,
@@ -116,8 +121,17 @@ const setBoardDocWithRetry = async (boardRef, payloadFactory, boardId) => {
 };
 
 const persistBoardToCloudOnce = async (payload) => {
-    const { userId, boardId, boardContent, cacheKey, contentHash, incrementalPatch = null } = payload;
+    const {
+        userId,
+        boardId,
+        boardContent,
+        cacheKey,
+        contentHash,
+        incrementalPatch = null,
+        syncMetadata = null
+    } = payload;
     const clientRevision = toSafeClientRevision(boardContent?.clientRevision);
+    const normalizedSyncMetadata = buildSyncMutationMetadata(syncMetadata || {});
 
     if (isOfflineMode()) {
         debugLog.sync(`Skipping cloud save for ${boardId}: offline mode enabled`);
@@ -147,13 +161,30 @@ const persistBoardToCloudOnce = async (payload) => {
                     ...incrementalPatch,
                     updatedAt: incrementalPatch.updatedAt || savedAt,
                     toClientRevision: toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision),
-                    contentHash
+                    contentHash,
+                    syncMetadata: normalizedSyncMetadata
                 }
             });
 
             if (patchResult?.applied) {
                 lastSyncedContentHash.set(cacheKey, contentHash);
                 onSyncSuccess();
+                const patchSnapshot = {
+                    ...boardContent,
+                    updatedAt: incrementalPatch.updatedAt || savedAt,
+                    syncVersion: Math.max(
+                        toSafeSyncVersion(boardContent?.syncVersion),
+                        toSafeSyncVersion(metadata.syncVersion)
+                    ),
+                    clientRevision: toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision),
+                    mutationSequence: patchResult?.mutationSequence || getMutationSequence(normalizedSyncMetadata),
+                    syncMetadata: buildSyncMutationMetadata({
+                        ...normalizedSyncMetadata,
+                        mutationSequence: patchResult?.mutationSequence || getMutationSequence(normalizedSyncMetadata),
+                        createdAtMs: incrementalPatch.updatedAt || savedAt
+                    }),
+                    contentHash
+                };
                 debugLog.sync(
                     `Board ${boardId} incremental patch saved (rev: ${toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision)})`
                 );
@@ -161,8 +192,11 @@ const persistBoardToCloudOnce = async (payload) => {
                     status: CLOUD_SAVE_RESULT_OK,
                     patched: true,
                     updatedAt: incrementalPatch.updatedAt || savedAt,
-                    syncVersion: toSafeSyncVersion(boardContent?.syncVersion),
+                    syncVersion: patchSnapshot.syncVersion,
                     clientRevision: toSafeClientRevision(incrementalPatch.toClientRevision || clientRevision),
+                    mutationSequence: patchResult?.mutationSequence || getMutationSequence(patchSnapshot),
+                    syncMetadata: patchSnapshot.syncMetadata,
+                    snapshot: patchSnapshot,
                     contentHash
                 };
             }
@@ -206,11 +240,25 @@ const persistBoardToCloudOnce = async (payload) => {
 
     const writeResult = await setBoardDocWithRetry(boardRef, (remoteBoard = {}, remoteExists = false) => {
         const remoteSnapshot = materializeCloudBoardSnapshot(remoteBoard);
+        const remoteSyncMetadata = normalizeSyncMutationMetadata(remoteBoard);
+        const remoteMutationSequence = Math.max(
+            getMutationSequence(remoteBoard),
+            Number(remoteBoard.patchHeadSequence) || 0
+        );
+        const nextMutationSequence = remoteMutationSequence + 1;
+        const nextSyncMetadata = buildSyncMutationMetadata({
+            ...normalizedSyncMetadata,
+            ackedClientRevision: Math.max(normalizedSyncMetadata.ackedClientRevision, clientRevision),
+            mutationSequence: nextMutationSequence,
+            createdAtMs: savedAt
+        });
         const localSnapshot = {
             ...cleanedContent,
             updatedAt: savedAt,
             syncVersion: toSafeSyncVersion(metadata.syncVersion),
             clientRevision,
+            mutationSequence: nextMutationSequence,
+            syncMetadata: nextSyncMetadata,
             contentHash
         };
         const remoteHash = typeof remoteBoard.contentHash === 'string'
@@ -232,12 +280,15 @@ const persistBoardToCloudOnce = async (payload) => {
                 syncVersion: toSafeSyncVersion(metadata.syncVersion) + 1,
                 serverUpdatedAt: serverTimestamp(),
                 contentHash: localHash,
+                mutationSequence: nextMutationSequence,
+                syncMetadata: nextSyncMetadata,
                 snapshotPayload: documentSnapshotPayload
             });
             payloadToWrite.patchSinceCheckpoint = 0;
             payloadToWrite.checkpointUpdatedAt = savedAt;
             payloadToWrite.checkpointClientRevision = clientRevision;
             payloadToWrite.patchHeadClientRevision = clientRevision;
+            payloadToWrite.patchHeadSequence = nextMutationSequence;
             payloadToWrite.patchUpdatedAt = savedAt;
             payloadToWrite.patchOpCount = 0;
 
@@ -249,6 +300,8 @@ const persistBoardToCloudOnce = async (payload) => {
                     syncVersion: toSafeSyncVersion(metadata.syncVersion) + 1
                 },
                 contentHash: localHash,
+                mutationSequence: nextMutationSequence,
+                syncMetadata: nextSyncMetadata,
                 snapshotStorage: documentSnapshotPayload.snapshotStorage,
                 snapshotSetId: documentSnapshotPayload.snapshotSetId || '',
                 reason: 'create_remote_board'
@@ -260,6 +313,8 @@ const persistBoardToCloudOnce = async (payload) => {
                 skipWrite: true,
                 snapshot: remoteSnapshot,
                 contentHash: remoteHash,
+                mutationSequence: getMutationSequence(remoteSnapshot),
+                syncMetadata: remoteSyncMetadata,
                 remoteDocument: remoteBoard,
                 reason: 'content_matches_remote'
             };
@@ -270,6 +325,8 @@ const persistBoardToCloudOnce = async (payload) => {
                 skipWrite: true,
                 snapshot: remoteSnapshot,
                 contentHash: remoteHash,
+                mutationSequence: getMutationSequence(remoteSnapshot),
+                syncMetadata: remoteSyncMetadata,
                 remoteDocument: remoteBoard,
                 reason: 'remote_newer_or_equal'
             };
@@ -291,12 +348,15 @@ const persistBoardToCloudOnce = async (payload) => {
             syncVersion: baseSyncVersion + 1,
             serverUpdatedAt: serverTimestamp(),
             contentHash: localHash,
+            mutationSequence: nextMutationSequence,
+            syncMetadata: nextSyncMetadata,
             snapshotPayload: documentSnapshotPayload
         });
         payloadToWrite.patchSinceCheckpoint = 0;
         payloadToWrite.checkpointUpdatedAt = savedAt;
         payloadToWrite.checkpointClientRevision = clientRevision;
         payloadToWrite.patchHeadClientRevision = clientRevision;
+        payloadToWrite.patchHeadSequence = nextMutationSequence;
         payloadToWrite.patchUpdatedAt = savedAt;
         payloadToWrite.patchOpCount = 0;
 
@@ -308,6 +368,8 @@ const persistBoardToCloudOnce = async (payload) => {
                 syncVersion: baseSyncVersion + 1
             },
             contentHash: localHash,
+            mutationSequence: nextMutationSequence,
+            syncMetadata: nextSyncMetadata,
             snapshotStorage: documentSnapshotPayload.snapshotStorage,
             snapshotSetId: documentSnapshotPayload.snapshotSetId || '',
             reason: 'local_ahead_write'
@@ -384,6 +446,9 @@ const persistBoardToCloudOnce = async (payload) => {
             updatedAt: snapshotForLocalRefresh?.updatedAt || savedAt,
             syncVersion: snapshotForLocalRefresh?.syncVersion || 0,
             clientRevision: snapshotForLocalRefresh?.clientRevision || clientRevision,
+            mutationSequence: snapshotForLocalRefresh?.mutationSequence || writeResult?.mutationSequence || 0,
+            syncMetadata: snapshotForLocalRefresh?.syncMetadata || writeResult?.syncMetadata || null,
+            snapshot: snapshotForLocalRefresh || finalSnapshot || null,
             contentHash: finalContentHash
         };
     }
@@ -470,6 +535,9 @@ const persistBoardToCloudOnce = async (payload) => {
         updatedAt: savedAt,
         syncVersion: finalSnapshot?.syncVersion || 0,
         clientRevision,
+        mutationSequence: finalSnapshot?.mutationSequence || writeResult?.mutationSequence || 0,
+        syncMetadata: finalSnapshot?.syncMetadata || writeResult?.syncMetadata || null,
+        snapshot: finalSnapshot || null,
         contentHash: finalContentHash
     };
 };
@@ -546,6 +614,7 @@ export const saveBoardToCloud = async (userId, boardId, boardContent, options = 
     const cacheKey = `${userId}:${boardId}`;
     const contentHash = buildBoardContentHash(boardContent);
     const incrementalPatch = options?.incrementalPatch || null;
+    const syncMetadata = options?.syncMetadata || null;
     logPersistenceTrace('cloud-save:queue', {
         boardId,
         cursor: buildBoardCursorTrace(boardContent)
@@ -557,7 +626,8 @@ export const saveBoardToCloud = async (userId, boardId, boardContent, options = 
         boardContent,
         cacheKey,
         contentHash,
-        incrementalPatch
+        incrementalPatch,
+        syncMetadata
     });
 
     const retryTimer = cloudSaveRetryTimers.get(cacheKey);

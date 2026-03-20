@@ -2,7 +2,6 @@ import { idbGet } from '../db/indexedDB';
 import { saveBoard } from '../boardService';
 import { debugLog } from '../../utils/debugLogger';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
-import { reconcileCards } from '../syncUtils';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
@@ -12,11 +11,14 @@ import {
     shouldSkipApplyingIncomingSnapshot,
     toEpochMillis,
     toSafeClientRevision,
+    toSafeMutationSequence,
     toSafeSyncVersion
 } from '../boardPersistence/persistenceCursor';
 import { ensureArray, pickLocalArray, BOARD_PREFIX } from './boardShared';
 import { materializeCloudBoardSnapshot } from './boardCloudSnapshot';
 import { readBoardOperationLogMeta, rehydrateBoardFromOperationLog } from '../localFirst/boardOperationLog';
+import { persistAckedBoardSnapshot } from '../localFirst/boardAckedSnapshot';
+import { rebaseRemoteBoardWithPendingOperations } from '../localFirst/boardRebase';
 
 const loadActiveBoardState = async (boardId) => {
     const rawLocalData = await idbGet(BOARD_PREFIX + boardId);
@@ -31,6 +33,7 @@ const loadActiveBoardState = async (boardId) => {
 
     return {
         localData,
+        localFirstMeta,
         store,
         canTrustStoreState,
         storePersistenceCursor,
@@ -72,7 +75,13 @@ const loadActiveBoardState = async (boardId) => {
             : Math.max(
                 toSafeClientRevision(localData?.clientRevision),
                 toSafeClientRevision(localFirstMeta.latestClientRevision)
+            ),
+        localMutationSequence: canTrustStoreState
+            ? Math.max(
+                toSafeMutationSequence(localData?.mutationSequence),
+                toSafeMutationSequence(storePersistenceCursor.mutationSequence)
             )
+            : toSafeMutationSequence(localData?.mutationSequence)
     };
 };
 
@@ -86,7 +95,9 @@ const buildCloudBoardPayload = (boardData = {}, incomingCursor) => ({
     ),
     updatedAt: incomingCursor.updatedAt,
     syncVersion: incomingCursor.syncVersion,
-    clientRevision: incomingCursor.clientRevision
+    clientRevision: incomingCursor.clientRevision,
+    mutationSequence: incomingCursor.mutationSequence,
+    syncMetadata: boardData.syncMetadata || null
 });
 
 export const applyIncomingBoardSnapshot = async ({
@@ -100,17 +111,14 @@ export const applyIncomingBoardSnapshot = async ({
     const incomingCursor = buildPersistenceCursor(hydratedBoardData);
     const {
         localData,
+        localFirstMeta,
         store,
         canTrustStoreState,
         storePersistenceCursor,
-        localCards,
-        localConnections,
-        localGroups,
-        localBoardPrompts,
-        localBoardInstructionSettings,
         localUpdatedAt,
         localVersion,
-        localClientRevision
+        localClientRevision,
+        localMutationSequence
     } = await loadActiveBoardState(boardId);
 
     if (tracePrefix) {
@@ -120,20 +128,24 @@ export const applyIncomingBoardSnapshot = async ({
             localCursor: {
                 clientRevision: localClientRevision,
                 version: localVersion,
+                mutationSequence: localMutationSequence,
                 updatedAt: localUpdatedAt,
                 idb: buildBoardCursorTrace(localData),
                 store: {
                     updatedAt: toEpochMillis(storePersistenceCursor.updatedAt),
                     syncVersion: toSafeSyncVersion(storePersistenceCursor.syncVersion),
                     clientRevision: toSafeClientRevision(storePersistenceCursor.clientRevision),
+                    mutationSequence: toSafeMutationSequence(storePersistenceCursor.mutationSequence),
                     dirty: storePersistenceCursor.dirty === true,
                     lastSavedAt: toEpochMillis(store.lastSavedAt),
-                    cards: Array.isArray(store.cards) ? store.cards.length : 0
+                    cards: Array.isArray(store.cards) ? store.cards.length : 0,
+                    pendingOperationCount: localFirstMeta.pendingOperationCount
                 }
             },
             cloudCursor: {
                 clientRevision: incomingCursor.clientRevision,
                 version: incomingCursor.syncVersion,
+                mutationSequence: incomingCursor.mutationSequence,
                 updatedAt: incomingCursor.updatedAt,
                 cards: Array.isArray(hydratedBoardData.cards) ? hydratedBoardData.cards.length : 0
             }
@@ -145,19 +157,23 @@ export const applyIncomingBoardSnapshot = async ({
         incomingClientRevision: incomingCursor.clientRevision,
         localVersion,
         incomingVersion: incomingCursor.syncVersion,
+        localMutationSequence,
+        incomingMutationSequence: incomingCursor.mutationSequence,
         localUpdatedAt,
         incomingUpdatedAt: incomingCursor.updatedAt
     })) {
         debugLog.sync(
             `[${debugPrefix}] Skipping snapshot for ${boardId}: local data is newer or equal ` +
-            `(local rev${localClientRevision}/v${localVersion}/t${localUpdatedAt}, ` +
-            `cloud rev${incomingCursor.clientRevision}/v${incomingCursor.syncVersion}/t${incomingCursor.updatedAt})`
+            `(local seq${localMutationSequence}/rev${localClientRevision}/v${localVersion}/t${localUpdatedAt}, ` +
+            `cloud seq${incomingCursor.mutationSequence}/rev${incomingCursor.clientRevision}/v${incomingCursor.syncVersion}/t${incomingCursor.updatedAt})`
         );
         if (tracePrefix) {
             logPersistenceTrace(`${tracePrefix}:skip-cloud`, {
                 boardId,
                 localClientRevision,
+                localMutationSequence,
                 cloudClientRevision: incomingCursor.clientRevision,
+                cloudMutationSequence: incomingCursor.mutationSequence,
                 localVersion,
                 localUpdatedAt,
                 cloudVersion: incomingCursor.syncVersion,
@@ -167,63 +183,53 @@ export const applyIncomingBoardSnapshot = async ({
         return { status: 'skipped', cursor: incomingCursor };
     }
 
-    if (!localCards || localCards.length === 0) {
-        const directPayload = buildCloudBoardPayload(hydratedBoardData, incomingCursor);
-        await saveBoard(boardId, directPayload);
-        if (tracePrefix) {
-            logPersistenceTrace(`${tracePrefix}:apply-cloud-direct`, {
-                boardId,
-                cloudClientRevision: incomingCursor.clientRevision,
-                cloudVersion: incomingCursor.syncVersion,
-                cloudUpdatedAt: incomingCursor.updatedAt,
-                cards: Array.isArray(hydratedBoardData.cards) ? hydratedBoardData.cards.length : 0
-            });
-        }
-        if (typeof onUpdate === 'function') {
-            onUpdate(boardId, directPayload);
-        }
-        return { status: 'applied_direct', cursor: incomingCursor, data: directPayload };
+    const remoteBasePayload = buildCloudBoardPayload(hydratedBoardData, incomingCursor);
+    try {
+        await persistAckedBoardSnapshot(boardId, remoteBasePayload, {
+            mutationSequence: incomingCursor.mutationSequence,
+            syncMetadata: remoteBasePayload.syncMetadata
+        });
+    } catch (error) {
+        debugLog.warn(`[${debugPrefix}] Failed to persist acked snapshot for board ${boardId}`, error);
     }
 
-    const finalCards = reconcileCards(
-        hydratedBoardData.cards || [],
-        localCards,
-        localVersion,
-        incomingCursor.syncVersion,
-        localUpdatedAt,
-        incomingCursor.updatedAt
-    );
+    const rebaseResult = await rebaseRemoteBoardWithPendingOperations({
+        boardId,
+        remoteBoard: remoteBasePayload,
+        afterClientRevision: incomingCursor.clientRevision
+    });
 
-    debugLog.sync(
-        `[${debugPrefix}] Merge result: ${localCards.length} local + ${(hydratedBoardData.cards || []).length} cloud = ${finalCards.length} final`
-    );
+    const nextBoard = rebaseResult.rebased
+        ? {
+            ...remoteBasePayload,
+            ...rebaseResult.board,
+            updatedAt: Math.max(incomingCursor.updatedAt, toEpochMillis(rebaseResult.board?.updatedAt)),
+            syncVersion: incomingCursor.syncVersion,
+            clientRevision: Math.max(incomingCursor.clientRevision, toSafeClientRevision(rebaseResult.board?.clientRevision)),
+            mutationSequence: incomingCursor.mutationSequence,
+            syncMetadata: remoteBasePayload.syncMetadata
+        }
+        : remoteBasePayload;
 
-    const mergedData = {
-        cards: finalCards,
-        connections: hydratedBoardData.connections || localConnections,
-        groups: hydratedBoardData.groups !== undefined ? hydratedBoardData.groups : (localGroups || []),
-        boardPrompts: hydratedBoardData.boardPrompts !== undefined ? hydratedBoardData.boardPrompts : (localBoardPrompts || []),
-        boardInstructionSettings: hydratedBoardData.boardInstructionSettings !== undefined
-            ? normalizeBoardInstructionSettings(hydratedBoardData.boardInstructionSettings)
-            : normalizeBoardInstructionSettings(localBoardInstructionSettings),
-        updatedAt: incomingCursor.updatedAt,
-        syncVersion: incomingCursor.syncVersion,
-        clientRevision: incomingCursor.clientRevision
-    };
-
-    await saveBoard(boardId, mergedData);
+    await saveBoard(boardId, nextBoard);
     if (tracePrefix) {
-        logPersistenceTrace(`${tracePrefix}:apply-cloud-merge`, {
+        logPersistenceTrace(`${tracePrefix}:apply-cloud-rebase`, {
             boardId,
             cloudClientRevision: incomingCursor.clientRevision,
             cloudVersion: incomingCursor.syncVersion,
+            cloudMutationSequence: incomingCursor.mutationSequence,
             cloudUpdatedAt: incomingCursor.updatedAt,
-            localCards: localCards.length,
-            finalCards: finalCards.length
+            rebased: rebaseResult.rebased,
+            pendingOperationCount: rebaseResult.pendingOperationCount || 0,
+            finalCursor: buildBoardCursorTrace(nextBoard)
         });
     }
     if (typeof onUpdate === 'function') {
-        onUpdate(boardId, mergedData);
+        onUpdate(boardId, nextBoard);
     }
-    return { status: 'applied_merge', cursor: incomingCursor, data: mergedData };
+    return {
+        status: rebaseResult.rebased ? 'applied_rebase' : 'applied_direct',
+        cursor: incomingCursor,
+        data: nextBoard
+    };
 };

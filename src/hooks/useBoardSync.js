@@ -107,6 +107,7 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
                 updatedAt: data.updatedAt || 0,
                 syncVersion: data.syncVersion || 0,
                 clientRevision: data.clientRevision || 0,
+                mutationSequence: data.mutationSequence || 0,
                 dirty: false
             });
 
@@ -122,7 +123,7 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
             })
         );
 
-        const fromClientRevision = useStore.getState()?.activeBoardPersistence?.clientRevision || 0;
+        const fromMutationSequence = useStore.getState()?.activeBoardPersistence?.mutationSequence || 0;
         // 监听增量 patch 更新（高频）
         unsubscribers.push(
             listenForBoardPatches(
@@ -131,7 +132,7 @@ export function useBoardSync(boardId, isReadOnly = false, isBoardLoading = false
                 (updatedBoardId, data) => {
                     applyCloudUpdate(updatedBoardId, data, 'patch');
                 },
-                { fromClientRevision }
+                { fromMutationSequence }
             )
         );
 

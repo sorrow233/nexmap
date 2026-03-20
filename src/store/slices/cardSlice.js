@@ -62,6 +62,7 @@ export const createCardSlice = (set, get) => {
         const updatedAt = Number(cursor.updatedAt);
         const syncVersion = Number(cursor.syncVersion);
         const clientRevision = Number(cursor.clientRevision);
+        const mutationSequence = Number(cursor.mutationSequence);
         const pendingOperationCount = Number(cursor.pendingOperationCount);
         const lastSyncEventAt = Number(cursor.lastSyncEventAt);
 
@@ -69,6 +70,7 @@ export const createCardSlice = (set, get) => {
             updatedAt: Number.isFinite(updatedAt) && updatedAt >= 0 ? updatedAt : 0,
             syncVersion: Number.isFinite(syncVersion) && syncVersion >= 0 ? syncVersion : 0,
             clientRevision: Number.isFinite(clientRevision) && clientRevision >= 0 ? clientRevision : 0,
+            mutationSequence: Number.isFinite(mutationSequence) && mutationSequence >= 0 ? mutationSequence : 0,
             dirty: cursor?.dirty === true,
             syncPhase: typeof cursor?.syncPhase === 'string' ? cursor.syncPhase : 'booting',
             syncMessage: typeof cursor?.syncMessage === 'string' ? cursor.syncMessage : '',
@@ -88,6 +90,7 @@ export const createCardSlice = (set, get) => {
         updatedAt: 0,
         syncVersion: 0,
         clientRevision: 0,
+        mutationSequence: 0,
         dirty: false,
         syncPhase: 'booting',
         syncMessage: '',

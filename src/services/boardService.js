@@ -24,6 +24,7 @@ import {
     readBoardsMetadataListFromStorage
 } from './boardPersistence/boardsListStorage';
 import { rehydrateBoardFromOperationLog } from './localFirst/boardOperationLog';
+import { persistAckedBoardSnapshot } from './localFirst/boardAckedSnapshot';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
@@ -328,6 +329,11 @@ export const loadBoard = async (id) => {
                     boardId: id,
                     appliedEnvelopeCount: recoveryResult.appliedEnvelopes.length,
                     cursor: buildBoardCursorTrace(stored)
+                });
+            } else if ((recoveryResult?.meta?.pendingOperationCount || 0) === 0) {
+                await persistAckedBoardSnapshot(id, stored, {
+                    mutationSequence: stored?.mutationSequence || 0,
+                    syncMetadata: stored?.syncMetadata || null
                 });
             }
         } catch (localFirstError) {

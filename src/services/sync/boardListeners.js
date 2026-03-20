@@ -56,7 +56,9 @@ const buildPersistedCloudPayload = (boardData = {}, incomingCursor) => {
         ),
         updatedAt: incomingCursor.updatedAt,
         syncVersion: incomingCursor.syncVersion,
-        clientRevision: incomingCursor.clientRevision
+        clientRevision: incomingCursor.clientRevision,
+        mutationSequence: incomingCursor.mutationSequence,
+        syncMetadata: hydratedBoardData.syncMetadata || null
     };
 };
 
@@ -191,29 +193,29 @@ export const listenForBoardPatches = (userId, boardId, onUpdate, options = {}) =
         return () => { };
     }
 
-    const normalizedStartRevision = Number(options?.fromClientRevision);
+    const normalizedStartSequence = Number(options?.fromMutationSequence);
     const patchCursorKey = `${userId}:${boardId}`;
-    let lastAppliedRevision = Number.isFinite(normalizedStartRevision) && normalizedStartRevision >= 0
-        ? normalizedStartRevision
+    let lastAppliedSequence = Number.isFinite(normalizedStartSequence) && normalizedStartSequence >= 0
+        ? normalizedStartSequence
         : 0;
 
-    const cachedRevision = singleBoardPatchCursor.get(patchCursorKey);
-    if (Number.isFinite(cachedRevision) && cachedRevision > lastAppliedRevision) {
-        lastAppliedRevision = cachedRevision;
+    const cachedSequence = singleBoardPatchCursor.get(patchCursorKey);
+    if (Number.isFinite(cachedSequence) && cachedSequence > lastAppliedSequence) {
+        lastAppliedSequence = cachedSequence;
     }
 
     try {
         debugLog.sync(
-            `[PatchSync] Starting patch listener for board ${boardId} from rev${lastAppliedRevision}`
+            `[PatchSync] Starting patch listener for board ${boardId} from seq${lastAppliedSequence}`
         );
 
         const unsubscribe = listenForIncrementalBoardPatches({
             userId,
             boardId,
-            fromClientRevision: lastAppliedRevision,
+            fromMutationSequence: lastAppliedSequence,
             onPatchBatch: async (patchBatch) => {
                 for (const patch of patchBatch) {
-                    if (!patch || patch.toClientRevision <= lastAppliedRevision) {
+                    if (!patch || patch.sequence <= lastAppliedSequence) {
                         continue;
                     }
 
@@ -226,13 +228,13 @@ export const listenForBoardPatches = (userId, boardId, onUpdate, options = {}) =
                             debugPrefix: 'PatchSync'
                         });
 
-                        if (applyResult?.status === 'applied') {
-                            lastAppliedRevision = patch.toClientRevision;
-                            singleBoardPatchCursor.set(patchCursorKey, lastAppliedRevision);
+                        if (applyResult?.status !== 'ignored_invalid_patch') {
+                            lastAppliedSequence = patch.sequence;
+                            singleBoardPatchCursor.set(patchCursorKey, lastAppliedSequence);
                         }
                     } catch (error) {
                         debugLog.error(
-                            `[PatchSync] Failed to apply patch rev${patch.toClientRevision} for board ${boardId}`,
+                            `[PatchSync] Failed to apply patch seq${patch.sequence}/rev${patch.toClientRevision} for board ${boardId}`,
                             error
                         );
                     }

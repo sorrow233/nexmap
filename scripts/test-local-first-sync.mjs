@@ -1,0 +1,178 @@
+import assert from 'node:assert/strict';
+import {
+  applyIncrementalPatchToBoard,
+  buildIncrementalPatchCandidate
+} from '../src/services/sync/boardIncrementalPatch.js';
+import {
+  applyBoardOperationEnvelope,
+  buildBoardOperationEnvelope
+} from '../src/services/localFirst/boardOperationEnvelope.js';
+import {
+  buildPatchDocumentId,
+  buildSyncMutationMetadata,
+  normalizeSyncMutationMetadata
+} from '../src/services/sync/boardSyncProtocol.js';
+import { rebaseBoardStateWithEnvelopes } from '../src/services/localFirst/boardRebaseCore.js';
+
+const baseBoard = {
+  cards: [
+    {
+      id: 'card-1',
+      type: 'chat',
+      x: 10,
+      y: 20,
+      data: {
+        messages: [
+          { id: 'm1', role: 'assistant', content: 'Hello' }
+        ]
+      }
+    }
+  ],
+  connections: [{ from: 'card-1', to: 'card-2' }],
+  groups: [{ id: 'group-1', title: 'Alpha', cardIds: ['card-1'] }],
+  boardPrompts: [{ id: 'prompt-1', text: 'Old prompt' }],
+  boardInstructionSettings: {
+    enabledInstructionIds: ['old-id'],
+    autoEnabledInstructionIds: [],
+    autoSelectionMode: 'manual',
+    autoSelection: {
+      status: 'idle',
+      lastRunAt: 0,
+      lastConversationCount: 0,
+      lastError: '',
+      lastResultCount: 0,
+      lastTrigger: 'manual'
+    }
+  },
+  clientRevision: 7,
+  mutationSequence: 3
+};
+
+const nextBoard = {
+  cards: [
+    {
+      id: 'card-1',
+      type: 'chat',
+      x: 10,
+      y: 20,
+      data: {
+        messages: [
+          { id: 'm1', role: 'assistant', content: 'Hello world' }
+        ]
+      }
+    },
+    {
+      id: 'card-2',
+      type: 'note',
+      x: 200,
+      y: 120,
+      data: { text: 'New node' }
+    }
+  ],
+  connections: [
+    { from: 'card-2', to: 'card-1' },
+    { from: 'card-1', to: 'card-3' }
+  ],
+  groups: [{ id: 'group-1', title: 'Alpha 2', cardIds: ['card-1', 'card-2'] }],
+  boardPrompts: [{ id: 'prompt-1', text: 'New prompt' }],
+  boardInstructionSettings: {
+    enabledInstructionIds: ['new-id'],
+    autoEnabledInstructionIds: ['auto-id'],
+    autoSelectionMode: 'manual',
+    autoSelection: {
+      status: 'done',
+      lastRunAt: 123,
+      lastConversationCount: 2,
+      lastError: '',
+      lastResultCount: 1,
+      lastTrigger: 'auto'
+    }
+  },
+  clientRevision: 8,
+  mutationSequence: 4
+};
+
+const candidate = buildIncrementalPatchCandidate({
+  baseBoard,
+  nextBoard,
+  fromClientRevision: 7,
+  toClientRevision: 8,
+  updatedAt: 1000
+});
+
+assert.equal(candidate.eligible, true, '结构化 patch 应该可生成');
+assert.ok(candidate.patch.ops.some((op) => op.type === 'connection_upsert'));
+assert.ok(candidate.patch.ops.some((op) => op.type === 'group_upsert'));
+assert.ok(candidate.patch.ops.some((op) => op.type === 'board_prompt_upsert'));
+assert.ok(candidate.patch.ops.some((op) => op.type === 'instruction_settings_set_enabled'));
+assert.ok(candidate.patch.ops.some((op) => op.type === 'message_append'));
+assert.ok(candidate.patch.ops.some((op) => op.type === 'card_upsert'));
+
+const patchedBoard = applyIncrementalPatchToBoard(baseBoard, candidate.patch);
+assert.deepEqual(patchedBoard.connections, [
+  { from: 'card-1', to: 'card-2' },
+  { from: 'card-1', to: 'card-3' }
+]);
+assert.equal(patchedBoard.groups[0].title, 'Alpha 2');
+assert.equal(patchedBoard.boardPrompts[0].text, 'New prompt');
+assert.deepEqual(patchedBoard.boardInstructionSettings.enabledInstructionIds, ['new-id']);
+assert.equal(patchedBoard.cards[0].data.messages[0].content, 'Hello world');
+assert.equal(patchedBoard.cards[1].id, 'card-2');
+
+const envelope = buildBoardOperationEnvelope({
+  boardId: 'board-1',
+  actorId: 'actor-1',
+  opId: 'actor-1:9:8',
+  lamport: 9,
+  createdAt: 1001,
+  baseBoard,
+  nextBoard,
+  fromClientRevision: 7,
+  toClientRevision: 8
+});
+assert.ok(envelope);
+assert.ok(envelope.ops.every((op) => !String(op.type).includes('replace')));
+const replayedBoard = applyBoardOperationEnvelope(baseBoard, envelope);
+assert.equal(replayedBoard.cards[0].data.messages[0].content, 'Hello world');
+assert.equal(replayedBoard.groups[0].title, 'Alpha 2');
+
+const remoteBase = {
+  ...baseBoard,
+  cards: [
+    {
+      ...baseBoard.cards[0],
+      data: {
+        messages: [
+          { id: 'm1', role: 'assistant', content: 'Remote hello' }
+        ]
+      }
+    }
+  ],
+  clientRevision: 8,
+  mutationSequence: 5
+};
+const rebaseResult = rebaseBoardStateWithEnvelopes(remoteBase, [envelope]);
+assert.equal(rebaseResult.rebased, true);
+assert.equal(rebaseResult.board.cards[0].data.messages[0].content, 'Remote hello world');
+assert.equal(rebaseResult.board.cards[1].id, 'card-2');
+assert.equal(rebaseResult.board.clientRevision, 8);
+
+const syncMetadata = buildSyncMutationMetadata({
+  mutationActorId: 'actor-1',
+  mutationOpId: 'actor-1:9:8',
+  mutationLamport: 9,
+  ackedClientRevision: 7,
+  ackedLamport: 8,
+  pendingOperationCount: 1,
+  mutationSequence: 12
+});
+const normalized = normalizeSyncMutationMetadata(syncMetadata);
+assert.equal(normalized.mutationSequence, 12);
+assert.equal(buildPatchDocumentId({
+  mutationActorId: 'actor-1',
+  mutationOpId: 'actor-1:9:8',
+  mutationLamport: 9,
+  toClientRevision: 8
+}), '000000000008_000000000009_actor-1_actor-1_9_8');
+
+console.log('local-first sync regression checks passed');

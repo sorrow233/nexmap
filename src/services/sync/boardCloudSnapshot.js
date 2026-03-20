@@ -1,15 +1,16 @@
 import LZString from 'lz-string';
-import { removeUndefined } from '../syncUtils';
+import { removeUndefined } from '../syncUtils.js';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
-} from '../customInstructionsService';
-import { getEffectiveBoardCardCount } from '../boardTitle/metadata';
+} from '../customInstructionsService.js';
+import { getEffectiveBoardCardCount } from '../boardTitle/metadata.js';
 import {
     toEpochMillis,
     toSafeClientRevision,
     toSafeSyncVersion
-} from '../boardPersistence/persistenceCursor';
+} from '../boardPersistence/persistenceCursor.js';
+import { buildSyncMutationMetadata, normalizeSyncMutationMetadata } from './boardSyncProtocol.js';
 
 export const CLOUD_SNAPSHOT_ENCODING = 'lz-string-base64';
 export const CLOUD_SNAPSHOT_SCHEMA_VERSION = 1;
@@ -167,6 +168,10 @@ export const buildCloudBoardDocument = (boardData = {}) => {
     const cardCount = Number.isFinite(Number(metadata.cardCount)) && Number(metadata.cardCount) > 0
         ? Number(metadata.cardCount)
         : inferredCardCount;
+    const syncMetadata = buildSyncMutationMetadata({
+        ...(boardData.syncMetadata || {}),
+        mutationSequence: boardData.mutationSequence ?? boardData.syncMetadata?.mutationSequence
+    });
 
     return removeUndefined({
         ...metadata,
@@ -181,6 +186,8 @@ export const buildCloudBoardDocument = (boardData = {}) => {
         serverUpdatedAt: boardData.serverUpdatedAt,
         syncVersion: toSafeSyncVersion(boardData.syncVersion),
         clientRevision: toSafeClientRevision(boardData.clientRevision),
+        mutationSequence: syncMetadata.mutationSequence,
+        ...syncMetadata,
         contentHash: typeof boardData.contentHash === 'string' ? boardData.contentHash : undefined
     });
 };
@@ -188,6 +195,7 @@ export const buildCloudBoardDocument = (boardData = {}) => {
 export const materializeCloudBoardSnapshot = (boardData = {}) => {
     const content = decodeSnapshotData(boardData);
     const metadata = buildCloudBoardMetadata(boardData);
+    const syncMetadata = normalizeSyncMutationMetadata(boardData);
 
     return removeUndefined({
         ...metadata,
@@ -195,6 +203,8 @@ export const materializeCloudBoardSnapshot = (boardData = {}) => {
         updatedAt: toEpochMillis(boardData.updatedAt),
         syncVersion: toSafeSyncVersion(boardData.syncVersion),
         clientRevision: toSafeClientRevision(boardData.clientRevision),
+        mutationSequence: syncMetadata.mutationSequence,
+        syncMetadata,
         contentHash: typeof boardData.contentHash === 'string' ? boardData.contentHash : undefined,
         snapshotStorage: typeof boardData.snapshotStorage === 'string'
             ? boardData.snapshotStorage

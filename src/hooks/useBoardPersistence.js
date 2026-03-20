@@ -31,8 +31,13 @@ import {
     appendBoardOperationEnvelope,
     getLocalActorId,
     markBoardOperationsAcked,
-    pruneBoardOperationLog
+    pruneBoardOperationLog,
+    readBoardOperationLogMeta
 } from '../services/localFirst/boardOperationLog';
+import {
+    loadAckedBoardSnapshot,
+    persistAckedBoardSnapshot
+} from '../services/localFirst/boardAckedSnapshot';
 import {
     BOARD_SYNC_EVENT,
     createBoardSyncState,
@@ -78,6 +83,7 @@ const createActivePersistenceCursor = () => ({
     updatedAt: 0,
     syncVersion: 0,
     clientRevision: 0,
+    mutationSequence: 0,
     dirty: false,
     syncPhase: 'booting',
     syncMessage: '',
@@ -108,6 +114,19 @@ const buildBoardPayload = (data, options = {}) => {
         boardInstructionSettings: normalizeBoardInstructionSettings(
             data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
         ),
+        updatedAt: Number.isFinite(Number(options.updatedAt ?? data?.updatedAt))
+            ? Number(options.updatedAt ?? data?.updatedAt)
+            : 0,
+        syncVersion: Number.isFinite(Number(options.syncVersion ?? data?.syncVersion))
+            ? Number(options.syncVersion ?? data?.syncVersion)
+            : 0,
+        mutationSequence: Number.isFinite(Number(options.mutationSequence ?? data?.mutationSequence))
+            ? Number(options.mutationSequence ?? data?.mutationSequence)
+            : 0,
+        syncMetadata: options.syncMetadata || data?.syncMetadata || null,
+        contentHash: typeof (options.contentHash ?? data?.contentHash) === 'string'
+            ? (options.contentHash ?? data?.contentHash)
+            : '',
         clientRevision
     };
 };
@@ -437,11 +456,16 @@ export function useBoardPersistence({
 
         try {
             const clientRevision = toSafeRevision(revision ?? tracker.revision);
-            const cloudPayload = buildBoardPayload(latestBoardDataRef.current, { clientRevision });
+            const operationMetaBeforeSave = await readBoardOperationLogMeta(boardId);
+            const cloudPayload = buildBoardPayload(latestBoardDataRef.current, {
+                clientRevision,
+                mutationSequence: activePersistenceCursorRef.current.mutationSequence
+            });
             const baselineForPatch = buildBoardPayload(
                 lastCloudAckedSnapshotRef.current || cloudPayload,
                 {
-                    clientRevision: toSafeRevision(lastCloudAckedSnapshotRef.current?.clientRevision)
+                    clientRevision: toSafeRevision(lastCloudAckedSnapshotRef.current?.clientRevision),
+                    mutationSequence: Number(lastCloudAckedSnapshotRef.current?.mutationSequence || 0)
                 }
             );
             const patchCandidate = buildIncrementalPatchCandidate({
@@ -456,7 +480,16 @@ export function useBoardPersistence({
                 boardId,
                 cloudPayload,
                 {
-                    incrementalPatch: patchCandidate?.eligible ? patchCandidate.patch : null
+                    incrementalPatch: patchCandidate?.eligible ? patchCandidate.patch : null,
+                    syncMetadata: {
+                        mutationActorId: localActorIdRef.current,
+                        mutationOpId: operationMetaBeforeSave.lastOpId,
+                        mutationLamport: operationMetaBeforeSave.lastLamport,
+                        ackedClientRevision: operationMetaBeforeSave.ackedRevision,
+                        ackedLamport: operationMetaBeforeSave.ackedLamport,
+                        pendingOperationCount: operationMetaBeforeSave.pendingOperationCount,
+                        mutationSequence: activePersistenceCursorRef.current.mutationSequence
+                    }
                 }
             );
 
@@ -477,6 +510,25 @@ export function useBoardPersistence({
                     console.error(`[BoardPersistence] Failed to ack local-first op log for board ${boardId}`, operationLogError);
                 }
 
+                const ackedSnapshot = result?.snapshot
+                    ? buildBoardPayload(result.snapshot, {
+                        clientRevision: toSafeRevision(result?.clientRevision || clientRevision),
+                        mutationSequence: Number(result?.mutationSequence || 0),
+                        syncMetadata: result?.syncMetadata || null
+                    })
+                    : null;
+                if (ackedSnapshot) {
+                    lastCloudAckedSnapshotRef.current = ackedSnapshot;
+                    try {
+                        await persistAckedBoardSnapshot(boardId, ackedSnapshot, {
+                            mutationSequence: Number(result?.mutationSequence || 0),
+                            syncMetadata: result?.syncMetadata || null
+                        });
+                    } catch (ackedSnapshotError) {
+                        console.error(`[BoardPersistence] Failed to persist acked snapshot for board ${boardId}`, ackedSnapshotError);
+                    }
+                }
+
                 const latestHash = buildBoardContentHash(
                     buildBoardPayload(latestBoardDataRef.current, {
                         clientRevision: trackerRef.current.revision
@@ -485,16 +537,11 @@ export function useBoardPersistence({
                 const cloudAcknowledgedCurrentRevision = latestHash === result?.contentHash;
 
                 if (cloudAcknowledgedCurrentRevision) {
-                    lastCloudAckedSnapshotRef.current = buildBoardPayload(
-                        latestBoardDataRef.current,
-                        {
-                            clientRevision: trackerRef.current.revision
-                        }
-                    );
                     updateActivePersistenceCursor({
                         updatedAt: result?.updatedAt || Date.now(),
                         syncVersion: result?.syncVersion || getLastKnownSyncVersion(),
                         clientRevision,
+                        mutationSequence: Number(result?.mutationSequence || activePersistenceCursorRef.current.mutationSequence),
                         dirty: false
                     });
                     logPersistenceTrace('cloud-save:ack-current-revision', {
@@ -510,7 +557,11 @@ export function useBoardPersistence({
                         revision: clientRevision,
                         latestRevision: trackerRef.current.revision,
                         syncVersion: result?.syncVersion || 0,
+                        mutationSequence: Number(result?.mutationSequence || 0),
                         updatedAt: result?.updatedAt || 0
+                    });
+                    updateActivePersistenceCursor({
+                        mutationSequence: Number(result?.mutationSequence || activePersistenceCursorRef.current.mutationSequence)
                     });
                 }
 
@@ -798,9 +849,17 @@ export function useBoardPersistence({
             };
             const baselineCursor = buildBoardCursorTrace(baselineSnapshot);
             const baselineRevision = toSafeRevision(baselineSnapshot.clientRevision);
+            const initialAckedSnapshot = lastCloudAckedSnapshotRef.current || (
+                hasPendingCloudSync(boardId)
+                    ? null
+                    : buildBoardPayload(baselineSnapshot, {
+                        clientRevision: baselineRevision,
+                        mutationSequence: activePersistenceCursorRef.current.mutationSequence
+                    })
+            );
 
             latestBoardDataRef.current = baselineSnapshot;
-            lastCloudAckedSnapshotRef.current = baselineSnapshot;
+            lastCloudAckedSnapshotRef.current = initialAckedSnapshot;
             operationBaseSnapshotRef.current = baselineSnapshot;
             tracker.isPrimed = true;
             tracker.revision = baselineRevision;
@@ -811,6 +870,7 @@ export function useBoardPersistence({
                 updatedAt: Date.now(),
                 syncVersion: getLastKnownSyncVersion(),
                 clientRevision: baselineRevision,
+                mutationSequence: Number(initialAckedSnapshot?.mutationSequence || activePersistenceCursorRef.current.mutationSequence),
                 dirty: hasPendingCloudSync(boardId),
                 localActorId: localActorIdRef.current
             });
@@ -842,14 +902,15 @@ export function useBoardPersistence({
         tracker.revision += 1;
         const revision = tracker.revision;
         const updatedAt = Date.now();
-        const snapshot = {
-            cards,
-            connections,
-            groups,
-            boardPrompts,
-            boardInstructionSettings: normalizedSettings,
-            clientRevision: revision
-        };
+            const snapshot = {
+                cards,
+                connections,
+                groups,
+                boardPrompts,
+                boardInstructionSettings: normalizedSettings,
+                mutationSequence: activePersistenceCursorRef.current.mutationSequence,
+                clientRevision: revision
+            };
         const snapshotCursor = buildBoardCursorTrace(snapshot);
         const structureSignature = [
             snapshotCursor.cards,
@@ -962,6 +1023,33 @@ export function useBoardPersistence({
             pendingOperations: 0,
             reason: hasPendingCloudSync(boardId) ? 'resume_pending_cloud_sync' : 'board_reset'
         });
+        let cancelled = false;
+        void (async () => {
+            try {
+                const [ackedSnapshot, operationMeta] = await Promise.all([
+                    loadAckedBoardSnapshot(boardId),
+                    readBoardOperationLogMeta(boardId)
+                ]);
+                if (cancelled) return;
+                lastCloudAckedSnapshotRef.current = ackedSnapshot
+                    ? buildBoardPayload(ackedSnapshot, {
+                        clientRevision: ackedSnapshot.clientRevision,
+                        mutationSequence: ackedSnapshot.mutationSequence,
+                        syncMetadata: ackedSnapshot.syncMetadata
+                    })
+                    : null;
+                updateActivePersistenceCursor({
+                    mutationSequence: Number(ackedSnapshot?.mutationSequence || 0),
+                    pendingOperationCount: operationMeta?.pendingOperationCount ?? 0,
+                    localActorId: operationMeta?.actorId || localActorIdRef.current
+                });
+            } catch (error) {
+                console.error(`[BoardPersistence] Failed to restore local-first sync state for board ${boardId}`, error);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
     }, [applySyncEvent, boardId, clearContentSaveTimers, isReadOnly, updateActivePersistenceCursor, user?.uid]);
 
     useEffect(() => {

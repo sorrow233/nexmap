@@ -1,16 +1,32 @@
-import { buildBoardContentHash } from '../boardPersistence/boardContentHash';
+import { buildBoardContentHash } from '../boardPersistence/boardContentHash.js';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
-} from '../customInstructionsService';
+} from '../customInstructionsService.js';
+import {
+    applyBoardStructuralPatchOperations,
+    buildBoardStructuralPatchOperations,
+    BOARD_PATCH_OP_BOARD_PROMPT_REMOVE,
+    BOARD_PATCH_OP_BOARD_PROMPT_UPSERT,
+    BOARD_PATCH_OP_CONNECTION_REMOVE,
+    BOARD_PATCH_OP_CONNECTION_UPSERT,
+    BOARD_PATCH_OP_GROUP_REMOVE,
+    BOARD_PATCH_OP_GROUP_UPSERT,
+    BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_AUTO_ENABLED,
+    BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_AUTO_SELECTION,
+    BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_ENABLED,
+    BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_MODE,
+    deepEqual,
+    toStableStructuralBoardShape
+} from './boardPatchStructuralOps.js';
 
-export const BOARD_PATCH_KIND = 'cards_patch_v1';
+export const BOARD_PATCH_KIND = 'board_patch_v2';
 export const BOARD_PATCH_OP_CARD_UPSERT = 'card_upsert';
 export const BOARD_PATCH_OP_CARD_REMOVE = 'card_remove';
 export const BOARD_PATCH_OP_MESSAGE_APPEND = 'message_append';
 
-const MAX_PATCH_OPS = 96;
-const MAX_PATCH_BYTES = 280 * 1024;
+const DEFAULT_MAX_PATCH_OPS = 96;
+const DEFAULT_MAX_PATCH_BYTES = 280 * 1024;
 
 const safeArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -21,43 +37,11 @@ const toSafeRevision = (value) => {
 
 const toStableDataShape = (board = {}) => ({
     cards: safeArray(board.cards),
-    connections: safeArray(board.connections),
-    groups: safeArray(board.groups),
-    boardPrompts: safeArray(board.boardPrompts),
+    ...toStableStructuralBoardShape(board),
     boardInstructionSettings: normalizeBoardInstructionSettings(
         board.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
     )
 });
-
-const isObject = (value) => value !== null && typeof value === 'object';
-
-const deepEqual = (left, right) => {
-    if (left === right) return true;
-    if (!isObject(left) || !isObject(right)) return false;
-
-    const leftIsArray = Array.isArray(left);
-    const rightIsArray = Array.isArray(right);
-    if (leftIsArray !== rightIsArray) return false;
-
-    if (leftIsArray && rightIsArray) {
-        if (left.length !== right.length) return false;
-        for (let index = 0; index < left.length; index += 1) {
-            if (!deepEqual(left[index], right[index])) return false;
-        }
-        return true;
-    }
-
-    const leftKeys = Object.keys(left);
-    const rightKeys = Object.keys(right);
-    if (leftKeys.length !== rightKeys.length) return false;
-
-    for (const key of leftKeys) {
-        if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
-        if (!deepEqual(left[key], right[key])) return false;
-    }
-
-    return true;
-};
 
 const buildCardMap = (cards = []) => {
     const cardMap = new Map();
@@ -139,7 +123,76 @@ const tryBuildMessageAppendOperation = (previousCard, nextCard) => {
     };
 };
 
-const compactPatchOperations = (ops = []) => {
+const buildCardPatchOperations = (previousCards = [], nextCards = []) => {
+    const previousCardMap = buildCardMap(previousCards);
+    const nextCardMap = buildCardMap(nextCards);
+    const ops = [];
+
+    previousCards.forEach((previousCard) => {
+        const cardId = String(previousCard?.id || '');
+        if (!cardId) return;
+        if (!nextCardMap.has(cardId)) {
+            ops.push({
+                type: BOARD_PATCH_OP_CARD_REMOVE,
+                cardId
+            });
+        }
+    });
+
+    nextCards.forEach((nextCard) => {
+        const cardId = String(nextCard?.id || '');
+        if (!cardId) return;
+
+        const previousCard = previousCardMap.get(cardId);
+        if (!previousCard) {
+            ops.push({
+                type: BOARD_PATCH_OP_CARD_UPSERT,
+                cardId,
+                card: nextCard
+            });
+            return;
+        }
+
+        if (deepEqual(previousCard, nextCard)) {
+            return;
+        }
+
+        const appendOp = tryBuildMessageAppendOperation(previousCard, nextCard);
+        if (appendOp) {
+            ops.push(appendOp);
+            return;
+        }
+
+        ops.push({
+            type: BOARD_PATCH_OP_CARD_UPSERT,
+            cardId,
+            card: nextCard
+        });
+    });
+
+    return ops;
+};
+
+const isCardPatchOperation = (op) => (
+    op?.type === BOARD_PATCH_OP_CARD_UPSERT ||
+    op?.type === BOARD_PATCH_OP_CARD_REMOVE ||
+    op?.type === BOARD_PATCH_OP_MESSAGE_APPEND
+);
+
+const isStructuralPatchOperation = (op) => (
+    op?.type === BOARD_PATCH_OP_CONNECTION_UPSERT ||
+    op?.type === BOARD_PATCH_OP_CONNECTION_REMOVE ||
+    op?.type === BOARD_PATCH_OP_GROUP_UPSERT ||
+    op?.type === BOARD_PATCH_OP_GROUP_REMOVE ||
+    op?.type === BOARD_PATCH_OP_BOARD_PROMPT_UPSERT ||
+    op?.type === BOARD_PATCH_OP_BOARD_PROMPT_REMOVE ||
+    op?.type === BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_ENABLED ||
+    op?.type === BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_AUTO_ENABLED ||
+    op?.type === BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_MODE ||
+    op?.type === BOARD_PATCH_OP_INSTRUCTION_SETTINGS_SET_AUTO_SELECTION
+);
+
+const compactCardPatchOperations = (ops = []) => {
     const compacted = [];
     const upsertIndexByCard = new Map();
     const lastAppendIndexByMessage = new Map();
@@ -204,6 +257,23 @@ const compactPatchOperations = (ops = []) => {
     return compacted.filter(Boolean);
 };
 
+const compactPatchOperations = (ops = []) => {
+    const structuralOps = [];
+    const cardOps = [];
+
+    ops.forEach((op) => {
+        if (isCardPatchOperation(op)) {
+            cardOps.push(op);
+            return;
+        }
+        if (isStructuralPatchOperation(op)) {
+            structuralOps.push(op);
+        }
+    });
+
+    return [...structuralOps, ...compactCardPatchOperations(cardOps)];
+};
+
 const estimateBytes = (value) => {
     try {
         return new TextEncoder().encode(JSON.stringify(value)).length;
@@ -217,72 +287,15 @@ export const buildIncrementalPatchCandidate = ({
     nextBoard,
     fromClientRevision = 0,
     toClientRevision = 0,
-    updatedAt = Date.now()
+    updatedAt = Date.now(),
+    options = {}
 }) => {
     const previous = toStableDataShape(baseBoard || {});
     const next = toStableDataShape(nextBoard || {});
+    const structuralOps = buildBoardStructuralPatchOperations(previous, next);
+    const cardOps = buildCardPatchOperations(previous.cards, next.cards);
+    const compactedOps = compactPatchOperations([...structuralOps, ...cardOps]);
 
-    if (
-        !deepEqual(previous.connections, next.connections) ||
-        !deepEqual(previous.groups, next.groups) ||
-        !deepEqual(previous.boardPrompts, next.boardPrompts) ||
-        !deepEqual(previous.boardInstructionSettings, next.boardInstructionSettings)
-    ) {
-        return {
-            eligible: false,
-            reason: 'non_card_structure_changed'
-        };
-    }
-
-    const previousCards = safeArray(previous.cards);
-    const nextCards = safeArray(next.cards);
-    const previousCardMap = buildCardMap(previousCards);
-    const nextCardMap = buildCardMap(nextCards);
-    const ops = [];
-
-    previousCards.forEach((previousCard) => {
-        const cardId = String(previousCard?.id || '');
-        if (!cardId) return;
-        if (!nextCardMap.has(cardId)) {
-            ops.push({
-                type: BOARD_PATCH_OP_CARD_REMOVE,
-                cardId
-            });
-        }
-    });
-
-    nextCards.forEach((nextCard) => {
-        const cardId = String(nextCard?.id || '');
-        if (!cardId) return;
-
-        const previousCard = previousCardMap.get(cardId);
-        if (!previousCard) {
-            ops.push({
-                type: BOARD_PATCH_OP_CARD_UPSERT,
-                cardId,
-                card: nextCard
-            });
-            return;
-        }
-
-        if (deepEqual(previousCard, nextCard)) {
-            return;
-        }
-
-        const appendOp = tryBuildMessageAppendOperation(previousCard, nextCard);
-        if (appendOp) {
-            ops.push(appendOp);
-            return;
-        }
-
-        ops.push({
-            type: BOARD_PATCH_OP_CARD_UPSERT,
-            cardId,
-            card: nextCard
-        });
-    });
-
-    const compactedOps = compactPatchOperations(ops);
     if (compactedOps.length === 0) {
         return {
             eligible: false,
@@ -303,7 +316,10 @@ export const buildIncrementalPatchCandidate = ({
 
     candidate.approxBytes = estimateBytes(candidate);
 
-    if (candidate.opCount > MAX_PATCH_OPS) {
+    const maxPatchOps = Number.isFinite(Number(options.maxOps)) ? Number(options.maxOps) : DEFAULT_MAX_PATCH_OPS;
+    const maxPatchBytes = Number.isFinite(Number(options.maxBytes)) ? Number(options.maxBytes) : DEFAULT_MAX_PATCH_BYTES;
+
+    if (candidate.opCount > maxPatchOps) {
         return {
             eligible: false,
             reason: 'op_count_exceeded',
@@ -311,7 +327,7 @@ export const buildIncrementalPatchCandidate = ({
         };
     }
 
-    if (candidate.approxBytes > MAX_PATCH_BYTES) {
+    if (candidate.approxBytes > maxPatchBytes) {
         return {
             eligible: false,
             reason: 'patch_bytes_exceeded',
@@ -385,10 +401,14 @@ export const applyIncrementalPatchToBoard = (board = {}, patch = {}) => {
     const ops = safeArray(patch?.ops);
     if (ops.length === 0) return stableBoard;
 
-    let nextCards = safeArray(stableBoard.cards);
+    const structuralOps = ops.filter(isStructuralPatchOperation);
+    const cardOps = ops.filter(isCardPatchOperation);
+    const nextBoard = applyBoardStructuralPatchOperations(stableBoard, structuralOps);
+    let nextCards = safeArray(nextBoard.cards);
 
-    ops.forEach((op) => {
+    cardOps.forEach((op) => {
         if (!op || typeof op !== 'object') return;
+
         const indexById = new Map();
         nextCards.forEach((card, index) => {
             if (card?.id) {
@@ -412,7 +432,7 @@ export const applyIncrementalPatchToBoard = (board = {}, patch = {}) => {
     });
 
     return {
-        ...stableBoard,
+        ...nextBoard,
         cards: nextCards
     };
 };

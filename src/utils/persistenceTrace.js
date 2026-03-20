@@ -79,6 +79,7 @@ export const buildBoardCursorTrace = (snapshot = {}) => {
 
     return {
         clientRevision: toSafeNumber(snapshot?.clientRevision),
+        mutationSequence: toSafeNumber(snapshot?.mutationSequence),
         updatedAt: toSafeNumber(snapshot?.updatedAt),
         syncVersion: toSafeNumber(snapshot?.syncVersion),
         dirty: snapshot?.dirty === true,

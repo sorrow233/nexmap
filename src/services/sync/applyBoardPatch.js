@@ -9,11 +9,20 @@ import {
 import {
     toEpochMillis,
     toSafeClientRevision,
+    toSafeMutationSequence,
     toSafeSyncVersion
 } from '../boardPersistence/persistenceCursor';
-import { applyIncrementalPatchToBoard } from './boardIncrementalPatch';
 import { BOARD_PREFIX, ensureArray, pickLocalArray } from './boardShared';
-import { readBoardOperationLogMeta, rehydrateBoardFromOperationLog } from '../localFirst/boardOperationLog';
+import {
+    markBoardOperationsAcked,
+    readBoardOperationLogMeta,
+    rehydrateBoardFromOperationLog
+} from '../localFirst/boardOperationLog';
+import { persistAckedBoardSnapshot } from '../localFirst/boardAckedSnapshot';
+import {
+    buildRemoteBaseFromAckedSnapshotAndPatch,
+    rebaseRemoteBoardWithPendingOperations
+} from '../localFirst/boardRebase';
 
 const loadActiveBoardState = async (boardId) => {
     const rawLocalData = await idbGet(BOARD_PREFIX + boardId);
@@ -28,6 +37,7 @@ const loadActiveBoardState = async (boardId) => {
 
     return {
         localData,
+        localFirstMeta,
         canTrustStoreState,
         store,
         storePersistenceCursor,
@@ -69,7 +79,13 @@ const loadActiveBoardState = async (boardId) => {
             : Math.max(
                 toSafeClientRevision(localData?.clientRevision),
                 toSafeClientRevision(localFirstMeta.latestClientRevision)
+            ),
+        localMutationSequence: canTrustStoreState
+            ? Math.max(
+                toSafeMutationSequence(localData?.mutationSequence),
+                toSafeMutationSequence(storePersistenceCursor.mutationSequence)
             )
+            : toSafeMutationSequence(localData?.mutationSequence)
     };
 };
 
@@ -86,56 +102,149 @@ export const applyIncomingBoardPatch = async ({
 
     const incomingClientRevision = toSafeClientRevision(patch.toClientRevision);
     const incomingUpdatedAt = toEpochMillis(patch.updatedAt) || Date.now();
+    const incomingMutationSequence = toSafeMutationSequence(patch.mutationSequence || patch.sequence);
     const {
+        localData,
+        localFirstMeta,
         localCards,
         localConnections,
         localGroups,
         localBoardPrompts,
         localBoardInstructionSettings,
         localSyncVersion,
-        localClientRevision
+        localClientRevision,
+        localMutationSequence,
+        localUpdatedAt
     } = await loadActiveBoardState(boardId);
 
-    if (incomingClientRevision <= localClientRevision) {
+    if (
+        incomingMutationSequence > 0 &&
+        incomingMutationSequence <= localMutationSequence &&
+        incomingClientRevision <= localClientRevision
+    ) {
         debugLog.sync(
             `[${debugPrefix}] Skip stale patch for ${boardId} ` +
-            `(local rev${localClientRevision}, patch rev${incomingClientRevision})`
+            `(local seq${localMutationSequence}/rev${localClientRevision}, patch seq${incomingMutationSequence}/rev${incomingClientRevision})`
         );
         return {
             status: 'skipped_stale',
+            localClientRevision,
+            incomingClientRevision,
+            localMutationSequence,
+            incomingMutationSequence
+        };
+    }
+
+    const canSafelyUseLocalFallback = (localFirstMeta?.pendingOperationCount || 0) === 0;
+    const fallbackBoard = canSafelyUseLocalFallback
+        ? {
+            cards: localCards,
+            connections: localConnections,
+            groups: localGroups,
+            boardPrompts: localBoardPrompts,
+            boardInstructionSettings: normalizeBoardInstructionSettings(localBoardInstructionSettings),
+            updatedAt: localUpdatedAt,
+            syncVersion: localSyncVersion,
+            clientRevision: localClientRevision,
+            mutationSequence: localMutationSequence,
+            syncMetadata: localData?.syncMetadata || null
+        }
+        : null;
+
+    const { ackedSnapshot, nextRemoteBoard } = await buildRemoteBaseFromAckedSnapshotAndPatch({
+        boardId,
+        patch,
+        fallbackBoard
+    });
+
+    if (!ackedSnapshot && !canSafelyUseLocalFallback) {
+        debugLog.warn(
+            `[${debugPrefix}] Missing acked snapshot for ${boardId}, defer patch until a full snapshot arrives`,
+            {
+                incomingClientRevision,
+                incomingMutationSequence,
+                pendingOperationCount: localFirstMeta?.pendingOperationCount || 0
+            }
+        );
+        if (tracePrefix) {
+            logPersistenceTrace(`${tracePrefix}:defer-until-snapshot`, {
+                boardId,
+                incomingClientRevision,
+                incomingMutationSequence,
+                pendingOperationCount: localFirstMeta?.pendingOperationCount || 0
+            });
+        }
+        return {
+            status: 'deferred_until_snapshot',
             localClientRevision,
             incomingClientRevision
         };
     }
 
-    const baseBoard = {
-        cards: localCards,
-        connections: localConnections,
-        groups: localGroups,
-        boardPrompts: localBoardPrompts,
-        boardInstructionSettings: normalizeBoardInstructionSettings(localBoardInstructionSettings)
-    };
-
-    const patchedBoard = applyIncrementalPatchToBoard(baseBoard, patch);
-    const nextBoard = {
-        cards: patchedBoard.cards || [],
-        connections: patchedBoard.connections || [],
-        groups: patchedBoard.groups || [],
-        boardPrompts: patchedBoard.boardPrompts || [],
+    const remoteBasePayload = {
+        cards: nextRemoteBoard.cards || [],
+        connections: nextRemoteBoard.connections || [],
+        groups: nextRemoteBoard.groups || [],
+        boardPrompts: nextRemoteBoard.boardPrompts || [],
         boardInstructionSettings: normalizeBoardInstructionSettings(
-            patchedBoard.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+            nextRemoteBoard.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
         ),
         updatedAt: incomingUpdatedAt,
         syncVersion: localSyncVersion,
-        clientRevision: incomingClientRevision
+        clientRevision: incomingClientRevision,
+        mutationSequence: incomingMutationSequence || localMutationSequence,
+        syncMetadata: patch.syncMetadata || patch || null
     };
+
+    try {
+        await persistAckedBoardSnapshot(boardId, remoteBasePayload, {
+            mutationSequence: remoteBasePayload.mutationSequence,
+            syncMetadata: remoteBasePayload.syncMetadata
+        });
+    } catch (error) {
+        debugLog.warn(`[${debugPrefix}] Failed to persist acked patch snapshot for board ${boardId}`, error);
+    }
+
+    if (
+        typeof patch?.mutationActorId === 'string' &&
+        patch.mutationActorId &&
+        patch.mutationActorId === localFirstMeta?.actorId &&
+        incomingClientRevision > 0
+    ) {
+        try {
+            await markBoardOperationsAcked(boardId, incomingClientRevision);
+        } catch (error) {
+            debugLog.warn(`[${debugPrefix}] Failed to ack local operations from echoed patch for board ${boardId}`, error);
+        }
+    }
+
+    const rebaseResult = await rebaseRemoteBoardWithPendingOperations({
+        boardId,
+        remoteBoard: remoteBasePayload,
+        afterClientRevision: incomingClientRevision
+    });
+
+    const nextBoard = rebaseResult.rebased
+        ? {
+            ...remoteBasePayload,
+            ...rebaseResult.board,
+            updatedAt: Math.max(incomingUpdatedAt, toEpochMillis(rebaseResult.board?.updatedAt)),
+            syncVersion: localSyncVersion,
+            clientRevision: Math.max(incomingClientRevision, toSafeClientRevision(rebaseResult.board?.clientRevision)),
+            mutationSequence: remoteBasePayload.mutationSequence,
+            syncMetadata: remoteBasePayload.syncMetadata
+        }
+        : remoteBasePayload;
 
     await saveBoard(boardId, nextBoard);
     logPersistenceTrace(`${tracePrefix}:apply`, {
         boardId,
         patchRevision: incomingClientRevision,
         patchUpdatedAt: incomingUpdatedAt,
+        patchMutationSequence: incomingMutationSequence,
         opCount: patch.ops.length,
+        rebased: rebaseResult.rebased,
+        pendingOperationCount: rebaseResult.pendingOperationCount || 0,
         cursor: buildBoardCursorTrace(nextBoard)
     });
 
@@ -144,7 +253,7 @@ export const applyIncomingBoardPatch = async ({
     }
 
     return {
-        status: 'applied',
+        status: rebaseResult.rebased ? 'applied_rebase' : 'applied',
         data: nextBoard
     };
 };

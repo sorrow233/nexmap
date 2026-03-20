@@ -13,6 +13,12 @@ import {
 } from 'firebase/firestore';
 import { debugLog } from '../../utils/debugLogger';
 import { toSafeClientRevision } from '../boardPersistence/persistenceCursor';
+import {
+    buildPatchDocumentId,
+    buildSyncMutationMetadata,
+    getMutationSequence,
+    normalizeSyncMutationMetadata
+} from './boardSyncProtocol';
 import { db } from './core';
 
 const PATCHES_COLLECTION = 'patches';
@@ -36,28 +42,33 @@ const estimateBytes = (value) => {
     }
 };
 
-const buildPatchDocId = (patch = {}) => {
-    const revision = String(toSafeInt(patch.toClientRevision)).padStart(12, '0');
-    const updatedAt = String(toSafeInt(patch.updatedAt, Date.now())).padStart(13, '0');
-    const nonce = Math.random().toString(36).slice(2, 9);
-    return `${revision}_${updatedAt}_${nonce}`;
-};
-
 const getBoardPatchesCollectionRef = (userId, boardId) => (
     collection(db, 'users', userId, 'boards', boardId, PATCHES_COLLECTION)
 );
 
 const normalizePatchPayload = (patch = {}) => {
     const ops = Array.isArray(patch.ops) ? patch.ops : [];
+    const syncMetadata = normalizeSyncMutationMetadata(patch.syncMetadata || patch);
+    const mutationSequence = getMutationSequence(patch);
+
     return {
-        kind: typeof patch.kind === 'string' ? patch.kind : 'cards_patch_v1',
+        kind: typeof patch.kind === 'string' ? patch.kind : 'board_patch_v2',
         fromClientRevision: toSafeInt(patch.fromClientRevision),
         toClientRevision: toSafeInt(patch.toClientRevision),
         updatedAt: toSafeInt(patch.updatedAt, Date.now()),
         opCount: toSafeInt(patch.opCount, ops.length),
         ops,
         baseContentHash: typeof patch.baseContentHash === 'string' ? patch.baseContentHash : '',
-        contentHash: typeof patch.contentHash === 'string' ? patch.contentHash : ''
+        contentHash: typeof patch.contentHash === 'string' ? patch.contentHash : '',
+        syncProtocolVersion: syncMetadata.syncProtocolVersion,
+        mutationActorId: syncMetadata.mutationActorId,
+        mutationOpId: syncMetadata.mutationOpId,
+        mutationLamport: syncMetadata.mutationLamport,
+        ackedClientRevision: Math.max(syncMetadata.ackedClientRevision, toSafeInt(patch.fromClientRevision)),
+        ackedLamport: syncMetadata.ackedLamport,
+        pendingOperationCount: syncMetadata.pendingOperationCount,
+        mutationSequence,
+        createdAtMs: toSafeInt(patch.createdAtMs, Date.now())
     };
 };
 
@@ -86,25 +97,25 @@ const cleanupStaleBoardPatches = async ({ userId, boardId, keepCount = PATCH_HIS
     const headSnap = await getDocs(
         query(
             patchesRef,
-            orderBy('toClientRevision', 'desc'),
+            orderBy('sequence', 'desc'),
             limit(Math.max(1, toSafeInt(keepCount, PATCH_HISTORY_KEEP_COUNT)))
         )
     );
 
     if (headSnap.empty) return;
 
-    const floorRevision = headSnap.docs.reduce((minRevision, docSnap) => (
-        Math.min(minRevision, toSafeInt(docSnap.data()?.toClientRevision, Number.MAX_SAFE_INTEGER))
+    const floorSequence = headSnap.docs.reduce((minSequence, docSnap) => (
+        Math.min(minSequence, toSafeInt(docSnap.data()?.sequence, Number.MAX_SAFE_INTEGER))
     ), Number.MAX_SAFE_INTEGER);
 
-    if (!Number.isFinite(floorRevision) || floorRevision <= 0) return;
+    if (!Number.isFinite(floorSequence) || floorSequence <= 0) return;
 
     while (true) {
         const staleSnap = await getDocs(
             query(
                 patchesRef,
-                where('toClientRevision', '<', floorRevision),
-                orderBy('toClientRevision', 'asc'),
+                where('sequence', '<', floorSequence),
+                orderBy('sequence', 'asc'),
                 limit(PATCH_GC_BATCH_SIZE)
             )
         );
@@ -160,16 +171,33 @@ export const persistBoardIncrementalPatch = async ({
     }
 
     const boardRef = doc(db, 'users', userId, 'boards', boardId);
-    const patchDocId = buildPatchDocId(normalizedPatch);
+    const patchDocId = buildPatchDocumentId(normalizedPatch);
     const patchDocRef = doc(getBoardPatchesCollectionRef(userId, boardId), patchDocId);
 
     const transactionResult = await runTransaction(db, async (transaction) => {
-        const boardSnap = await transaction.get(boardRef);
+        const [boardSnap, patchSnap] = await Promise.all([
+            transaction.get(boardRef),
+            transaction.get(patchDocRef)
+        ]);
+
         if (!boardSnap.exists()) {
             return {
                 applied: false,
                 fallbackToSnapshot: true,
                 reason: 'board_missing'
+            };
+        }
+
+        if (patchSnap.exists()) {
+            const existingPatch = normalizePatchPayload(patchSnap.data() || {});
+            return {
+                applied: true,
+                deduped: true,
+                fallbackToSnapshot: false,
+                reason: 'patch_already_exists',
+                patchDocId,
+                mutationSequence: getMutationSequence(existingPatch),
+                syncMetadata: buildSyncMutationMetadata(existingPatch)
             };
         }
 
@@ -185,6 +213,11 @@ export const persistBoardIncrementalPatch = async ({
         const checkpointAgeMs = checkpointUpdatedAt > 0
             ? Math.max(0, Date.now() - checkpointUpdatedAt)
             : Number.MAX_SAFE_INTEGER;
+        const remoteMutationSequence = Math.max(
+            getMutationSequence(remoteBoard),
+            toSafeInt(remoteBoard.patchHeadSequence)
+        );
+        const nextMutationSequence = remoteMutationSequence + 1;
 
         if (shouldFallbackToSnapshot({
             remoteContentHash,
@@ -196,7 +229,8 @@ export const persistBoardIncrementalPatch = async ({
                 applied: false,
                 fallbackToSnapshot: true,
                 reason: 'remote_diverged',
-                remoteClientRevision
+                remoteClientRevision,
+                mutationSequence: remoteMutationSequence
             };
         }
 
@@ -209,15 +243,25 @@ export const persistBoardIncrementalPatch = async ({
                 fallbackToSnapshot: true,
                 reason: 'checkpoint_due',
                 nextPatchSinceCheckpoint,
-                checkpointAgeMs
+                checkpointAgeMs,
+                mutationSequence: remoteMutationSequence
             };
         }
 
+        const patchSyncMetadata = buildSyncMutationMetadata({
+            ...normalizedPatch,
+            mutationSequence: nextMutationSequence,
+            createdAtMs: Date.now()
+        });
+
         transaction.set(patchDocRef, {
             ...normalizedPatch,
+            ...patchSyncMetadata,
             approxBytes,
+            sequence: nextMutationSequence,
+            mutationSequence: nextMutationSequence,
             createdAt: serverTimestamp(),
-            createdAtMs: Date.now()
+            createdAtMs: patchSyncMetadata.createdAtMs
         });
 
         transaction.set(boardRef, {
@@ -225,14 +269,19 @@ export const persistBoardIncrementalPatch = async ({
             patchHeadClientRevision: normalizedPatch.toClientRevision,
             patchUpdatedAt: normalizedPatch.updatedAt,
             patchOpCount: normalizedPatch.opCount,
-            patchSinceCheckpoint: nextPatchSinceCheckpoint
+            patchSinceCheckpoint: nextPatchSinceCheckpoint,
+            patchHeadSequence: nextMutationSequence,
+            mutationSequence: nextMutationSequence,
+            ...patchSyncMetadata
         }, { merge: true });
 
         return {
             applied: true,
             fallbackToSnapshot: false,
             reason: 'patch_applied',
-            patchDocId
+            patchDocId,
+            mutationSequence: nextMutationSequence,
+            syncMetadata: patchSyncMetadata
         };
     });
 
@@ -248,7 +297,7 @@ export const persistBoardIncrementalPatch = async ({
 export const listenForIncrementalBoardPatches = ({
     userId,
     boardId,
-    fromClientRevision = 0,
+    fromMutationSequence = 0,
     onPatchBatch,
     onError
 }) => {
@@ -256,13 +305,13 @@ export const listenForIncrementalBoardPatches = ({
         return () => { };
     }
 
-    const normalizedStartRevision = toSafeInt(fromClientRevision);
-    let lastSeenRevision = normalizedStartRevision;
+    const normalizedStartSequence = toSafeInt(fromMutationSequence);
+    let lastSeenSequence = normalizedStartSequence;
     const patchesRef = getBoardPatchesCollectionRef(userId, boardId);
     const patchesQuery = query(
         patchesRef,
-        where('toClientRevision', '>', normalizedStartRevision),
-        orderBy('toClientRevision', 'asc'),
+        where('sequence', '>', normalizedStartSequence),
+        orderBy('sequence', 'asc'),
         limit(PATCH_LISTENER_LIMIT)
     );
 
@@ -273,17 +322,19 @@ export const listenForIncrementalBoardPatches = ({
                 const data = normalizePatchPayload(change.doc.data() || {});
                 return {
                     ...data,
-                    id: change.doc.id
+                    id: change.doc.id,
+                    sequence: toSafeInt(change.doc.data()?.sequence, getMutationSequence(data)),
+                    mutationSequence: toSafeInt(change.doc.data()?.mutationSequence, getMutationSequence(data))
                 };
             })
-            .filter((patch) => patch.toClientRevision > lastSeenRevision)
-            .sort((left, right) => left.toClientRevision - right.toClientRevision);
+            .filter((patchItem) => patchItem.sequence > lastSeenSequence)
+            .sort((left, right) => left.sequence - right.sequence);
 
         if (batch.length === 0) return;
 
-        lastSeenRevision = batch.reduce(
-            (maxRevision, patch) => Math.max(maxRevision, patch.toClientRevision),
-            lastSeenRevision
+        lastSeenSequence = batch.reduce(
+            (maxSequence, patchItem) => Math.max(maxSequence, patchItem.sequence),
+            lastSeenSequence
         );
 
         try {
