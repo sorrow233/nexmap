@@ -103,7 +103,8 @@ function AppContent() {
         setBoardPrompts,
         setBoardInstructionSettings,
         setLastSavedAt,
-        setActiveBoardPersistence
+        setActiveBoardPersistence,
+        activeBoardPersistence
     } = useStore();
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
@@ -524,8 +525,18 @@ function AppContent() {
         connections,
         groups,
         boardPrompts,
-        boardInstructionSettings
-    }), [boardInstructionSettings, boardPrompts, cards, connections, groups]);
+        boardInstructionSettings,
+        updatedAt: activeBoardPersistence?.updatedAt || 0,
+        clientRevision: activeBoardPersistence?.clientRevision || 0
+    }), [
+        activeBoardPersistence?.clientRevision,
+        activeBoardPersistence?.updatedAt,
+        boardInstructionSettings,
+        boardPrompts,
+        cards,
+        connections,
+        groups
+    ]);
 
     useEffect(() => {
         const controller = boardSyncControllerRef.current;

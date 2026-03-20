@@ -11,21 +11,22 @@ import {
 import { db } from '../firebase';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
+import { toFirestoreMillis } from './firestoreCheckpointStore';
 
 const pickRemoteBoardMetadata = (board = {}) => ({
     id: board.id,
     name: board.name || '',
     nameSource: board.nameSource || 'placeholder',
     autoTitle: board.autoTitle || '',
-    autoTitleGeneratedAt: Number(board.autoTitleGeneratedAt) || 0,
-    manualTitleUpdatedAt: Number(board.manualTitleUpdatedAt) || 0,
-    createdAt: Number(board.createdAt) || Date.now(),
-    updatedAt: Number(board.updatedAt) || 0,
-    lastAccessedAt: Number(board.lastAccessedAt) || 0,
+    autoTitleGeneratedAt: toFirestoreMillis(board.autoTitleGeneratedAt),
+    manualTitleUpdatedAt: toFirestoreMillis(board.manualTitleUpdatedAt),
+    createdAt: toFirestoreMillis(board.createdAt, Date.now()),
+    updatedAt: toFirestoreMillis(board.updatedAt),
+    lastAccessedAt: toFirestoreMillis(board.lastAccessedAt),
     cardCount: Number(board.cardCount) || 0,
     clientRevision: Number(board.clientRevision) || 0,
-    deletedAt: Number(board.deletedAt) || 0,
-    autoImageTriggeredAt: Number(board.autoImageTriggeredAt) || 0
+    deletedAt: toFirestoreMillis(board.deletedAt),
+    autoImageTriggeredAt: toFirestoreMillis(board.autoImageTriggeredAt)
 });
 
 const getBoardCollectionRef = (userId) => collection(

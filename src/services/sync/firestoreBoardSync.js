@@ -1,9 +1,8 @@
 import * as Y from 'yjs';
 import {
-    collection,
     doc,
+    getDoc,
     getDocs,
-    limit,
     onSnapshot,
     orderBy,
     query,
@@ -13,48 +12,21 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
-    FIREBASE_SYNC_COLLECTIONS,
     FIREBASE_SYNC_LIMITS,
     FIREBASE_SYNC_ORIGINS
 } from './config';
 import { uuid } from '../../utils/uuid';
 import { createBoardDoc, syncBoardSnapshotToDoc } from './boardYDoc';
 import { isMeaningfullyEmptyBoardSnapshot, normalizeBoardSnapshot } from './boardSnapshot';
-
-const bytesToBase64 = (bytes) => {
-    let binary = '';
-    for (let i = 0; i < bytes.length; i += 1) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-};
-
-const base64ToBytes = (encoded = '') => {
-    const binary = atob(encoded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-};
-
-const createBoardRootRef = (userId, boardId) => doc(
-    db,
-    FIREBASE_SYNC_COLLECTIONS.users,
-    userId,
-    FIREBASE_SYNC_COLLECTIONS.boards,
-    boardId
-);
-
-const createUpdatesCollectionRef = (userId, boardId) => collection(
-    createBoardRootRef(userId, boardId),
-    FIREBASE_SYNC_COLLECTIONS.updates
-);
-
-const createSnapshotsCollectionRef = (userId, boardId) => collection(
-    createBoardRootRef(userId, boardId),
-    FIREBASE_SYNC_COLLECTIONS.snapshots
-);
+import { base64ToBytes, bytesToBase64 } from './base64';
+import {
+    getSyncBackendName,
+    hasRemoteCheckpoint,
+    loadBoardCheckpoint,
+    saveBoardCheckpoint,
+    toFirestoreMillis
+} from './firestoreCheckpointStore';
+import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncPaths';
 
 export class FirestoreBoardSync {
     constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
@@ -72,8 +44,11 @@ export class FirestoreBoardSync {
         this.appliedRemoteIds = new Set();
         this.ignoredEchoIds = new Set();
         this.remoteIsEmpty = true;
-        this.latestSnapshotCreatedAt = null;
+        this.latestCheckpointSavedAtMs = 0;
+        this.latestCheckpointSignature = '';
         this.connected = false;
+        this.rootUnsubscribe = null;
+        this.updateLogEnabled = true;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -94,57 +69,63 @@ export class FirestoreBoardSync {
         }
 
         this.emitState('connecting');
-        await this.ensureBoardRoot();
-        await this.loadLatestSnapshot();
-        await this.loadTailUpdates();
-        this.subscribeToTailUpdates();
+        await this.loadRemoteCheckpoint();
+
+        try {
+            await this.loadTailUpdates();
+            this.subscribeToTailUpdates();
+        } catch (error) {
+            this.updateLogEnabled = false;
+            this.emitState('warning', {
+                message: error?.message || 'Firestore updates unavailable, fallback to checkpoint mode'
+            });
+        }
+
+        this.subscribeToRootCheckpoint();
         this.connected = true;
         this.emitState('connected', {
-            remoteIsEmpty: this.remoteIsEmpty
+            remoteIsEmpty: this.remoteIsEmpty,
+            mode: this.updateLogEnabled ? 'delta' : 'checkpoint_only'
         });
         return { remoteIsEmpty: this.remoteIsEmpty };
     }
 
-    async ensureBoardRoot() {
+    async loadRemoteCheckpoint(rootData = null) {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
-        await setDoc(rootRef, {
-            id: this.boardId,
-            updatedAt: serverTimestamp(),
-            syncVersion: 1
-        }, { merge: true });
-    }
+        const effectiveRootData = rootData || (await getDoc(rootRef)).data();
 
-    async loadLatestSnapshot() {
-        const snapshotsRef = createSnapshotsCollectionRef(this.userId, this.boardId);
-        const snapshotQuery = query(snapshotsRef, orderBy('createdAt', 'desc'), limit(1));
-        const snapshotDocs = await getDocs(snapshotQuery);
-        if (snapshotDocs.empty) {
+        if (!hasRemoteCheckpoint(effectiveRootData)) {
             this.remoteIsEmpty = true;
             return;
         }
 
-        const latestSnapshot = snapshotDocs.docs[0];
-        const data = latestSnapshot.data();
-        if (!data?.updateBase64) {
+        const checkpoint = await loadBoardCheckpoint({
+            userId: this.userId,
+            boardId: this.boardId,
+            rootData: effectiveRootData
+        });
+
+        if (!checkpoint?.updateBase64) {
             this.remoteIsEmpty = true;
             return;
         }
 
         this.remoteIsEmpty = false;
-        this.latestSnapshotCreatedAt = data.createdAt || null;
-        const update = base64ToBytes(data.updateBase64);
+        this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || 0;
+        this.latestCheckpointSignature = checkpoint.signature || '';
+        const update = base64ToBytes(checkpoint.updateBase64);
         Y.applyUpdate(this.doc, update, FIREBASE_SYNC_ORIGINS.firestore);
     }
 
     async loadTailUpdates() {
         const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-        const tailQuery = this.latestSnapshotCreatedAt
+        const tailQuery = this.latestCheckpointSavedAtMs > 0
             ? query(
                 updatesRef,
-                where('createdAt', '>', this.latestSnapshotCreatedAt),
-                orderBy('createdAt', 'asc')
+                where('createdAtMs', '>', this.latestCheckpointSavedAtMs),
+                orderBy('createdAtMs', 'asc')
             )
-            : query(updatesRef, orderBy('createdAt', 'asc'));
+            : query(updatesRef, orderBy('createdAtMs', 'asc'));
 
         const updateDocs = await getDocs(tailQuery);
         if (!updateDocs.empty) {
@@ -158,13 +139,13 @@ export class FirestoreBoardSync {
 
     subscribeToTailUpdates() {
         const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-        const liveQuery = this.latestSnapshotCreatedAt
+        const liveQuery = this.latestCheckpointSavedAtMs > 0
             ? query(
                 updatesRef,
-                where('createdAt', '>', this.latestSnapshotCreatedAt),
-                orderBy('createdAt', 'asc')
+                where('createdAtMs', '>', this.latestCheckpointSavedAtMs),
+                orderBy('createdAtMs', 'asc')
             )
-            : query(updatesRef, orderBy('createdAt', 'asc'));
+            : query(updatesRef, orderBy('createdAtMs', 'asc'));
 
         this.unsubscribe = onSnapshot(liveQuery, (snapshot) => {
             snapshot.docChanges().forEach((change) => {
@@ -172,8 +153,44 @@ export class FirestoreBoardSync {
                 this.applyRemoteUpdateDoc(change.doc.id, change.doc.data());
             });
         }, (error) => {
-            this.emitState('error', {
+            this.updateLogEnabled = false;
+            this.emitState('warning', {
                 message: error?.message || 'Firestore listener failed'
+            });
+        });
+    }
+
+    subscribeToRootCheckpoint() {
+        const rootRef = createBoardRootRef(this.userId, this.boardId);
+        this.rootUnsubscribe = onSnapshot(rootRef, async (rootDoc) => {
+            const data = rootDoc.data();
+            if (!data || !hasRemoteCheckpoint(data)) {
+                return;
+            }
+
+            const remoteSavedAtMs = toFirestoreMillis(data.checkpointSavedAtMs);
+            if (remoteSavedAtMs < this.latestCheckpointSavedAtMs) {
+                return;
+            }
+
+            const checkpoint = await loadBoardCheckpoint({
+                userId: this.userId,
+                boardId: this.boardId,
+                rootData: data
+            });
+
+            if (!checkpoint?.updateBase64 || checkpoint.signature === this.latestCheckpointSignature) {
+                return;
+            }
+
+            this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || remoteSavedAtMs || 0;
+            this.latestCheckpointSignature = checkpoint.signature || '';
+            Y.applyUpdate(this.doc, base64ToBytes(checkpoint.updateBase64), FIREBASE_SYNC_ORIGINS.firestore);
+            this.remoteIsEmpty = false;
+            this.onRemoteApplied?.();
+        }, (error) => {
+            this.emitState('warning', {
+                message: error?.message || 'Checkpoint listener failed'
             });
         });
     }
@@ -226,20 +243,38 @@ export class FirestoreBoardSync {
         this.pendingUpdates = [];
         this.pendingBytes = 0;
 
-        const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-        const updateId = `${this.deviceId}_${Date.now()}_${uuid()}`;
-        this.ignoredEchoIds.add(updateId);
+        if (this.updateLogEnabled) {
+            const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
+            const updateId = `${this.deviceId}_${Date.now()}_${uuid()}`;
+            this.ignoredEchoIds.add(updateId);
 
-        await setDoc(doc(updatesRef, updateId), {
-            updateBase64: bytesToBase64(merged),
-            byteLength: merged.byteLength || merged.length || 0,
-            deviceId: this.deviceId,
-            reason,
-            createdAt: serverTimestamp()
-        });
+            try {
+                await setDoc(doc(updatesRef, updateId), {
+                    updateBase64: bytesToBase64(merged),
+                    byteLength: merged.byteLength || merged.length || 0,
+                    deviceId: this.deviceId,
+                    reason,
+                    createdAtMs: Date.now(),
+                    createdAt: serverTimestamp()
+                });
+            } catch (error) {
+                this.updateLogEnabled = false;
+                this.emitState('warning', {
+                    message: error?.message || 'Update write failed, fallback to checkpoint mode'
+                });
+                await this.saveSnapshot('updates_fallback');
+                return;
+            }
+        } else {
+            await this.saveSnapshot('checkpoint_only_flush');
+            return;
+        }
 
         await setDoc(createBoardRootRef(this.userId, this.boardId), {
-            updatedAt: serverTimestamp(),
+            id: this.boardId,
+            syncBackend: getSyncBackendName(),
+            updatedAt: Date.now(),
+            serverUpdatedAt: serverTimestamp(),
             lastDeviceId: this.deviceId
         }, { merge: true });
 
@@ -253,21 +288,19 @@ export class FirestoreBoardSync {
     async saveSnapshot(reason = 'manual_snapshot') {
         if (!db) return;
         const update = Y.encodeStateAsUpdate(this.doc);
-        const snapshotsRef = createSnapshotsCollectionRef(this.userId, this.boardId);
-        const snapshotId = `${this.deviceId}_${Date.now()}`;
-
-        await setDoc(doc(snapshotsRef, snapshotId), {
-            updateBase64: bytesToBase64(update),
-            byteLength: update.byteLength || update.length || 0,
-            reason,
+        const checkpoint = await saveBoardCheckpoint({
+            userId: this.userId,
+            boardId: this.boardId,
             deviceId: this.deviceId,
-            createdAt: serverTimestamp()
+            updateBase64: bytesToBase64(update),
+            reason
         });
 
-        await setDoc(createBoardRootRef(this.userId, this.boardId), {
-            latestSnapshotId: snapshotId,
-            updatedAt: serverTimestamp()
-        }, { merge: true });
+        if (checkpoint) {
+            this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || this.latestCheckpointSavedAtMs;
+            this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
+            this.remoteIsEmpty = false;
+        }
     }
 
     async stop() {
@@ -289,6 +322,11 @@ export class FirestoreBoardSync {
             this.unsubscribe = null;
         }
 
+        if (this.rootUnsubscribe) {
+            this.rootUnsubscribe();
+            this.rootUnsubscribe = null;
+        }
+
         this.doc.off('update', this.handleDocUpdate);
         this.connected = false;
     }
@@ -307,32 +345,21 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
         return false;
     }
 
-    const snapshotsRef = createSnapshotsCollectionRef(userId, boardId);
-    const existingSnapshot = await getDocs(query(snapshotsRef, orderBy('createdAt', 'desc'), limit(1)));
-    if (!existingSnapshot.empty) {
+    const existingRootDoc = await getDoc(createBoardRootRef(userId, boardId));
+    if (hasRemoteCheckpoint(existingRootDoc.data())) {
         return false;
     }
 
     const tempDoc = createBoardDoc();
     syncBoardSnapshotToDoc(tempDoc, normalizedSnapshot);
-    const update = Y.encodeStateAsUpdate(tempDoc);
-    const snapshotId = `${deviceId}_${Date.now()}_seed`;
-
-    await setDoc(createBoardRootRef(userId, boardId), {
-        id: boardId,
-        updatedAt: serverTimestamp(),
-        latestSnapshotId: snapshotId,
-        syncVersion: 1
-    }, { merge: true });
-
-    await setDoc(doc(snapshotsRef, snapshotId), {
-        updateBase64: bytesToBase64(update),
-        byteLength: update.byteLength || update.length || 0,
+    const checkpoint = await saveBoardCheckpoint({
+        userId,
+        boardId,
         deviceId,
-        reason: 'local_seed',
-        createdAt: serverTimestamp()
+        updateBase64: bytesToBase64(Y.encodeStateAsUpdate(tempDoc)),
+        reason: 'local_seed'
     });
 
     tempDoc.destroy();
-    return true;
+    return Boolean(checkpoint);
 };

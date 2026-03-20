@@ -7,14 +7,15 @@
 | 用户集合 | `users` |
 | 画板集合 | `boards` |
 | 增量子集合 | `updates` |
-| 快照子集合 | `snapshots` |
+| checkpoint 分片集合 | `snapshots` |
 
 完整路径示例：
 
 ```text
 users/{uid}/boards/{boardId}
 users/{uid}/boards/{boardId}/updates/{updateId}
-users/{uid}/boards/{boardId}/snapshots/{snapshotId}
+users/{uid}/boards/{boardId}/snapshots/{checkpointId}
+users/{uid}/boards/{boardId}/snapshots/{checkpointId}/parts/{partId}
 ```
 
 ## 你现在需要检查什么
@@ -53,14 +54,16 @@ VITE_FIREBASE_SYNC_SNAPSHOTS_COLLECTION=snapshots
   - `users/{uid}/boards/{boardId}`
   - `updates`
   - `snapshots`
+  - `snapshots/{checkpointId}/parts`
 
 ## 当前前端行为
 
 | 行为 | 说明 |
 | --- | --- |
-| 打开 board | 先读本地，再补云端增量 |
+| 打开 board | 先读本地，再补云端 checkpoint 和增量 |
 | 编辑 board | 本地先保存，再批量写入 Firebase |
-| 登录后 | 本地已有 board 会后台补种到 Firebase |
+| 周期压缩 | 把当前 Yjs 状态写成 root checkpoint，超大内容自动分片 |
+| 登录后 | 本地已有 board 会后台补种到 Firebase root checkpoint |
 | 换设备 | 先拉 board 元数据，再在打开时拉内容 |
 
 ## 可选环境变量
