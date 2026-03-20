@@ -3,3 +3,36 @@
 
 /index.html
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/gallery
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/gallery/*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/board/*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/intro
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/free-trial
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/pricing
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/about
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/history
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/admin
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/legal/*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/version.json
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
