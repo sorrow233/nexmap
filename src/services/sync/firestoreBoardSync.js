@@ -20,13 +20,14 @@ import { createBoardDoc, syncBoardSnapshotToDoc } from './boardYDoc';
 import { isMeaningfullyEmptyBoardSnapshot, normalizeBoardSnapshot } from './boardSnapshot';
 import { base64ToBytes, bytesToBase64 } from './base64';
 import {
-    getSyncBackendName,
     hasRemoteCheckpoint,
     loadBoardCheckpoint,
     saveBoardCheckpoint,
     toFirestoreMillis
 } from './firestoreCheckpointStore';
 import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncPaths';
+import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
+import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 
 export class FirestoreBoardSync {
     constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
@@ -92,7 +93,20 @@ export class FirestoreBoardSync {
 
     async loadRemoteCheckpoint(rootData = null) {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
-        const effectiveRootData = rootData || (await getDoc(rootRef)).data();
+        let effectiveRootData = rootData || (await getDoc(rootRef)).data();
+
+        if (!hasRemoteCheckpoint(effectiveRootData)) {
+            const migratedCheckpoint = await migrateLegacyRootSnapshotToCheckpoint({
+                userId: this.userId,
+                boardId: this.boardId,
+                deviceId: this.deviceId,
+                rootData: effectiveRootData
+            });
+
+            if (migratedCheckpoint) {
+                effectiveRootData = (await getDoc(rootRef)).data();
+            }
+        }
 
         if (!hasRemoteCheckpoint(effectiveRootData)) {
             this.remoteIsEmpty = true;
@@ -271,11 +285,12 @@ export class FirestoreBoardSync {
         }
 
         await setDoc(createBoardRootRef(this.userId, this.boardId), {
+            ...buildAuthoritativeRootPayload({
             id: this.boardId,
-            syncBackend: getSyncBackendName(),
             updatedAt: Date.now(),
             serverUpdatedAt: serverTimestamp(),
             lastDeviceId: this.deviceId
+            })
         }, { merge: true });
 
         this.flushCount += 1;
@@ -346,7 +361,20 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
     }
 
     const existingRootDoc = await getDoc(createBoardRootRef(userId, boardId));
-    if (hasRemoteCheckpoint(existingRootDoc.data())) {
+    const existingRootData = existingRootDoc.data();
+
+    if (hasRemoteCheckpoint(existingRootData)) {
+        return false;
+    }
+
+    const migratedCheckpoint = await migrateLegacyRootSnapshotToCheckpoint({
+        userId,
+        boardId,
+        deviceId,
+        rootData: existingRootData
+    });
+
+    if (migratedCheckpoint) {
         return false;
     }
 

@@ -7,6 +7,7 @@ import {
     createCheckpointSetRef,
     createCheckpointSetsCollectionRef
 } from './firestoreSyncPaths';
+import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 
 const CHECKPOINT_STORAGE_INLINE = 'inline';
 const CHECKPOINT_STORAGE_CHUNKED = 'chunked';
@@ -213,8 +214,8 @@ export const saveBoardCheckpoint = async ({
 
     if (byteLength <= INLINE_CHECKPOINT_MAX_BYTES) {
         await setDoc(rootRef, {
+            ...buildAuthoritativeRootPayload({
             id: boardId,
-            syncBackend: CURRENT_SYNC_BACKEND,
             checkpointStorage: CHECKPOINT_STORAGE_INLINE,
             checkpointBase64: updateBase64,
             checkpointSetId: '',
@@ -225,6 +226,7 @@ export const saveBoardCheckpoint = async ({
             updatedAt: savedAtMs,
             serverUpdatedAt: serverTimestamp(),
             lastDeviceId: deviceId
+            })
         }, { merge: true });
 
         return {
@@ -248,8 +250,8 @@ export const saveBoardCheckpoint = async ({
     });
 
     await setDoc(rootRef, {
+        ...buildAuthoritativeRootPayload({
         id: boardId,
-        syncBackend: CURRENT_SYNC_BACKEND,
         checkpointStorage: CHECKPOINT_STORAGE_CHUNKED,
         checkpointBase64: '',
         checkpointSetId: checkpointId,
@@ -260,6 +262,7 @@ export const saveBoardCheckpoint = async ({
         updatedAt: savedAtMs,
         serverUpdatedAt: serverTimestamp(),
         lastDeviceId: deviceId
+        })
     }, { merge: true });
 
     void cleanupStaleCheckpointSets(userId, boardId, checkpointId).catch((error) => {

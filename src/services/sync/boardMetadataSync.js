@@ -12,6 +12,7 @@ import { db } from '../firebase';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
+import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 
 const pickRemoteBoardMetadata = (board = {}) => ({
     id: board.id,
@@ -71,10 +72,10 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
         if (!board?.id || isSampleBoardId(board.id)) return;
         batch.set(
             doc(getBoardCollectionRef(userId), board.id),
-            {
+            buildAuthoritativeRootPayload({
                 ...pickRemoteBoardMetadata(board),
                 syncedAt: serverTimestamp()
-            },
+            }),
             { merge: true }
         );
     });
