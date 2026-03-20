@@ -69,28 +69,60 @@ export const createCardSlice = (set, get) => {
         };
     };
 
+    const normalizeExternalSyncMarker = (marker = {}) => {
+        const token = Number(marker.token);
+        return {
+            token: Number.isFinite(token) && token > 0 ? token : 0,
+            boardId: typeof marker.boardId === 'string' ? marker.boardId : '',
+            fingerprint: typeof marker.fingerprint === 'string' ? marker.fingerprint : '',
+            updatedAt: Number.isFinite(Number(marker.updatedAt)) && Number(marker.updatedAt) >= 0
+                ? Number(marker.updatedAt)
+                : 0,
+            clientRevision: Number.isFinite(Number(marker.clientRevision)) && Number(marker.clientRevision) >= 0
+                ? Number(marker.clientRevision)
+                : 0
+        };
+    };
+
     return {
     cards: [],
     expandedCardId: null,
     lastSavedAt: 0,
-    activeBoardPersistence: {
-        updatedAt: 0,
-        clientRevision: 0,
-        dirty: false
-    },
+	    activeBoardPersistence: {
+	        updatedAt: 0,
+	        clientRevision: 0,
+	        dirty: false
+	    },
+        lastExternalSyncMarker: {
+            token: 0,
+            boardId: '',
+            fingerprint: '',
+            updatedAt: 0,
+            clientRevision: 0
+        },
 
-    setLastSavedAt: (val) => set({ lastSavedAt: val }),
-    setActiveBoardPersistence: (cursor) => set((state) => ({
-        activeBoardPersistence: normalizePersistenceCursor({
-            ...state.activeBoardPersistence,
-            ...cursor
-        })
-    })),
+	    setLastSavedAt: (val) => set({ lastSavedAt: val }),
+	    setActiveBoardPersistence: (cursor) => set((state) => ({
+	        activeBoardPersistence: normalizePersistenceCursor({
+	            ...state.activeBoardPersistence,
+	            ...cursor
+	        })
+	    })),
+        setExternalSyncMarker: (marker) => set((state) => {
+            const normalizedMarker = normalizeExternalSyncMarker(marker);
+            const nextToken = state.lastExternalSyncMarker.token + 1;
+            return {
+                lastExternalSyncMarker: {
+                    ...normalizedMarker,
+                    token: normalizedMarker.token || nextToken
+                }
+            };
+        }),
 
-    setCards: (cardsOrUpdater) => {
-        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
-        debugLog.store('Bulk setting cards', { count: nextCards.length });
-        cardLookup.rebuild(nextCards);
+	    setCards: (cardsOrUpdater) => {
+	        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
+	        debugLog.store('Bulk setting cards', { count: nextCards.length });
+	        cardLookup.rebuild(nextCards);
         set({ cards: nextCards });
     },
 
@@ -433,16 +465,23 @@ export const createCardSlice = (set, get) => {
     // Reset card state on logout
     resetCardState: () => {
         cardLookup.clear();
-        set({
-            cards: [],
-            expandedCardId: null,
-            lastSavedAt: 0,
-            activeBoardPersistence: {
-                updatedAt: 0,
-                clientRevision: 0,
-                dirty: false
-            }
-        });
-    }
-    };
+	        set({
+	            cards: [],
+	            expandedCardId: null,
+	            lastSavedAt: 0,
+	            activeBoardPersistence: {
+	                updatedAt: 0,
+	                clientRevision: 0,
+	                dirty: false
+	            },
+                lastExternalSyncMarker: {
+                    token: 0,
+                    boardId: '',
+                    fingerprint: '',
+                    updatedAt: 0,
+                    clientRevision: 0
+                }
+	        });
+	    }
+	    };
 };

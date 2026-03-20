@@ -68,7 +68,10 @@ import {
     mergeBoardMetadataLists,
     syncBoardMetadataListToRemote
 } from './services/sync/boardMetadataSync';
-import { normalizeBoardSnapshot } from './services/sync/boardSnapshot';
+import {
+    createBoardSnapshotFingerprint,
+    normalizeBoardSnapshot
+} from './services/sync/boardSnapshot';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
 import { seedLocalBoardSnapshotIfRemoteEmpty } from './services/sync/firestoreBoardSync';
 
@@ -86,6 +89,7 @@ export default function App() {
 
 const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
+const REMOTE_METADATA_RETRY_MS = 5000;
 
 function AppContent() {
     const navigate = useNavigate();
@@ -104,12 +108,14 @@ function AppContent() {
         setBoardInstructionSettings,
         setLastSavedAt,
         setActiveBoardPersistence,
+        setExternalSyncMarker,
         activeBoardPersistence
     } = useStore();
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
     const boardSyncControllerRef = useRef(null);
     const metadataSyncTimerRef = useRef(null);
+    const metadataHydrationRetryTimerRef = useRef(null);
     const seededBoardIdsRef = useRef(new Set());
     const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
 
@@ -139,8 +145,16 @@ function AppContent() {
         allBoardsDataRef.current = allBoardsData;
     }, [allBoardsData]);
 
-    const applyBoardSnapshotToStore = useCallback((snapshot) => {
+    const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
+        if (options.source === 'remote_sync' && options.boardId) {
+            setExternalSyncMarker({
+                boardId: options.boardId,
+                fingerprint: createBoardSnapshotFingerprint(normalized),
+                updatedAt: normalized.updatedAt || 0,
+                clientRevision: normalized.clientRevision || 0
+            });
+        }
         setCards(normalized.cards);
         setConnections(normalized.connections);
         setGroups(normalized.groups);
@@ -158,6 +172,7 @@ function AppContent() {
         setBoardPrompts,
         setCards,
         setConnections,
+        setExternalSyncMarker,
         setGroups,
         setLastSavedAt
     ]);
@@ -195,15 +210,26 @@ function AppContent() {
         setHasHydratedRemoteBoards(false);
         seededBoardIdsRef.current = new Set();
 
+        if (metadataHydrationRetryTimerRef.current) {
+            clearTimeout(metadataHydrationRetryTimerRef.current);
+            metadataHydrationRetryTimerRef.current = null;
+        }
+
         if (!user?.uid) {
             return () => {
                 cancelled = true;
+                if (metadataHydrationRetryTimerRef.current) {
+                    clearTimeout(metadataHydrationRetryTimerRef.current);
+                    metadataHydrationRetryTimerRef.current = null;
+                }
             };
         }
 
-        void loadRemoteBoardMetadataList(user.uid)
-            .then((remoteBoards) => {
+        const hydrateRemoteBoards = async () => {
+            try {
+                const remoteBoards = await loadRemoteBoardMetadataList(user.uid);
                 if (cancelled) return;
+
                 setBoardsList((prev) => {
                     const merged = mergeBoardMetadataLists(prev, remoteBoards);
                     if (merged.length > 0) {
@@ -211,18 +237,28 @@ function AppContent() {
                     }
                     return merged.length > 0 ? merged : prev;
                 });
-            })
-            .catch((error) => {
+                setHasHydratedRemoteBoards(true);
+            } catch (error) {
+                if (cancelled) return;
                 console.error('[FirebaseSync] Failed to hydrate remote boards metadata:', error);
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setHasHydratedRemoteBoards(true);
-                }
-            });
+                setHasHydratedRemoteBoards(false);
+                metadataHydrationRetryTimerRef.current = setTimeout(() => {
+                    metadataHydrationRetryTimerRef.current = null;
+                    if (!cancelled) {
+                        void hydrateRemoteBoards();
+                    }
+                }, REMOTE_METADATA_RETRY_MS);
+            }
+        };
+
+        void hydrateRemoteBoards();
 
         return () => {
             cancelled = true;
+            if (metadataHydrationRetryTimerRef.current) {
+                clearTimeout(metadataHydrationRetryTimerRef.current);
+                metadataHydrationRetryTimerRef.current = null;
+            }
         };
     }, [user?.uid, setBoardsList]);
 
@@ -462,7 +498,10 @@ function AppContent() {
                         return;
                     }
 
-                    applyBoardSnapshotToStore(data);
+                    applyBoardSnapshotToStore(data, {
+                        source: 'local_load',
+                        boardId: currentBoardId
+                    });
                     saveBoardInstructionSettingsCache(
                         currentBoardId,
                         normalizeBoardInstructionSettings(data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS)
@@ -479,7 +518,10 @@ function AppContent() {
                             user,
                             onSnapshot: (nextSnapshot) => {
                                 if (isCancelled) return;
-                                applyBoardSnapshotToStore(nextSnapshot);
+                                applyBoardSnapshotToStore(nextSnapshot, {
+                                    source: 'remote_sync',
+                                    boardId: currentBoardId
+                                });
                             },
                             onSyncStateChange: () => { }
                         });

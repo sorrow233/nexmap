@@ -183,7 +183,9 @@ export const updateBoardMetadata = (id, metadata) => {
 
 export const saveBoard = async (id, data) => {
     // data: { cards, connections, updatedAt? }
-    const timestamp = data.updatedAt || Date.now();
+    const timestamp = Number.isFinite(Number(data?.updatedAt))
+        ? Number(data.updatedAt)
+        : Date.now();
     debugLog.storage(`Saving board: ${id}`, {
         cardsCount: data.cards?.length || 0,
         connectionsCount: data.connections?.length || 0,

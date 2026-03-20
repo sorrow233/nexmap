@@ -3,7 +3,6 @@ import {
     doc,
     getDocs,
     serverTimestamp,
-    setDoc,
     writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,6 +13,8 @@ import { toFirestoreMillis } from './firestoreCheckpointStore';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 
 const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail'];
+const FIRESTORE_WRITE_BATCH_LIMIT = 450;
+const METADATA_RETRY_DELAYS_MS = [0, 300, 900];
 
 const normalizeOptionalString = (value) => {
     if (value === undefined) return undefined;
@@ -36,6 +37,28 @@ const normalizeOptionalMillis = (value, { allowNull = false } = {}) => {
 const omitUndefinedFields = (payload = {}) => Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
 );
+
+const sleep = (ms) => new Promise((resolve) => {
+    setTimeout(resolve, ms);
+});
+
+const withRetry = async (operation) => {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < METADATA_RETRY_DELAYS_MS.length; attempt += 1) {
+        if (METADATA_RETRY_DELAYS_MS[attempt] > 0) {
+            await sleep(METADATA_RETRY_DELAYS_MS[attempt]);
+        }
+
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError;
+};
 
 const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     id: board.id,
@@ -75,7 +98,7 @@ const mergeFieldByPresence = (preferredBoard, fallbackBoard, key) => {
 
 export const loadRemoteBoardMetadataList = async (userId) => {
     if (!db || !userId) return [];
-    const snapshot = await getDocs(getBoardCollectionRef(userId));
+    const snapshot = await withRetry(() => getDocs(getBoardCollectionRef(userId)));
     const boards = normalizeBoardMetadataList(snapshot.docs.map((item) => item.data()));
 
     return boards.sort((a, b) => {
@@ -136,22 +159,25 @@ const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
 };
 
 export const mergeBoardMetadataLists = (localBoards = [], remoteBoards = []) => {
+    const localOrderedBoards = normalizeBoardMetadataList(localBoards)
+        .filter((board) => board?.id && !isSampleBoardId(board.id));
+    const remoteOrderedBoards = normalizeBoardMetadataList(remoteBoards)
+        .filter((board) => board?.id && !isSampleBoardId(board.id));
+    const localById = new Map(localOrderedBoards.map((board) => [board.id, normalizeBoardTitleMeta(board)]));
     const merged = new Map();
     const orderedIds = [];
 
-    normalizeBoardMetadataList(localBoards).forEach((board) => {
-        if (!board?.id || isSampleBoardId(board.id)) return;
-        merged.set(board.id, normalizeBoardTitleMeta(board));
-        orderedIds.push(board.id);
+    remoteOrderedBoards.forEach((remoteBoard) => {
+        const localBoard = localById.get(remoteBoard.id);
+        merged.set(remoteBoard.id, mergeBoardMetadataRecord(localBoard, remoteBoard));
+        orderedIds.push(remoteBoard.id);
+        localById.delete(remoteBoard.id);
     });
 
-    normalizeBoardMetadataList(remoteBoards).forEach((board) => {
-        if (!board?.id || isSampleBoardId(board.id)) return;
-        const existing = merged.get(board.id);
-        merged.set(board.id, mergeBoardMetadataRecord(existing, board));
-        if (!existing) {
-            orderedIds.push(board.id);
-        }
+    localOrderedBoards.forEach((localBoard) => {
+        if (!localById.has(localBoard.id)) return;
+        merged.set(localBoard.id, normalizeBoardTitleMeta(localBoard));
+        orderedIds.push(localBoard.id);
     });
 
     return orderedIds
@@ -168,20 +194,29 @@ export const mergeBoardMetadataLists = (localBoards = [], remoteBoards = []) => 
 
 export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
     if (!db || !userId) return;
-    const batch = writeBatch(db);
-    normalizeBoardMetadataList(boards).forEach((board, index) => {
-        if (!board?.id || isSampleBoardId(board.id)) return;
-        batch.set(
-            doc(getBoardCollectionRef(userId), board.id),
-            buildAuthoritativeRootPayload({
-                ...pickRemoteBoardMetadata({
-                    ...board,
-                    listOrder: index
-                }),
-                syncedAt: serverTimestamp()
-            }),
-            { merge: true }
-        );
-    });
-    await batch.commit();
+    const syncedBoards = normalizeBoardMetadataList(boards)
+        .filter((board) => board?.id && !isSampleBoardId(board.id));
+
+    for (let offset = 0; offset < syncedBoards.length; offset += FIRESTORE_WRITE_BATCH_LIMIT) {
+        const currentSlice = syncedBoards.slice(offset, offset + FIRESTORE_WRITE_BATCH_LIMIT);
+        await withRetry(async () => {
+            const batch = writeBatch(db);
+
+            currentSlice.forEach((board, index) => {
+                batch.set(
+                    doc(getBoardCollectionRef(userId), board.id),
+                    buildAuthoritativeRootPayload({
+                        ...pickRemoteBoardMetadata({
+                            ...board,
+                            listOrder: offset + index
+                        }),
+                        syncedAt: serverTimestamp()
+                    }),
+                    { merge: true }
+                );
+            });
+
+            await batch.commit();
+        });
+    }
 };

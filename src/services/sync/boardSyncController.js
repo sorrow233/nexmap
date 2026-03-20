@@ -17,6 +17,7 @@ import {
     isSampleBoardId
 } from './config';
 import { uuid } from '../../utils/uuid';
+import { isPersistenceSnapshotNewer } from '../boardPersistence/persistenceCursor';
 
 const DEVICE_ID_KEY = 'mixboard_sync_device_id';
 
@@ -65,7 +66,16 @@ export class BoardSyncController {
         await this.persistence.whenSynced;
 
         const normalizedLocal = normalizeBoardSnapshot(initialLocalSnapshot);
-        if (isBoardDocEmpty(this.doc) && !isMeaningfullyEmptyBoardSnapshot(normalizedLocal)) {
+        const persistedDocSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const shouldApplyLocalSnapshot = (
+            !isMeaningfullyEmptyBoardSnapshot(normalizedLocal) &&
+            (
+                isBoardDocEmpty(this.doc) ||
+                isPersistenceSnapshotNewer(normalizedLocal, persistedDocSnapshot)
+            )
+        );
+
+        if (shouldApplyLocalSnapshot) {
             syncBoardSnapshotToDoc(this.doc, normalizedLocal);
         }
 

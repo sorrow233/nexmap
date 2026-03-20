@@ -46,6 +46,7 @@ export class FirestoreBoardSync {
         this.ignoredEchoIds = new Set();
         this.remoteIsEmpty = true;
         this.latestCheckpointSavedAtMs = 0;
+        this.latestCheckpointServerSavedAt = null;
         this.latestCheckpointSignature = '';
         this.connected = false;
         this.rootUnsubscribe = null;
@@ -61,6 +62,26 @@ export class FirestoreBoardSync {
             boardId: this.boardId,
             ...extra
         });
+    }
+
+    buildTailUpdatesQuery(updatesRef) {
+        if (this.latestCheckpointServerSavedAt) {
+            return query(
+                updatesRef,
+                where('createdAt', '>=', this.latestCheckpointServerSavedAt),
+                orderBy('createdAt', 'asc')
+            );
+        }
+
+        if (this.latestCheckpointSavedAtMs > 0) {
+            return query(
+                updatesRef,
+                where('createdAtMs', '>', this.latestCheckpointSavedAtMs),
+                orderBy('createdAtMs', 'asc')
+            );
+        }
+
+        return query(updatesRef, orderBy('createdAt', 'asc'));
     }
 
     async connect() {
@@ -110,6 +131,7 @@ export class FirestoreBoardSync {
 
         if (!hasRemoteCheckpoint(effectiveRootData)) {
             this.remoteIsEmpty = true;
+            this.latestCheckpointServerSavedAt = null;
             return;
         }
 
@@ -126,6 +148,7 @@ export class FirestoreBoardSync {
 
         this.remoteIsEmpty = false;
         this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || 0;
+        this.latestCheckpointServerSavedAt = effectiveRootData?.checkpointServerSavedAt || null;
         this.latestCheckpointSignature = checkpoint.signature || '';
         const update = base64ToBytes(checkpoint.updateBase64);
         Y.applyUpdate(this.doc, update, FIREBASE_SYNC_ORIGINS.firestore);
@@ -133,13 +156,7 @@ export class FirestoreBoardSync {
 
     async loadTailUpdates() {
         const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-        const tailQuery = this.latestCheckpointSavedAtMs > 0
-            ? query(
-                updatesRef,
-                where('createdAtMs', '>', this.latestCheckpointSavedAtMs),
-                orderBy('createdAtMs', 'asc')
-            )
-            : query(updatesRef, orderBy('createdAtMs', 'asc'));
+        const tailQuery = this.buildTailUpdatesQuery(updatesRef);
 
         const updateDocs = await getDocs(tailQuery);
         if (!updateDocs.empty) {
@@ -153,13 +170,7 @@ export class FirestoreBoardSync {
 
     subscribeToTailUpdates() {
         const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-        const liveQuery = this.latestCheckpointSavedAtMs > 0
-            ? query(
-                updatesRef,
-                where('createdAtMs', '>', this.latestCheckpointSavedAtMs),
-                orderBy('createdAtMs', 'asc')
-            )
-            : query(updatesRef, orderBy('createdAtMs', 'asc'));
+        const liveQuery = this.buildTailUpdatesQuery(updatesRef);
 
         this.unsubscribe = onSnapshot(liveQuery, (snapshot) => {
             snapshot.docChanges().forEach((change) => {
@@ -198,6 +209,7 @@ export class FirestoreBoardSync {
             }
 
             this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || remoteSavedAtMs || 0;
+            this.latestCheckpointServerSavedAt = data.checkpointServerSavedAt || this.latestCheckpointServerSavedAt;
             this.latestCheckpointSignature = checkpoint.signature || '';
             Y.applyUpdate(this.doc, base64ToBytes(checkpoint.updateBase64), FIREBASE_SYNC_ORIGINS.firestore);
             this.remoteIsEmpty = false;

@@ -46,6 +46,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const boardPrompts = useStore(state => state.boardPrompts);
     const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const globalPrompts = useStore(state => state.globalPrompts);
+    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
+    const lastExternalSyncMarker = useStore(state => state.lastExternalSyncMarker);
 
     // Store Actions
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
@@ -156,6 +158,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         isBoardLoading,
         isReadOnly,
         hasGeneratingCards: generatingCardIds.size > 0,
+        activeBoardPersistence,
+        lastExternalSyncMarker,
         setSaveStatus,
         setLastSavedAt,
         setActiveBoardPersistence,
