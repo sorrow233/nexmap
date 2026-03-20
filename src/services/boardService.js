@@ -130,8 +130,8 @@ export const getTrashBoards = () => {
 
 export const loadBoardsMetadata = () => {
     debugLog.storage('Loading boards metadata list');
-    // Return ALL boards (Active + Trash) sorted by createdAt so UI can filter
-    return getRawBoardsList().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    // Preserve the persisted list order as the authoritative gallery order.
+    return getRawBoardsList();
 };
 
 export const createBoard = async (name) => {

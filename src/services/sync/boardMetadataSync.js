@@ -2,8 +2,6 @@ import {
     collection,
     doc,
     getDocs,
-    orderBy,
-    query,
     serverTimestamp,
     setDoc,
     writeBatch
@@ -13,6 +11,13 @@ import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTit
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
+
+const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail'];
+
+const normalizeOptionalString = (value) => {
+    if (value == null) return value;
+    return typeof value === 'string' ? value : String(value);
+};
 
 const pickRemoteBoardMetadata = (board = {}) => ({
     id: board.id,
@@ -27,7 +32,11 @@ const pickRemoteBoardMetadata = (board = {}) => ({
     cardCount: Number(board.cardCount) || 0,
     clientRevision: Number(board.clientRevision) || 0,
     deletedAt: toFirestoreMillis(board.deletedAt),
-    autoImageTriggeredAt: toFirestoreMillis(board.autoImageTriggeredAt)
+    autoImageTriggeredAt: toFirestoreMillis(board.autoImageTriggeredAt),
+    listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : null,
+    summary: normalizeOptionalString(board.summary),
+    backgroundImage: normalizeOptionalString(board.backgroundImage),
+    thumbnail: normalizeOptionalString(board.thumbnail)
 });
 
 const getBoardCollectionRef = (userId) => collection(
@@ -37,43 +46,102 @@ const getBoardCollectionRef = (userId) => collection(
     FIREBASE_SYNC_COLLECTIONS.boards
 );
 
-const choosePreferredBoardMetadata = (localBoard, remoteBoard) => {
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
+
+const mergeFieldByPresence = (preferredBoard, fallbackBoard, key) => {
+    if (hasOwn(preferredBoard, key)) {
+        return preferredBoard[key];
+    }
+    return fallbackBoard?.[key];
+};
+
+export const loadRemoteBoardMetadataList = async (userId) => {
+    if (!db || !userId) return [];
+    const snapshot = await getDocs(getBoardCollectionRef(userId));
+    const boards = normalizeBoardMetadataList(snapshot.docs.map((item) => item.data()));
+
+    return boards.sort((a, b) => {
+        const aOrder = Number.isFinite(Number(a.listOrder)) ? Number(a.listOrder) : Number.POSITIVE_INFINITY;
+        const bOrder = Number.isFinite(Number(b.listOrder)) ? Number(b.listOrder) : Number.POSITIVE_INFINITY;
+        if (aOrder !== bOrder) {
+            return aOrder - bOrder;
+        }
+        return (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0);
+    });
+};
+
+const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
     if (!localBoard) return normalizeBoardTitleMeta(remoteBoard);
     if (!remoteBoard) return normalizeBoardTitleMeta(localBoard);
 
     const localUpdated = Number(localBoard.updatedAt) || 0;
     const remoteUpdated = Number(remoteBoard.updatedAt) || 0;
-    return normalizeBoardTitleMeta(remoteUpdated > localUpdated ? remoteBoard : localBoard);
-};
+    const preferredBoard = remoteUpdated > localUpdated ? remoteBoard : localBoard;
+    const fallbackBoard = preferredBoard === remoteBoard ? localBoard : remoteBoard;
 
-export const loadRemoteBoardMetadataList = async (userId) => {
-    if (!db || !userId) return [];
-    const snapshot = await getDocs(query(getBoardCollectionRef(userId), orderBy('updatedAt', 'desc')));
-    return normalizeBoardMetadataList(snapshot.docs.map((item) => item.data()));
+    const mergedBoard = {
+        ...fallbackBoard,
+        ...preferredBoard
+    };
+
+    DISPLAY_METADATA_KEYS.forEach((key) => {
+        mergedBoard[key] = mergeFieldByPresence(preferredBoard, fallbackBoard, key);
+    });
+
+    if (!hasOwn(preferredBoard, 'autoImageTriggeredAt') && hasOwn(fallbackBoard, 'autoImageTriggeredAt')) {
+        mergedBoard.autoImageTriggeredAt = fallbackBoard.autoImageTriggeredAt;
+    }
+
+    if (!hasOwn(preferredBoard, 'listOrder') && hasOwn(fallbackBoard, 'listOrder')) {
+        mergedBoard.listOrder = fallbackBoard.listOrder;
+    }
+
+    return normalizeBoardTitleMeta(mergedBoard);
 };
 
 export const mergeBoardMetadataLists = (localBoards = [], remoteBoards = []) => {
     const merged = new Map();
+    const orderedIds = [];
+
     normalizeBoardMetadataList(localBoards).forEach((board) => {
         if (!board?.id || isSampleBoardId(board.id)) return;
         merged.set(board.id, normalizeBoardTitleMeta(board));
+        orderedIds.push(board.id);
     });
+
     normalizeBoardMetadataList(remoteBoards).forEach((board) => {
         if (!board?.id || isSampleBoardId(board.id)) return;
-        merged.set(board.id, choosePreferredBoardMetadata(merged.get(board.id), board));
+        const existing = merged.get(board.id);
+        merged.set(board.id, mergeBoardMetadataRecord(existing, board));
+        if (!existing) {
+            orderedIds.push(board.id);
+        }
     });
-    return Array.from(merged.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    return orderedIds
+        .map((boardId, index) => {
+            const board = merged.get(boardId);
+            if (!board) return null;
+            return normalizeBoardTitleMeta({
+                ...board,
+                listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : index
+            });
+        })
+        .filter(Boolean);
 };
 
 export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
     if (!db || !userId) return;
     const batch = writeBatch(db);
-    normalizeBoardMetadataList(boards).forEach((board) => {
+    normalizeBoardMetadataList(boards).forEach((board, index) => {
         if (!board?.id || isSampleBoardId(board.id)) return;
         batch.set(
             doc(getBoardCollectionRef(userId), board.id),
             buildAuthoritativeRootPayload({
-                ...pickRemoteBoardMetadata(board),
+                ...pickRemoteBoardMetadata({
+                    ...board,
+                    listOrder: index
+                }),
                 syncedAt: serverTimestamp()
             }),
             { merge: true }
