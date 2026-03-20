@@ -19,6 +19,10 @@ export default function StatusBar({ boardName, syncStatus = 'idle', onOpenSettin
         idle: { icon: Cloud, label: '已同步', color: 'text-emerald-500' },
         syncing: { icon: RefreshCw, label: '同步中...', color: 'text-blue-500', animate: true },
         synced: { icon: Cloud, label: '已同步', color: 'text-emerald-500' },
+        local_dirty: { icon: RefreshCw, label: '本地变更待落盘', color: 'text-amber-500', animate: true },
+        persisting_local: { icon: RefreshCw, label: '本地保存中...', color: 'text-cyan-500', animate: true },
+        sync_scheduled: { icon: RefreshCw, label: '等待云同步...', color: 'text-sky-500', animate: true },
+        rebasing: { icon: RefreshCw, label: '正在回放本地操作...', color: 'text-violet-500', animate: true },
         error: { icon: CloudOff, label: '同步失败', color: 'text-red-500' },
         offline: { icon: WifiOff, label: autoOfflineTriggered ? '配额已满，等待恢复' : '离线模式', color: 'text-slate-400' }
     };

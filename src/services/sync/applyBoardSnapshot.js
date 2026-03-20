@@ -16,9 +16,13 @@ import {
 } from '../boardPersistence/persistenceCursor';
 import { ensureArray, pickLocalArray, BOARD_PREFIX } from './boardShared';
 import { materializeCloudBoardSnapshot } from './boardCloudSnapshot';
+import { readBoardOperationLogMeta, rehydrateBoardFromOperationLog } from '../localFirst/boardOperationLog';
 
 const loadActiveBoardState = async (boardId) => {
-    const localData = await idbGet(BOARD_PREFIX + boardId);
+    const rawLocalData = await idbGet(BOARD_PREFIX + boardId);
+    const localFirstReplay = await rehydrateBoardFromOperationLog(boardId, rawLocalData);
+    const localFirstMeta = await readBoardOperationLogMeta(boardId);
+    const localData = localFirstReplay?.board || rawLocalData;
     const { useStore } = await import('../../store/useStore');
     const store = useStore.getState();
     const activeBoardId = sessionStorage.getItem('mixboard_current_board_id');
@@ -49,7 +53,8 @@ const loadActiveBoardState = async (boardId) => {
             ? Math.max(
                 toEpochMillis(store.lastSavedAt),
                 toEpochMillis(localData?.updatedAt),
-                toEpochMillis(storePersistenceCursor.updatedAt)
+                toEpochMillis(storePersistenceCursor.updatedAt),
+                toEpochMillis(localFirstMeta.latestCreatedAt)
             )
             : toEpochMillis(localData?.updatedAt),
         localVersion: canTrustStoreState
@@ -61,9 +66,13 @@ const loadActiveBoardState = async (boardId) => {
         localClientRevision: canTrustStoreState
             ? Math.max(
                 toSafeClientRevision(localData?.clientRevision),
-                toSafeClientRevision(storePersistenceCursor.clientRevision)
+                toSafeClientRevision(storePersistenceCursor.clientRevision),
+                toSafeClientRevision(localFirstMeta.latestClientRevision)
             )
-            : toSafeClientRevision(localData?.clientRevision)
+            : Math.max(
+                toSafeClientRevision(localData?.clientRevision),
+                toSafeClientRevision(localFirstMeta.latestClientRevision)
+            )
     };
 };
 

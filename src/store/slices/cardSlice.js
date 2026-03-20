@@ -62,12 +62,21 @@ export const createCardSlice = (set, get) => {
         const updatedAt = Number(cursor.updatedAt);
         const syncVersion = Number(cursor.syncVersion);
         const clientRevision = Number(cursor.clientRevision);
+        const pendingOperationCount = Number(cursor.pendingOperationCount);
+        const lastSyncEventAt = Number(cursor.lastSyncEventAt);
 
         return {
             updatedAt: Number.isFinite(updatedAt) && updatedAt >= 0 ? updatedAt : 0,
             syncVersion: Number.isFinite(syncVersion) && syncVersion >= 0 ? syncVersion : 0,
             clientRevision: Number.isFinite(clientRevision) && clientRevision >= 0 ? clientRevision : 0,
-            dirty: cursor?.dirty === true
+            dirty: cursor?.dirty === true,
+            syncPhase: typeof cursor?.syncPhase === 'string' ? cursor.syncPhase : 'booting',
+            syncMessage: typeof cursor?.syncMessage === 'string' ? cursor.syncMessage : '',
+            syncReason: typeof cursor?.syncReason === 'string' ? cursor.syncReason : '',
+            pendingOperationCount: Number.isFinite(pendingOperationCount) && pendingOperationCount >= 0 ? pendingOperationCount : 0,
+            localActorId: typeof cursor?.localActorId === 'string' ? cursor.localActorId : '',
+            lastSyncEvent: typeof cursor?.lastSyncEvent === 'string' ? cursor.lastSyncEvent : 'RESET',
+            lastSyncEventAt: Number.isFinite(lastSyncEventAt) && lastSyncEventAt >= 0 ? lastSyncEventAt : 0
         };
     };
 
@@ -75,7 +84,19 @@ export const createCardSlice = (set, get) => {
     cards: [],
     expandedCardId: null,
     lastSavedAt: 0,
-    activeBoardPersistence: { updatedAt: 0, syncVersion: 0, clientRevision: 0, dirty: false },
+    activeBoardPersistence: {
+        updatedAt: 0,
+        syncVersion: 0,
+        clientRevision: 0,
+        dirty: false,
+        syncPhase: 'booting',
+        syncMessage: '',
+        syncReason: '',
+        pendingOperationCount: 0,
+        localActorId: '',
+        lastSyncEvent: 'RESET',
+        lastSyncEventAt: 0
+    },
 
     // Flag to prevent cloud sync loops
     // When true, BoardPage should skip saveBoardToCloud
@@ -83,7 +104,12 @@ export const createCardSlice = (set, get) => {
     setIsHydratingFromCloud: (val) => set({ isHydratingFromCloud: val }),
 
     setLastSavedAt: (val) => set({ lastSavedAt: val }),
-    setActiveBoardPersistence: (cursor) => set({ activeBoardPersistence: normalizePersistenceCursor(cursor) }),
+    setActiveBoardPersistence: (cursor) => set((state) => ({
+        activeBoardPersistence: normalizePersistenceCursor({
+            ...state.activeBoardPersistence,
+            ...cursor
+        })
+    })),
 
     setCards: (cardsOrUpdater) => {
         const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
@@ -445,7 +471,19 @@ export const createCardSlice = (set, get) => {
             cards: [],
             expandedCardId: null,
             lastSavedAt: 0,
-            activeBoardPersistence: { updatedAt: 0, syncVersion: 0, clientRevision: 0, dirty: false }
+            activeBoardPersistence: {
+                updatedAt: 0,
+                syncVersion: 0,
+                clientRevision: 0,
+                dirty: false,
+                syncPhase: 'booting',
+                syncMessage: '',
+                syncReason: '',
+                pendingOperationCount: 0,
+                localActorId: '',
+                lastSyncEvent: 'RESET',
+                lastSyncEventAt: 0
+            }
         });
     }
     };

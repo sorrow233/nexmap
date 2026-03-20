@@ -13,9 +13,13 @@ import {
 } from '../boardPersistence/persistenceCursor';
 import { applyIncrementalPatchToBoard } from './boardIncrementalPatch';
 import { BOARD_PREFIX, ensureArray, pickLocalArray } from './boardShared';
+import { readBoardOperationLogMeta, rehydrateBoardFromOperationLog } from '../localFirst/boardOperationLog';
 
 const loadActiveBoardState = async (boardId) => {
-    const localData = await idbGet(BOARD_PREFIX + boardId);
+    const rawLocalData = await idbGet(BOARD_PREFIX + boardId);
+    const localFirstReplay = await rehydrateBoardFromOperationLog(boardId, rawLocalData);
+    const localFirstMeta = await readBoardOperationLogMeta(boardId);
+    const localData = localFirstReplay?.board || rawLocalData;
     const { useStore } = await import('../../store/useStore');
     const store = useStore.getState();
     const activeBoardId = sessionStorage.getItem('mixboard_current_board_id');
@@ -46,7 +50,8 @@ const loadActiveBoardState = async (boardId) => {
             ? Math.max(
                 toEpochMillis(localData?.updatedAt),
                 toEpochMillis(storePersistenceCursor.updatedAt),
-                toEpochMillis(store.lastSavedAt)
+                toEpochMillis(store.lastSavedAt),
+                toEpochMillis(localFirstMeta.latestCreatedAt)
             )
             : toEpochMillis(localData?.updatedAt),
         localSyncVersion: canTrustStoreState
@@ -58,9 +63,13 @@ const loadActiveBoardState = async (boardId) => {
         localClientRevision: canTrustStoreState
             ? Math.max(
                 toSafeClientRevision(localData?.clientRevision),
-                toSafeClientRevision(storePersistenceCursor.clientRevision)
+                toSafeClientRevision(storePersistenceCursor.clientRevision),
+                toSafeClientRevision(localFirstMeta.latestClientRevision)
             )
-            : toSafeClientRevision(localData?.clientRevision)
+            : Math.max(
+                toSafeClientRevision(localData?.clientRevision),
+                toSafeClientRevision(localFirstMeta.latestClientRevision)
+            )
     };
 };
 

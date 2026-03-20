@@ -23,6 +23,7 @@ import {
     persistBoardsMetadataList,
     readBoardsMetadataListFromStorage
 } from './boardPersistence/boardsListStorage';
+import { rehydrateBoardFromOperationLog } from './localFirst/boardOperationLog';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
@@ -314,6 +315,29 @@ export const loadBoard = async (id) => {
     });
 
     stored = preferredSnapshot;
+
+    if (stored) {
+        try {
+            const recoveryResult = await rehydrateBoardFromOperationLog(id, stored);
+            if (recoveryResult.recovered) {
+                stored = {
+                    ...stored,
+                    ...recoveryResult.board
+                };
+                logPersistenceTrace('load:local-first-replayed', {
+                    boardId: id,
+                    appliedEnvelopeCount: recoveryResult.appliedEnvelopes.length,
+                    cursor: buildBoardCursorTrace(stored)
+                });
+            }
+        } catch (localFirstError) {
+            debugLog.error(`[Storage] Local-first replay failed for board ${id}`, localFirstError);
+            logPersistenceTrace('load:local-first-replay-failed', {
+                boardId: id,
+                error: localFirstError
+            });
+        }
+    }
 
     if (!stored) {
         debugLog.storage(`Board ${id} not found, returning empty template`);
