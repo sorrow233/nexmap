@@ -6,6 +6,9 @@ import {
     createAutoSummaryCompletedPatch
 } from '../services/boardAutoGeneration/metadata';
 import {
+    loadBoardDisplayMetadataSnapshot
+} from '../services/boardPersistence/boardDisplayMetadataStorage';
+import {
     AUTO_GENERATION_KIND,
     pickNextAutoGenerationCandidate
 } from '../services/boardAutoGeneration/candidates';
@@ -70,6 +73,46 @@ export function useBackgroundBoardAutoGeneration({
             idleCancelRef.current();
             idleCancelRef.current = null;
         }
+    }, []);
+
+    const restoreDisplayMetadataIfAvailable = useCallback(async (board) => {
+        const updater = metadataUpdaterRef.current;
+        if (!board?.id || typeof updater !== 'function') {
+            return false;
+        }
+
+        const snapshotMetadata = await loadBoardDisplayMetadataSnapshot(board.id);
+        if (!snapshotMetadata) {
+            return false;
+        }
+
+        const patch = {};
+
+        if (!Object.prototype.hasOwnProperty.call(board, 'backgroundImage') &&
+            Object.prototype.hasOwnProperty.call(snapshotMetadata, 'backgroundImage')) {
+            patch.backgroundImage = snapshotMetadata.backgroundImage;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(board, 'thumbnail') &&
+            Object.prototype.hasOwnProperty.call(snapshotMetadata, 'thumbnail')) {
+            patch.thumbnail = snapshotMetadata.thumbnail;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(board, 'summary') &&
+            Object.prototype.hasOwnProperty.call(snapshotMetadata, 'summary')) {
+            patch.summary = snapshotMetadata.summary;
+        }
+
+        if (Object.keys(patch).length === 0) {
+            return false;
+        }
+
+        runtimeWarn('[AutoGen Background] Restored missing display metadata before generation', {
+            boardId: board.id,
+            keys: Object.keys(patch)
+        });
+        await updater(board.id, patch);
+        return true;
     }, []);
 
     const runCandidateTask = useCallback(async (candidate) => {
@@ -144,6 +187,12 @@ export function useBackgroundBoardAutoGeneration({
                     return;
                 }
 
+                const restored = await restoreDisplayMetadataIfAvailable(candidate.board);
+                if (restored) {
+                    scheduleNextPass(BACKGROUND_AUTOGEN_POST_TASK_DELAY_MS);
+                    return;
+                }
+
                 runtimeWarn('[AutoGen Background] Queued candidate', {
                     boardId: candidate.board.id,
                     kind: candidate.kind,
@@ -163,6 +212,7 @@ export function useBackgroundBoardAutoGeneration({
         generatingBoardId,
         metadataReady,
         routeAllowsBackgroundWork,
+        restoreDisplayMetadataIfAvailable,
         runCandidateTask
     ]);
 

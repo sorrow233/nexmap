@@ -11,6 +11,7 @@ import { getSampleBoardsList, getSampleBoardData } from '../utils/sampleBoardsDa
 import { debugLog } from '../utils/debugLogger';
 import { normalizeBoardMetadataList } from '../services/boardTitle/metadata';
 import { persistBoardsMetadataList } from '../services/boardPersistence/boardsListStorage';
+import { hydrateBoardsDisplayMetadataList } from '../services/boardPersistence/boardDisplayMetadataStorage';
 import { useStore } from '../store/useStore';
 
 const TRASH_CLEANUP_LAST_KEY = 'mixboard_last_trash_cleanup_at';
@@ -20,6 +21,7 @@ export function useAppInit() {
     const [user, setUser] = useState(null);
     const [boardsList, setBoardsList] = useState([]);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [hasHydratedLocalBoardsMetadata, setHasHydratedLocalBoardsMetadata] = useState(false);
 
     useEffect(() => {
         const init = async () => {
@@ -48,8 +50,22 @@ export function useAppInit() {
 
             const localBoards = loadBoardsMetadata();
             if (localBoards.length > 0) {
-                setBoardsList(normalizeBoardMetadataList(localBoards));
+                const normalizedBoards = normalizeBoardMetadataList(localBoards);
+                setBoardsList(normalizedBoards);
                 setIsInitialized(true);
+                void hydrateBoardsDisplayMetadataList(normalizedBoards)
+                    .then(({ boards, changed }) => {
+                        if (changed) {
+                            setBoardsList(boards);
+                            persistBoardsMetadataList(boards, { reason: 'useAppInit:hydrate_display_metadata' });
+                        }
+                    })
+                    .catch((error) => {
+                        debugLog.error('Failed to hydrate local board display metadata', error);
+                    })
+                    .finally(() => {
+                        setHasHydratedLocalBoardsMetadata(true);
+                    });
                 return;
             }
 
@@ -65,6 +81,7 @@ export function useAppInit() {
             }
 
             persistBoardsMetadataList(persistedBoards, { reason: 'useAppInit:onboarding-samples' });
+            setHasHydratedLocalBoardsMetadata(true);
             setIsInitialized(true);
         };
 
@@ -91,5 +108,5 @@ export function useAppInit() {
         return () => unsubscribe();
     }, []);
 
-    return { user, boardsList, setBoardsList, isInitialized };
+    return { user, boardsList, setBoardsList, isInitialized, hasHydratedLocalBoardsMetadata };
 }

@@ -124,7 +124,13 @@ const hasMeaningfulBoardMetadataChange = (board, metadata = {}) => Object.keys(m
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
+    const {
+        user,
+        boardsList,
+        setBoardsList,
+        isInitialized,
+        hasHydratedLocalBoardsMetadata
+    } = useAppInit();
     const cards = useStore(state => state.cards);
     const connections = useStore(state => state.connections);
     const groups = useStore(state => state.groups);
@@ -743,7 +749,7 @@ function AppContent() {
         boardsList,
         onUpdateBoardMetadata: handleUpdateBoardMetadata,
         enabled: true,
-        metadataReady: !user?.uid || hasHydratedRemoteBoards,
+        metadataReady: hasHydratedLocalBoardsMetadata && (!user?.uid || hasHydratedRemoteBoards),
         routeAllowsBackgroundWork: location.pathname.startsWith('/gallery')
     });
 
