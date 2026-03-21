@@ -16,6 +16,8 @@ const TARGET_PART_BYTES = 180 * 1024;
 const MAX_PART_BYTES = 700 * 1024;
 const MAX_PART_COUNT = 96;
 const CLEANUP_BATCH_SIZE = 350;
+const WRITE_PARTS_BATCH_MAX_DOCS = 40;
+const WRITE_PARTS_BATCH_MAX_BYTES = 7 * 1024 * 1024;
 const CURRENT_SYNC_BACKEND = 'yjs-firestore-v1';
 
 const splitTextIntoParts = (text = '', targetBytes = TARGET_PART_BYTES) => {
@@ -42,6 +44,11 @@ const resolveCheckpointPartTargetBytes = (updateBase64 = '', byteLength = 0) => 
         MAX_PART_BYTES,
         Math.max(TARGET_PART_BYTES, requiredBytesPerPart)
     );
+};
+
+const estimateCheckpointPartWriteBytes = (part = '') => {
+    const payloadBytes = estimateTextBytes(part);
+    return payloadBytes + 1024;
 };
 
 const toSafeMillis = (value, fallback = 0) => {
@@ -118,12 +125,26 @@ const persistChunkedCheckpoint = async ({
         savedAtMs
     }, { merge: true });
 
-    for (let offset = 0; offset < parts.length; offset += CLEANUP_BATCH_SIZE) {
-        const batch = writeBatch(db);
-        const slice = parts.slice(offset, offset + CLEANUP_BATCH_SIZE);
+    let offset = 0;
 
-        slice.forEach((part, index) => {
-            const actualIndex = offset + index;
+    while (offset < parts.length) {
+        const batch = writeBatch(db);
+        let batchDocCount = 0;
+        let batchByteLength = 0;
+
+        while (offset < parts.length) {
+            const part = parts[offset];
+            const estimatedWriteBytes = estimateCheckpointPartWriteBytes(part);
+
+            if (
+                batchDocCount > 0 &&
+                (batchDocCount >= WRITE_PARTS_BATCH_MAX_DOCS
+                    || (batchByteLength + estimatedWriteBytes) > WRITE_PARTS_BATCH_MAX_BYTES)
+            ) {
+                break;
+            }
+
+            const actualIndex = offset;
             const partId = String(actualIndex).padStart(5, '0');
             batch.set(
                 doc(createCheckpointPartsCollectionRef(userId, boardId, checkpointId), partId),
@@ -133,7 +154,10 @@ const persistChunkedCheckpoint = async ({
                 },
                 { merge: true }
             );
-        });
+            batchDocCount += 1;
+            batchByteLength += estimatedWriteBytes;
+            offset += 1;
+        }
 
         await batch.commit();
     }
