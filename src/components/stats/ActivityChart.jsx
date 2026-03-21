@@ -20,7 +20,7 @@ export default function ActivityChart({
         const isMonth = viewMode === 'month';
 
         return {
-            height: 240,
+            height: isYear ? 280 : isMonth ? 300 : 320,
             barWidth: isYear ? 24 : isMonth ? 8 : 48,
             gap: isYear ? 32 : isMonth ? 6 : 24,
             radius: isMonth ? 4 : 16
@@ -61,12 +61,12 @@ export default function ActivityChart({
     };
 
     return (
-        <div className="space-y-4 select-none w-full h-full flex flex-col">
+        <div className="space-y-3 select-none w-full h-full flex flex-col">
             {/* 1. Main Chart Area - Clean & Empty container, visuals are in SVG */}
-            <div className="relative group/chart flex-1 min-h-[320px] flex flex-col justify-between">
+            <div className="relative group/chart flex-1 min-h-[360px] flex flex-col justify-between">
 
                 {/* Header / Tooltip Area */}
-                <div className="flex items-end justify-between mb-6 px-2 relative z-20 h-10">
+                <div className="flex items-end justify-between mb-3 px-2 relative z-20 h-8">
                     <span className="text-sm font-bold tracking-wide text-slate-500 dark:text-slate-400 flex items-center gap-2">
                         <Trophy size={16} className="text-indigo-400" />
                         {viewMode === 'week' ? (t?.stats?.weeklyTrend || '7日趋势') :
@@ -94,7 +94,7 @@ export default function ActivityChart({
                 </div>
 
                 {/* SVG Chart */}
-                <div className="relative w-full flex-1 flex items-end justify-center mt-2">
+                <div className="relative w-full flex-1 flex items-end justify-center">
                     <svg
                         width="100%"
                         height="100%"
@@ -130,8 +130,8 @@ export default function ActivityChart({
                             const x = index * (CHART_WIDTH / chartData.length);
                             const width = (CHART_WIDTH / chartData.length) * 0.65; // Slightly thinner for elegance
                             
-                            // Scale max height to 80% of CHART_HEIGHT to leave safe space for labels at the top
-                            const MAX_BAR_HEIGHT = CHART_HEIGHT * 0.8;
+                            // Keep a small headroom for value labels while letting bars use most of the chart area
+                            const MAX_BAR_HEIGHT = CHART_HEIGHT * 0.93;
                             const height = item.chars > 0 ? Math.max((item.chars / maxChars) * MAX_BAR_HEIGHT, 16) : 16; 
                             const y = CHART_HEIGHT - height;
 
