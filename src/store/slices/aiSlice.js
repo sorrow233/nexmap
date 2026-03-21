@@ -9,6 +9,7 @@ import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
 import { applyStreamTextUpdates, createStreamRenderBuffer } from './utils/streamRenderBuffer';
+import { createCardTimestampFields } from '../../services/cards/cardTimestamps';
 
 
 export const createAISlice = (set, get) => {
@@ -109,7 +110,7 @@ export const createAISlice = (set, get) => {
             if (initialMessages && Array.isArray(initialMessages) && initialMessages.length > 0) {
                 const newCard = {
                     id: newId, x, y,
-                    createdAt: Date.now(),
+                    ...createCardTimestampFields(),
                     data: {
                         title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
                         messages: initialMessages,
@@ -153,7 +154,7 @@ export const createAISlice = (set, get) => {
 
             const newCard = {
                 id: newId, x, y,
-                createdAt: Date.now(),
+                ...createCardTimestampFields(),
                 data: {
                     title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
                     messages: [

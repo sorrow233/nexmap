@@ -3,6 +3,7 @@ import {
     resolveDraggedCardIds
 } from '../../utils/cardDrag';
 import { debugLog } from '../../utils/debugLogger';
+import { normalizeCardTimestamps } from '../../services/cards/cardTimestamps';
 
 const createCardLookupCache = () => {
     let cachedCardsRef = null;
@@ -182,10 +183,7 @@ export const createCardSlice = (set, get) => {
     },
 
     addCard: (card) => {
-        const newCard = {
-            ...card,
-            createdAt: card.createdAt || Date.now()
-        };
+        const newCard = normalizeCardTimestamps(card);
         debugLog.store(`Adding new card: ${newCard.id}`, newCard);
         set((state) => {
             const nextCards = [...state.cards, newCard];

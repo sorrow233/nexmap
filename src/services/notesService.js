@@ -1,5 +1,7 @@
 import { loadBoardDataForSearch, saveBoard } from './storage';
 import { getBoardDisplayName } from './boardTitle/metadata';
+import { normalizeBoardSnapshot } from './sync/boardSnapshot';
+import { normalizeCardTimestamps } from './cards/cardTimestamps';
 
 const FALLBACK_TITLE = 'Untitled Note';
 const NOTE_UPDATES_EVENT = 'notes-updated';
@@ -52,21 +54,21 @@ const getActiveBoards = (boardsList = []) => {
 const isNoteCard = (card) => card?.type === 'note' && !card?.deletedAt;
 
 const normalizeNote = (card, board, boardData = null) => {
-    const content = getNoteContent(card);
-    const title = getNoteTitle(card, content);
-    const boardUpdatedAt = toTimestamp(boardData?.updatedAt) || toTimestamp(board?.updatedAt);
     const boardCreatedAt = toTimestamp(boardData?.createdAt) || toTimestamp(board?.createdAt);
-    const updatedAt = toTimestamp(card?.updatedAt) || boardUpdatedAt || toTimestamp(card?.createdAt) || boardCreatedAt;
-    const createdAt = toTimestamp(card?.createdAt) || boardCreatedAt || updatedAt || Date.now();
+    const normalizedCard = normalizeCardTimestamps(card, { boardCreatedAt });
+    const content = getNoteContent(normalizedCard);
+    const title = getNoteTitle(normalizedCard, content);
+    const updatedAt = toTimestamp(normalizedCard?.updatedAt) || toTimestamp(normalizedCard?.createdAt);
+    const createdAt = toTimestamp(normalizedCard?.createdAt);
 
     return {
-        id: card.id,
+        id: normalizedCard.id,
         boardId: board.id,
         boardName: getBoardDisplayName(board, 'Untitled Board'),
         title,
         preview: getNotePreview(content),
         content,
-        isMaster: Boolean(card?.data?.isNotepad),
+        isMaster: Boolean(normalizedCard?.data?.isNotepad),
         createdAt,
         updatedAt,
         charCount: content.length,
@@ -106,13 +108,7 @@ const loadBoardSafe = async (boardId) => {
     if (!data || typeof data !== 'object') {
         return { cards: [], connections: [], groups: [], boardPrompts: [] };
     }
-    return {
-        ...data,
-        cards: Array.isArray(data.cards) ? data.cards : [],
-        connections: Array.isArray(data.connections) ? data.connections : [],
-        groups: Array.isArray(data.groups) ? data.groups : [],
-        boardPrompts: Array.isArray(data.boardPrompts) ? data.boardPrompts : []
-    };
+    return normalizeBoardSnapshot(data);
 };
 
 const persistBoard = async (boardId, boardData) => {

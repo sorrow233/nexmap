@@ -8,6 +8,7 @@ import { debugLog } from '../utils/debugLogger';
 import { useCardGeneration } from './useCardGeneration';
 import { useNeuralNotepad } from './useNeuralNotepad';
 import { enhancePromptWithStyle, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
+import { createCardTimestampFields } from '../services/cards/cardTimestamps';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
@@ -40,6 +41,7 @@ export function useCardCreator() {
 
             setCards(prev => [...prev, {
                 id: newId, type: 'image_gen',
+                ...createCardTimestampFields(),
                 x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
                 y: (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20),
                 data: { prompt: promptText, loading: true, title: `Generating: ${promptText.substring(0, 20)}...` }
