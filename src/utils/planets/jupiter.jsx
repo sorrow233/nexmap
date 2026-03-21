@@ -5,29 +5,48 @@ import React from 'react';
  * Simplified design focusing on iconic bands and Great Red Spot.
  */
 export const jupiterTexture = {
-    // Surface: Complex banding (Orange/White/Brown)
-    background: 'linear-gradient(170deg, #451a03 0%, #78350f 10%, #d97706 20%, #fcd34d 30%, #fffbeb 35%, #92400e 40%, #b45309 50%, #fef3c7 60%, #9a3412 70%, #7c2d12 85%, #451a03 100%)',
-    shadow: 'shadow-[inset_-20px_-20px_60px_rgba(69,26,3,0.8),_0_0_40px_rgba(217,119,6,0.3)]',
+    // Highly distinct, regal gas giant banding
+    background: 'linear-gradient(165deg, #271001 0%, #78350f 15%, #c2410c 22%, #fde68a 30%, #fef3c7 35%, #92400e 45%, #b45309 52%, #fef3c7 62%, #ea580c 70%, #7c2d12 85%, #271001 100%)',
+    // Majestic, deep volumetric shadows
+    shadow: 'shadow-[inset_-35px_-35px_70px_rgba(20,5,0,0.95),0_0_60px_rgba(217,119,6,0.5),0_0_120px_rgba(245,158,11,0.2)]',
     detail: (
         <>
-            {/* 1. Turbulence Noise */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNTUiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjMiLz48L3N2Zz4=')] opacity-35 mix-blend-overlay"></div>
+            {/* Intricate swirling storm turbulence */}
+            <div className="absolute inset-[-10%] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJudXJiIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC4wMSAwLjUiIG51bU9jdGF2ZXM9IjUiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48ZmVDb2xvck1hdHJpeCB0eXBlPSJtYXRyaXgiIHZhbHVlcz0iMSA0IDAgMCAwICAwIDEgMCAwIDAgIDAgMCAxIDAgMCAgMCAwIDAgMTAgLTUiLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbnVyYikiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] opacity-[0.85] mix-blend-color-burn rounded-full overflow-hidden blur-[1px]"></div>
 
-            {/* 2. The Great Red Spot - Soft, blended oval */}
-            <div className="absolute top-[55%] left-[18%] w-[28%] h-[16%] bg-red-800/50 rounded-[50%] blur-[6px] rotate-[-10deg] mix-blend-multiply"></div>
-            <div className="absolute top-[57%] left-[21%] w-[20%] h-[11%] bg-red-600/60 rounded-[50%] blur-[4px] rotate-[-10deg] shadow-[inset_2px_2px_6px_rgba(0,0,0,0.4)]"></div>
+            {/* Equatorial Bright Zone (Thick, glowing clouds) */}
+            <div className="absolute top-[32%] left-[-10%] w-[120%] h-[12%] bg-gradient-to-r from-transparent via-orange-100/40 to-transparent blur-[6px] mix-blend-overlay rotate-[10deg]"></div>
+            <div className="absolute top-[34%] left-[-10%] w-[120%] h-[8%] bg-white/20 blur-[4px] mix-blend-screen rotate-[10deg]"></div>
 
-            {/* 3. White Zone Highlights */}
-            <div className="absolute top-[30%] left-0 w-full h-[8%] bg-gradient-to-r from-transparent via-white/20 to-transparent blur-[3px] mix-blend-overlay"></div>
-            <div className="absolute top-[58%] left-0 w-full h-[5%] bg-gradient-to-r from-transparent via-white/15 to-transparent blur-[2px] mix-blend-overlay"></div>
+            {/* Temperate Banding with Flow */}
+            <div className="absolute top-[60%] left-[-10%] w-[120%] h-[10%] bg-gradient-to-r from-transparent via-amber-200/30 to-transparent blur-[5px] mix-blend-color-dodge rotate-[10deg]"></div>
+            
+            {/* The Great Red Spot (Iconic, glowing, deep) */}
+            <div className="absolute top-[52%] left-[22%] w-[32%] h-[18%] bg-gradient-to-br from-red-600/80 to-red-950/90 rounded-[50%] blur-[4px] rotate-[-5deg] mix-blend-multiply shadow-[0_0_15px_rgba(185,28,28,0.5)]"></div>
+            
+            {/* Eye of the storm */}
+            <div className="absolute top-[54%] left-[26%] w-[22%] h-[12%] bg-gradient-to-br from-orange-400/60 to-red-700/80 rounded-[50%] blur-[2px] rotate-[-5deg] shadow-[inset_3px_3px_8px_rgba(0,0,0,0.6)] flex items-center justify-center">
+                <div className="w-[40%] h-[40%] bg-red-950/60 rounded-[50%] blur-[1px]"></div>
+            </div>
 
-            {/* 4. Subtle storm ovals */}
-            <div className="absolute top-[38%] right-[20%] w-[10%] h-[5%] bg-white/30 blur-[4px] rounded-full mix-blend-screen"></div>
-            <div className="absolute top-[72%] left-[40%] w-[8%] h-[4%] bg-white/25 blur-[4px] rounded-full mix-blend-screen"></div>
+            {/* Oval BA (Red Spot Jr.) & string of pearls */}
+            <div className="absolute top-[68%] left-[45%] w-[12%] h-[6%] bg-white/50 blur-[3px] rounded-[50%] rotate-[-5deg] mix-blend-screen shadow-[inset_-2px_-2px_4px_rgba(0,0,0,0.4)]"></div>
+            <div className="absolute top-[70%] left-[60%] w-[8%] h-[4%] bg-white/40 blur-[2px] rounded-[50%] rotate-[-5deg] mix-blend-screen"></div>
+            <div className="absolute top-[72%] left-[70%] w-[6%] h-[3%] bg-white/30 blur-[2px] rounded-[50%] rotate-[-5deg] mix-blend-screen"></div>
 
-            {/* 5. Polar Darkening */}
-            <div className="absolute top-[-5%] left-0 w-full h-[15%] bg-amber-950/40 blur-[15px] mix-blend-multiply"></div>
-            <div className="absolute bottom-[-5%] left-0 w-full h-[15%] bg-amber-950/40 blur-[15px] mix-blend-multiply"></div>
+            {/* Northern Storms (Brown Barges) */}
+            <div className="absolute top-[25%] left-[30%] w-[15%] h-[6%] bg-amber-950/80 rounded-[50%] blur-[3px] rotate-[10deg] mix-blend-multiply"></div>
+            <div className="absolute top-[22%] left-[50%] w-[18%] h-[5%] bg-amber-950/70 rounded-[50%] blur-[3px] rotate-[10deg] mix-blend-multiply"></div>
+
+            {/* Intense Polar Haze & Darkening */}
+            <div className="absolute top-[-5%] left-[-5%] w-[110%] h-[20%] bg-gradient-to-b from-blue-900/40 to-transparent blur-[15px] mix-blend-multiply rounded-full"></div>
+            <div className="absolute bottom-[-5%] left-[-5%] w-[110%] h-[20%] bg-gradient-to-t from-blue-900/40 to-transparent blur-[15px] mix-blend-multiply rounded-full"></div>
+
+            {/* Specular Highlight (Gas giants have soft, broad highlights) */}
+            <div className="absolute top-[20%] left-[20%] w-[60%] h-[60%] bg-yellow-100/15 blur-[40px] rounded-full mix-blend-screen pointer-events-none"></div>
+
+            {/* Atmospheric Rim Glow */}
+            <div className="absolute inset-0 rounded-full border-[2px] border-orange-200/30 blur-[2px] mix-blend-screen"></div>
         </>
     )
 };
