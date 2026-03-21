@@ -142,6 +142,7 @@ export function useBoardPersistence({
     const saveOperationChainRef = useRef(Promise.resolve());
     const idleShadowSaveCancelRef = useRef(null);
     const idleLocalSaveCancelRef = useRef(null);
+    const generationDeferredRevisionRef = useRef(0);
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -522,6 +523,23 @@ export function useBoardPersistence({
             clientRevision: revision
         };
 
+        if (hasGeneratingCards) {
+            generationDeferredRevisionRef.current = revision;
+
+            if (
+                activePersistenceCursorRef.current.clientRevision !== revision ||
+                activePersistenceCursorRef.current.dirty !== true
+            ) {
+                applySaveStatus(setSaveStatus, 'local_dirty');
+                updateActivePersistenceCursor({
+                    updatedAt: Date.now(),
+                    clientRevision: revision,
+                    dirty: true
+                });
+            }
+            return;
+        }
+
         applySaveStatus(setSaveStatus, 'local_dirty');
         updateActivePersistenceCursor({
             updatedAt: Date.now(),
@@ -561,6 +579,7 @@ export function useBoardPersistence({
         lastLocalScheduleAtRef.current = 0;
         shadowSaveWindowStartedAtRef.current = 0;
         localSaveWindowStartedAtRef.current = 0;
+        generationDeferredRevisionRef.current = 0;
         if (idleShadowSaveCancelRef.current) {
             idleShadowSaveCancelRef.current();
             idleShadowSaveCancelRef.current = null;
@@ -592,6 +611,7 @@ export function useBoardPersistence({
         wasGeneratingRef.current = isGeneratingNow;
 
         if (wasGenerating && !isGeneratingNow) {
+            generationDeferredRevisionRef.current = 0;
             flushPendingPersistence('generation_complete_flush', {
                 silent: true
             });

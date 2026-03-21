@@ -91,6 +91,7 @@ export default function App() {
 const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
+const STREAMING_SYNC_DEBOUNCE_MS = 700;
 
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
@@ -136,11 +137,13 @@ function AppContent() {
         setLastSavedAt,
         setActiveBoardPersistence,
         setExternalSyncMarker,
-        activeBoardPersistence
+        activeBoardPersistence,
+        generatingCardIds
     } = useStore();
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
     const boardSyncControllerRef = useRef(null);
+    const boardSyncDebounceTimerRef = useRef(null);
     const metadataSyncTimerRef = useRef(null);
     const metadataHydrationRetryTimerRef = useRef(null);
     const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
@@ -231,6 +234,10 @@ function AppContent() {
             if (searchFlushTimerRef.current) {
                 clearTimeout(searchFlushTimerRef.current);
                 searchFlushTimerRef.current = null;
+            }
+            if (boardSyncDebounceTimerRef.current) {
+                clearTimeout(boardSyncDebounceTimerRef.current);
+                boardSyncDebounceTimerRef.current = null;
             }
             flushSearchDataBuffer();
         };
@@ -469,6 +476,10 @@ function AppContent() {
                     await boardSyncControllerRef.current.stop();
                     boardSyncControllerRef.current = null;
                 }
+                if (boardSyncDebounceTimerRef.current) {
+                    clearTimeout(boardSyncDebounceTimerRef.current);
+                    boardSyncDebounceTimerRef.current = null;
+                }
 
                 // 1. Start loading state & clear existing data to prevent bleed-over
                 useStore.getState().setIsBoardLoading(true);
@@ -544,6 +555,10 @@ function AppContent() {
                 void boardSyncControllerRef.current.stop();
                 boardSyncControllerRef.current = null;
             }
+            if (boardSyncDebounceTimerRef.current) {
+                clearTimeout(boardSyncDebounceTimerRef.current);
+                boardSyncDebounceTimerRef.current = null;
+            }
         };
     }, [
         applyBoardSnapshotToStore,
@@ -579,8 +594,25 @@ function AppContent() {
     useEffect(() => {
         const controller = boardSyncControllerRef.current;
         if (!controller || !currentBoardId || isBoardLoading) return;
+
+        if (generatingCardIds?.size > 0) {
+            if (boardSyncDebounceTimerRef.current) {
+                clearTimeout(boardSyncDebounceTimerRef.current);
+            }
+            boardSyncDebounceTimerRef.current = setTimeout(() => {
+                boardSyncDebounceTimerRef.current = null;
+                controller.applyLocalSnapshot(currentBoardSnapshot);
+            }, STREAMING_SYNC_DEBOUNCE_MS);
+            return;
+        }
+
+        if (boardSyncDebounceTimerRef.current) {
+            clearTimeout(boardSyncDebounceTimerRef.current);
+            boardSyncDebounceTimerRef.current = null;
+        }
+
         controller.applyLocalSnapshot(currentBoardSnapshot);
-    }, [currentBoardId, currentBoardSnapshot, isBoardLoading]);
+    }, [currentBoardId, currentBoardSnapshot, generatingCardIds?.size, isBoardLoading]);
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
