@@ -395,6 +395,20 @@ export const readBoardSnapshotFromDoc = (doc) => {
     return normalizeBoardSnapshot(next);
 };
 
+export const encodeCompactBoardSnapshotUpdate = (source) => {
+    const snapshot = source instanceof Y.Doc
+        ? readBoardSnapshotFromDoc(source)
+        : normalizeBoardSnapshot(source);
+    const tempDoc = createBoardDoc();
+
+    try {
+        syncBoardSnapshotToDoc(tempDoc, snapshot);
+        return Y.encodeStateAsUpdate(tempDoc);
+    } finally {
+        tempDoc.destroy();
+    }
+};
+
 export const isBoardDocEmpty = (doc) => {
     const snapshot = readBoardSnapshotFromDoc(doc);
     return (

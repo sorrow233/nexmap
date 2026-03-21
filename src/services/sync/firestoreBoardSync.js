@@ -16,7 +16,10 @@ import {
     FIREBASE_SYNC_ORIGINS
 } from './config';
 import { uuid } from '../../utils/uuid';
-import { createBoardDoc, isBoardDocEmpty, syncBoardSnapshotToDoc } from './boardYDoc';
+import {
+    encodeCompactBoardSnapshotUpdate,
+    isBoardDocEmpty
+} from './boardYDoc';
 import { isMeaningfullyEmptyBoardSnapshot, normalizeBoardSnapshot } from './boardSnapshot';
 import { base64ToBytes, bytesToBase64 } from './base64';
 import {
@@ -524,7 +527,7 @@ export class FirestoreBoardSync {
                         || (this.snapshotSaveCount % SNAPSHOT_CLEANUP_SAVE_INTERVAL) === 0
                     );
 
-                    const update = Y.encodeStateAsUpdate(this.doc);
+                    const update = encodeCompactBoardSnapshotUpdate(this.doc);
                     const checkpoint = await saveBoardCheckpoint({
                         userId: this.userId,
                         boardId: this.boardId,
@@ -635,21 +638,17 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
         return false;
     }
 
-    const tempDoc = createBoardDoc();
-    syncBoardSnapshotToDoc(tempDoc, normalizedSnapshot);
     let checkpoint = null;
     try {
         checkpoint = await saveBoardCheckpoint({
             userId,
             boardId,
             deviceId,
-            updateBase64: bytesToBase64(Y.encodeStateAsUpdate(tempDoc)),
+            updateBase64: bytesToBase64(encodeCompactBoardSnapshotUpdate(normalizedSnapshot)),
             reason: 'local_seed'
         });
     } catch (error) {
         console.error(`[FirebaseSync] Failed to seed local board ${boardId}:`, error);
     }
-
-    tempDoc.destroy();
     return Boolean(checkpoint);
 };
