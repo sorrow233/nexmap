@@ -11,9 +11,11 @@ import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 
 const CHECKPOINT_STORAGE_INLINE = 'inline';
 const CHECKPOINT_STORAGE_CHUNKED = 'chunked';
-const INLINE_CHECKPOINT_MAX_BYTES = 700 * 1024;
-const TARGET_PART_BYTES = 180 * 1024;
-const MAX_PART_BYTES = 700 * 1024;
+// Keep a safety margin below Firestore's 1 MiB document cap while dramatically
+// reducing chunk counts for large checkpoints.
+const INLINE_CHECKPOINT_MAX_BYTES = 900 * 1024;
+const TARGET_PART_BYTES = 800 * 1024;
+const MAX_PART_BYTES = 900 * 1024;
 const MAX_PART_COUNT = 96;
 const CLEANUP_BATCH_SIZE = 350;
 const WRITE_PARTS_BATCH_MAX_DOCS = 40;
