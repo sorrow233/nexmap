@@ -128,15 +128,18 @@ export default function ActivityChart({
 
                         {chartData.map((item, index) => {
                             const x = index * (CHART_WIDTH / chartData.length);
-                            const width = (CHART_WIDTH / chartData.length) * 0.7; // 70% bar width
-                            const height = item.chars > 0 ? Math.max((item.chars / maxChars) * CHART_HEIGHT, 12) : 12; // Min height 12px for visibility
+                            const width = (CHART_WIDTH / chartData.length) * 0.65; // Slightly thinner for elegance
+                            
+                            // Scale max height to 80% of CHART_HEIGHT to leave safe space for labels at the top
+                            const MAX_BAR_HEIGHT = CHART_HEIGHT * 0.8;
+                            const height = item.chars > 0 ? Math.max((item.chars / maxChars) * MAX_BAR_HEIGHT, 16) : 16; 
                             const y = CHART_HEIGHT - height;
 
                             const isToday = item.isToday;
                             const isHovered = hoveredIndex === index;
 
-                            // Calculate Bar Radius based on width (capped)
-                            const barRadius = Math.min(width / 2, 24);
+                            // CRITICAL FIX: Cap barRadius to both half-width AND half-height to prevent WebKit/Safari bloat bug
+                            const barRadius = Math.min(width / 2, height / 2, 20);
 
                             return (
                                 <g
@@ -148,9 +151,9 @@ export default function ActivityChart({
                                     {/* Hover Interaction Zone (Invisible but wider) */}
                                     <rect
                                         x={x - width / 2}
-                                        y="0"
+                                        y="-40"
                                         width={width * 2}
-                                        height={CHART_HEIGHT + 40}
+                                        height={CHART_HEIGHT + 80}
                                         fill="transparent"
                                     />
 
@@ -165,17 +168,17 @@ export default function ActivityChart({
                                         fill={isToday ? "url(#barGradientToday)" : "url(#barGradient)"}
                                         fillOpacity={isHovered ? 1 : 0.9} 
                                         filter={isToday ? "url(#clayShadowToday)" : "url(#clayShadow)"}
-                                        className={`transition-all duration-500 ease-spring ${isHovered ? 'scale-y-[1.03] -translate-y-2' : ''}`}
-                                        style={{ transformOrigin: 'bottom' }}
+                                        className={`transition-all duration-500 ease-out ${isHovered ? 'scale-y-[1.05]' : ''}`}
+                                        style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
                                     />
 
                                     {/* Value Label (Always Visible) */}
                                     <text
                                         x={x + (CHART_WIDTH / chartData.length) / 2}
-                                        y={y - 16}
+                                        y={y - 14}
                                         textAnchor="middle"
                                         className={`
-                                            text-xs font-bold transition-all duration-300
+                                            text-[11px] font-bold transition-all duration-300
                                             ${isToday ? 'fill-indigo-500 dark:fill-indigo-400' : 'fill-slate-400 dark:fill-slate-500'}
                                             ${isHovered ? 'scale-110 fill-indigo-600 dark:fill-indigo-300' : ''}
                                         `}
