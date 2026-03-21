@@ -4,6 +4,10 @@ import {
 } from '../../utils/cardDrag';
 import { debugLog } from '../../utils/debugLogger';
 import { normalizeCardTimestamps } from '../../services/cards/cardTimestamps';
+import {
+    createCardIndexMutation,
+    nextCardIndexMutation
+} from './utils/cardIndexMutation';
 
 const createCardLookupCache = () => {
     let cachedCardsRef = null;
@@ -59,6 +63,9 @@ const createCardLookupCache = () => {
 
 export const createCardSlice = (set, get) => {
     const cardLookup = createCardLookupCache();
+    const buildCardIndexMutation = (state, config = {}) => (
+        nextCardIndexMutation(state?.cardIndexMutation, config)
+    );
     const normalizePersistenceCursor = (cursor = {}) => {
         const updatedAt = Number(cursor.updatedAt);
         const clientRevision = Number(cursor.clientRevision);
@@ -87,6 +94,7 @@ export const createCardSlice = (set, get) => {
 
     return {
     cards: [],
+    cardIndexMutation: createCardIndexMutation(),
     expandedCardId: null,
     lastSavedAt: 0,
 	    activeBoardPersistence: {
@@ -124,7 +132,13 @@ export const createCardSlice = (set, get) => {
 	        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
 	        debugLog.store('Bulk setting cards', { count: nextCards.length });
 	        cardLookup.rebuild(nextCards);
-        set({ cards: nextCards });
+        set((state) => ({
+            cards: nextCards,
+            cardIndexMutation: buildCardIndexMutation(state, {
+                mode: 'bulk',
+                reason: 'setCards'
+            })
+        }));
     },
 
     getCardById: (id) => {
@@ -174,7 +188,14 @@ export const createCardSlice = (set, get) => {
         if (updatedCards.length === 0) return state;
 
         cardLookup.patch(nextCards, updatedCards);
-        return { cards: nextCards };
+        return {
+            cards: nextCards,
+            cardIndexMutation: buildCardIndexMutation(state, {
+                mode: 'patch',
+                updatedCards,
+                reason: 'moveCardsByIds'
+            })
+        };
     }),
 
     setExpandedCardId: (id) => {
@@ -189,7 +210,11 @@ export const createCardSlice = (set, get) => {
             const nextCards = [...state.cards, newCard];
             cardLookup.rebuild(nextCards);
             return {
-                cards: nextCards
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'bulk',
+                    reason: 'addCard'
+                })
             };
         });
         // Removed: position-based auto-add to zone
@@ -214,8 +239,16 @@ export const createCardSlice = (set, get) => {
                 data: { ...currentCard.data, ...updatedData }
             };
 
-            cardLookup.patch(nextCards, [nextCards[index]]);
-            return { cards: nextCards };
+            const updatedCard = nextCards[index];
+            cardLookup.patch(nextCards, [updatedCard]);
+            return {
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'patch',
+                    updatedCards: [updatedCard],
+                    reason: 'updateCard'
+                })
+            };
         });
     },
 
@@ -241,8 +274,16 @@ export const createCardSlice = (set, get) => {
                 }
             };
 
-            cardLookup.patch(nextCards, [nextCards[index]]);
-            return { cards: nextCards };
+            const updatedCard = nextCards[index];
+            cardLookup.patch(nextCards, [updatedCard]);
+            return {
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'patch',
+                    updatedCards: [updatedCard],
+                    reason: 'updateCardFull'
+                })
+            };
         });
     },
 
@@ -267,6 +308,13 @@ export const createCardSlice = (set, get) => {
 
             return {
                 cards: index === undefined ? state.cards : nextCards,
+                cardIndexMutation: patchedCards.length > 0
+                    ? buildCardIndexMutation(state, {
+                        mode: 'patch',
+                        updatedCards: patchedCards,
+                        reason: 'deleteCard'
+                    })
+                    : state.cardIndexMutation,
                 // Still remove connections for soft-deleted cards (they'll be restored if card is restored)
                 connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
                 generatingCardIds: nextGenerating,
@@ -287,8 +335,16 @@ export const createCardSlice = (set, get) => {
             const nextCards = state.cards.slice();
             nextCards[index] = { ...nextCards[index], deletedAt: undefined };
 
-            cardLookup.patch(nextCards, [nextCards[index]]);
-            return { cards: nextCards };
+            const updatedCard = nextCards[index];
+            cardLookup.patch(nextCards, [updatedCard]);
+            return {
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'patch',
+                    updatedCards: [updatedCard],
+                    reason: 'restoreCard'
+                })
+            };
         });
     },
 
@@ -299,7 +355,11 @@ export const createCardSlice = (set, get) => {
             const nextCards = state.cards.filter(c => c.id !== id);
             cardLookup.rebuild(nextCards);
             return {
-                cards: nextCards
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'bulk',
+                    reason: 'permanentlyDeleteCard'
+                })
             };
         });
     },
@@ -351,7 +411,12 @@ export const createCardSlice = (set, get) => {
                 });
                 cardLookup.rebuild(nextCards);
                 return {
-                    cards: nextCards
+                    cards: nextCards,
+                    cardIndexMutation: buildCardIndexMutation(state, {
+                        mode: 'patch',
+                        updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
+                        reason: 'arrangeCards:group-grid'
+                    })
                 };
             });
             return;
@@ -373,7 +438,12 @@ export const createCardSlice = (set, get) => {
                 });
                 cardLookup.rebuild(nextCards);
                 return {
-                    cards: nextCards
+                    cards: nextCards,
+                    cardIndexMutation: buildCardIndexMutation(state, {
+                        mode: 'patch',
+                        updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
+                        reason: 'arrangeCards:layout'
+                    })
                 };
             });
         } else {
@@ -413,7 +483,12 @@ export const createCardSlice = (set, get) => {
                 });
                 cardLookup.rebuild(nextCards);
                 return {
-                    cards: nextCards
+                    cards: nextCards,
+                    cardIndexMutation: buildCardIndexMutation(state, {
+                        mode: 'patch',
+                        updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
+                        reason: 'arrangeCards:grid'
+                    })
                 };
             });
         }
@@ -465,6 +540,7 @@ export const createCardSlice = (set, get) => {
         cardLookup.clear();
 	        set({
 	            cards: [],
+                cardIndexMutation: createCardIndexMutation(),
 	            expandedCardId: null,
 	            lastSavedAt: 0,
 	            activeBoardPersistence: {

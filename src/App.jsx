@@ -5,6 +5,7 @@ import { auth, googleProvider } from './services/firebase';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAppInit } from './hooks/useAppInit';
 import { useStore } from './store/useStore';
+import { nextCardIndexMutation } from './store/slices/utils/cardIndexMutation';
 import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
 import { ToastProvider } from './components/Toast';
@@ -180,6 +181,7 @@ function AppContent() {
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
+        const currentCardIndexMutation = useStore.getState().cardIndexMutation;
 
         // Build the merged state patch — single zustand set() to avoid N separate renders.
         // In async callbacks (IDB / Firebase), React 18 automatic batching does NOT cover
@@ -197,7 +199,11 @@ function AppContent() {
                 updatedAt: normalized.updatedAt || 0,
                 clientRevision: normalized.clientRevision || 0,
                 dirty: false
-            }
+            },
+            cardIndexMutation: nextCardIndexMutation(currentCardIndexMutation, {
+                mode: 'bulk',
+                reason: `applyBoardSnapshotToStore:${options.source || 'unknown'}`
+            })
         };
 
         if (options.source === 'remote_sync' && options.boardId) {

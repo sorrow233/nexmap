@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, Clipboard, Star, Check } from 'lucide-react';
 import { formatTime } from '../utils/format';
 import { isSafari, isIOS } from '../utils/browser';
-import { renderCachedMarkdownToHtml } from '../utils/markdownCache';
 
 import { useDraggable } from '../hooks/useDraggable';
 import { useContextMenu } from './ContextMenu';
@@ -130,11 +129,6 @@ const Card = React.memo(function Card({
         return text;
     }, [data.data?.marks, lastMessage, data.data?.messages]); // Dependencies: marks and lastMessage (which comes from data.data.messages)
 
-
-    // Render Markdown
-    const markdownHtml = React.useMemo(() => ({
-        __html: renderCachedMarkdownToHtml(previewText, 'card-preview')
-    }), [previewText]);
 
     const handleCopyFullCard = async (e) => {
         e.stopPropagation();
@@ -288,12 +282,10 @@ const Card = React.memo(function Card({
                         </div>
                     ) : (
                         <div
-                            className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed opacity-60 line-clamp-4 font-sans"
+                            className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed opacity-60 line-clamp-4 font-sans whitespace-pre-wrap break-words"
                             style={{ maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)' }}
                         >
-                            {/* Render plain text preview but with better typography */}
-                            {/* Dangerously Set HTML for markdown */}
-                            <div className="markdown-preview prose prose-xs dark:prose-invert pointer-events-none" dangerouslySetInnerHTML={markdownHtml} />
+                            {previewText}
                         </div>
                     )}
                 </div>

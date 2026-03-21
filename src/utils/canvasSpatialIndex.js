@@ -148,6 +148,22 @@ export function syncCardSpatialIndex(spatialIndex, cards) {
     return changed;
 }
 
+export function patchCardSpatialIndex(spatialIndex, updatedCards = []) {
+    const index = spatialIndex || createEmptyCardSpatialIndex();
+    let changed = false;
+
+    updatedCards.forEach((card) => {
+        if (!card?.id) return;
+        const existingOrder = index.orderMap.get(card.id);
+        const order = Number.isFinite(existingOrder) ? existingOrder : 0;
+        if (upsertCardInIndex(index, card, order)) {
+            changed = true;
+        }
+    });
+
+    return changed;
+}
+
 export function createCardSpatialIndex(cards, bucketSize = DEFAULT_BUCKET_SIZE) {
     const spatialIndex = createEmptyCardSpatialIndex(bucketSize);
     syncCardSpatialIndex(spatialIndex, cards);

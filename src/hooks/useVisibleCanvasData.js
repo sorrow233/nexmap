@@ -17,7 +17,7 @@ import {
 const EMPTY_POSITION_OVERRIDES = new Map();
 
 export function useVisibleCanvasData({
-    cards,
+    cardIndexMutation,
     connections,
     groups,
     offset,
@@ -26,7 +26,7 @@ export function useVisibleCanvasData({
     generatingCardIds,
     positionOverrides = EMPTY_POSITION_OVERRIDES
 }) {
-    const cardSpatialIndex = useIncrementalCardSpatialIndex(cards);
+    const cardSpatialIndex = useIncrementalCardSpatialIndex(cardIndexMutation);
     const groupGeometryCacheRef = useRef(createGroupGeometryCache());
 
     const viewportRect = useMemo(

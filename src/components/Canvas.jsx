@@ -34,7 +34,7 @@ export default function Canvas({
 }) {
     const RIGHT_BUTTON_LONG_PRESS_MS = 220;
     // Granular selectors to prevent unnecessary re-renders
-    const cards = useStore(state => state.cards);
+    const cardIndexMutation = useStore(state => state.cardIndexMutation);
     const connections = useStore(state => state.connections);
     const groups = useStore(state => state.groups);
     const offset = useStore(state => state.offset);
@@ -84,7 +84,7 @@ export default function Canvas({
         selectedIdSet,
         targetCardIds
     } = useVisibleCanvasData({
-        cards,
+        cardIndexMutation,
         connections,
         groups,
         offset,

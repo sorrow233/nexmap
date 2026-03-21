@@ -1,4 +1,5 @@
 import { calculateGridLayout } from '../../utils/autoLayout';
+import { nextCardIndexMutation } from './utils/cardIndexMutation';
 
 export const createSelectionSlice = (set, get) => ({
     // selectedIds is typically managed in canvasSlice or similar, but used here.
@@ -42,15 +43,25 @@ export const createSelectionSlice = (set, get) => ({
 
         if (newPositions.size === 0) return;
 
-        set(state => ({
-            cards: state.cards.map(card => {
+        set(state => {
+            const nextCards = state.cards.map(card => {
                 const newPos = newPositions.get(card.id);
                 if (newPos) {
                     return { ...card, x: newPos.x, y: newPos.y };
                 }
                 return card;
-            })
-        }));
+            });
+            const updatedCards = nextCards.filter((card) => newPositions.has(card.id));
+
+            return {
+                cards: nextCards,
+                cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
+                    mode: 'patch',
+                    updatedCards,
+                    reason: 'arrangeSelectionGrid'
+                })
+            };
+        });
     },
 
     handleBatchDelete: () => {
@@ -59,24 +70,37 @@ export const createSelectionSlice = (set, get) => ({
         const selectedIdSet = new Set(selectedIds);
         const deletedAt = Date.now();
 
-        set(state => ({
-            cards: state.cards.map(card => (
-                selectedIdSet.has(card.id)
-                    ? { ...card, deletedAt }
-                    : card
-            )),
-            connections: state.connections.filter(conn =>
+        set(state => {
+            const updatedCards = [];
+            const nextCards = state.cards.map((card) => {
+                if (!selectedIdSet.has(card.id)) return card;
+                const updatedCard = { ...card, deletedAt };
+                updatedCards.push(updatedCard);
+                return updatedCard;
+            });
+
+            return {
+                cards: nextCards,
+                cardIndexMutation: updatedCards.length > 0
+                    ? nextCardIndexMutation(state.cardIndexMutation, {
+                        mode: 'patch',
+                        updatedCards,
+                        reason: 'handleBatchDelete'
+                    })
+                    : state.cardIndexMutation,
+                connections: state.connections.filter(conn =>
                 !selectedIdSet.has(conn.from) && !selectedIdSet.has(conn.to)
-            ),
-            groups: state.groups.map(g => ({
+                ),
+                groups: state.groups.map(g => ({
                 ...g,
                 cardIds: g.cardIds.filter(id => !selectedIdSet.has(id))
-            })).filter(g => g.cardIds.length > 0),
-            generatingCardIds: new Set(
+                })).filter(g => g.cardIds.length > 0),
+                generatingCardIds: new Set(
                 Array.from(state.generatingCardIds || []).filter(id => !selectedIdSet.has(id))
-            ),
-            selectedIds: [],
-            expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId
-        }));
+                ),
+                selectedIds: [],
+                expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId
+            };
+        });
     },
 });

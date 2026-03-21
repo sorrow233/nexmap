@@ -22,6 +22,7 @@ import {
     persistCardMessageImagesToIDB
 } from '../../services/ai/messageContent';
 import { yieldToMainThread } from '../../utils/scheduling';
+import { nextCardIndexMutation } from './utils/cardIndexMutation';
 
 const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
     if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
@@ -217,7 +218,11 @@ export const createAISlice = (set, get) => {
 
                 set(state => ({
                     cards: [...state.cards, newCard],
-                    connections: [...state.connections, ...autoConnections]
+                    connections: [...state.connections, ...autoConnections],
+                    cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
+                        mode: 'bulk',
+                        reason: 'createAICard:initialMessages'
+                    })
                     // NOTE: Do NOT add to generatingCardIds since we're not generating
                 }));
 
@@ -245,7 +250,11 @@ export const createAISlice = (set, get) => {
             set(state => ({
                 cards: [...state.cards, newCard],
                 connections: [...state.connections, ...autoConnections],
-                generatingCardIds: new Set(state.generatingCardIds).add(newId)
+                generatingCardIds: new Set(state.generatingCardIds).add(newId),
+                cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
+                    mode: 'bulk',
+                    reason: 'createAICard:streaming'
+                })
             }));
 
             if (images.length > 0) {
@@ -457,8 +466,9 @@ export const createAISlice = (set, get) => {
         setAssistantMessageMeta: (cardId, messageId, metaUpdates = {}) => {
             if (!cardId || !messageId || !metaUpdates || typeof metaUpdates !== 'object') return;
 
-            set(state => ({
-                cards: state.cards.map(card => {
+            set(state => {
+                const updatedCards = [];
+                const nextCards = state.cards.map((card) => {
                     if (card.id !== cardId) return card;
                     const messages = [...(card.data.messages || [])];
                     const targetIndex = messages.findIndex(msg => msg.id === messageId);
@@ -473,12 +483,25 @@ export const createAISlice = (set, get) => {
                         }
                     };
 
-                    return {
+                    const updatedCard = {
                         ...card,
                         data: { ...card.data, messages }
                     };
-                })
-            }));
+                    updatedCards.push(updatedCard);
+                    return updatedCard;
+                });
+
+                return {
+                    cards: nextCards,
+                    cardIndexMutation: updatedCards.length > 0
+                        ? nextCardIndexMutation(state.cardIndexMutation, {
+                            mode: 'patch',
+                            updatedCards,
+                            reason: 'setAssistantMessageMeta'
+                        })
+                        : state.cardIndexMutation
+                };
+            });
         },
 
         setCardGenerating: (id, isGenerating) => {
@@ -514,6 +537,12 @@ export const createAISlice = (set, get) => {
                 const nextCards = committedUpdates.size > 0
                     ? applyStreamTextUpdates(state.cards, committedUpdates)
                     : state.cards;
+                const committedCardIds = committedUpdates.size > 0
+                    ? new Set(Array.from(committedUpdates.keys()).map((bufferKey) => String(bufferKey).split(':')[0]))
+                    : null;
+                const updatedCards = committedCardIds
+                    ? nextCards.filter((card) => committedCardIds.has(card.id))
+                    : [];
 
                 const patch = {
                     generatingCardIds: next
@@ -521,6 +550,11 @@ export const createAISlice = (set, get) => {
 
                 if (nextCards !== state.cards) {
                     patch.cards = nextCards;
+                    patch.cardIndexMutation = nextCardIndexMutation(state.cardIndexMutation, {
+                        mode: 'patch',
+                        updatedCards,
+                        reason: 'setCardGenerating:commitStream'
+                    });
                 }
 
                 if (nextStreamingMessages !== state.streamingMessages) {
@@ -554,8 +588,9 @@ export const createAISlice = (set, get) => {
             }
 
             // Reset assistant messages first AND update to current model
-            set(state => ({
-                cards: state.cards.map(c => {
+            set(state => {
+                const updatedCards = [];
+                const nextCards = state.cards.map((c) => {
                     if (selectedIds.indexOf(c.id) !== -1) {
                         const newMsgs = [...(c.data.messages || [])];
                         const assistantId = uuid();
@@ -564,7 +599,7 @@ export const createAISlice = (set, get) => {
                         }
                         newMsgs.push({ id: assistantId, role: 'assistant', content: '' });
                         // Update card to use current active model and provider
-                        return {
+                        const updatedCard = {
                             ...c,
                             data: {
                                 ...c.data,
@@ -573,12 +608,25 @@ export const createAISlice = (set, get) => {
                                 providerId: currentProviderId
                             }
                         };
+                        updatedCards.push(updatedCard);
+                        return updatedCard;
                     }
                     return c;
-                }),
-                // Create new Set properly: spread existing Set, then add each selectedId
-                generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
-            }));
+                });
+
+                return {
+                    cards: nextCards,
+                    cardIndexMutation: updatedCards.length > 0
+                        ? nextCardIndexMutation(state.cardIndexMutation, {
+                            mode: 'patch',
+                            updatedCards,
+                            reason: 'handleRegenerate:resetAssistant'
+                        })
+                        : state.cardIndexMutation,
+                    // Create new Set properly: spread existing Set, then add each selectedId
+                    generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
+                };
+            });
 
             // Use handleChatGenerate which now uses AIManager
             try {
