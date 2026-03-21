@@ -8,6 +8,7 @@ export const FIREBASE_SYNC_COLLECTIONS = {
 };
 
 export const FIREBASE_SYNC_LIMITS = {
+    enableDeltaUpdateLog: import.meta.env.VITE_FIREBASE_SYNC_ENABLE_DELTA_UPDATE_LOG !== 'false',
     uploadDebounceMs: Number(import.meta.env.VITE_FIREBASE_SYNC_UPLOAD_DEBOUNCE_MS) || 2500,
     maxPendingUpdateBytes: Number(import.meta.env.VITE_FIREBASE_SYNC_MAX_PENDING_UPDATE_BYTES) || (24 * 1024),
     snapshotAfterFlushes: Number(import.meta.env.VITE_FIREBASE_SYNC_SNAPSHOT_AFTER_FLUSHES) || 24,

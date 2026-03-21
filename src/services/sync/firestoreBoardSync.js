@@ -82,7 +82,7 @@ export class FirestoreBoardSync {
         this.latestCheckpointRootKey = '';
         this.connected = false;
         this.rootUnsubscribe = null;
-        this.updateLogEnabled = false;
+        this.updateLogEnabled = Boolean(FIREBASE_SYNC_LIMITS.enableDeltaUpdateLog);
         this.hasUnsnapshottedChanges = false;
         this.flushPromise = null;
         this.flushQueuedReason = '';
