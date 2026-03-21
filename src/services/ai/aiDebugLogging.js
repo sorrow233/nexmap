@@ -15,6 +15,22 @@ const countMessageTextChars = (messages = []) => messages.reduce((total, message
     return total;
 }, 0);
 
+const shouldLogAIDebug = () => {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+        return true;
+    }
+
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    try {
+        return window.localStorage?.getItem('nexmap_debug_ai_queue') === '1';
+    } catch {
+        return false;
+    }
+};
+
 const countMessageImages = (messages = []) => messages.reduce((total, message) => {
     const content = message?.content;
     if (!Array.isArray(content)) return total;
@@ -50,6 +66,7 @@ const buildTaskSummary = (task) => {
 };
 
 export const logAITaskQueued = ({ task, pendingCount, runningCount }) => {
+    if (!shouldLogAIDebug()) return;
     const summary = buildTaskSummary(task);
     console.log('[AI Queue] queued', {
         taskId: task.id,
@@ -64,6 +81,7 @@ export const logAITaskQueued = ({ task, pendingCount, runningCount }) => {
 };
 
 export const logAITaskStarted = ({ task, pendingCount, runningCount, queuedForMs }) => {
+    if (!shouldLogAIDebug()) return;
     const summary = buildTaskSummary(task);
     console.log('[AI Queue] started', {
         taskId: task.id,
@@ -78,6 +96,7 @@ export const logAITaskStarted = ({ task, pendingCount, runningCount, queuedForMs
 };
 
 export const logAITaskFinished = ({ task, outcome, durationMs, pendingCount, runningCount, error = null }) => {
+    if (!shouldLogAIDebug()) return;
     const summary = buildTaskSummary(task);
     console.log('[AI Queue] finished', {
         taskId: task.id,
@@ -90,4 +109,9 @@ export const logAITaskFinished = ({ task, outcome, durationMs, pendingCount, run
         error: error ? (error.message || String(error)) : null,
         ...summary
     });
+};
+
+export const logAIDispatch = (payload = {}) => {
+    if (!shouldLogAIDebug()) return;
+    console.log('[AI] Dispatching task', payload);
 };

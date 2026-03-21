@@ -1,6 +1,7 @@
 import { getCurrentBoardId } from '../../services/storage';
 import { uuid } from '../../utils/uuid';
 import { createPerformanceMonitor } from '../../utils/performanceMonitor';
+import { logAIDispatch } from '../../services/ai/aiDebugLogging';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
 
 import favoritesService from '../../services/favoritesService';
@@ -366,7 +367,13 @@ export const createAISlice = (set, get) => {
                 const runProviderName = config.name || runProviderId || 'unknown';
                 const runBaseUrl = config.baseUrl || 'default';
 
-                console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
+                logAIDispatch({
+                    cardId,
+                    model: runModel,
+                    providerId: runProviderId,
+                    providerName: runProviderName,
+                    baseUrl: runBaseUrl
+                });
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
