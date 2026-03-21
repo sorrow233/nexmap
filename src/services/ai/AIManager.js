@@ -3,6 +3,11 @@ import { getSystemPrompt } from './promptUtils.js';
 import { streamChatCompletion, imageGeneration } from '../llm.js';
 import { userStatsService } from '../stats/userStatsService.js';
 import { resolveActiveInstructionsForCurrentBoard } from '../customInstructionsService.js';
+import {
+    logAITaskFinished,
+    logAITaskQueued,
+    logAITaskStarted
+} from './aiDebugLogging.js';
 
 /**
  * Task Priorities
@@ -150,6 +155,11 @@ class AIManager {
         // 4. Enqueue then schedule with global card-level concurrency
         this.pendingTasks.push(task);
         this._sortPendingTasks();
+        logAITaskQueued({
+            task,
+            pendingCount: this.pendingTasks.length,
+            runningCount: this.activeTasks.size
+        });
         this._drainQueue();
 
         return promise;
@@ -226,23 +236,53 @@ class AIManager {
     }
 
     async _runTask(task, controller) {
+        const startedAt = Date.now();
         try {
             task.status = STATUS.RUNNING;
+            logAITaskStarted({
+                task,
+                queuedForMs: startedAt - task.timestamp,
+                pendingCount: this.pendingTasks.length,
+                runningCount: this.activeTasks.size
+            });
 
             const result = await this._executeTask(task, controller.signal);
 
             task.status = STATUS.COMPLETED;
             this.results.set(task.id, result);
             task.resolve(result);
+            logAITaskFinished({
+                task,
+                outcome: STATUS.COMPLETED,
+                durationMs: Date.now() - startedAt,
+                pendingCount: this.pendingTasks.length,
+                runningCount: this.activeTasks.size
+            });
 
         } catch (error) {
             if (error.name === 'AbortError' || controller.signal.aborted) {
                 task.status = STATUS.CANCELLED;
                 task.reject(new Error('Task cancelled'));
+                logAITaskFinished({
+                    task,
+                    outcome: STATUS.CANCELLED,
+                    durationMs: Date.now() - startedAt,
+                    pendingCount: this.pendingTasks.length,
+                    runningCount: this.activeTasks.size,
+                    error
+                });
             } else {
                 task.status = STATUS.FAILED;
                 console.error(`[AIManager] Task ${task.id} failed:`, error);
                 task.reject(error);
+                logAITaskFinished({
+                    task,
+                    outcome: STATUS.FAILED,
+                    durationMs: Date.now() - startedAt,
+                    pendingCount: this.pendingTasks.length,
+                    runningCount: this.activeTasks.size,
+                    error
+                });
             }
         } finally {
             this.activeTasks.delete(task.id);
