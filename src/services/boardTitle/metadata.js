@@ -121,6 +121,28 @@ export const getBoardDisplayName = (board, fallbackTitle = 'Untitled Board') => 
     return normalized.name || fallbackTitle;
 };
 
+export const compareBoardsByGalleryOrder = (left, right) => {
+    const leftUpdatedAt = normalizeTimestamp(left?.updatedAt);
+    const rightUpdatedAt = normalizeTimestamp(right?.updatedAt);
+    if (rightUpdatedAt !== leftUpdatedAt) {
+        return rightUpdatedAt - leftUpdatedAt;
+    }
+
+    const leftCreatedAt = normalizeTimestamp(left?.createdAt);
+    const rightCreatedAt = normalizeTimestamp(right?.createdAt);
+    if (rightCreatedAt !== leftCreatedAt) {
+        return rightCreatedAt - leftCreatedAt;
+    }
+
+    const leftLastAccessedAt = normalizeTimestamp(left?.lastAccessedAt);
+    const rightLastAccessedAt = normalizeTimestamp(right?.lastAccessedAt);
+    if (rightLastAccessedAt !== leftLastAccessedAt) {
+        return rightLastAccessedAt - leftLastAccessedAt;
+    }
+
+    return String(right?.id || '').localeCompare(String(left?.id || ''));
+};
+
 export const getEffectiveBoardCardCount = (cards = []) => {
     if (!Array.isArray(cards)) return 0;
     return cards.filter(card => card && !card.deletedAt).length;

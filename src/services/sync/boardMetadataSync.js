@@ -6,7 +6,11 @@ import {
     writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
+import {
+    compareBoardsByGalleryOrder,
+    normalizeBoardMetadataList,
+    normalizeBoardTitleMeta
+} from '../boardTitle/metadata';
 import { normalizeBoardSummary } from '../boardTitle/displayMetadata';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
@@ -101,14 +105,7 @@ export const loadRemoteBoardMetadataList = async (userId) => {
     const snapshot = await withRetry(() => getDocs(getBoardCollectionRef(userId)));
     const boards = normalizeBoardMetadataList(snapshot.docs.map((item) => item.data()));
 
-    return boards.sort((a, b) => {
-        const aOrder = Number.isFinite(Number(a.listOrder)) ? Number(a.listOrder) : Number.POSITIVE_INFINITY;
-        const bOrder = Number.isFinite(Number(b.listOrder)) ? Number(b.listOrder) : Number.POSITIVE_INFINITY;
-        if (aOrder !== bOrder) {
-            return aOrder - bOrder;
-        }
-        return (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0);
-    });
+    return boards.sort(compareBoardsByGalleryOrder);
 };
 
 const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
@@ -186,16 +183,22 @@ export const mergeBoardMetadataLists = (localBoards = [], remoteBoards = []) => 
             if (!board) return null;
             return normalizeBoardTitleMeta({
                 ...board,
-                listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : index
+                listOrder: index
             });
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .sort(compareBoardsByGalleryOrder)
+        .map((board, index) => normalizeBoardTitleMeta({
+            ...board,
+            listOrder: index
+        }));
 };
 
 export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
     if (!db || !userId) return;
     const syncedBoards = normalizeBoardMetadataList(boards)
         .filter((board) => board?.id && !isSampleBoardId(board.id));
+    syncedBoards.sort(compareBoardsByGalleryOrder);
 
     for (let offset = 0; offset < syncedBoards.length; offset += FIRESTORE_WRITE_BATCH_LIMIT) {
         const currentSlice = syncedBoards.slice(offset, offset + FIRESTORE_WRITE_BATCH_LIMIT);

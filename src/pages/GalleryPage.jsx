@@ -12,6 +12,7 @@ import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard } from '../services/storage';
 import { useNavigate, useSearchParams, NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { compareBoardsByGalleryOrder } from '../services/boardTitle/metadata';
 
 import { useStore } from '../store/useStore';
 import ProBadge from '../components/ProBadge';
@@ -114,8 +115,10 @@ export default function GalleryPage({
     // DEFENSIVE: Ensure boardsList is an array
     const validBoardsList = Array.isArray(boardsList) ? boardsList : [];
 
-    const activeBoards = validBoardsList.filter(b => !b.deletedAt);
-    const trashBoards = validBoardsList.filter(b => b.deletedAt);
+    const activeBoards = [...validBoardsList.filter(b => !b.deletedAt)]
+        .sort(compareBoardsByGalleryOrder);
+    const trashBoards = [...validBoardsList.filter(b => b.deletedAt)]
+        .sort((left, right) => (Number(right.deletedAt) || 0) - (Number(left.deletedAt) || 0));
 
     // Helper to determine active tab for styling
     // If path is exactly /gallery or /, active is 'active'
