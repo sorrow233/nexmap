@@ -1,42 +1,28 @@
 import React from 'react';
 
 /**
- * Venus - The Morning Star
- * Concept: Runaway greenhouse effect, thick choking atmosphere, violent super-rotation.
- * "Extreme" Optimization:
- * - Atmosphere: Multiple layers of spinning conic gradients to simulate wind bands.
- * - Pressure: Dense, opaque haze.
- * - Color: Sickly yellow-white (Sulfuric Acid) clouds.
+ * Venus - soft pearl atmosphere with restrained cloud motion.
  */
 export const venusTexture = {
-    // Surface: Thick Sulfuric Acid Haze (Creamy Yellow/White)
-    background: 'radial-gradient(circle at 35% 35%, #fffbeb 0%, #fef3c7 20%, #fde68a 45%, #d97706 75%, #78350f 100%)',
-    // Atmosphere: Extremely dense, scattering light
-    shadow: 'shadow-[inset_-16px_-16px_40px_rgba(69,26,3,0.7),0_0_50px_rgba(251,191,36,0.3)]',
+    background: 'radial-gradient(circle at 32% 28%, #fffdf8 0%, #fff6ea 18%, #f7e4cb 38%, #e8c59f 64%, #c89a78 84%, #9f6e55 100%)',
+    shadow: 'shadow-[inset_-18px_-18px_42px_rgba(103,62,37,0.34),0_0_42px_rgba(248,225,197,0.26)]',
     detail: (
         <>
-            {/* 1. Global Cloud Circulation - Smooth Conic Gradient */}
-            <div className="absolute inset-[-40%] bg-[conic-gradient(from_0deg,transparent_0%,rgba(245,158,11,0.15)_25%,transparent_50%,rgba(245,158,11,0.2)_75%,transparent_100%)] rounded-full animate-[spin_60s_linear_infinite] blur-3xl mix-blend-multiply"></div>
+            <div className="absolute inset-[-6%] rounded-full bg-[radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.9)_0%,rgba(255,249,240,0.55)_18%,transparent_42%)] mix-blend-screen"></div>
 
-            {/* 2. Counter-Rotation Clouds - Subtle depth */}
-            <div className="absolute inset-[-30%] bg-[conic-gradient(from_180deg,transparent_0%,rgba(252,211,77,0.1)_30%,transparent_60%,rgba(252,211,77,0.1)_90%)] rounded-full animate-[spin_80s_linear_infinite_reverse] blur-2xl mix-blend-overlay"></div>
+            <div className="absolute inset-[8%] rounded-full bg-[conic-gradient(from_32deg,rgba(243,214,184,0.0)_0deg,rgba(241,205,172,0.55)_88deg,rgba(221,171,132,0.22)_150deg,rgba(244,222,196,0.0)_220deg,rgba(236,198,167,0.38)_300deg,rgba(243,214,184,0.0)_360deg)] blur-2xl animate-[spin_90s_linear_infinite] opacity-75"></div>
 
-            {/* 3. The "Y-Wave" - A massive but soft atmospheric feature */}
-            <div className="absolute top-[30%] left-[-20%] w-[140%] h-[40%] bg-gradient-to-r from-transparent via-amber-700/10 to-transparent blur-[20px] -rotate-12 mix-blend-multiply transform skew-x-12"></div>
+            <div className="absolute inset-[14%] rounded-full bg-[conic-gradient(from_210deg,rgba(255,245,232,0.0)_0deg,rgba(255,245,232,0.6)_95deg,rgba(230,190,154,0.2)_155deg,rgba(255,245,232,0.0)_235deg,rgba(245,214,185,0.45)_320deg,rgba(255,245,232,0.0)_360deg)] blur-xl animate-[spin_120s_linear_infinite_reverse] opacity-70"></div>
 
-            {/* 4. Polar Vortex - Subtle swirl at the bottom */}
-            <div className="absolute bottom-[2%] left-[50%] -translate-x-1/2 w-[40%] h-[15%] bg-amber-600/10 blur-[10px] rounded-full mix-blend-multiply"></div>
+            <div className="absolute top-[28%] left-[-10%] w-[120%] h-[16%] rounded-full bg-gradient-to-r from-transparent via-white/42 to-transparent blur-[16px] rotate-[-10deg] mix-blend-screen"></div>
+            <div className="absolute top-[48%] left-[-6%] w-[112%] h-[14%] rounded-full bg-gradient-to-r from-transparent via-[#e8c7aa]/45 to-transparent blur-[18px] rotate-[4deg] mix-blend-multiply"></div>
+            <div className="absolute bottom-[18%] left-[6%] w-[88%] h-[12%] rounded-full bg-gradient-to-r from-transparent via-[#dcae88]/34 to-transparent blur-[16px] rotate-[11deg] mix-blend-multiply"></div>
 
-            {/* 5. Thick Atmosphere Glow - The "Morning Star" bloom */}
-            <div className="absolute top-[15%] left-[15%] w-[45%] h-[45%] bg-white/40 blur-[35px] rounded-full mix-blend-screen pointer-events-none"></div>
-            <div className="absolute top-[20%] left-[20%] w-[20%] h-[20%] bg-white/60 blur-[15px] rounded-full mix-blend-screen pointer-events-none"></div>
+            <div className="absolute top-[16%] left-[18%] w-[34%] h-[34%] rounded-full bg-white/48 blur-[26px] mix-blend-screen"></div>
+            <div className="absolute bottom-[10%] right-[10%] w-[40%] h-[24%] rounded-full bg-[#f3d4b6]/26 blur-[28px] mix-blend-screen"></div>
 
-            {/* 6. Cloud Texture - Soft noise to break uniformity */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC41IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI24pIiBvcGFjaXR5PSIwLjIyIi8+PC9zdmc+')] opacity-20 mix-blend-multiply contrast-125"></div>
-
-            {/* 7. Super-refraction - Bright edge glow */}
-            <div className="absolute inset-0 rounded-full border-[2px] border-white/20 blur-[1px] mix-blend-overlay"></div>
-            <div className="absolute inset-[-10%] bg-yellow-100/10 blur-[30px] rounded-full z-[-1]"></div>
+            <div className="absolute inset-0 rounded-full border border-white/32"></div>
+            <div className="absolute inset-[2%] rounded-full border border-[#f1dcc7]/35 blur-[1px]"></div>
         </>
     )
 };

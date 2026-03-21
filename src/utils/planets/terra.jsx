@@ -1,58 +1,29 @@
 import React from 'react';
 
 /**
- * Terra (Earth) - The Blue Marble
- * 三层设计: Background(海洋) | Middle(大陆) | Effect(大气层)
+ * Terra - cleaner blue marble with softer continents and atmosphere.
  */
 export const terraTexture = {
-    // ===== BACKGROUND LAYER =====
-    // Ocean: Deep Azure to Indigo, light source at top-left
-    background: 'radial-gradient(circle at 35% 35%, #7dd3fc 0%, #38bdf8 20%, #0284c7 50%, #075985 80%, #0c4a6e 100%)',
-
-    // Shadow: Creates 3D depth and atmospheric rim glow
-    shadow: 'shadow-[inset_-20px_-20px_50px_rgba(2,6,23,0.95),0_0_40px_rgba(56,189,248,0.5)]',
-
-    // ===== MIDDLE LAYER (Continents, Ice) + EFFECT LAYER (Atmosphere, Clouds) =====
+    background: 'radial-gradient(circle at 30% 28%, #c7f2ff 0%, #7fd4fb 18%, #3a9fd5 42%, #1d5f9c 72%, #143a67 100%)',
+    shadow: 'shadow-[inset_-22px_-20px_52px_rgba(6,25,46,0.62),0_0_42px_rgba(104,193,244,0.28)]',
     detail: (
         <>
-            {/* ===== MIDDLE LAYER: Landmasses ===== */}
+            <div className="absolute inset-[3%] rounded-full bg-[radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.55)_0%,transparent_34%)] mix-blend-screen"></div>
 
-            {/* North America - Green/Brown Continental Mass */}
-            <div className="absolute top-[12%] left-[5%] w-[30%] h-[28%] bg-gradient-to-br from-emerald-500/70 via-green-600/60 to-amber-700/50 blur-[6px] rounded-[35%_65%_55%_45%/60%_40%_60%_40%] rotate-[-15deg]"></div>
+            <div className="absolute top-[12%] left-[10%] w-[28%] h-[24%] bg-gradient-to-br from-[#8fcf91]/85 via-[#4f9d72]/82 to-[#2f6952]/76 blur-[5px] rounded-[40%_60%_42%_58%/48%_44%_56%_52%] rotate-[-14deg]"></div>
+            <div className="absolute top-[40%] left-[18%] w-[12%] h-[30%] bg-gradient-to-b from-[#68b37f]/78 to-[#39745d]/75 blur-[4px] rounded-[48%_52%_40%_60%/36%_64%_40%_60%] rotate-[12deg]"></div>
+            <div className="absolute top-[16%] left-[44%] w-[42%] h-[42%] bg-gradient-to-br from-[#d0b56d]/42 via-[#69a36d]/70 to-[#2f6e58]/76 blur-[6px] rounded-[48%_52%_40%_60%/44%_40%_60%_56%] rotate-[4deg]"></div>
+            <div className="absolute bottom-[23%] right-[16%] w-[14%] h-[10%] bg-gradient-to-br from-[#d5ae72]/56 to-[#8b6b49]/44 blur-[4px] rounded-[60%_40%_48%_52%]"></div>
 
-            {/* South America - Elongated Green */}
-            <div className="absolute top-[42%] left-[15%] w-[12%] h-[30%] bg-gradient-to-b from-emerald-600/65 to-green-700/55 blur-[5px] rounded-[50%_50%_45%_55%/40%_60%_40%_60%] rotate-[10deg]"></div>
+            <div className="absolute top-[-3%] left-1/2 -translate-x-1/2 w-[42%] h-[11%] rounded-full bg-white/82 blur-[8px]"></div>
+            <div className="absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[52%] h-[13%] rounded-full bg-white/78 blur-[9px]"></div>
 
-            {/* Africa + Europe + Asia - Large Landmass */}
-            <div className="absolute top-[15%] left-[45%] w-[40%] h-[45%] bg-gradient-to-br from-amber-600/50 via-emerald-600/60 to-green-700/55 blur-[7px] rounded-[50%_60%_40%_50%/55%_45%_55%_45%] rotate-[5deg]"></div>
+            <div className="absolute top-[22%] left-[2%] w-[76%] h-[8%] rounded-full bg-white/44 blur-[12px] rotate-[8deg] mix-blend-screen"></div>
+            <div className="absolute top-[46%] left-[10%] w-[80%] h-[6%] rounded-full bg-white/34 blur-[14px] rotate-[-4deg] mix-blend-screen"></div>
+            <div className="absolute bottom-[26%] right-[4%] w-[64%] h-[7%] rounded-full bg-white/38 blur-[13px] rotate-[5deg] mix-blend-screen"></div>
 
-            {/* Australia - Small, Brownish */}
-            <div className="absolute bottom-[22%] right-[15%] w-[14%] h-[10%] bg-gradient-to-br from-amber-600/55 to-orange-700/45 blur-[4px] rounded-[60%_40%_50%_50%]"></div>
-
-            {/* Antarctica - Southern Ice Cap */}
-            <div className="absolute bottom-[-3%] left-[50%] -translate-x-1/2 w-[50%] h-[12%] bg-white/80 blur-[8px] rounded-full"></div>
-
-            {/* Arctic - Northern Ice Cap */}
-            <div className="absolute top-[-3%] left-[50%] -translate-x-1/2 w-[40%] h-[10%] bg-white/75 blur-[8px] rounded-full"></div>
-
-            {/* ===== EFFECT LAYER: Atmosphere, Clouds, Glow ===== */}
-
-            {/* Cloud Band 1: Northern Hemisphere */}
-            <div className="absolute top-[20%] left-[0%] w-[70%] h-[8%] bg-white/50 blur-[12px] rounded-full rotate-[8deg] mix-blend-screen"></div>
-
-            {/* Cloud Band 2: Equatorial / ITCZ */}
-            <div className="absolute top-[45%] left-[10%] w-[80%] h-[6%] bg-white/40 blur-[15px] rounded-full rotate-[-3deg] mix-blend-screen"></div>
-
-            {/* Cloud Band 3: Southern Hemisphere */}
-            <div className="absolute bottom-[25%] right-[5%] w-[60%] h-[7%] bg-white/45 blur-[12px] rounded-full rotate-[5deg] mix-blend-screen"></div>
-
-            {/* Specular Highlight (Sun Glint on Ocean) */}
-            <div className="absolute top-[25%] left-[25%] w-[20%] h-[20%] bg-white/50 blur-[15px] rounded-full mix-blend-soft-light"></div>
-
-            {/* Atmospheric Rim Glow (Rayleigh Scattering) */}
-            <div className="absolute inset-0 rounded-full border-[3px] border-sky-300/40 blur-[2px]"></div>
-            <div className="absolute inset-[-5%] bg-[radial-gradient(circle_at_50%_50%,transparent_45%,rgba(56,189,248,0.15)_70%,rgba(56,189,248,0.3)_100%)] rounded-full pointer-events-none"></div>
+            <div className="absolute inset-0 rounded-full border-[3px] border-sky-200/44 blur-[1px]"></div>
+            <div className="absolute inset-[-4%] rounded-full bg-[radial-gradient(circle_at_50%_50%,transparent_48%,rgba(157,220,255,0.12)_70%,rgba(157,220,255,0.2)_100%)] pointer-events-none"></div>
         </>
     )
 };
-

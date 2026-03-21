@@ -1,33 +1,30 @@
 import React from 'react';
 
 /**
- * Jupiter - The King of Planets
- * Simplified design focusing on iconic bands and Great Red Spot.
+ * Jupiter - creamy cloud bands with a refined, painterly storm system.
  */
 export const jupiterTexture = {
-    // Surface: Complex banding (Orange/White/Brown)
-    background: 'linear-gradient(170deg, #451a03 0%, #78350f 10%, #d97706 20%, #fcd34d 30%, #fffbeb 35%, #92400e 40%, #b45309 50%, #fef3c7 60%, #9a3412 70%, #7c2d12 85%, #451a03 100%)',
-    shadow: 'shadow-[inset_-20px_-20px_60px_rgba(69,26,3,0.8),_0_0_40px_rgba(217,119,6,0.3)]',
+    background: 'linear-gradient(180deg, #7a4c39 0%, #b37a60 10%, #e4c3a0 18%, #f8eedf 26%, #d3aa86 36%, #9c654d 46%, #f6ebde 56%, #c18a6f 66%, #8d5d49 78%, #f1e0cf 88%, #6f4336 100%)',
+    shadow: 'shadow-[inset_-20px_-20px_56px_rgba(76,40,28,0.5),0_0_40px_rgba(229,198,166,0.24)]',
     detail: (
         <>
-            {/* 1. Turbulence Noise */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNTUiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjMiLz48L3N2Zz4=')] opacity-35 mix-blend-overlay"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC41IiBudW1PY3RhdmVzPSIyIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI24pIiBvcGFjaXR5PSIwLjE4Ii8+PC9zdmc+')] opacity-18 mix-blend-soft-light"></div>
 
-            {/* 2. The Great Red Spot - Soft, blended oval */}
-            <div className="absolute top-[55%] left-[18%] w-[28%] h-[16%] bg-red-800/50 rounded-[50%] blur-[6px] rotate-[-10deg] mix-blend-multiply"></div>
-            <div className="absolute top-[57%] left-[21%] w-[20%] h-[11%] bg-red-600/60 rounded-[50%] blur-[4px] rotate-[-10deg] shadow-[inset_2px_2px_6px_rgba(0,0,0,0.4)]"></div>
+            <div className="absolute top-[18%] left-[-8%] w-[116%] h-[10%] rounded-full bg-gradient-to-r from-transparent via-white/28 to-transparent blur-[4px] mix-blend-screen"></div>
+            <div className="absolute top-[31%] left-[-6%] w-[112%] h-[8%] rounded-full bg-gradient-to-r from-transparent via-[#8f5f49]/26 to-transparent blur-[5px] mix-blend-multiply"></div>
+            <div className="absolute top-[43%] left-[-5%] w-[110%] h-[9%] rounded-full bg-gradient-to-r from-transparent via-[#f4e8d7]/32 to-transparent blur-[5px] mix-blend-screen"></div>
+            <div className="absolute top-[56%] left-[-7%] w-[114%] h-[10%] rounded-full bg-gradient-to-r from-transparent via-[#95634d]/24 to-transparent blur-[6px] mix-blend-multiply"></div>
+            <div className="absolute top-[69%] left-[-5%] w-[112%] h-[8%] rounded-full bg-gradient-to-r from-transparent via-[#efe0cc]/28 to-transparent blur-[5px] mix-blend-screen"></div>
 
-            {/* 3. White Zone Highlights */}
-            <div className="absolute top-[30%] left-0 w-full h-[8%] bg-gradient-to-r from-transparent via-white/20 to-transparent blur-[3px] mix-blend-overlay"></div>
-            <div className="absolute top-[58%] left-0 w-full h-[5%] bg-gradient-to-r from-transparent via-white/15 to-transparent blur-[2px] mix-blend-overlay"></div>
+            <div className="absolute top-[53%] left-[20%] w-[28%] h-[14%] bg-[#b86d5e]/42 rounded-[50%] blur-[7px] rotate-[-10deg] mix-blend-multiply"></div>
+            <div className="absolute top-[55%] left-[24%] w-[18%] h-[9%] bg-[#d68f7a]/46 rounded-[50%] blur-[4px] rotate-[-10deg] mix-blend-screen"></div>
 
-            {/* 4. Subtle storm ovals */}
-            <div className="absolute top-[38%] right-[20%] w-[10%] h-[5%] bg-white/30 blur-[4px] rounded-full mix-blend-screen"></div>
-            <div className="absolute top-[72%] left-[40%] w-[8%] h-[4%] bg-white/25 blur-[4px] rounded-full mix-blend-screen"></div>
+            <div className="absolute top-[36%] right-[18%] w-[12%] h-[5%] bg-white/22 blur-[4px] rounded-full mix-blend-screen"></div>
+            <div className="absolute top-[72%] left-[44%] w-[10%] h-[4%] bg-white/18 blur-[4px] rounded-full mix-blend-screen"></div>
 
-            {/* 5. Polar Darkening */}
-            <div className="absolute top-[-5%] left-0 w-full h-[15%] bg-amber-950/40 blur-[15px] mix-blend-multiply"></div>
-            <div className="absolute bottom-[-5%] left-0 w-full h-[15%] bg-amber-950/40 blur-[15px] mix-blend-multiply"></div>
+            <div className="absolute top-[-3%] left-0 w-full h-[14%] bg-[#6f4537]/20 blur-[15px] mix-blend-multiply"></div>
+            <div className="absolute bottom-[-3%] left-0 w-full h-[14%] bg-[#6f4537]/22 blur-[15px] mix-blend-multiply"></div>
+            <div className="absolute top-[15%] left-[18%] w-[34%] h-[34%] bg-white/16 blur-[24px] rounded-full mix-blend-screen"></div>
         </>
     )
 };
