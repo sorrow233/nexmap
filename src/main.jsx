@@ -68,6 +68,16 @@ document.addEventListener('touchcancel', () => {
 
 // Prevent mouse wheel from triggering browser navigation
 document.addEventListener('wheel', (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (!target) return;
+
+    const insideScrollableContainer = Boolean(
+        target.closest('.messages-container, .custom-scrollbar, textarea, input, [contenteditable=\"true\"]')
+    );
+    if (insideScrollableContainer) {
+        return;
+    }
+
     // Only prevent if it looks like a navigation gesture (horizontal scroll)
     if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
         e.preventDefault();

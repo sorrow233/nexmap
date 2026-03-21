@@ -15,6 +15,7 @@ import {
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
 import { createBoardSnapshotFingerprint } from '../services/sync/boardSnapshot';
+import { runWhenBrowserIdle } from '../utils/idleTask';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -139,6 +140,8 @@ export function useBoardPersistence({
     const lastSavedViewportRef = useRef(null);
     const lastHandledExternalSyncTokenRef = useRef(0);
     const saveOperationChainRef = useRef(Promise.resolve());
+    const idleShadowSaveCancelRef = useRef(null);
+    const idleLocalSaveCancelRef = useRef(null);
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -170,12 +173,20 @@ export function useBoardPersistence({
     }, [setActiveBoardPersistence]);
 
     const clearContentSaveTimers = useCallback(() => {
+        if (idleShadowSaveCancelRef.current) {
+            idleShadowSaveCancelRef.current();
+            idleShadowSaveCancelRef.current = null;
+        }
         if (shadowSaveTimerRef.current) {
             clearTimeout(shadowSaveTimerRef.current);
             shadowSaveTimerRef.current = null;
         }
         shadowSaveWindowStartedAtRef.current = 0;
 
+        if (idleLocalSaveCancelRef.current) {
+            idleLocalSaveCancelRef.current();
+            idleLocalSaveCancelRef.current = null;
+        }
         if (localSaveTimerRef.current) {
             clearTimeout(localSaveTimerRef.current);
             localSaveTimerRef.current = null;
@@ -338,11 +349,17 @@ export function useBoardPersistence({
         shadowSaveTimerRef.current = setTimeout(() => {
             shadowSaveTimerRef.current = null;
             shadowSaveWindowStartedAtRef.current = 0;
-            persistRecoverySnapshot(latestBoardDataRef.current, {
-                revision: queuedShadowRevisionRef.current,
-                reason: 'debounced_shadow',
-                scopes: ['session']
-            });
+            if (idleShadowSaveCancelRef.current) {
+                idleShadowSaveCancelRef.current();
+            }
+            idleShadowSaveCancelRef.current = runWhenBrowserIdle(() => {
+                idleShadowSaveCancelRef.current = null;
+                persistRecoverySnapshot(latestBoardDataRef.current, {
+                    revision: queuedShadowRevisionRef.current,
+                    reason: 'debounced_shadow',
+                    scopes: ['session']
+                });
+            }, { timeout: SHADOW_SAVE_MAX_WAIT_MS, fallbackDelay: 120 });
         }, delayConfig.delayMs);
     }, [persistRecoverySnapshot]);
 
@@ -370,10 +387,16 @@ export function useBoardPersistence({
         localSaveTimerRef.current = setTimeout(() => {
             localSaveTimerRef.current = null;
             localSaveWindowStartedAtRef.current = 0;
-            void performLocalSave(latestBoardDataRef.current, {
-                revision: queuedLocalRevisionRef.current,
-                reason: 'debounced_local'
-            });
+            if (idleLocalSaveCancelRef.current) {
+                idleLocalSaveCancelRef.current();
+            }
+            idleLocalSaveCancelRef.current = runWhenBrowserIdle(() => {
+                idleLocalSaveCancelRef.current = null;
+                void performLocalSave(latestBoardDataRef.current, {
+                    revision: queuedLocalRevisionRef.current,
+                    reason: 'debounced_local'
+                });
+            }, { timeout: LOCAL_SAVE_MAX_WAIT_MS, fallbackDelay: 180 });
         }, delayConfig.delayMs);
     }, [performLocalSave]);
 
@@ -410,6 +433,10 @@ export function useBoardPersistence({
             localSaveTimerRef.current = null;
         }
         localSaveWindowStartedAtRef.current = 0;
+        if (idleLocalSaveCancelRef.current) {
+            idleLocalSaveCancelRef.current();
+            idleLocalSaveCancelRef.current = null;
+        }
 
         void performLocalSave(latestBoardDataRef.current, {
             revision,
@@ -534,6 +561,14 @@ export function useBoardPersistence({
         lastLocalScheduleAtRef.current = 0;
         shadowSaveWindowStartedAtRef.current = 0;
         localSaveWindowStartedAtRef.current = 0;
+        if (idleShadowSaveCancelRef.current) {
+            idleShadowSaveCancelRef.current();
+            idleShadowSaveCancelRef.current = null;
+        }
+        if (idleLocalSaveCancelRef.current) {
+            idleLocalSaveCancelRef.current();
+            idleLocalSaveCancelRef.current = null;
+        }
         pendingViewportRef.current = null;
         lastSavedViewportRef.current = null;
         lastHandledExternalSyncTokenRef.current = 0;
