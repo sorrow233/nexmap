@@ -78,6 +78,7 @@ export default function useImageUpload(options = {}) {
     };
 
     const clearImages = () => {
+        console.log('[useImageUpload] clearImages called, current count:', images.length);
         // Revoke URLs first using current state reference
         images.forEach(img => {
             if (img.previewUrl) {

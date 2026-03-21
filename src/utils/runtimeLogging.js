@@ -159,10 +159,6 @@ export const installFetchErrorLogging = () => {
 
     window.__NEXMAP_FETCH_ERROR_LOGGING__ = true;
     const originalFetch = window.fetch.bind(window);
-    const isAbortLikeError = (error) => (
-        error?.name === 'AbortError' ||
-        String(error?.message || '').toLowerCase().includes('aborted')
-    );
 
     window.fetch = async (input, init) => {
         const startedAt = Date.now();
@@ -180,9 +176,6 @@ export const installFetchErrorLogging = () => {
             }
             return response;
         } catch (error) {
-            if (isAbortLikeError(error)) {
-                throw error;
-            }
             console.error('[GlobalFetchError] Request failed', {
                 ...requestMeta,
                 elapsedMs: Date.now() - startedAt
