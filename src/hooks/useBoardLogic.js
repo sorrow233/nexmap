@@ -1,39 +1,25 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { useCardCreator } from '../hooks/useCardCreator';
-import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
+import { useCardCreator } from './useCardCreator';
 import { useToast } from '../components/Toast';
-// import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
-import { useAISprouting } from '../hooks/useAISprouting';
+import { useAISprouting } from './useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCurrentBoardAutoNaming } from './useCurrentBoardAutoNaming';
 import { useBoardPersistence } from './useBoardPersistence';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
-    normalizeBoardInstructionSettings,
-    readCustomInstructionsFromLocalStorage,
-    normalizeCustomInstructionsValue,
-    saveBoardInstructionSettingsCache,
-    sanitizeBoardInstructionSettingsForCatalog,
-    getInstructionCatalogBreakdown
+    normalizeBoardInstructionSettings
 } from '../services/customInstructionsService';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
-import { isDialogActive, isEventInsideDialog } from '../utils/dialogScope';
+import { createBoardChatHandlers } from './boardLogic/createBoardChatHandlers';
+import { useBoardGlobalInput } from './boardLogic/useBoardGlobalInput';
+import { useBoardInstructionState } from './boardLogic/useBoardInstructionState';
 
-const isSameStringArray = (a = [], b = []) => {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i += 1) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
-};
-
-export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly = false }) {
+export function useBoardLogic({ user, boardsList, onUpdateBoardMetadata, isReadOnly = false }) {
     const { id: currentBoardId, noteId } = useParams();
     const navigate = useNavigate();
 
-    // Store Selectors
     const cards = useStore(state => state.cards);
     const connections = useStore(state => state.connections);
     const groups = useStore(state => state.groups);
@@ -50,7 +36,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
     const lastExternalSyncMarker = useStore(state => state.lastExternalSyncMarker);
 
-    // Store Actions
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
     const updateCardFull = useStore(state => state.updateCardFull);
     const handleRegenerate = useStore(state => state.handleRegenerate);
@@ -64,9 +49,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
     const setLastSavedAt = useStore(state => state.setLastSavedAt);
     const setActiveBoardPersistence = useStore(state => state.setActiveBoardPersistence);
-    const updateBoardInstructionSettings = useStore(state => state.updateBoardInstructionSettings);
 
-    // Custom Hooks
     const cardCreator = useCardCreator();
     const { t } = useLanguage();
     const toast = useToast();
@@ -78,15 +61,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         handleAgentSubmit: handleAgentPlanSubmit
     } = useAISprouting();
 
-    // Derived State
     const currentBoard = useMemo(
-        () => boardsList.find(b => b.id === currentBoardId),
+        () => boardsList.find(board => board.id === currentBoardId),
         [boardsList, currentBoardId]
     );
-    const hasBackgroundImage = !!currentBoard?.backgroundImage;
     const conversationCount = useMemo(() => cards.reduce((total, card) => {
         const messages = card?.data?.messages || [];
-        const userCount = messages.filter(msg => msg?.role === 'user').length;
+        const userCount = messages.filter(message => message?.role === 'user').length;
         return total + userCount;
     }, 0), [cards]);
     const normalizedBoardInstructionSettings = useMemo(
@@ -94,48 +75,44 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         [boardInstructionSettings]
     );
 
-    // Thumbnail Capture REMOVED per user request
     const canvasContainerRef = useRef(null);
 
-    // Local State
     const [saveStatus, setSaveStatus] = useState('idle');
-    const [globalImages, setGlobalImages] = useState([]);
-    const [clipboard, setClipboard] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [quickPrompt, setQuickPrompt] = useState({ isOpen: false, x: 0, y: 0, canvasX: 0, canvasY: 0 });
     const [tempInstructions, setTempInstructions] = useState([]);
     const [isAgentRunning, setIsAgentRunning] = useState(false);
-    const [isInstructionPanelOpen, setIsInstructionPanelOpen] = useState(false);
-    const [isAutoRecommending, setIsAutoRecommending] = useState(false);
-    const [customInstructionCatalog, setCustomInstructionCatalog] = useState(
-        normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage())
-    );
-    const autoRecommendLockRef = useRef(false);
+    const [customSproutPrompt, setCustomSproutPrompt] = useState({ isOpen: false, sourceId: null, x: 0, y: 0 });
 
-    const instructionCatalogBreakdown = useMemo(
-        () => getInstructionCatalogBreakdown(customInstructionCatalog),
-        [customInstructionCatalog]
-    );
+    const {
+        globalImages,
+        setGlobalImages,
+        clipboard,
+        handleGlobalPaste,
+        handleGlobalImageUpload,
+        removeGlobalImage
+    } = useBoardGlobalInput({ isReadOnly });
 
-    const instructionPanelSummary = useMemo(() => {
-        const enabledSet = new Set(normalizedBoardInstructionSettings.enabledInstructionIds);
-        const autoSet = new Set(normalizedBoardInstructionSettings.autoEnabledInstructionIds);
-        const enabledOptionalCount = instructionCatalogBreakdown.optionalInstructions.filter(item => enabledSet.has(item.id)).length;
-        const autoEnabledOptionalCount = instructionCatalogBreakdown.optionalInstructions.filter(item => autoSet.has(item.id)).length;
-        const globalCount = instructionCatalogBreakdown.globalInstructions.length;
-
-        return {
-            totalCount: instructionCatalogBreakdown.allInstructions.length,
-            globalCount,
-            optionalCount: instructionCatalogBreakdown.optionalInstructions.length,
-            enabledOptionalCount,
-            autoEnabledOptionalCount,
-            activeCount: globalCount + enabledOptionalCount,
-            mode: 'manual',
-            status: normalizedBoardInstructionSettings.autoSelection?.status || 'idle',
-            lastRunAt: normalizedBoardInstructionSettings.autoSelection?.lastRunAt || 0
-        };
-    }, [instructionCatalogBreakdown, normalizedBoardInstructionSettings]);
+    const {
+        isInstructionPanelOpen,
+        setIsInstructionPanelOpen,
+        isAutoRecommending,
+        customInstructionCatalog,
+        instructionPanelSummary,
+        handleOpenInstructionPanel,
+        handleOpenInstructionSettings,
+        handleToggleBoardInstruction,
+        handleRunAutoInstructionRecommendNow
+    } = useBoardInstructionState({
+        currentBoardId,
+        cards,
+        conversationCount,
+        normalizedBoardInstructionSettings,
+        isReadOnly,
+        setIsSettingsOpen,
+        t,
+        toast
+    });
 
     useCurrentBoardAutoNaming({
         board: currentBoard,
@@ -167,431 +144,44 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         toast
     });
 
-    // --- PASTE LOGIC ---
-
-    const handleGlobalPaste = useCallback((e) => {
-        const items = e.clipboardData.items;
-        let hasImage = false;
-        for (const item of items) {
-            if (item.type.indexOf("image") !== -1) {
-                hasImage = true;
-                const file = item.getAsFile();
-                const reader = new FileReader();
-                reader.onload = (event) => setGlobalImages(prev => [...prev, {
-                    file, previewUrl: URL.createObjectURL(file), base64: event.target.result.split(',')[1], mimeType: file.type
-                }]);
-                reader.readAsDataURL(file);
-            }
-        }
-        // 只在有图片时阻止默认行为和冒泡，避免重复处理
-        if (hasImage) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }, []);
-
-
-    // --- EFFECTS ---
-
-    // Document Title
     useEffect(() => {
         if (currentBoardId) {
-            const board = boardsList.find(b => b.id === currentBoardId);
+            const board = boardsList.find(item => item.id === currentBoardId);
             const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
             document.title = board ? `${displayName} | NexMap` : 'NexMap';
         }
-        return () => { document.title = 'NexMap'; };
+        return () => {
+            document.title = 'NexMap';
+        };
     }, [currentBoardId, boardsList, t.gallery?.untitledBoard]);
 
-    // Hotkeys
-    useGlobalHotkeys(clipboard, setClipboard);
-
-    // Global Paste Listener (Images) - ONLY for canvas-level, NOT for card modals
-    useEffect(() => {
-        const handlePaste = (e) => {
-            // Skip global image paste when the event originated inside a dialog.
-            const isInsideModal = isEventInsideDialog(e) || isDialogActive();
-
-            if (isInsideModal) {
-                // Let the card-level useImageUpload handle this paste event
-                return;
-            }
-
-            // Otherwise, apply global paste logic (for canvas or global ChatBar)
-            handleGlobalPaste(e);
-        };
-        window.addEventListener('paste', handlePaste);
-        return () => window.removeEventListener('paste', handlePaste);
-    }, [handleGlobalPaste]);
-
-    // Keep active board instruction settings cache in localStorage (used by AIManager sync read)
-    useEffect(() => {
-        if (!currentBoardId) return;
-        saveBoardInstructionSettingsCache(currentBoardId, normalizedBoardInstructionSettings);
-    }, [currentBoardId, normalizedBoardInstructionSettings]);
-
-    const refreshCustomInstructionCatalog = useCallback(() => {
-        setCustomInstructionCatalog(normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage()));
-    }, []);
-
-    useEffect(() => {
-        if (isInstructionPanelOpen) {
-            refreshCustomInstructionCatalog();
-        }
-    }, [isInstructionPanelOpen, refreshCustomInstructionCatalog]);
-
-    useEffect(() => {
-        const onStorage = (e) => {
-            if (e.key === 'mixboard_custom_instructions') {
-                refreshCustomInstructionCatalog();
-            }
-        };
-        window.addEventListener('storage', onStorage);
-        return () => window.removeEventListener('storage', onStorage);
-    }, [refreshCustomInstructionCatalog]);
-
-    useEffect(() => {
-        if (isReadOnly || !currentBoardId) return;
-
-        const sanitized = sanitizeBoardInstructionSettingsForCatalog(
-            normalizedBoardInstructionSettings,
-            customInstructionCatalog
-        );
-
-        const shouldUpdate =
-            !isSameStringArray(sanitized.enabledInstructionIds, normalizedBoardInstructionSettings.enabledInstructionIds) ||
-            !isSameStringArray(sanitized.autoEnabledInstructionIds, normalizedBoardInstructionSettings.autoEnabledInstructionIds);
-
-        if (shouldUpdate) {
-            updateBoardInstructionSettings(sanitized);
-        }
-    }, [
-        currentBoardId,
-        customInstructionCatalog,
+    const chatHandlers = createBoardChatHandlers({
         isReadOnly,
-        normalizedBoardInstructionSettings,
-        updateBoardInstructionSettings
-    ]);
-
-    const runAutoInstructionRecommendation = useCallback(async () => {
-        if (isReadOnly || !currentBoardId) return;
-        if (autoRecommendLockRef.current) return;
-
-        const latestCatalog = normalizeCustomInstructionsValue(readCustomInstructionsFromLocalStorage());
-        setCustomInstructionCatalog(latestCatalog);
-
-        const optionalCandidates = (latestCatalog.items || []).filter(
-            item => item.enabled !== false && item.isGlobal !== true
-        );
-        if (optionalCandidates.length === 0) {
-            toast.info(t?.settings?.canvasInstructionNoOptionalToast || '当前没有可推荐的画布指令');
-            return;
-        }
-
-        autoRecommendLockRef.current = true;
-        setIsAutoRecommending(true);
-        updateBoardInstructionSettings(prev => {
-            const current = normalizeBoardInstructionSettings(prev);
-            return {
-                ...current,
-                autoSelection: {
-                    ...(current.autoSelection || {}),
-                    status: 'running',
-                    lastError: '',
-                    lastTrigger: 'manual'
-                }
-            };
-        });
-
-        try {
-            const state = useStore.getState();
-            const analysisConfig = state.getRoleConfig?.('analysis') || state.getRoleConfig?.('chat');
-            const { recommendBoardInstructionIds } = await import('../services/ai/boardInstructionRecommender');
-            const recommendedIds = await recommendBoardInstructionIds({
-                cards,
-                instructions: latestCatalog.items || [],
-                config: analysisConfig
-            });
-
-            updateBoardInstructionSettings(prev => {
-                const current = normalizeBoardInstructionSettings(prev);
-                const next = {
-                    ...current,
-                    autoEnabledInstructionIds: recommendedIds,
-                    enabledInstructionIds: [...recommendedIds],
-                    autoSelectionMode: 'manual',
-                    autoSelection: {
-                        status: 'done',
-                        lastRunAt: Date.now(),
-                        lastConversationCount: conversationCount,
-                        lastError: '',
-                        lastResultCount: recommendedIds.length,
-                        lastTrigger: 'manual'
-                    }
-                };
-                return next;
-            });
-
-            if (recommendedIds.length > 0) {
-                toast.success(
-                    (t?.settings?.canvasInstructionRecommendDoneToast || 'AI 推荐完成：{count} 条').replace('{count}', String(recommendedIds.length))
-                );
-            } else {
-                toast.warning(t?.settings?.canvasInstructionRecommendEmptyToast || 'AI 没有找到强相关指令');
-            }
-        } catch (error) {
-            const reason = error?.message || 'auto_recommend_failed';
-            updateBoardInstructionSettings(prev => {
-                const current = normalizeBoardInstructionSettings(prev);
-                return {
-                    ...current,
-                    autoSelection: {
-                        ...(current.autoSelection || {}),
-                        status: 'error',
-                        lastError: reason,
-                        lastResultCount: 0,
-                        lastTrigger: 'manual'
-                    }
-                };
-            });
-            toast.error(t?.settings?.canvasInstructionRecommendFailToast || 'AI 推荐失败，请稍后重试');
-        } finally {
-            setIsAutoRecommending(false);
-            autoRecommendLockRef.current = false;
-        }
-    }, [
+        currentBoardId,
         cards,
-        conversationCount,
-        currentBoardId,
-        isReadOnly,
-        t,
+        offset,
+        scale,
+        navigate,
+        quickPrompt,
+        setQuickPrompt,
+        tempInstructions,
+        setTempInstructions,
         toast,
-        updateBoardInstructionSettings
-    ]);
-
-
-    // --- HANDLERS ---
-
-    const handleGlobalImageUpload = (e) => {
-        if (isReadOnly) return;
-        const files = Array.from(e.target.files);
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = (e) => setGlobalImages(prev => [...prev, {
-                file, previewUrl: URL.createObjectURL(file), base64: e.target.result.split(',')[1], mimeType: file.type
-            }]);
-            reader.readAsDataURL(file);
-        });
-        e.target.value = '';
-    };
-
-    const removeGlobalImage = (index) => {
-        if (isReadOnly) return;
-        setGlobalImages(prev => {
-            const next = [...prev];
-            URL.revokeObjectURL(next[index].previewUrl);
-            next.splice(index, 1);
-            return next;
-        });
-    };
-
-    const handleCanvasDoubleClick = (e) => {
-        if (isReadOnly) return;
-        setQuickPrompt({
-            isOpen: true,
-            x: e.screenX,
-            y: e.screenY,
-            canvasX: e.canvasX,
-            canvasY: e.canvasY
-        });
-    };
-
-    const handleQuickPromptSubmit = (text) => {
-        if (isReadOnly || !quickPrompt.isOpen) return;
-        cardCreator.handleCreateCard(text, [], { x: quickPrompt.canvasX, y: quickPrompt.canvasY });
-    };
-
-    const handleFullScreen = (cardId) => {
-        navigate(`/board/${currentBoardId}/note/${cardId}`);
-    };
-
-    const handleChatModalGenerate = async (cardId, text, images = []) => {
-        if (isReadOnly) return;
-        const freshCards = useStore.getState().cards;
-        const card = freshCards.find(c => c.id === cardId);
-
-        if (!card) return;
-
-        let finalText = text;
-        if (tempInstructions.length > 0) {
-            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.content || i.text}]`).join('\n');
-            finalText = `${contextStr}\n\n${text}`;
-            setTempInstructions([]); // Clear after use
-        }
-
-        let userContent;
-        if (images.length > 0) {
-            const imageParts = images.map(img => ({
-                type: 'image',
-                source: {
-                    type: 'base64',
-                    media_type: img.mimeType,
-                    data: img.base64
-                }
-            }));
-            userContent = [
-                { type: 'text', text: finalText },
-                ...imageParts
-            ];
-        } else {
-            userContent = finalText;
-        }
-        const userMsg = { role: 'user', content: userContent };
-        const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-        const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
-
-        updateCardFull(cardId, (currentData) => ({
-            ...currentData,
-            messages: [...(currentData.messages || []), userMsg, assistantMsg]
-        }));
-
-        const history = [...(card.data.messages || []), userMsg];
-
-        try {
-            await handleChatGenerate(cardId, history, (chunk) => {
-                updateCardContent(cardId, chunk, assistantMsgId);
-            });
-        } catch (error) {
-            console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
-            updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);
-        }
-    };
-
-    const handleSelectConnected = (startId) => {
-        const connectedIds = getConnectedCards(startId);
-        const uniqueIds = Array.from(new Set([...connectedIds, startId]));
-        setSelectedIds(uniqueIds);
-    };
-
-    const handlePromptDropOnChat = (prompt) => {
-        if (isReadOnly) return;
-        setTempInstructions(prev => [...prev, prompt]);
-        toast.success(`Added instruction: ${prompt.text.substring(0, 20)}...`);
-    };
-
-    const handleChatSubmitWithInstructions = async (text, images) => {
-        if (isReadOnly) return;
-        let finalText = text;
-        if (tempInstructions.length > 0) {
-            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
-            finalText = `${contextStr}\n\n${text}`;
-        }
-        await cardCreator.handleCreateCard(finalText, images);
-        setTempInstructions([]);
-    };
-
-    const handleAgentSubmit = async (text, images) => {
-        if (isReadOnly || isAgentRunning) return;
-        let finalText = text;
-        if (tempInstructions.length > 0) {
-            const contextStr = tempInstructions.map(i => `[System Instruction: ${i.text}]`).join('\n');
-            finalText = `${contextStr}\n\n${text}`;
-        }
-        setIsAgentRunning(true);
-        toast.info('Agent mode is planning your cards...');
-        try {
-            const result = await handleAgentPlanSubmit(finalText, images);
-            const successCount = result?.success || 0;
-            const totalCount = result?.total || 0;
-            if (totalCount > 0) {
-                toast.success(`Agent completed: ${successCount}/${totalCount} cards generated`);
-            } else {
-                toast.warning('Agent mode finished, but no cards were generated.');
-            }
-        } catch (e) {
-            toast.error(`Agent mode failed: ${e?.message || 'Unknown error'}`);
-        } finally {
-            setTempInstructions([]);
-            setIsAgentRunning(false);
-        }
-    };
-
-    const handlePromptDropOnCanvas = (prompt, x, y) => {
-        if (isReadOnly) return;
-        cardCreator.handleCreateCard(prompt.text, [], { x, y });
-    };
-
-    const handlePromptDropOnCard = (cardId, prompt) => {
-        if (isReadOnly) return;
-        handleChatModalGenerate(cardId, prompt.text, []);
-    };
-
-    const handleOpenInstructionPanel = () => {
-        if (isReadOnly) return;
-        refreshCustomInstructionCatalog();
-        setIsInstructionPanelOpen(true);
-    };
-
-    const handleOpenInstructionSettings = () => {
-        if (isReadOnly) return;
-        setIsInstructionPanelOpen(false);
-        setIsSettingsOpen(true);
-    };
-
-    const handleToggleBoardInstruction = (instructionId, enabled) => {
-        if (isReadOnly) return;
-        updateBoardInstructionSettings(prev => {
-            const current = normalizeBoardInstructionSettings(prev);
-            const enabledSet = new Set(current.enabledInstructionIds);
-            if (enabled) enabledSet.add(instructionId);
-            else enabledSet.delete(instructionId);
-
-            return {
-                ...current,
-                autoSelectionMode: 'manual',
-                enabledInstructionIds: Array.from(enabledSet)
-            };
-        });
-    };
-
-    const handleRunAutoInstructionRecommendNow = async () => {
-        await runAutoInstructionRecommendation();
-    };
-
-    // Directed Generation (Custom Sprout)
-    const [customSproutPrompt, setCustomSproutPrompt] = useState({ isOpen: false, sourceId: null, x: 0, y: 0 });
-
-    const handleCustomSprout = (sourceId) => {
-        if (isReadOnly) return;
-        const sourceCard = cards.find(c => c.id === sourceId);
-        if (!sourceCard) return;
-
-        // Position modal to the right of the card, with bounds checking
-        let screenX = (sourceCard.x * scale) + offset.x + 350 * scale;
-        let screenY = (sourceCard.y * scale) + offset.y;
-
-        // Ensure modal stays within viewport
-        screenX = Math.max(10, Math.min(screenX, window.innerWidth - 340));
-        screenY = Math.max(10, Math.min(screenY, window.innerHeight - 150));
-
-        setCustomSproutPrompt({
-            isOpen: true,
-            sourceId,
-            x: screenX,
-            y: screenY
-        });
-    };
-
-    const handleCustomSproutSubmit = (instruction) => {
-        if (isReadOnly || !customSproutPrompt.isOpen || !customSproutPrompt.sourceId) return;
-
-        handleDirectedSprout(customSproutPrompt.sourceId, instruction);
-        setCustomSproutPrompt({ isOpen: false, sourceId: null, x: 0, y: 0 });
-    };
+        cardCreator,
+        handleChatGenerate,
+        updateCardFull,
+        updateCardContent,
+        getConnectedCards,
+        setSelectedIds,
+        handleAgentPlanSubmit,
+        isAgentRunning,
+        setIsAgentRunning,
+        customSproutPrompt,
+        setCustomSproutPrompt,
+        handleDirectedSprout
+    });
 
     return {
-        // Data
         cards,
         connections,
         groups,
@@ -616,17 +206,13 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         isInstructionPanelOpen,
         isAutoRecommending,
         quickPrompt,
-        customSproutPrompt, // Exported State
+        customSproutPrompt,
         tempInstructions,
         isAgentRunning,
         t,
         noteId,
         currentBoardId,
-
-        // Refs
         canvasContainerRef,
-
-        // Actions & Handlers
         setIsSettingsOpen,
         setGlobalImages,
         setQuickPrompt,
@@ -638,27 +224,12 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         navigate,
         toggleFavorite,
         updateCardFull,
-
         handleRegenerate,
         handleBatchDelete,
         handleGlobalImageUpload,
         removeGlobalImage,
         createGroup,
         arrangeSelectionGrid,
-
-        // Complex Handlers
-        handleCanvasDoubleClick,
-        handleQuickPromptSubmit,
-        handleCustomSprout, // Exported Handler
-        handleCustomSproutSubmit, // Exported Handler
-        handleFullScreen,
-        handleChatModalGenerate,
-        handleSelectConnected,
-        handleChatSubmitWithInstructions,
-        handleAgentSubmit,
-        handlePromptDropOnChat,
-        handlePromptDropOnCanvas,
-        handlePromptDropOnCard,
         handleOpenInstructionPanel,
         handleOpenInstructionSettings,
         handleToggleBoardInstruction,
@@ -667,8 +238,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         handleSprout,
         handleExpandTopics,
         handleGlobalPaste,
-
-        // Card Creator exports
+        ...chatHandlers,
         ...cardCreator
     };
 }
