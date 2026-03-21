@@ -41,6 +41,25 @@ export function buildCardPositionOverrides(cards = [], moveIds = new Set(), dx =
     return overrides;
 }
 
+export function buildCardPositionOverridesFromMap(cardMap = new Map(), moveIds = new Set(), dx = 0, dy = 0) {
+    const overrides = new Map();
+
+    if (!moveIds || moveIds.size === 0) return overrides;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return overrides;
+
+    moveIds.forEach((id) => {
+        const card = cardMap.get(id);
+        if (!card) return;
+
+        overrides.set(id, {
+            x: card.x + dx,
+            y: card.y + dy
+        });
+    });
+
+    return overrides;
+}
+
 export function applyCardPositionOverridesToList(cards = [], positionOverrides = new Map()) {
     if (!positionOverrides || positionOverrides.size === 0) return cards;
 

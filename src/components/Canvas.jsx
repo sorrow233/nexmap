@@ -6,8 +6,9 @@ import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useCanvasPanSync } from '../hooks/useCanvasPanSync';
 import { useVisibleCanvasData } from '../hooks/useVisibleCanvasData';
 import { useSelection } from '../hooks/useSelection';
+import { useDragPreviewSync } from '../hooks/useDragPreviewSync';
 import {
-    buildCardPositionOverrides,
+    buildCardPositionOverridesFromMap,
     resolveDraggedCardIds
 } from '../utils/cardDrag';
 import InstantTooltip from './InstantTooltip';
@@ -68,6 +69,10 @@ export default function Canvas({
     const isSpaceHoldPanningRef = useRef(false);
     const suppressNextContextToggleRef = useRef(false);
     const [dragPositionOverrides, setDragPositionOverrides] = React.useState(EMPTY_POSITION_OVERRIDES);
+    const dragPreviewContextRef = useRef({
+        moveIds: new Set(),
+        sourceCardMap: new Map()
+    });
 
     const {
         cardSpatialIndex,
@@ -114,6 +119,19 @@ export default function Canvas({
         setOffset
     });
     const { performSelectionCheck } = useSelection(cardSpatialIndex);
+    const {
+        scheduleDragPreview,
+        flushDragPreview,
+        resetDragPreview
+    } = useDragPreviewSync({
+        buildOverrides: ({ dx, dy }) => buildCardPositionOverridesFromMap(
+            dragPreviewContextRef.current.sourceCardMap,
+            dragPreviewContextRef.current.moveIds,
+            dx,
+            dy
+        ),
+        applyOverrides: setDragPositionOverrides
+    });
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -295,36 +313,59 @@ export default function Canvas({
 
     const handleCardPreviewMove = useCallback((id, newX, newY, moveWithConnections = false) => {
         const {
-            cards: sourceCards,
             connections: sourceConnections,
-            selectedIds: sourceSelectedIds
+            selectedIds: sourceSelectedIds,
+            getCardMap
         } = useStore.getState();
 
-        const sourceCard = sourceCards.find((card) => card.id === id);
+        const sourceCard = getCardMap().get(id);
         if (!sourceCard) return;
 
         const dx = newX - sourceCard.x;
         const dy = newY - sourceCard.y;
 
         if (dx === 0 && dy === 0) {
-            setDragPositionOverrides(EMPTY_POSITION_OVERRIDES);
+            resetDragPreview(EMPTY_POSITION_OVERRIDES);
             return;
         }
 
-        const moveIds = resolveDraggedCardIds({
-            cardId: id,
-            selectedIds: sourceSelectedIds,
-            connections: sourceConnections,
-            moveWithConnections
-        });
+        dragPreviewContextRef.current = {
+            moveIds: resolveDraggedCardIds({
+                cardId: id,
+                selectedIds: sourceSelectedIds,
+                connections: sourceConnections,
+                moveWithConnections
+            }),
+            sourceCardMap: getCardMap()
+        };
 
-        setDragPositionOverrides(buildCardPositionOverrides(sourceCards, moveIds, dx, dy));
-    }, []);
+        scheduleDragPreview({ dx, dy });
+    }, [resetDragPreview, scheduleDragPreview]);
 
     const handleCardCommitMove = useCallback((id, newX, newY, moveWithConnections = false) => {
+        const {
+            connections: sourceConnections,
+            selectedIds: sourceSelectedIds,
+            getCardMap
+        } = useStore.getState();
+        const sourceCard = getCardMap().get(id);
+
+        if (sourceCard) {
+            dragPreviewContextRef.current = {
+                moveIds: resolveDraggedCardIds({
+                    cardId: id,
+                    selectedIds: sourceSelectedIds,
+                    connections: sourceConnections,
+                    moveWithConnections
+                }),
+                sourceCardMap: getCardMap()
+            };
+            flushDragPreview();
+        }
+
         handleCardMoveEnd(id, newX, newY, moveWithConnections);
-        setDragPositionOverrides(EMPTY_POSITION_OVERRIDES);
-    }, [handleCardMoveEnd]);
+        resetDragPreview(EMPTY_POSITION_OVERRIDES);
+    }, [flushDragPreview, handleCardMoveEnd, resetDragPreview]);
 
     // Touch Support for Panning/Selection
     const lastTouchRef = useRef(null);

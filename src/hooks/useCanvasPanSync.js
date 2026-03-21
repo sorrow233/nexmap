@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+const STORE_SYNC_INTERVAL_MS = 34;
+
 export function useCanvasPanSync({ canvasRef, contentRef, stateRef, setOffset }) {
-    const frameRef = useRef(null);
+    const timerRef = useRef(null);
     const pendingOffsetRef = useRef(null);
 
     const applyVisualTransform = useCallback((x, y, scale = stateRef.current.scale) => {
@@ -15,9 +17,9 @@ export function useCanvasPanSync({ canvasRef, contentRef, stateRef, setOffset })
     }, [canvasRef, contentRef, stateRef]);
 
     const flushPanSync = useCallback(() => {
-        if (frameRef.current) {
-            cancelAnimationFrame(frameRef.current);
-            frameRef.current = null;
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
         }
 
         const nextOffset = pendingOffsetRef.current || stateRef.current.offset;
@@ -36,10 +38,10 @@ export function useCanvasPanSync({ canvasRef, contentRef, stateRef, setOffset })
     const schedulePanSync = useCallback((nextOffset) => {
         pendingOffsetRef.current = nextOffset;
 
-        if (frameRef.current) return;
+        if (timerRef.current) return;
 
-        frameRef.current = requestAnimationFrame(() => {
-            frameRef.current = null;
+        timerRef.current = setTimeout(() => {
+            timerRef.current = null;
             const latestOffset = pendingOffsetRef.current;
             pendingOffsetRef.current = null;
 
@@ -51,7 +53,7 @@ export function useCanvasPanSync({ canvasRef, contentRef, stateRef, setOffset })
                 }
                 return latestOffset;
             });
-        });
+        }, STORE_SYNC_INTERVAL_MS);
     }, [setOffset]);
 
     const applyPanDelta = useCallback((deltaX, deltaY) => {
@@ -76,8 +78,8 @@ export function useCanvasPanSync({ canvasRef, contentRef, stateRef, setOffset })
 
     useEffect(() => {
         return () => {
-            if (frameRef.current) {
-                cancelAnimationFrame(frameRef.current);
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
             }
         };
     }, []);
