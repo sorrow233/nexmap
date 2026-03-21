@@ -29,8 +29,8 @@ export const STATUS = {
     CANCELLED: 'cancelled',
 };
 
-const MAX_CONCURRENT_TASKS = 8;
-const DEFAULT_MAX_CONCURRENT_PER_CARD = 3;
+const MAX_CONCURRENT_TASKS = 20;
+const DEFAULT_MAX_CONCURRENT_PER_CARD = 6;
 
 class AIManager {
     constructor() {

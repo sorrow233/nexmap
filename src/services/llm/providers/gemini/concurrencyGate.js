@@ -14,11 +14,11 @@ function resolvePerKeyConcurrency(model = '', stream = false) {
     const lower = String(model || '').toLowerCase();
 
     if (lower.includes('gemini-3.1-pro-preview')) {
-        return stream ? 2 : 3;
+        return stream ? 8 : 10;
     }
 
     if (lower.includes('gemini-3-pro-preview') || lower.includes('gemini-2.5-pro')) {
-        return stream ? 2 : 3;
+        return stream ? 6 : 8;
     }
 
     if (lower.includes('flash')) {
@@ -31,7 +31,7 @@ function resolvePerKeyConcurrency(model = '', stream = false) {
 function resolveConcurrencyLimit({ model = '', stream = false, configuredKeyCount = 1 } = {}) {
     const perKeyLimit = resolvePerKeyConcurrency(model, stream);
     const keyCount = normalizeConfiguredKeyCount(configuredKeyCount);
-    const hardCap = stream ? 8 : 10;
+    const hardCap = stream ? 20 : 24;
 
     return Math.max(1, Math.min(hardCap, perKeyLimit * keyCount));
 }
