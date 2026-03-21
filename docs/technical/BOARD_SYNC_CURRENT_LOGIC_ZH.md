@@ -185,13 +185,16 @@ flowchart TD
 
 也就是把整份 board snapshot 同步进 doc。
 
-### 5.2 新 snapshot 不比 doc 新，但有 cards
+### 5.2 新 snapshot 不比 doc 新
 
-调用：
+当前版本里，这种情况会直接拒绝回灌，不再做任何 `cards fallback`。
 
-- `syncBoardCardsToDoc(this.doc, normalized.cards)`
+也就是说：
 
-也就是只同步 cards，但这里仍然是“整份 cards 数组”的合并，不是只同步局部脏卡。
+- 本地 snapshot 如果不比当前 doc 新
+- 就不能再把一份可能不完整的本地 `cards` 强行灌回 Y.Doc
+
+这样做的目的，是防止“新设备本地旧快照”在远端还没完全补齐前，就过早参与同步，形成隐性的本地高优先级。
 
 ## 6. Y.Doc 当前是如何组织和合并的
 
@@ -282,11 +285,41 @@ Y.Doc 的根键包括：
 - 不会等 debounce
 - 会立刻进入 `flushPendingUpdates('size_limit')`
 
-而当前大多数情况下 `updateLogEnabled = false`，所以会直接走：
+当前版本默认 `updateLogEnabled = true`，优先走增量 update log：
 
-- `saveSnapshot('checkpoint_only_flush')`
+1. 把本次合并后的 update 写到 `updates` 子集合
+2. 再写 root 文档里的 `syncTouchedAtMs`
+3. 每累计一定 flush 次数后，再做周期性 checkpoint 压实
 
-也就是写整板 checkpoint。
+只有当 update log 写入失败时，才会退回：
+
+- `saveSnapshot('updates_fallback')`
+
+也就是重新写整板 checkpoint。
+
+### 7.4 root 文档现在不仅是 checkpoint 指针，也是“增量补拉信号”
+
+这是当前版本里修掉的一个关键根因。
+
+之前的问题是：
+
+- 设备 A 写出新的 `updates` 文档后，会顺手更新 root 里的 `syncTouchedAtMs`
+- 设备 B 的 root 监听如果发现“checkpoint key 没变”，就会直接 return
+- 结果这个“远端其实有新增量了”的信号被吞掉
+- 一旦 B 端的 tail listener 或首次 tail load 恰好错过窗口，就会表现成“同一画布、同一卡片，在另一台设备上就是不同步”
+
+当前版本的处理变成：
+
+- root 监听除了比较 checkpoint key / checkpointSavedAtMs
+- 还会额外比较 `syncTouchedAtMs`
+- 如果 checkpoint 没变，但 `syncTouchedAtMs` 前进了
+- 就会主动执行一次 `loadTailUpdates()` 做增量补拉
+
+这意味着：
+
+- root 现在承担两层职责
+- 一层是 checkpoint 指针
+- 一层是“有新 delta 可以补拉”的广播信号
 
 ## 8. Firestore checkpoint 当前怎么存
 
@@ -346,7 +379,7 @@ Y.Doc 的根键包括：
 
 对大画布、大对话来说，这本身就很重。
 
-### 9.3 `applyLocalSnapshot()` 当前不是脏卡片级 patch
+### 9.3 `applyLocalSnapshot()` 当前仍然不是脏卡片级 patch
 
 文件：`src/services/sync/boardSyncController.js`
 
@@ -354,9 +387,10 @@ Y.Doc 的根键包括：
 控制器内部仍然会：
 
 - 读取当前整板 snapshot
-- 再决定整板同步或整份 cards 同步
+- 再决定是否整板同步
 
-所以它仍然不是“只同步局部脏卡”。
+虽然“本地不够新却仍回灌整份 cards”的错误逻辑已经移除，
+但它仍然不是“只同步局部脏卡”。
 
 ### 9.4 Firestore 远端写入仍然和整板 checkpoint 强绑定
 
@@ -392,7 +426,7 @@ Y.Doc 的根键包括：
 
 当前这块功能的真实执行逻辑可以概括为：
 
-`本地编辑 -> useBoardPersistence 调度并完成本地保存 -> 通过桥接模块把“已保存 payload”交给同步控制器 -> 控制器把 snapshot 应用到 Y.Doc -> Firestore 同步层根据 doc update 决定是否写整板 checkpoint -> 远端设备再监听 checkpoint 回放到本地。`
+`本地编辑 -> useBoardPersistence 调度并完成本地保存 -> 通过桥接模块把“已保存 payload”交给同步控制器 -> 控制器把更新版本的 snapshot 应用到 Y.Doc -> Firestore 同步层优先写 delta update log，并用 root.syncTouchedAtMs 通知别的设备补拉 -> 必要时再做 checkpoint 压实 -> 远端设备补拉 delta 或回放 checkpoint 到本地。`
 
 而当前这块最核心的风险仍然是：
 

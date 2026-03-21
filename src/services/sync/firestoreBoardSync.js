@@ -80,6 +80,7 @@ export class FirestoreBoardSync {
         this.latestCheckpointServerSavedAt = null;
         this.latestCheckpointSignature = '';
         this.latestCheckpointRootKey = '';
+        this.latestRootSyncTouchedAtMs = 0;
         this.connected = false;
         this.rootUnsubscribe = null;
         this.updateLogEnabled = Boolean(FIREBASE_SYNC_LIMITS.enableDeltaUpdateLog);
@@ -227,6 +228,7 @@ export class FirestoreBoardSync {
     async loadRemoteCheckpoint(rootData = null) {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
         let effectiveRootData = rootData || (await getDoc(rootRef)).data();
+        this.latestRootSyncTouchedAtMs = toFirestoreMillis(effectiveRootData?.syncTouchedAtMs);
 
         if (!hasRemoteCheckpoint(effectiveRootData)) {
             const migratedCheckpoint = await migrateLegacyRootSnapshotToCheckpoint({
@@ -321,6 +323,7 @@ export class FirestoreBoardSync {
             }
 
             this.updateRemoteMetadataFromRoot(data);
+            const remoteSyncTouchedAtMs = toFirestoreMillis(data.syncTouchedAtMs);
 
             const remoteSavedAtMs = toFirestoreMillis(data.checkpointSavedAtMs);
             const nextRootCheckpointKey = buildRootCheckpointKey(data);
@@ -329,6 +332,19 @@ export class FirestoreBoardSync {
                 nextRootCheckpointKey === this.latestCheckpointRootKey &&
                 remoteSavedAtMs <= this.latestCheckpointSavedAtMs
             ) {
+                if (
+                    this.updateLogEnabled &&
+                    remoteSyncTouchedAtMs > this.latestRootSyncTouchedAtMs
+                ) {
+                    this.latestRootSyncTouchedAtMs = remoteSyncTouchedAtMs;
+                    try {
+                        await this.loadTailUpdates();
+                    } catch (error) {
+                        this.emitState('warning', {
+                            message: error?.message || 'Tail update catch-up failed'
+                        });
+                    }
+                }
                 return;
             }
 
@@ -350,6 +366,7 @@ export class FirestoreBoardSync {
             this.latestCheckpointServerSavedAt = data.checkpointServerSavedAt || this.latestCheckpointServerSavedAt;
             this.latestCheckpointSignature = checkpoint.signature || '';
             this.latestCheckpointRootKey = nextRootCheckpointKey || this.latestCheckpointRootKey;
+            this.latestRootSyncTouchedAtMs = remoteSyncTouchedAtMs;
             this.hasUnsnapshottedChanges = false;
             try {
                 this.applyLoadedCheckpoint(checkpoint, data);
