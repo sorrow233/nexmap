@@ -1,8 +1,8 @@
 const DEFAULT_OPTIONS = {
-    drainIntervalMs: 16,
-    baseChunkSize: 6,
-    maxChunkSize: 90,
-    targetDrainSteps: 14
+    frameIntervalMs: 16,
+    baseChunkSize: 24,
+    maxChunkSize: 320,
+    targetDrainSteps: 8
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -58,10 +58,19 @@ export const applyStreamTextUpdates = (cards, updatesMap) => {
 
     if (updatesByCard.size === 0) return cards;
 
+    const nextCards = cards.slice();
+    const pendingCardIds = new Set(updatesByCard.keys());
     let hasCardChanged = false;
-    const nextCards = cards.map((card) => {
+
+    for (let index = 0; index < cards.length; index += 1) {
+        const card = cards[index];
+        if (!pendingCardIds.has(card.id)) continue;
+
         const cardUpdates = updatesByCard.get(card.id);
-        if (!cardUpdates) return card;
+        if (!cardUpdates) {
+            pendingCardIds.delete(card.id);
+            continue;
+        }
 
         const messages = [...(card.data.messages || [])];
         let messageChanged = false;
@@ -92,16 +101,26 @@ export const applyStreamTextUpdates = (cards, updatesMap) => {
             messageChanged = true;
         }
 
-        if (!messageChanged) return card;
+        pendingCardIds.delete(card.id);
+
+        if (!messageChanged) {
+            if (pendingCardIds.size === 0) break;
+            continue;
+        }
+
         hasCardChanged = true;
-        return {
+        nextCards[index] = {
             ...card,
             data: {
                 ...card.data,
                 messages
             }
         };
-    });
+
+        if (pendingCardIds.size === 0) {
+            break;
+        }
+    }
 
     return hasCardChanged ? nextCards : cards;
 };
@@ -111,23 +130,32 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
 
     const pendingChunks = new Map();
     const renderChunks = new Map();
-    let drainTimer = null;
-    let flushTimer = null;
+    let drainHandle = null;
+    let flushHandle = null;
     let destroyed = false;
+    const scheduleFrame = (callback) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            const id = window.requestAnimationFrame(callback);
+            return () => window.cancelAnimationFrame(id);
+        }
+
+        const timeoutId = setTimeout(callback, config.frameIntervalMs);
+        return () => clearTimeout(timeoutId);
+    };
 
     const clearTimers = () => {
-        if (drainTimer) {
-            clearTimeout(drainTimer);
-            drainTimer = null;
+        if (drainHandle) {
+            drainHandle();
+            drainHandle = null;
         }
-        if (flushTimer) {
-            clearTimeout(flushTimer);
-            flushTimer = null;
+        if (flushHandle) {
+            flushHandle();
+            flushHandle = null;
         }
     };
 
     const flushRenderChunks = () => {
-        flushTimer = null;
+        flushHandle = null;
         if (destroyed || renderChunks.size === 0) return;
 
         const updates = new Map(renderChunks);
@@ -136,12 +164,12 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
     };
 
     const scheduleFlush = () => {
-        if (destroyed || flushTimer) return;
-        flushTimer = setTimeout(flushRenderChunks, config.drainIntervalMs);
+        if (destroyed || flushHandle) return;
+        flushHandle = scheduleFrame(flushRenderChunks);
     };
 
     const drainPendingChunks = () => {
-        drainTimer = null;
+        drainHandle = null;
         if (destroyed || pendingChunks.size === 0) return;
 
         pendingChunks.forEach((fullPendingText, key) => {
@@ -165,7 +193,7 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         scheduleFlush();
 
         if (pendingChunks.size > 0) {
-            drainTimer = setTimeout(drainPendingChunks, config.drainIntervalMs);
+            drainHandle = scheduleFrame(drainPendingChunks);
         }
     };
 
@@ -173,8 +201,8 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         if (destroyed || !key || !chunk) return;
         appendText(pendingChunks, key, chunk);
 
-        if (!drainTimer) {
-            drainTimer = setTimeout(drainPendingChunks, config.drainIntervalMs);
+        if (!drainHandle) {
+            drainHandle = scheduleFrame(drainPendingChunks);
         }
     };
 

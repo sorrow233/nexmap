@@ -526,14 +526,11 @@ export function useBoardPersistence({
         if (hasGeneratingCards) {
             generationDeferredRevisionRef.current = revision;
 
-            if (
-                activePersistenceCursorRef.current.clientRevision !== revision ||
-                activePersistenceCursorRef.current.dirty !== true
-            ) {
+            if (activePersistenceCursorRef.current.dirty !== true) {
                 applySaveStatus(setSaveStatus, 'local_dirty');
                 updateActivePersistenceCursor({
-                    updatedAt: Date.now(),
-                    clientRevision: revision,
+                    updatedAt: activePersistenceCursorRef.current.updatedAt || Date.now(),
+                    clientRevision: activePersistenceCursorRef.current.clientRevision || revision,
                     dirty: true
                 });
             }
