@@ -12,8 +12,16 @@ const DEFAULT_GLOBAL_PROMPTS = [
 ];
 
 const loadGlobalPrompts = () => {
-    const saved = localStorage.getItem(GLOBAL_PROMPTS_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_GLOBAL_PROMPTS;
+    try {
+        const saved = localStorage.getItem(GLOBAL_PROMPTS_KEY);
+        if (!saved) return DEFAULT_GLOBAL_PROMPTS;
+
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : DEFAULT_GLOBAL_PROMPTS;
+    } catch (error) {
+        console.warn('[BoardSlice] Failed to parse global prompts from localStorage, using defaults', error);
+        return DEFAULT_GLOBAL_PROMPTS;
+    }
 };
 
 export const createBoardSlice = (set, get) => ({
@@ -28,7 +36,11 @@ export const createBoardSlice = (set, get) => ({
             globalPromptsModifiedAt: fromCloud ? (get().globalPromptsModifiedAt || 0) : Date.now()
         });
         if (!fromCloud) {
-            localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
+            try {
+                localStorage.setItem(GLOBAL_PROMPTS_KEY, JSON.stringify(prompts));
+            } catch (error) {
+                console.error('[BoardSlice] Failed to persist global prompts:', error);
+            }
         }
     },
     addGlobalPrompt: (prompt) => {

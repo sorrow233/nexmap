@@ -43,8 +43,6 @@ const saveWithTimestamp = (key, value) => {
 };
 
 export default function SettingsModal({ isOpen, onClose, user }) {
-    if (!isOpen) return null;
-
     const { t } = useLanguage();
 
     const [activeTab, setActiveTab] = useState('basic');
@@ -216,6 +214,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             setTestMessage(error.message || t.settings.connectionFailed);
         }
     };
+
+    if (!isOpen) return null;
 
     const saveLocalState = (now) => {
         useStore.getState().setFullConfig({

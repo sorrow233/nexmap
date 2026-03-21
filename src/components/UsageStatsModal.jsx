@@ -6,8 +6,6 @@ import { userStatsService } from '../services/stats/userStatsService';
 import ActivityChart from './stats/ActivityChart';
 
 export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
-    if (!isOpen) return null;
-
     const { t } = useLanguage();
 
     const [stats, setStats] = useState({
@@ -74,6 +72,8 @@ export default function UsageStatsModal({ isOpen, onClose, boardsList, user }) {
 
     // Format utility
     const fmt = (n) => n?.toLocaleString() || '0';
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-lg z-[100] flex items-center justify-center font-sans p-4 animate-fade-in transition-all duration-300">
