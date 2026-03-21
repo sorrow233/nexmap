@@ -75,6 +75,21 @@ const decrementGeneratingTaskCount = (currentCounts = {}, cardId) => {
     return nextCounts;
 };
 
+const mergeStreamUpdateMaps = (...maps) => {
+    const merged = new Map();
+
+    maps.forEach((map) => {
+        if (!(map instanceof Map) || map.size === 0) return;
+
+        map.forEach((content, bufferKey) => {
+            if (!content || !bufferKey) return;
+            merged.set(bufferKey, `${merged.get(bufferKey) || ''}${content}`);
+        });
+    });
+
+    return merged;
+};
+
 
 export const createAISlice = (set, get) => {
     const streamRenderBuffer = createStreamRenderBuffer((updates) => {
@@ -432,7 +447,11 @@ export const createAISlice = (set, get) => {
                         message: "You have used your 100 free credits.",
                         action: "👉 Click settings button to add API Key."
                     };
-                    updateCardContent(cardId, `\n\n**${info.title}**\n\n${info.message}\n\n${info.action}`);
+                    updateCardContent(
+                        cardId,
+                        `\n\n**${info.title}**\n\n${info.message}\n\n${info.action}`,
+                        assistantMessageId
+                    );
                     // Reload credits state
                     get().loadSystemCredits?.();
                 } else {
@@ -485,7 +504,7 @@ export const createAISlice = (set, get) => {
                             `${info?.action}`;
                     }
 
-                    updateCardContent(cardId, userMessage);
+                    updateCardContent(cardId, userMessage, assistantMessageId);
                 }
             } finally {
                 setCardGenerating(cardId, false, { messageId: assistantMessageId });
@@ -542,11 +561,11 @@ export const createAISlice = (set, get) => {
         setCardGenerating: (id, isGenerating, options = {}) => {
             if (!id) return;
             const bufferKey = buildStreamBufferKey(id, options?.messageId || null);
+            const flushedTailUpdates = isGenerating
+                ? new Map()
+                : streamRenderBuffer.flushKeyNow(bufferKey);
 
-            if (!isGenerating) {
-                streamRenderBuffer.flushNow();
-                streamRenderBuffer.cleanupKey(bufferKey);
-            } else {
+            if (isGenerating) {
                 streamRenderBuffer.cleanupKey(bufferKey);
             }
 
@@ -565,7 +584,10 @@ export const createAISlice = (set, get) => {
 
                 const committedUpdates = isGenerating
                     ? new Map()
-                    : collectStreamBufferUpdateByKey(state.streamingMessages, bufferKey);
+                    : mergeStreamUpdateMaps(
+                        collectStreamBufferUpdateByKey(state.streamingMessages, bufferKey),
+                        flushedTailUpdates
+                    );
                 const nextCards = committedUpdates.size > 0
                     ? applyStreamTextUpdates(state.cards, committedUpdates)
                     : state.cards;

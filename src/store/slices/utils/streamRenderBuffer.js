@@ -312,6 +312,19 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         onFlush(updates);
     };
 
+    const flushKeyNow = (bufferKey) => {
+        const updates = new Map();
+        if (destroyed || !bufferKey) return updates;
+
+        appendText(updates, bufferKey, renderChunks.get(bufferKey) || '');
+        renderChunks.delete(bufferKey);
+
+        appendText(updates, bufferKey, pendingChunks.get(bufferKey) || '');
+        pendingChunks.delete(bufferKey);
+
+        return updates;
+    };
+
     const cleanupCard = (cardId) => {
         if (!cardId) return;
 
@@ -348,6 +361,7 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
     return {
         enqueue,
         flushNow,
+        flushKeyNow,
         cleanupCard,
         cleanupKey,
         clearAll,
