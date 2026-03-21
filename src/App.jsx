@@ -618,12 +618,6 @@ function AppContent() {
         connections,
         groups
     ]);
-    const latestBoardSnapshotRef = useRef(currentBoardSnapshot);
-
-    useEffect(() => {
-        latestBoardSnapshotRef.current = currentBoardSnapshot;
-    }, [currentBoardSnapshot]);
-
     useEffect(() => {
         const controller = boardSyncControllerRef.current;
         if (!controller || !currentBoardId || isBoardLoading) return;
@@ -636,16 +630,20 @@ function AppContent() {
             return;
         }
 
+        if (activeBoardPersistence?.dirty === true) {
+            return;
+        }
+
         if (boardSyncDebounceTimerRef.current) {
             clearTimeout(boardSyncDebounceTimerRef.current);
             boardSyncDebounceTimerRef.current = null;
         }
 
-        controller.applyLocalSnapshot(latestBoardSnapshotRef.current);
+        controller.applyLocalSnapshot(currentBoardSnapshot);
     }, [
-        activeBoardPersistence?.clientRevision,
-        activeBoardPersistence?.updatedAt,
+        activeBoardPersistence?.dirty,
         currentBoardId,
+        currentBoardSnapshot,
         generatingCardIds?.size,
         isBoardLoading
     ]);
