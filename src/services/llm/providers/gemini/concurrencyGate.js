@@ -4,11 +4,17 @@ function buildGateKey({ providerId = 'default', baseUrl = '', model = '', stream
     return `${providerId}::${baseUrl}::${model}::${stream ? 'stream' : 'chat'}`;
 }
 
-function resolveConcurrencyLimit(model = '', stream = false) {
+function normalizeConfiguredKeyCount(configuredKeyCount = 1) {
+    const count = Number(configuredKeyCount);
+    if (!Number.isFinite(count) || count <= 0) return 1;
+    return Math.max(1, Math.floor(count));
+}
+
+function resolvePerKeyConcurrency(model = '', stream = false) {
     const lower = String(model || '').toLowerCase();
 
     if (lower.includes('gemini-3.1-pro-preview')) {
-        return stream ? 1 : 2;
+        return stream ? 2 : 3;
     }
 
     if (lower.includes('gemini-3-pro-preview') || lower.includes('gemini-2.5-pro')) {
@@ -16,10 +22,18 @@ function resolveConcurrencyLimit(model = '', stream = false) {
     }
 
     if (lower.includes('flash')) {
-        return stream ? 4 : 6;
+        return stream ? 3 : 4;
     }
 
     return stream ? 2 : 4;
+}
+
+function resolveConcurrencyLimit({ model = '', stream = false, configuredKeyCount = 1 } = {}) {
+    const perKeyLimit = resolvePerKeyConcurrency(model, stream);
+    const keyCount = normalizeConfiguredKeyCount(configuredKeyCount);
+    const hardCap = stream ? 8 : 10;
+
+    return Math.max(1, Math.min(hardCap, perKeyLimit * keyCount));
 }
 
 function getGateEntry(key) {
@@ -31,8 +45,14 @@ function getGateEntry(key) {
     return entry;
 }
 
-export async function acquireGeminiConcurrencySlot({ providerId = 'default', baseUrl = '', model = '', stream = false } = {}) {
-    const limit = resolveConcurrencyLimit(model, stream);
+export async function acquireGeminiConcurrencySlot({
+    providerId = 'default',
+    baseUrl = '',
+    model = '',
+    stream = false,
+    configuredKeyCount = 1
+} = {}) {
+    const limit = resolveConcurrencyLimit({ model, stream, configuredKeyCount });
     if (!Number.isFinite(limit) || limit <= 0) {
         return () => { };
     }

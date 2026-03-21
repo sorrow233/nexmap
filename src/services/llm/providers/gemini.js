@@ -36,6 +36,10 @@ export class GeminiProvider extends LLMProvider {
             .filter(Boolean);
     }
 
+    _getConfiguredKeyCount() {
+        return Math.max(1, this._getConfiguredKeys().length);
+    }
+
     _hasGoogleOfficialKey() {
         return this._getConfiguredKeys().some(k => k.startsWith('AIza'));
     }
@@ -476,6 +480,20 @@ export class GeminiProvider extends LLMProvider {
         return getKeyPool(this.config.id || 'default', keysString);
     }
 
+    async _acquireRequestConcurrencySlot({ baseUrl, cleanModel, stream = false, options = {} } = {}) {
+        if (options.disableGeminiConcurrencyGate === true) {
+            return null;
+        }
+
+        return acquireGeminiConcurrencySlot({
+            providerId: this.config?.id || 'default',
+            baseUrl,
+            model: cleanModel,
+            stream,
+            configuredKeyCount: this._getConfiguredKeyCount()
+        });
+    }
+
     async _fetchDirect({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
         const rawUrl = this._buildDirectUrl(baseUrl, cleanModel, stream);
         const sep = rawUrl.includes('?') ? '&' : '?';
@@ -644,35 +662,34 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const releaseConcurrencySlot = options.disableGeminiConcurrencyGate === true
-            ? null
-            : await acquireGeminiConcurrencySlot({
-                providerId: this.config?.id || 'default',
-                baseUrl,
-                model: cleanModel,
-                stream: false
-            });
+        const maxAttempts = MAX_CHAT_ATTEMPTS;
+        let attempt = 0;
+        let lastError = null;
+        let activeApiKey = null;
 
-        try {
-            const maxAttempts = MAX_CHAT_ATTEMPTS;
-            let attempt = 0;
-            let lastError = null;
-            let activeApiKey = null;
-
-            while (attempt < maxAttempts) {
+        while (attempt < maxAttempts) {
+            if (!activeApiKey) {
+                activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
+                    signal: options.signal
+                });
                 if (!activeApiKey) {
-                    activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
-                        signal: options.signal
-                    });
-                    if (!activeApiKey) {
-                        throw this._buildNoAvailableKeyError(keyPool);
-                    }
+                    throw this._buildNoAvailableKeyError(keyPool);
                 }
-                const apiKey = activeApiKey;
-                attempt += 1;
+            }
+            const apiKey = activeApiKey;
+            attempt += 1;
 
+            try {
+                const releaseConcurrencySlot = await this._acquireRequestConcurrencySlot({
+                    baseUrl,
+                    cleanModel,
+                    stream: false,
+                    options
+                });
+
+                let response;
                 try {
-                    const response = await this._requestWithTransportFallback({
+                    response = await this._requestWithTransportFallback({
                         apiKey,
                         baseUrl,
                         cleanModel,
@@ -680,116 +697,22 @@ export class GeminiProvider extends LLMProvider {
                         stream: false,
                         signal: options.signal
                     });
+                } finally {
+                    releaseConcurrencySlot?.();
+                }
 
-                    if (!response.ok) {
-                        const statusCode = this._normalizeStatusCode(response.status);
-                        const errorMessage = await this._readErrorMessage(response);
-                        const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
+                if (!response.ok) {
+                    const statusCode = this._normalizeStatusCode(response.status);
+                    const errorMessage = await this._readErrorMessage(response);
+                    const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
 
-                        this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                        if (this._shouldSwitchKeyOnRetry(statusCode)) {
-                            activeApiKey = null;
-                        }
-
-                        const rateLimited = this._isRateLimited(statusCode, errorMessage);
-                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
-                        if (canRetry) {
-                            const waitMs = this._resolveRetryWaitMs({
-                                statusCode,
-                                errorMessage,
-                                retryDelayMs,
-                                keyPool,
-                                attempt
-                            });
-                            await this._waitWithAbort(waitMs, options.signal);
-                            lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
-                            continue;
-                        }
-
-                        throw this._createHandledApiError({
-                            message: `API Error ${statusCode || 'unknown'}: ${errorMessage}`,
-                            statusCode,
-                            retryDelayMs
-                        });
-                    }
-
-                    const data = await response.json();
-                    if (data.error) {
-                        const statusCode = this._normalizeStatusCode(data.error.code);
-                        const errorMessage = data.error.message || JSON.stringify(data.error);
-                        const retryDelayMs = this._extractRetryDelayMs(errorMessage);
-
-                        this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                        if (this._shouldSwitchKeyOnRetry(statusCode)) {
-                            activeApiKey = null;
-                        }
-
-                        const rateLimited = this._isRateLimited(statusCode, errorMessage);
-                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
-                        if (canRetry) {
-                            const waitMs = this._resolveRetryWaitMs({
-                                statusCode,
-                                errorMessage,
-                                retryDelayMs,
-                                keyPool,
-                                attempt
-                            });
-                            await this._waitWithAbort(waitMs, options.signal);
-                            lastError = new Error(errorMessage);
-                            continue;
-                        }
-
-                        throw this._createHandledApiError({
-                            message: errorMessage,
-                            statusCode,
-                            retryDelayMs
-                        });
-                    }
-
-                    const candidate = data.candidates?.[0];
-                    const usedSearch = didCandidateUseSearch(candidate);
-                    if (typeof options.onResponseMetadata === 'function') {
-                        try {
-                            options.onResponseMetadata({ usedSearch });
-                        } catch (metaError) {
-                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
-                        }
-                    }
-
-                    const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
-                    if (visibleText) return visibleText;
-
-                    const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
-                    return fallbackText || '';
-                } catch (error) {
-                    if (isAbortError(error) || options.signal?.aborted) throw error;
-
-                    const errorMessage = error?.message || String(error);
-                    const statusCode = Number.isFinite(Number(error?.statusCode))
-                        ? Number(error.statusCode)
-                        : this._extractStatusCodeFromMessage(errorMessage);
-                    const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
-                        ? Number(error.retryDelayMs)
-                        : this._extractRetryDelayMs(errorMessage);
-
-                    if (error?.keyAlreadyMarked !== true) {
-                        this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                    }
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
                     if (this._shouldSwitchKeyOnRetry(statusCode)) {
                         activeApiKey = null;
                     }
 
-                    // 429 / rate-limit → throw immediately, no retry.
-                    if (this._isRateLimited(statusCode, errorMessage)) {
-                        throw error;
-                    }
-
-                    // 401/403 → throw immediately, no retry.
-                    if (Number(statusCode) === 401 || Number(statusCode) === 403) {
-                        throw error;
-                    }
-
-                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
+                    const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
                     if (canRetry) {
                         const waitMs = this._resolveRetryWaitMs({
                             statusCode,
@@ -799,19 +722,113 @@ export class GeminiProvider extends LLMProvider {
                             attempt
                         });
                         await this._waitWithAbort(waitMs, options.signal);
-                        lastError = error;
+                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
 
-                    console.error('[Gemini] Chat error details:', error);
+                    throw this._createHandledApiError({
+                        message: `API Error ${statusCode || 'unknown'}: ${errorMessage}`,
+                        statusCode,
+                        retryDelayMs
+                    });
+                }
+
+                const data = await response.json();
+                if (data.error) {
+                    const statusCode = this._normalizeStatusCode(data.error.code);
+                    const errorMessage = data.error.message || JSON.stringify(data.error);
+                    const retryDelayMs = this._extractRetryDelayMs(errorMessage);
+
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                    if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        activeApiKey = null;
+                    }
+
+                    const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
+                    if (canRetry) {
+                        const waitMs = this._resolveRetryWaitMs({
+                            statusCode,
+                            errorMessage,
+                            retryDelayMs,
+                            keyPool,
+                            attempt
+                        });
+                        await this._waitWithAbort(waitMs, options.signal);
+                        lastError = new Error(errorMessage);
+                        continue;
+                    }
+
+                    throw this._createHandledApiError({
+                        message: errorMessage,
+                        statusCode,
+                        retryDelayMs
+                    });
+                }
+
+                const candidate = data.candidates?.[0];
+                const usedSearch = didCandidateUseSearch(candidate);
+                if (typeof options.onResponseMetadata === 'function') {
+                    try {
+                        options.onResponseMetadata({ usedSearch });
+                    } catch (metaError) {
+                        console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                    }
+                }
+
+                const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
+                if (visibleText) return visibleText;
+
+                const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
+                return fallbackText || '';
+            } catch (error) {
+                if (isAbortError(error) || options.signal?.aborted) throw error;
+
+                const errorMessage = error?.message || String(error);
+                const statusCode = Number.isFinite(Number(error?.statusCode))
+                    ? Number(error.statusCode)
+                    : this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
+                    ? Number(error.retryDelayMs)
+                    : this._extractRetryDelayMs(errorMessage);
+
+                if (error?.keyAlreadyMarked !== true) {
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                }
+                if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                    activeApiKey = null;
+                }
+
+                // 429 / rate-limit → throw immediately, no retry.
+                if (this._isRateLimited(statusCode, errorMessage)) {
                     throw error;
                 }
-            }
 
-            throw lastError || new Error('Gemini 请求失败');
-        } finally {
-            releaseConcurrencySlot?.();
+                // 401/403 → throw immediately, no retry.
+                if (Number(statusCode) === 401 || Number(statusCode) === 403) {
+                    throw error;
+                }
+
+                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
+                if (canRetry) {
+                    const waitMs = this._resolveRetryWaitMs({
+                        statusCode,
+                        errorMessage,
+                        retryDelayMs,
+                        keyPool,
+                        attempt
+                    });
+                    await this._waitWithAbort(waitMs, options.signal);
+                    lastError = error;
+                    continue;
+                }
+
+                console.error('[Gemini] Chat error details:', error);
+                throw error;
+            }
         }
+
+        throw lastError || new Error('Gemini 请求失败');
     }
 
     async stream(messages, onToken, model, options = {}) {
@@ -850,35 +867,34 @@ export class GeminiProvider extends LLMProvider {
             requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
 
-        const releaseConcurrencySlot = options.disableGeminiConcurrencyGate === true
-            ? null
-            : await acquireGeminiConcurrencySlot({
-                providerId: this.config?.id || 'default',
-                baseUrl,
-                model: cleanModel,
-                stream: true
-            });
+        const maxAttempts = this._getMaxStreamAttempts(baseUrl, cleanModel);
+        let attempt = 0;
+        let lastError = null;
+        let activeApiKey = null;
 
-        try {
-            const maxAttempts = this._getMaxStreamAttempts(baseUrl, cleanModel);
-            let attempt = 0;
-            let lastError = null;
-            let activeApiKey = null;
-
-            while (attempt < maxAttempts) {
+        while (attempt < maxAttempts) {
+            if (!activeApiKey) {
+                activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
+                    signal: options.signal
+                });
                 if (!activeApiKey) {
-                    activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
-                        signal: options.signal
-                    });
-                    if (!activeApiKey) {
-                        throw this._buildNoAvailableKeyError(keyPool);
-                    }
+                    throw this._buildNoAvailableKeyError(keyPool);
                 }
-                const apiKey = activeApiKey;
-                attempt += 1;
+            }
+            const apiKey = activeApiKey;
+            attempt += 1;
 
+            try {
+                const releaseConcurrencySlot = await this._acquireRequestConcurrencySlot({
+                    baseUrl,
+                    cleanModel,
+                    stream: true,
+                    options
+                });
+
+                let response;
                 try {
-                    const response = await this._requestWithTransportFallback({
+                    response = await this._requestWithTransportFallback({
                         apiKey,
                         baseUrl,
                         cleanModel,
@@ -886,98 +902,22 @@ export class GeminiProvider extends LLMProvider {
                         stream: true,
                         signal: options.signal
                     });
+                } finally {
+                    releaseConcurrencySlot?.();
+                }
 
-                    if (!response.ok) {
-                        const statusCode = this._normalizeStatusCode(response.status);
-                        const errorMessage = await this._readErrorMessage(response);
-                        const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
+                if (!response.ok) {
+                    const statusCode = this._normalizeStatusCode(response.status);
+                    const errorMessage = await this._readErrorMessage(response);
+                    const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
 
-                        this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                        if (this._shouldSwitchKeyOnRetry(statusCode)) {
-                            activeApiKey = null;
-                        }
-
-                        const rateLimited = this._isRateLimited(statusCode, errorMessage);
-                        const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
-                        if (canRetry) {
-                            const waitMs = this._resolveRetryWaitMs({
-                                statusCode,
-                                errorMessage,
-                                retryDelayMs,
-                                keyPool,
-                                attempt
-                            });
-                            await this._waitWithAbort(waitMs, options.signal);
-                            lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
-                            continue;
-                        }
-
-                        throw this._createHandledApiError({
-                            message: `API Error ${statusCode || 'unknown'}: ${errorMessage}`,
-                            statusCode,
-                            retryDelayMs
-                        });
-                    }
-
-                    const reader = response.body?.getReader?.();
-                    if (!reader) {
-                        throw new Error('Stream response body is empty');
-                    }
-
-                    try {
-                        const streamMeta = await parseGeminiStream(reader, onToken, () => { });
-                        if (typeof options.onResponseMetadata === 'function') {
-                            try {
-                                options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
-                            } catch (metaError) {
-                                console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
-                            }
-                        }
-                        return;
-                    } finally {
-                        reader.releaseLock();
-                    }
-                } catch (error) {
-                    if (isAbortError(error) || options.signal?.aborted) throw error;
-
-                    const errorMessage = error?.message || String(error);
-                    const statusCode = Number.isFinite(Number(error?.statusCode))
-                        ? Number(error.statusCode)
-                        : this._extractStatusCodeFromMessage(errorMessage);
-                    const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
-                        ? Number(error.retryDelayMs)
-                        : this._extractRetryDelayMs(errorMessage);
-
-                    if (error?.keyAlreadyMarked !== true) {
-                        this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                    }
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
                     if (this._shouldSwitchKeyOnRetry(statusCode)) {
                         activeApiKey = null;
                     }
 
-                    // 429 / rate-limit → throw immediately, NO retry, NO non-stream fallback.
-                    // This is the critical fix: previously 429 would break to non-stream
-                    // fallback which triggered another 3 attempts, exhausting all keys.
-                    if (this._isRateLimited(statusCode, errorMessage)) {
-                        throw error;
-                    }
-
-                    // 401/403 (key permanently failed) → throw immediately, no fallback.
-                    if (Number(statusCode) === 401 || Number(statusCode) === 403) {
-                        throw error;
-                    }
-
-                    const retryableLike = error?.retryable === true ||
-                        this._shouldRetry({ statusCode, errorMessage, error });
-                    const canRetry = attempt < maxAttempts && retryableLike;
-
-                    if (error?.code === 'EMPTY_VISIBLE_STREAM') {
-                        lastError = error;
-                        if (options.allowNonStreamFallback !== false) {
-                            break;
-                        }
-                    }
-
+                    const rateLimited = this._isRateLimited(statusCode, errorMessage);
+                    const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage }) && !rateLimited;
                     if (canRetry) {
                         const waitMs = this._resolveRetryWaitMs({
                             statusCode,
@@ -987,43 +927,119 @@ export class GeminiProvider extends LLMProvider {
                             attempt
                         });
                         await this._waitWithAbort(waitMs, options.signal);
-                        lastError = error;
+                        lastError = new Error(`API Error ${statusCode || 'unknown'}: ${errorMessage}`);
                         continue;
                     }
 
-                    lastError = error;
-                    if (
-                        options.allowNonStreamFallback !== false &&
-                        retryableLike &&
-                        this._shouldUseNonStreamFallback({ baseUrl, cleanModel, error })
-                    ) {
-                        break;
-                    }
+                    throw this._createHandledApiError({
+                        message: `API Error ${statusCode || 'unknown'}: ${errorMessage}`,
+                        statusCode,
+                        retryDelayMs
+                    });
+                }
 
+                const reader = response.body?.getReader?.();
+                if (!reader) {
+                    throw new Error('Stream response body is empty');
+                }
+
+                try {
+                    const streamMeta = await parseGeminiStream(reader, onToken, () => { });
+                    if (typeof options.onResponseMetadata === 'function') {
+                        try {
+                            options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
+                        } catch (metaError) {
+                            console.warn('[Gemini] onResponseMetadata callback failed:', metaError);
+                        }
+                    }
+                    return;
+                } finally {
+                    reader.releaseLock();
+                }
+            } catch (error) {
+                if (isAbortError(error) || options.signal?.aborted) throw error;
+
+                const errorMessage = error?.message || String(error);
+                const statusCode = Number.isFinite(Number(error?.statusCode))
+                    ? Number(error.statusCode)
+                    : this._extractStatusCodeFromMessage(errorMessage);
+                const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
+                    ? Number(error.retryDelayMs)
+                    : this._extractRetryDelayMs(errorMessage);
+
+                if (error?.keyAlreadyMarked !== true) {
+                    this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
+                }
+                if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                    activeApiKey = null;
+                }
+
+                // 429 / rate-limit → throw immediately, NO retry, NO non-stream fallback.
+                // This is the critical fix: previously 429 would break to non-stream
+                // fallback which triggered another 3 attempts, exhausting all keys.
+                if (this._isRateLimited(statusCode, errorMessage)) {
                     throw error;
                 }
-            }
 
-            if (
-                !options.signal?.aborted &&
-                options.allowNonStreamFallback !== false &&
-                this._shouldUseNonStreamFallback({ baseUrl, cleanModel, error: lastError })
-            ) {
-                console.warn('[Gemini] Stream failed after retries, fallback to non-stream generateContent');
-                const text = await this.chat(messages, model, {
-                    ...options,
-                    signal: options.signal
-                });
-                if (text) {
-                    onToken(text);
+                // 401/403 (key permanently failed) → throw immediately, no fallback.
+                if (Number(statusCode) === 401 || Number(statusCode) === 403) {
+                    throw error;
                 }
-                return;
-            }
 
-            throw lastError || new Error('Gemini 流式请求失败');
-        } finally {
-            releaseConcurrencySlot?.();
+                const retryableLike = error?.retryable === true ||
+                    this._shouldRetry({ statusCode, errorMessage, error });
+                const canRetry = attempt < maxAttempts && retryableLike;
+
+                if (error?.code === 'EMPTY_VISIBLE_STREAM') {
+                    lastError = error;
+                    if (options.allowNonStreamFallback !== false) {
+                        break;
+                    }
+                }
+
+                if (canRetry) {
+                    const waitMs = this._resolveRetryWaitMs({
+                        statusCode,
+                        errorMessage,
+                        retryDelayMs,
+                        keyPool,
+                        attempt
+                    });
+                    await this._waitWithAbort(waitMs, options.signal);
+                    lastError = error;
+                    continue;
+                }
+
+                lastError = error;
+                if (
+                    options.allowNonStreamFallback !== false &&
+                    retryableLike &&
+                    this._shouldUseNonStreamFallback({ baseUrl, cleanModel, error })
+                ) {
+                    break;
+                }
+
+                throw error;
+            }
         }
+
+        if (
+            !options.signal?.aborted &&
+            options.allowNonStreamFallback !== false &&
+            this._shouldUseNonStreamFallback({ baseUrl, cleanModel, error: lastError })
+        ) {
+            console.warn('[Gemini] Stream failed after retries, fallback to non-stream generateContent');
+            const text = await this.chat(messages, model, {
+                ...options,
+                signal: options.signal
+            });
+            if (text) {
+                onToken(text);
+            }
+            return;
+        }
+
+        throw lastError || new Error('Gemini 流式请求失败');
     }
 
     /**
