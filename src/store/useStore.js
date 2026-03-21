@@ -34,7 +34,7 @@ const useStoreBase = create(
             resetAllState: () => {
                 console.log('[Store] Resetting all state...');
                 get().clearStreamingState?.();
-                get().setGeneratingCardIds?.(new Set());
+                get().resetGeneratingState?.();
                 get().resetCardState?.();
                 get().resetConnectionState?.();
                 get().resetGroupState?.();

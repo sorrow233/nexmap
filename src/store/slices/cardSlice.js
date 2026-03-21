@@ -296,6 +296,8 @@ export const createCardSlice = (set, get) => {
         set((state) => {
             const nextGenerating = new Set(state.generatingCardIds);
             nextGenerating.delete(id);
+            const nextGeneratingTaskCounts = { ...(state.generatingCardTaskCounts || {}) };
+            delete nextGeneratingTaskCounts[id];
             const nextSelected = state.selectedIds ? state.selectedIds.filter(sid => sid !== id) : [];
             const { indexById } = cardLookup.ensure(state.cards);
             const index = indexById.get(id);
@@ -322,6 +324,7 @@ export const createCardSlice = (set, get) => {
                 // Still remove connections for soft-deleted cards (they'll be restored if card is restored)
                 connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
                 generatingCardIds: nextGenerating,
+                generatingCardTaskCounts: nextGeneratingTaskCounts,
                 selectedIds: nextSelected,
                 expandedCardId: state.expandedCardId === id ? null : state.expandedCardId
             };

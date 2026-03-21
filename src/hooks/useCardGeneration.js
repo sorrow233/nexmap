@@ -174,7 +174,12 @@ export function useCardGeneration() {
                 const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
                 const messageId = assistantMsg?.id;
 
-                await handleChatGenerate(card.id, history, (chunk, msgId) => updateCardContent(card.id, chunk, msgId || messageId));
+                await handleChatGenerate(
+                    card.id,
+                    history,
+                    (chunk, msgId) => updateCardContent(card.id, chunk, msgId || messageId),
+                    { assistantMessageId: messageId }
+                );
                 debugLog.ai(`Batch response complete for card ${card.id}`);
             } catch (e) {
                 debugLog.error(`Batch chat failed for card ${card.id}`, e);

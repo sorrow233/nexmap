@@ -29,7 +29,8 @@ export const STATUS = {
     CANCELLED: 'cancelled',
 };
 
-const MAX_CONCURRENT_CARDS = 8;
+const MAX_CONCURRENT_TASKS = 8;
+const DEFAULT_MAX_CONCURRENT_PER_CARD = 3;
 
 class AIManager {
     constructor() {
@@ -39,8 +40,8 @@ class AIManager {
 
         this.activeTasks = new Map(); // taskId -> { controller, task }
         this.pendingTasks = [];       // FIFO by priority/timestamp (re-sorted on enqueue)
-        this.runningCardIds = new Set();
-        this.maxConcurrentCards = MAX_CONCURRENT_CARDS;
+        this.runningCardCounts = new Map();
+        this.maxConcurrentTasks = MAX_CONCURRENT_TASKS;
         this.results = new Map();     // taskId -> result
 
         AIManager.instance = this;
@@ -72,10 +73,22 @@ class AIManager {
         });
     }
 
+    _getTaskPerCardLimit(task) {
+        if (!task?.cardId) return Infinity;
+
+        const requestedLimit = Number(task.maxConcurrentPerCard);
+        if (Number.isFinite(requestedLimit) && requestedLimit > 0) {
+            return Math.max(1, Math.floor(requestedLimit));
+        }
+
+        return task.type === 'chat' ? DEFAULT_MAX_CONCURRENT_PER_CARD : 1;
+    }
+
     _canRunTask(task) {
+        if (this.activeTasks.size >= this.maxConcurrentTasks) return false;
         if (!task.cardId) return true;
-        if (this.runningCardIds.has(task.cardId)) return false;
-        return this.runningCardIds.size < this.maxConcurrentCards;
+        const runningCount = this.runningCardCounts.get(task.cardId) || 0;
+        return runningCount < this._getTaskPerCardLimit(task);
     }
 
     _pickNextRunnableTask() {
@@ -97,7 +110,8 @@ class AIManager {
             const controller = new AbortController();
             this.activeTasks.set(task.id, { controller, task });
             if (task.cardId) {
-                this.runningCardIds.add(task.cardId);
+                const currentCount = this.runningCardCounts.get(task.cardId) || 0;
+                this.runningCardCounts.set(task.cardId, currentCount + 1);
             }
             this._runTask(task, controller);
         }
@@ -113,7 +127,7 @@ class AIManager {
      * @param {Function} params.onProgress - Callback for streaming
      * @returns {PromiseString} A promise that resolves with the full generated text/result
      */
-    requestTask({ type, priority = PRIORITY.LOW, payload, tags = [], onProgress }) {
+    requestTask({ type, priority = PRIORITY.LOW, payload, tags = [], onProgress, maxConcurrentPerCard = null }) {
         // 1. Deduplication: SKIP for 'chat' type
         // Chat messages should NEVER be deduplicated - each message is a unique continuation
         // Only deduplicate for non-chat types (e.g., image generation)
@@ -137,6 +151,7 @@ class AIManager {
             tags: normalizedTags,
             tagsKey,
             cardId: this._getCardIdFromTags(normalizedTags),
+            maxConcurrentPerCard,
             onProgress,
             status: STATUS.PENDING,
             timestamp: Date.now(),
@@ -152,7 +167,7 @@ class AIManager {
         task.promise = promise;
         promise.taskId = task.id;
 
-        // 4. Enqueue then schedule with global card-level concurrency
+        // 4. Enqueue then schedule with global task concurrency + per-card concurrency
         this.pendingTasks.push(task);
         this._sortPendingTasks();
         logAITaskQueued({
@@ -287,7 +302,12 @@ class AIManager {
         } finally {
             this.activeTasks.delete(task.id);
             if (task.cardId) {
-                this.runningCardIds.delete(task.cardId);
+                const currentCount = this.runningCardCounts.get(task.cardId) || 0;
+                if (currentCount <= 1) {
+                    this.runningCardCounts.delete(task.cardId);
+                } else {
+                    this.runningCardCounts.set(task.cardId, currentCount - 1);
+                }
             }
             this._drainQueue();
         }

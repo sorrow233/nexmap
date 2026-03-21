@@ -461,7 +461,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
                 updateCardContent(cardId, chunk, assistantMsgId);
-            });
+            }, { assistantMessageId: assistantMsgId });
         } catch (error) {
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
             updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);

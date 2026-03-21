@@ -72,6 +72,10 @@ export const createSelectionSlice = (set, get) => ({
         const deletedAt = Date.now();
 
         set(state => {
+            const nextGeneratingTaskCounts = { ...(state.generatingCardTaskCounts || {}) };
+            selectedIdSet.forEach((id) => {
+                delete nextGeneratingTaskCounts[id];
+            });
             const updatedCards = [];
             const nextCards = state.cards.map((card) => {
                 if (!selectedIdSet.has(card.id)) return card;
@@ -100,6 +104,7 @@ export const createSelectionSlice = (set, get) => ({
                 generatingCardIds: new Set(
                 Array.from(state.generatingCardIds || []).filter(id => !selectedIdSet.has(id))
                 ),
+                generatingCardTaskCounts: nextGeneratingTaskCounts,
                 selectedIds: [],
                 expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId
             };

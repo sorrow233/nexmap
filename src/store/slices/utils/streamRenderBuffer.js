@@ -79,6 +79,18 @@ export const collectStreamBufferUpdatesForCard = (bufferState = {}, cardId) => {
     return updates;
 };
 
+export const collectStreamBufferUpdateByKey = (bufferState = {}, bufferKey) => {
+    const updates = new Map();
+    if (!bufferKey || !bufferState) return updates;
+
+    const content = bufferState[bufferKey];
+    if (content) {
+        updates.set(bufferKey, content);
+    }
+
+    return updates;
+};
+
 export const removeStreamBufferUpdatesForCard = (bufferState = {}, cardId) => {
     if (!cardId || !bufferState) return bufferState;
 
@@ -96,6 +108,16 @@ export const removeStreamBufferUpdatesForCard = (bufferState = {}, cardId) => {
         delete nextBufferState[bufferKey];
     });
 
+    return nextBufferState;
+};
+
+export const removeStreamBufferUpdateByKey = (bufferState = {}, bufferKey) => {
+    if (!bufferKey || !bufferState || !Object.prototype.hasOwnProperty.call(bufferState, bufferKey)) {
+        return bufferState;
+    }
+
+    const nextBufferState = { ...bufferState };
+    delete nextBufferState[bufferKey];
     return nextBufferState;
 };
 
@@ -306,6 +328,12 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         });
     };
 
+    const cleanupKey = (bufferKey) => {
+        if (!bufferKey) return;
+        pendingChunks.delete(bufferKey);
+        renderChunks.delete(bufferKey);
+    };
+
     const clearAll = () => {
         clearTimers();
         pendingChunks.clear();
@@ -321,6 +349,7 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         enqueue,
         flushNow,
         cleanupCard,
+        cleanupKey,
         clearAll,
         destroy
     };

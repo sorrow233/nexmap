@@ -36,23 +36,19 @@ export default function ChatView({
     isReadOnly = false // NEW
 }) {
     const [input, setInput] = useState('');
-    const queueWorkerActiveRef = useRef(false);
-    const queueRunIdRef = useRef(0);
-    const isMountedRef = useRef(true);
 
     // Get config from Store
     const activeId = useStore(state => state.activeId);
     const config = useStore(state => state.providers[activeId]);
     const analysisModel = useStore(state => state.getRoleModel('analysis'));
 
-    // Store-based persistent message queue (survives ChatModal close)
-    // Use stable empty array constant to prevent infinite re-renders
-    const pendingMessages = useStore(state => state.pendingMessages[card.id]) || EMPTY_PENDING_MESSAGES;
-    const addPendingMessage = useStore(state => state.addPendingMessage);
     const clearPendingMessages = useStore(state => state.clearPendingMessages);
-    const isCardGenerating = useStore(state => state.generatingCardIds.has(card.id));
+    const generatingTaskCount = useStore(state => state.generatingCardTaskCounts?.[card.id] || 0);
+    const hasGeneratingCardFlag = useStore(state => state.generatingCardIds.has(card.id));
     const streamingCardVersion = useStore(state => state.streamingCardVersions?.[card.id] || 0);
-    const pendingCount = pendingMessages.length;
+    const isCardGenerating = hasGeneratingCardFlag || generatingTaskCount > 0;
+    const pendingMessages = EMPTY_PENDING_MESSAGES;
+    const pendingCount = 0;
 
     const {
         images,
@@ -64,8 +60,7 @@ export default function ChatView({
     } = useImageUpload();
 
     const [shareContent, setShareContent] = useState(null);
-    const [isQueueRunning, setIsQueueRunning] = useState(false);
-    const isStreaming = isQueueRunning || isCardGenerating;
+    const isStreaming = isCardGenerating;
     const [isAtBottom, setIsAtBottom] = useState(true);
     const isAtBottomRef = useRef(true);
     const scrollFrameRef = useRef(null);
@@ -86,14 +81,23 @@ export default function ChatView({
     // Quick Sprout Hook (for one-click topic decomposition)
     const { handleContinueTopic, handleBranch } = useAISprouting();
 
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const dispatchMessage = async (text, imagesToSend = []) => {
+        setIsAtBottom(true);
+        setTimeout(() => scrollToBottom(true), 10);
+
+        try {
+            await onGenerateResponse(card.id, text, imagesToSend);
+        } catch (error) {
+            console.error('Failed to dispatch message:', error);
+        }
+    };
 
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
         if (!text || isReadOnly) return;
         const normalizedText = text.trim();
         if (!normalizedText) return;
-        enqueueMessage(normalizedText, []);
+        void dispatchMessage(normalizedText, []);
     };
 
     const handleSproutClick = async () => {
@@ -184,56 +188,6 @@ export default function ChatView({
             mimeType: img.mimeType
         }));
 
-    const waitForCardIdle = async (runId) => {
-        while (queueRunIdRef.current === runId && useStore.getState().generatingCardIds.has(card.id)) {
-            await delay(120);
-        }
-    };
-
-    const runQueueWorker = async (runId) => {
-        while (queueRunIdRef.current === runId) {
-            await waitForCardIdle(runId);
-            if (queueRunIdRef.current !== runId) break;
-
-            const nextMsg = useStore.getState().popPendingMessage(card.id);
-            if (!nextMsg) break;
-
-            setIsAtBottom(true);
-            setTimeout(() => scrollToBottom(true), 10);
-
-            try {
-                await onGenerateResponse(card.id, nextMsg.text || '', nextMsg.images || []);
-            } catch (e) {
-                console.error('Failed to send queued message:', e);
-            }
-        }
-    };
-
-    const startQueueWorker = () => {
-        if (isReadOnly || queueWorkerActiveRef.current) return;
-
-        const runId = queueRunIdRef.current + 1;
-        queueRunIdRef.current = runId;
-        queueWorkerActiveRef.current = true;
-        if (isMountedRef.current) {
-            setIsQueueRunning(true);
-        }
-
-        runQueueWorker(runId)
-            .finally(() => {
-                if (queueRunIdRef.current !== runId) return;
-                queueWorkerActiveRef.current = false;
-                if (isMountedRef.current) {
-                    setIsQueueRunning(false);
-                }
-            });
-    };
-
-    const enqueueMessage = (text, imagesToSend = []) => {
-        addPendingMessage(card.id, text, imagesToSend);
-        startQueueWorker();
-    };
-
     const handleRetry = async () => {
         if (isReadOnly) return;
         const lastUserMessage = card.data.messages?.filter(m => m.role === 'user').pop();
@@ -266,38 +220,9 @@ export default function ChatView({
     const handleStop = () => {
         if (isReadOnly) return;
         console.log('[ChatView] Stopping generation for card:', card.id);
-        queueRunIdRef.current += 1;
-        queueWorkerActiveRef.current = false;
-        setIsQueueRunning(false);
         aiManager.cancelByTags([`card:${card.id}`]);
-        // 清空等待队列 (from persistent store)
         clearPendingMessages(card.id);
     };
-
-    // Resume queued messages after reopen / rerender.
-    useEffect(() => {
-        if (isReadOnly) return;
-        if (pendingCount > 0) {
-            startQueueWorker();
-        }
-    }, [pendingCount, card.id, isReadOnly]);
-
-    // Reset local worker state when switching cards.
-    useEffect(() => {
-        queueRunIdRef.current += 1;
-        queueWorkerActiveRef.current = false;
-        setIsQueueRunning(false);
-    }, [card.id]);
-
-    // Cancel in-flight queue worker on unmount.
-    useEffect(() => {
-        isMountedRef.current = true;
-        return () => {
-            isMountedRef.current = false;
-            queueRunIdRef.current += 1;
-            queueWorkerActiveRef.current = false;
-        };
-    }, []);
 
     const handleTextSelection = () => {
         // Use a small timeout to let the selection stabilize (crucial for iOS)
@@ -356,8 +281,7 @@ export default function ChatView({
         setInput('');
         clearImages();
 
-        // Unified path: always enqueue, then queue worker sends strictly one-by-one.
-        enqueueMessage(currentText, currentImages);
+        void dispatchMessage(currentText, currentImages);
     };
 
     const addMarkTopic = (e) => {

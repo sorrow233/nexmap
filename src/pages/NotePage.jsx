@@ -67,7 +67,7 @@ export default function NotePage({ onBack, isReadOnly = false }) {
             await handleChatGenerate(cardId, history, (chunk) => {
                 // FIX: Update specific message by ID
                 updateCardContent(cardId, chunk, assistantMsgId);
-            });
+            }, { assistantMessageId: assistantMsgId });
         } catch (error) {
             updateCardContent(cardId, `\n\n[System Error: ${error.message}]`, assistantMsgId);
         }
