@@ -86,6 +86,7 @@ export class FirestoreBoardSync {
         this.snapshotSaveQueuedReason = '';
         this.snapshotSaveCount = 0;
         this.repairedCheckpointSignatures = new Set();
+        this.needsRecoveredCheckpointRepair = false;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -155,15 +156,10 @@ export class FirestoreBoardSync {
         }
 
         this.repairedCheckpointSignatures.add(signature);
+        this.needsRecoveredCheckpointRepair = true;
         this.emitState('warning', {
-            message: `Recovered ${format} checkpoint for ${this.boardId}, resaving clean checkpoint`
+            message: `Recovered ${format} checkpoint for ${this.boardId}, will rewrite on next save`
         });
-
-        setTimeout(() => {
-            void this.saveSnapshot('checkpoint_decode_repair').catch((error) => {
-                console.error(`[FirebaseSync] Failed to repair recovered checkpoint for board ${this.boardId}:`, error);
-            });
-        }, 0);
     }
 
     applyLoadedCheckpoint(checkpoint, rootData) {
@@ -496,6 +492,7 @@ export class FirestoreBoardSync {
                         this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
                         this.remoteIsEmpty = false;
                         this.hasUnsnapshottedChanges = false;
+                        this.needsRecoveredCheckpointRepair = false;
                     }
 
                     latestCheckpoint = checkpoint;
@@ -540,8 +537,8 @@ export class FirestoreBoardSync {
             }
         }
 
-        if (this.connected && this.hasUnsnapshottedChanges) {
-            await this.saveSnapshot('controller_stop');
+        if (this.connected && (this.hasUnsnapshottedChanges || this.needsRecoveredCheckpointRepair)) {
+            await this.saveSnapshot(this.needsRecoveredCheckpointRepair ? 'checkpoint_decode_repair' : 'controller_stop');
         }
 
         if (this.unsubscribe) {
