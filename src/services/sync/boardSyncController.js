@@ -118,8 +118,22 @@ export class BoardSyncController {
     applyLocalSnapshot(nextSnapshot = {}) {
         if (!this.started) return;
         const normalized = normalizeBoardSnapshot(nextSnapshot);
+        const currentDocSnapshot = readBoardSnapshotFromDoc(this.doc);
         const nextFingerprint = createBoardSnapshotFingerprint(normalized);
         if (nextFingerprint === this.lastFingerprint) return;
+
+        const currentDocIsEmpty = isMeaningfullyEmptyBoardSnapshot(currentDocSnapshot);
+        const nextSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot(normalized);
+        if (!currentDocIsEmpty && nextSnapshotIsEmpty) {
+            return;
+        }
+
+        if (
+            !currentDocIsEmpty &&
+            !isPersistenceSnapshotNewer(normalized, currentDocSnapshot)
+        ) {
+            return;
+        }
 
         this.doc.transact(() => {
             syncBoardSnapshotToDoc(this.doc, normalized);
