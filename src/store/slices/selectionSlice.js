@@ -57,6 +57,7 @@ export const createSelectionSlice = (set, get) => ({
                 cards: nextCards,
                 cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
                     mode: 'patch',
+                    scope: 'geometry',
                     updatedCards,
                     reason: 'arrangeSelectionGrid'
                 })
@@ -84,6 +85,7 @@ export const createSelectionSlice = (set, get) => ({
                 cardIndexMutation: updatedCards.length > 0
                     ? nextCardIndexMutation(state.cardIndexMutation, {
                         mode: 'patch',
+                        scope: 'geometry',
                         updatedCards,
                         reason: 'handleBatchDelete'
                     })

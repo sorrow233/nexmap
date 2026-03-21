@@ -192,6 +192,7 @@ export const createCardSlice = (set, get) => {
             cards: nextCards,
             cardIndexMutation: buildCardIndexMutation(state, {
                 mode: 'patch',
+                scope: 'geometry',
                 updatedCards,
                 reason: 'moveCardsByIds'
             })
@@ -245,6 +246,7 @@ export const createCardSlice = (set, get) => {
                 cards: nextCards,
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'patch',
+                    scope: 'geometry',
                     updatedCards: [updatedCard],
                     reason: 'updateCard'
                 })
@@ -280,6 +282,7 @@ export const createCardSlice = (set, get) => {
                 cards: nextCards,
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'patch',
+                    scope: 'geometry',
                     updatedCards: [updatedCard],
                     reason: 'updateCardFull'
                 })
@@ -311,6 +314,7 @@ export const createCardSlice = (set, get) => {
                 cardIndexMutation: patchedCards.length > 0
                     ? buildCardIndexMutation(state, {
                         mode: 'patch',
+                        scope: 'geometry',
                         updatedCards: patchedCards,
                         reason: 'deleteCard'
                     })
@@ -341,6 +345,7 @@ export const createCardSlice = (set, get) => {
                 cards: nextCards,
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'patch',
+                    scope: 'geometry',
                     updatedCards: [updatedCard],
                     reason: 'restoreCard'
                 })
@@ -414,6 +419,7 @@ export const createCardSlice = (set, get) => {
                     cards: nextCards,
                     cardIndexMutation: buildCardIndexMutation(state, {
                         mode: 'patch',
+                        scope: 'geometry',
                         updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
                         reason: 'arrangeCards:group-grid'
                     })
@@ -441,6 +447,7 @@ export const createCardSlice = (set, get) => {
                     cards: nextCards,
                     cardIndexMutation: buildCardIndexMutation(state, {
                         mode: 'patch',
+                        scope: 'geometry',
                         updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
                         reason: 'arrangeCards:layout'
                     })
@@ -486,6 +493,7 @@ export const createCardSlice = (set, get) => {
                     cards: nextCards,
                     cardIndexMutation: buildCardIndexMutation(state, {
                         mode: 'patch',
+                        scope: 'geometry',
                         updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
                         reason: 'arrangeCards:grid'
                     })

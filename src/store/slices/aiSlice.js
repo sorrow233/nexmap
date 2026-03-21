@@ -496,6 +496,7 @@ export const createAISlice = (set, get) => {
                     cardIndexMutation: updatedCards.length > 0
                         ? nextCardIndexMutation(state.cardIndexMutation, {
                             mode: 'patch',
+                            scope: 'content',
                             updatedCards,
                             reason: 'setAssistantMessageMeta'
                         })
@@ -552,6 +553,7 @@ export const createAISlice = (set, get) => {
                     patch.cards = nextCards;
                     patch.cardIndexMutation = nextCardIndexMutation(state.cardIndexMutation, {
                         mode: 'patch',
+                        scope: 'content',
                         updatedCards,
                         reason: 'setCardGenerating:commitStream'
                     });
@@ -619,6 +621,7 @@ export const createAISlice = (set, get) => {
                     cardIndexMutation: updatedCards.length > 0
                         ? nextCardIndexMutation(state.cardIndexMutation, {
                             mode: 'patch',
+                            scope: 'geometry',
                             updatedCards,
                             reason: 'handleRegenerate:resetAssistant'
                         })

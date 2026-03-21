@@ -1,6 +1,7 @@
 export const createCardIndexMutation = () => ({
     version: 0,
     mode: 'bulk',
+    scope: 'bulk',
     updatedIds: [],
     reason: 'init'
 });
@@ -22,6 +23,9 @@ const sanitizeUpdatedIds = (config = {}) => {
 export const nextCardIndexMutation = (previousMutation, config = {}) => ({
     version: (previousMutation?.version || 0) + 1,
     mode: config.mode === 'patch' ? 'patch' : 'bulk',
+    scope: config.scope === 'content'
+        ? 'content'
+        : (config.mode === 'patch' ? 'geometry' : 'bulk'),
     updatedIds: sanitizeUpdatedIds(config),
     reason: typeof config.reason === 'string' ? config.reason : 'unspecified'
 });

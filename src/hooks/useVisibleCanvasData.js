@@ -28,6 +28,16 @@ export function useVisibleCanvasData({
 }) {
     const cardSpatialIndex = useIncrementalCardSpatialIndex(cardIndexMutation);
     const groupGeometryCacheRef = useRef(createGroupGeometryCache());
+    const mutationVersion = Number(cardIndexMutation?.version) || 0;
+    const mutationScope = cardIndexMutation?.scope || 'bulk';
+    const geometryVersionRef = useRef(0);
+
+    if (mutationScope !== 'content') {
+        geometryVersionRef.current = mutationVersion;
+    }
+
+    const geometryVersion = geometryVersionRef.current;
+    const contentVersion = mutationVersion;
 
     const viewportRect = useMemo(
         () => buildViewportRect(offset, scale),
@@ -53,17 +63,23 @@ export function useVisibleCanvasData({
         return ids;
     }, [generatingCardIds, positionOverrideIds, selectedIds]);
 
-    const visibleCards = useMemo(
+    const visibleCardIdList = useMemo(
         () => getCardsInRect(cardSpatialIndex, viewportRect, persistentVisibleCardIds)
-            .map((card) => applyCardPositionOverride(card, positionOverrides)),
-        [cardSpatialIndex, persistentVisibleCardIds, positionOverrides, viewportRect]
+            .map((card) => card.id),
+        [cardSpatialIndex, geometryVersion, persistentVisibleCardIds, viewportRect]
     );
 
     const visibleCardIds = useMemo(() => {
         const ids = new Set();
-        visibleCards.forEach((card) => ids.add(card.id));
+        visibleCardIdList.forEach((id) => ids.add(id));
         return ids;
-    }, [visibleCards]);
+    }, [visibleCardIdList]);
+
+    const visibleCards = useMemo(
+        () => getCardsByIds(cardSpatialIndex, visibleCardIdList)
+            .map((card) => applyCardPositionOverride(card, positionOverrides)),
+        [cardSpatialIndex, contentVersion, positionOverrides, visibleCardIdList]
+    );
 
     const targetCardIds = useMemo(() => {
         if (selectedIdSet.size === 0) return new Set();
@@ -78,7 +94,7 @@ export function useVisibleCanvasData({
     const connectionCards = useMemo(
         () => getCardsByIds(cardSpatialIndex, connectionCardIds)
             .map((card) => applyCardPositionOverride(card, positionOverrides)),
-        [cardSpatialIndex, connectionCardIds, positionOverrides]
+        [cardSpatialIndex, connectionCardIds, geometryVersion, positionOverrides]
     );
 
     const connectionCardMap = useMemo(() => {
@@ -98,7 +114,7 @@ export function useVisibleCanvasData({
         });
 
         return previewCardMap;
-    }, [cardSpatialIndex, connectionCardIds, positionOverrides]);
+    }, [cardSpatialIndex, connectionCardIds, geometryVersion, positionOverrides]);
 
     const visibleGroups = useMemo(
         () => getVisibleGroups(
@@ -109,7 +125,7 @@ export function useVisibleCanvasData({
             groupGeometryCacheRef.current,
             positionOverrides
         ),
-        [cardSpatialIndex.cardMap, groups, positionOverrides, viewportRect, visibleCardIds]
+        [geometryVersion, groups, positionOverrides, viewportRect, visibleCardIds]
     );
 
     return {
