@@ -68,7 +68,7 @@ export default function ActivityChart({
                 {/* Header / Tooltip Area */}
                 <div className="flex items-end justify-between mb-3 px-2 relative z-20 h-8">
                     <span className="text-sm font-bold tracking-wide text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                        <Trophy size={16} className="text-[#7BCFC4] dark:text-[#8FE1D5]" />
+                        <Trophy size={16} className="text-[#B9B4D9] dark:text-[#CEC9E8]" />
                         {viewMode === 'week' ? (t?.stats?.weeklyTrend || '7日趋势') :
                             viewMode === 'month' ? (t?.stats?.monthlyTrend || '月度趋势') :
                                 (t?.stats?.yearlyTrend || '年度趋势')}
@@ -82,7 +82,7 @@ export default function ActivityChart({
                                     {chartData[hoveredIndex].date}
                                 </span>
                                 <div className="w-px h-3 bg-slate-200 dark:bg-slate-700"></div>
-                                <span className="text-[#58B8C4] dark:text-[#8EDBE4]">{chartData[hoveredIndex].chars.toLocaleString()} 字</span>
+                                <span className="text-[#9E93BB] dark:text-[#C7BCE2]">{chartData[hoveredIndex].chars.toLocaleString()} 字</span>
                             </div>
                         ) : (
                             <div className="flex flex-col items-end px-2 py-1 bg-transparent text-slate-500 dark:text-slate-400">
@@ -103,30 +103,30 @@ export default function ActivityChart({
                         className="overflow-visible"
                     >
                         <defs>
-                            {/* Neural Clay Gradients (Pastel) */}
+                            {/* Soft airy gradients with restrained contrast */}
                             <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#8FE1D5" />
-                                <stop offset="52%" stopColor="#A9D8FF" />
-                                <stop offset="100%" stopColor="#C8C6FF" />
+                                <stop offset="0%" stopColor="#F1ECFB" />
+                                <stop offset="52%" stopColor="#DEE6FA" />
+                                <stop offset="100%" stopColor="#CDD9F6" />
                             </linearGradient>
 
                             <linearGradient id="barGradientToday" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#FFD1DF" />
-                                <stop offset="55%" stopColor="#B7E4F7" />
-                                <stop offset="100%" stopColor="#CFC4FF" />
+                                <stop offset="0%" stopColor="#F7EAF1" />
+                                <stop offset="55%" stopColor="#E5DDF9" />
+                                <stop offset="100%" stopColor="#D4DDF7" />
                             </linearGradient>
 
-                            {/* Soft Drop Shadow for Clay effect */}
+                            {/* Low-contrast shadow to keep the chart light and minimal */}
                             <filter id="clayShadow" x="-50%" y="-50%" width="200%" height="200%">
-                                <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#A9D8FF" floodOpacity="0.24" />
+                                <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#D4DCF1" floodOpacity="0.18" />
                             </filter>
                             <filter id="clayShadowToday" x="-50%" y="-50%" width="200%" height="200%">
-                                <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#F6BFD3" floodOpacity="0.32" />
+                                <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#E7D5E5" floodOpacity="0.22" />
                             </filter>
                         </defs>
 
                         {/* Guide Line */}
-                        <line x1="0" y1={CHART_HEIGHT / 2} x2={CHART_WIDTH} y2={CHART_HEIGHT / 2} stroke="#DDEBF2" strokeDasharray="6 6" strokeWidth="1.5" className="dark:stroke-slate-700" />
+                        <line x1="0" y1={CHART_HEIGHT / 2} x2={CHART_WIDTH} y2={CHART_HEIGHT / 2} stroke="#EEF2F8" strokeDasharray="6 6" strokeWidth="1.5" className="dark:stroke-slate-700" />
 
                         {chartData.map((item, index) => {
                             const x = index * (CHART_WIDTH / chartData.length);
@@ -168,7 +168,7 @@ export default function ActivityChart({
                                         rx={barRadius}
                                         ry={barRadius}
                                         fill={isToday ? "url(#barGradientToday)" : "url(#barGradient)"}
-                                        fillOpacity={isHovered ? 1 : 0.9} 
+                                        fillOpacity={isHovered ? 0.98 : 0.9}
                                         filter={isToday ? "url(#clayShadowToday)" : "url(#clayShadow)"}
                                         className={`transition-all duration-500 ease-out ${isHovered ? 'scale-y-[1.05]' : ''}`}
                                         style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
@@ -181,8 +181,8 @@ export default function ActivityChart({
                                         textAnchor="middle"
                                         className={`
                                             text-[11px] font-bold transition-all duration-300
-                                            ${isToday ? 'fill-[#C67BA6] dark:fill-[#E4AEC6]' : 'fill-[#8BA0B9] dark:fill-slate-500'}
-                                            ${isHovered ? 'scale-110 fill-[#58B8C4] dark:fill-[#8EDBE4]' : ''}
+                                            ${isToday ? 'fill-[#B599B4] dark:fill-[#D8C0D5]' : 'fill-[#9AA7BA] dark:fill-slate-500'}
+                                            ${isHovered ? 'scale-110 fill-[#97A6C3] dark:fill-[#BFCCE4]' : ''}
                                         `}
                                         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                                     >
@@ -195,9 +195,9 @@ export default function ActivityChart({
                                         y={CHART_HEIGHT + 28}
                                         textAnchor="middle"
                                         className={`
-                                            text-sm font-medium fill-[#6F86A0] dark:fill-slate-400 transition-colors duration-300
-                                            ${isToday ? 'fill-[#7BB9D6] dark:fill-[#9ED9F0] font-bold' : ''}
-                                            ${isHovered ? 'fill-[#58B8C4] dark:fill-[#8EDBE4]' : ''}
+                                            text-sm font-medium fill-[#7D8AA0] dark:fill-slate-400 transition-colors duration-300
+                                            ${isToday ? 'fill-[#A894C3] dark:fill-[#C9BCE3] font-bold' : ''}
+                                            ${isHovered ? 'fill-[#97A6C3] dark:fill-[#BFCCE4]' : ''}
                                         `}
                                     >
                                         {formatDateLabel(item.date)}
@@ -212,19 +212,19 @@ export default function ActivityChart({
             {/* 3. Time Distribution Bar - Pastel Segments */}
             {totalTimeChars > 0 && (
                 <div className="pt-2 px-2 relative z-10">
-                    <div className="h-4 rounded-full overflow-hidden flex bg-[#F7FAFC] dark:bg-slate-700/50 shadow-inner">
-                        <DistributionSegment value={timeDistribution.morning} total={totalTimeChars} color="bg-[#FFE7A8] dark:bg-[#F3D17E]" />
-                        <DistributionSegment value={timeDistribution.afternoon} total={totalTimeChars} color="bg-[#FFCDBE] dark:bg-[#F2B5A2]" />
-                        <DistributionSegment value={timeDistribution.evening} total={totalTimeChars} color="bg-[#BFE4FF] dark:bg-[#8ECFE9]" />
-                        <DistributionSegment value={timeDistribution.night} total={totalTimeChars} color="bg-[#DCCBFF] dark:bg-[#BBA6E8]" />
+                    <div className="h-4 rounded-full overflow-hidden flex bg-[#FBFCFE] dark:bg-slate-700/50 shadow-inner">
+                        <DistributionSegment value={timeDistribution.morning} total={totalTimeChars} color="bg-[#F6E9DB] dark:bg-[#E7D6C6]" />
+                        <DistributionSegment value={timeDistribution.afternoon} total={totalTimeChars} color="bg-[#F3DFDF] dark:bg-[#E3CBCC]" />
+                        <DistributionSegment value={timeDistribution.evening} total={totalTimeChars} color="bg-[#DFE7F5] dark:bg-[#BFCBDF]" />
+                        <DistributionSegment value={timeDistribution.night} total={totalTimeChars} color="bg-[#E8E1F4] dark:bg-[#C9BDD9]" />
                     </div>
 
                     {/* Legend */}
-                    <div className="flex justify-between mt-4 text-xs text-[#74879B] dark:text-slate-400 font-medium">
-                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#FFE7A8] dark:bg-[#F3D17E] shadow-sm"></div>{t.stats?.morning || "早晨"}</div>
-                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#FFCDBE] dark:bg-[#F2B5A2] shadow-sm"></div>{t.stats?.afternoon || "下午"}</div>
-                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#BFE4FF] dark:bg-[#8ECFE9] shadow-sm"></div>{t.stats?.evening || "晚上"}</div>
-                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#DCCBFF] dark:bg-[#BBA6E8] shadow-sm"></div>{t.stats?.night || "深夜"}</div>
+                    <div className="flex justify-between mt-4 text-xs text-[#7C8798] dark:text-slate-400 font-medium">
+                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#F6E9DB] dark:bg-[#E7D6C6] shadow-sm"></div>{t.stats?.morning || "早晨"}</div>
+                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#F3DFDF] dark:bg-[#E3CBCC] shadow-sm"></div>{t.stats?.afternoon || "下午"}</div>
+                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#DFE7F5] dark:bg-[#BFCBDF] shadow-sm"></div>{t.stats?.evening || "晚上"}</div>
+                        <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#E8E1F4] dark:bg-[#C9BDD9] shadow-sm"></div>{t.stats?.night || "深夜"}</div>
                     </div>
                 </div>
             )}
