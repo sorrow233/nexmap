@@ -122,6 +122,36 @@ const getCardDeletedAt = (card) => {
     return Number.isFinite(deletedAt) && deletedAt > 0 ? deletedAt : 0;
 };
 
+const getCardMessages = (card) => (
+    Array.isArray(card?.data?.messages) ? card.data.messages : []
+);
+
+const getCardConversationTurnCount = (card) => (
+    getCardMessages(card).reduce((count, message) => (
+        message?.role === 'user' ? count + 1 : count
+    ), 0)
+);
+
+const getCardMessageCount = (card) => getCardMessages(card).length;
+
+const getMessageTextLength = (content) => {
+    if (typeof content === 'string') return content.length;
+    if (!Array.isArray(content)) return 0;
+
+    return content.reduce((total, part) => {
+        if (part?.type === 'text' && typeof part.text === 'string') {
+            return total + part.text.length;
+        }
+        return total;
+    }, 0);
+};
+
+const getCardConversationTextLength = (card) => (
+    getCardMessages(card).reduce((total, message) => (
+        total + getMessageTextLength(message?.content)
+    ), 0)
+);
+
 const shouldPreferIncomingCard = (currentCard, incomingCard) => {
     if (!currentCard) return true;
 
@@ -129,6 +159,26 @@ const shouldPreferIncomingCard = (currentCard, incomingCard) => {
     const incomingDeletedAt = getCardDeletedAt(incomingCard);
     if (currentDeletedAt !== incomingDeletedAt) {
         return incomingDeletedAt > currentDeletedAt;
+    }
+
+    if (currentDeletedAt === 0 && incomingDeletedAt === 0) {
+        const currentTurnCount = getCardConversationTurnCount(currentCard);
+        const incomingTurnCount = getCardConversationTurnCount(incomingCard);
+        if (currentTurnCount !== incomingTurnCount) {
+            return incomingTurnCount > currentTurnCount;
+        }
+
+        const currentMessageCount = getCardMessageCount(currentCard);
+        const incomingMessageCount = getCardMessageCount(incomingCard);
+        if (currentMessageCount !== incomingMessageCount) {
+            return incomingMessageCount > currentMessageCount;
+        }
+
+        const currentConversationTextLength = getCardConversationTextLength(currentCard);
+        const incomingConversationTextLength = getCardConversationTextLength(incomingCard);
+        if (currentConversationTextLength !== incomingConversationTextLength) {
+            return incomingConversationTextLength >= currentConversationTextLength;
+        }
     }
 
     const currentUpdatedAt = getCardUpdatedAt(currentCard);
