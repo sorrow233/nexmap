@@ -166,6 +166,11 @@ const persistChunkedCheckpoint = async ({
         }
 
         await batch.commit();
+        
+        // If there are more parts, throttle slightly to prevent "Resource Exhausted" error
+        if (offset < parts.length) {
+            await new Promise(resolve => setTimeout(resolve, 400));
+        }
     }
 };
 
