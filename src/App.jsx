@@ -94,7 +94,6 @@ export default function App() {
 const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
-const STREAMING_SYNC_DEBOUNCE_MS = 700;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
 );
@@ -627,13 +626,8 @@ function AppContent() {
         if (generatingCardIds?.size > 0) {
             if (boardSyncDebounceTimerRef.current) {
                 clearTimeout(boardSyncDebounceTimerRef.current);
-            }
-            boardSyncDebounceTimerRef.current = setTimeout(() => {
                 boardSyncDebounceTimerRef.current = null;
-                const activeController = boardSyncControllerRef.current;
-                if (!activeController || activeController.boardId !== currentBoardId) return;
-                activeController.applyLocalSnapshot(currentBoardSnapshot);
-            }, STREAMING_SYNC_DEBOUNCE_MS);
+            }
             return;
         }
 
