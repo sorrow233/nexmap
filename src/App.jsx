@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
@@ -62,6 +62,7 @@ import {
 } from './services/boardTitle/metadata';
 import { loadBoardsSearchData } from './services/search/searchDataLoader';
 import { BoardSyncController } from './services/sync/boardSyncController';
+import { subscribePersistedBoardSyncSnapshot } from './services/sync/localPersistedBoardSyncBridge';
 import {
     FIREBASE_SYNC_LIMITS,
     isSampleBoardId
@@ -71,10 +72,7 @@ import {
     mergeBoardMetadataLists,
     syncBoardMetadataListToRemote
 } from './services/sync/boardMetadataSync';
-import {
-    createBoardSnapshotFingerprint,
-    normalizeBoardSnapshot
-} from './services/sync/boardSnapshot';
+import { createBoardSnapshotFingerprint, normalizeBoardSnapshot } from './services/sync/boardSnapshot';
 import { hasBoardDisplayMetadataPatch } from './services/boardTitle/displayMetadata';
 import { persistBoardDisplayMetadataSnapshot } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
@@ -143,12 +141,10 @@ function AppContent() {
     const setLastSavedAt = useStore(state => state.setLastSavedAt);
     const setActiveBoardPersistence = useStore(state => state.setActiveBoardPersistence);
     const setExternalSyncMarker = useStore(state => state.setExternalSyncMarker);
-    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
     const boardSyncControllerRef = useRef(null);
-    const boardSyncDebounceTimerRef = useRef(null);
     const metadataSyncTimerRef = useRef(null);
     const metadataHydrationRetryTimerRef = useRef(null);
     const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
@@ -252,10 +248,6 @@ function AppContent() {
             if (searchFlushTimerRef.current) {
                 clearTimeout(searchFlushTimerRef.current);
                 searchFlushTimerRef.current = null;
-            }
-            if (boardSyncDebounceTimerRef.current) {
-                clearTimeout(boardSyncDebounceTimerRef.current);
-                boardSyncDebounceTimerRef.current = null;
             }
             flushSearchDataBuffer();
         };
@@ -494,10 +486,6 @@ function AppContent() {
                     await boardSyncControllerRef.current.stop();
                     boardSyncControllerRef.current = null;
                 }
-                if (boardSyncDebounceTimerRef.current) {
-                    clearTimeout(boardSyncDebounceTimerRef.current);
-                    boardSyncDebounceTimerRef.current = null;
-                }
 
                 // 1. Start loading state & clear existing data to prevent bleed-over
                 const storeState = useStore.getState();
@@ -583,10 +571,6 @@ function AppContent() {
                 void boardSyncControllerRef.current.stop();
                 boardSyncControllerRef.current = null;
             }
-            if (boardSyncDebounceTimerRef.current) {
-                clearTimeout(boardSyncDebounceTimerRef.current);
-                boardSyncDebounceTimerRef.current = null;
-            }
         };
     }, [
         applyBoardSnapshotToStore,
@@ -601,52 +585,18 @@ function AppContent() {
         user
     ]); // Rely on currentBoardId changing
 
-    const currentBoardSnapshot = useMemo(() => normalizeBoardSnapshot({
-        cards,
-        connections,
-        groups,
-        boardPrompts,
-        boardInstructionSettings,
-        updatedAt: activeBoardPersistence?.updatedAt || 0,
-        clientRevision: activeBoardPersistence?.clientRevision || 0
-    }), [
-        activeBoardPersistence?.clientRevision,
-        activeBoardPersistence?.updatedAt,
-        boardInstructionSettings,
-        boardPrompts,
-        cards,
-        connections,
-        groups
-    ]);
     useEffect(() => {
-        const controller = boardSyncControllerRef.current;
-        if (!controller || !currentBoardId || isBoardLoading) return;
+        const unsubscribe = subscribePersistedBoardSyncSnapshot(({ boardId, snapshot }) => {
+            const controller = boardSyncControllerRef.current;
+            if (!controller || !boardId || controller.boardId !== boardId) return;
+            if (isBoardLoading) return;
+            if (generatingCardIds?.size > 0) return;
 
-        if (generatingCardIds?.size > 0) {
-            if (boardSyncDebounceTimerRef.current) {
-                clearTimeout(boardSyncDebounceTimerRef.current);
-                boardSyncDebounceTimerRef.current = null;
-            }
-            return;
-        }
+            controller.applyLocalSnapshot(normalizeBoardSnapshot(snapshot));
+        });
 
-        if (activeBoardPersistence?.dirty === true) {
-            return;
-        }
-
-        if (boardSyncDebounceTimerRef.current) {
-            clearTimeout(boardSyncDebounceTimerRef.current);
-            boardSyncDebounceTimerRef.current = null;
-        }
-
-        controller.applyLocalSnapshot(currentBoardSnapshot);
-    }, [
-        activeBoardPersistence?.dirty,
-        currentBoardId,
-        currentBoardSnapshot,
-        generatingCardIds?.size,
-        isBoardLoading
-    ]);
+        return unsubscribe;
+    }, [generatingCardIds?.size, isBoardLoading]);
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {

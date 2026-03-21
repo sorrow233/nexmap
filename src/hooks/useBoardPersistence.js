@@ -15,6 +15,7 @@ import {
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
 import { createBoardSnapshotFingerprint } from '../services/sync/boardSnapshot';
+import { emitPersistedBoardSyncSnapshot } from '../services/sync/localPersistedBoardSyncBridge';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 
 const SHADOW_SAVE_DELAY_MS = 450;
@@ -269,6 +270,12 @@ export function useBoardPersistence({
                 updatedAt: now,
                 clientRevision: revision,
                 dirty: false
+            });
+
+            emitPersistedBoardSyncSnapshot({
+                boardId,
+                snapshot: payload,
+                source: options.reason || 'local_persist'
             });
         } catch (error) {
             console.error('[BoardPersistence] Local save failed:', error);
