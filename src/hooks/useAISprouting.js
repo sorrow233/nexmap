@@ -11,13 +11,10 @@ const AGENT_EXECUTION_CONCURRENCY = 5;
  * or expanding marked topics into new cards.
  */
 export function useAISprouting() {
-    const {
-        cards,
-        createAICard,
-        updateCardContent,
-        setCardGenerating,
-        updateCardFull
-    } = useStore();
+    const createAICard = useStore(state => state.createAICard);
+    const updateCardContent = useStore(state => state.updateCardContent);
+    const setCardGenerating = useStore(state => state.setCardGenerating);
+    const updateCardFull = useStore(state => state.updateCardFull);
 
     /**
      * Calculate standard mindmap layout for child cards.
@@ -95,6 +92,7 @@ export function useAISprouting() {
     };
 
     const handleExpandTopics = async (sourceId) => {
+        const cards = useStore.getState().cards || [];
         const source = cards.find(c => c.id === sourceId);
         if (!source || !source.data.marks) return;
 
@@ -148,6 +146,7 @@ export function useAISprouting() {
     };
 
     const handleSprout = async (sourceId, topics) => {
+        const cards = useStore.getState().cards || [];
         const source = cards.find(c => c.id === sourceId);
         if (!source || !topics.length) return;
 
@@ -220,6 +219,7 @@ export function useAISprouting() {
      * This is a SEPARATE feature from the original Sprout
      */
     const handleQuickSprout = async (sourceId) => {
+        const cards = useStore.getState().cards || [];
         const source = cards.find(c => c.id === sourceId);
         if (!source) return;
 
@@ -303,6 +303,7 @@ export function useAISprouting() {
      * Does NOT create new cards - stays in current conversation
      */
     const handleContinueTopic = async (cardId, onSendMessage) => {
+        const cards = useStore.getState().cards || [];
         const source = cards.find(c => c.id === cardId);
         if (!source) return;
 
@@ -335,6 +336,7 @@ export function useAISprouting() {
      * 3. AI generates detailed explanation for each substring
      */
     const handleBranch = async (sourceId, targetMessageId) => {
+        const cards = useStore.getState().cards || [];
         const source = cards.find(c => c.id === sourceId);
         if (!source) return;
 
@@ -461,6 +463,7 @@ Respond in the same language as the focus topic.
     };
 
     const handleDirectedSprout = async (sourceId, instruction) => {
+        const cards = useStore.getState().cards || [];
         const source = cards.find(c => c.id === sourceId);
         if (!source || !instruction) return;
 

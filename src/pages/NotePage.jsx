@@ -8,13 +8,11 @@ import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 export default function NotePage({ onBack, isReadOnly = false }) {
     const { noteId } = useParams();
     const navigate = useNavigate();
-    const {
-        cards,
-        updateCardFull,
-        handleChatGenerate,
-        updateCardContent,
-        toggleFavorite
-    } = useStore();
+    const cards = useStore(state => state.cards);
+    const updateCardFull = useStore(state => state.updateCardFull);
+    const handleChatGenerate = useStore(state => state.handleChatGenerate);
+    const updateCardContent = useStore(state => state.updateCardContent);
+    const toggleFavorite = useStore(state => state.toggleFavorite);
 
     const {
         handleCreateNote,
@@ -114,4 +112,3 @@ export default function NotePage({ onBack, isReadOnly = false }) {
         </div>
     );
 }
-

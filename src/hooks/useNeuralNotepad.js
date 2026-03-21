@@ -4,13 +4,10 @@ import { saveBoard } from '../services/storage';
 import { debugLog } from '../utils/debugLogger';
 
 export function useNeuralNotepad() {
-    const {
-        cards,
-        updateCard,
-        addCard,
-        offset,
-        scale
-    } = useStore();
+    const updateCard = useStore(state => state.updateCard);
+    const addCard = useStore(state => state.addCard);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
 
     /**
      * Neural Notepad (Sticky Note) handling
@@ -21,6 +18,7 @@ export function useNeuralNotepad() {
 
         debugLog.ui('Note creation triggered', { text: safeText, isMaster });
 
+        const cards = useStore.getState().cards || [];
         const existingNote = cards.find(c => c.type === 'note');
 
         if (existingNote) {

@@ -3,19 +3,17 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore, undo, redo } from '../store/useStore';
 
 export function useGlobalHotkeys(clipboard, setClipboard) {
-    const {
-        selectedIds,
-        cards,
-        setCards,
-        handleBatchDelete,
-        handleRegenerate,
-        handleConnect,
-        setConnections,
-        connections,
-        setSelectedIds,
-        offset,
-        scale
-    } = useStore();
+    const selectedIds = useStore(state => state.selectedIds);
+    const cards = useStore(state => state.cards);
+    const setCards = useStore(state => state.setCards);
+    const handleBatchDelete = useStore(state => state.handleBatchDelete);
+    const handleRegenerate = useStore(state => state.handleRegenerate);
+    const handleConnect = useStore(state => state.handleConnect);
+    const setConnections = useStore(state => state.setConnections);
+    const connections = useStore(state => state.connections);
+    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
     const selectedIdSet = new Set(selectedIds);
 
     // Helper for Copy

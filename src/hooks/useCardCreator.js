@@ -14,11 +14,9 @@ import { yieldToMainThread } from '../utils/scheduling';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
-    const {
-        setCards,
-        offset,
-        scale
-    } = useStore();
+    const setCards = useStore(state => state.setCards);
+    const offset = useStore(state => state.offset);
+    const scale = useStore(state => state.scale);
 
     const { handleExpandTopics, handleSprout } = useAISprouting();
     const { _generateAICard, handleBatchChat } = useCardGeneration();

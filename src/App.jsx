@@ -124,23 +124,21 @@ function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, boardsList, setBoardsList, isInitialized } = useAppInit();
-    const {
-        cards,
-        connections,
-        groups,
-        boardPrompts,
-        boardInstructionSettings,
-        setCards,
-        setConnections,
-        setGroups,
-        setBoardPrompts,
-        setBoardInstructionSettings,
-        setLastSavedAt,
-        setActiveBoardPersistence,
-        setExternalSyncMarker,
-        activeBoardPersistence,
-        generatingCardIds
-    } = useStore();
+    const cards = useStore(state => state.cards);
+    const connections = useStore(state => state.connections);
+    const groups = useStore(state => state.groups);
+    const boardPrompts = useStore(state => state.boardPrompts);
+    const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
+    const setCards = useStore(state => state.setCards);
+    const setConnections = useStore(state => state.setConnections);
+    const setGroups = useStore(state => state.setGroups);
+    const setBoardPrompts = useStore(state => state.setBoardPrompts);
+    const setBoardInstructionSettings = useStore(state => state.setBoardInstructionSettings);
+    const setLastSavedAt = useStore(state => state.setLastSavedAt);
+    const setActiveBoardPersistence = useStore(state => state.setActiveBoardPersistence);
+    const setExternalSyncMarker = useStore(state => state.setExternalSyncMarker);
+    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
+    const generatingCardIds = useStore(state => state.generatingCardIds);
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
     const boardSyncControllerRef = useRef(null);

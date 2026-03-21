@@ -8,14 +8,10 @@ import { createMessageContentWithImages } from '../services/ai/messageContent';
 import { yieldToMainThread } from '../utils/scheduling';
 
 export function useCardGeneration() {
-    const {
-        setCards,
-        createAICard,
-        updateCardContent,
-        setCardGenerating,
-        selectedIds,
-        cards
-    } = useStore();
+    const setCards = useStore(state => state.setCards);
+    const createAICard = useStore(state => state.createAICard);
+    const updateCardContent = useStore(state => state.updateCardContent);
+    const setCardGenerating = useStore(state => state.setCardGenerating);
 
     /**
      * Internal helper for AI generation
@@ -120,6 +116,9 @@ export function useCardGeneration() {
         const safeText = (typeof text === 'string' ? text : (text?.toString() || '')).trim();
         if (!safeText && (!images || images.length === 0)) return;
         await yieldToMainThread();
+        const state = useStore.getState();
+        const selectedIds = state.selectedIds || [];
+        const cards = state.cards || [];
         const selectedIdSet = new Set(selectedIds);
 
         const targetCards = cards.filter(c => selectedIdSet.has(c.id) && c.data && Array.isArray(c.data.messages));
