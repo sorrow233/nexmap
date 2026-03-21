@@ -132,7 +132,11 @@ export class BoardSyncController {
 
     async stop() {
         if (this.fireSync) {
-            await this.fireSync.stop();
+            try {
+                await this.fireSync.stop();
+            } catch (error) {
+                console.error(`[BoardSyncController] Failed to stop Firestore sync for board ${this.boardId}:`, error);
+            }
             this.fireSync = null;
         }
 

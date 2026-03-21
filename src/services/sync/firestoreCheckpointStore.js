@@ -13,6 +13,7 @@ const CHECKPOINT_STORAGE_INLINE = 'inline';
 const CHECKPOINT_STORAGE_CHUNKED = 'chunked';
 const INLINE_CHECKPOINT_MAX_BYTES = 700 * 1024;
 const TARGET_PART_BYTES = 180 * 1024;
+const MAX_PART_BYTES = 700 * 1024;
 const MAX_PART_COUNT = 96;
 const CLEANUP_BATCH_SIZE = 350;
 const CURRENT_SYNC_BACKEND = 'yjs-firestore-v1';
@@ -28,6 +29,19 @@ const splitTextIntoParts = (text = '', targetBytes = TARGET_PART_BYTES) => {
     }
 
     return parts;
+};
+
+const resolveCheckpointPartTargetBytes = (updateBase64 = '', byteLength = 0) => {
+    const safeByteLength = Math.max(estimateTextBytes(updateBase64), Number(byteLength) || 0);
+    if (!safeByteLength) {
+        return TARGET_PART_BYTES;
+    }
+
+    const requiredBytesPerPart = Math.ceil(safeByteLength / MAX_PART_COUNT);
+    return Math.min(
+        MAX_PART_BYTES,
+        Math.max(TARGET_PART_BYTES, requiredBytesPerPart)
+    );
 };
 
 const toSafeMillis = (value, fallback = 0) => {
@@ -78,24 +92,27 @@ const persistChunkedCheckpoint = async ({
     userId,
     boardId,
     checkpointId,
-    updateBase64,
+    parts,
     byteLength,
     savedAtMs,
-    deviceId
+    deviceId,
+    partTargetBytes
 }) => {
-    const parts = splitTextIntoParts(updateBase64, TARGET_PART_BYTES);
     if (parts.length === 0) {
         throw new Error(`Checkpoint ${checkpointId} has no chunk parts`);
     }
 
     if (parts.length > MAX_PART_COUNT) {
-        throw new Error(`Checkpoint ${checkpointId} exceeds max chunk count ${MAX_PART_COUNT}`);
+        throw new Error(
+            `Checkpoint ${checkpointId} exceeds max chunk count ${MAX_PART_COUNT} even after resizing parts to ${partTargetBytes} bytes`
+        );
     }
 
     await setDoc(createCheckpointSetRef(userId, boardId, checkpointId), {
         checkpointId,
         storage: CHECKPOINT_STORAGE_CHUNKED,
         partCount: parts.length,
+        partTargetBytes,
         byteLength,
         deviceId,
         savedAtMs
@@ -238,16 +255,19 @@ export const saveBoardCheckpoint = async ({
     }
 
     const checkpointId = `${deviceId}_${savedAtMs}`;
-    const partCount = splitTextIntoParts(updateBase64, TARGET_PART_BYTES).length;
+    const partTargetBytes = resolveCheckpointPartTargetBytes(updateBase64, byteLength);
+    const parts = splitTextIntoParts(updateBase64, partTargetBytes);
+    const partCount = parts.length;
 
     await persistChunkedCheckpoint({
         userId,
         boardId,
         checkpointId,
-        updateBase64,
+        parts,
         byteLength,
         savedAtMs,
-        deviceId
+        deviceId,
+        partTargetBytes
     });
 
     await setDoc(rootRef, {

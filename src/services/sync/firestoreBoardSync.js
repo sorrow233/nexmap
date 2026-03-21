@@ -296,14 +296,20 @@ export class FirestoreBoardSync {
             return;
         }
 
-        await setDoc(createBoardRootRef(this.userId, this.boardId), {
-            ...buildAuthoritativeRootPayload({
-            id: this.boardId,
-            syncTouchedAtMs: Date.now(),
-            serverUpdatedAt: serverTimestamp(),
-            lastDeviceId: this.deviceId
-            })
-        }, { merge: true });
+        try {
+            await setDoc(createBoardRootRef(this.userId, this.boardId), {
+                ...buildAuthoritativeRootPayload({
+                id: this.boardId,
+                syncTouchedAtMs: Date.now(),
+                serverUpdatedAt: serverTimestamp(),
+                lastDeviceId: this.deviceId
+                })
+            }, { merge: true });
+        } catch (error) {
+            this.emitState('warning', {
+                message: error?.message || 'Root sync touch write failed'
+            });
+        }
 
         this.flushCount += 1;
         if (this.flushCount >= FIREBASE_SYNC_LIMITS.snapshotAfterFlushes) {
@@ -314,19 +320,29 @@ export class FirestoreBoardSync {
 
     async saveSnapshot(reason = 'manual_snapshot') {
         if (!db) return;
-        const update = Y.encodeStateAsUpdate(this.doc);
-        const checkpoint = await saveBoardCheckpoint({
-            userId: this.userId,
-            boardId: this.boardId,
-            deviceId: this.deviceId,
-            updateBase64: bytesToBase64(update),
-            reason
-        });
+        try {
+            const update = Y.encodeStateAsUpdate(this.doc);
+            const checkpoint = await saveBoardCheckpoint({
+                userId: this.userId,
+                boardId: this.boardId,
+                deviceId: this.deviceId,
+                updateBase64: bytesToBase64(update),
+                reason
+            });
 
-        if (checkpoint) {
-            this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || this.latestCheckpointSavedAtMs;
-            this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
-            this.remoteIsEmpty = false;
+            if (checkpoint) {
+                this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || this.latestCheckpointSavedAtMs;
+                this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
+                this.remoteIsEmpty = false;
+            }
+
+            return checkpoint;
+        } catch (error) {
+            console.error(`[FirebaseSync] Failed to save checkpoint for board ${this.boardId}:`, error);
+            this.emitState('warning', {
+                message: error?.message || 'Checkpoint save failed'
+            });
+            return null;
         }
     }
 
@@ -337,7 +353,14 @@ export class FirestoreBoardSync {
         }
 
         if (this.pendingUpdates.length) {
-            await this.flushPendingUpdates('controller_stop');
+            try {
+                await this.flushPendingUpdates('controller_stop');
+            } catch (error) {
+                console.error(`[FirebaseSync] Failed to flush pending updates during stop for board ${this.boardId}:`, error);
+                this.emitState('warning', {
+                    message: error?.message || 'Final update flush failed'
+                });
+            }
         }
 
         if (this.connected) {
@@ -392,13 +415,18 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
 
     const tempDoc = createBoardDoc();
     syncBoardSnapshotToDoc(tempDoc, normalizedSnapshot);
-    const checkpoint = await saveBoardCheckpoint({
-        userId,
-        boardId,
-        deviceId,
-        updateBase64: bytesToBase64(Y.encodeStateAsUpdate(tempDoc)),
-        reason: 'local_seed'
-    });
+    let checkpoint = null;
+    try {
+        checkpoint = await saveBoardCheckpoint({
+            userId,
+            boardId,
+            deviceId,
+            updateBase64: bytesToBase64(Y.encodeStateAsUpdate(tempDoc)),
+            reason: 'local_seed'
+        });
+    } catch (error) {
+        console.error(`[FirebaseSync] Failed to seed local board ${boardId}:`, error);
+    }
 
     tempDoc.destroy();
     return Boolean(checkpoint);
