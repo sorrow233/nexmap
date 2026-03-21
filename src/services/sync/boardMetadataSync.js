@@ -113,6 +113,15 @@ const getBoardCollectionRef = (userId) => collection(
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 
+const hasUsableDisplayMetadataValue = (key, value) => {
+    if (key === 'summary') {
+        return Boolean(normalizeBoardSummary(value));
+    }
+    return typeof value === 'string'
+        ? value.trim().length > 0
+        : Boolean(value);
+};
+
 const mergeFieldByPresence = (preferredBoard, fallbackBoard, key) => {
     if (hasOwn(preferredBoard, key)) {
         return preferredBoard[key];
@@ -154,6 +163,19 @@ const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
     };
 
     DISPLAY_METADATA_KEYS.forEach((key) => {
+        const preferredValue = preferredBoard?.[key];
+        const fallbackValue = fallbackBoard?.[key];
+
+        if (hasUsableDisplayMetadataValue(key, preferredValue)) {
+            mergedBoard[key] = preferredValue;
+            return;
+        }
+
+        if (hasUsableDisplayMetadataValue(key, fallbackValue)) {
+            mergedBoard[key] = fallbackValue;
+            return;
+        }
+
         mergedBoard[key] = mergeFieldByPresence(preferredBoard, fallbackBoard, key);
     });
 

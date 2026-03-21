@@ -8,6 +8,7 @@ import {
 import {
     loadBoardDisplayMetadataSnapshot
 } from '../services/boardPersistence/boardDisplayMetadataStorage';
+import { normalizeBoardSummary } from '../services/boardTitle/displayMetadata';
 import {
     AUTO_GENERATION_KIND,
     pickNextAutoGenerationCandidate
@@ -27,6 +28,15 @@ export function useBackgroundBoardAutoGeneration({
     metadataReady,
     routeAllowsBackgroundWork
 }) {
+    const hasUsableDisplayValue = useCallback((key, value) => {
+        if (key === 'summary') {
+            return Boolean(normalizeBoardSummary(value));
+        }
+        return typeof value === 'string'
+            ? value.trim().length > 0
+            : Boolean(value);
+    }, []);
+
     const boardsListRef = useRef(Array.isArray(boardsList) ? boardsList : []);
     const metadataUpdaterRef = useRef(onUpdateBoardMetadata);
     const lastInteractionAtRef = useRef(Date.now());
@@ -88,18 +98,18 @@ export function useBackgroundBoardAutoGeneration({
 
         const patch = {};
 
-        if (!Object.prototype.hasOwnProperty.call(board, 'backgroundImage') &&
-            Object.prototype.hasOwnProperty.call(snapshotMetadata, 'backgroundImage')) {
+        if (!hasUsableDisplayValue('backgroundImage', board?.backgroundImage) &&
+            hasUsableDisplayValue('backgroundImage', snapshotMetadata?.backgroundImage)) {
             patch.backgroundImage = snapshotMetadata.backgroundImage;
         }
 
-        if (!Object.prototype.hasOwnProperty.call(board, 'thumbnail') &&
-            Object.prototype.hasOwnProperty.call(snapshotMetadata, 'thumbnail')) {
+        if (!hasUsableDisplayValue('thumbnail', board?.thumbnail) &&
+            hasUsableDisplayValue('thumbnail', snapshotMetadata?.thumbnail)) {
             patch.thumbnail = snapshotMetadata.thumbnail;
         }
 
-        if (!Object.prototype.hasOwnProperty.call(board, 'summary') &&
-            Object.prototype.hasOwnProperty.call(snapshotMetadata, 'summary')) {
+        if (!hasUsableDisplayValue('summary', board?.summary) &&
+            hasUsableDisplayValue('summary', snapshotMetadata?.summary)) {
             patch.summary = snapshotMetadata.summary;
         }
 
@@ -113,7 +123,7 @@ export function useBackgroundBoardAutoGeneration({
         });
         await updater(board.id, patch);
         return true;
-    }, []);
+    }, [hasUsableDisplayValue]);
 
     const runCandidateTask = useCallback(async (candidate) => {
         const updater = metadataUpdaterRef.current;

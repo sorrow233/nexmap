@@ -2,6 +2,7 @@ import { idbGet, idbSet } from '../db/indexedDB';
 import {
     BOARD_DISPLAY_SYNC_KEYS,
     hasBoardDisplayMetadataPatch,
+    normalizeBoardSummary,
     pickBoardDisplayMetadata
 } from '../boardTitle/displayMetadata';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
@@ -46,13 +47,24 @@ const loadBoardPayload = async (boardId) => {
         : null;
 };
 
+const hasUsableDisplayValue = (key, value) => {
+    if (key === 'summary') {
+        return Boolean(normalizeBoardSummary(value));
+    }
+    return typeof value === 'string'
+        ? value.trim().length > 0
+        : Boolean(value);
+};
+
 const buildMissingDisplayMetadataPatch = (board = {}, snapshot = {}) => {
     const snapshotMetadata = pickBoardDisplayMetadata(snapshot);
     const patch = {};
 
     BOARD_DISPLAY_SYNC_KEYS.forEach((key) => {
-        const hasBoardValue = Object.prototype.hasOwnProperty.call(board, key);
-        const hasSnapshotValue = Object.prototype.hasOwnProperty.call(snapshotMetadata, key);
+        const boardValue = board?.[key];
+        const snapshotValue = snapshotMetadata?.[key];
+        const hasBoardValue = hasUsableDisplayValue(key, boardValue);
+        const hasSnapshotValue = hasUsableDisplayValue(key, snapshotValue);
         if (!hasBoardValue && hasSnapshotValue) {
             patch[key] = snapshotMetadata[key];
         }
@@ -73,7 +85,7 @@ export const hydrateBoardsDisplayMetadataList = async (boards = []) => {
 
     const hydratedBoards = await Promise.all(normalizedBoards.map(async (board) => {
         const needsHydration = BOARD_DISPLAY_SYNC_KEYS.some((key) => (
-            !Object.prototype.hasOwnProperty.call(board, key)
+            !hasUsableDisplayValue(key, board?.[key])
         ));
 
         if (!needsHydration || !board?.id) {
