@@ -5,6 +5,7 @@ import {
     readCustomInstructionsFromLocalStorage,
     extractCustomInstructionsPlainText
 } from './customInstructionsService';
+import { runtimeLog } from '../utils/runtimeLogging';
 
 /**
  * Service to generate concise AI summaries for cards
@@ -70,8 +71,8 @@ OUTPUT FORMAT:
             // Get the 'sprouting' role model (🌱 想法发芽 / Analysis)
             const sproutingModel = config?.model; // Fallback from config for now
 
-            console.log('[AI Summary] Initiating with config:', config);
-            console.log('[AI Summary] Model for summarization:', sproutingModel);
+            runtimeLog('[AI Summary] Initiating with config:', config);
+            runtimeLog('[AI Summary] Model for summarization:', sproutingModel);
 
             const response = await chatCompletion(
                 [{ role: 'user', content: prompt }],

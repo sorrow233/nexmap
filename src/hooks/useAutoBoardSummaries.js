@@ -3,14 +3,15 @@ import { useStore } from '../store/useStore';
 import { loadBoard } from '../services/storage';
 import useBoardBackground from './useBoardBackground';
 import {
-    createAutoImageTriggeredPatch,
-    hasAutoImageTriggered
+    createAutoImageCompletedPatch,
+    createAutoSummaryCompletedPatch,
+    hasAutoImageCompleted
 } from '../services/boardAutoGeneration/metadata';
+import { runtimeWarn } from '../utils/runtimeLogging';
 
 export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
     const isProcessingRef = useRef(false);
     const processedBoardIdsRef = useRef(new Set());
-    const { getRoleModel, activeId, providers } = useStore();
     const { generateBackground } = useBoardBackground();
 
     useEffect(() => {
@@ -38,7 +39,7 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
             !b.deletedAt &&
             (b.cardCount >= 3) &&
             (
-                ((b.cardCount || 0) >= 10 && !b.backgroundImage && !hasAutoImageTriggered(b)) ||
+                ((b.cardCount || 0) >= 10 && !b.backgroundImage && !hasAutoImageCompleted(b)) ||
                 ((b.cardCount || 0) >= 3 && (b.cardCount || 0) < 10 && !b.backgroundImage && !b.summary)
             ) &&
             !processedBoardIdsRef.current.has(b.id)
@@ -55,12 +56,12 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
             // RULE: 3-9 cards = Text Summary, 10+ cards = Image Background
             if (cardCount >= 3 && cardCount < 10) {
                 // Generate TEXT summary only
-                console.warn('[AutoSummary] Starting TEXT summary generation for:', candidate.name); // Warn for visibility
+                runtimeWarn('[AutoSummary] Starting TEXT summary generation for:', candidate.name);
                 const { aiSummaryService } = await import('../services/aiSummaryService');
                 const fullBoardData = await loadBoard(candidate.id);
 
                 if (!fullBoardData || !fullBoardData.cards) {
-                    console.warn('[AutoSummary] Board data empty, skipping:', candidate.name);
+                    runtimeWarn('[AutoSummary] Board data empty, skipping:', candidate.name);
                     return;
                 }
 
@@ -72,24 +73,25 @@ export function useAutoBoardSummaries(boardsList, onUpdateBoardMetadata) {
                 ) || {};
 
                 if (summary) {
-                    console.warn('[AutoSummary] Generated stats:', { summaryLength: summary.length, theme });
+                    runtimeWarn('[AutoSummary] Generated stats:', { summaryLength: summary.length, theme });
                     // Save explicitly
                     if (onUpdateBoardMetadata) {
                         await onUpdateBoardMetadata(candidate.id, {
-                            summary: { summary, theme }
+                            summary: { summary, theme },
+                            ...createAutoSummaryCompletedPatch()
                         });
-                        console.warn('[AutoSummary] Saved summary to metadata');
+                        runtimeWarn('[AutoSummary] Saved summary to metadata');
                     }
                 } else {
-                    console.warn('[AutoSummary] No summary generated (filtered or empty)');
+                    runtimeWarn('[AutoSummary] No summary generated (filtered or empty)');
                 }
 
             } else if (cardCount >= 10) {
                 // Generate IMAGE background
-                if (onUpdateBoardMetadata) {
-                    await onUpdateBoardMetadata(candidate.id, createAutoImageTriggeredPatch());
+                const imageUrl = await generateBackground(candidate.id, onUpdateBoardMetadata);
+                if (imageUrl && onUpdateBoardMetadata) {
+                    await onUpdateBoardMetadata(candidate.id, createAutoImageCompletedPatch());
                 }
-                await generateBackground(candidate.id, onUpdateBoardMetadata);
             }
 
         } catch (error) {

@@ -92,6 +92,7 @@ export default function App() {
 const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
+const STREAMING_SYNC_DEBOUNCE_MS = 700;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
 );
@@ -180,35 +181,43 @@ function AppContent() {
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
+
+        // Build the merged state patch — single zustand set() to avoid N separate renders.
+        // In async callbacks (IDB / Firebase), React 18 automatic batching does NOT cover
+        // zustand set() calls, so each independent set triggers a full render pass.
+        const patch = {
+            cards: normalized.cards,
+            connections: normalized.connections,
+            groups: normalized.groups,
+            boardPrompts: normalized.boardPrompts,
+            boardInstructionSettings: normalizeBoardInstructionSettings(
+                normalized.boardInstructionSettings
+            ),
+            lastSavedAt: normalized.updatedAt || 0,
+            activeBoardPersistence: {
+                updatedAt: normalized.updatedAt || 0,
+                clientRevision: normalized.clientRevision || 0,
+                dirty: false
+            }
+        };
+
         if (options.source === 'remote_sync' && options.boardId) {
-            setExternalSyncMarker({
+            const token = (useStore.getState().lastExternalSyncMarker?.token || 0) + 1;
+            patch.lastExternalSyncMarker = {
+                token,
                 boardId: options.boardId,
                 fingerprint: createBoardSnapshotFingerprint(normalized),
                 updatedAt: normalized.updatedAt || 0,
                 clientRevision: normalized.clientRevision || 0
-            });
+            };
         }
-        setCards(normalized.cards);
-        setConnections(normalized.connections);
-        setGroups(normalized.groups);
-        setBoardPrompts(normalized.boardPrompts);
-        setBoardInstructionSettings(normalized.boardInstructionSettings);
-        setLastSavedAt(normalized.updatedAt || 0);
-        setActiveBoardPersistence({
-            updatedAt: normalized.updatedAt || 0,
-            clientRevision: normalized.clientRevision || 0,
-            dirty: false
-        });
-    }, [
-        setActiveBoardPersistence,
-        setBoardInstructionSettings,
-        setBoardPrompts,
-        setCards,
-        setConnections,
-        setExternalSyncMarker,
-        setGroups,
-        setLastSavedAt
-    ]);
+
+        // Single atomic zustand update — triggers exactly ONE render pass.
+        useStore.setState(patch);
+
+        // Rebuild card lookup cache outside of set() so it stays consistent.
+        useStore.getState().rebuildCardLookup?.(normalized.cards);
+    }, []);
 
     const flushSearchDataBuffer = useCallback(() => {
         const pendingChunk = searchBufferedDataRef.current;
@@ -597,8 +606,13 @@ function AppContent() {
         if (generatingCardIds?.size > 0) {
             if (boardSyncDebounceTimerRef.current) {
                 clearTimeout(boardSyncDebounceTimerRef.current);
-                boardSyncDebounceTimerRef.current = null;
             }
+            boardSyncDebounceTimerRef.current = setTimeout(() => {
+                boardSyncDebounceTimerRef.current = null;
+                const activeController = boardSyncControllerRef.current;
+                if (!activeController || activeController.boardId !== currentBoardId) return;
+                activeController.applyLocalSnapshot(currentBoardSnapshot);
+            }, STREAMING_SYNC_DEBOUNCE_MS);
             return;
         }
 

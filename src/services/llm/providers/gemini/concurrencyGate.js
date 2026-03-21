@@ -50,7 +50,8 @@ export async function acquireGeminiConcurrencySlot({
     baseUrl = '',
     model = '',
     stream = false,
-    configuredKeyCount = 1
+    configuredKeyCount = 1,
+    signal = null
 } = {}) {
     const limit = resolveConcurrencyLimit({ model, stream, configuredKeyCount });
     if (!Number.isFinite(limit) || limit <= 0) {
@@ -60,9 +61,47 @@ export async function acquireGeminiConcurrencySlot({
     const key = buildGateKey({ providerId, baseUrl, model, stream });
     const entry = getGateEntry(key);
 
+    if (signal?.aborted) {
+        const error = new Error('The operation was aborted');
+        error.name = 'AbortError';
+        throw error;
+    }
+
     if (entry.active >= limit) {
-        await new Promise(resolve => {
-            entry.queue.push(resolve);
+        await new Promise((resolve, reject) => {
+            let settled = false;
+            let queueEntry = null;
+
+            const cleanup = () => {
+                if (signal) {
+                    signal.removeEventListener('abort', onAbort);
+                }
+            };
+
+            const onAbort = () => {
+                if (settled) return;
+                settled = true;
+                entry.queue = entry.queue.filter((item) => item !== queueEntry);
+                if (entry.active === 0 && entry.queue.length === 0) {
+                    gateState.delete(key);
+                }
+                cleanup();
+                const error = new Error('The operation was aborted');
+                error.name = 'AbortError';
+                reject(error);
+            };
+
+            queueEntry = () => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                resolve();
+            };
+
+            entry.queue.push(queueEntry);
+            if (signal) {
+                signal.addEventListener('abort', onAbort, { once: true });
+            }
         });
     }
 

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import useBoardBackground from './useBoardBackground';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 import {
-    createAutoImageTriggeredPatch,
-    createAutoSummaryTriggeredPatch
+    createAutoImageCompletedPatch,
+    createAutoSummaryCompletedPatch
 } from '../services/boardAutoGeneration/metadata';
 import {
     AUTO_GENERATION_KIND,
@@ -85,13 +85,17 @@ export function useBackgroundBoardAutoGeneration({
 
         try {
             if (candidate.kind === AUTO_GENERATION_KIND.IMAGE) {
-                await updater(boardId, createAutoImageTriggeredPatch());
-                await generateBoardImage(boardId, updater);
+                const finalImageUrl = await generateBoardImage(boardId, updater);
+                if (finalImageUrl) {
+                    await updater(boardId, createAutoImageCompletedPatch());
+                }
                 return;
             }
 
-            await updater(boardId, createAutoSummaryTriggeredPatch());
-            await generateBoardSummary(boardId, updater);
+            const summaryResult = await generateBoardSummary(boardId, updater);
+            if (summaryResult) {
+                await updater(boardId, createAutoSummaryCompletedPatch());
+            }
         } catch (error) {
             console.error('[AutoGen Background] Task failed', {
                 boardId,

@@ -87,6 +87,8 @@ const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     deletedAt: normalizeOptionalMillis(board.deletedAt, { allowNull: true }),
     autoImageTriggeredAt: normalizeOptionalMillis(board.autoImageTriggeredAt),
     autoSummaryTriggeredAt: normalizeOptionalMillis(board.autoSummaryTriggeredAt),
+    autoImageCompletedAt: normalizeOptionalMillis(board.autoImageCompletedAt),
+    autoSummaryCompletedAt: normalizeOptionalMillis(board.autoSummaryCompletedAt),
     listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : null,
     summary: normalizeBoardSummary(board.summary),
     backgroundImage: normalizeOptionalString(board.backgroundImage),
@@ -163,6 +165,14 @@ const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
         mergedBoard.autoSummaryTriggeredAt = fallbackBoard.autoSummaryTriggeredAt;
     }
 
+    if (!hasOwn(preferredBoard, 'autoImageCompletedAt') && hasOwn(fallbackBoard, 'autoImageCompletedAt')) {
+        mergedBoard.autoImageCompletedAt = fallbackBoard.autoImageCompletedAt;
+    }
+
+    if (!hasOwn(preferredBoard, 'autoSummaryCompletedAt') && hasOwn(fallbackBoard, 'autoSummaryCompletedAt')) {
+        mergedBoard.autoSummaryCompletedAt = fallbackBoard.autoSummaryCompletedAt;
+    }
+
     if (!hasOwn(preferredBoard, 'listOrder') && hasOwn(fallbackBoard, 'listOrder')) {
         mergedBoard.listOrder = fallbackBoard.listOrder;
     }
@@ -227,8 +237,7 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
         .filter((board) => board?.id && !isSampleBoardId(board.id));
     syncedBoards.sort(compareBoardsByGalleryOrder);
     const cache = getUserMetadataSignatureCache(userId);
-    const boardOrderMap = new Map(syncedBoards.map((board, index) => [board.id, index]));
-    const changedBoards = syncedBoards.filter((board, index) => {
+    const changedBoards = syncedBoards.flatMap((board, index) => {
         const normalizedBoard = {
             ...board,
             listOrder: index
@@ -236,11 +245,14 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
         const nextSignature = buildRemoteBoardMetadataSignature(normalizedBoard);
         const previousSignature = cache.get(board.id);
         if (previousSignature === nextSignature) {
-            return false;
+            return [];
         }
 
-        cache.set(board.id, nextSignature);
-        return true;
+        return [{
+            board,
+            listOrder: index,
+            signature: nextSignature
+        }];
     });
 
     if (changedBoards.length === 0) {
@@ -252,8 +264,7 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
         await withRetry(async () => {
             const batch = writeBatch(db);
 
-            currentSlice.forEach((board) => {
-                const listOrder = boardOrderMap.get(board.id) ?? 0;
+            currentSlice.forEach(({ board, listOrder }) => {
                 batch.set(
                     doc(getBoardCollectionRef(userId), board.id),
                     buildAuthoritativeRootPayload({
@@ -268,6 +279,9 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
             });
 
             await batch.commit();
+            currentSlice.forEach(({ board, signature }) => {
+                cache.set(board.id, signature);
+            });
         });
     }
 };

@@ -17,7 +17,9 @@ export const BOARD_DISPLAY_SYNC_KEYS = Object.freeze([
     'backgroundImage',
     'thumbnail',
     'autoImageTriggeredAt',
-    'autoSummaryTriggeredAt'
+    'autoSummaryTriggeredAt',
+    'autoImageCompletedAt',
+    'autoSummaryCompletedAt'
 ]);
 
 const normalizeLooseString = (value) => {

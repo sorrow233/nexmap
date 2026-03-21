@@ -1,5 +1,7 @@
 import {
+    hasAutoImageCompleted,
     hasAutoImageTriggered,
+    hasAutoSummaryCompleted,
     hasAutoSummaryTriggered
 } from './metadata';
 
@@ -18,19 +20,29 @@ const hasEnoughCardsForImage = (board = {}) => {
     return cardCount >= 10;
 };
 
+const hasLegacyAutoImageSuccess = (board = {}) => (
+    Boolean(board?.backgroundImage) && hasAutoImageTriggered(board)
+);
+
+const hasLegacyAutoSummarySuccess = (board = {}) => (
+    Boolean(board?.summary) && hasAutoSummaryTriggered(board)
+);
+
 export const shouldAutoGenerateSummary = (board = {}) => (
     !board?.deletedAt &&
     hasEnoughCardsForSummary(board) &&
     !board?.summary &&
     !board?.backgroundImage &&
-    !hasAutoSummaryTriggered(board)
+    !hasAutoSummaryCompleted(board) &&
+    !hasLegacyAutoSummarySuccess(board)
 );
 
 export const shouldAutoGenerateImage = (board = {}) => (
     !board?.deletedAt &&
     hasEnoughCardsForImage(board) &&
     !board?.backgroundImage &&
-    !hasAutoImageTriggered(board)
+    !hasAutoImageCompleted(board) &&
+    !hasLegacyAutoImageSuccess(board)
 );
 
 export const pickNextAutoGenerationCandidate = (boards = []) => {

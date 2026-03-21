@@ -20,7 +20,9 @@ const CORE_BOARD_METADATA_KEYS = [
     'clientRevision',
     'deletedAt',
     'autoImageTriggeredAt',
-    'autoSummaryTriggeredAt'
+    'autoSummaryTriggeredAt',
+    'autoImageCompletedAt',
+    'autoSummaryCompletedAt'
 ];
 
 const BOARD_LIST_STORAGE_TIERS = [

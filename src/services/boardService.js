@@ -39,7 +39,9 @@ const BOARD_PERSISTED_METADATA_KEYS = [
     'thumbnail',
     'deletedAt',
     'autoImageTriggeredAt',
-    'autoSummaryTriggeredAt'
+    'autoSummaryTriggeredAt',
+    'autoImageCompletedAt',
+    'autoSummaryCompletedAt'
 ];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
