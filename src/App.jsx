@@ -93,6 +93,32 @@ const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
 
+const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
+    Object.entries(metadata).filter(([, value]) => value !== undefined)
+);
+
+const isBoardMetadataValueEqual = (left, right) => {
+    if (left === right) return true;
+    if ((left == null) || (right == null)) {
+        return left == null && right == null;
+    }
+
+    if (typeof left === 'object' || typeof right === 'object') {
+        try {
+            return JSON.stringify(left) === JSON.stringify(right);
+        } catch (error) {
+            console.warn('[BoardMetadata] Failed to compare metadata value:', error);
+            return false;
+        }
+    }
+
+    return false;
+};
+
+const hasMeaningfulBoardMetadataChange = (board, metadata = {}) => Object.keys(metadata).some((key) => (
+    !isBoardMetadataValueEqual(board?.[key], metadata[key])
+));
+
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -137,6 +163,7 @@ function AppContent() {
     const searchLoadTokenRef = useRef(0);
     const searchBufferedDataRef = useRef({});
     const searchFlushTimerRef = useRef(null);
+    const boardsListRef = useRef(boardsList);
 
     useBuildVersionRefresh();
 
@@ -146,6 +173,10 @@ function AppContent() {
     useEffect(() => {
         allBoardsDataRef.current = allBoardsData;
     }, [allBoardsData]);
+
+    useEffect(() => {
+        boardsListRef.current = boardsList;
+    }, [boardsList]);
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
@@ -630,32 +661,46 @@ function AppContent() {
     }, [currentBoardId, isBoardLoading, navigate]);
 
     const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
-        const currentBoard = boardsList.find(board => board.id === boardId);
-        let nextMetadata = metadata;
+        if (!boardId || !metadata || typeof metadata !== 'object') return;
 
-        if (hasBoardTitleMetadataPatch(metadata)) {
-            nextMetadata = {
-                ...metadata,
+        const currentBoard = boardsListRef.current.find(board => board.id === boardId);
+        let nextMetadata = sanitizeBoardMetadataPatch(metadata);
+
+        if (Object.keys(nextMetadata).length === 0) {
+            return;
+        }
+
+        if (hasBoardTitleMetadataPatch(nextMetadata)) {
+            nextMetadata = sanitizeBoardMetadataPatch({
+                ...nextMetadata,
                 ...pickBoardTitleMetadata({
                     ...(currentBoard || {}),
-                    ...metadata
+                    ...nextMetadata
                 })
-            };
+            });
+        }
+
+        if (!hasMeaningfulBoardMetadataChange(currentBoard, nextMetadata)) {
+            return;
         }
 
         updateBoardMetadata(boardId, nextMetadata);
 
-        setBoardsList(prev => prev.map(board => (
-            board.id === boardId
-                ? normalizeBoardTitleMeta({ ...board, ...nextMetadata })
-                : board
-        )));
+        setBoardsList((prev) => {
+            const nextBoards = prev.map((board) => (
+                board.id === boardId
+                    ? normalizeBoardTitleMeta({ ...board, ...nextMetadata })
+                    : board
+            ));
+            boardsListRef.current = nextBoards;
+            return nextBoards;
+        });
 
         if (hasBoardDisplayMetadataPatch(nextMetadata)) {
             await persistBoardDisplayMetadataSnapshot(boardId, nextMetadata);
         }
 
-    }, [boardsList, setBoardsList]);
+    }, [setBoardsList]);
 
     const handleUpdateBoardTitle = useCallback(async (newTitle) => {
         if (!currentBoardId) return;

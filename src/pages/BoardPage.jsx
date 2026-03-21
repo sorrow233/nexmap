@@ -142,6 +142,10 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         }
     }, [currentBoardId, currentBoard?.summary, currentBoard?.backgroundImage, currentBoard?.autoImageTriggeredAt]);
 
+    const currentBoardHasSummary = Boolean(currentBoard?.summary);
+    const currentBoardHasBackgroundImage = Boolean(currentBoard?.backgroundImage);
+    const currentBoardAutoImageTriggered = hasAutoImageTriggered(currentBoard);
+
     // Optimized: Calculate active count separately to avoid re-running effect on every card move/drag
     // cards array changes on every drag frame, but count remains stable
     const activeCardCount = React.useMemo(() => {
@@ -154,13 +158,14 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         if (isReadOnly) return; // Skip auto-generation in Read-Only mode
 
         if (!currentBoardId) return;
+        if (generatingBoardId === currentBoardId) return;
 
         const hasSummaryTriggered = hasAutoSummaryGeneratedRef.current || AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
         const hasImageTriggered = hasAutoImageGeneratedRef.current || AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
 
         // 1. Text Summary (Cards > 3)
         // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
-        if (activeCardCount > 3 && !hasSummaryTriggered && !currentBoard?.summary && !currentBoard?.backgroundImage) {
+        if (activeCardCount > 3 && !hasSummaryTriggered && !currentBoardHasSummary && !currentBoardHasBackgroundImage) {
             runtimeLog(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
             generateBoardSummary(currentBoardId, (id, updates) => {
                 if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
@@ -171,7 +176,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
 
         // 2. Visual Background (Cards > 10)
         // Trigger if: Enough cards, not generated this session, and no existing image
-        if (activeCardCount > 10 && !hasImageTriggered && !currentBoard?.backgroundImage && !hasAutoImageTriggered(currentBoard)) {
+        if (activeCardCount > 10 && !hasImageTriggered && !currentBoardHasBackgroundImage && !currentBoardAutoImageTriggered) {
             runtimeLog(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
             hasAutoImageGeneratedRef.current = true;
             AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
@@ -185,7 +190,16 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                 });
             })();
         }
-    }, [activeCardCount, currentBoardId, onUpdateBoardMetadata, currentBoard, currentBoard?.summary, currentBoard?.backgroundImage, isReadOnly]);
+    }, [
+        activeCardCount,
+        currentBoardAutoImageTriggered,
+        currentBoardHasBackgroundImage,
+        currentBoardHasSummary,
+        currentBoardId,
+        generatingBoardId,
+        isReadOnly,
+        onUpdateBoardMetadata
+    ]);
 
     useEffect(() => {
         if (!isIPhoneBoardMode) return;
