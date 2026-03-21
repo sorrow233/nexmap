@@ -20,6 +20,11 @@ import { createBoardRootRef } from './firestoreSyncPaths';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 import { isPersistenceSnapshotNewer } from '../boardPersistence/persistenceCursor';
 
+const getActiveCardCount = (snapshot = {}) => {
+    const cards = Array.isArray(snapshot?.cards) ? snapshot.cards : [];
+    return cards.filter((card) => card && !card.deletedAt).length;
+};
+
 const readRemoteSnapshotFromCheckpoint = async ({ userId, boardId, rootData }) => {
     if (!hasRemoteCheckpoint(rootData)) {
         return null;
@@ -48,7 +53,8 @@ export const repairRemoteBoardSnapshotIfLocalNewer = async ({
     userId,
     boardId,
     deviceId,
-    localSnapshot
+    localSnapshot,
+    expectedCardCount
 }) => {
     if (!db || !userId || !boardId || !deviceId) {
         return { repaired: false, reason: 'disabled' };
@@ -81,8 +87,24 @@ export const repairRemoteBoardSnapshotIfLocalNewer = async ({
         rootData
     });
 
-    if (remoteSnapshot && !isPersistenceSnapshotNewer(normalizedLocalSnapshot, remoteSnapshot)) {
+    const localActiveCardCount = getActiveCardCount(normalizedLocalSnapshot);
+    const remoteActiveCardCount = getActiveCardCount(remoteSnapshot);
+    const safeExpectedCardCount = Number(expectedCardCount) || 0;
+    const localMatchesExpected = safeExpectedCardCount <= 0 || localActiveCardCount >= safeExpectedCardCount;
+    const remoteLagsCardCount = safeExpectedCardCount > 0 && remoteActiveCardCount < safeExpectedCardCount;
+    const remoteHasFewerCards = remoteSnapshot && localActiveCardCount > remoteActiveCardCount;
+
+    if (
+        remoteSnapshot &&
+        !remoteLagsCardCount &&
+        !remoteHasFewerCards &&
+        !isPersistenceSnapshotNewer(normalizedLocalSnapshot, remoteSnapshot)
+    ) {
         return { repaired: false, reason: 'remote_up_to_date' };
+    }
+
+    if (safeExpectedCardCount > 0 && !localMatchesExpected) {
+        return { repaired: false, reason: 'local_snapshot_incomplete' };
     }
 
     const tempDoc = createBoardDoc();
@@ -93,12 +115,18 @@ export const repairRemoteBoardSnapshotIfLocalNewer = async ({
             boardId,
             deviceId,
             updateBase64: bytesToBase64(Y.encodeStateAsUpdate(tempDoc)),
-            reason: remoteSnapshot ? 'local_snapshot_repair' : 'local_snapshot_seed'
+            reason: remoteSnapshot
+                ? (remoteLagsCardCount || remoteHasFewerCards
+                    ? 'local_snapshot_cardcount_repair'
+                    : 'local_snapshot_repair')
+                : 'local_snapshot_seed'
         });
 
         return {
             repaired: Boolean(checkpoint),
-            reason: remoteSnapshot ? 'local_newer' : 'remote_empty'
+            reason: remoteSnapshot
+                ? (remoteLagsCardCount || remoteHasFewerCards ? 'remote_missing_cards' : 'local_newer')
+                : 'remote_empty'
         };
     } finally {
         tempDoc.destroy();

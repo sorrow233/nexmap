@@ -388,7 +388,8 @@ function AppContent() {
                             userId: user.uid,
                             boardId: board.id,
                             deviceId,
-                            localSnapshot
+                            localSnapshot,
+                            expectedCardCount: board.cardCount
                         });
                     } catch (error) {
                         console.error('[RemoteSnapshotRepair] Failed to repair board snapshot:', {
