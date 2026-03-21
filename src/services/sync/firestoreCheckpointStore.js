@@ -76,11 +76,17 @@ const listCheckpointSets = async (userId, boardId) => {
     return setsSnapshot.docs;
 };
 
-const cleanupStaleCheckpointSets = async (userId, boardId, keepCheckpointId) => {
-    const docs = await listCheckpointSets(userId, boardId);
+let isCleanupRunning = false;
 
-    for (const setDocSnap of docs) {
-        if (setDocSnap.id === keepCheckpointId) continue;
+const cleanupStaleCheckpointSets = async (userId, boardId, keepCheckpointId) => {
+    if (isCleanupRunning) return;
+    isCleanupRunning = true;
+
+    try {
+        const docs = await listCheckpointSets(userId, boardId);
+
+        for (const setDocSnap of docs) {
+            if (setDocSnap.id === keepCheckpointId) continue;
 
         const partsRef = createCheckpointPartsCollectionRef(userId, boardId, setDocSnap.id);
         const partsSnapshot = await getDocs(query(partsRef, orderBy('index', 'asc')));
@@ -98,6 +104,9 @@ const cleanupStaleCheckpointSets = async (userId, boardId, keepCheckpointId) => 
         await deleteDoc(setDocSnap.ref);
         // Throttle individual doc deletions too just in case there are many sets
         await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    } finally {
+        isCleanupRunning = false;
     }
 };
 
