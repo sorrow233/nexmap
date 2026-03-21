@@ -16,22 +16,8 @@ import {
     FIREBASE_SYNC_ORIGINS,
     isSampleBoardId
 } from './config';
-import { uuid } from '../../utils/uuid';
+import { getSyncDeviceId } from './deviceId';
 import { isPersistenceSnapshotNewer } from '../boardPersistence/persistenceCursor';
-
-const DEVICE_ID_KEY = 'mixboard_sync_device_id';
-
-const getDeviceId = () => {
-    try {
-        const existing = localStorage.getItem(DEVICE_ID_KEY);
-        if (existing) return existing;
-        const next = uuid();
-        localStorage.setItem(DEVICE_ID_KEY, next);
-        return next;
-    } catch {
-        return uuid();
-    }
-};
 
 export class BoardSyncController {
     constructor({ boardId, user, onSnapshot, onSyncStateChange }) {
@@ -91,7 +77,7 @@ export class BoardSyncController {
         this.fireSync = new FirestoreBoardSync({
             boardId: this.boardId,
             userId: this.user.uid,
-            deviceId: getDeviceId(),
+            deviceId: getSyncDeviceId(),
             doc: this.doc,
             onRemoteApplied: () => {
                 this.emitCurrentSnapshot();
