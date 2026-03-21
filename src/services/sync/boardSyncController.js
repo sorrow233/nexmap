@@ -40,7 +40,7 @@ export class BoardSyncController {
         });
     }
 
-    async start(initialLocalSnapshot = {}) {
+    async start(initialLocalSnapshot = {}, { expectedCardCount = 0 } = {}) {
         if (!FIREBASE_SYNC_ENABLED || !this.user?.uid || !this.boardId || isSampleBoardId(this.boardId)) {
             this.emitState('disabled');
             return;
@@ -53,6 +53,16 @@ export class BoardSyncController {
 
         const normalizedLocal = normalizeBoardSnapshot(initialLocalSnapshot);
         const persistedDocSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const repairCandidateSnapshot = (
+            isMeaningfullyEmptyBoardSnapshot(persistedDocSnapshot)
+                ? normalizedLocal
+                : (
+                    isMeaningfullyEmptyBoardSnapshot(normalizedLocal)
+                    || !isPersistenceSnapshotNewer(normalizedLocal, persistedDocSnapshot)
+                )
+                    ? persistedDocSnapshot
+                    : normalizedLocal
+        );
         const shouldApplyLocalSnapshot = (
             !isMeaningfullyEmptyBoardSnapshot(normalizedLocal) &&
             (
@@ -88,6 +98,8 @@ export class BoardSyncController {
         const { remoteIsEmpty } = await this.fireSync.connect();
         if (remoteIsEmpty && !isMeaningfullyEmptyBoardSnapshot(normalizedLocal)) {
             await this.fireSync.saveSnapshot('initial_local_seed');
+        } else {
+            this.fireSync.planDeferredRepair(repairCandidateSnapshot, { expectedCardCount });
         }
 
         this.started = true;

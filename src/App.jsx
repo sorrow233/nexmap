@@ -78,8 +78,6 @@ import {
 import { hasBoardDisplayMetadataPatch } from './services/boardTitle/displayMetadata';
 import { persistBoardDisplayMetadataSnapshot } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
-import { getSyncDeviceId } from './services/sync/deviceId';
-import { repairRemoteBoardSnapshotIfLocalNewer } from './services/sync/remoteBoardSnapshotRepair';
 
 export default function App() {
     return (
@@ -154,7 +152,6 @@ function AppContent() {
     const boardSyncDebounceTimerRef = useRef(null);
     const metadataSyncTimerRef = useRef(null);
     const metadataHydrationRetryTimerRef = useRef(null);
-    const currentBoardRepairKeyRef = useRef('');
     const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
 
     // Dialog State
@@ -550,6 +547,8 @@ function AppContent() {
                     useStore.getState().restoreViewport(viewport);
 
                     if (user?.uid && !isSampleBoardId(currentBoardId)) {
+                        const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
+                        const expectedCardCount = Number(currentBoardMeta?.cardCount) || 0;
                         const syncController = new BoardSyncController({
                             boardId: currentBoardId,
                             user,
@@ -564,32 +563,7 @@ function AppContent() {
                         });
 
                         boardSyncControllerRef.current = syncController;
-                        await syncController.start(data);
-
-                        const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
-                        const expectedCardCount = Number(currentBoardMeta?.cardCount) || 0;
-                        const repairKey = `${currentBoardId}:${data?.updatedAt || 0}:${data?.clientRevision || 0}:${expectedCardCount}`;
-
-                        if (currentBoardRepairKeyRef.current !== repairKey) {
-                            currentBoardRepairKeyRef.current = repairKey;
-
-                            setTimeout(() => {
-                                if (isCancelled) return;
-
-                                void repairRemoteBoardSnapshotIfLocalNewer({
-                                    userId: user.uid,
-                                    boardId: currentBoardId,
-                                    deviceId: getSyncDeviceId(),
-                                    localSnapshot: data,
-                                    expectedCardCount
-                                }).catch((error) => {
-                                    console.error('[RemoteSnapshotRepair] Failed to repair current board snapshot:', {
-                                        boardId: currentBoardId,
-                                        error
-                                    });
-                                });
-                            }, 1200);
-                        }
+                        await syncController.start(data, { expectedCardCount });
                     }
                 } catch (error) {
                     console.error(`[Board] Failed to load board ${currentBoardId}:`, error);
