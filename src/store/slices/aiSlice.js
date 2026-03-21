@@ -1,4 +1,4 @@
-import { saveImageToIDB, getCurrentBoardId } from '../../services/storage';
+import { getCurrentBoardId } from '../../services/storage';
 import { uuid } from '../../utils/uuid';
 import { createPerformanceMonitor } from '../../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../../services/ai/AIManager';
@@ -10,6 +10,11 @@ import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
 import { applyStreamTextUpdates, createStreamRenderBuffer } from './utils/streamRenderBuffer';
 import { createCardTimestampFields } from '../../services/cards/cardTimestamps';
+import {
+    createMessageContentWithImages,
+    persistCardMessageImagesToIDB
+} from '../../services/ai/messageContent';
+import { yieldToMainThread } from '../../utils/scheduling';
 
 
 export const createAISlice = (set, get) => {
@@ -129,28 +134,8 @@ export const createAISlice = (set, get) => {
             }
 
             // Original logic for creating new AI cards
-            let content = text;
-            if (images.length > 0) {
-                // Process images to IDB
-                const processedImages = await Promise.all(images.map(async (img, idx) => {
-                    const imageId = `${newId}_img_${uuid()}_${idx}`;
-                    // Offload to IDB
-                    await saveImageToIDB(imageId, img.base64);
-                    return {
-                        type: 'image',
-                        source: {
-                            type: 'idb', // New type
-                            id: imageId,
-                            media_type: img.mimeType
-                        }
-                    };
-                }));
-
-                content = [
-                    { type: 'text', text: text },
-                    ...processedImages
-                ];
-            }
+            const userMessageId = uuid();
+            const content = createMessageContentWithImages(text, images, contextPrefix);
 
             const newCard = {
                 id: newId, x, y,
@@ -158,7 +143,7 @@ export const createAISlice = (set, get) => {
                 data: {
                     title: text.length > 20 ? text.substring(0, 20) + '...' : (text || 'New Card'),
                     messages: [
-                        { role: 'user', content: contextPrefix + (typeof content === 'string' ? content : "") },
+                        { id: userMessageId, role: 'user', content },
                         { id: uuid(), role: 'assistant', content: '' }
                     ],
                     model,
@@ -166,23 +151,20 @@ export const createAISlice = (set, get) => {
                 }
             };
 
-            if (Array.isArray(content)) {
-                const textPart = content.find(p => p.type === 'text');
-                const updatedContent = [...content];
-                if (textPart) {
-                    const idx = updatedContent.indexOf(textPart);
-                    updatedContent[idx] = { ...textPart, text: contextPrefix + textPart.text };
-                } else {
-                    updatedContent.unshift({ type: 'text', text: contextPrefix });
-                }
-                newCard.data.messages[0].content = updatedContent;
-            }
-
             set(state => ({
                 cards: [...state.cards, newCard],
                 connections: [...state.connections, ...autoConnections],
                 generatingCardIds: new Set(state.generatingCardIds).add(newId)
             }));
+
+            if (images.length > 0) {
+                void persistCardMessageImagesToIDB({
+                    cardId: newId,
+                    messageId: userMessageId,
+                    images,
+                    updateCardFull: get().updateCardFull
+                });
+            }
 
             // Removed: position-based auto-add to zone
             // Cards now only join zones via connections
@@ -193,6 +175,7 @@ export const createAISlice = (set, get) => {
         handleChatGenerate: async (cardId, messages, onToken) => {
             const { setCardGenerating, updateCardContent, updateCardFull } = get();
             setCardGenerating(cardId, true);
+            await yieldToMainThread();
 
             try {
                 // CRITICAL FIX: 在执行 assembleContext 之前获取最新的 cards 和 connections

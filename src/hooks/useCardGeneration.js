@@ -4,6 +4,8 @@ import { createPerformanceMonitor } from '../utils/performanceMonitor';
 import { aiManager, PRIORITY } from '../services/ai/AIManager';
 import { saveImageToIDB } from '../services/storage';
 import { debugLog } from '../utils/debugLogger';
+import { createMessageContentWithImages } from '../services/ai/messageContent';
+import { yieldToMainThread } from '../utils/scheduling';
 
 export function useCardGeneration() {
     const {
@@ -41,23 +43,7 @@ export function useCardGeneration() {
             });
 
             // Construct content for AI
-            let messageContent;
-            if (images.length > 0) {
-                const imageParts = images.map(img => ({
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: img.mimeType,
-                        data: img.base64
-                    }
-                }));
-                messageContent = [
-                    { type: 'text', text: contextPrefix + text },
-                    ...imageParts
-                ];
-            } else {
-                messageContent = contextPrefix + text;
-            }
+            const messageContent = createMessageContentWithImages(text, images, contextPrefix);
 
             // Queue the streaming task
             try {
@@ -133,6 +119,7 @@ export function useCardGeneration() {
         // Robustness Check: Ensure text is a string
         const safeText = (typeof text === 'string' ? text : (text?.toString() || '')).trim();
         if (!safeText && (!images || images.length === 0)) return;
+        await yieldToMainThread();
         const selectedIdSet = new Set(selectedIds);
 
         const targetCards = cards.filter(c => selectedIdSet.has(c.id) && c.data && Array.isArray(c.data.messages));

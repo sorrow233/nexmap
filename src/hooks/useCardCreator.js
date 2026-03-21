@@ -9,17 +9,16 @@ import { useCardGeneration } from './useCardGeneration';
 import { useNeuralNotepad } from './useNeuralNotepad';
 import { enhancePromptWithStyle, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
 import { createCardTimestampFields } from '../services/cards/cardTimestamps';
+import { buildSelectedCardsContext } from '../services/ai/selectedCardContext';
+import { yieldToMainThread } from '../utils/scheduling';
 
 export function useCardCreator() {
     const { id: currentBoardId } = useParams();
     const {
-        cards,
         setCards,
         offset,
-        scale,
-        selectedIds
+        scale
     } = useStore();
-    const selectedIdSet = new Set(selectedIds);
 
     const { handleExpandTopics, handleSprout } = useAISprouting();
     const { _generateAICard, handleBatchChat } = useCardGeneration();
@@ -32,6 +31,12 @@ export function useCardCreator() {
         // Robustness Check: Ensure text is a string
         const safeText = (typeof text === 'string' ? text : (text?.toString() || '')).trim();
         if (!safeText && (!images || images.length === 0)) return;
+
+        await yieldToMainThread();
+
+        const state = useStore.getState();
+        const currentCards = state.cards || [];
+        const currentSelectedIds = state.selectedIds || [];
 
         // 1. Image Generation Command Detection
         if (safeText.startsWith('/draw ') || safeText.startsWith('/image ')) {
@@ -84,32 +89,16 @@ export function useCardCreator() {
             targetX = position.x;
             targetY = position.y;
         } else {
-            const optimalPos = findOptimalPosition(cards, offset, scale, selectedIds);
+            const optimalPos = findOptimalPosition(currentCards, offset, scale, currentSelectedIds);
             targetX = optimalPos.x;
             targetY = optimalPos.y;
         }
 
         // 3. Context Construction - Include actual card content for better AI understanding
-        let contextPrefix = "";
-        const contextCards = cards.filter(c => selectedIdSet.has(c.id));
-        if (contextCards.length > 0) {
-            contextPrefix = contextCards.map(c => {
-                // Build context from card's conversation history
-                const title = c.data?.title || 'Untitled';
-                const messages = c.data?.messages || [];
-                // Get last 5 messages for context (increased from 3 for better context)
-                const recentMessages = messages.slice(-5).map(m => {
-                    const contentStr = typeof m.content === 'string'
-                        ? m.content
-                        : (Array.isArray(m.content)
-                            ? m.content.map(p => p.type === 'text' ? p.text : '[Image]').join(' ')
-                            : '');
-                    // No truncation - pass full message content
-                    return `${m.role}: ${contentStr}`;
-                }).join('\n');
-                return `--- Card: "${title}" ---\n${recentMessages}`;
-            }).join('\n\n') + '\n\n---\n\nBased on the above context, please respond to:\n\n';
-        }
+        const contextCards = typeof state.getCardsByIds === 'function'
+            ? state.getCardsByIds(currentSelectedIds)
+            : currentCards.filter((card) => currentSelectedIds.includes(card.id));
+        const contextPrefix = buildSelectedCardsContext(contextCards);
 
         await _generateAICard(safeText, targetX, targetY, images, contextPrefix);
     };
