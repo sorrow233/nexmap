@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
 
 /**
@@ -19,9 +19,6 @@ import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
  */
 const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, connections, offset, scale }) {
     const canvasRef = useRef(null);
-    const contextRef = useRef(null);
-    const renderFrameRef = useRef(null);
-    const systemDarkModeRef = useRef(false);
 
     // =========================================================================
     // 1. DATA Staging (Refs) - To avoid re-triggering effects unnecessarily
@@ -39,119 +36,18 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
 
     // Signals the render loop that paths have been updated (Content changed)
     const pathVersionRef = useRef(0);
-    const lastRenderStateRef = useRef({
-        x: null,
-        y: null,
-        s: null,
-        v: -1,
-        d: null,
-        width: 0,
-        height: 0,
-        dpr: 1
-    });
-    const canvasMetricsRef = useRef({
-        width: 0,
-        height: 0,
-        dpr: 1
-    });
-
-    const drawConnections = useCallback(() => {
-        renderFrameRef.current = null;
-
-        const canvas = canvasRef.current;
-        const ctx = contextRef.current;
-        if (!canvas || !ctx) return;
-
-        const { x: cx, y: cy, s: cs } = transformRef.current;
-        const cv = pathVersionRef.current;
-        const isDark = document.documentElement.classList.contains('dark') || systemDarkModeRef.current;
-        const { width, height, dpr } = canvasMetricsRef.current;
-        const lastRenderState = lastRenderStateRef.current;
-
-        const hasChanged =
-            cx !== lastRenderState.x ||
-            cy !== lastRenderState.y ||
-            cs !== lastRenderState.s ||
-            cv !== lastRenderState.v ||
-            isDark !== lastRenderState.d ||
-            width !== lastRenderState.width ||
-            height !== lastRenderState.height ||
-            dpr !== lastRenderState.dpr;
-
-        if (!hasChanged) {
-            return;
-        }
-
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, width, height);
-
-        const map = pathCacheRef.current;
-        if (map.size > 0) {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.scale(cs, cs);
-            ctx.lineWidth = 3 / cs;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            const colors = {
-                default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
-                red: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)',
-                rose: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)',
-                orange: isDark ? 'rgba(249, 115, 22, 0.7)' : 'rgba(249, 115, 22, 0.65)',
-                amber: isDark ? 'rgba(245, 158, 11, 0.7)' : 'rgba(251, 191, 36, 0.65)',
-                green: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)',
-                emerald: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)',
-                teal: isDark ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.65)',
-                blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)',
-                violet: isDark ? 'rgba(124, 58, 237, 0.6)' : 'rgba(167, 139, 250, 0.6)',
-            };
-
-            const colorGroups = {};
-            for (const key of Object.keys(colors)) colorGroups[key] = [];
-
-            for (const entry of map.values()) {
-                const path = entry.path || entry;
-                const color = entry.cardColor;
-                if (color && colorGroups[color]) colorGroups[color].push(path);
-                else colorGroups.default.push(path);
-            }
-
-            for (const [colorKey, paths] of Object.entries(colorGroups)) {
-                if (paths.length > 0) {
-                    ctx.strokeStyle = colors[colorKey];
-                    for (const path of paths) ctx.stroke(path);
-                }
-            }
-            ctx.restore();
-        }
-
-        lastRenderStateRef.current = {
-            x: cx,
-            y: cy,
-            s: cs,
-            v: cv,
-            d: isDark,
-            width,
-            height,
-            dpr
-        };
-    }, []);
-
-    const scheduleRender = useCallback(() => {
-        if (renderFrameRef.current) return;
-        renderFrameRef.current = requestAnimationFrame(drawConnections);
-    }, [drawConnections]);
 
     // Update transformRef whenever view props change.
+    // This allows the render loop to "see" the new transform without breaking the loop.
     useEffect(() => {
         transformRef.current = {
             x: offset?.x ?? 0,
             y: offset?.y ?? 0,
             s: scale ?? 1
         };
-        scheduleRender();
-    }, [offset, scale, scheduleRender]);
+        // Note: We don't increment pathVersion here. Transform changes are handled
+        // by the loop checking against its own lastRenderState.
+    }, [offset, scale]);
 
 
     // =========================================================================
@@ -248,78 +144,172 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
         // 4. Update previous state map for next run
         prevCardsMapRef.current = nextCardsMap;
 
+        // 5. Signal render loop if needed
         if (hasUpdates) {
             pathVersionRef.current += 1;
-            scheduleRender();
         }
-    }, [cardMap, cards, connections, scheduleRender]); // <--- STRICT DEPENDENCIES
 
+    }, [cardMap, cards, connections]); // <--- STRICT DEPENDENCIES
+
+
+    // =========================================================================
+    // 3. RENDER LOOP (View Logic)
+    // Manages Canvas drawing synchronized with browser paint.
+    // =========================================================================
+    // =========================================================================
+    // 3. RENDER LOOP (View Logic) - Optimized with SLEEP MODE 💤
+    // =========================================================================
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d', { alpha: true });
-        if (!ctx) return;
+        let animationFrameId;
+        let isRunning = true;
+        let idleFrames = 0; // Count frames with no changes
 
-        contextRef.current = ctx;
+        // State tracking
+        let lastRenderState = { x: null, y: null, s: null, v: -1, d: null };
 
         const resize = () => {
             const dpr = window.devicePixelRatio || 1;
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-
-            canvas.width = Math.floor(width * dpr);
-            canvas.height = Math.floor(height * dpr);
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-
-            canvasMetricsRef.current = { width, height, dpr };
-            lastRenderStateRef.current = {
-                ...lastRenderStateRef.current,
-                width: 0,
-                height: 0,
-                dpr: 0
-            };
-
-            scheduleRender();
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+            lastRenderState = { ...lastRenderState, x: null }; // Force redraw
+            if (!isRunning) startLoop(); // Wake up
         };
-
-        const darkMatcher = window.matchMedia('(prefers-color-scheme: dark)');
-        const handleDarkModeChange = () => {
-            systemDarkModeRef.current = darkMatcher.matches;
-            scheduleRender();
-        };
-        const classObserver = new MutationObserver(handleDarkModeChange);
 
         window.addEventListener('resize', resize);
-        systemDarkModeRef.current = darkMatcher.matches;
-        if (typeof darkMatcher.addEventListener === 'function') {
-            darkMatcher.addEventListener('change', handleDarkModeChange);
-        } else if (typeof darkMatcher.addListener === 'function') {
-            darkMatcher.addListener(handleDarkModeChange);
-        }
-        classObserver.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['class']
-        });
-
         resize();
+
+        const darkMatcher = window.matchMedia('(prefers-color-scheme: dark)');
+
+        // Loop Function
+        const loop = () => {
+            if (!isRunning) return;
+
+            const { x: cx, y: cy, s: cs } = transformRef.current;
+            const cv = pathVersionRef.current;
+            const isDark = document.documentElement.classList.contains('dark') || darkMatcher.matches;
+
+            // Check if anything changed
+            const hasChanged =
+                cx !== lastRenderState.x ||
+                cy !== lastRenderState.y ||
+                cs !== lastRenderState.s ||
+                cv !== lastRenderState.v ||
+                isDark !== lastRenderState.d;
+
+            if (hasChanged) {
+                idleFrames = 0; // Reset idle counter
+
+                // --- DRAWING LOGIC ---
+                const width = canvas.width / (window.devicePixelRatio || 1);
+                const height = canvas.height / (window.devicePixelRatio || 1);
+                ctx.clearRect(0, 0, width, height);
+
+                const map = pathCacheRef.current;
+                if (map.size > 0) {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.scale(cs, cs);
+                    ctx.lineWidth = 3 / cs;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+
+                    const colors = {
+                        default: isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(99, 102, 241, 0.5)',
+                        red: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)',
+                        rose: isDark ? 'rgba(244, 63, 94, 0.7)' : 'rgba(244, 63, 94, 0.65)',
+                        orange: isDark ? 'rgba(249, 115, 22, 0.7)' : 'rgba(249, 115, 22, 0.65)',
+                        amber: isDark ? 'rgba(245, 158, 11, 0.7)' : 'rgba(251, 191, 36, 0.65)',
+                        green: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)',
+                        emerald: isDark ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.65)',
+                        teal: isDark ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.65)',
+                        blue: isDark ? 'rgba(59, 130, 246, 0.6)' : 'rgba(96, 165, 250, 0.6)',
+                        violet: isDark ? 'rgba(124, 58, 237, 0.6)' : 'rgba(167, 139, 250, 0.6)',
+                    };
+
+                    const colorGroups = {};
+                    for (const key of Object.keys(colors)) colorGroups[key] = [];
+
+                    for (const entry of map.values()) {
+                        const path = entry.path || entry;
+                        const color = entry.cardColor;
+                        if (color && colorGroups[color]) colorGroups[color].push(path);
+                        else colorGroups.default.push(path);
+                    }
+
+                    for (const [colorKey, paths] of Object.entries(colorGroups)) {
+                        if (paths.length > 0) {
+                            ctx.strokeStyle = colors[colorKey];
+                            for (const path of paths) ctx.stroke(path);
+                        }
+                    }
+                    ctx.restore();
+                }
+
+                lastRenderState = { x: cx, y: cy, s: cs, v: cv, d: isDark };
+            } else {
+                idleFrames++;
+            }
+
+            // Sleep Logic: Stop loop if idle for > 120 frames (~2 seconds)
+            if (idleFrames > 120) {
+                // console.log("💤 ConnectionLayer sleeping...");
+                isRunning = false;
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(loop);
+        };
+
+        const startLoop = () => {
+            if (!isRunning) {
+                // console.log("⏰ ConnectionLayer waking up!");
+                isRunning = true;
+                idleFrames = 0;
+                loop();
+            }
+        };
+
+        // Initial Start
+        loop();
+
+        // Wake up listeners
+        // We need to attach startLoop to the refs so the OTHER effects can call it?
+        // Actually, the other effects can't access this scope.
+        // We need a way to trigger wake up.
+        // A simple way is to use a mutable ref attached to the component instance or just expose a method?
+        // No, simplest way is:
+        // The *dependency array* of this useEffect is empty [], so it never re-runs.
+        // But we need to restart the loop when props change.
+        // Ah, the previous implementation depended on [] and read from Refs.
+        // We need to listen to changes.
+
+        // SOLUTION:
+        // We attach the `startLoop` method to a ref that is accessible by the other effects.
+        canvasRef.current.__wakeUp = startLoop;
 
         return () => {
             window.removeEventListener('resize', resize);
-            if (typeof darkMatcher.removeEventListener === 'function') {
-                darkMatcher.removeEventListener('change', handleDarkModeChange);
-            } else if (typeof darkMatcher.removeListener === 'function') {
-                darkMatcher.removeListener(handleDarkModeChange);
-            }
-            classObserver.disconnect();
-            if (renderFrameRef.current) {
-                cancelAnimationFrame(renderFrameRef.current);
-                renderFrameRef.current = null;
-            }
-            contextRef.current = null;
+            cancelAnimationFrame(animationFrameId);
+            isRunning = false;
         };
-    }, [scheduleRender]);
+    }, []);
+
+    // 4. Wake Up Effect
+    // Whenever [offset, scale] or [cards, connections] change, we assume we need to wake up.
+    // However, [cards, connections] update `pathVersionRef` via their own effect.
+    // [offset, scale] update `transformRef` via their own effect.
+    // We can add a simple effect here that watches them and wakes up the canvas.
+    useEffect(() => {
+        if (canvasRef.current && canvasRef.current.__wakeUp) {
+            canvasRef.current.__wakeUp();
+        }
+    }, [offset, scale, cardMap, cards, connections]);
 
     return (
         <canvas

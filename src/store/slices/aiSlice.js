@@ -15,7 +15,6 @@ import {
     persistCardMessageImagesToIDB
 } from '../../services/ai/messageContent';
 import { yieldToMainThread } from '../../utils/scheduling';
-import { runtimeLog } from '../../utils/runtimeLogging';
 
 
 export const createAISlice = (set, get) => {
@@ -231,7 +230,7 @@ export const createAISlice = (set, get) => {
                 const runProviderName = config.name || runProviderId || 'unknown';
                 const runBaseUrl = config.baseUrl || 'default';
 
-                runtimeLog(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
+                console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
