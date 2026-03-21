@@ -19,7 +19,8 @@ const CORE_BOARD_METADATA_KEYS = [
     'cardCount',
     'clientRevision',
     'deletedAt',
-    'autoImageTriggeredAt'
+    'autoImageTriggeredAt',
+    'autoSummaryTriggeredAt'
 ];
 
 const BOARD_LIST_STORAGE_TIERS = [

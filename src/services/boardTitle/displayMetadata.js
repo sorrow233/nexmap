@@ -12,7 +12,13 @@ const SUMMARY_THEME_ALIASES = {
 };
 
 const SUMMARY_THEME_SET = new Set(['blue', 'purple', 'indigo', 'emerald', 'orange', 'pink', 'slate']);
-export const BOARD_DISPLAY_SYNC_KEYS = Object.freeze(['summary', 'backgroundImage', 'thumbnail', 'autoImageTriggeredAt']);
+export const BOARD_DISPLAY_SYNC_KEYS = Object.freeze([
+    'summary',
+    'backgroundImage',
+    'thumbnail',
+    'autoImageTriggeredAt',
+    'autoSummaryTriggeredAt'
+]);
 
 const normalizeLooseString = (value) => {
     if (value === undefined) return undefined;

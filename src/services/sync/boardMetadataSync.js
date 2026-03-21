@@ -86,6 +86,7 @@ const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     clientRevision: Number(board.clientRevision) || 0,
     deletedAt: normalizeOptionalMillis(board.deletedAt, { allowNull: true }),
     autoImageTriggeredAt: normalizeOptionalMillis(board.autoImageTriggeredAt),
+    autoSummaryTriggeredAt: normalizeOptionalMillis(board.autoSummaryTriggeredAt),
     listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : null,
     summary: normalizeBoardSummary(board.summary),
     backgroundImage: normalizeOptionalString(board.backgroundImage),
@@ -156,6 +157,10 @@ const mergeBoardMetadataRecord = (localBoard, remoteBoard) => {
 
     if (!hasOwn(preferredBoard, 'autoImageTriggeredAt') && hasOwn(fallbackBoard, 'autoImageTriggeredAt')) {
         mergedBoard.autoImageTriggeredAt = fallbackBoard.autoImageTriggeredAt;
+    }
+
+    if (!hasOwn(preferredBoard, 'autoSummaryTriggeredAt') && hasOwn(fallbackBoard, 'autoSummaryTriggeredAt')) {
+        mergedBoard.autoSummaryTriggeredAt = fallbackBoard.autoSummaryTriggeredAt;
     }
 
     if (!hasOwn(preferredBoard, 'listOrder') && hasOwn(fallbackBoard, 'listOrder')) {

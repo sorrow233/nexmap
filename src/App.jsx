@@ -13,6 +13,7 @@ import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { useSearchShortcut } from './hooks/useSearchShortcut';
 import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
+import { useBackgroundBoardAutoGeneration } from './hooks/useBackgroundBoardAutoGeneration';
 import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceTrace';
 import { runtimeLog, runtimeWarn } from './utils/runtimeLogging';
 
@@ -710,6 +711,14 @@ function AppContent() {
 
         await handleUpdateBoardMetadata(currentBoardId, nextPatch);
     }, [boardsList, currentBoardId, handleUpdateBoardMetadata]);
+
+    useBackgroundBoardAutoGeneration({
+        boardsList,
+        onUpdateBoardMetadata: handleUpdateBoardMetadata,
+        enabled: true,
+        metadataReady: !user?.uid || hasHydratedRemoteBoards,
+        routeAllowsBackgroundWork: location.pathname.startsWith('/gallery')
+    });
 
     if (!isInitialized) return null;
 

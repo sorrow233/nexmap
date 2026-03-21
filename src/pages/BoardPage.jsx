@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Star, RefreshCw, Trash2, Sprout, BoxSelect, AlertCircle } from 'lucide-react';
 import Canvas from '../components/Canvas';
 import ChatBar from '../components/ChatBar';
@@ -11,26 +11,17 @@ import BoardInstructionPanel from '../components/board/BoardInstructionPanel';
 import MobileBoardComposer from '../components/board/mobile/MobileBoardComposer';
 import MobileBoardShell from '../components/board/mobile/MobileBoardShell';
 import QuickPromptModal from '../components/QuickPromptModal';
-import useBoardBackground from '../hooks/useBoardBackground';
 import { useStore } from '../store/useStore';
 import { useTabLock } from '../hooks/useTabLock';
 import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
-import { runtimeLog } from '../utils/runtimeLogging';
-import {
-    createAutoImageTriggeredPatch,
-    hasAutoImageTriggered
-} from '../services/boardAutoGeneration/metadata';
 
 const NotePage = lazyWithRetry(() => import('./NotePage'));
 const ChatModal = lazyWithRetry(() => import('../components/ChatModal'));
 const SettingsModal = lazyWithRetry(() => import('../components/SettingsModal'));
 
 import { useBoardLogic } from '../hooks/useBoardLogic';
-
-const AUTO_IMAGE_TRIGGERED_BOARDS = new Set();
-const AUTO_SUMMARY_TRIGGERED_BOARDS = new Set();
 
 export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
     const { id: boardId } = useParams();
@@ -114,92 +105,6 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
         handleGlobalPaste
 
     } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly });
-
-    // Background Generation
-    const { generateBoardSummary, generateBoardImage, generatingBoardId } = useBoardBackground();
-    const hasAutoImageGeneratedRef = useRef(false);
-    const hasAutoSummaryGeneratedRef = useRef(false);
-
-    useEffect(() => {
-        if (!currentBoardId) return;
-        hasAutoImageGeneratedRef.current = AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
-        hasAutoSummaryGeneratedRef.current = AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
-    }, [currentBoardId]);
-
-    useEffect(() => {
-        if (!currentBoardId) return;
-        if (currentBoard?.summary) {
-            AUTO_SUMMARY_TRIGGERED_BOARDS.add(currentBoardId);
-            hasAutoSummaryGeneratedRef.current = true;
-        }
-        if (currentBoard?.backgroundImage) {
-            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
-            hasAutoImageGeneratedRef.current = true;
-        }
-        if (hasAutoImageTriggered(currentBoard)) {
-            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
-            hasAutoImageGeneratedRef.current = true;
-        }
-    }, [currentBoardId, currentBoard?.summary, currentBoard?.backgroundImage, currentBoard?.autoImageTriggeredAt]);
-
-    const currentBoardHasSummary = Boolean(currentBoard?.summary);
-    const currentBoardHasBackgroundImage = Boolean(currentBoard?.backgroundImage);
-    const currentBoardAutoImageTriggered = hasAutoImageTriggered(currentBoard);
-
-    // Optimized: Calculate active count separately to avoid re-running effect on every card move/drag
-    // cards array changes on every drag frame, but count remains stable
-    const activeCardCount = React.useMemo(() => {
-        return cards.filter(c => !c.deletedAt).length;
-    }, [cards]);
-
-    // Auto-generate background when active cards > 10
-    // Auto-generation Logic
-    useEffect(() => {
-        if (isReadOnly) return; // Skip auto-generation in Read-Only mode
-
-        if (!currentBoardId) return;
-        if (generatingBoardId === currentBoardId) return;
-
-        const hasSummaryTriggered = hasAutoSummaryGeneratedRef.current || AUTO_SUMMARY_TRIGGERED_BOARDS.has(currentBoardId);
-        const hasImageTriggered = hasAutoImageGeneratedRef.current || AUTO_IMAGE_TRIGGERED_BOARDS.has(currentBoardId);
-
-        // 1. Text Summary (Cards > 3)
-        // Trigger if: Enough cards, not generated this session, no existing summary, AND NO EXISTING IMAGE
-        if (activeCardCount > 3 && !hasSummaryTriggered && !currentBoardHasSummary && !currentBoardHasBackgroundImage) {
-            runtimeLog(`[AutoGen] Triggering Summary (Count: ${activeCardCount})`);
-            generateBoardSummary(currentBoardId, (id, updates) => {
-                if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
-            });
-            hasAutoSummaryGeneratedRef.current = true;
-            AUTO_SUMMARY_TRIGGERED_BOARDS.add(currentBoardId);
-        }
-
-        // 2. Visual Background (Cards > 10)
-        // Trigger if: Enough cards, not generated this session, and no existing image
-        if (activeCardCount > 10 && !hasImageTriggered && !currentBoardHasBackgroundImage && !currentBoardAutoImageTriggered) {
-            runtimeLog(`[AutoGen] Triggering Image (Count: ${activeCardCount})`);
-            hasAutoImageGeneratedRef.current = true;
-            AUTO_IMAGE_TRIGGERED_BOARDS.add(currentBoardId);
-            void (async () => {
-                const markPatch = createAutoImageTriggeredPatch();
-                if (onUpdateBoardMetadata) {
-                    await onUpdateBoardMetadata(currentBoardId, markPatch);
-                }
-                generateBoardImage(currentBoardId, (id, updates) => {
-                    if (onUpdateBoardMetadata) onUpdateBoardMetadata(id, updates);
-                });
-            })();
-        }
-    }, [
-        activeCardCount,
-        currentBoardAutoImageTriggered,
-        currentBoardHasBackgroundImage,
-        currentBoardHasSummary,
-        currentBoardId,
-        generatingBoardId,
-        isReadOnly,
-        onUpdateBoardMetadata
-    ]);
 
     useEffect(() => {
         if (!isIPhoneBoardMode) return;
