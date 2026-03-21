@@ -33,14 +33,18 @@ export default function ActivityChart({
         const isMonth = viewMode === 'month';
 
         return {
-            height: 150,
-            radius: isMonth ? 4 : 10,
-            slotRatio: isYear ? 0.48 : isMonth ? 0.5 : 0.58
+            height: isYear ? 240 : isMonth ? 250 : 270,
+            radius: isMonth ? 5 : 12,
+            slotRatio: isYear ? 0.52 : isMonth ? 0.56 : 0.62
         };
     }, [viewMode]);
 
-    const CHART_WIDTH = 1000;
+    const CHART_WIDTH = 1240;
     const CHART_HEIGHT = config.height;
+    const CHART_BOTTOM_SPACE = 54;
+    const PLOT_LEFT = 74;
+    const PLOT_RIGHT = 16;
+    const PLOT_WIDTH = CHART_WIDTH - PLOT_LEFT - PLOT_RIGHT;
     const chartData = useMemo(
         () => buildActivityChartData(sourceData, viewMode, safeLanguage),
         [sourceData, viewMode, safeLanguage]
@@ -63,11 +67,13 @@ export default function ActivityChart({
     const averageLineY = insights.averageChars > 0
         ? CHART_HEIGHT - (insights.averageChars / maxChars) * CHART_HEIGHT
         : null;
+    const yAxisTicks = [1, 0.75, 0.5, 0.25, 0];
     const hoveredItem = hoveredIndex !== null ? chartData[hoveredIndex] : null;
     const hoveredShare = hoveredItem && insights.totalChars > 0
         ? hoveredItem.chars / insights.totalChars
         : 0;
     const hoveredDelta = hoveredItem ? hoveredItem.chars - insights.averageChars : 0;
+    const peakValue = insights.peakItem?.chars || 0;
     const activeLabel = viewMode === 'year'
         ? (t?.stats?.activeMonths || '活跃月份')
         : (t?.stats?.activeDaysLabel || '活跃天数');
@@ -115,7 +121,7 @@ export default function ActivityChart({
     ];
 
     return (
-        <div className="space-y-6 select-none w-full h-full flex flex-col">
+        <div className="space-y-5 select-none w-full h-full flex flex-col">
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                 {overviewCards.map((card) => {
                     const Icon = card.icon;
@@ -144,7 +150,7 @@ export default function ActivityChart({
                 })}
             </div>
 
-            <div className="relative group/chart flex-1 min-h-[180px] flex flex-col justify-between">
+            <div className="relative group/chart flex-1 min-h-[320px] rounded-[2.25rem] border border-slate-200/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(255,255,255,0.98)_100%)] px-4 py-4 xl:px-5">
                 <div className="flex items-center justify-between mb-4 px-2 relative z-20 h-8">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                         <Trophy size={14} className="text-indigo-300" />
@@ -196,45 +202,88 @@ export default function ActivityChart({
                         <svg
                             width="100%"
                             height="100%"
-                            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 44}`}
+                            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + CHART_BOTTOM_SPACE}`}
                             preserveAspectRatio="none"
                             className="overflow-visible"
                         >
                             <defs>
+                                <linearGradient id="plotFade" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#eef2ff" stopOpacity="0.75" />
+                                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                                </linearGradient>
+
                                 <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#818cf8" />
+                                    <stop offset="0%" stopColor="#8b5cf6" />
                                     <stop offset="100%" stopColor="#c084fc" />
                                 </linearGradient>
 
-                                <linearGradient id="barGradientToday" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#6366f1" />
-                                    <stop offset="100%" stopColor="#8b5cf6" />
+                                <linearGradient id="barGradientPeak" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#4f46e5" />
+                                    <stop offset="55%" stopColor="#7c3aed" />
+                                    <stop offset="100%" stopColor="#c084fc" />
+                                </linearGradient>
+
+                                <linearGradient id="barGradientSoft" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#c7d2fe" />
+                                    <stop offset="100%" stopColor="#ddd6fe" />
                                 </linearGradient>
 
                                 <filter id="clayShadow" x="-50%" y="-50%" width="200%" height="200%">
-                                    <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#818cf8" floodOpacity="0.18" />
+                                    <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#8b5cf6" floodOpacity="0.16" />
+                                </filter>
+
+                                <filter id="peakGlow" x="-90%" y="-90%" width="280%" height="280%">
+                                    <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#6366f1" floodOpacity="0.24" />
                                 </filter>
                             </defs>
 
-                            <line
-                                x1="0"
-                                y1={CHART_HEIGHT}
-                                x2={CHART_WIDTH}
-                                y2={CHART_HEIGHT}
-                                stroke="#e2e8f0"
-                                strokeWidth="1"
+                            <rect
+                                x={PLOT_LEFT}
+                                y="0"
+                                width={PLOT_WIDTH}
+                                height={CHART_HEIGHT}
+                                rx="26"
+                                fill="url(#plotFade)"
                             />
+
+                            {yAxisTicks.map((tick) => {
+                                const tickValue = maxChars * tick;
+                                const y = CHART_HEIGHT - (tick * CHART_HEIGHT);
+
+                                return (
+                                    <g key={tick}>
+                                        <line
+                                            x1={PLOT_LEFT}
+                                            y1={y}
+                                            x2={CHART_WIDTH}
+                                            y2={y}
+                                            stroke={tick === 0 ? '#cbd5e1' : '#e2e8f0'}
+                                            strokeDasharray={tick === 0 ? '0' : '4 6'}
+                                            strokeWidth={tick === 0 ? '1.2' : '1'}
+                                        />
+                                        <text
+                                            x={PLOT_LEFT - 10}
+                                            y={y + (tick === 0 ? -6 : 4)}
+                                            textAnchor="end"
+                                            className="fill-slate-400 text-[10px] font-bold"
+                                        >
+                                            {tick === 0 ? '0' : formatCompactNumber(tickValue, safeLanguage)}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+
                             {averageLineY !== null && (
                                 <>
                                     <line
-                                        x1="0"
+                                        x1={PLOT_LEFT}
                                         y1={averageLineY}
                                         x2={CHART_WIDTH}
                                         y2={averageLineY}
-                                        stroke="#cbd5e1"
-                                        strokeDasharray="4 4"
-                                        strokeWidth="1"
-                                        opacity="0.75"
+                                        stroke="#94a3b8"
+                                        strokeDasharray="5 5"
+                                        strokeWidth="1.3"
+                                        opacity="0.9"
                                     />
                                     <text
                                         x={CHART_WIDTH - 8}
@@ -248,16 +297,22 @@ export default function ActivityChart({
                             )}
 
                             {chartData.map((item, index) => {
-                                const slotWidth = CHART_WIDTH / chartData.length;
-                                const width = Math.min(slotWidth * config.slotRatio, viewMode === 'month' ? 18 : 64);
-                                const x = index * slotWidth + (slotWidth - width) / 2;
+                                const slotWidth = PLOT_WIDTH / chartData.length;
+                                const width = Math.min(slotWidth * config.slotRatio, viewMode === 'month' ? 22 : 72);
+                                const x = PLOT_LEFT + index * slotWidth + (slotWidth - width) / 2;
                                 const height = item.chars > 0
-                                    ? Math.max((item.chars / maxChars) * CHART_HEIGHT, 6)
+                                    ? Math.max((item.chars / maxChars) * CHART_HEIGHT, 8)
                                     : 0;
                                 const y = CHART_HEIGHT - height;
-                                const isToday = item.isToday;
                                 const isHovered = hoveredIndex === index;
+                                const isPeak = item.chars === peakValue && peakValue > 0;
+                                const isAboveAverage = item.chars >= insights.averageChars;
                                 const barRadius = Math.min(width / 2, config.radius);
+                                const fill = isPeak
+                                    ? 'url(#barGradientPeak)'
+                                    : isAboveAverage
+                                        ? 'url(#barGradient)'
+                                        : 'url(#barGradientSoft)';
 
                                 return (
                                     <g
@@ -270,12 +325,24 @@ export default function ActivityChart({
                                             x={x - Math.max(6, slotWidth * 0.15)}
                                             y="0"
                                             width={width + Math.max(12, slotWidth * 0.3)}
-                                            height={CHART_HEIGHT + 44}
+                                            height={CHART_HEIGHT + CHART_BOTTOM_SPACE}
                                             fill="transparent"
                                         />
 
                                         {item.chars > 0 && (
                                             <>
+                                                {isPeak && (
+                                                    <rect
+                                                        x={x - 8}
+                                                        y={Math.max(6, y - 14)}
+                                                        width={width + 16}
+                                                        height={height + 14}
+                                                        rx={barRadius + 8}
+                                                        fill="#c7d2fe"
+                                                        opacity="0.35"
+                                                        filter="url(#peakGlow)"
+                                                    />
+                                                )}
                                                 <rect
                                                     x={x}
                                                     y={y}
@@ -283,8 +350,8 @@ export default function ActivityChart({
                                                     height={height}
                                                     rx={barRadius}
                                                     ry={barRadius}
-                                                    fill={isToday ? 'url(#barGradientToday)' : 'url(#barGradient)'}
-                                                    fillOpacity={isHovered ? 1 : 0.9}
+                                                    fill={fill}
+                                                    fillOpacity={isHovered ? 1 : (isPeak ? 1 : 0.94)}
                                                     filter="url(#clayShadow)"
                                                     className={`transition-all duration-300 ${isHovered ? 'opacity-100' : ''}`}
                                                 />
@@ -292,7 +359,7 @@ export default function ActivityChart({
                                                     x={x + width / 2}
                                                     y={Math.max(12, y - 10)}
                                                     textAnchor="middle"
-                                                    className={`text-[10px] font-bold transition-all duration-300 ${isHovered ? 'fill-indigo-600' : 'fill-slate-400'}`}
+                                                    className={`text-[10px] font-black transition-all duration-300 ${isPeak ? 'fill-indigo-700' : isHovered ? 'fill-indigo-600' : 'fill-slate-500'}`}
                                                 >
                                                     {formatCompactNumber(item.chars, safeLanguage)}
                                                 </text>
@@ -301,9 +368,9 @@ export default function ActivityChart({
 
                                         <text
                                             x={x + width / 2}
-                                            y={CHART_HEIGHT + 26}
+                                            y={CHART_HEIGHT + 28}
                                             textAnchor="middle"
-                                            className={`text-[10px] font-medium transition-colors duration-300 ${isHovered ? 'fill-indigo-500' : 'fill-slate-400'}`}
+                                            className={`text-[10px] font-semibold transition-colors duration-300 ${isPeak ? 'fill-indigo-700' : isHovered ? 'fill-indigo-500' : 'fill-slate-400'}`}
                                         >
                                             {item.axisLabel}
                                         </text>
