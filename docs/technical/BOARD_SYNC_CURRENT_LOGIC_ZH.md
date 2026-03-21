@@ -1,0 +1,399 @@
+# 画布同步功能当前逻辑说明（中文）
+
+本文档描述当前版本中，“超大画布 / 多卡片 / 长对话内容”相关的本地保存、同步控制、Y.Doc 合并、Firestore checkpoint 写入的完整处理逻辑。
+
+本文档聚焦的功能范围：
+
+- 画布本地保存
+- 本地保存成功后如何桥接到远端同步
+- BoardSyncController 如何管理本地 / 远端同步
+- Firestore checkpoint 如何保存与读取
+- 当前这一块为什么容易出现性能和写流问题
+
+## 1. 相关核心文件
+
+### 1.1 应用入口与同步桥接
+
+- `src/App.jsx`
+- `src/services/sync/localPersistedBoardSyncBridge.js`
+
+职责：
+
+- 在进入画布时创建 `BoardSyncController`
+- 接收远端同步回来的 snapshot 并写回 Zustand store
+- 订阅“本地保存成功”的桥接事件，把已落盘的 payload 交给同步控制器
+
+### 1.2 本地持久化
+
+- `src/hooks/useBoardPersistence.js`
+- `src/services/storage.js`
+- `src/services/boardPersistence/localBoardShadow.js`
+
+职责：
+
+- 监听画布状态变化
+- 做本地 shadow 保存、本地 durable save、视口保存
+- 在 `saveBoard` 成功后，广播“已持久化成功的 board payload”
+
+### 1.3 同步控制层
+
+- `src/services/sync/boardSyncController.js`
+
+职责：
+
+- 持有当前画布的 Y.Doc
+- 管理 IndexedDB 持久化
+- 管理 Firestore 同步实例
+- 把本地保存成功的 snapshot 应用到 Y.Doc
+
+### 1.4 Y.Doc 映射与卡片合并
+
+- `src/services/sync/boardYDoc.js`
+- `src/services/sync/boardSnapshot.js`
+
+职责：
+
+- 把 board snapshot 映射为 Yjs 文档结构
+- 处理 cards 的按 `card.id` 合并
+- 处理文本字段的 `Y.Text` diff 更新
+- 编码紧凑 checkpoint
+
+### 1.5 Firestore 同步与 checkpoint 存储
+
+- `src/services/sync/firestoreBoardSync.js`
+- `src/services/sync/firestoreCheckpointStore.js`
+- `src/services/sync/checkpointCompatibility.js`
+- `src/services/sync/remoteCheckpointRepairPlanner.js`
+
+职责：
+
+- 监听远端 checkpoint
+- 把本地 Y.Doc update 写到远端
+- 维护 checkpoint 的 inline / chunked 存储
+- 兼容历史 checkpoint 格式
+
+## 2. 当前整体流程
+
+```mermaid
+flowchart TD
+    A["Zustand 画布状态变化"] --> B["useBoardPersistence"]
+    B --> C["shadow 保存 / local save 调度"]
+    C --> D["saveBoard 成功"]
+    D --> E["localPersistedBoardSyncBridge 广播已保存 payload"]
+    E --> F["App.jsx 订阅桥接事件"]
+    F --> G["BoardSyncController.applyLocalSnapshot"]
+    G --> H["Y.Doc 更新"]
+    H --> I["FirestoreBoardSync.handleDocUpdate"]
+    I --> J["flushPendingUpdates / saveSnapshot"]
+    J --> K["saveBoardCheckpoint 写 Firestore"]
+    K --> L["远端设备监听 root checkpoint"]
+    L --> M["applyCheckpointPayloadToDoc"]
+    M --> N["App 收到远端 snapshot 并写回 store"]
+```
+
+## 3. 进入画布时发生了什么
+
+入口文件：`src/App.jsx`
+
+处理顺序：
+
+1. 根据 `currentBoardId` 加载本地画布数据。
+2. 调用 `applyBoardSnapshotToStore(data, { source: 'local_load' })`，把本地数据写进 Zustand。
+3. 创建 `BoardSyncController`。
+4. 调用 `syncController.start(data, { expectedCardCount })`。
+
+`BoardSyncController.start()` 里会做的事：
+
+1. 创建新的 `Y.Doc`
+2. 绑定 `IndexeddbPersistence`
+3. 读取当前 doc 中的持久化内容
+4. 判断是否需要把本地 snapshot 灌进 doc
+5. 创建 `FirestoreBoardSync`
+6. 调用 `fireSync.connect()`
+7. 如果远端为空且本地不为空，执行一次 `initial_local_seed`
+8. 如果远端不为空，则读取远端 checkpoint，并尝试必要的延迟修复计划
+
+## 4. 本地编辑时发生了什么
+
+入口文件：`src/hooks/useBoardPersistence.js`
+
+这个 hook 会监听以下内容：
+
+- `cards`
+- `connections`
+- `groups`
+- `boardPrompts`
+- `boardInstructionSettings`
+- `offset`
+- `scale`
+
+当这些内容发生变化时：
+
+1. 构造当前 payload
+2. 计算当前 revision
+3. 更新 `latestBoardDataRef`
+4. 标记 `activeBoardPersistence.dirty = true`
+5. 调度两类保存：
+   - shadow 保存
+   - local durable save
+
+其中：
+
+- shadow 保存更快，目的是兜底恢复
+- durable save 走真正的 `saveBoard(boardId, payload)`
+
+### 4.1 本地保存成功后现在怎么桥接远端同步
+
+这是本次文档对应版本里最关键的一点。
+
+以前的做法是：
+
+- `App.jsx` 从 live Zustand store 反复构造整板 `currentBoardSnapshot`
+- 再在 effect 中调用 `controller.applyLocalSnapshot(...)`
+
+现在的做法是：
+
+1. `performLocalSave()` 成功后，已经拿到一份真正写入本地存储的 `payload`
+2. `useBoardPersistence.js` 调用 `emitPersistedBoardSyncSnapshot({ boardId, snapshot: payload })`
+3. `App.jsx` 订阅这个桥接事件
+4. 只有收到“已落盘成功的 payload”时，才调用 `controller.applyLocalSnapshot(...)`
+
+这意味着：
+
+- 远端同步不再直接由 live store 驱动
+- 而是由“本地保存成功”驱动
+
+## 5. BoardSyncController 当前怎么处理本地 snapshot
+
+文件：`src/services/sync/boardSyncController.js`
+
+本地 snapshot 进入控制器后，当前逻辑是：
+
+1. `normalizeBoardSnapshot(nextSnapshot)`
+2. 读取当前 doc 的 snapshot：`readBoardSnapshotFromDoc(this.doc)`
+3. 判断当前 doc 是否为空
+4. 判断新的 snapshot 是否为空
+5. 判断新的 snapshot 是否比当前 doc 更新
+
+然后分两条分支：
+
+### 5.1 新 snapshot 比 doc 新
+
+调用：
+
+- `syncBoardSnapshotToDoc(this.doc, normalized)`
+
+也就是把整份 board snapshot 同步进 doc。
+
+### 5.2 新 snapshot 不比 doc 新，但有 cards
+
+调用：
+
+- `syncBoardCardsToDoc(this.doc, normalized.cards)`
+
+也就是只同步 cards，但这里仍然是“整份 cards 数组”的合并，不是只同步局部脏卡。
+
+## 6. Y.Doc 当前是如何组织和合并的
+
+文件：`src/services/sync/boardYDoc.js`
+
+Y.Doc 的根键包括：
+
+- `cards`
+- `connections`
+- `groups`
+- `boardPrompts`
+- `boardInstructionSettings`
+- `updatedAt`
+- `clientRevision`
+
+### 6.1 cards 的合并规则
+
+当前 cards 不是按整个数组粗暴覆盖，而是按 `card.id` 合并。
+
+优先级大致是：
+
+1. 显式删除态 `deletedAt`
+2. 对话轮数更多优先
+3. 消息条数更多优先
+4. 文本总长度更完整优先
+5. `updatedAt` 更新的优先
+
+这意味着：
+
+- 少卡不会天然覆盖多卡
+- 缺失卡片不会被自动当删除
+- 只有显式 `deletedAt` 才允许删除态生效
+
+### 6.2 文本字段的处理
+
+部分路径使用 `Y.Text`：
+
+- 卡片标题
+- 卡片摘要
+- `messages[*].content`
+- prompt 文本
+
+字符串更新使用 `fast-diff` 的 patch 应用，而不是每次整段替换。
+
+### 6.3 checkpoint 编码
+
+当前 checkpoint 编码使用：
+
+- `encodeCompactBoardSnapshotUpdate(source)`
+
+它会：
+
+1. 先从 snapshot 或 doc 读取当前可见内容
+2. 新建临时干净 doc
+3. 把 snapshot 灌进去
+4. 再 `Y.encodeStateAsUpdate(tempDoc)`
+
+这一步的目的，是避免把长期存活 live doc 中的历史结构直接写进 checkpoint。
+
+## 7. Firestore 当前怎么写入
+
+文件：`src/services/sync/firestoreBoardSync.js`
+
+### 7.1 本地 doc 更新后的处理
+
+当前 `handleDocUpdate(update, origin)` 会忽略：
+
+- `firestore`
+- `indexeddb`
+
+其余 origin 的 doc 更新都会进入：
+
+1. `pendingUpdates.push(update)`
+2. `pendingBytes += update.byteLength`
+3. `scheduleFlush()`
+
+### 7.2 flush 的两种触发方式
+
+1. `pendingBytes >= maxPendingBytes`
+   - 直接 `flushPendingUpdates('size_limit')`
+2. 没超阈值
+   - 等 debounce 计时器到时再 flush
+
+### 7.3 当前为什么大画布容易直接触发 size_limit
+
+因为当一次 `applyLocalSnapshot()` 导致的 Y.Doc update 太大时：
+
+- 不会等 debounce
+- 会立刻进入 `flushPendingUpdates('size_limit')`
+
+而当前大多数情况下 `updateLogEnabled = false`，所以会直接走：
+
+- `saveSnapshot('checkpoint_only_flush')`
+
+也就是写整板 checkpoint。
+
+## 8. Firestore checkpoint 当前怎么存
+
+文件：`src/services/sync/firestoreCheckpointStore.js`
+
+当前 checkpoint 有两种模式：
+
+### 8.1 inline
+
+如果 `byteLength <= INLINE_CHECKPOINT_MAX_BYTES`
+
+- 直接把 `checkpointBase64` 存到 root 文档
+
+### 8.2 chunked
+
+如果超过 inline 阈值：
+
+1. 创建 checkpoint set
+2. 把 base64 按 part 分片
+3. 批量写入 parts collection
+4. 再更新 root 文档指向新的 checkpoint set
+
+当前参数：
+
+- `INLINE_CHECKPOINT_MAX_BYTES = 900KB`
+- `TARGET_PART_BYTES = 800KB`
+- `MAX_PART_BYTES = 900KB`
+
+注意：
+
+- 这里减少了 part 数量
+- 但它只能减少“单次 checkpoint 的文档数量”
+- 不能解决“为什么 checkpoint 被触发得太频繁”
+
+## 9. 当前最容易出 BUG / 放大的点
+
+这是理解这块功能的重点。
+
+### 9.1 逻辑上按卡片合并，执行上仍然有整板级路径
+
+虽然 cards 冲突解决是按 `card.id` 合并，
+但以下步骤很多仍然是整板级：
+
+- 构造 board snapshot
+- normalize snapshot
+- 计算 fingerprint
+- applyLocalSnapshot
+- saveSnapshot
+
+### 9.2 `createBoardSnapshotFingerprint()` 成本高
+
+文件：`src/services/sync/boardSnapshot.js`
+
+当前 fingerprint 实现是：
+
+- `JSON.stringify(normalizedSnapshot)`
+
+对大画布、大对话来说，这本身就很重。
+
+### 9.3 `applyLocalSnapshot()` 当前不是脏卡片级 patch
+
+文件：`src/services/sync/boardSyncController.js`
+
+即使现在把桥接改成“本地保存成功后再桥接”，
+控制器内部仍然会：
+
+- 读取当前整板 snapshot
+- 再决定整板同步或整份 cards 同步
+
+所以它仍然不是“只同步局部脏卡”。
+
+### 9.4 Firestore 远端写入仍然和整板 checkpoint 强绑定
+
+当前一旦 doc update 足够大，就会直接触发整板 checkpoint 写入。
+
+这意味着：
+
+- 大画布只要一有较大的局部变化
+- 就很容易从“局部变化”被放大成“整板 checkpoint 写入”
+
+## 10. 当前版本和之前版本的差异
+
+本文档对应的当前逻辑，相比前面的失败方案，最大的变化是：
+
+- 已经不再让 `App.jsx` 从 live store 持续构造整板 snapshot 并桥接远端同步
+- 改成只在本地 `saveBoard` 成功后，再桥接那份已保存成功的 payload
+
+这一步减少了一个很重要的放大器，但并不意味着整块同步系统已经彻底变成“脏卡片级”。
+
+## 11. 如果后续继续重构，最合理的方向
+
+如果以后继续改这一块，最合理的方向不是继续调 Firestore 参数，而是：
+
+1. 把 `BoardSyncController.applyLocalSnapshot()` 从“整板 / 整份 cards 合并”继续拆成“脏卡片级 patch”
+2. 降低或替换 `createBoardSnapshotFingerprint()` 对大对象的 `JSON.stringify`
+3. 让远端 checkpoint 保存频率和本地 durable save 频率进一步解耦
+4. 明确区分：
+   - 本地保存
+   - 协作状态维护
+   - 远端 checkpoint 落库
+
+## 12. 用一句话总结当前逻辑
+
+当前这块功能的真实执行逻辑可以概括为：
+
+`本地编辑 -> useBoardPersistence 调度并完成本地保存 -> 通过桥接模块把“已保存 payload”交给同步控制器 -> 控制器把 snapshot 应用到 Y.Doc -> Firestore 同步层根据 doc update 决定是否写整板 checkpoint -> 远端设备再监听 checkpoint 回放到本地。`
+
+而当前这块最核心的风险仍然是：
+
+`虽然冲突语义已经部分按卡片处理，但在计算和远端写入路径上，系统仍然保留了明显的整板级特征。`
