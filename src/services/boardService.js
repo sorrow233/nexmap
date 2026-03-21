@@ -1,5 +1,4 @@
 import { idbGet, idbSet, idbDel } from './db/indexedDB';
-import { downloadImageAsBase64 } from './imageStore';
 import { debugLog } from '../utils/debugLogger';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../utils/persistenceTrace';
 import { getSampleBoardData } from '../utils/sampleBoardsData';
@@ -383,47 +382,7 @@ export const loadBoard = async (id) => {
         });
     }
 
-    // Process S3 URL images: download and convert to base64
-    let finalBoard = stored;
-    try {
-        const processedCards = await Promise.all((stored.cards || []).map(async (card) => {
-            try {
-                const processedMessages = await Promise.all((card.data?.messages || []).map(async (msg) => {
-                    if (Array.isArray(msg.content)) {
-                        const processedContent = await Promise.all(msg.content.map(async (part) => {
-                            // Detect URL type image (from S3 sync)
-                            if (part.type === 'image' && part.source?.type === 'url' && part.source?.url) {
-                                debugLog.sync(`Downloading S3 image: ${part.source.url.substring(0, 50)}...`);
-                                const base64 = await downloadImageAsBase64(part.source.url);
-                                if (base64) {
-                                    return {
-                                        ...part,
-                                        source: {
-                                            type: 'base64',
-                                            media_type: part.source.media_type,
-                                            data: base64,
-                                            s3Url: part.source.url // Keep S3 URL reference
-                                        }
-                                    };
-                                }
-                                debugLog.error(`S3 Download failed for: ${part.source.url}`);
-                            }
-                            return part;
-                        }));
-                        return { ...msg, content: processedContent };
-                    }
-                    return msg;
-                }));
-                return { ...card, data: { ...card.data, messages: processedMessages } };
-            } catch (e) {
-                debugLog.error(`Card processing error in board ${id}`, e);
-                return card; // Return original card on error
-            }
-        }));
-        finalBoard = { ...stored, cards: processedCards };
-    } catch (e) {
-        debugLog.error(`S3 processing error in board ${id}`, e);
-    }
+    const finalBoard = stored;
 
     // Always update last accessed time if we have a board
     if (finalBoard) {

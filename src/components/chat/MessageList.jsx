@@ -52,8 +52,9 @@ const MessageList = React.memo(function MessageList({
                             const isStreamingMessage = isStreaming && i === messages.length - 1 && m.role === 'assistant';
 
                             return (
-                                <ErrorBoundary key={i} level="card">
+                                <ErrorBoundary key={m.id || i} level="card">
                                     <MessageItem
+                                        cardId={card.id}
                                         message={m}
                                         index={i}
                                         marks={card.data.marks}

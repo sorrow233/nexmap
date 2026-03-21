@@ -29,6 +29,76 @@ const parseBufferKey = (bufferKey) => {
     };
 };
 
+export const buildStreamBufferKey = (cardId, messageId = null) => (
+    messageId ? `${cardId}:${messageId}` : cardId
+);
+
+export const appendStreamBufferUpdates = (bufferState = {}, updatesMap) => {
+    if (!updatesMap || updatesMap.size === 0) {
+        return {
+            nextBufferState: bufferState,
+            dirtyCardIds: new Set()
+        };
+    }
+
+    let nextBufferState = bufferState;
+    const dirtyCardIds = new Set();
+
+    updatesMap.forEach((content, bufferKey) => {
+        if (!content || !bufferKey) return;
+
+        const { cardId } = parseBufferKey(bufferKey);
+        if (!cardId) return;
+
+        if (nextBufferState === bufferState) {
+            nextBufferState = { ...bufferState };
+        }
+
+        nextBufferState[bufferKey] = `${nextBufferState[bufferKey] || ''}${content}`;
+        dirtyCardIds.add(cardId);
+    });
+
+    return {
+        nextBufferState,
+        dirtyCardIds
+    };
+};
+
+export const collectStreamBufferUpdatesForCard = (bufferState = {}, cardId) => {
+    const updates = new Map();
+    if (!cardId || !bufferState) return updates;
+
+    const prefix = `${cardId}:`;
+    Object.entries(bufferState).forEach(([bufferKey, content]) => {
+        if (!content) return;
+        if (bufferKey === cardId || bufferKey.startsWith(prefix)) {
+            updates.set(bufferKey, content);
+        }
+    });
+
+    return updates;
+};
+
+export const removeStreamBufferUpdatesForCard = (bufferState = {}, cardId) => {
+    if (!cardId || !bufferState) return bufferState;
+
+    const prefix = `${cardId}:`;
+    let nextBufferState = bufferState;
+
+    Object.keys(bufferState).forEach((bufferKey) => {
+        if (bufferKey !== cardId && !bufferKey.startsWith(prefix)) {
+            return;
+        }
+
+        if (nextBufferState === bufferState) {
+            nextBufferState = { ...bufferState };
+        }
+        delete nextBufferState[bufferKey];
+    });
+
+    return nextBufferState;
+};
+
 export const applyStreamTextUpdates = (cards, updatesMap) => {
     if (!updatesMap || updatesMap.size === 0) return cards;
 
@@ -236,17 +306,22 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         });
     };
 
-    const destroy = () => {
-        destroyed = true;
+    const clearAll = () => {
         clearTimers();
         pendingChunks.clear();
         renderChunks.clear();
+    };
+
+    const destroy = () => {
+        destroyed = true;
+        clearAll();
     };
 
     return {
         enqueue,
         flushNow,
         cleanupCard,
+        clearAll,
         destroy
     };
 };

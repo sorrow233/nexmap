@@ -16,6 +16,7 @@ import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
 import { useBackgroundBoardAutoGeneration } from './hooks/useBackgroundBoardAutoGeneration';
 import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceTrace';
 import { runtimeLog, runtimeWarn } from './utils/runtimeLogging';
+import { aiManager } from './services/ai/AIManager';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -490,7 +491,15 @@ function AppContent() {
                 }
 
                 // 1. Start loading state & clear existing data to prevent bleed-over
-                useStore.getState().setIsBoardLoading(true);
+                const storeState = useStore.getState();
+                const activeCardIds = (storeState.cards || []).map((card) => card?.id).filter(Boolean);
+                activeCardIds.forEach((cardId) => {
+                    aiManager.cancelByTags([`card:${cardId}`]);
+                });
+
+                storeState.clearStreamingState?.();
+                storeState.setGeneratingCardIds?.(new Set());
+                storeState.setIsBoardLoading(true);
                 setCards([]);
                 setConnections([]);
                 setGroups([]);

@@ -51,6 +51,7 @@ export default function ChatView({
     const addPendingMessage = useStore(state => state.addPendingMessage);
     const clearPendingMessages = useStore(state => state.clearPendingMessages);
     const isCardGenerating = useStore(state => state.generatingCardIds.has(card.id));
+    const streamingCardVersion = useStore(state => state.streamingCardVersions?.[card.id] || 0);
     const pendingCount = pendingMessages.length;
 
     const {
@@ -158,7 +159,7 @@ export default function ChatView({
         if (isStreaming) {
             scrollToBottom();
         }
-    }, [card.data.messages, isStreaming]);
+    }, [card.data.messages, isStreaming, streamingCardVersion]);
 
     // Force scroll to bottom on initial open
     useEffect(() => {

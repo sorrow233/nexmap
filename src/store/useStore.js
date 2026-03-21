@@ -33,6 +33,8 @@ const useStoreBase = create(
             // Global reset for logout
             resetAllState: () => {
                 console.log('[Store] Resetting all state...');
+                get().clearStreamingState?.();
+                get().setGeneratingCardIds?.(new Set());
                 get().resetCardState?.();
                 get().resetConnectionState?.();
                 get().resetGroupState?.();

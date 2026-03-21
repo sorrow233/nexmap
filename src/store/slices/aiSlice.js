@@ -8,7 +8,14 @@ import { CreditsExhaustedError } from '../../services/systemCredits/systemCredit
 import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
-import { applyStreamTextUpdates, createStreamRenderBuffer } from './utils/streamRenderBuffer';
+import {
+    appendStreamBufferUpdates,
+    applyStreamTextUpdates,
+    buildStreamBufferKey,
+    collectStreamBufferUpdatesForCard,
+    createStreamRenderBuffer,
+    removeStreamBufferUpdatesForCard
+} from './utils/streamRenderBuffer';
 import { createCardTimestampFields } from '../../services/cards/cardTimestamps';
 import {
     createMessageContentWithImages,
@@ -16,24 +23,108 @@ import {
 } from '../../services/ai/messageContent';
 import { yieldToMainThread } from '../../utils/scheduling';
 
+const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
+    if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
+        return currentVersions;
+    }
+
+    const nextVersions = { ...currentVersions };
+    dirtyCardIds.forEach((cardId) => {
+        if (!cardId) return;
+        nextVersions[cardId] = (nextVersions[cardId] || 0) + 1;
+    });
+    return nextVersions;
+};
+
+const clearStreamingCardVersion = (currentVersions = {}, cardId) => {
+    if (!cardId || !Object.prototype.hasOwnProperty.call(currentVersions, cardId)) {
+        return currentVersions;
+    }
+
+    const nextVersions = { ...currentVersions };
+    delete nextVersions[cardId];
+    return nextVersions;
+};
+
 
 export const createAISlice = (set, get) => {
     const streamRenderBuffer = createStreamRenderBuffer((updates) => {
         if (!updates || updates.size === 0) return;
 
         set((state) => {
-            const nextCards = applyStreamTextUpdates(state.cards, updates);
-            if (nextCards === state.cards) return {};
-            return { cards: nextCards };
+            const { nextBufferState, dirtyCardIds } = appendStreamBufferUpdates(
+                state.streamingMessages,
+                updates
+            );
+            if (nextBufferState === state.streamingMessages) return {};
+
+            return {
+                streamingMessages: nextBufferState,
+                streamingCardVersions: bumpStreamingCardVersions(
+                    state.streamingCardVersions,
+                    dirtyCardIds
+                )
+            };
         });
     });
 
     return {
         generatingCardIds: new Set(),
+        streamingMessages: {},
+        streamingCardVersions: {},
 
         // Persistent message queue: { cardId: [{ text, images }] }
         // Survives ChatModal close, allowing messages to be sent after current stream completes
         pendingMessages: {},
+
+        getStreamingMessage: (cardId, messageId = null) => {
+            const bufferKey = buildStreamBufferKey(cardId, messageId);
+            const streamingMessages = get().streamingMessages || {};
+            return streamingMessages[bufferKey] || '';
+        },
+
+        clearStreamingState: (cardId = null) => set((state) => {
+            if (!cardId) {
+                streamRenderBuffer.clearAll();
+            } else {
+                streamRenderBuffer.cleanupCard(cardId);
+            }
+
+            if (!cardId) {
+                if (
+                    Object.keys(state.streamingMessages || {}).length === 0 &&
+                    Object.keys(state.streamingCardVersions || {}).length === 0
+                ) {
+                    return {};
+                }
+
+                return {
+                    streamingMessages: {},
+                    streamingCardVersions: {}
+                };
+            }
+
+            const nextStreamingMessages = removeStreamBufferUpdatesForCard(
+                state.streamingMessages,
+                cardId
+            );
+            const nextStreamingCardVersions = clearStreamingCardVersion(
+                state.streamingCardVersions,
+                cardId
+            );
+
+            if (
+                nextStreamingMessages === state.streamingMessages &&
+                nextStreamingCardVersions === state.streamingCardVersions
+            ) {
+                return {};
+            }
+
+            return {
+                streamingMessages: nextStreamingMessages,
+                streamingCardVersions: nextStreamingCardVersions
+            };
+        }),
 
         setGeneratingCardIds: (valOrUpdater) => set((state) => ({
             generatingCardIds: typeof valOrUpdater === 'function' ? valOrUpdater(state.generatingCardIds) : valOrUpdater
@@ -359,7 +450,7 @@ export const createAISlice = (set, get) => {
         },
 
         updateCardContent: (id, chunk, messageId = null) => {
-            const bufferKey = messageId ? `${id}:${messageId}` : id;
+            const bufferKey = buildStreamBufferKey(id, messageId);
             streamRenderBuffer.enqueue(bufferKey, chunk);
         },
 
@@ -391,18 +482,56 @@ export const createAISlice = (set, get) => {
         },
 
         setCardGenerating: (id, isGenerating) => {
+            if (!id) return;
+
+            if (!isGenerating) {
+                // Flush pending chunks into the lightweight streaming buffer before commit.
+                streamRenderBuffer.flushNow();
+                streamRenderBuffer.cleanupCard(id);
+            } else {
+                streamRenderBuffer.cleanupCard(id);
+            }
+
             set(state => {
                 const next = new Set(state.generatingCardIds);
                 if (isGenerating) {
                     next.add(id);
                 } else {
                     next.delete(id);
-                    // CRITICAL: Final Flush before stopping tracking
-                    streamRenderBuffer.flushNow();
-                    // Clean up any remaining residue for this card
-                    streamRenderBuffer.cleanupCard(id);
                 }
-                return { generatingCardIds: next };
+
+                const nextStreamingMessages = removeStreamBufferUpdatesForCard(
+                    state.streamingMessages,
+                    id
+                );
+                const nextStreamingCardVersions = clearStreamingCardVersion(
+                    state.streamingCardVersions,
+                    id
+                );
+                const committedUpdates = isGenerating
+                    ? new Map()
+                    : collectStreamBufferUpdatesForCard(state.streamingMessages, id);
+                const nextCards = committedUpdates.size > 0
+                    ? applyStreamTextUpdates(state.cards, committedUpdates)
+                    : state.cards;
+
+                const patch = {
+                    generatingCardIds: next
+                };
+
+                if (nextCards !== state.cards) {
+                    patch.cards = nextCards;
+                }
+
+                if (nextStreamingMessages !== state.streamingMessages) {
+                    patch.streamingMessages = nextStreamingMessages;
+                }
+
+                if (nextStreamingCardVersions !== state.streamingCardVersions) {
+                    patch.streamingCardVersions = nextStreamingCardVersions;
+                }
+
+                return patch;
             });
         },
 

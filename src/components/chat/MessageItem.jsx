@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe } from 'lucide-react';
 import MessageImage from './MessageImage';
-import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import CodeBlock from './CodeBlock';
 import { createMarkdownRenderer, parseMarkdown, sanitizeMarkdownHtml } from '../../utils/markdownRenderer';
 import { isShareableMessageContent, normalizeShareContent } from '../share/shareContent';
+import { buildStreamBufferKey } from '../../store/slices/utils/streamRenderBuffer';
 
 let codeBlockCounter = 0;
 let codeBlocks = [];
@@ -107,10 +107,21 @@ const getLastSafeStreamingBoundary = (text = '') => {
     return boundary;
 };
 
-const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onContinueTopic, onBranch }) => {
+const MessageItem = React.memo(({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onContinueTopic, onBranch }) => {
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
+    const streamingBufferKey = React.useMemo(() => {
+        if (!cardId) return '';
+        return buildStreamBufferKey(cardId, message?.id || null);
+    }, [cardId, message?.id]);
+    const streamingText = useStore(React.useCallback((state) => {
+        if (!cardId) return '';
+
+        return state.streamingMessages?.[streamingBufferKey]
+            || state.streamingMessages?.[buildStreamBufferKey(cardId)]
+            || '';
+    }, [cardId, streamingBufferKey]));
 
     // 长文本折叠状态
     const [isExpanded, setIsExpanded] = useState(false);
@@ -126,21 +137,24 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         }
     };
 
+    const effectiveContent = !isUser && isStreaming && typeof streamingText === 'string' && streamingText
+        ? streamingText
+        : message.content;
+
     let textContent = "";
     let msgImages = [];
 
-    if (Array.isArray(message.content)) {
-        message.content.forEach(part => {
+    if (Array.isArray(effectiveContent)) {
+        effectiveContent.forEach(part => {
             if (part.type === 'text') textContent += part.text;
             if (part.type === 'image') msgImages.push(part);
         });
     } else {
-        textContent = message.content || "";
+        textContent = effectiveContent || "";
     }
 
     const isAssistantStreaming = !isUser && isStreaming;
-    const fluidStreamingText = useFluidTypewriter(textContent, isAssistantStreaming);
-    const displayText = isAssistantStreaming ? fluidStreamingText : textContent;
+    const displayText = textContent;
 
     const {
         streamingStableText,
