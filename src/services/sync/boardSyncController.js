@@ -8,6 +8,7 @@ import {
     createBoardDoc,
     isBoardDocEmpty,
     readBoardSnapshotFromDoc,
+    syncBoardCardsToDoc,
     syncBoardSnapshotToDoc
 } from './boardYDoc';
 import { FirestoreBoardSync } from './firestoreBoardSync';
@@ -132,6 +133,16 @@ export class BoardSyncController {
             !currentDocIsEmpty &&
             !isPersistenceSnapshotNewer(normalized, currentDocSnapshot)
         ) {
+            const nextHasCards = Array.isArray(normalized.cards) && normalized.cards.length > 0;
+            if (!nextHasCards) {
+                return;
+            }
+
+            this.doc.transact(() => {
+                syncBoardCardsToDoc(this.doc, normalized.cards);
+            }, FIREBASE_SYNC_ORIGINS.store);
+
+            this.lastFingerprint = createBoardSnapshotFingerprint(readBoardSnapshotFromDoc(this.doc));
             return;
         }
 

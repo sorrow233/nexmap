@@ -374,6 +374,18 @@ export const syncBoardSnapshotToDoc = (doc, snapshot = {}) => {
     });
 };
 
+export const syncBoardCardsToDoc = (doc, cards = []) => {
+    const normalized = normalizeBoardSnapshot({ cards });
+    const root = doc.getMap('board');
+
+    doc.transact(() => {
+        const currentCards = root.has('cards')
+            ? readNodeToValue(root.get('cards'), ['cards'])
+            : [];
+        syncValueIntoParent(root, 'cards', mergeCardSnapshots(currentCards, normalized.cards), ['cards']);
+    });
+};
+
 export const readBoardSnapshotFromDoc = (doc) => {
     const root = doc.getMap('board');
     const next = {};
