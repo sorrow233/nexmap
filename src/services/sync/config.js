@@ -19,7 +19,8 @@ export const FIREBASE_SYNC_ORIGINS = {
     localSeed: 'firebase-sync-local-seed',
     firestore: 'firebase-sync-firestore',
     store: 'firebase-sync-store',
-    indexeddb: 'firebase-sync-indexeddb'
+    indexeddb: 'firebase-sync-indexeddb',
+    forceOverride: 'firebase-sync-force-override'
 };
 
 export const isSampleBoardId = (boardId) => typeof boardId === 'string' && boardId.startsWith('sample-');

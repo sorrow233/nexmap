@@ -8,7 +8,7 @@ import { useStore } from './store/useStore';
 import { nextCardIndexMutation } from './store/slices/utils/cardIndexMutation';
 import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
-import { ToastProvider } from './components/Toast';
+import { ToastProvider, useToast } from './components/Toast';
 import { ContextMenuProvider } from './components/ContextMenu';
 import IPadInstallPrompt from './components/pwa/IPadInstallPrompt';
 import { lazyWithRetry } from './utils/lazyWithRetry';
@@ -121,6 +121,7 @@ const hasMeaningfulBoardMetadataChange = (board, metadata = {}) => Object.keys(m
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
+    const toast = useToast();
     const {
         user,
         boardsList,
@@ -141,6 +142,7 @@ function AppContent() {
     const setLastSavedAt = useStore(state => state.setLastSavedAt);
     const setActiveBoardPersistence = useStore(state => state.setActiveBoardPersistence);
     const setExternalSyncMarker = useStore(state => state.setExternalSyncMarker);
+    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
@@ -152,6 +154,7 @@ function AppContent() {
     // Dialog State
     const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => { } });
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [forceSyncingBoardId, setForceSyncingBoardId] = useState(null);
 
     // Search Modal State
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -639,6 +642,101 @@ function AppContent() {
         navigate('/gallery');
     }, [currentBoardId, isBoardLoading, navigate]);
 
+    const handleForceSyncBoard = useCallback(() => {
+        if (!currentBoardId) return;
+
+        if (isBoardLoading) {
+            toast.warning('画布还在加载，请稍后再强制同步');
+            return;
+        }
+
+        if ((generatingCardIds?.size || 0) > 0) {
+            toast.warning('请等待当前回答生成完成后，再强制覆盖所有设备');
+            return;
+        }
+
+        const controller = boardSyncControllerRef.current;
+        if (!controller || controller.boardId !== currentBoardId) {
+            toast.error('当前画布的同步控制器还没有准备好');
+            return;
+        }
+
+        showDialog(
+            '强制覆盖所有设备？',
+            '将以当前设备上的这张画布为准，重新覆盖远端同步数据。其他设备下次打开或同步这张画布时，会以这份内容为准。请先确认当前设备内容完整无误。',
+            'confirm',
+            async () => {
+                const latestController = boardSyncControllerRef.current;
+                if (!latestController || latestController.boardId !== currentBoardId) {
+                    toast.error('同步控制器已失效，请重新进入画布后再试');
+                    return;
+                }
+
+                const currentBoard = boardsListRef.current.find((board) => board.id === currentBoardId);
+                const nextUpdatedAt = Date.now();
+                const nextClientRevision = Math.max(
+                    Number(activeBoardPersistence?.clientRevision) || 0,
+                    Number(currentBoard?.clientRevision) || 0
+                ) + 1;
+                const snapshot = normalizeBoardSnapshot({
+                    cards,
+                    connections,
+                    groups,
+                    boardPrompts,
+                    boardInstructionSettings,
+                    updatedAt: nextUpdatedAt,
+                    clientRevision: nextClientRevision
+                });
+
+                setForceSyncingBoardId(currentBoardId);
+                try {
+                    await saveBoard(currentBoardId, snapshot);
+                    setLastSavedAt(nextUpdatedAt);
+                    setActiveBoardPersistence({
+                        updatedAt: nextUpdatedAt,
+                        clientRevision: nextClientRevision,
+                        dirty: false
+                    });
+                    setBoardsList(prev => prev.map((board) => {
+                        if (board.id !== currentBoardId) return board;
+                        return normalizeBoardTitleMeta({
+                            ...board,
+                            updatedAt: nextUpdatedAt,
+                            clientRevision: nextClientRevision,
+                            cardCount: snapshot.cards.filter(card => !card?.deletedAt).length
+                        });
+                    }));
+
+                    const didForceSync = await latestController.forceOverwriteFromSnapshot(snapshot);
+                    if (!didForceSync) {
+                        throw new Error('强制同步未成功写出远端快照');
+                    }
+
+                    toast.success('已强制把当前设备的这张画布覆盖到远端，其他设备刷新后会以这份内容为准');
+                } catch (error) {
+                    console.error(`[Board] Failed to force sync board ${currentBoardId}:`, error);
+                    toast.error(error?.message || '强制同步失败，请稍后重试');
+                } finally {
+                    setForceSyncingBoardId(null);
+                }
+            }
+        );
+    }, [
+        activeBoardPersistence?.clientRevision,
+        boardInstructionSettings,
+        boardPrompts,
+        cards,
+        connections,
+        currentBoardId,
+        generatingCardIds?.size,
+        groups,
+        isBoardLoading,
+        setActiveBoardPersistence,
+        setBoardsList,
+        setLastSavedAt,
+        toast
+    ]);
+
     const handleUpdateBoardMetadata = useCallback(async (boardId, metadata) => {
         if (!boardId || !metadata || typeof metadata !== 'object') return;
 
@@ -752,6 +850,8 @@ function AppContent() {
                             onUpdateBoardTitle={handleUpdateBoardTitle}
                             onUpdateBoardMetadata={handleUpdateBoardMetadata}
                             onBack={handleBackToGallery}
+                            onForceSyncBoard={user?.uid ? handleForceSyncBoard : undefined}
+                            isForceSyncingBoard={forceSyncingBoardId === currentBoardId}
                         />
                     } />
                     <Route path="/board/:id/note/:noteId" element={
@@ -761,6 +861,8 @@ function AppContent() {
                             onUpdateBoardTitle={handleUpdateBoardTitle}
                             onUpdateBoardMetadata={handleUpdateBoardMetadata}
                             onBack={handleBackToGallery}
+                            onForceSyncBoard={user?.uid ? handleForceSyncBoard : undefined}
+                            isForceSyncingBoard={forceSyncingBoardId === currentBoardId}
                         />
                     } />
                     <Route path="/feedback" element={<FeedbackPage />} />

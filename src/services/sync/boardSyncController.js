@@ -142,6 +142,27 @@ export class BoardSyncController {
         this.lastFingerprint = createBoardSnapshotFingerprint(readBoardSnapshotFromDoc(this.doc));
     }
 
+    async forceOverwriteFromSnapshot(nextSnapshot = {}) {
+        if (!this.started || !this.fireSync) return false;
+
+        const normalized = normalizeBoardSnapshot(nextSnapshot);
+        if (isMeaningfullyEmptyBoardSnapshot(normalized)) {
+            return false;
+        }
+
+        await this.fireSync.waitForPendingWrites();
+        this.fireSync.clearPendingLocalQueue();
+
+        this.doc.transact(() => {
+            syncBoardSnapshotToDoc(this.doc, normalized);
+        }, FIREBASE_SYNC_ORIGINS.forceOverride);
+
+        this.lastFingerprint = createBoardSnapshotFingerprint(readBoardSnapshotFromDoc(this.doc));
+        const checkpoint = await this.fireSync.saveSnapshot('manual_force_override');
+        this.emitCurrentSnapshot();
+        return Boolean(checkpoint);
+    }
+
     async stop() {
         if (this.fireSync) {
             try {

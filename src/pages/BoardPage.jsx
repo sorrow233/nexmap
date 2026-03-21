@@ -23,7 +23,15 @@ const SettingsModal = lazyWithRetry(() => import('../components/SettingsModal'))
 
 import { useBoardLogic } from '../hooks/useBoardLogic';
 
-export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack }) {
+export default function BoardPage({
+    user,
+    boardsList,
+    onUpdateBoardTitle,
+    onUpdateBoardMetadata,
+    onBack,
+    onForceSyncBoard,
+    isForceSyncingBoard = false
+}) {
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
@@ -154,6 +162,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         onBack={onBack}
                         onOpenInstructions={handleOpenInstructionPanel}
                         onOpenSettings={() => setIsSettingsOpen(true)}
+                        onForceSyncBoard={!isReadOnly ? onForceSyncBoard : undefined}
+                        isForceSyncing={isForceSyncingBoard}
                         onOpenCard={handleMobileOpenCard}
                         onQuickSprout={handleQuickSprout}
                         onExpandTopics={handleExpandTopics}
@@ -214,6 +224,8 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                             onUpdateTitle={onUpdateBoardTitle}
                             onOpenInstructions={handleOpenInstructionPanel}
                             instructionPanelSummary={instructionPanelSummary}
+                            onForceSyncBoard={!isReadOnly ? onForceSyncBoard : undefined}
+                            isForceSyncing={isForceSyncingBoard}
                         />
                     </>
                 )}

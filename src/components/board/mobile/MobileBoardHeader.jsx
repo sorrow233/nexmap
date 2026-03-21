@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles } from 'lucide-react';
+import { AlertCircle, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles, Upload } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../../services/boardTitle/metadata';
 import { getMobileBoardCopy } from './mobileBoardCopy';
@@ -11,6 +11,8 @@ export default function MobileBoardHeader({
     onBack,
     onOpenInstructions,
     onOpenSettings,
+    onForceSyncBoard,
+    isForceSyncing = false,
     untitledLabel = 'Untitled Board'
 }) {
     const { language } = useLanguage();
@@ -62,6 +64,19 @@ export default function MobileBoardHeader({
                         >
                             <Sparkles size={17} />
                         </button>
+                        {typeof onForceSyncBoard === 'function' && (
+                            <button
+                                onClick={onForceSyncBoard}
+                                disabled={isForceSyncing}
+                                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-all active:scale-95 ${isForceSyncing
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
+                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
+                                    }`}
+                                title={isForceSyncing ? '正在强制同步这张画布' : '强制以当前设备覆盖所有设备'}
+                            >
+                                <Upload size={17} className={isForceSyncing ? 'animate-pulse' : ''} />
+                            </button>
+                        )}
                         <button
                             onClick={onOpenSettings}
                             className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all active:scale-95 dark:bg-white/5 dark:text-slate-100"

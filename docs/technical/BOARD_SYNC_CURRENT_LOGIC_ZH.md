@@ -422,7 +422,28 @@ Y.Doc 的根键包括：
    - 协作状态维护
    - 远端 checkpoint 落库
 
-## 12. 用一句话总结当前逻辑
+## 12. 当前新增的“强制覆盖所有设备”按钮逻辑
+
+这是为了给用户一个明确、可控的兜底入口。
+
+入口位置：
+
+- 桌面端画布顶栏
+- 移动端画布头部
+
+点击后当前版本的执行顺序是：
+
+1. 用户确认要以当前设备内容为准
+2. 立即把当前设备 store 里的整张画布重新组织成 snapshot
+3. 强制写一次本地 `saveBoard`
+4. 更新当前设备的 `activeBoardPersistence`
+5. 通过 `BoardSyncController.forceOverwriteFromSnapshot()` 把这份 snapshot 直接写进当前 Y.Doc
+6. 跳过普通本地 update 队列，直接执行一次 `saveSnapshot('manual_force_override')`
+7. 远端 root checkpoint 被替换，其他设备后续加载这张画布时，会以这份 checkpoint 为准
+
+这一条链的目的不是优化自动同步，而是给用户一个“手动宣布当前设备为准版本”的硬覆盖操作。
+
+## 13. 用一句话总结当前逻辑
 
 当前这块功能的真实执行逻辑可以概括为：
 

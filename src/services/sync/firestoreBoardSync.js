@@ -407,7 +407,11 @@ export class FirestoreBoardSync {
     }
 
     handleDocUpdate(update, origin) {
-        if (origin === FIREBASE_SYNC_ORIGINS.firestore || origin === FIREBASE_SYNC_ORIGINS.indexeddb) {
+        if (
+            origin === FIREBASE_SYNC_ORIGINS.firestore
+            || origin === FIREBASE_SYNC_ORIGINS.indexeddb
+            || origin === FIREBASE_SYNC_ORIGINS.forceOverride
+        ) {
             return;
         }
 
@@ -438,6 +442,27 @@ export class FirestoreBoardSync {
             this.flushTimer = null;
             void this.flushPendingUpdates('debounced');
         }, debounceMs);
+    }
+
+    async waitForPendingWrites() {
+        if (this.flushPromise) {
+            try {
+                await this.flushPromise;
+            } catch (error) {
+                console.warn(`[FirebaseSync] Pending update flush failed before force override for board ${this.boardId}:`, error);
+            }
+        }
+    }
+
+    clearPendingLocalQueue() {
+        if (this.flushTimer) {
+            clearTimeout(this.flushTimer);
+            this.flushTimer = null;
+        }
+
+        this.pendingUpdates = [];
+        this.pendingBytes = 0;
+        this.flushQueuedReason = '';
     }
 
     async flushPendingUpdates(reason = 'manual') {

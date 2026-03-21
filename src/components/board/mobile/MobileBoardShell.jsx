@@ -22,6 +22,8 @@ export default function MobileBoardShell({
     onBack,
     onOpenInstructions,
     onOpenSettings,
+    onForceSyncBoard,
+    isForceSyncing,
     onOpenCard,
     onQuickSprout,
     onExpandTopics
@@ -59,6 +61,8 @@ export default function MobileBoardShell({
                 onBack={onBack}
                 onOpenInstructions={onOpenInstructions}
                 onOpenSettings={onOpenSettings}
+                onForceSyncBoard={onForceSyncBoard}
+                isForceSyncing={isForceSyncing}
                 untitledLabel={untitledLabel}
             />
 

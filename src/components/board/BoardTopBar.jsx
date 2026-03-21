@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutGrid, Undo2, Redo2, Sparkles } from 'lucide-react';
+import { LayoutGrid, Undo2, Redo2, Sparkles, Upload } from 'lucide-react';
 import { useTemporalStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../services/boardTitle/metadata';
 
-export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstructions, instructionPanelSummary }) {
+export default function BoardTopBar({
+    onBack,
+    board,
+    onUpdateTitle,
+    onOpenInstructions,
+    instructionPanelSummary,
+    onForceSyncBoard,
+    isForceSyncing = false
+}) {
     const undo = useTemporalStore((state) => state.undo);
     const redo = useTemporalStore((state) => state.redo);
     const pastStates = useTemporalStore((state) => state.pastStates);
@@ -20,6 +28,10 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstru
     const activeInstructionCount = Number(instructionPanelSummary?.activeCount || 0);
     const untitledBoardLabel = t.gallery?.untitledBoard || 'Untitled Board';
     const displayTitle = getBoardDisplayName(board, untitledBoardLabel);
+    const forceSyncLabel = isForceSyncing ? '强推中' : '强推同步';
+    const forceSyncTitle = isForceSyncing
+        ? '正在把当前设备的画布强制覆盖到远端'
+        : '以当前设备这张画布为准，强制覆盖到所有设备';
 
     useEffect(() => {
         setTitleDraft(board?.name || '');
@@ -75,6 +87,20 @@ export default function BoardTopBar({ onBack, board, onUpdateTitle, onOpenInstru
                             <Sparkles size={16} />
                             <span className="hidden md:inline">{activeInstructionCount}</span>
                             <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white ${statusColorMap[instructionStatus] || statusColorMap.idle}`} />
+                        </button>
+                    )}
+                    {typeof onForceSyncBoard === 'function' && (
+                        <button
+                            onClick={onForceSyncBoard}
+                            disabled={isForceSyncing}
+                            className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-bold transition-all ${isForceSyncing
+                                ? 'cursor-wait bg-amber-50 text-amber-700'
+                                : 'text-amber-700 hover:bg-amber-50'
+                                }`}
+                            title={forceSyncTitle}
+                        >
+                            <Upload size={16} className={isForceSyncing ? 'animate-pulse' : ''} />
+                            <span className="hidden md:inline">{forceSyncLabel}</span>
                         </button>
                     )}
                 </div>
