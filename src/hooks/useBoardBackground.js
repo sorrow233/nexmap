@@ -6,6 +6,7 @@ import { uploadImageToS3 } from '../services/s3';
 import { useStore } from '../store/useStore';
 import { getAnalysisPrompt, getPromptGeneratorPrompt, DEFAULT_STYLE } from '../services/image/imageStylePrompts';
 import { useToast } from '../components/Toast';
+import { runtimeLog, runtimeWarn } from '../utils/runtimeLogging';
 
 const MAX_CONTEXT_CHARS = 12000;
 const MAX_CARD_SNIPPET_CHARS = 600;
@@ -76,7 +77,7 @@ const withRetry = async (task, { label, maxAttempts = 3, baseDelayMs = 900 } = {
             const shouldRetry = attempt < maxAttempts && isRetryableGenerationError(error);
             if (!shouldRetry) throw error;
             const delay = baseDelayMs * (2 ** (attempt - 1));
-            console.warn(`[${label || 'Retry'}] Attempt ${attempt} failed, retrying in ${delay}ms`, error);
+            runtimeWarn(`[${label || 'Retry'}] Attempt ${attempt} failed, retrying in ${delay}ms`, error);
             await wait(delay);
         }
     }
@@ -154,7 +155,7 @@ export default function useBoardBackground() {
 
         const context = contextParts.join('\n');
         if (context.length >= MAX_CONTEXT_CHARS) {
-            console.log(`[Image Gen] Context truncated to ${MAX_CONTEXT_CHARS} chars`);
+            runtimeLog(`[Image Gen] Context truncated to ${MAX_CONTEXT_CHARS} chars`);
         }
 
         return { boardData, context };
@@ -168,7 +169,7 @@ export default function useBoardBackground() {
         if (!boardId) return null;
 
         if (SUMMARY_GENERATION_TASKS.has(boardId)) {
-            console.log(`[Summary Gen] Deduped request for board ${boardId}`);
+            runtimeLog(`[Summary Gen] Deduped request for board ${boardId}`);
             return SUMMARY_GENERATION_TASKS.get(boardId);
         }
 
@@ -183,7 +184,7 @@ export default function useBoardBackground() {
                     { label: 'Summary Gen', maxAttempts: 1, baseDelayMs: 800 }
                 );
 
-                console.log('[Summary Gen] Result:', summaryResult);
+                runtimeLog('[Summary Gen] Result:', summaryResult);
 
                 if (summaryResult && onUpdateBoardMetadata) {
                     await onUpdateBoardMetadata(boardId, { summary: summaryResult });
@@ -210,7 +211,7 @@ export default function useBoardBackground() {
         if (!boardId) return null;
 
         if (IMAGE_GENERATION_TASKS.has(boardId)) {
-            console.log(`[Image Gen] Deduped request for board ${boardId}`);
+            runtimeLog(`[Image Gen] Deduped request for board ${boardId}`);
             return IMAGE_GENERATION_TASKS.get(boardId);
         }
 
@@ -220,7 +221,7 @@ export default function useBoardBackground() {
                 const textConfig = getRoleConfig('analysis');
                 const imageConfig = getRoleConfig('image');
 
-                console.log('[Image Gen] Starting generation for board:', boardId);
+                runtimeLog('[Image Gen] Starting generation for board:', boardId);
 
                 // 1. Context
                 const { context } = await extractBoardContext(boardId);
@@ -229,11 +230,11 @@ export default function useBoardBackground() {
                     return null;
                 }
 
-                console.log('[Image Gen] Context length:', context.length);
+                runtimeLog('[Image Gen] Context length:', context.length);
 
                 // 2. Visual Concept Analysis
                 const analysisPrompt = getAnalysisPrompt(context, DEFAULT_STYLE);
-                console.log('[Image Gen] Analyzing Visual Concept...');
+                runtimeLog('[Image Gen] Analyzing Visual Concept...');
 
                 const { chatCompletion, imageGeneration } = await import('../services/llm');
 
@@ -247,7 +248,7 @@ export default function useBoardBackground() {
                     { label: 'Image Concept', maxAttempts: 1, baseDelayMs: 900 }
                 );
 
-                console.log('[Image Gen] Visual Concept:', visualConcept);
+                runtimeLog('[Image Gen] Visual Concept:', visualConcept);
                 if (!visualConcept) throw new Error("Failed to analyze context");
 
                 // 3. Prompt Generation
@@ -262,7 +263,7 @@ export default function useBoardBackground() {
                     { label: 'Image Prompt', maxAttempts: 1, baseDelayMs: 900 }
                 );
 
-                console.log('[Image Gen] Final Image Prompt:', imagePrompt);
+                runtimeLog('[Image Gen] Final Image Prompt:', imagePrompt);
                 if (!imagePrompt) throw new Error("Failed to generate final prompt");
 
                 // 4. Image Generation
@@ -319,7 +320,7 @@ export default function useBoardBackground() {
                     );
 
                 } catch (uploadError) {
-                    console.warn('[Image Gen] Persistence Failed (using original URL):', uploadError);
+                    runtimeWarn('[Image Gen] Persistence Failed (using original URL):', uploadError);
                     // If persistence fails, we keep the original URL (better than nothing)
                 }
 
