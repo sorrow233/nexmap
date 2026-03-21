@@ -17,9 +17,10 @@ import { toFirestoreMillis } from './firestoreCheckpointStore';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 
 const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail'];
-const FIRESTORE_WRITE_BATCH_LIMIT = 450;
+const FIRESTORE_WRITE_BATCH_LIMIT = 100;
 const METADATA_RETRY_DELAYS_MS = [0, 300, 900];
 const metadataSyncSignatureCache = new Map();
+const metadataSyncQueueState = new Map();
 
 const normalizeOptionalString = (value) => {
     if (value === undefined) return undefined;
@@ -48,6 +49,16 @@ const getUserMetadataSignatureCache = (userId) => {
         metadataSyncSignatureCache.set(userId, new Map());
     }
     return metadataSyncSignatureCache.get(userId);
+};
+
+const getUserMetadataSyncQueue = (userId) => {
+    if (!metadataSyncQueueState.has(userId)) {
+        metadataSyncQueueState.set(userId, {
+            inFlight: null,
+            pendingBoards: null
+        });
+    }
+    return metadataSyncQueueState.get(userId);
 };
 
 const sleep = (ms) => new Promise((resolve) => {
@@ -253,7 +264,7 @@ export const mergeBoardMetadataLists = (localBoards = [], remoteBoards = []) => 
         }));
 };
 
-export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
+const syncBoardMetadataListToRemoteNow = async (userId, boards = []) => {
     if (!db || !userId) return;
     const syncedBoards = normalizeBoardMetadataList(boards)
         .filter((board) => board?.id && !isSampleBoardId(board.id));
@@ -306,4 +317,32 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
             });
         });
     }
+};
+
+export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
+    if (!db || !userId) return;
+
+    const syncQueue = getUserMetadataSyncQueue(userId);
+    syncQueue.pendingBoards = normalizeBoardMetadataList(boards);
+
+    if (syncQueue.inFlight) {
+        return syncQueue.inFlight;
+    }
+
+    const runSyncLoop = async () => {
+        while (Array.isArray(syncQueue.pendingBoards)) {
+            const nextBoards = syncQueue.pendingBoards;
+            syncQueue.pendingBoards = null;
+            await syncBoardMetadataListToRemoteNow(userId, nextBoards);
+        }
+    };
+
+    syncQueue.inFlight = runSyncLoop().finally(() => {
+        syncQueue.inFlight = null;
+        if (!syncQueue.pendingBoards) {
+            metadataSyncQueueState.delete(userId);
+        }
+    });
+
+    return syncQueue.inFlight;
 };
