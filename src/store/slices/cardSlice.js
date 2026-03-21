@@ -127,15 +127,6 @@ export const createCardSlice = (set, get) => {
         set({ cards: nextCards });
     },
 
-    // Rebuild card lookup cache (for batch snapshot apply where setState is called externally)
-    rebuildCardLookup: (cards) => {
-        if (cards) {
-            cardLookup.rebuild(cards);
-        } else {
-            cardLookup.rebuild(get().cards);
-        }
-    },
-
     getCardById: (id) => {
         if (!id) return null;
         const { cardMap } = cardLookup.ensure(get().cards);

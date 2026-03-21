@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe } from 'lucide-react';
 import MessageImage from './MessageImage';
+import { useFluidTypewriter } from '../../hooks/useFluidTypewriter';
 import CodeBlock from './CodeBlock';
 import { createMarkdownRenderer, parseMarkdown, sanitizeMarkdownHtml } from '../../utils/markdownRenderer';
 import { isShareableMessageContent, normalizeShareContent } from '../share/shareContent';
@@ -89,6 +90,23 @@ MessageContentWithCodeBlocks.displayName = 'MessageContentWithCodeBlocks';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
+const STREAMING_TAIL_LENGTH = 16;
+const STREAMING_SAFE_BREAK_MARKERS = ['\n\n', '\n', '```', '。', '！', '？', '. ', '! ', '? ', '；', ';', '，', ',', ' '];
+
+const getLastSafeStreamingBoundary = (text = '') => {
+    if (!text) return -1;
+
+    let boundary = -1;
+    STREAMING_SAFE_BREAK_MARKERS.forEach((marker) => {
+        const markerIndex = text.lastIndexOf(marker);
+        if (markerIndex !== -1) {
+            boundary = Math.max(boundary, markerIndex + marker.length);
+        }
+    });
+
+    return boundary;
+};
+
 const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onContinueTopic, onBranch }) => {
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
@@ -121,11 +139,52 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
     }
 
     const isAssistantStreaming = !isUser && isStreaming;
-    const displayText = textContent;
+    const fluidStreamingText = useFluidTypewriter(textContent, isAssistantStreaming);
+    const displayText = isAssistantStreaming ? fluidStreamingText : textContent;
+
+    const {
+        streamingStableText,
+        streamingLiveMainText,
+        streamingLiveTailText
+    } = React.useMemo(() => {
+        if (!isAssistantStreaming || !displayText) {
+            return {
+                streamingStableText: '',
+                streamingLiveMainText: displayText || '',
+                streamingLiveTailText: ''
+            };
+        }
+
+        const stableBoundary = getLastSafeStreamingBoundary(displayText);
+        const stableText = stableBoundary > 0 ? displayText.slice(0, stableBoundary) : '';
+        const liveText = displayText.slice(stableText.length);
+
+        if (!liveText) {
+            return {
+                streamingStableText: stableText,
+                streamingLiveMainText: '',
+                streamingLiveTailText: ''
+            };
+        }
+
+        if (liveText.length <= STREAMING_TAIL_LENGTH) {
+            return {
+                streamingStableText: stableText,
+                streamingLiveMainText: '',
+                streamingLiveTailText: liveText
+            };
+        }
+
+        return {
+            streamingStableText: stableText,
+            streamingLiveMainText: liveText.slice(0, -STREAMING_TAIL_LENGTH),
+            streamingLiveTailText: liveText.slice(-STREAMING_TAIL_LENGTH)
+        };
+    }, [displayText, isAssistantStreaming]);
 
     const { thoughts, content } = React.useMemo(() => {
         if (isUser) return { thoughts: null, content: textContent };
-        if (isAssistantStreaming) return { thoughts: null, content: textContent };
+        if (isAssistantStreaming) return { thoughts: null, content: displayText };
         if (!displayText) return { thoughts: null, content: '' };
         return parseModelOutput(displayText);
     }, [displayText, isAssistantStreaming, isUser, parseModelOutput, textContent]);
@@ -244,6 +303,18 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         };
     }, [content, marks, capturedNotes, isUser, isAssistantStreaming]);
 
+    const { streamingRenderedHtml, streamingCodeBlocksToRender } = React.useMemo(() => {
+        if (!isAssistantStreaming || !streamingStableText) {
+            return { streamingRenderedHtml: '', streamingCodeBlocksToRender: [] };
+        }
+
+        const streamingResult = renderMessageContent(streamingStableText, [], []);
+        return {
+            streamingRenderedHtml: resolveCardReferences(streamingResult.html),
+            streamingCodeBlocksToRender: streamingResult.codeBlocksData
+        };
+    }, [isAssistantStreaming, streamingStableText]);
+
     const handleMessageClick = (e) => {
         const externalLink = e.target.closest('a[data-external-link="true"]');
         if (externalLink) {
@@ -254,11 +325,13 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
         const link = e.target.closest('.card-ref-link');
         if (link) {
             const cardId = link.getAttribute('data-card-id');
+            console.log('[DEBUG] Card click caught by handleMessageClick, ID:', cardId);
             if (cardId) {
                 focusOnCard(cardId);
 
                 const { setExpandedCardId } = useStore.getState();
                 if (setExpandedCardId) {
+                    console.log('[DEBUG] Auto-closing modal to show focus');
                     setExpandedCardId(null);
                 }
             }
@@ -358,12 +431,19 @@ const MessageItem = React.memo(({ message, index, marks, capturedNotes, parseMod
                             )}
                         </div>
                     ) : isAssistantStreaming ? (
-                        <div
-                            className="font-sans whitespace-pre-wrap break-words leading-relaxed"
-                            style={{ overflowWrap: 'anywhere' }}
-                        >
-                            {textContent}
-                            <span className="stream-flow-caret" aria-hidden="true">▎</span>
+                        <div className="font-sans break-words leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
+                            {streamingRenderedHtml && (
+                                <MessageContentWithCodeBlocks
+                                    html={sanitizeMarkdownHtml(streamingRenderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
+                                    codeBlocks={streamingCodeBlocksToRender}
+                                    onClick={handleMessageClick}
+                                />
+                            )}
+                            <div className="whitespace-pre-wrap break-words leading-relaxed">
+                                <span>{streamingLiveMainText}</span>
+                                {streamingLiveTailText && <span className="stream-flow-tail">{streamingLiveTailText}</span>}
+                                <span className="stream-flow-caret" aria-hidden="true">▎</span>
+                            </div>
                         </div>
                     ) : (
                         <MessageContentWithCodeBlocks

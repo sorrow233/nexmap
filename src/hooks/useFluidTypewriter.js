@@ -36,8 +36,7 @@ export const useFluidTypewriter = (targetContent, isStreaming) => {
                     currentLength.current = targetLen;
                     setDisplayedContent(targetContent);
                 }
-                // Stop rAF loop when caught up — next targetContent change
-                // will re-trigger the effect and restart the animation.
+                frameRef.current = requestAnimationFrame(animate);
                 return;
             }
 
