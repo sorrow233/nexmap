@@ -26,6 +26,11 @@ const normalizeTimestamp = (value) => {
     return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
 };
 
+const normalizeListOrder = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : Number.NaN;
+};
+
 export const isPlaceholderBoardTitle = (value) => {
     const normalized = normalizeTitleString(value).toLowerCase();
     if (!normalized) return true;
@@ -80,13 +85,16 @@ export const normalizeBoardTitleMeta = (board = {}) => {
         name = normalizedAutoTitle;
     }
 
+    const listOrder = normalizeListOrder(board.listOrder);
+
     return {
         ...normalizedDisplayBoard,
         name,
         nameSource,
         autoTitle: normalizedAutoTitle,
         autoTitleGeneratedAt,
-        manualTitleUpdatedAt
+        manualTitleUpdatedAt,
+        listOrder: Number.isFinite(listOrder) ? listOrder : undefined
     };
 };
 
@@ -122,6 +130,19 @@ export const getBoardDisplayName = (board, fallbackTitle = 'Untitled Board') => 
 };
 
 export const compareBoardsByGalleryOrder = (left, right) => {
+    const leftListOrder = normalizeListOrder(left?.listOrder);
+    const rightListOrder = normalizeListOrder(right?.listOrder);
+    const leftHasListOrder = Number.isFinite(leftListOrder);
+    const rightHasListOrder = Number.isFinite(rightListOrder);
+
+    if (leftHasListOrder && rightHasListOrder && leftListOrder !== rightListOrder) {
+        return leftListOrder - rightListOrder;
+    }
+
+    if (leftHasListOrder !== rightHasListOrder) {
+        return leftHasListOrder ? -1 : 1;
+    }
+
     const leftUpdatedAt = normalizeTimestamp(left?.updatedAt);
     const rightUpdatedAt = normalizeTimestamp(right?.updatedAt);
     if (rightUpdatedAt !== leftUpdatedAt) {
