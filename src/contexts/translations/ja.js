@@ -482,19 +482,7 @@ export const ja = {
         localStorageOnly: "ローカルのみ",
         lastSnapshot: "最終更新",
         currentStreak: "連続アクティブ",
-        hoverForDetails: "ホバーで詳細を表示",
-        totalOutput: "累計アウトプット",
-        activeDaysLabel: "アクティブ日数",
-        activeMonths: "アクティブ月数",
-        averagePerDay: "日次平均",
-        averagePerMonth: "月次平均",
-        averageBenchmark: "期間平均",
-        peakDay: "ピーク日",
-        peakMonth: "ピーク月",
-        activityRate: "稼働率",
-        dominantTimeWindow: "主力時間帯",
-        noActivityData: "有効なデータがありません",
-        months: "か月"
+        hoverForDetails: "ホバーで詳細を表示"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

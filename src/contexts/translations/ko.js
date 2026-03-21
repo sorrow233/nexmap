@@ -482,19 +482,7 @@ export const ko = {
         localStorageOnly: "로컬 저장소 전용",
         lastSnapshot: "마지막 업데이트",
         currentStreak: "연속 활동",
-        hoverForDetails: "마우스 오버로 상세 보기",
-        totalOutput: "누적 산출",
-        activeDaysLabel: "활성 일수",
-        activeMonths: "활성 개월",
-        averagePerDay: "일평균 산출",
-        averagePerMonth: "월평균 산출",
-        averageBenchmark: "기간 평균",
-        peakDay: "최고 일자",
-        peakMonth: "최고 월",
-        activityRate: "활성률",
-        dominantTimeWindow: "주력 시간대",
-        noActivityData: "유효한 활동 데이터가 없습니다",
-        months: "개월"
+        hoverForDetails: "마우스 오버로 상세 보기"
     },
     // ===== TOOLBAR TRANSLATIONS =====
     toolbar: {

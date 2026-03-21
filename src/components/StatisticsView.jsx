@@ -379,10 +379,10 @@ export default function StatisticsView({ boardsList, user }) {
                 </div>
 
                 {/* Bottom Section: Activity Chart (Soft dashboard) */}
-                <div className="relative left-1/2 w-[calc(100vw-1.5rem)] max-w-[1680px] -translate-x-1/2 rounded-[3.25rem] bg-white dark:bg-slate-800 px-6 py-8 sm:w-[calc(100vw-3rem)] sm:px-8 xl:px-12 xl:py-10 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)]">
+                <div className="w-full p-8 rounded-[3rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)]">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">{t.stats?.activityFlow || "Activity Flow"}</h3>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white">{t.stats?.activityFlow || "Activity Flow"}</h3>
                             <p className="text-sm text-slate-400 dark:text-slate-500">{t.stats?.activityFlowDesc || "Your creative output over time"}</p>
                         </div>
 
@@ -405,7 +405,7 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
                     </div>
 
-                    <div className="h-[460px] xl:h-[540px]">
+                    <div className="h-[280px]">
                         <ActivityChart
                             data={getChartData()}
                             viewMode={chartViewMode}
