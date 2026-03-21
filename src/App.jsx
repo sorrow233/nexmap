@@ -75,7 +75,6 @@ import {
 import { hasBoardDisplayMetadataPatch } from './services/boardTitle/displayMetadata';
 import { persistBoardDisplayMetadataSnapshot } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
-import { seedLocalBoardSnapshotIfRemoteEmpty } from './services/sync/firestoreBoardSync';
 
 export default function App() {
     return (
@@ -144,7 +143,6 @@ function AppContent() {
     const boardSyncControllerRef = useRef(null);
     const metadataSyncTimerRef = useRef(null);
     const metadataHydrationRetryTimerRef = useRef(null);
-    const seededBoardIdsRef = useRef(new Set());
     const [hasHydratedRemoteBoards, setHasHydratedRemoteBoards] = useState(false);
 
     // Dialog State
@@ -241,8 +239,6 @@ function AppContent() {
     useEffect(() => {
         let cancelled = false;
         setHasHydratedRemoteBoards(false);
-        seededBoardIdsRef.current = new Set();
-
         if (metadataHydrationRetryTimerRef.current) {
             clearTimeout(metadataHydrationRetryTimerRef.current);
             metadataHydrationRetryTimerRef.current = null;
@@ -313,39 +309,6 @@ function AppContent() {
                 clearTimeout(metadataSyncTimerRef.current);
                 metadataSyncTimerRef.current = null;
             }
-        };
-    }, [boardsList, hasHydratedRemoteBoards, user?.uid]);
-
-    useEffect(() => {
-        if (!user?.uid || !hasHydratedRemoteBoards) return undefined;
-
-        let cancelled = false;
-
-        const seedBoards = async () => {
-            for (const board of boardsList) {
-                if (cancelled) return;
-                if (!board?.id || board.deletedAt || isSampleBoardId(board.id)) continue;
-                if (seededBoardIdsRef.current.has(board.id)) continue;
-
-                try {
-                    const localSnapshot = await loadBoardDataForSearch(board.id);
-                    await seedLocalBoardSnapshotIfRemoteEmpty({
-                        userId: user.uid,
-                        boardId: board.id,
-                        snapshot: localSnapshot,
-                        deviceId: 'initial_seed'
-                    });
-                    seededBoardIdsRef.current.add(board.id);
-                } catch (error) {
-                    console.error(`[FirebaseSync] Failed to seed board ${board.id}:`, error);
-                }
-            }
-        };
-
-        void seedBoards();
-
-        return () => {
-            cancelled = true;
         };
     }, [boardsList, hasHydratedRemoteBoards, user?.uid]);
 

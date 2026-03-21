@@ -29,6 +29,28 @@ import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncP
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 
+const buildRootCheckpointKey = (rootData = {}) => {
+    if (!rootData || typeof rootData !== 'object') return '';
+
+    const storage = typeof rootData.checkpointStorage === 'string'
+        ? rootData.checkpointStorage
+        : '';
+    const savedAtMs = toFirestoreMillis(rootData.checkpointSavedAtMs);
+
+    if (storage === 'chunked') {
+        const checkpointSetId = typeof rootData.checkpointSetId === 'string'
+            ? rootData.checkpointSetId
+            : '';
+        const partCount = Number(rootData.checkpointPartCount) || 0;
+        return `chunked:${checkpointSetId}:${savedAtMs}:${partCount}`;
+    }
+
+    const base64Length = typeof rootData.checkpointBase64 === 'string'
+        ? rootData.checkpointBase64.length
+        : 0;
+    return `inline:${savedAtMs}:${base64Length}`;
+};
+
 export class FirestoreBoardSync {
     constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
         this.boardId = boardId;
@@ -48,9 +70,11 @@ export class FirestoreBoardSync {
         this.latestCheckpointSavedAtMs = 0;
         this.latestCheckpointServerSavedAt = null;
         this.latestCheckpointSignature = '';
+        this.latestCheckpointRootKey = '';
         this.connected = false;
         this.rootUnsubscribe = null;
         this.updateLogEnabled = true;
+        this.hasUnsnapshottedChanges = false;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -150,6 +174,8 @@ export class FirestoreBoardSync {
         this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || 0;
         this.latestCheckpointServerSavedAt = effectiveRootData?.checkpointServerSavedAt || null;
         this.latestCheckpointSignature = checkpoint.signature || '';
+        this.latestCheckpointRootKey = buildRootCheckpointKey(effectiveRootData);
+        this.hasUnsnapshottedChanges = false;
         const update = base64ToBytes(checkpoint.updateBase64);
         Y.applyUpdate(this.doc, update, FIREBASE_SYNC_ORIGINS.firestore);
     }
@@ -194,6 +220,15 @@ export class FirestoreBoardSync {
             }
 
             const remoteSavedAtMs = toFirestoreMillis(data.checkpointSavedAtMs);
+            const nextRootCheckpointKey = buildRootCheckpointKey(data);
+            if (
+                nextRootCheckpointKey &&
+                nextRootCheckpointKey === this.latestCheckpointRootKey &&
+                remoteSavedAtMs <= this.latestCheckpointSavedAtMs
+            ) {
+                return;
+            }
+
             if (remoteSavedAtMs < this.latestCheckpointSavedAtMs) {
                 return;
             }
@@ -211,6 +246,8 @@ export class FirestoreBoardSync {
             this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || remoteSavedAtMs || 0;
             this.latestCheckpointServerSavedAt = data.checkpointServerSavedAt || this.latestCheckpointServerSavedAt;
             this.latestCheckpointSignature = checkpoint.signature || '';
+            this.latestCheckpointRootKey = nextRootCheckpointKey || this.latestCheckpointRootKey;
+            this.hasUnsnapshottedChanges = false;
             Y.applyUpdate(this.doc, base64ToBytes(checkpoint.updateBase64), FIREBASE_SYNC_ORIGINS.firestore);
             this.remoteIsEmpty = false;
             this.onRemoteApplied?.();
@@ -244,6 +281,7 @@ export class FirestoreBoardSync {
 
         this.pendingUpdates.push(update);
         this.pendingBytes += update.byteLength || update.length || 0;
+        this.hasUnsnapshottedChanges = true;
         this.scheduleFlush();
     }
 
@@ -334,6 +372,7 @@ export class FirestoreBoardSync {
                 this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || this.latestCheckpointSavedAtMs;
                 this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
                 this.remoteIsEmpty = false;
+                this.hasUnsnapshottedChanges = false;
             }
 
             return checkpoint;
@@ -363,7 +402,7 @@ export class FirestoreBoardSync {
             }
         }
 
-        if (this.connected) {
+        if (this.connected && (this.hasUnsnapshottedChanges || !this.updateLogEnabled)) {
             await this.saveSnapshot('controller_stop');
         }
 

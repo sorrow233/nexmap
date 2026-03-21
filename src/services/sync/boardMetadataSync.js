@@ -19,6 +19,7 @@ import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail'];
 const FIRESTORE_WRITE_BATCH_LIMIT = 450;
 const METADATA_RETRY_DELAYS_MS = [0, 300, 900];
+const metadataSyncSignatureCache = new Map();
 
 const normalizeOptionalString = (value) => {
     if (value === undefined) return undefined;
@@ -41,6 +42,13 @@ const normalizeOptionalMillis = (value, { allowNull = false } = {}) => {
 const omitUndefinedFields = (payload = {}) => Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
 );
+
+const getUserMetadataSignatureCache = (userId) => {
+    if (!metadataSyncSignatureCache.has(userId)) {
+        metadataSyncSignatureCache.set(userId, new Map());
+    }
+    return metadataSyncSignatureCache.get(userId);
+};
 
 const sleep = (ms) => new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -84,6 +92,15 @@ const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     thumbnail: normalizeOptionalString(board.thumbnail)
 });
 
+const buildRemoteBoardMetadataSignature = (board = {}) => {
+    try {
+        return JSON.stringify(pickRemoteBoardMetadata(board));
+    } catch (error) {
+        console.warn('[FirebaseSync] Failed to build board metadata signature:', error);
+        return String(board?.id || '');
+    }
+};
+
 const getBoardCollectionRef = (userId) => collection(
     db,
     FIREBASE_SYNC_COLLECTIONS.users,
@@ -104,6 +121,11 @@ export const loadRemoteBoardMetadataList = async (userId) => {
     if (!db || !userId) return [];
     const snapshot = await withRetry(() => getDocs(getBoardCollectionRef(userId)));
     const boards = normalizeBoardMetadataList(snapshot.docs.map((item) => item.data()));
+    const cache = getUserMetadataSignatureCache(userId);
+
+    boards.forEach((board) => {
+        cache.set(board.id, buildRemoteBoardMetadataSignature(board));
+    });
 
     return boards.sort(compareBoardsByGalleryOrder);
 };
@@ -199,19 +221,40 @@ export const syncBoardMetadataListToRemote = async (userId, boards = []) => {
     const syncedBoards = normalizeBoardMetadataList(boards)
         .filter((board) => board?.id && !isSampleBoardId(board.id));
     syncedBoards.sort(compareBoardsByGalleryOrder);
+    const cache = getUserMetadataSignatureCache(userId);
+    const boardOrderMap = new Map(syncedBoards.map((board, index) => [board.id, index]));
+    const changedBoards = syncedBoards.filter((board, index) => {
+        const normalizedBoard = {
+            ...board,
+            listOrder: index
+        };
+        const nextSignature = buildRemoteBoardMetadataSignature(normalizedBoard);
+        const previousSignature = cache.get(board.id);
+        if (previousSignature === nextSignature) {
+            return false;
+        }
 
-    for (let offset = 0; offset < syncedBoards.length; offset += FIRESTORE_WRITE_BATCH_LIMIT) {
-        const currentSlice = syncedBoards.slice(offset, offset + FIRESTORE_WRITE_BATCH_LIMIT);
+        cache.set(board.id, nextSignature);
+        return true;
+    });
+
+    if (changedBoards.length === 0) {
+        return;
+    }
+
+    for (let offset = 0; offset < changedBoards.length; offset += FIRESTORE_WRITE_BATCH_LIMIT) {
+        const currentSlice = changedBoards.slice(offset, offset + FIRESTORE_WRITE_BATCH_LIMIT);
         await withRetry(async () => {
             const batch = writeBatch(db);
 
-            currentSlice.forEach((board, index) => {
+            currentSlice.forEach((board) => {
+                const listOrder = boardOrderMap.get(board.id) ?? 0;
                 batch.set(
                     doc(getBoardCollectionRef(userId), board.id),
                     buildAuthoritativeRootPayload({
                         ...pickRemoteBoardMetadata({
                             ...board,
-                            listOrder: offset + index
+                            listOrder
                         }),
                         syncedAt: serverTimestamp()
                     }),
