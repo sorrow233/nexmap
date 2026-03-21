@@ -91,9 +91,13 @@ const cleanupStaleCheckpointSets = async (userId, boardId, keepCheckpointId) => 
                 batch.delete(partDoc.ref);
             });
             await batch.commit();
+            // Throttle batch deletions to avoid "Resource Exhausted" error
+            await new Promise(resolve => setTimeout(resolve, 600));
         }
 
         await deleteDoc(setDocSnap.ref);
+        // Throttle individual doc deletions too just in case there are many sets
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
 };
 

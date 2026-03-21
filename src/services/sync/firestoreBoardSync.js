@@ -103,6 +103,21 @@ export class FirestoreBoardSync {
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
+
+        this.immediateFlushHandler = () => {
+            if (this.pendingUpdates.length > 0 || this.hasUnsnapshottedChanges || this.flushQueuedReason) {
+                this.flushPendingUpdates('pagehide_immediate').catch(() => {});
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('pagehide', this.immediateFlushHandler);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.immediateFlushHandler();
+                }
+            });
+        }
     }
 
     emitState(status, extra = {}) {
@@ -436,7 +451,8 @@ export class FirestoreBoardSync {
         }
 
         if (this.flushTimer) {
-            clearTimeout(this.flushTimer);
+            // Throttle instead of infinite debounce: let the existing timer fire
+            return;
         }
 
         this.flushTimer = setTimeout(() => {
@@ -662,6 +678,14 @@ export class FirestoreBoardSync {
         }
 
         this.doc.off('update', this.handleDocUpdate);
+        
+        if (typeof window !== 'undefined' && this.immediateFlushHandler) {
+            window.removeEventListener('pagehide', this.immediateFlushHandler);
+            // document visibilitychange can't be removed easily exactly, but it's safe to just leave it dead or we can ignore since it binds to inline arrow. 
+            // It's better to just set immediateFlushHandler to a no-op if stopped.
+            this.immediateFlushHandler = () => {};
+        }
+
         this.connected = false;
     }
 }
