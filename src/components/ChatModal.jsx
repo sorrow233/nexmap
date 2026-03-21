@@ -8,7 +8,9 @@ export default function ChatModal(props) {
 
     return (
         <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4"
+            className="chat-modal fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4"
+            role="dialog"
+            aria-modal="true"
             style={{ perspective: '1000px' }}
         >
             <div

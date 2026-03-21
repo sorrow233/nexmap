@@ -19,6 +19,7 @@ import {
     getInstructionCatalogBreakdown
 } from '../services/customInstructionsService';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
+import { isDialogActive, isEventInsideDialog } from '../utils/dialogScope';
 
 const isSameStringArray = (a = [], b = []) => {
     if (a.length !== b.length) return false;
@@ -208,9 +209,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     // Global Paste Listener (Images) - ONLY for canvas-level, NOT for card modals
     useEffect(() => {
         const handlePaste = (e) => {
-            // Skip if user is focused INSIDE a modal (card chat)
-            const activeEl = document.activeElement;
-            const isInsideModal = activeEl?.closest('.chat-modal, [role="dialog"]');
+            // Skip global image paste when the event originated inside a dialog.
+            const isInsideModal = isEventInsideDialog(e) || isDialogActive();
 
             if (isInsideModal) {
                 // Let the card-level useImageUpload handle this paste event

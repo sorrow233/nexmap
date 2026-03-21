@@ -56,6 +56,7 @@ export default function useImageUpload(options = {}) {
         }
         if (files.length > 0) {
             e.preventDefault();
+            e.stopPropagation();
             processFiles(files);
         }
     };
