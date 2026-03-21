@@ -243,7 +243,8 @@ export const saveBoardCheckpoint = async ({
     boardId,
     deviceId,
     updateBase64,
-    reason = 'manual_snapshot'
+    reason = 'manual_snapshot',
+    cleanupStale = false
 }) => {
     if (!db || !userId || !boardId || !updateBase64) {
         return null;
@@ -311,9 +312,11 @@ export const saveBoardCheckpoint = async ({
         })
     }, { merge: true });
 
-    void cleanupStaleCheckpointSets(userId, boardId, checkpointId).catch((error) => {
-        console.warn(`[FirebaseSync] Failed to cleanup stale checkpoint sets for ${boardId}`, error);
-    });
+    if (cleanupStale) {
+        void cleanupStaleCheckpointSets(userId, boardId, checkpointId).catch((error) => {
+            console.warn(`[FirebaseSync] Failed to cleanup stale checkpoint sets for ${boardId}`, error);
+        });
+    }
 
     return {
         savedAtMs,

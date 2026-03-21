@@ -31,6 +31,7 @@ import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigrati
 
 const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
 const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
+const SNAPSHOT_CLEANUP_SAVE_INTERVAL = 8;
 
 const buildRootCheckpointKey = (rootData = {}) => {
     if (!rootData || typeof rootData !== 'object') return '';
@@ -78,6 +79,11 @@ export class FirestoreBoardSync {
         this.rootUnsubscribe = null;
         this.updateLogEnabled = false;
         this.hasUnsnapshottedChanges = false;
+        this.flushPromise = null;
+        this.flushQueuedReason = '';
+        this.snapshotSavePromise = null;
+        this.snapshotSaveQueuedReason = '';
+        this.snapshotSaveCount = 0;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -314,87 +320,149 @@ export class FirestoreBoardSync {
     }
 
     async flushPendingUpdates(reason = 'manual') {
-        if (!this.pendingUpdates.length || !db) return;
-        const merged = Y.mergeUpdates(this.pendingUpdates);
-        this.pendingUpdates = [];
-        this.pendingBytes = 0;
+        if (!db) return;
+        if (this.flushPromise) {
+            this.flushQueuedReason = reason;
+            return this.flushPromise;
+        }
 
-        if (this.updateLogEnabled) {
-            const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-            const updateId = `${this.deviceId}_${Date.now()}_${uuid()}`;
-            this.ignoredEchoIds.add(updateId);
+        const runFlushLoop = async () => {
+            let nextReason = reason;
 
-            try {
-                await setDoc(doc(updatesRef, updateId), {
-                    updateBase64: bytesToBase64(merged),
-                    byteLength: merged.byteLength || merged.length || 0,
-                    deviceId: this.deviceId,
-                    reason,
-                    createdAtMs: Date.now(),
-                    createdAt: serverTimestamp()
-                });
-            } catch (error) {
-                this.updateLogEnabled = false;
-                this.emitState('warning', {
-                    message: error?.message || 'Update write failed, fallback to checkpoint mode'
-                });
-                await this.saveSnapshot('updates_fallback');
-                return;
+            while (this.pendingUpdates.length > 0) {
+                const currentReason = nextReason;
+                nextReason = '';
+                this.flushQueuedReason = '';
+
+                const merged = Y.mergeUpdates(this.pendingUpdates);
+                this.pendingUpdates = [];
+                this.pendingBytes = 0;
+
+                if (this.updateLogEnabled) {
+                    const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
+                    const updateId = `${this.deviceId}_${Date.now()}_${uuid()}`;
+                    this.ignoredEchoIds.add(updateId);
+
+                    try {
+                        await setDoc(doc(updatesRef, updateId), {
+                            updateBase64: bytesToBase64(merged),
+                            byteLength: merged.byteLength || merged.length || 0,
+                            deviceId: this.deviceId,
+                            reason: currentReason,
+                            createdAtMs: Date.now(),
+                            createdAt: serverTimestamp()
+                        });
+                    } catch (error) {
+                        this.updateLogEnabled = false;
+                        this.emitState('warning', {
+                            message: error?.message || 'Update write failed, fallback to checkpoint mode'
+                        });
+                        await this.saveSnapshot('updates_fallback');
+                        continue;
+                    }
+
+                    try {
+                        await setDoc(createBoardRootRef(this.userId, this.boardId), {
+                            ...buildAuthoritativeRootPayload({
+                                id: this.boardId,
+                                syncTouchedAtMs: Date.now(),
+                                serverUpdatedAt: serverTimestamp(),
+                                lastDeviceId: this.deviceId
+                            })
+                        }, { merge: true });
+                    } catch (error) {
+                        this.emitState('warning', {
+                            message: error?.message || 'Root sync touch write failed'
+                        });
+                    }
+
+                    this.flushCount += 1;
+                    if (this.flushCount >= FIREBASE_SYNC_LIMITS.snapshotAfterFlushes) {
+                        this.flushCount = 0;
+                        await this.saveSnapshot('periodic_compaction');
+                    }
+                } else {
+                    await this.saveSnapshot('checkpoint_only_flush');
+                }
+
+                if (this.pendingUpdates.length > 0) {
+                    nextReason = this.flushQueuedReason || 'followup';
+                }
             }
-        } else {
-            await this.saveSnapshot('checkpoint_only_flush');
-            return;
-        }
+        };
 
-        try {
-            await setDoc(createBoardRootRef(this.userId, this.boardId), {
-                ...buildAuthoritativeRootPayload({
-                id: this.boardId,
-                syncTouchedAtMs: Date.now(),
-                serverUpdatedAt: serverTimestamp(),
-                lastDeviceId: this.deviceId
-                })
-            }, { merge: true });
-        } catch (error) {
-            this.emitState('warning', {
-                message: error?.message || 'Root sync touch write failed'
-            });
-        }
+        this.flushPromise = runFlushLoop().finally(() => {
+            this.flushPromise = null;
+            this.flushQueuedReason = '';
+        });
 
-        this.flushCount += 1;
-        if (this.flushCount >= FIREBASE_SYNC_LIMITS.snapshotAfterFlushes) {
-            this.flushCount = 0;
-            await this.saveSnapshot('periodic_compaction');
-        }
+        return this.flushPromise;
     }
 
     async saveSnapshot(reason = 'manual_snapshot') {
         if (!db) return;
-        try {
-            const update = Y.encodeStateAsUpdate(this.doc);
-            const checkpoint = await saveBoardCheckpoint({
-                userId: this.userId,
-                boardId: this.boardId,
-                deviceId: this.deviceId,
-                updateBase64: bytesToBase64(update),
-                reason
-            });
+        if (this.snapshotSavePromise) {
+            this.snapshotSaveQueuedReason = reason;
+            return this.snapshotSavePromise;
+        }
 
-            if (checkpoint) {
-                this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || this.latestCheckpointSavedAtMs;
-                this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
-                this.remoteIsEmpty = false;
-                this.hasUnsnapshottedChanges = false;
+        const runSnapshotLoop = async () => {
+            let nextReason = reason;
+            let latestCheckpoint = null;
+
+            while (nextReason) {
+                const currentReason = nextReason;
+                nextReason = '';
+                this.snapshotSaveQueuedReason = '';
+
+                try {
+                    this.snapshotSaveCount += 1;
+                    const shouldCleanupStaleCheckpoints = (
+                        currentReason === 'controller_stop'
+                        || currentReason === 'periodic_compaction'
+                        || (this.snapshotSaveCount % SNAPSHOT_CLEANUP_SAVE_INTERVAL) === 0
+                    );
+
+                    const update = Y.encodeStateAsUpdate(this.doc);
+                    const checkpoint = await saveBoardCheckpoint({
+                        userId: this.userId,
+                        boardId: this.boardId,
+                        deviceId: this.deviceId,
+                        updateBase64: bytesToBase64(update),
+                        reason: currentReason,
+                        cleanupStale: shouldCleanupStaleCheckpoints
+                    });
+
+                    if (checkpoint) {
+                        this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || this.latestCheckpointSavedAtMs;
+                        this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
+                        this.remoteIsEmpty = false;
+                        this.hasUnsnapshottedChanges = false;
+                    }
+
+                    latestCheckpoint = checkpoint;
+                } catch (error) {
+                    console.error(`[FirebaseSync] Failed to save checkpoint for board ${this.boardId}:`, error);
+                    this.emitState('warning', {
+                        message: error?.message || 'Checkpoint save failed'
+                    });
+                    return null;
+                }
+
+                if (this.snapshotSaveQueuedReason) {
+                    nextReason = this.snapshotSaveQueuedReason;
+                }
             }
 
-            return checkpoint;
-        } catch (error) {
-            console.error(`[FirebaseSync] Failed to save checkpoint for board ${this.boardId}:`, error);
-            this.emitState('warning', {
-                message: error?.message || 'Checkpoint save failed'
-            });
-            return null;
-        }
+            return latestCheckpoint;
+        };
+
+        this.snapshotSavePromise = runSnapshotLoop().finally(() => {
+            this.snapshotSavePromise = null;
+            this.snapshotSaveQueuedReason = '';
+        });
+
+        return this.snapshotSavePromise;
     }
 
     async stop() {
@@ -414,7 +482,7 @@ export class FirestoreBoardSync {
             }
         }
 
-        if (this.connected && (this.hasUnsnapshottedChanges || !this.updateLogEnabled)) {
+        if (this.connected && this.hasUnsnapshottedChanges) {
             await this.saveSnapshot('controller_stop');
         }
 

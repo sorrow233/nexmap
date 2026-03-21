@@ -115,6 +115,7 @@ export const repairRemoteBoardSnapshotIfLocalNewer = async ({
             boardId,
             deviceId,
             updateBase64: bytesToBase64(Y.encodeStateAsUpdate(tempDoc)),
+            cleanupStale: true,
             reason: remoteSnapshot
                 ? (remoteLagsCardCount || remoteHasFewerCards
                     ? 'local_snapshot_cardcount_repair'
