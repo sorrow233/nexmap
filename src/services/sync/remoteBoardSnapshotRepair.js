@@ -3,20 +3,20 @@ import { getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
     createBoardDoc,
-    readBoardSnapshotFromDoc,
     syncBoardSnapshotToDoc
 } from './boardYDoc';
 import {
     isMeaningfullyEmptyBoardSnapshot,
     normalizeBoardSnapshot
 } from './boardSnapshot';
-import { base64ToBytes, bytesToBase64 } from './base64';
+import { bytesToBase64 } from './base64';
 import {
     hasRemoteCheckpoint,
     loadBoardCheckpoint,
     saveBoardCheckpoint
 } from './firestoreCheckpointStore';
 import { createBoardRootRef } from './firestoreSyncPaths';
+import { readCheckpointPayloadSnapshot } from './checkpointCompatibility';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 import { isPersistenceSnapshotNewer } from '../boardPersistence/persistenceCursor';
 
@@ -40,13 +40,10 @@ const readRemoteSnapshotFromCheckpoint = async ({ userId, boardId, rootData }) =
         return null;
     }
 
-    const tempDoc = createBoardDoc();
-    try {
-        Y.applyUpdate(tempDoc, base64ToBytes(checkpoint.updateBase64));
-        return readBoardSnapshotFromDoc(tempDoc);
-    } finally {
-        tempDoc.destroy();
-    }
+    return readCheckpointPayloadSnapshot({
+        updateBase64: checkpoint.updateBase64,
+        rootData
+    })?.snapshot || null;
 };
 
 export const repairRemoteBoardSnapshotIfLocalNewer = async ({
