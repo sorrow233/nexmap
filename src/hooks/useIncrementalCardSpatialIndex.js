@@ -20,7 +20,11 @@ export function useIncrementalCardSpatialIndex(cardIndexMutation) {
 
     if (lastMutationVersionRef.current !== nextVersion) {
         if (cardIndexMutation?.mode === 'patch') {
-            patchCardSpatialIndex(spatialIndexRef.current, cardIndexMutation.updatedCards || []);
+            const updatedIds = cardIndexMutation.updatedIds || [];
+            const updatedCards = updatedIds.length > 0
+                ? useStore.getState().getCardsByIds?.(updatedIds) || []
+                : [];
+            patchCardSpatialIndex(spatialIndexRef.current, updatedCards);
         } else {
             syncCardSpatialIndex(spatialIndexRef.current, useStore.getState().cards || []);
         }
