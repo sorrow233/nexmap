@@ -72,6 +72,8 @@ import {
     createBoardSnapshotFingerprint,
     normalizeBoardSnapshot
 } from './services/sync/boardSnapshot';
+import { hasBoardDisplayMetadataPatch } from './services/boardTitle/displayMetadata';
+import { persistBoardDisplayMetadataSnapshot } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
 import { seedLocalBoardSnapshotIfRemoteEmpty } from './services/sync/firestoreBoardSync';
 
@@ -648,6 +650,10 @@ function AppContent() {
                 ? normalizeBoardTitleMeta({ ...board, ...nextMetadata })
                 : board
         )));
+
+        if (hasBoardDisplayMetadataPatch(nextMetadata)) {
+            await persistBoardDisplayMetadataSnapshot(boardId, nextMetadata);
+        }
 
     }, [boardsList, setBoardsList]);
 

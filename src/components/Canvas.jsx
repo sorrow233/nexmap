@@ -11,6 +11,7 @@ import {
     resolveDraggedCardIds
 } from '../utils/cardDrag';
 import InstantTooltip from './InstantTooltip';
+import { optimizeImageUrl } from '../utils/imageOptimizer';
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -23,6 +24,7 @@ const isTextInputElement = (element) => {
 const EMPTY_POSITION_OVERRIDES = new Map();
 
 export default function Canvas({
+    boardBackgroundImage,
     onCreateNote,
     onCustomSprout,
     onCanvasDoubleClick,
@@ -510,6 +512,12 @@ export default function Canvas({
         }
     }, [isSummarizing, updateCardFull]);
 
+    const normalizedBackgroundUrl = (
+        typeof boardBackgroundImage === 'string' && boardBackgroundImage.trim()
+            ? optimizeImageUrl(boardBackgroundImage.trim(), 1800)
+            : ''
+    );
+
     return (
         <div
             ref={canvasRef}
@@ -536,6 +544,17 @@ export default function Canvas({
                 backgroundSize: '24px 24px'
             }}
         >
+            {normalizedBackgroundUrl && (
+                <div
+                    className="absolute inset-0 pointer-events-none bg-cover bg-center opacity-30"
+                    style={{ backgroundImage: `url(${normalizedBackgroundUrl})` }}
+                />
+            )}
+
+            {normalizedBackgroundUrl && (
+                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(248,250,252,0.08)_0%,rgba(248,250,252,0.16)_100%)] dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.25)_0%,rgba(2,6,23,0.45)_100%)]" />
+            )}
+
             <CanvasViewportLayer
                 contentRef={contentRef}
                 visibleGroups={visibleGroups}

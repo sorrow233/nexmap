@@ -12,6 +12,7 @@ const SUMMARY_THEME_ALIASES = {
 };
 
 const SUMMARY_THEME_SET = new Set(['blue', 'purple', 'indigo', 'emerald', 'orange', 'pink', 'slate']);
+export const BOARD_DISPLAY_SYNC_KEYS = Object.freeze(['summary', 'backgroundImage', 'thumbnail', 'autoImageTriggeredAt']);
 
 const normalizeLooseString = (value) => {
     if (value === undefined) return undefined;
@@ -73,3 +74,20 @@ export const normalizeBoardDisplayMetadata = (board = {}) => ({
     backgroundImage: normalizeLooseString(board.backgroundImage),
     thumbnail: normalizeLooseString(board.thumbnail)
 });
+
+export const pickBoardDisplayMetadata = (board = {}) => {
+    const normalized = normalizeBoardDisplayMetadata(board);
+    const next = {};
+
+    BOARD_DISPLAY_SYNC_KEYS.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(normalized, key)) {
+            next[key] = normalized[key];
+        }
+    });
+
+    return next;
+};
+
+export const hasBoardDisplayMetadataPatch = (metadata = {}) => BOARD_DISPLAY_SYNC_KEYS.some((key) => (
+    Object.prototype.hasOwnProperty.call(metadata, key)
+));

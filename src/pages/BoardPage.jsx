@@ -246,6 +246,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                         <ErrorBoundary level="canvas">
                             <div ref={canvasContainerRef} className="absolute inset-0">
                                 <Canvas
+                                    boardBackgroundImage={currentBoard?.backgroundImage || currentBoard?.thumbnail || ''}
                                     onCreateNote={handleCreateNote}
                                     onCreateStandaloneNote={createStandaloneNote}
                                     onCanvasDoubleClick={handleCanvasDoubleClick}

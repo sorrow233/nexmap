@@ -15,6 +15,10 @@ import {
     pickBoardTitleMetadata
 } from './boardTitle/metadata';
 import {
+    BOARD_DISPLAY_SYNC_KEYS,
+    pickBoardDisplayMetadata
+} from './boardTitle/displayMetadata';
+import {
     clearBoardShadowSnapshot,
     loadMostRecentBoardShadowSnapshot,
     pickMostRecentBoardSnapshot
@@ -29,7 +33,7 @@ const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
 const MAX_IDB_SAVE_RETRIES = 2;
 const IDB_RETRY_DELAY_MS = 80;
 const TITLE_METADATA_KEYS = ['name', 'nameSource', 'autoTitle', 'autoTitleGeneratedAt', 'manualTitleUpdatedAt'];
-const BOARD_DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail', 'deletedAt', 'autoImageTriggeredAt'];
+const BOARD_PERSISTED_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail', 'deletedAt', 'autoImageTriggeredAt'];
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -208,6 +212,12 @@ export const saveBoard = async (id, data) => {
     });
 
     if (boardIndex >= 0) {
+        BOARD_PERSISTED_METADATA_KEYS.forEach((key) => {
+            if (!Object.prototype.hasOwnProperty.call(payload, key) && Object.prototype.hasOwnProperty.call(list[boardIndex], key)) {
+                payload[key] = list[boardIndex][key];
+            }
+        });
+
         const nextBoardMeta = {
             ...list[boardIndex],
             updatedAt: timestamp,
@@ -228,7 +238,7 @@ export const saveBoard = async (id, data) => {
             });
         }
 
-        BOARD_DISPLAY_METADATA_KEYS.forEach((key) => {
+        BOARD_PERSISTED_METADATA_KEYS.forEach((key) => {
             if (Object.prototype.hasOwnProperty.call(data, key)) {
                 nextBoardMeta[key] = data[key];
             }
@@ -319,6 +329,17 @@ export const loadBoard = async (id) => {
         };
     }
 
+    const list = getRawBoardsList();
+    const boardIndex = list.findIndex((board) => board.id === id);
+    if (boardIndex >= 0) {
+        const boardMeta = list[boardIndex];
+        BOARD_PERSISTED_METADATA_KEYS.forEach((key) => {
+            if (!Object.prototype.hasOwnProperty.call(stored, key) && Object.prototype.hasOwnProperty.call(boardMeta, key)) {
+                stored[key] = boardMeta[key];
+            }
+        });
+    }
+
     if (preferredSource !== 'idb') {
         debugLog.storage(`[Storage] Recovering board ${id} from ${preferredSource}`);
         try {
@@ -397,14 +418,32 @@ export const loadBoard = async (id) => {
 
     // Always update last accessed time if we have a board
     if (finalBoard) {
-        const list = getRawBoardsList();
-        const boardIndex = list.findIndex(b => b.id === id);
-        if (boardIndex >= 0) {
-            list[boardIndex] = {
-                ...list[boardIndex],
+        const nextList = getRawBoardsList();
+        const nextBoardIndex = nextList.findIndex(b => b.id === id);
+        let shouldPersistMetadataBackfill = false;
+        if (nextBoardIndex >= 0) {
+            const nextBoardMeta = {
+                ...nextList[nextBoardIndex],
                 lastAccessedAt: Date.now()
             };
-            persistBoardsMetadataList(list, { reason: `loadBoard:lastAccessed:${id}` });
+
+            pickBoardDisplayMetadata(finalBoard);
+            BOARD_DISPLAY_SYNC_KEYS.forEach((key) => {
+                if (
+                    Object.prototype.hasOwnProperty.call(finalBoard, key) &&
+                    !Object.prototype.hasOwnProperty.call(nextBoardMeta, key)
+                ) {
+                    nextBoardMeta[key] = finalBoard[key];
+                    shouldPersistMetadataBackfill = true;
+                }
+            });
+
+            nextList[nextBoardIndex] = normalizeBoardTitleMeta(nextBoardMeta);
+            persistBoardsMetadataList(nextList, {
+                reason: shouldPersistMetadataBackfill
+                    ? `loadBoard:metadata_backfill:${id}`
+                    : `loadBoard:lastAccessed:${id}`
+            });
         }
     }
 
