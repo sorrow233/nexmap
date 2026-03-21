@@ -66,6 +66,8 @@ export default function ChatView({
     const [isQueueRunning, setIsQueueRunning] = useState(false);
     const isStreaming = isQueueRunning || isCardGenerating;
     const [isAtBottom, setIsAtBottom] = useState(true);
+    const isAtBottomRef = useRef(true);
+    const scrollFrameRef = useRef(null);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -128,18 +130,29 @@ export default function ChatView({
     };
 
     const scrollToBottom = (force = false) => {
-        if (force || isAtBottom) {
+        if (force || isAtBottomRef.current) {
             messagesEndRef.current?.scrollIntoView({ behavior: force ? "smooth" : "auto" });
         }
     };
 
-    const handleScroll = () => {
-        if (!scrollContainerRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        // Use a threshold (e.g., 100px) to determine if we are at the bottom
-        const atBottom = scrollTop + clientHeight >= scrollHeight - 100;
-        setIsAtBottom(atBottom);
-    };
+    const handleScroll = React.useCallback(() => {
+        if (scrollFrameRef.current) return;
+
+        scrollFrameRef.current = requestAnimationFrame(() => {
+            scrollFrameRef.current = null;
+            if (!scrollContainerRef.current) return;
+
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+            const nextAtBottom = scrollTop + clientHeight >= scrollHeight - 100;
+
+            if (isAtBottomRef.current === nextAtBottom) {
+                return;
+            }
+
+            isAtBottomRef.current = nextAtBottom;
+            setIsAtBottom(nextAtBottom);
+        });
+    }, []);
 
     useEffect(() => {
         if (isStreaming) {
@@ -150,6 +163,12 @@ export default function ChatView({
     // Force scroll to bottom on initial open
     useEffect(() => {
         setTimeout(() => scrollToBottom(true), 100);
+    }, []);
+
+    useEffect(() => () => {
+        if (scrollFrameRef.current) {
+            cancelAnimationFrame(scrollFrameRef.current);
+        }
     }, []);
 
 

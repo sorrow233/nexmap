@@ -4,7 +4,7 @@ import MessageItem from './MessageItem';
 import favoritesService from '../../services/favoritesService';
 import PendingQueueIndicator from './PendingQueueIndicator';
 
-export default function MessageList({
+const MessageList = React.memo(function MessageList({
     card,
     messagesEndRef,
     scrollContainerRef,
@@ -90,4 +90,6 @@ export default function MessageList({
             </div>
         </div>
     );
-}
+});
+
+export default MessageList;

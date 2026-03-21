@@ -154,7 +154,7 @@ const StickyNote = React.memo(function StickyNote({
     const handleMouseEnter = () => {
         scrollTimerRef.current = setTimeout(() => {
             setCanScroll(true);
-        }, 500); // 0.5s delay before enabling scroll
+        }, 120);
     };
 
     const handleMouseLeave = () => {
@@ -165,7 +165,7 @@ const StickyNote = React.memo(function StickyNote({
     // Helper: Stop propagation of wheel event to allow scrolling inside the note
     // This prevents the Canvas specific wheel listener (which preventsDefault) from intercepting it.
     const handleWheel = (e) => {
-        if (canScroll) {
+        if (isEditing || isExpanded || canScroll) {
             e.stopPropagation();
         }
     };
