@@ -99,6 +99,83 @@ const replaceArrayValue = (yarray, index, nextValue, path = []) => {
     yarray.insert(index, [createNodeFromValue(nextValue, path)]);
 };
 
+const getCardId = (card) => (
+    card && typeof card === 'object' && typeof card.id === 'string' && card.id.trim()
+        ? card.id.trim()
+        : ''
+);
+
+const getCardUpdatedAt = (card) => {
+    if (!card || typeof card !== 'object') return 0;
+    const updatedAt = Number(card.updatedAt);
+    if (Number.isFinite(updatedAt) && updatedAt > 0) {
+        return updatedAt;
+    }
+
+    const createdAt = Number(card.createdAt);
+    return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : 0;
+};
+
+const getCardDeletedAt = (card) => {
+    if (!card || typeof card !== 'object') return 0;
+    const deletedAt = Number(card.deletedAt);
+    return Number.isFinite(deletedAt) && deletedAt > 0 ? deletedAt : 0;
+};
+
+const shouldPreferIncomingCard = (currentCard, incomingCard) => {
+    if (!currentCard) return true;
+
+    const currentDeletedAt = getCardDeletedAt(currentCard);
+    const incomingDeletedAt = getCardDeletedAt(incomingCard);
+    if (currentDeletedAt !== incomingDeletedAt) {
+        return incomingDeletedAt > currentDeletedAt;
+    }
+
+    const currentUpdatedAt = getCardUpdatedAt(currentCard);
+    const incomingUpdatedAt = getCardUpdatedAt(incomingCard);
+    if (currentUpdatedAt !== incomingUpdatedAt) {
+        return incomingUpdatedAt >= currentUpdatedAt;
+    }
+
+    return true;
+};
+
+const mergeCardSnapshots = (currentCards = [], nextCards = []) => {
+    const currentById = new Map();
+    currentCards.forEach((card) => {
+        const cardId = getCardId(card);
+        if (cardId) {
+            currentById.set(cardId, card);
+        }
+    });
+
+    const seenIds = new Set();
+    const mergedCards = nextCards.map((incomingCard) => {
+        const cardId = getCardId(incomingCard);
+        if (!cardId) {
+            return incomingCard;
+        }
+
+        seenIds.add(cardId);
+        const currentCard = currentById.get(cardId);
+        return shouldPreferIncomingCard(currentCard, incomingCard)
+            ? incomingCard
+            : currentCard;
+    });
+
+    currentCards.forEach((currentCard) => {
+        const cardId = getCardId(currentCard);
+        if (!cardId || seenIds.has(cardId)) {
+            return;
+        }
+
+        // Missing card ids are preserved; only an explicit deletedAt update may retire them.
+        mergedCards.push(currentCard);
+    });
+
+    return mergedCards;
+};
+
 const syncObjectToYMap = (ymap, nextObject = {}, path = []) => {
     const nextKeys = new Set(Object.keys(nextObject));
 
@@ -236,7 +313,12 @@ export const syncBoardSnapshotToDoc = (doc, snapshot = {}) => {
     const root = doc.getMap('board');
 
     doc.transact(() => {
-        ROOT_KEYS.forEach((key) => {
+        const currentCards = root.has('cards')
+            ? readNodeToValue(root.get('cards'), ['cards'])
+            : [];
+        syncValueIntoParent(root, 'cards', mergeCardSnapshots(currentCards, normalized.cards), ['cards']);
+
+        ROOT_KEYS.filter((key) => key !== 'cards').forEach((key) => {
             syncValueIntoParent(root, key, normalized[key], [key]);
         });
     });
