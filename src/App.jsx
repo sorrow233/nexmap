@@ -618,6 +618,11 @@ function AppContent() {
         connections,
         groups
     ]);
+    const latestBoardSnapshotRef = useRef(currentBoardSnapshot);
+
+    useEffect(() => {
+        latestBoardSnapshotRef.current = currentBoardSnapshot;
+    }, [currentBoardSnapshot]);
 
     useEffect(() => {
         const controller = boardSyncControllerRef.current;
@@ -636,8 +641,14 @@ function AppContent() {
             boardSyncDebounceTimerRef.current = null;
         }
 
-        controller.applyLocalSnapshot(currentBoardSnapshot);
-    }, [currentBoardId, currentBoardSnapshot, generatingCardIds?.size, isBoardLoading]);
+        controller.applyLocalSnapshot(latestBoardSnapshotRef.current);
+    }, [
+        activeBoardPersistence?.clientRevision,
+        activeBoardPersistence?.updatedAt,
+        currentBoardId,
+        generatingCardIds?.size,
+        isBoardLoading
+    ]);
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {
