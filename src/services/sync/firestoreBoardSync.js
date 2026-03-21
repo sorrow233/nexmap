@@ -29,6 +29,9 @@ import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncP
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 
+const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
+const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
+
 const buildRootCheckpointKey = (rootData = {}) => {
     if (!rootData || typeof rootData !== 'object') return '';
 
@@ -73,7 +76,7 @@ export class FirestoreBoardSync {
         this.latestCheckpointRootKey = '';
         this.connected = false;
         this.rootUnsubscribe = null;
-        this.updateLogEnabled = true;
+        this.updateLogEnabled = false;
         this.hasUnsnapshottedChanges = false;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
@@ -117,14 +120,16 @@ export class FirestoreBoardSync {
         this.emitState('connecting');
         await this.loadRemoteCheckpoint();
 
-        try {
-            await this.loadTailUpdates();
-            this.subscribeToTailUpdates();
-        } catch (error) {
-            this.updateLogEnabled = false;
-            this.emitState('warning', {
-                message: error?.message || 'Firestore updates unavailable, fallback to checkpoint mode'
-            });
+        if (this.updateLogEnabled) {
+            try {
+                await this.loadTailUpdates();
+                this.subscribeToTailUpdates();
+            } catch (error) {
+                this.updateLogEnabled = false;
+                this.emitState('warning', {
+                    message: error?.message || 'Firestore updates unavailable, fallback to checkpoint mode'
+                });
+            }
         }
 
         this.subscribeToRootCheckpoint();
@@ -286,7 +291,14 @@ export class FirestoreBoardSync {
     }
 
     scheduleFlush() {
-        if (this.pendingBytes >= FIREBASE_SYNC_LIMITS.maxPendingUpdateBytes) {
+        const maxPendingBytes = this.updateLogEnabled
+            ? FIREBASE_SYNC_LIMITS.maxPendingUpdateBytes
+            : CHECKPOINT_ONLY_MAX_PENDING_BYTES;
+        const debounceMs = this.updateLogEnabled
+            ? FIREBASE_SYNC_LIMITS.uploadDebounceMs
+            : CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS;
+
+        if (this.pendingBytes >= maxPendingBytes) {
             void this.flushPendingUpdates('size_limit');
             return;
         }
@@ -298,7 +310,7 @@ export class FirestoreBoardSync {
         this.flushTimer = setTimeout(() => {
             this.flushTimer = null;
             void this.flushPendingUpdates('debounced');
-        }, FIREBASE_SYNC_LIMITS.uploadDebounceMs);
+        }, debounceMs);
     }
 
     async flushPendingUpdates(reason = 'manual') {
