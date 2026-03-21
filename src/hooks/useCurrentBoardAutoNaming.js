@@ -14,12 +14,15 @@ export function useCurrentBoardAutoNaming({
     isReadOnly = false,
     onUpdateBoardMetadata
 }) {
+    const generatingCount = Array.isArray(generatingCardIds)
+        ? generatingCardIds.length
+        : Number(generatingCardIds?.size || 0);
+    const activeCardCount = getEffectiveBoardCardCount(cards);
+
     useEffect(() => {
         if (!boardId || typeof onUpdateBoardMetadata !== 'function') return;
-
-        const activeCardCount = getEffectiveBoardCardCount(cards);
         const isEligible = !isReadOnly &&
-            generatingCardIds.length === 0 &&
+            generatingCount === 0 &&
             shouldAutoNameBoard(board, activeCardCount);
 
         if (!isEligible) {
@@ -59,11 +62,11 @@ export function useCurrentBoardAutoNaming({
         return () => clearTimeout(timer);
     }, [
         boardId,
-        board?.updatedAt,
+        board?.name,
         board?.autoTitleGeneratedAt,
         board?.nameSource,
-        cards,
-        generatingCardIds.length,
+        activeCardCount,
+        generatingCount,
         isReadOnly,
         onUpdateBoardMetadata
     ]);

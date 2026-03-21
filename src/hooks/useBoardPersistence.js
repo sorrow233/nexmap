@@ -115,6 +115,7 @@ export function useBoardPersistence({
     toast
 }) {
     const trackerRef = useRef(createSaveTracker(boardId));
+    const activeBoardPersistenceRef = useRef(activeBoardPersistence);
     const activePersistenceCursorRef = useRef(createActivePersistenceCursor());
     const latestBoardDataRef = useRef({
         cards,
@@ -152,6 +153,10 @@ export function useBoardPersistence({
     useEffect(() => {
         isBoardLoadingRef.current = isBoardLoading;
     }, [isBoardLoading]);
+
+    useEffect(() => {
+        activeBoardPersistenceRef.current = activeBoardPersistence;
+    }, [activeBoardPersistence]);
 
     const updateActivePersistenceCursor = useCallback((cursor = {}) => {
         if (typeof setActiveBoardPersistence !== 'function') return;
@@ -429,11 +434,12 @@ export function useBoardPersistence({
         const normalizedSettings = normalizeBoardInstructionSettings(
             boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
         );
+        const currentActivePersistence = activeBoardPersistenceRef.current;
         const loadedCursor = {
-            updatedAt: Number.isFinite(Number(activeBoardPersistence?.updatedAt))
-                ? Number(activeBoardPersistence.updatedAt)
+            updatedAt: Number.isFinite(Number(currentActivePersistence?.updatedAt))
+                ? Number(currentActivePersistence.updatedAt)
                 : 0,
-            clientRevision: toSafeRevision(activeBoardPersistence?.clientRevision)
+            clientRevision: toSafeRevision(currentActivePersistence?.clientRevision)
         };
         const currentPayload = buildBoardPayload({
             cards,
@@ -499,8 +505,6 @@ export function useBoardPersistence({
         scheduleShadowSave(revision);
         scheduleLocalSave(revision);
     }, [
-        activeBoardPersistence?.clientRevision,
-        activeBoardPersistence?.updatedAt,
         boardId,
         cards,
         connections,
