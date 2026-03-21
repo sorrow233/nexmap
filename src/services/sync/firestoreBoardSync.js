@@ -99,6 +99,7 @@ export class FirestoreBoardSync {
             clientRevision: 0,
             cardCount: 0
         };
+        this.lastFlushCompletedAt = 0;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -472,74 +473,90 @@ export class FirestoreBoardSync {
             return this.flushPromise;
         }
 
-        const runFlushLoop = async () => {
+        const runFlushStep = async () => {
             let nextReason = reason;
 
-            while (this.pendingUpdates.length > 0) {
-                const currentReason = nextReason;
-                nextReason = '';
-                this.flushQueuedReason = '';
+            // Enforce a hard throttle to protect Firestore's 1 write/sec single-document limit
+            // even if `size_limit` forces early flushes.
+            const timeSinceLastFlush = Date.now() - this.lastFlushCompletedAt;
+            const throttleMs = this.updateLogEnabled ? 1200 : 2500;
+            if (timeSinceLastFlush < throttleMs && this.lastFlushCompletedAt > 0) {
+                await new Promise(resolve => setTimeout(resolve, throttleMs - timeSinceLastFlush));
+            }
 
-                const merged = Y.mergeUpdates(this.pendingUpdates);
-                this.pendingUpdates = [];
-                this.pendingBytes = 0;
+            // Instead of looping continuously without delay, we just do ONE flush pass.
+            // If new updates arrive while we are flushing, they will be captured
+            // and processed in the NEXT debounced flush.
+            
+            this.flushQueuedReason = '';
+            
+            if (this.pendingUpdates.length === 0) {
+                return;
+            }
 
-                if (this.updateLogEnabled) {
-                    const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
-                    const updateId = `${this.deviceId}_${Date.now()}_${uuid()}`;
-                    this.ignoredEchoIds.add(updateId);
+            const currentReason = nextReason || 'debounced';
+            
+            const merged = Y.mergeUpdates(this.pendingUpdates);
+            this.pendingUpdates = [];
+            this.pendingBytes = 0;
 
-                    try {
-                        await setDoc(doc(updatesRef, updateId), {
-                            updateBase64: bytesToBase64(merged),
-                            byteLength: merged.byteLength || merged.length || 0,
-                            deviceId: this.deviceId,
-                            reason: currentReason,
-                            createdAtMs: Date.now(),
-                            createdAt: serverTimestamp()
-                        });
-                    } catch (error) {
-                        this.updateLogEnabled = false;
-                        this.emitState('warning', {
-                            message: error?.message || 'Update write failed, fallback to checkpoint mode'
-                        });
-                        await this.saveSnapshot('updates_fallback');
-                        continue;
-                    }
+            if (this.updateLogEnabled) {
+                const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
+                const updateId = `${this.deviceId}_${Date.now()}_${uuid()}`;
+                this.ignoredEchoIds.add(updateId);
 
-                    try {
-                        await setDoc(createBoardRootRef(this.userId, this.boardId), {
-                            ...buildAuthoritativeRootPayload({
-                                id: this.boardId,
-                                syncTouchedAtMs: Date.now(),
-                                serverUpdatedAt: serverTimestamp(),
-                                lastDeviceId: this.deviceId
-                            })
-                        }, { merge: true });
-                    } catch (error) {
-                        this.emitState('warning', {
-                            message: error?.message || 'Root sync touch write failed'
-                        });
-                    }
-
-                    this.flushCount += 1;
-                    if (this.flushCount >= FIREBASE_SYNC_LIMITS.snapshotAfterFlushes) {
-                        this.flushCount = 0;
-                        await this.saveSnapshot('periodic_compaction');
-                    }
-                } else {
-                    await this.saveSnapshot('checkpoint_only_flush');
+                try {
+                    await setDoc(doc(updatesRef, updateId), {
+                        updateBase64: bytesToBase64(merged),
+                        byteLength: merged.byteLength || merged.length || 0,
+                        deviceId: this.deviceId,
+                        reason: currentReason,
+                        createdAtMs: Date.now(),
+                        createdAt: serverTimestamp()
+                    });
+                } catch (error) {
+                    this.updateLogEnabled = false;
+                    this.emitState('warning', {
+                        message: error?.message || 'Update write failed, fallback to checkpoint mode'
+                    });
+                    await this.saveSnapshot('updates_fallback');
+                    return;
                 }
 
-                if (this.pendingUpdates.length > 0) {
-                    nextReason = this.flushQueuedReason || 'followup';
+                try {
+                    await setDoc(createBoardRootRef(this.userId, this.boardId), {
+                        ...buildAuthoritativeRootPayload({
+                            id: this.boardId,
+                            syncTouchedAtMs: Date.now(),
+                            serverUpdatedAt: serverTimestamp(),
+                            lastDeviceId: this.deviceId
+                        })
+                    }, { merge: true });
+                } catch (error) {
+                    this.emitState('warning', {
+                        message: error?.message || 'Root sync touch write failed'
+                    });
                 }
+
+                this.flushCount += 1;
+                if (this.flushCount >= FIREBASE_SYNC_LIMITS.snapshotAfterFlushes) {
+                    this.flushCount = 0;
+                    await this.saveSnapshot('periodic_compaction');
+                }
+            } else {
+                await this.saveSnapshot('checkpoint_only_flush');
             }
         };
 
-        this.flushPromise = runFlushLoop().finally(() => {
+        this.flushPromise = runFlushStep().finally(() => {
+            this.lastFlushCompletedAt = Date.now();
             this.flushPromise = null;
-            this.flushQueuedReason = '';
+            // If there are still pending updates (accumulated while we were flushing)
+            // or if a flush was actively queued, schedule the next flush via debounce 
+            // to respect Firestore rate limits.
+            if (this.pendingUpdates.length > 0 || this.flushQueuedReason) {
+                this.scheduleFlush();
+            }
         });
 
         return this.flushPromise;
