@@ -379,33 +379,35 @@ export default function StatisticsView({ boardsList, user }) {
                 </div>
 
                 {/* Bottom Section: Activity Chart (Soft dashboard) */}
-                <div className="w-full p-8 rounded-[3rem] bg-white dark:bg-slate-800 shadow-[20px_20px_60px_#d1d5db,-20px_-20px_60px_#ffffff] dark:shadow-[8px_8px_24px_rgba(0,0,0,0.4)]">
-                    <div className="flex items-center justify-between mb-8">
+                <div className="w-full p-8 sm:p-10 rounded-[2.5rem] bg-white dark:bg-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-slate-100 dark:border-slate-700/50">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 gap-6">
                         <div>
-                            <h3 className="text-xl font-bold text-slate-800 dark:text-white">{t.stats?.activityFlow || "Activity Flow"}</h3>
-                            <p className="text-sm text-slate-400 dark:text-slate-500">{t.stats?.activityFlowDesc || "Your creative output over time"}</p>
+                            <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                                {t.stats?.activityFlow || "创作心流"}
+                            </h3>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1.5">{t.stats?.activityFlowDesc || "您的长期创作活动趋势"}</p>
                         </div>
 
-                        {/* Soft Switch */}
-                        <div className="flex p-1.5 bg-slate-100 dark:bg-slate-700 rounded-2xl shadow-inner">
+                        {/* Modern Pill Switch */}
+                        <div className="flex p-1.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl shadow-inner border border-slate-100/50 dark:border-slate-800/50">
                             {['week', 'month', 'year'].map(mode => (
                                 <button
                                     key={mode}
                                     onClick={() => setChartViewMode(mode)}
                                     className={`
-                                        px-6 py-2 text-xs font-bold rounded-xl transition-all duration-300 uppercase tracking-wider
+                                        px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300
                                         ${chartViewMode === mode
-                                            ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-md'
-                                            : 'text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
+                                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10'
+                                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}
                                     `}
                                 >
-                                    {mode === 'week' ? t.stats?.weeklyTrend || 'WEEK' : mode === 'month' ? t.stats?.month || 'MONTH' : t.stats?.year || 'YEAR'}
+                                    {mode === 'week' ? t.stats?.weeklyTrend || '7日趋势' : mode === 'month' ? t.stats?.month || '月视图' : t.stats?.year || '年视图'}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="h-[280px]">
+                    <div className="h-[400px]">
                         <ActivityChart
                             data={getChartData()}
                             viewMode={chartViewMode}
