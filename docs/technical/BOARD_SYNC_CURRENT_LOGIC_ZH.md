@@ -154,20 +154,14 @@ flowchart TD
 现在的做法是：
 
 1. `performLocalSave()` 成功后，已经拿到一份真正写入本地存储的 `payload`
-2. `useBoardPersistence.js` 调用 `emitPersistedBoardSyncSnapshot({ boardId, snapshot: payload, source: reason })`
-3. `localPersistedBoardSyncBridge.js` 不会立刻把每一次本地保存都原样发给同步层，而是先做一层“远端同步节流”：
-   - 页面隐藏、离开页面、AI 完成后的 flush 这类关键保存，会立即发给同步层
-   - 常规 `debounced_local` 保存会按 snapshot 体量做二次延迟合并
-   - 小画布延迟较短，大画布延迟更长
-   - 同一张 board 在延迟窗口里只保留最新的一份 payload
-4. `App.jsx` 订阅桥接事件
-5. 只有收到“经过桥接层节流后的稳定 payload”时，才调用 `controller.applyLocalSnapshot(...)`
+2. `useBoardPersistence.js` 调用 `emitPersistedBoardSyncSnapshot({ boardId, snapshot: payload })`
+3. `App.jsx` 订阅这个桥接事件
+4. 只有收到“已落盘成功的 payload”时，才调用 `controller.applyLocalSnapshot(...)`
 
 这意味着：
 
 - 远端同步不再直接由 live store 驱动
-- 也不再等于“每次本地保存都立刻整板外发”
-- 而是由“本地保存成功后的稳定 payload”驱动
+- 而是由“本地保存成功”驱动
 
 ## 5. BoardSyncController 当前怎么处理本地 snapshot
 
@@ -263,34 +257,6 @@ Y.Doc 的根键包括：
 ## 7. Firestore 当前怎么写入
 
 文件：`src/services/sync/firestoreBoardSync.js`
-
-## 8. 当前这次问题的真正根因
-
-这次 `resource-exhausted: Write stream exhausted maximum allowed queued writes` 的根因，不是单独某个 Firestore 参数，而是下面这条放大链：
-
-1. 画布有局部变化
-2. `useBoardPersistence` 很快完成一次本地 durable save
-3. 本地保存成功后，把整份 board payload 广播给同步桥
-4. 同步桥以前会立刻把这份整板 payload 交给 `App`
-5. `App` 再调用 `BoardSyncController.applyLocalSnapshot(...)`
-6. `BoardSyncController` 把整份 board snapshot 同步进 Y.Doc
-7. `FirestoreBoardSync.handleDocUpdate()` 看到 doc 变了，就开始 flush / saveSnapshot
-
-对大画布来说，上面这条链的问题在于：
-
-- 本地保存频率本来就比远端同步应该更高
-- 但旧逻辑把“本地保存成功”直接等价成“立刻整板远端同步”
-- 大画布每次都是整板 `cards / connections / groups / prompts` 重新进入 Y.Doc
-- `FIREBASE_SYNC_LIMITS.maxPendingUpdateBytes` 又比较小，整板更新几乎会立刻触发 flush
-
-所以真正的结构性问题是：
-
-`本地保存和远端同步耦合得太紧，导致本地安全保存的节奏，直接变成了远端 Firestore 写入节奏。`
-
-本次修复的目标就是把这两个节奏拆开：
-
-- 本地保存仍然高频，保证安全
-- 远端同步改成只吃“经过桥接层稳定后的 payload”
 
 ### 7.1 本地 doc 更新后的处理
 
