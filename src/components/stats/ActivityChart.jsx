@@ -20,7 +20,7 @@ export default function ActivityChart({
         const isMonth = viewMode === 'month';
 
         return {
-            height: 300,
+            height: 240,
             barWidth: isYear ? 24 : isMonth ? 8 : 48,
             gap: isYear ? 32 : isMonth ? 6 : 24,
             radius: isMonth ? 4 : 16
@@ -61,9 +61,9 @@ export default function ActivityChart({
     };
 
     return (
-        <div className="space-y-6 select-none w-full h-full flex flex-col">
+        <div className="space-y-4 select-none w-full h-full flex flex-col">
             {/* 1. Main Chart Area - Clean & Empty container, visuals are in SVG */}
-            <div className="relative group/chart flex-1 min-h-[250px] flex flex-col justify-between">
+            <div className="relative group/chart flex-1 min-h-[320px] flex flex-col justify-between">
 
                 {/* Header / Tooltip Area */}
                 <div className="flex items-end justify-between mb-6 px-2 relative z-20 h-10">
@@ -94,7 +94,7 @@ export default function ActivityChart({
                 </div>
 
                 {/* SVG Chart */}
-                <div className="relative w-full flex-1 flex items-end justify-center mt-4">
+                <div className="relative w-full flex-1 flex items-end justify-center mt-2">
                     <svg
                         width="100%"
                         height="100%"
@@ -209,7 +209,7 @@ export default function ActivityChart({
 
             {/* 3. Time Distribution Bar - Pastel Segments */}
             {totalTimeChars > 0 && (
-                <div className="pt-6 px-2">
+                <div className="pt-2 px-2 relative z-10">
                     <div className="h-4 rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-700/50 shadow-inner">
                         <DistributionSegment value={timeDistribution.morning} total={totalTimeChars} color="bg-[#FDE68A] dark:bg-amber-300" />
                         <DistributionSegment value={timeDistribution.afternoon} total={totalTimeChars} color="bg-[#FDBA74] dark:bg-orange-300" />
@@ -235,12 +235,9 @@ const DistributionSegment = ({ value, total, color }) => {
     const width = (value / total) * 100;
     return (
         <div
-            className={`h-full ${color} first:rounded-l-full last:rounded-r-full hover:brightness-105 transition-all cursor-crosshair relative group`}
+            className={`h-full ${color} first:rounded-l-full last:rounded-r-full transition-all relative`}
             style={{ width: `${width}%` }}
         >
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white text-slate-600 shadow-[0_4px_12px_rgba(0,0,0,0.1)] text-[10px] font-bold rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-20">
-                {Math.round(width)}%
-            </div>
         </div>
     );
 };

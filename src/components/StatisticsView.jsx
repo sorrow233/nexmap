@@ -407,7 +407,7 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
                     </div>
 
-                    <div className="h-[400px]">
+                    <div className="min-h-[520px] xl:min-h-[560px]">
                         <ActivityChart
                             data={getChartData()}
                             viewMode={chartViewMode}
