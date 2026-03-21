@@ -8,6 +8,7 @@ import ErrorBoundary from '../ErrorBoundary';
 
 const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
     contentRef,
+    isSuspended,
     visibleGroups,
     connectionCards,
     connectionCardMap,
@@ -34,22 +35,26 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
 }) {
     return (
         <>
-            <ConnectionLayer
-                cards={connectionCards}
-                cardMap={connectionCardMap}
-                connections={visibleConnections}
-                offset={offset}
-                scale={scale}
-            />
+            {!isSuspended && (
+                <ConnectionLayer
+                    cards={connectionCards}
+                    cardMap={connectionCardMap}
+                    connections={visibleConnections}
+                    offset={offset}
+                    scale={scale}
+                />
+            )}
 
-            <ActiveConnectionLayer
-                cards={connectionCards}
-                cardMap={connectionCardMap}
-                connections={visibleConnections}
-                selectedIdSet={selectedIdSet}
-                offset={offset}
-                scale={scale}
-            />
+            {!isSuspended && (
+                <ActiveConnectionLayer
+                    cards={connectionCards}
+                    cardMap={connectionCardMap}
+                    connections={visibleConnections}
+                    selectedIdSet={selectedIdSet}
+                    offset={offset}
+                    scale={scale}
+                />
+            )}
 
             <div
                 ref={contentRef}

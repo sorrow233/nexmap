@@ -166,6 +166,7 @@ export default function BoardPage({ user, boardsList, onUpdateBoardTitle, onUpda
                             <div ref={canvasContainerRef} className="absolute inset-0">
                                 <Canvas
                                     boardBackgroundImage={currentBoard?.backgroundImage || currentBoard?.thumbnail || ''}
+                                    isSuspended={Boolean(expandedCardId)}
                                     onCreateNote={handleCreateNote}
                                     onCreateStandaloneNote={createStandaloneNote}
                                     onCanvasDoubleClick={handleCanvasDoubleClick}

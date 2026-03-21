@@ -130,11 +130,14 @@ export default function ChatView({
         }
     };
 
-    const scrollToBottom = (force = false) => {
-        if (force || isAtBottomRef.current) {
-            messagesEndRef.current?.scrollIntoView({ behavior: force ? "smooth" : "auto" });
+    const scrollToBottom = React.useCallback((force = false) => {
+        if ((!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
+            return;
         }
-    };
+
+        const container = scrollContainerRef.current;
+        container.scrollTop = container.scrollHeight;
+    }, []);
 
     const handleScroll = React.useCallback(() => {
         if (scrollFrameRef.current) return;
@@ -163,8 +166,9 @@ export default function ChatView({
 
     // Force scroll to bottom on initial open
     useEffect(() => {
-        setTimeout(() => scrollToBottom(true), 100);
-    }, []);
+        const timerId = setTimeout(() => scrollToBottom(true), 0);
+        return () => clearTimeout(timerId);
+    }, [scrollToBottom]);
 
     useEffect(() => () => {
         if (scrollFrameRef.current) {
@@ -431,12 +435,12 @@ export default function ChatView({
     return (
         <div
             ref={modalRef}
-            className={`w-full h-full flex flex-col lg:flex-row overflow-hidden animate-fade-in relative z-10 transition-all duration-500
+            className={`w-full h-full flex flex-col lg:flex-row overflow-hidden relative z-10
                 ${isFullScreen
                     ? 'bg-white dark:bg-slate-900'
                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)]'
                 }`}
-            style={{ willChange: 'transform, opacity' }}
+            style={{ willChange: 'auto' }}
             onMouseUp={handleTextSelection}
             onTouchEnd={handleTextSelection}
         >

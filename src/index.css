@@ -833,8 +833,7 @@ body,
 
     .stream-flow-tail {
         color: inherit;
-        animation: stream-tail-flow 0.62s ease-in-out infinite;
-        will-change: opacity, filter;
+        opacity: 0.88;
     }
 
     @keyframes stream-caret-pulse {
@@ -858,8 +857,7 @@ body,
         display: inline-block;
         margin-left: 1px;
         color: currentColor;
-        opacity: 0.2;
-        animation: stream-caret-pulse 0.78s ease-in-out infinite;
+        opacity: 0.55;
         user-select: none;
         pointer-events: none;
     }

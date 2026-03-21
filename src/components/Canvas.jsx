@@ -26,6 +26,7 @@ const EMPTY_POSITION_OVERRIDES = new Map();
 
 export default function Canvas({
     boardBackgroundImage,
+    isSuspended = false,
     onCreateNote,
     onCustomSprout,
     onCanvasDoubleClick,
@@ -598,6 +599,7 @@ export default function Canvas({
 
             <CanvasViewportLayer
                 contentRef={contentRef}
+                isSuspended={isSuspended}
                 visibleGroups={visibleGroups}
                 connectionCards={connectionCards}
                 connectionCardMap={connectionCardMap}
