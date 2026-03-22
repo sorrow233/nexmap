@@ -83,6 +83,7 @@ import {
     createBoardChangeState,
     syncBoardChangeStateToCursor
 } from './store/slices/utils/boardChangeState';
+import { buildBoardChangeIntegrityHash } from './store/slices/utils/boardChangeIntegrity';
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 
 export default function App() {
@@ -211,6 +212,7 @@ function AppContent() {
         const normalized = normalizeBoardSnapshot(snapshot);
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
         const currentBoardChangeState = useStore.getState().boardChangeState;
+        const integrityHash = buildBoardChangeIntegrityHash(normalized);
 
         // Build the merged state patch — single zustand set() to avoid N separate renders.
         // In async callbacks (IDB / Firebase), React 18 automatic batching does NOT cover
@@ -232,7 +234,11 @@ function AppContent() {
             boardChangeState: syncBoardChangeStateToCursor(
                 currentBoardChangeState,
                 normalized,
-                options.source === 'remote_sync' ? 'sync_apply' : 'local_load'
+                options.source === 'remote_sync' ? 'sync_apply' : 'local_load',
+                {
+                    integrityHash,
+                    validatedAt: normalized.updatedAt || Date.now()
+                }
             ),
             cardIndexMutation: nextCardIndexMutation(currentCardIndexMutation, {
                 mode: 'bulk',

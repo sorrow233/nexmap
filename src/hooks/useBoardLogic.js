@@ -9,6 +9,7 @@ import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCurrentBoardAutoNaming } from './useCurrentBoardAutoNaming';
 import { useBoardPersistence } from './useBoardPersistence';
+import { useBoardChangeIntegrityMonitor } from './useBoardChangeIntegrityMonitor';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings,
@@ -167,6 +168,18 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         setLastSavedAt,
         setActiveBoardPersistence,
         toast
+    });
+
+    useBoardChangeIntegrityMonitor({
+        boardId: currentBoardId,
+        cards,
+        connections,
+        groups,
+        boardPrompts,
+        boardInstructionSettings: normalizedBoardInstructionSettings,
+        boardChangeState,
+        isBoardLoading,
+        hasGeneratingCards: generatingCardIds.size > 0
     });
 
     // --- PASTE LOGIC ---

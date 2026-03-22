@@ -1,5 +1,6 @@
 import { calculateGridLayout } from '../../utils/autoLayout';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
+import { bumpBoardChangeState } from './utils/boardChangeState';
 
 export const createSelectionSlice = (set, get) => ({
     // selectedIds is typically managed in canvasSlice or similar, but used here.
@@ -60,7 +61,10 @@ export const createSelectionSlice = (set, get) => ({
                     scope: 'geometry',
                     updatedCards,
                     reason: 'arrangeSelectionGrid'
-                })
+                }),
+                boardChangeState: updatedCards.length > 0
+                    ? bumpBoardChangeState(state.boardChangeState, 'card_move')
+                    : state.boardChangeState
             };
         });
     },
@@ -106,7 +110,10 @@ export const createSelectionSlice = (set, get) => ({
                 ),
                 generatingCardTaskCounts: nextGeneratingTaskCounts,
                 selectedIds: [],
-                expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId
+                expandedCardId: selectedIdSet.has(state.expandedCardId) ? null : state.expandedCardId,
+                boardChangeState: updatedCards.length > 0
+                    ? bumpBoardChangeState(state.boardChangeState, 'card_delete')
+                    : state.boardChangeState
             };
         });
     },

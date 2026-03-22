@@ -12,6 +12,12 @@ import { createSettingsSlice } from './slices/settingsSlice';
 import { createShareSlice } from './slices/shareSlice';
 import { createCreditsSlice } from './slices/creditsSlice';
 import { createBoardSlice } from './slices/boardSlice';
+import { nextCardIndexMutation } from './slices/utils/cardIndexMutation';
+import {
+    bumpBoardChangeState,
+    markBoardChangeStateValidated
+} from './slices/utils/boardChangeState';
+import { buildBoardChangeIntegrityHash } from './slices/utils/boardChangeIntegrity';
 
 
 // --- Global Store with Temporal Middleware ---
@@ -45,16 +51,53 @@ const useStoreBase = create(
         }),
         {
             limit: 50,
-            equality: (a, b) => a.cards === b.cards && a.connections === b.connections,
+            equality: (a, b) => (
+                a.cards === b.cards &&
+                a.connections === b.connections &&
+                a.groups === b.groups &&
+                a.boardPrompts === b.boardPrompts &&
+                a.boardInstructionSettings === b.boardInstructionSettings
+            ),
             partialize: (state) => ({
                 cards: state.cards,
                 connections: state.connections,
                 groups: state.groups, // Persist groups
-                boardPrompts: state.boardPrompts // Persist board prompts
+                boardPrompts: state.boardPrompts, // Persist board prompts
+                boardInstructionSettings: state.boardInstructionSettings
             })
         }
     )
 );
+
+
+const reconcileBoardStateAfterHistoryAction = (changeType) => {
+    const currentState = useStoreBase.getState();
+    const integrityHash = buildBoardChangeIntegrityHash({
+        cards: currentState.cards,
+        connections: currentState.connections,
+        groups: currentState.groups,
+        boardPrompts: currentState.boardPrompts,
+        boardInstructionSettings: currentState.boardInstructionSettings
+    });
+    const nextBoardChangeState = markBoardChangeStateValidated(
+        bumpBoardChangeState(currentState.boardChangeState, changeType, {
+            changedAt: Date.now()
+        }),
+        {
+            integrityHash,
+            validatedAt: Date.now()
+        }
+    );
+
+    useStoreBase.setState({
+        boardChangeState: nextBoardChangeState,
+        cardIndexMutation: nextCardIndexMutation(currentState.cardIndexMutation, {
+            mode: 'bulk',
+            reason: `temporal:${changeType}`
+        })
+    });
+    useStoreBase.getState().rebuildCardLookup?.(currentState.cards);
+};
 
 
 
@@ -70,4 +113,24 @@ export function useTemporalStore(selector, equality) {
     return useStoreWithEqualityFn(useStoreBase.temporal, selector, equality);
 }
 
-export const { undo, redo, clear: clearHistory } = useStoreBase.temporal.getState();
+export const undo = () => {
+    const temporalState = useStoreBase.temporal.getState();
+    if (!temporalState.pastStates?.length) {
+        return;
+    }
+
+    temporalState.undo();
+    reconcileBoardStateAfterHistoryAction('undo');
+};
+
+export const redo = () => {
+    const temporalState = useStoreBase.temporal.getState();
+    if (!temporalState.futureStates?.length) {
+        return;
+    }
+
+    temporalState.redo();
+    reconcileBoardStateAfterHistoryAction('redo');
+};
+
+export const clearHistory = () => useStoreBase.temporal.getState().clear();

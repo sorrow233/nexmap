@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutGrid, Undo2, Redo2, Sparkles, Upload } from 'lucide-react';
-import { useTemporalStore } from '../../store/useStore';
+import { redo as performRedo, undo as performUndo, useTemporalStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../services/boardTitle/metadata';
 
@@ -13,8 +13,6 @@ export default function BoardTopBar({
     onForceSyncBoard,
     isForceSyncing = false
 }) {
-    const undo = useTemporalStore((state) => state.undo);
-    const redo = useTemporalStore((state) => state.redo);
     const pastStates = useTemporalStore((state) => state.pastStates);
     const futureStates = useTemporalStore((state) => state.futureStates);
     const { t } = useLanguage();
@@ -60,7 +58,7 @@ export default function BoardTopBar({
                 <div className="h-5 md:h-6 w-[1px] bg-slate-200 mx-1 md:mx-2" />
                 <div className="flex items-center gap-1">
                     <button
-                        onClick={() => undo()}
+                        onClick={() => performUndo()}
                         disabled={pastStates.length === 0}
                         className={`p-2 rounded-xl transition-all ${pastStates.length === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`}
                         title="Undo (Ctrl+Z)"
@@ -68,7 +66,7 @@ export default function BoardTopBar({
                         <Undo2 size={18} />
                     </button>
                     <button
-                        onClick={() => redo()}
+                        onClick={() => performRedo()}
                         disabled={futureStates.length === 0}
                         className={`p-2 rounded-xl transition-all ${futureStates.length === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`}
                         title="Redo (Ctrl+Shift+Z)"

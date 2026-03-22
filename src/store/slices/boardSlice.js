@@ -84,7 +84,12 @@ export const createBoardSlice = (set, get) => ({
     })),
 
     // Set all board prompts (e.g. when loading board data)
-    setBoardPrompts: (prompts) => set({ boardPrompts: prompts || [] }),
+    setBoardPrompts: (prompts, options = {}) => set((state) => ({
+        boardPrompts: prompts || [],
+        boardChangeState: options.changeType
+            ? bumpBoardChangeState(state.boardChangeState, options.changeType)
+            : state.boardChangeState
+    })),
 
     setBoardInstructionSettings: (settings, options = {}) => {
         set((state) => ({

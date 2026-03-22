@@ -10,7 +10,10 @@ const CHANGE_SYNC_DELAY_MS = Object.freeze({
     connection_change: 500,
     group_change: 500,
     board_prompt_change: 500,
-    board_instruction_change: 500
+    board_instruction_change: 500,
+    undo: 450,
+    redo: 450,
+    integrity_repair: 450
 });
 
 const SKIPPED_CHANGE_TYPES = new Set([

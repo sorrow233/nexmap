@@ -17,6 +17,7 @@
 - `src/App.jsx`
 - `src/services/sync/localPersistedBoardSyncBridge.js`
 - `src/hooks/useRevisionDrivenBoardSync.js`
+- `src/hooks/useBoardChangeIntegrityMonitor.js`
 
 职责：
 
@@ -25,6 +26,7 @@
 - 把“保存确认”和“数据同步”彻底拆开
 - `localPersistedBoardSyncBridge` 现在只表示“本地保存成功”
 - `useRevisionDrivenBoardSync` 只在真实业务 revision 前进时，按独立节流把当前内容送进同步控制器
+- `useBoardChangeIntegrityMonitor` 会在长时间空闲后做一次慢速完整性校验，检查“数据是否变化但 revision 没动”
 
 ### 1.2 本地持久化
 
@@ -150,6 +152,24 @@ flowchart TD
   - 选中、悬停等 UI 状态
   - 同步层内部状态
 
+当前版本为了保证 revision 的可靠性，又新增了三条规则：
+
+1. 所有真正的数据改动路径都必须走统一的 `bumpBoardChangeState(...)`
+   - 包括 `aiSlice` 的流式落盘、assistant meta 写入、重新生成
+   - 包括批量删除、网格整理
+   - 包括 prompts / instruction settings / cards / connections / groups
+
+2. `undo / redo` 不会回退到旧 revision
+   - 数据回到旧内容后，revision 仍然继续递增
+   - 同时记录 `lastChangeType = undo | redo`
+   - 撤销重做后的当前整板内容会重新计算完整性 hash，作为新的验证基线
+
+3. 低频完整性校验
+   - 画布空闲 5 分钟后，会在浏览器空闲时段重新计算一次整板完整性 hash
+   - 如果发现“tracked data 已变，但 lastValidatedRevision 仍等于当前 revision”，说明有路径漏掉了 revision 递增
+   - 这时系统会自动执行一次 `integrity_repair`
+   - 修复方式是：递增 revision，并把当前整板内容写成新的验证基线
+
 这意味着：
 
 - `useBoardPersistence` 不再依赖“整板 `JSON.stringify` 指纹”判断变化
@@ -201,6 +221,38 @@ flowchart TD
 
 - 保存确认和数据同步已经解耦
 - 本地保存成功不再导致整板 snapshot 再次走同步控制器
+
+### 4.2 revision 可靠性现在如何保证
+
+文件：
+
+- `src/store/slices/utils/boardChangeState.js`
+- `src/store/slices/utils/boardChangeIntegrity.js`
+- `src/store/useStore.js`
+- `src/hooks/useBoardChangeIntegrityMonitor.js`
+
+当前版本中，revision 的可靠性保护分成三层：
+
+1. 统一递增入口
+   - 所有业务数据变更都统一通过 `bumpBoardChangeState`
+   - 不再允许局部绕过 revision 逻辑直接改 tracked board data
+
+2. undo / redo 包装层
+   - `useStore.js` 不再直接导出 zundo 的原始 `undo/redo`
+   - 现在撤销/重做后，会立即：
+     - 重建卡片查找缓存
+     - 刷新 `cardIndexMutation`
+     - 递增 revision
+     - 记录 `undo/redo` 变更类型
+     - 重新写入当前完整性 hash
+   - `zundo` 的 equality 现在也不再只比较 `cards / connections`
+   - `groups / boardPrompts / boardInstructionSettings` 也纳入了撤销历史判定
+
+3. 慢速完整性校验
+   - 在没有生成任务、画布也不在加载时
+   - 空闲 5 分钟后才做一次整板 hash 比较
+   - 这不是高频逻辑，不参与每次保存/同步判断
+   - 它的职责只是兜底发现“真实数据变了，但 revision 没动”
 
 ### 4.3 影子快照现在如何保存和迁移
 

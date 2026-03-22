@@ -22,6 +22,7 @@ import {
 } from '../../services/ai/messageContent';
 import { yieldToMainThread } from '../../utils/scheduling';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
+import { bumpBoardChangeState } from './utils/boardChangeState';
 
 const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
     if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
@@ -123,6 +124,9 @@ export const createAISlice = (set, get) => {
                         reason: 'streamRenderBuffer:flushToMessages'
                     })
                     : state.cardIndexMutation,
+                boardChangeState: updatedCards.length > 0
+                    ? bumpBoardChangeState(state.boardChangeState, 'card_content')
+                    : state.boardChangeState,
                 streamingCardVersions: bumpStreamingCardVersions(
                     state.streamingCardVersions,
                     dirtyCardIds
@@ -290,7 +294,8 @@ export const createAISlice = (set, get) => {
                     cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
                         mode: 'bulk',
                         reason: 'createAICard:initialMessages'
-                    })
+                    }),
+                    boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
                     // NOTE: Do NOT add to generatingCardIds since we're not generating
                 }));
 
@@ -323,7 +328,8 @@ export const createAISlice = (set, get) => {
                 cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
                     mode: 'bulk',
                     reason: 'createAICard:streaming'
-                })
+                }),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
             }));
 
             if (images.length > 0) {
@@ -572,7 +578,10 @@ export const createAISlice = (set, get) => {
                             updatedCards,
                             reason: 'setAssistantMessageMeta'
                         })
-                        : state.cardIndexMutation
+                        : state.cardIndexMutation,
+                    boardChangeState: updatedCards.length > 0
+                        ? bumpBoardChangeState(state.boardChangeState, 'card_content')
+                        : state.boardChangeState
                 };
             });
         },
@@ -634,6 +643,10 @@ export const createAISlice = (set, get) => {
                         updatedCards,
                         reason: 'setCardGenerating:commitStream'
                     });
+                    patch.boardChangeState = bumpBoardChangeState(
+                        state.boardChangeState,
+                        'card_content'
+                    );
                 }
 
                 if (nextStreamingMessages !== state.streamingMessages) {
@@ -703,6 +716,9 @@ export const createAISlice = (set, get) => {
                             reason: 'handleRegenerate:resetAssistant'
                         })
                         : state.cardIndexMutation,
+                    boardChangeState: updatedCards.length > 0
+                        ? bumpBoardChangeState(state.boardChangeState, 'card_content')
+                        : state.boardChangeState,
                     // Create new Set properly: spread existing Set, then add each selectedId
                     generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
                 };
