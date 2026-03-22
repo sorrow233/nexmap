@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Star, Loader2, StickyNote, Sprout } from 'lucide-react';
 // import { generateFollowUpTopics } from '../../services/llm'; // Converted to dynamic import
 import { parseModelOutput } from '../../services/llm/parser';
-import { isSafari, isIOS } from '../../utils/browser';
 import { useStore } from '../../store/useStore';
 import useImageUpload from '../../hooks/useImageUpload';
 import { htmlToMarkdown } from '../../utils/htmlToMarkdown';
@@ -10,6 +8,7 @@ import { aiManager } from '../../services/ai/AIManager';
 import { useAISprouting } from '../../hooks/useAISprouting';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ensureLatestBuildOrRefresh } from '../../utils/buildVersion';
+import { usePendingMessageQueue } from './usePendingMessageQueue';
 
 import SproutModal from './SproutModal';
 import ChatInput from './ChatInput';
@@ -18,10 +17,6 @@ import ShareModal from '../share/ShareModal';
 import ChatIndexSidebar from './ChatIndexSidebar';
 import ChatSelectionMenu from './ChatSelectionMenu';
 import ChatHeader from './ChatHeader';
-
-
-// Stable empty array to prevent infinite re-renders from || [] pattern
-const EMPTY_PENDING_MESSAGES = [];
 
 export default function ChatView({
     card,
@@ -42,17 +37,13 @@ export default function ChatView({
     const config = useStore(state => state.providers[activeId]);
     const analysisModel = useStore(state => state.getRoleModel('analysis'));
 
-    const clearPendingMessages = useStore(state => state.clearPendingMessages);
     const generatingTaskCount = useStore(state => state.generatingCardTaskCounts?.[card.id] || 0);
     const hasGeneratingCardFlag = useStore(state => state.generatingCardIds.has(card.id));
     const streamingCardVersion = useStore(state => state.streamingCardVersions?.[card.id] || 0);
     const isCardGenerating = hasGeneratingCardFlag || generatingTaskCount > 0;
-    const pendingMessages = EMPTY_PENDING_MESSAGES;
-    const pendingCount = 0;
 
     const {
         images,
-        setImages,
         handleImageUpload,
         handlePaste,
         removeImage,
@@ -60,7 +51,6 @@ export default function ChatView({
     } = useImageUpload();
 
     const [shareContent, setShareContent] = useState(null);
-    const isStreaming = isCardGenerating;
     const [isAtBottom, setIsAtBottom] = useState(true);
     const isAtBottomRef = useRef(true);
     const scrollFrameRef = useRef(null);
@@ -82,9 +72,6 @@ export default function ChatView({
     const { handleContinueTopic, handleBranch } = useAISprouting();
 
     const dispatchMessage = async (text, imagesToSend = []) => {
-        setIsAtBottom(true);
-        setTimeout(() => scrollToBottom(true), 10);
-
         try {
             await onGenerateResponse(card.id, text, imagesToSend);
         } catch (error) {
@@ -92,12 +79,32 @@ export default function ChatView({
         }
     };
 
+    const {
+        isDispatching,
+        isQueueRunning,
+        pendingMessages,
+        pendingCount,
+        resetQueue,
+        sendMessage
+    } = usePendingMessageQueue({
+        cardId: card.id,
+        isReadOnly,
+        isCardGenerating,
+        onDispatch: dispatchMessage,
+        onBeforeDispatch: () => {
+            setIsAtBottom(true);
+            setTimeout(() => scrollToBottom(true), 10);
+        }
+    });
+
+    const isStreaming = isDispatching || isQueueRunning || isCardGenerating;
+
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
         if (!text || isReadOnly) return;
         const normalizedText = text.trim();
         if (!normalizedText) return;
-        void dispatchMessage(normalizedText, []);
+        sendMessage(normalizedText, []);
     };
 
     const handleSproutClick = async () => {
@@ -221,7 +228,7 @@ export default function ChatView({
         if (isReadOnly) return;
         console.log('[ChatView] Stopping generation for card:', card.id);
         aiManager.cancelByTags([`card:${card.id}`]);
-        clearPendingMessages(card.id);
+        resetQueue();
     };
 
     const handleTextSelection = () => {
@@ -281,7 +288,7 @@ export default function ChatView({
         setInput('');
         clearImages();
 
-        void dispatchMessage(currentText, currentImages);
+        sendMessage(currentText, currentImages);
     };
 
     const addMarkTopic = (e) => {

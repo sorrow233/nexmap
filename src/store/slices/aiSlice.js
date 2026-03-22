@@ -211,6 +211,13 @@ export const createAISlice = (set, get) => {
             }
         })),
 
+        prependPendingMessage: (cardId, text, images = []) => set((state) => ({
+            pendingMessages: {
+                ...state.pendingMessages,
+                [cardId]: [{ text, images }, ...(state.pendingMessages[cardId] || [])]
+            }
+        })),
+
         // Get and remove the next pending message for a card
         popPendingMessage: (cardId) => {
             const state = get();
