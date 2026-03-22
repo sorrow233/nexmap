@@ -12,7 +12,8 @@ import {
 import {
     buildBoardRecoverySnapshot,
     clearBoardShadowSnapshot,
-    persistBoardShadowSnapshot
+    persistBoardShadowSnapshot,
+    persistBoardShadowSnapshotSync
 } from '../services/boardPersistence/localBoardShadow';
 import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
 import { emitLocalSaveConfirmed } from '../services/sync/localPersistedBoardSyncBridge';
@@ -436,6 +437,21 @@ export function useBoardPersistence({
         });
 
         if (CRITICAL_LOCAL_FALLBACK_REASONS.has(reason)) {
+            const criticalSnapshotTimestamp = Date.now();
+            const criticalShadowPayload = buildBoardRecoverySnapshot(
+                buildBoardPayload(latestBoardDataRef.current, {
+                    clientRevision: revision,
+                    updatedAt: criticalSnapshotTimestamp
+                }),
+                {
+                    updatedAt: criticalSnapshotTimestamp,
+                    clientRevision: revision
+                }
+            );
+
+            persistBoardShadowSnapshotSync(boardId, criticalShadowPayload, {
+                scope: 'both'
+            });
             performEmergencyLocalSave(latestBoardDataRef.current, {
                 revision,
                 reason
