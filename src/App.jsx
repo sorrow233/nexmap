@@ -72,10 +72,15 @@ import {
     mergeBoardMetadataLists,
     syncBoardMetadataListToRemote
 } from './services/sync/boardMetadataSync';
-import { createBoardSnapshotFingerprint, normalizeBoardSnapshot } from './services/sync/boardSnapshot';
+import { normalizeBoardSnapshot } from './services/sync/boardSnapshot';
 import { hasBoardDisplayMetadataPatch } from './services/boardTitle/displayMetadata';
 import { persistBoardDisplayMetadataSnapshot } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
+import { buildPersistenceVersionKey } from './services/boardPersistence/persistenceCursor';
+import {
+    createBoardChangeState,
+    syncBoardChangeStateToCursor
+} from './store/slices/utils/boardChangeState';
 
 export default function App() {
     return (
@@ -186,6 +191,7 @@ function AppContent() {
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
+        const currentBoardChangeState = useStore.getState().boardChangeState;
 
         // Build the merged state patch — single zustand set() to avoid N separate renders.
         // In async callbacks (IDB / Firebase), React 18 automatic batching does NOT cover
@@ -204,6 +210,11 @@ function AppContent() {
                 clientRevision: normalized.clientRevision || 0,
                 dirty: false
             },
+            boardChangeState: syncBoardChangeStateToCursor(
+                currentBoardChangeState,
+                normalized,
+                options.source === 'remote_sync' ? 'sync_apply' : 'local_load'
+            ),
             cardIndexMutation: nextCardIndexMutation(currentCardIndexMutation, {
                 mode: 'bulk',
                 reason: `applyBoardSnapshotToStore:${options.source || 'unknown'}`
@@ -215,7 +226,7 @@ function AppContent() {
             patch.lastExternalSyncMarker = {
                 token,
                 boardId: options.boardId,
-                fingerprint: createBoardSnapshotFingerprint(normalized),
+                versionKey: buildPersistenceVersionKey(normalized),
                 updatedAt: normalized.updatedAt || 0,
                 clientRevision: normalized.clientRevision || 0
             };
@@ -506,6 +517,7 @@ function AppContent() {
                 setBoardPrompts([]);
                 setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
                 setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
+                storeState.setBoardChangeState?.(createBoardChangeState());
 
                 try {
                     // 2. Load new data

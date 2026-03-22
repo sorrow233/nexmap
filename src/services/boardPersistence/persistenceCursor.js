@@ -26,6 +26,11 @@ export const buildPersistenceCursor = (boardData = {}) => ({
     updatedAt: toEpochMillis(boardData.updatedAt)
 });
 
+export const buildPersistenceVersionKey = (boardData = {}) => {
+    const cursor = buildPersistenceCursor(boardData);
+    return `${cursor.clientRevision}:${cursor.updatedAt}`;
+};
+
 export const isPersistenceSnapshotNewer = (nextSnapshot, prevSnapshot) => {
     if (!prevSnapshot) return true;
 

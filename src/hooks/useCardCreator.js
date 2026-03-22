@@ -48,7 +48,10 @@ export function useCardCreator() {
                 x: (window.innerWidth / 2 - offset.x) / scale - 160 + (Math.random() * 40 - 20),
                 y: (window.innerHeight / 2 - offset.y) / scale - 100 + (Math.random() * 40 - 20),
                 data: { prompt: promptText, loading: true, title: `Generating: ${promptText.substring(0, 20)}...` }
-            }]);
+            }], {
+                changeType: 'card_add',
+                reason: 'handleCreateCard:image_gen_placeholder'
+            });
 
             try {
                 const state = useStore.getState();
@@ -69,14 +72,20 @@ export function useCardCreator() {
                 setCards(prev => prev.map(c => c.id === newId ? {
                     ...c,
                     data: { ...c.data, imageUrl, loading: false, title: promptText.substring(0, 30) }
-                } : c));
+                } : c), {
+                    changeType: 'card_content',
+                    reason: 'handleCreateCard:image_gen_success'
+                });
                 return;
             } catch (e) {
                 debugLog.error(`Image generation failed for ${newId}`, e);
                 setCards(prev => prev.map(c => c.id === newId ? {
                     ...c,
                     data: { ...c.data, error: e.message, loading: false, title: 'Failed' }
-                } : c));
+                } : c), {
+                    changeType: 'card_content',
+                    reason: 'handleCreateCard:image_gen_error'
+                });
                 return;
             }
         }

@@ -8,6 +8,10 @@ import {
     createCardIndexMutation,
     nextCardIndexMutation
 } from './utils/cardIndexMutation';
+import {
+    bumpBoardChangeState,
+    createBoardChangeState
+} from './utils/boardChangeState';
 
 const createCardLookupCache = () => {
     let cachedCardsRef = null;
@@ -82,7 +86,7 @@ export const createCardSlice = (set, get) => {
         return {
             token: Number.isFinite(token) && token > 0 ? token : 0,
             boardId: typeof marker.boardId === 'string' ? marker.boardId : '',
-            fingerprint: typeof marker.fingerprint === 'string' ? marker.fingerprint : '',
+            versionKey: typeof marker.versionKey === 'string' ? marker.versionKey : '',
             updatedAt: Number.isFinite(Number(marker.updatedAt)) && Number(marker.updatedAt) >= 0
                 ? Number(marker.updatedAt)
                 : 0,
@@ -95,6 +99,7 @@ export const createCardSlice = (set, get) => {
     return {
     cards: [],
     cardIndexMutation: createCardIndexMutation(),
+    boardChangeState: createBoardChangeState(),
     expandedCardId: null,
     lastSavedAt: 0,
 	    activeBoardPersistence: {
@@ -105,7 +110,7 @@ export const createCardSlice = (set, get) => {
         lastExternalSyncMarker: {
             token: 0,
             boardId: '',
-            fingerprint: '',
+            versionKey: '',
             updatedAt: 0,
             clientRevision: 0
         },
@@ -127,8 +132,11 @@ export const createCardSlice = (set, get) => {
                 }
             };
         }),
+        setBoardChangeState: (nextBoardChangeState) => set({
+            boardChangeState: createBoardChangeState(nextBoardChangeState)
+        }),
 
-	    setCards: (cardsOrUpdater) => {
+	    setCards: (cardsOrUpdater, options = {}) => {
 	        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
 	        debugLog.store('Bulk setting cards', { count: nextCards.length });
 	        cardLookup.rebuild(nextCards);
@@ -136,8 +144,11 @@ export const createCardSlice = (set, get) => {
             cards: nextCards,
             cardIndexMutation: buildCardIndexMutation(state, {
                 mode: 'bulk',
-                reason: 'setCards'
-            })
+                reason: options.reason || 'setCards'
+            }),
+            boardChangeState: options.changeType
+                ? bumpBoardChangeState(state.boardChangeState, options.changeType)
+                : state.boardChangeState
         }));
     },
 
@@ -195,7 +206,8 @@ export const createCardSlice = (set, get) => {
                 scope: 'geometry',
                 updatedCards,
                 reason: 'moveCardsByIds'
-            })
+            }),
+            boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_move')
         };
     }),
 
@@ -215,7 +227,8 @@ export const createCardSlice = (set, get) => {
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'bulk',
                     reason: 'addCard'
-                })
+                }),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
             };
         });
         // Removed: position-based auto-add to zone
@@ -246,10 +259,11 @@ export const createCardSlice = (set, get) => {
                 cards: nextCards,
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'patch',
-                    scope: 'geometry',
+                    scope: 'content',
                     updatedCards: [updatedCard],
                     reason: 'updateCard'
-                })
+                }),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_content')
             };
         });
     },
@@ -282,10 +296,11 @@ export const createCardSlice = (set, get) => {
                 cards: nextCards,
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'patch',
-                    scope: 'geometry',
+                    scope: 'content',
                     updatedCards: [updatedCard],
                     reason: 'updateCardFull'
-                })
+                }),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_content')
             };
         });
     },
@@ -316,11 +331,14 @@ export const createCardSlice = (set, get) => {
                 cardIndexMutation: patchedCards.length > 0
                     ? buildCardIndexMutation(state, {
                         mode: 'patch',
-                        scope: 'geometry',
+                        scope: 'content',
                         updatedCards: patchedCards,
                         reason: 'deleteCard'
                     })
                     : state.cardIndexMutation,
+                boardChangeState: patchedCards.length > 0
+                    ? bumpBoardChangeState(state.boardChangeState, 'card_delete')
+                    : state.boardChangeState,
                 // Still remove connections for soft-deleted cards (they'll be restored if card is restored)
                 connections: state.connections ? state.connections.filter(conn => conn.from !== id && conn.to !== id) : [],
                 generatingCardIds: nextGenerating,
@@ -348,10 +366,11 @@ export const createCardSlice = (set, get) => {
                 cards: nextCards,
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'patch',
-                    scope: 'geometry',
+                    scope: 'content',
                     updatedCards: [updatedCard],
                     reason: 'restoreCard'
-                })
+                }),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_restore')
             };
         });
     },
@@ -367,7 +386,8 @@ export const createCardSlice = (set, get) => {
                 cardIndexMutation: buildCardIndexMutation(state, {
                     mode: 'bulk',
                     reason: 'permanentlyDeleteCard'
-                })
+                }),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_delete')
             };
         });
     },
@@ -425,7 +445,8 @@ export const createCardSlice = (set, get) => {
                         scope: 'geometry',
                         updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
                         reason: 'arrangeCards:group-grid'
-                    })
+                    }),
+                    boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_move')
                 };
             });
             return;
@@ -453,7 +474,8 @@ export const createCardSlice = (set, get) => {
                         scope: 'geometry',
                         updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
                         reason: 'arrangeCards:layout'
-                    })
+                    }),
+                    boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_move')
                 };
             });
         } else {
@@ -499,7 +521,8 @@ export const createCardSlice = (set, get) => {
                         scope: 'geometry',
                         updatedCards: nextCards.filter((card) => newPositions.has(card.id)),
                         reason: 'arrangeCards:grid'
-                    })
+                    }),
+                    boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_move')
                 };
             });
         }
@@ -552,6 +575,7 @@ export const createCardSlice = (set, get) => {
 	        set({
 	            cards: [],
                 cardIndexMutation: createCardIndexMutation(),
+                boardChangeState: createBoardChangeState(),
 	            expandedCardId: null,
 	            lastSavedAt: 0,
 	            activeBoardPersistence: {
@@ -562,7 +586,7 @@ export const createCardSlice = (set, get) => {
                 lastExternalSyncMarker: {
                     token: 0,
                     boardId: '',
-                    fingerprint: '',
+                    versionKey: '',
                     updatedAt: 0,
                     clientRevision: 0
                 }

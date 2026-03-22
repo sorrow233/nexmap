@@ -117,17 +117,39 @@ flowchart TD
 
 入口文件：`src/hooks/useBoardPersistence.js`
 
-这个 hook 会监听以下内容：
+当前版本新增了一层核心机制：
 
-- `cards`
-- `connections`
-- `groups`
-- `boardPrompts`
-- `boardInstructionSettings`
-- `offset`
-- `scale`
+- `src/store/slices/utils/boardChangeState.js`
 
-当这些内容发生变化时：
+它的职责不是“拍整板快照做比较”，而是直接追踪真正的业务变化。
+
+当前 revision 追踪规则：
+
+- 会递增 revision：
+  - 编辑卡片内容
+  - 新增 / 删除 / 恢复卡片
+  - 移动卡片位置
+  - 连线变化
+  - 分组变化
+  - board prompts / board instruction settings 变化
+- 不会递增 revision：
+  - 视口平移 / 缩放
+  - 选中、悬停等 UI 状态
+  - 同步层内部状态
+
+这意味着：
+
+- `useBoardPersistence` 不再依赖“整板 `JSON.stringify` 指纹”判断变化
+- 而是只看 `boardChangeState.revision`
+- 真正需要完整 snapshot 时，才构造 payload
+
+这个 hook 仍然拿到当前 board 数据，但真正触发保存调度的关键条件，已经变成：
+
+- `boardChangeState.revision`
+- `lastExternalSyncMarker.versionKey`
+- `activeBoardPersistence`
+
+当 revision 前进时：
 
 1. 构造当前 payload
 2. 计算当前 revision
@@ -141,6 +163,7 @@ flowchart TD
 
 - shadow 保存更快，目的是兜底恢复
 - durable save 走真正的 `saveBoard(boardId, payload)`
+- “是否有变化”现在是 O(1) 的 revision 判断，不再是整板深拷贝 + `JSON.stringify`
 
 ### 4.1 本地保存成功后现在怎么桥接远端同步
 
@@ -162,6 +185,7 @@ flowchart TD
 
 - 远端同步不再直接由 live store 驱动
 - 而是由“本地保存成功”驱动
+- 并且只有 revision 更高的 snapshot 才有资格继续进入同步控制器
 
 ## 5. BoardSyncController 当前怎么处理本地 snapshot
 

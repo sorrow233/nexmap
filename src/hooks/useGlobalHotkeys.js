@@ -42,7 +42,10 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
                 data: { ...card.data }
             };
         });
-        setCards([...cards, ...newCards]);
+        setCards([...cards, ...newCards], {
+            changeType: 'card_add',
+            reason: 'handlePaste'
+        });
         setSelectedIds(newCards.map(c => c.id));
     };
 
@@ -74,7 +77,11 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
                     added = true;
                 }
             }
-            if (added) setConnections(newConns);
+            if (added) {
+                setConnections(newConns, {
+                    changeType: 'connection_change'
+                });
+            }
         } else if (selectedIds.length === 1) {
             handleConnect(selectedIds[0]); // Starts connection mode
         }
@@ -86,9 +93,13 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         if (selectedIds.length > 1) {
             setConnections(connections.filter(c =>
                 !(selectedIdSet.has(c.from) && selectedIdSet.has(c.to))
-            ));
+            ), {
+                changeType: 'connection_change'
+            });
         } else if (selectedIds.length === 1) {
-            setConnections(connections.filter(c => c.from !== selectedIds[0] && c.to !== selectedIds[0]));
+            setConnections(connections.filter(c => c.from !== selectedIds[0] && c.to !== selectedIds[0]), {
+                changeType: 'connection_change'
+            });
         }
     }, [selectedIds, connections]);
 

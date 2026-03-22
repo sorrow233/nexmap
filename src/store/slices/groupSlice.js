@@ -1,11 +1,15 @@
 import { uuid } from '../../utils/uuid';
 import { buildGroupData } from '../../utils/groupGeometry';
+import { bumpBoardChangeState } from './utils/boardChangeState';
 
 export const createGroupSlice = (set, get) => ({
     groups: [],
 
-    setGroups: (valOrUpdater) => set((state) => ({
-        groups: typeof valOrUpdater === 'function' ? valOrUpdater(state.groups) : valOrUpdater
+    setGroups: (valOrUpdater, options = {}) => set((state) => ({
+        groups: typeof valOrUpdater === 'function' ? valOrUpdater(state.groups) : valOrUpdater,
+        boardChangeState: options.changeType
+            ? bumpBoardChangeState(state.boardChangeState, options.changeType)
+            : state.boardChangeState
     })),
 
     // --- Group Actions ---
@@ -21,16 +25,19 @@ export const createGroupSlice = (set, get) => ({
         };
         return {
             groups: [...state.groups, newGroup],
+            boardChangeState: bumpBoardChangeState(state.boardChangeState, 'group_change'),
             selectedIds: [] // Deselect cards after grouping
         };
     }),
 
     updateGroup: (id, updater) => set(state => ({
-        groups: state.groups.map(g => g.id === id ? { ...g, ...updater } : g)
+        groups: state.groups.map(g => g.id === id ? { ...g, ...updater } : g),
+        boardChangeState: bumpBoardChangeState(state.boardChangeState, 'group_change')
     })),
 
     deleteGroup: (id) => set(state => ({
-        groups: state.groups.filter(g => g.id !== id)
+        groups: state.groups.filter(g => g.id !== id),
+        boardChangeState: bumpBoardChangeState(state.boardChangeState, 'group_change')
     })),
 
     // NEW: Move all cards in a group by delta (for drag-to-move entire zone)

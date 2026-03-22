@@ -3,6 +3,7 @@ import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings
 } from '../../services/customInstructionsService';
+import { bumpBoardChangeState } from './utils/boardChangeState';
 
 const GLOBAL_PROMPTS_KEY = 'mixboard_global_prompts';
 const DEFAULT_GLOBAL_PROMPTS = [
@@ -63,12 +64,14 @@ export const createBoardSlice = (set, get) => ({
             ? { id: uuid(), createdAt: Date.now(), ...promptOrText }
             : { id: uuid(), text: promptOrText, createdAt: Date.now() };
         return {
-            boardPrompts: [...(state.boardPrompts || []), newPrompt]
+            boardPrompts: [...(state.boardPrompts || []), newPrompt],
+            boardChangeState: bumpBoardChangeState(state.boardChangeState, 'board_prompt_change')
         };
     }),
 
     removeBoardPrompt: (id) => set((state) => ({
-        boardPrompts: (state.boardPrompts || []).filter((p) => p.id !== id)
+        boardPrompts: (state.boardPrompts || []).filter((p) => p.id !== id),
+        boardChangeState: bumpBoardChangeState(state.boardChangeState, 'board_prompt_change')
     })),
 
     updateBoardPrompt: (id, updates) => set((state) => ({
@@ -76,14 +79,20 @@ export const createBoardSlice = (set, get) => ({
             p.id === id
                 ? (typeof updates === 'string' ? { ...p, text: updates } : { ...p, ...updates })
                 : p
-        )
+        ),
+        boardChangeState: bumpBoardChangeState(state.boardChangeState, 'board_prompt_change')
     })),
 
     // Set all board prompts (e.g. when loading board data)
     setBoardPrompts: (prompts) => set({ boardPrompts: prompts || [] }),
 
-    setBoardInstructionSettings: (settings) => {
-        set({ boardInstructionSettings: normalizeBoardInstructionSettings(settings) });
+    setBoardInstructionSettings: (settings, options = {}) => {
+        set((state) => ({
+            boardInstructionSettings: normalizeBoardInstructionSettings(settings),
+            boardChangeState: options.changeType
+                ? bumpBoardChangeState(state.boardChangeState, options.changeType)
+                : state.boardChangeState
+        }));
     },
 
     updateBoardInstructionSettings: (updater) => {
@@ -91,7 +100,8 @@ export const createBoardSlice = (set, get) => ({
             const current = normalizeBoardInstructionSettings(state.boardInstructionSettings);
             const nextRaw = typeof updater === 'function' ? updater(current) : updater;
             return {
-                boardInstructionSettings: normalizeBoardInstructionSettings(nextRaw)
+                boardInstructionSettings: normalizeBoardInstructionSettings(nextRaw),
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'board_instruction_change')
             };
         });
     },

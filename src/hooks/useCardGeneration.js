@@ -163,7 +163,10 @@ export function useCardGeneration() {
                 };
             }
             return c;
-        }));
+        }), {
+            changeType: 'card_content',
+            reason: 'handleBatchChat:optimistic_messages'
+        });
 
         // Execute concurrent AI requests
         await Promise.all(targetCards.map(async (card) => {

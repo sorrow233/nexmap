@@ -14,7 +14,7 @@ import {
     clearBoardShadowSnapshot,
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
-import { createBoardSnapshotFingerprint } from '../services/sync/boardSnapshot';
+import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
 import { emitPersistedBoardSyncSnapshot } from '../services/sync/localPersistedBoardSyncBridge';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 
@@ -109,6 +109,7 @@ export function useBoardPersistence({
     isBoardLoading,
     isReadOnly,
     hasGeneratingCards = false,
+    boardChangeState,
     activeBoardPersistence,
     lastExternalSyncMarker,
     setSaveStatus,
@@ -151,7 +152,9 @@ export function useBoardPersistence({
             connections,
             groups,
             boardPrompts,
-            boardInstructionSettings
+            boardInstructionSettings: normalizeBoardInstructionSettings(
+                boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+            )
         };
     }, [cards, connections, groups, boardPrompts, boardInstructionSettings]);
 
@@ -466,9 +469,7 @@ export function useBoardPersistence({
             return;
         }
 
-        const normalizedSettings = normalizeBoardInstructionSettings(
-            boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-        );
+        const trackedRevision = toSafeRevision(boardChangeState?.revision);
         const currentActivePersistence = activeBoardPersistenceRef.current;
         const loadedCursor = {
             updatedAt: Number.isFinite(Number(currentActivePersistence?.updatedAt))
@@ -476,20 +477,17 @@ export function useBoardPersistence({
                 : 0,
             clientRevision: toSafeRevision(currentActivePersistence?.clientRevision)
         };
-        const currentPayload = buildBoardPayload({
-            cards,
-            connections,
-            groups,
-            boardPrompts,
-            boardInstructionSettings: normalizedSettings
-        }, loadedCursor);
-        const currentFingerprint = createBoardSnapshotFingerprint(currentPayload);
+        const currentPayload = buildBoardPayload(latestBoardDataRef.current, {
+            updatedAt: loadedCursor.updatedAt,
+            clientRevision: Math.max(loadedCursor.clientRevision, trackedRevision)
+        });
+        const currentVersionKey = buildPersistenceVersionKey(currentPayload);
         const externalSyncToken = Number(lastExternalSyncMarker?.token) || 0;
         const isExternalSyncSnapshot = (
             externalSyncToken > 0 &&
             externalSyncToken !== lastHandledExternalSyncTokenRef.current &&
             lastExternalSyncMarker?.boardId === boardId &&
-            lastExternalSyncMarker?.fingerprint === currentFingerprint
+            lastExternalSyncMarker?.versionKey === currentVersionKey
         );
 
         if (isExternalSyncSnapshot) {
@@ -506,7 +504,7 @@ export function useBoardPersistence({
 
         if (!tracker.isPrimed) {
             latestBoardDataRef.current = currentPayload;
-            tracker.revision = loadedCursor.clientRevision;
+            tracker.revision = Math.max(loadedCursor.clientRevision, trackedRevision);
             tracker.localSavedRevision = loadedCursor.clientRevision;
             tracker.shadowSavedRevision = loadedCursor.clientRevision;
             tracker.isPrimed = true;
@@ -519,14 +517,14 @@ export function useBoardPersistence({
             return;
         }
 
-        tracker.revision += 1;
-        const revision = tracker.revision;
+        if (trackedRevision <= tracker.revision) {
+            return;
+        }
+
+        tracker.revision = trackedRevision;
+        const revision = trackedRevision;
         latestBoardDataRef.current = {
-            cards,
-            connections,
-            groups,
-            boardPrompts,
-            boardInstructionSettings: normalizedSettings,
+            ...latestBoardDataRef.current,
             clientRevision: revision
         };
 
@@ -555,15 +553,11 @@ export function useBoardPersistence({
         scheduleLocalSave(revision);
     }, [
         boardId,
-        cards,
-        connections,
-        groups,
-        boardPrompts,
-        boardInstructionSettings,
+        boardChangeState?.revision,
         isBoardLoading,
         isReadOnly,
         lastExternalSyncMarker?.boardId,
-        lastExternalSyncMarker?.fingerprint,
+        lastExternalSyncMarker?.versionKey,
         lastExternalSyncMarker?.token,
         clearContentSaveTimers,
         persistExternalSyncSnapshot,

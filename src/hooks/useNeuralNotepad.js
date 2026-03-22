@@ -1,6 +1,5 @@
 import { useStore } from '../store/useStore';
 import { uuid } from '../utils/uuid';
-import { saveBoard } from '../services/storage';
 import { debugLog } from '../utils/debugLogger';
 
 export function useNeuralNotepad() {
@@ -65,19 +64,8 @@ export function useNeuralNotepad() {
             debugLog.ui(`Created new master note: ${newId}`);
         }
 
-        // Trigger persistence
         if (currentBoardId) {
-            setTimeout(() => {
-                const latestState = useStore.getState();
-                saveBoard(currentBoardId, {
-                    cards: latestState.cards,
-                    connections: latestState.connections,
-                    groups: latestState.groups,
-                    boardPrompts: latestState.boardPrompts,
-                    boardInstructionSettings: latestState.boardInstructionSettings,
-                    clientRevision: latestState.activeBoardPersistence?.clientRevision || 0
-                });
-            }, 50);
+            debugLog.storage('Notepad mutation delegated to board persistence pipeline', { currentBoardId });
         }
     };
 
@@ -110,19 +98,8 @@ export function useNeuralNotepad() {
         });
         debugLog.ui(`Created standalone note: ${newId}`);
 
-        // Trigger persistence
         if (currentBoardId) {
-            setTimeout(() => {
-                const latestState = useStore.getState();
-                saveBoard(currentBoardId, {
-                    cards: latestState.cards,
-                    connections: latestState.connections,
-                    groups: latestState.groups,
-                    boardPrompts: latestState.boardPrompts,
-                    boardInstructionSettings: latestState.boardInstructionSettings,
-                    clientRevision: latestState.activeBoardPersistence?.clientRevision || 0
-                });
-            }, 50);
+            debugLog.storage('Standalone note mutation delegated to board persistence pipeline', { currentBoardId });
         }
     };
 

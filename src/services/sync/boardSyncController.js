@@ -1,6 +1,5 @@
 import { IndexeddbPersistence } from 'y-indexeddb';
 import {
-    createBoardSnapshotFingerprint,
     isMeaningfullyEmptyBoardSnapshot,
     normalizeBoardSnapshot
 } from './boardSnapshot';
@@ -17,7 +16,10 @@ import {
     isSampleBoardId
 } from './config';
 import { getSyncDeviceId } from './deviceId';
-import { isPersistenceSnapshotNewer } from '../boardPersistence/persistenceCursor';
+import {
+    buildPersistenceVersionKey,
+    isPersistenceSnapshotNewer
+} from '../boardPersistence/persistenceCursor';
 
 export class BoardSyncController {
     constructor({ boardId, user, onSnapshot, onSyncStateChange }) {
@@ -28,7 +30,7 @@ export class BoardSyncController {
         this.doc = createBoardDoc();
         this.persistence = null;
         this.fireSync = null;
-        this.lastFingerprint = '';
+        this.lastVersionKey = '';
         this.started = false;
     }
 
@@ -75,7 +77,7 @@ export class BoardSyncController {
             syncBoardSnapshotToDoc(this.doc, normalizedLocal);
         }
 
-        this.lastFingerprint = createBoardSnapshotFingerprint(readBoardSnapshotFromDoc(this.doc));
+        this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
 
         this.doc.on('update', (_update, origin) => {
             if (origin === FIREBASE_SYNC_ORIGINS.store) {
@@ -109,9 +111,9 @@ export class BoardSyncController {
 
     emitCurrentSnapshot() {
         const snapshot = readBoardSnapshotFromDoc(this.doc);
-        const fingerprint = createBoardSnapshotFingerprint(snapshot);
-        if (fingerprint === this.lastFingerprint) return;
-        this.lastFingerprint = fingerprint;
+        const versionKey = buildPersistenceVersionKey(snapshot);
+        if (versionKey === this.lastVersionKey) return;
+        this.lastVersionKey = versionKey;
         this.onSnapshot?.(snapshot);
     }
 
@@ -119,8 +121,8 @@ export class BoardSyncController {
         if (!this.started) return;
         const normalized = normalizeBoardSnapshot(nextSnapshot);
         const currentDocSnapshot = readBoardSnapshotFromDoc(this.doc);
-        const nextFingerprint = createBoardSnapshotFingerprint(normalized);
-        if (nextFingerprint === this.lastFingerprint) return;
+        const nextVersionKey = buildPersistenceVersionKey(normalized);
+        if (nextVersionKey === this.lastVersionKey) return;
 
         const currentDocIsEmpty = isMeaningfullyEmptyBoardSnapshot(currentDocSnapshot);
         const nextSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot(normalized);
@@ -139,7 +141,7 @@ export class BoardSyncController {
             syncBoardSnapshotToDoc(this.doc, normalized);
         }, FIREBASE_SYNC_ORIGINS.store);
 
-        this.lastFingerprint = createBoardSnapshotFingerprint(readBoardSnapshotFromDoc(this.doc));
+        this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
     }
 
     async forceOverwriteFromSnapshot(nextSnapshot = {}) {
@@ -157,7 +159,7 @@ export class BoardSyncController {
             syncBoardSnapshotToDoc(this.doc, normalized);
         }, FIREBASE_SYNC_ORIGINS.forceOverride);
 
-        this.lastFingerprint = createBoardSnapshotFingerprint(readBoardSnapshotFromDoc(this.doc));
+        this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
         const checkpoint = await this.fireSync.saveSnapshot('manual_force_override');
         this.emitCurrentSnapshot();
         return Boolean(checkpoint);
