@@ -14,6 +14,7 @@ import {
 } from '../boardTitle/metadata';
 import { normalizeBoardSummary } from '../boardTitle/displayMetadata';
 import { prepareBoardDisplayMetadataPatch } from '../boardPersistence/boardDisplayMetadataStorage';
+import { migrateBoardThumbnailRecord } from '../boardPersistence/boardThumbnailMigration';
 import { syncBoardThumbnailResourceToRemote } from './boardThumbnailResourceSync';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
@@ -152,7 +153,15 @@ export const loadRemoteBoardMetadataList = async (userId) => {
     const snapshot = await withRetry(() => getDocs(getBoardCollectionRef(userId)));
     const boards = await Promise.all(snapshot.docs.map(async (item) => {
         const rawBoard = item.data();
-        const preparedPatch = await prepareBoardDisplayMetadataPatch(rawBoard?.id, rawBoard);
+        const migratedRecord = await migrateBoardThumbnailRecord(rawBoard?.id, rawBoard, {
+            reason: 'loadRemoteBoardMetadataList',
+            userId,
+            syncRemoteResource: false
+        });
+        const preparedPatch = await prepareBoardDisplayMetadataPatch(
+            rawBoard?.id,
+            migratedRecord.record || rawBoard
+        );
         if (preparedPatch?.thumbnailRef) {
             await syncBoardThumbnailResourceToRemote(userId, {
                 id: rawBoard?.id,
@@ -161,7 +170,7 @@ export const loadRemoteBoardMetadataList = async (userId) => {
             });
         }
         return normalizeBoardTitleMeta({
-            ...rawBoard,
+            ...(migratedRecord.record || rawBoard),
             ...preparedPatch
         });
     }));

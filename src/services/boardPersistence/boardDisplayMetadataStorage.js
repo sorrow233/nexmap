@@ -6,7 +6,11 @@ import {
     pickBoardDisplayMetadata
 } from '../boardTitle/displayMetadata';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
-import { prepareBoardThumbnailMetadataPatch } from './boardThumbnailStorage';
+import {
+    buildBoardThumbnailMigrationPatch,
+    migrateBoardThumbnailRecord,
+    migrateBoardsThumbnailMetadataList
+} from './boardThumbnailMigration';
 
 const BOARD_PREFIX = 'mixboard_board_';
 
@@ -63,7 +67,7 @@ export const prepareBoardDisplayMetadataPatch = async (boardId, metadata = {}) =
         return {};
     }
 
-    const thumbnailPatch = await prepareBoardThumbnailMetadataPatch(boardId, metadata);
+    const thumbnailPatch = await buildBoardThumbnailMigrationPatch(boardId, metadata);
     const nextPatch = {
         ...metadata,
         ...thumbnailPatch
@@ -85,14 +89,19 @@ const resolveBoardDisplayMetadataSnapshot = async (boardId, payload = {}) => {
         };
     }
 
-    const preparedPatch = await prepareBoardDisplayMetadataPatch(boardId, payload);
+    const migratedPayloadResult = await migrateBoardThumbnailRecord(boardId, payload, {
+        reason: 'resolveBoardDisplayMetadataSnapshot'
+    });
+    const basePayload = migratedPayloadResult.record || payload;
+    const preparedPatch = await prepareBoardDisplayMetadataPatch(boardId, basePayload);
     const nextPayload = {
-        ...stripLegacyThumbnailField(payload),
+        ...stripLegacyThumbnailField(basePayload),
         ...preparedPatch
     };
     const nextMetadata = pickBoardDisplayMetadata(nextPayload);
     const changed = (
         JSON.stringify(pickBoardDisplayMetadata(payload)) !== JSON.stringify(nextMetadata)
+        || migratedPayloadResult.changed
         || Object.prototype.hasOwnProperty.call(payload, 'thumbnail')
     );
 
@@ -147,8 +156,15 @@ export const loadBoardDisplayMetadataSnapshot = async (boardId) => {
 };
 
 export const hydrateBoardsDisplayMetadataList = async (boards = []) => {
-    const normalizedBoards = normalizeBoardMetadataList(Array.isArray(boards) ? boards : []);
+    const migratedList = await migrateBoardsThumbnailMetadataList(boards, {
+        reason: 'hydrateBoardsDisplayMetadataList'
+    });
+    const normalizedBoards = normalizeBoardMetadataList(migratedList.boards);
     let changed = false;
+
+    if (migratedList.changed) {
+        changed = true;
+    }
 
     const hydratedBoards = await Promise.all(normalizedBoards.map(async (board) => {
         const needsHydration = BOARD_DISPLAY_SYNC_KEYS.some((key) => (

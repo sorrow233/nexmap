@@ -12,6 +12,7 @@ import { debugLog } from '../utils/debugLogger';
 import { normalizeBoardMetadataList } from '../services/boardTitle/metadata';
 import { persistBoardsMetadataList } from '../services/boardPersistence/boardsListStorage';
 import { hydrateBoardsDisplayMetadataList } from '../services/boardPersistence/boardDisplayMetadataStorage';
+import { migrateBoardsThumbnailMetadataList } from '../services/boardPersistence/boardThumbnailMigration';
 import { useStore } from '../store/useStore';
 
 const TRASH_CLEANUP_LAST_KEY = 'mixboard_last_trash_cleanup_at';
@@ -51,9 +52,20 @@ export function useAppInit() {
             const localBoards = loadBoardsMetadata();
             if (localBoards.length > 0) {
                 const normalizedBoards = normalizeBoardMetadataList(localBoards);
-                setBoardsList(normalizedBoards);
+                const migratedBoardsResult = await migrateBoardsThumbnailMetadataList(normalizedBoards, {
+                    reason: 'useAppInit:local_boards_metadata'
+                });
+                const nextBoards = migratedBoardsResult.changed
+                    ? migratedBoardsResult.boards
+                    : normalizedBoards;
+
+                if (migratedBoardsResult.changed) {
+                    persistBoardsMetadataList(nextBoards, { reason: 'useAppInit:migrate_thumbnail_metadata' });
+                }
+
+                setBoardsList(nextBoards);
                 setIsInitialized(true);
-                void hydrateBoardsDisplayMetadataList(normalizedBoards)
+                void hydrateBoardsDisplayMetadataList(nextBoards)
                     .then(({ boards, changed }) => {
                         if (changed) {
                             setBoardsList(boards);

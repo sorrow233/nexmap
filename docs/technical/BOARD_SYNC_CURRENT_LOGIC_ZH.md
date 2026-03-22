@@ -236,7 +236,10 @@ flowchart TD
 文件：
 
 - `src/services/boardPersistence/boardThumbnailStorage.js`
+- `src/services/boardPersistence/boardThumbnailMigration.js`
 - `src/services/boardPersistence/boardDisplayMetadataStorage.js`
+- `src/hooks/useAppInit.js`
+- `src/services/sync/boardMetadataSync.js`
 - `src/components/BoardCard.jsx`
 
 当前版本中，缩略图已经不再被设计成 metadata 正文的大字段，而是拆成：
@@ -250,11 +253,19 @@ flowchart TD
    - 可选保留 `thumbnailUpdatedAt`
    - legacy `thumbnail` 字段只作为迁移输入，不再作为新的持久化输出
 
-3. 迁移层：
+3. 显式迁移层：
    - 如果旧 board payload、旧 boards list、或远端 metadata 里还存在内联 `thumbnail`
-   - 新代码会先把它写入 IndexedDB 资源层
-   - 然后改写成 `thumbnailRef`
-   - 本地持久化时会把 legacy `thumbnail` 字段剥掉
+   - 现在统一先走 `boardThumbnailMigration.js`
+   - 迁移顺序是：
+     - 检测旧格式
+     - 先把 data URL 写入 IndexedDB 独立资源层
+     - 如果需要，再补远端独立缩略图资源文档
+     - 只有新资源写成功，才返回 `thumbnailRef / thumbnailUpdatedAt`
+     - 只有迁移成功，后续持久化时才会删除 legacy `thumbnail`
+   - 如果迁移失败：
+     - 保留旧的内联 `thumbnail`
+     - 不会删旧字段
+     - 列表和详情页仍然可以继续走 legacy 兜底显示
 
 4. 读取层：
    - `BoardCard` 不再直接依赖 `board.thumbnail`
@@ -265,6 +276,11 @@ flowchart TD
 5. 远端 metadata 层：
    - Firestore metadata 同步现在发 `thumbnailRef / thumbnailUpdatedAt`
    - 同时显式删除旧的 `thumbnail` 内联字段
+
+6. 启动和远端加载入口：
+   - `useAppInit` 会在本地 boards list 初始化时先跑一次显式缩略图迁移
+   - `loadRemoteBoardMetadataList` 会在远端 metadata 拉取后先跑一次显式缩略图迁移
+   - 这样旧格式不会因为“新代码只认 `thumbnailRef`”而直接出现缩略图空白
 
 ### 4.2 现在真正谁来驱动同步
 
