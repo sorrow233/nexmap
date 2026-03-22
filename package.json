@@ -1,7 +1,7 @@
 {
   "name": "mixboard-canvas",
   "private": false,
-  "version": "2.2.329",
+  "version": "2.2.330",
   "type": "module",
   "scripts": {
     "dev": "vite",

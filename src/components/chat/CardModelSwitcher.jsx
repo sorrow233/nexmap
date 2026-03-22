@@ -129,8 +129,8 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                     group flex h-10 items-center justify-center gap-1.5 rounded-2xl border px-3
                     transition-all duration-300 lg:h-11 lg:w-11 lg:px-0
                     ${isOpen
-                        ? 'border-brand-300/60 bg-[#131b2f] text-brand-200 shadow-[0_18px_40px_-24px_rgba(34,211,238,0.45)] dark:border-brand-400/40 dark:bg-[#131b2f]'
-                        : 'border-slate-200/80 bg-white/80 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-white/14 dark:bg-white/[0.08] dark:text-slate-100 dark:shadow-[0_18px_36px_-24px_rgba(2,8,23,0.95)] dark:hover:border-brand-400/30 dark:hover:bg-white/[0.11] dark:hover:text-white'
+                        ? 'border-brand-400/50 bg-[#172033] text-brand-100 shadow-[0_18px_40px_-24px_rgba(34,211,238,0.35)] dark:border-brand-400/50 dark:bg-[#172033]'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-[#2b3448] dark:bg-[#1a2234] dark:text-slate-100 dark:shadow-[0_18px_36px_-24px_rgba(2,8,23,0.95)] dark:hover:border-brand-400/30 dark:hover:bg-[#1e2840] dark:hover:text-white'
                     }
                 `}
                 title={t.settings.roles?.chatTitle || '卡片模型'}
@@ -149,21 +149,21 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 8 }}
                         transition={{ type: 'spring', damping: 26, stiffness: 360 }}
-                        className="absolute right-0 top-full z-50 mt-3 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[2rem] border border-white/10 bg-[#0d1424]/96 p-4 shadow-[0_32px_80px_-36px_rgba(2,8,23,0.92)] backdrop-blur-2xl ring-1 ring-white/5 lg:left-full lg:right-auto lg:bottom-0 lg:top-auto lg:mt-0 lg:ml-4"
+                        className="absolute right-0 top-full z-50 mt-3 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[2rem] border border-[#2a3448] bg-[#101827] p-4 shadow-[0_32px_80px_-36px_rgba(2,8,23,0.92)] ring-1 ring-white/5 lg:left-full lg:right-auto lg:bottom-0 lg:top-auto lg:mt-0 lg:ml-4"
                     >
                         <div className="flex items-start justify-between gap-3 px-1 pb-3">
                             <div className="min-w-0">
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
+                                <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500">
                                     <Bot size={11} />
                                     <span>{t.settings.roles?.chatTitle || '卡片模型'}</span>
                                 </div>
-                                <div className="mt-2 truncate text-base font-semibold text-white">
+                                <div className="mt-2 truncate text-[15px] font-semibold text-white">
                                     {getModelDisplayName(currentModel, userModels, currentProviderId)}
                                 </div>
-                                <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                                <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
                                     <span className={`h-2.5 w-2.5 rounded-full ${getProviderAccentClass(currentProviderId)}`} />
                                     <span className="truncate">{currentProviderId}</span>
-                                    <span className="rounded-full border border-white/12 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+                                    <span className="rounded-full border border-[#313b51] bg-[#161f31] px-2 py-0.5 text-[9px] font-semibold text-slate-300">
                                         当前卡片
                                     </span>
                                 </div>
@@ -171,7 +171,7 @@ export default function CardModelSwitcher({ card, onUpdate }) {
 
                             <button
                                 onClick={handleResetToDefault}
-                                className="mt-0.5 inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-semibold text-slate-300 transition-all hover:border-brand-400/30 hover:bg-brand-400/10 hover:text-white"
+                                className="mt-0.5 inline-flex shrink-0 items-center gap-2 rounded-full border border-[#313b51] bg-[#161f31] px-3 py-2 text-[10px] font-semibold text-slate-300 transition-all hover:border-brand-400/30 hover:bg-[#1d2840] hover:text-white"
                             >
                                 <RefreshCw size={13} />
                                 <span>{t.settings.resetDefaults || '恢复默认'}</span>
@@ -192,17 +192,17 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                                             onClick={() => handleModelSelect(model)}
                                             className={`group flex w-full items-start justify-between gap-4 rounded-[1.65rem] border px-4 py-3.5 text-left transition-all duration-200 ${
                                                 isSelected
-                                                    ? 'border-white/70 bg-white/[0.05] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
-                                                    : 'border-white/8 bg-transparent text-slate-200 hover:border-white/18 hover:bg-white/[0.04]'
+                                                    ? 'border-white/70 bg-[#1a2437] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+                                                    : 'border-[#273145] bg-[#111a2a] text-slate-200 hover:border-[#39435a] hover:bg-[#162032]'
                                             }`}
                                         >
                                             <div className="flex min-w-0 items-start gap-3.5">
                                                 <span className={`mt-1 h-4 w-4 shrink-0 rounded-full ${getProviderAccentClass(model.providerId)}`} />
                                                 <div className="min-w-0">
-                                                    <div className="whitespace-normal break-all text-[0.98rem] font-semibold leading-[1.28]">
+                                                    <div className="whitespace-normal break-all text-[14px] font-semibold leading-[1.28]">
                                                         {getModelDisplayName(model.id, userModels, model.providerId)}
                                                     </div>
-                                                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                                                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-400">
                                                         <span>{model.provider || model.providerId}</span>
                                                         <span className="h-1 w-1 rounded-full bg-white/18" />
                                                         <span className="break-all text-slate-500">{model.providerId}</span>
