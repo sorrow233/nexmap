@@ -14,6 +14,7 @@ import {
     CreditsExhaustedError,
     ImageQuotaExhaustedError
 } from '../../systemCredits/systemCreditsService';
+import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 
 export class SystemCreditsProvider extends LLMProvider {
     constructor() {
@@ -64,7 +65,8 @@ export class SystemCreditsProvider extends LLMProvider {
 
         const requestBody = {
             messages: formattedMessages,
-            temperature: options.temperature !== undefined ? options.temperature : 1.0
+            temperature: options.temperature !== undefined ? options.temperature : 1.0,
+            max_tokens: resolveChatMaxOutputTokens(options)
         };
 
         const response = await chatWithSystemCredits(requestBody);
@@ -85,7 +87,8 @@ export class SystemCreditsProvider extends LLMProvider {
 
         const requestBody = {
             messages: formattedMessages,
-            temperature: options.temperature !== undefined ? options.temperature : 1.0
+            temperature: options.temperature !== undefined ? options.temperature : 1.0,
+            max_tokens: resolveChatMaxOutputTokens(options)
         };
 
         await streamWithSystemCredits(requestBody, onToken, options);

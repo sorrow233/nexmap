@@ -25,6 +25,7 @@ const IMAGE_API_BASE = 'https://console.gmicloud.ai/api/v1/ie/requestqueue/apike
 // Weekly usage limits
 const WEEKLY_CONVERSATION_LIMIT = 200;
 const WEEKLY_IMAGE_LIMIT = 20;
+const DEFAULT_CHAT_MAX_TOKENS = 32768;
 
 // Style prefix - AI models KNOW いらすとや by name!
 const IMAGE_STYLE_PREFIX =
@@ -379,6 +380,9 @@ export async function onRequest(context) {
             ...requestBody,
             model: selectedModel,
             stream: stream,
+            max_tokens: Number.isFinite(Number(requestBody.max_tokens)) && Number(requestBody.max_tokens) > 0
+                ? Math.floor(Number(requestBody.max_tokens))
+                : DEFAULT_CHAT_MAX_TOKENS,
             // Enable reasoning mode with recommended settings for Kimi-K2-Thinking
             temperature: selectedModel === CONVERSATION_MODEL ? 1.0 : (requestBody.temperature || 0.7),
             stream_options: stream ? { include_usage: true } : undefined

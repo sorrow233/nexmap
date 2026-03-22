@@ -10,6 +10,7 @@ import {
     isAbortError
 } from './gemini/errorUtils.js';
 import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser.js';
+import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { extractCandidateText } from './gemini/partUtils.js';
 import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
 import { getKeyPool } from '../keyPoolManager';
@@ -639,7 +640,8 @@ export class GeminiProvider extends LLMProvider {
         const requestBody = {
             contents,
             generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0
+                temperature: options.temperature !== undefined ? options.temperature : 1.0,
+                maxOutputTokens: resolveChatMaxOutputTokens(options)
             }
         };
 
@@ -843,7 +845,8 @@ export class GeminiProvider extends LLMProvider {
         const requestBody = {
             contents,
             generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 1.0
+                temperature: options.temperature !== undefined ? options.temperature : 1.0,
+                maxOutputTokens: resolveChatMaxOutputTokens(options)
             }
         };
 
