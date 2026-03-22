@@ -20,12 +20,30 @@ const normalizeRecord = (storedValue) => {
 
 const buildCacheKey = (sourceUrl) => `${BACKGROUND_CACHE_PREFIX}${encodeURIComponent(sourceUrl)}`;
 
+const resolveUrl = (sourceUrl) => {
+    try {
+        return new URL(sourceUrl, window.location.href);
+    } catch {
+        return null;
+    }
+};
+
 export const isCacheableBackgroundUrl = (sourceUrl) => {
     if (typeof sourceUrl !== 'string') return false;
     const normalized = sourceUrl.trim();
     if (!normalized) return false;
     if (normalized.startsWith('data:') || normalized.startsWith('blob:')) return false;
     return /^https?:\/\//i.test(normalized);
+};
+
+export const canHydrateBackgroundCacheFromNetwork = (sourceUrl) => {
+    if (!isCacheableBackgroundUrl(sourceUrl)) return false;
+    if (typeof window === 'undefined' || !window?.location?.href) return false;
+
+    const resolvedUrl = resolveUrl(sourceUrl);
+    if (!resolvedUrl) return false;
+
+    return resolvedUrl.origin === window.location.origin;
 };
 
 const ensureBackgroundCacheBudget = async (incomingBytes, incomingKey) => {

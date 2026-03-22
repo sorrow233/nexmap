@@ -85,6 +85,18 @@
 - 维护 checkpoint 的 inline / chunked 存储
 - 兼容历史 checkpoint 格式
 
+### 1.6 背景图读取与本地缓存
+
+- `src/hooks/useCachedBackgroundImage.js`
+- `src/services/backgroundImageCache.js`
+
+职责：
+
+- 背景图显示优先保证“能看到”
+- 本地 Blob / IndexedDB 缓存只在同源资源上启用
+- 对于跨域对象存储图片，如果浏览器不能安全执行 JS `fetch()`，则直接走原始 URL 显示，不再强行抓取
+- 这样可以避免因为对象存储未配置 CORS，而把“背景图本地缓存”变成前台持续报错源
+
 ## 2. 当前整体流程
 
 ```mermaid
@@ -104,6 +116,10 @@ flowchart TD
     L --> N["远端设备监听 root checkpoint"]
     N --> O["applyCheckpointPayloadToDoc"]
     O --> P["App 收到远端 snapshot 并写回 store"]
+    Q["背景图 URL"] --> R["useCachedBackgroundImage"]
+    R --> S{"同源可 JS 抓取?"}
+    S -- 是 --> T["fetch + Blob 缓存到 IndexedDB"]
+    S -- 否 --> U["直接用原始 URL 显示"]
 ```
 
 ## 3. 进入画布时发生了什么

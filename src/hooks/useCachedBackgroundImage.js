@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+    canHydrateBackgroundCacheFromNetwork,
     fetchAndCacheBackgroundBlob,
     getCachedBackgroundBlob,
     isCacheableBackgroundUrl
@@ -41,6 +42,11 @@ export default function useCachedBackgroundImage(sourceUrl) {
                     return;
                 }
 
+                if (!canHydrateBackgroundCacheFromNetwork(normalizedSourceUrl)) {
+                    updateResolvedUrl(normalizedSourceUrl);
+                    return;
+                }
+
                 const downloadedBlob = await fetchAndCacheBackgroundBlob(normalizedSourceUrl, {
                     signal: abortController.signal
                 });
@@ -49,7 +55,6 @@ export default function useCachedBackgroundImage(sourceUrl) {
                 }
             } catch (error) {
                 if (error?.name === 'AbortError') return;
-                console.warn('[BackgroundCache] Failed to hydrate local background cache:', error);
                 updateResolvedUrl(normalizedSourceUrl);
             }
         };
