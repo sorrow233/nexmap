@@ -16,12 +16,15 @@
 
 - `src/App.jsx`
 - `src/services/sync/localPersistedBoardSyncBridge.js`
+- `src/hooks/useRevisionDrivenBoardSync.js`
 
 职责：
 
 - 在进入画布时创建 `BoardSyncController`
 - 接收远端同步回来的 snapshot 并写回 Zustand store
-- 订阅“本地保存成功”的桥接事件，把已落盘的 payload 交给同步控制器
+- 把“保存确认”和“数据同步”彻底拆开
+- `localPersistedBoardSyncBridge` 现在只表示“本地保存成功”
+- `useRevisionDrivenBoardSync` 只在真实业务 revision 前进时，按独立节流把当前内容送进同步控制器
 
 ### 1.2 本地持久化
 
@@ -165,27 +168,53 @@ flowchart TD
 - durable save 走真正的 `saveBoard(boardId, payload)`
 - “是否有变化”现在是 O(1) 的 revision 判断，不再是整板深拷贝 + `JSON.stringify`
 
-### 4.1 本地保存成功后现在怎么桥接远端同步
+### 4.1 本地保存成功事件现在只做什么
 
-这是本次文档对应版本里最关键的一点。
+这是当前版本里最关键的一点之一。
 
-以前的做法是：
+以前的错误做法是：
 
-- `App.jsx` 从 live Zustand store 反复构造整板 `currentBoardSnapshot`
-- 再在 effect 中调用 `controller.applyLocalSnapshot(...)`
+- `saveBoard` 成功
+- 发事件
+- `App.jsx` 收到后直接 `applyLocalSnapshot(整份 snapshot)`
+- 把“保存确认”错误当成了“同步指令”
 
 现在的做法是：
 
 1. `performLocalSave()` 成功后，已经拿到一份真正写入本地存储的 `payload`
-2. `useBoardPersistence.js` 调用 `emitPersistedBoardSyncSnapshot({ boardId, snapshot: payload })`
-3. `App.jsx` 订阅这个桥接事件
-4. 只有收到“已落盘成功的 payload”时，才调用 `controller.applyLocalSnapshot(...)`
+2. `useBoardPersistence.js` 只调用 `emitLocalSaveConfirmed({ boardId, clientRevision, savedAt, source })`
+3. 这个事件现在只表示“本地保存已确认落地”
+4. 它不再触发任何数据级同步操作
 
 这意味着：
 
-- 远端同步不再直接由 live store 驱动
-- 而是由“本地保存成功”驱动
-- 并且只有 revision 更高的 snapshot 才有资格继续进入同步控制器
+- 保存确认和数据同步已经解耦
+- 本地保存成功不再导致整板 snapshot 再次走同步控制器
+
+### 4.2 现在真正谁来驱动同步
+
+文件：`src/hooks/useRevisionDrivenBoardSync.js`
+
+当前版本中，远端同步的触发条件已经改成：
+
+- `boardChangeState.revision` 前进
+- 当前画布不在 loading
+- 当前没有卡片正在流式生成
+- `BoardSyncController` 已就绪
+- `lastChangeType` 属于真实业务变更，而不是 `sync_apply / local_load / manual_force_override`
+
+触发后，会按 change type 做独立同步节流：
+
+- `card_content`：更保守
+- `card_move`：更保守
+- `card_add / delete / restore / connection / group / prompt / instruction`：更快
+
+然后才会把当前 live board 内容组装成 snapshot，交给 `controller.applyLocalSnapshot(...)`。
+
+也就是说：
+
+- 现在是“数据变化驱动同步”
+- 不是“保存成功驱动同步”
 
 ## 5. BoardSyncController 当前怎么处理本地 snapshot
 

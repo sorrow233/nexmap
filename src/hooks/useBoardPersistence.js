@@ -15,7 +15,7 @@ import {
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
 import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
-import { emitPersistedBoardSyncSnapshot } from '../services/sync/localPersistedBoardSyncBridge';
+import { emitLocalSaveConfirmed } from '../services/sync/localPersistedBoardSyncBridge';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 
 const SHADOW_SAVE_DELAY_MS = 450;
@@ -275,9 +275,11 @@ export function useBoardPersistence({
                 dirty: false
             });
 
-            emitPersistedBoardSyncSnapshot({
+            emitLocalSaveConfirmed({
+                type: 'LOCAL_SAVE_CONFIRMED',
                 boardId,
-                snapshot: payload,
+                clientRevision: revision,
+                savedAt: now,
                 source: options.reason || 'local_persist'
             });
         } catch (error) {

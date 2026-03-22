@@ -62,7 +62,6 @@ import {
 } from './services/boardTitle/metadata';
 import { loadBoardsSearchData } from './services/search/searchDataLoader';
 import { BoardSyncController } from './services/sync/boardSyncController';
-import { subscribePersistedBoardSyncSnapshot } from './services/sync/localPersistedBoardSyncBridge';
 import {
     FIREBASE_SYNC_LIMITS,
     isSampleBoardId
@@ -81,6 +80,7 @@ import {
     createBoardChangeState,
     syncBoardChangeStateToCursor
 } from './store/slices/utils/boardChangeState';
+import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 
 export default function App() {
     return (
@@ -126,6 +126,8 @@ const hasMeaningfulBoardMetadataChange = (board, metadata = {}) => Object.keys(m
 function AppContent() {
     const navigate = useNavigate();
     const location = useLocation();
+    const boardMatch = location.pathname.match(/^\/board\/([^/]+)/);
+    const currentBoardId = boardMatch ? boardMatch[1] : null;
     const toast = useToast();
     const {
         user,
@@ -146,8 +148,8 @@ function AppContent() {
     const setBoardInstructionSettings = useStore(state => state.setBoardInstructionSettings);
     const setLastSavedAt = useStore(state => state.setLastSavedAt);
     const setActiveBoardPersistence = useStore(state => state.setActiveBoardPersistence);
-    const setExternalSyncMarker = useStore(state => state.setExternalSyncMarker);
     const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
+    const boardChangeState = useStore(state => state.boardChangeState);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const isBoardLoading = useStore(state => state.isBoardLoading);
     const { createCardWithText } = useCardCreator();
@@ -176,6 +178,20 @@ function AppContent() {
     const boardsListRef = useRef(boardsList);
 
     useBuildVersionRefresh();
+
+    useRevisionDrivenBoardSync({
+        boardId: currentBoardId,
+        boardSyncControllerRef,
+        boardChangeState,
+        activeBoardPersistence,
+        cards,
+        connections,
+        groups,
+        boardPrompts,
+        boardInstructionSettings,
+        isBoardLoading,
+        hasGeneratingCards: (generatingCardIds?.size || 0) > 0
+    });
 
     // Cmd+K shortcut for search
     useSearchShortcut(useCallback(() => setIsSearchOpen(true), []));
@@ -486,10 +502,6 @@ function AppContent() {
         navigate(`/board/${id}`);
     };
 
-    // We need to listen to board ID changes to load data. 
-    const boardMatch = location.pathname.match(/^\/board\/([^/]+)/);
-    const currentBoardId = boardMatch ? boardMatch[1] : null;
-
     useEffect(() => {
         // Use AbortController pattern to handle race conditions
         let isCancelled = false;
@@ -599,19 +611,6 @@ function AppContent() {
         setLastSavedAt,
         user
     ]); // Rely on currentBoardId changing
-
-    useEffect(() => {
-        const unsubscribe = subscribePersistedBoardSyncSnapshot(({ boardId, snapshot }) => {
-            const controller = boardSyncControllerRef.current;
-            if (!controller || !boardId || controller.boardId !== boardId) return;
-            if (isBoardLoading) return;
-            if (generatingCardIds?.size > 0) return;
-
-            controller.applyLocalSnapshot(normalizeBoardSnapshot(snapshot));
-        });
-
-        return unsubscribe;
-    }, [generatingCardIds?.size, isBoardLoading]);
 
     // Soft Delete (Move to Trash)
     const handleSoftDeleteBoard = async (id) => {

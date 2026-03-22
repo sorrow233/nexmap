@@ -1,6 +1,6 @@
 const listeners = new Set();
 
-export const emitPersistedBoardSyncSnapshot = (payload = {}) => {
+export const emitLocalSaveConfirmed = (payload = {}) => {
     listeners.forEach((listener) => {
         try {
             listener(payload);
@@ -10,7 +10,7 @@ export const emitPersistedBoardSyncSnapshot = (payload = {}) => {
     });
 };
 
-export const subscribePersistedBoardSyncSnapshot = (listener) => {
+export const subscribeLocalSaveConfirmed = (listener) => {
     if (typeof listener !== 'function') {
         return () => { };
     }
@@ -20,3 +20,7 @@ export const subscribePersistedBoardSyncSnapshot = (listener) => {
         listeners.delete(listener);
     };
 };
+
+// Backward-compatible aliases for existing imports during incremental refactors.
+export const emitPersistedBoardSyncSnapshot = emitLocalSaveConfirmed;
+export const subscribePersistedBoardSyncSnapshot = subscribeLocalSaveConfirmed;
