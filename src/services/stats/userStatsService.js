@@ -3,6 +3,13 @@
  * Tracks client-side usage statistics like generated characters/tokens.
  * Data is persisted in localStorage.
  */
+import {
+    buildUpdatedActivityLogValue,
+    createEmptyActivityLogValue,
+    normalizeActivityLogStorageValue,
+    readActivityLog
+} from './activityLogStorage';
+import { parseStoredJson, persistStorageValue } from './statsStorage';
 
 const STORAGE_KEYS = {
     TOTAL_CHARS: 'nexmap_stats_total_chars',
@@ -19,20 +26,30 @@ class UserStatsService {
     }
 
     _initLocalStorage() {
-        if (!localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS)) {
-            localStorage.setItem(STORAGE_KEYS.TOTAL_CHARS, '0');
+        this._ensureStorageValue(STORAGE_KEYS.TOTAL_CHARS, '0', 'total char count');
+        this._ensureStorageValue(STORAGE_KEYS.DAILY_HISTORY, '{}', 'daily history');
+        this._ensureStorageValue(STORAGE_KEYS.DAILY_SESSIONS, '{}', 'daily sessions');
+        this._ensureStorageValue(STORAGE_KEYS.MODEL_USAGE, '{}', 'model usage');
+
+        const activityLogValue = localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG);
+        if (!activityLogValue) {
+            this._writeStorageValue(
+                STORAGE_KEYS.ACTIVITY_LOG,
+                createEmptyActivityLogValue(),
+                'activity log',
+                createEmptyActivityLogValue()
+            );
+            return;
         }
-        if (!localStorage.getItem(STORAGE_KEYS.DAILY_HISTORY)) {
-            localStorage.setItem(STORAGE_KEYS.DAILY_HISTORY, '{}');
-        }
-        if (!localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG)) {
-            localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOG, '[]');
-        }
-        if (!localStorage.getItem(STORAGE_KEYS.DAILY_SESSIONS)) {
-            localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, '{}');
-        }
-        if (!localStorage.getItem(STORAGE_KEYS.MODEL_USAGE)) {
-            localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, '{}');
+
+        const normalizedActivityLog = normalizeActivityLogStorageValue(activityLogValue);
+        if (normalizedActivityLog !== activityLogValue) {
+            this._writeStorageValue(
+                STORAGE_KEYS.ACTIVITY_LOG,
+                normalizedActivityLog,
+                'activity log',
+                createEmptyActivityLogValue()
+            );
         }
     }
 
@@ -45,32 +62,45 @@ class UserStatsService {
 
         const now = new Date();
         const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
-        const hour = now.getHours();
 
         // 1. Update Total
         const currentTotal = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_CHARS) || '0', 10);
         const newTotal = currentTotal + count;
-        localStorage.setItem(STORAGE_KEYS.TOTAL_CHARS, newTotal.toString());
+        this._writeStorageValue(STORAGE_KEYS.TOTAL_CHARS, newTotal.toString(), 'total char count');
 
         // 2. Update Daily History (永久保存所有日期数据)
         const history = this._getHistory();
         const todayCount = (history[today] || 0) + count;
         history[today] = todayCount;
-        localStorage.setItem(STORAGE_KEYS.DAILY_HISTORY, JSON.stringify(history));
+        this._writeStorageValue(
+            STORAGE_KEYS.DAILY_HISTORY,
+            JSON.stringify(history),
+            'daily history'
+        );
 
-        // 3. Log activity with timestamp for time distribution analysis
-        const activityLog = this._getActivityLog();
-        activityLog.push({ timestamp: now.getTime(), hour, chars: count });
-        // Keep only last 30 days of activity logs for time distribution
-        const thirtyDaysAgo = now.getTime() - (30 * 24 * 60 * 60 * 1000);
-        const prunedLog = activityLog.filter(a => a.timestamp >= thirtyDaysAgo);
-        localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOG, JSON.stringify(prunedLog));
+        // 3. Log activity in compact hourly buckets to keep localStorage bounded
+        const updatedActivityLog = buildUpdatedActivityLogValue(
+            localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG),
+            {
+                timestamp: now.getTime(),
+                chars: count
+            }
+        );
+        this._writeStorageValue(
+            STORAGE_KEYS.ACTIVITY_LOG,
+            updatedActivityLog,
+            'activity log',
+            createEmptyActivityLogValue()
+        );
 
         // 4. Update daily session count
         const sessions = this._getDailySessions();
         sessions[today] = (sessions[today] || 0) + 1;
-        localStorage.setItem(STORAGE_KEYS.DAILY_SESSIONS, JSON.stringify(sessions));
-
+        this._writeStorageValue(
+            STORAGE_KEYS.DAILY_SESSIONS,
+            JSON.stringify(sessions),
+            'daily sessions'
+        );
     }
 
     /**
@@ -81,7 +111,11 @@ class UserStatsService {
         if (!modelName) return;
         const usage = this._getModelUsage();
         usage[modelName] = (usage[modelName] || 0) + 1;
-        localStorage.setItem(STORAGE_KEYS.MODEL_USAGE, JSON.stringify(usage));
+        this._writeStorageValue(
+            STORAGE_KEYS.MODEL_USAGE,
+            JSON.stringify(usage),
+            'model usage'
+        );
     }
 
     /**
@@ -270,29 +304,15 @@ class UserStatsService {
     }
 
     _getHistory() {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEYS.DAILY_HISTORY) || '{}');
-        } catch (e) {
-            console.error('Failed to parse stats history', e);
-            return {};
-        }
+        return parseStoredJson(localStorage.getItem(STORAGE_KEYS.DAILY_HISTORY), {});
     }
 
     _getActivityLog() {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG) || '[]');
-        } catch (e) {
-            console.error('Failed to parse activity log', e);
-            return [];
-        }
+        return readActivityLog(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOG));
     }
 
     _getDailySessions() {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEYS.DAILY_SESSIONS) || '{}');
-        } catch (e) {
-            return {};
-        }
+        return parseStoredJson(localStorage.getItem(STORAGE_KEYS.DAILY_SESSIONS), {});
     }
 
     /**
@@ -356,12 +376,19 @@ class UserStatsService {
     }
 
     _getModelUsage() {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEYS.MODEL_USAGE) || '{}');
-        } catch (e) {
-            console.error('Failed to parse model usage', e);
-            return {};
-        }
+        return parseStoredJson(localStorage.getItem(STORAGE_KEYS.MODEL_USAGE), {});
+    }
+
+    _ensureStorageValue(key, defaultValue, label) {
+        if (localStorage.getItem(key) !== null) return;
+        this._writeStorageValue(key, defaultValue, label, defaultValue);
+    }
+
+    _writeStorageValue(key, value, label, fallbackValue) {
+        return persistStorageValue(key, value, {
+            fallbackValue,
+            label
+        });
     }
 }
 

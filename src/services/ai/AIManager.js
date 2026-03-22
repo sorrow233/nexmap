@@ -354,7 +354,11 @@ class AIManager {
 
             // Track usage stats (characters generated)
             if (fullText && fullText.length > 0) {
-                userStatsService.incrementCharCount(fullText.length);
+                try {
+                    userStatsService.incrementCharCount(fullText.length);
+                } catch (error) {
+                    console.warn('[AIManager] Failed to persist usage stats without affecting generation', error);
+                }
             }
 
             return fullText;
