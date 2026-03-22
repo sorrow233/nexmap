@@ -11,6 +11,7 @@ import {
     buildCardPositionOverridesFromMap,
     resolveDraggedCardIds
 } from '../utils/cardDrag';
+import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
 import InstantTooltip from './InstantTooltip';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 
@@ -559,6 +560,7 @@ export default function Canvas({
             ? optimizeImageUrl(boardBackgroundImage.trim(), 1800)
             : ''
     );
+    const cachedBackgroundUrl = useCachedBackgroundImage(normalizedBackgroundUrl);
 
     return (
         <div
@@ -589,7 +591,7 @@ export default function Canvas({
             {normalizedBackgroundUrl && (
                 <div
                     className="absolute inset-0 pointer-events-none bg-cover bg-center opacity-30"
-                    style={{ backgroundImage: `url(${normalizedBackgroundUrl})` }}
+                    style={{ backgroundImage: `url(${cachedBackgroundUrl || normalizedBackgroundUrl})` }}
                 />
             )}
 
