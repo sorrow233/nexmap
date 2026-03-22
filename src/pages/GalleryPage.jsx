@@ -12,7 +12,7 @@ import { getGuideBoardData } from '../utils/guideBoardData';
 import { createBoard, saveBoard } from '../services/storage';
 import { useNavigate, useSearchParams, NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
-import { compareBoardsByGalleryOrder } from '../services/boardTitle/metadata';
+import { compareBoardsByGalleryHomeRank } from '../services/boardTitle/metadata';
 
 import { useStore } from '../store/useStore';
 import ProBadge from '../components/ProBadge';
@@ -116,7 +116,7 @@ export default function GalleryPage({
     const validBoardsList = Array.isArray(boardsList) ? boardsList : [];
 
     const activeBoards = [...validBoardsList.filter(b => !b.deletedAt)]
-        .sort(compareBoardsByGalleryOrder);
+        .sort(compareBoardsByGalleryHomeRank);
     const trashBoards = [...validBoardsList.filter(b => b.deletedAt)]
         .sort((left, right) => (Number(right.deletedAt) || 0) - (Number(left.deletedAt) || 0));
 

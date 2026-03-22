@@ -164,6 +164,51 @@ export const compareBoardsByGalleryOrder = (left, right) => {
     return String(right?.id || '').localeCompare(String(left?.id || ''));
 };
 
+const getBoardHomeRankMeta = (board = {}) => {
+    const normalized = normalizeBoardTitleMeta(board);
+    const cardCount = Math.max(0, Number(normalized.cardCount) || 0);
+
+    return {
+        hasMeaningfulTitle: normalized.nameSource !== 'placeholder',
+        hasContent: cardCount > 0,
+        lastAccessedAt: normalizeTimestamp(normalized.lastAccessedAt),
+        updatedAt: normalizeTimestamp(normalized.updatedAt),
+        createdAt: normalizeTimestamp(normalized.createdAt),
+        cardCount
+    };
+};
+
+export const compareBoardsByGalleryHomeRank = (left, right) => {
+    const leftMeta = getBoardHomeRankMeta(left);
+    const rightMeta = getBoardHomeRankMeta(right);
+
+    if (rightMeta.hasMeaningfulTitle !== leftMeta.hasMeaningfulTitle) {
+        return Number(rightMeta.hasMeaningfulTitle) - Number(leftMeta.hasMeaningfulTitle);
+    }
+
+    if (rightMeta.hasContent !== leftMeta.hasContent) {
+        return Number(rightMeta.hasContent) - Number(leftMeta.hasContent);
+    }
+
+    if (rightMeta.lastAccessedAt !== leftMeta.lastAccessedAt) {
+        return rightMeta.lastAccessedAt - leftMeta.lastAccessedAt;
+    }
+
+    if (rightMeta.updatedAt !== leftMeta.updatedAt) {
+        return rightMeta.updatedAt - leftMeta.updatedAt;
+    }
+
+    if (rightMeta.createdAt !== leftMeta.createdAt) {
+        return rightMeta.createdAt - leftMeta.createdAt;
+    }
+
+    if (rightMeta.cardCount !== leftMeta.cardCount) {
+        return rightMeta.cardCount - leftMeta.cardCount;
+    }
+
+    return String(right?.id || '').localeCompare(String(left?.id || ''));
+};
+
 export const getEffectiveBoardCardCount = (cards = []) => {
     if (!Array.isArray(cards)) return 0;
     return cards.filter(card => card && !card.deletedAt).length;
