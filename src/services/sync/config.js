@@ -3,6 +3,7 @@ export const FIREBASE_SYNC_ENABLED = import.meta.env.VITE_FIREBASE_SYNC_ENABLED 
 export const FIREBASE_SYNC_COLLECTIONS = {
     users: import.meta.env.VITE_FIREBASE_SYNC_USERS_COLLECTION || 'users',
     boards: import.meta.env.VITE_FIREBASE_SYNC_BOARDS_COLLECTION || 'boards',
+    thumbnails: import.meta.env.VITE_FIREBASE_SYNC_THUMBNAILS_COLLECTION || 'board_thumbnails',
     updates: import.meta.env.VITE_FIREBASE_SYNC_UPDATES_COLLECTION || 'updates',
     snapshots: import.meta.env.VITE_FIREBASE_SYNC_SNAPSHOTS_COLLECTION || 'snapshots'
 };

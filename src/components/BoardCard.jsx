@@ -1,5 +1,6 @@
 import { ArrowRight, Trash2, Loader2, Image as ImageIcon, RotateCcw, Clock } from 'lucide-react';
 import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
+import useBoardThumbnailUrl from '../hooks/useBoardThumbnailUrl';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
@@ -26,10 +27,16 @@ export default function BoardCard({
     const summaryTheme = getBoardSummaryTheme(board?.summary);
     const summaryTags = getBoardSummaryTags(board?.summary);
     const hasSummaryContent = summaryTags.length > 0;
-    const primaryBackgroundUrl = board.backgroundImage || board.thumbnail
-        ? optimizeImageUrl(board.backgroundImage || board.thumbnail, 600)
-        : '';
-    const cachedBackgroundUrl = useCachedBackgroundImage(primaryBackgroundUrl);
+    const resolvedThumbnailUrl = useBoardThumbnailUrl(
+        board.id,
+        board.thumbnailRef,
+        board.thumbnail || '',
+        board.thumbnailUpdatedAt
+    );
+    const primaryBackgroundUrl = board.backgroundImage
+        ? optimizeImageUrl(board.backgroundImage, 600)
+        : (resolvedThumbnailUrl || '');
+    const cachedBackgroundUrl = useCachedBackgroundImage(board.backgroundImage ? primaryBackgroundUrl : '');
 
     const handleImageButtonClick = (e, boardId) => {
         e.stopPropagation();
@@ -82,7 +89,7 @@ export default function BoardCard({
 
     // Variant: Stacked (Modern Grid Item)
     if (variant === 'stacked') {
-        const hasImage = board.backgroundImage || board.thumbnail;
+        const hasImage = Boolean(board.backgroundImage || resolvedThumbnailUrl);
         return (
             <div
                 onClick={() => !isTrashView && onSelect(board.id)}
@@ -211,7 +218,7 @@ export default function BoardCard({
             `}
         >
             {/* Background */}
-            {board.backgroundImage || board.thumbnail ? (
+            {board.backgroundImage || resolvedThumbnailUrl ? (
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     style={{ backgroundImage: `url(${cachedBackgroundUrl || primaryBackgroundUrl})` }}

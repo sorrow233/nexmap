@@ -33,6 +33,8 @@ const BOARD_LIST_STORAGE_TIERS = [
     { name: 'core_only', coreOnly: true }
 ];
 
+const ALWAYS_OMIT_KEYS = ['thumbnail'];
+
 const isQuotaExceededError = (error) => (
     error?.name === 'QuotaExceededError' ||
     error?.code === 22 ||
@@ -82,7 +84,7 @@ const buildBoardsForStorageTier = (boards = [], tier) => normalizeBoardMetadataL
     boards.map((board) => normalizeBoardTitleMeta(
         tier.coreOnly
             ? pickCoreBoardMetadata(board)
-            : omitBoardKeys(board, tier.omitKeys)
+            : omitBoardKeys(board, [...ALWAYS_OMIT_KEYS, ...tier.omitKeys])
     ))
 );
 

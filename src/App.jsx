@@ -73,7 +73,10 @@ import {
 } from './services/sync/boardMetadataSync';
 import { normalizeBoardSnapshot } from './services/sync/boardSnapshot';
 import { hasBoardDisplayMetadataPatch } from './services/boardTitle/displayMetadata';
-import { persistBoardDisplayMetadataSnapshot } from './services/boardPersistence/boardDisplayMetadataStorage';
+import {
+    persistBoardDisplayMetadataSnapshot,
+    prepareBoardDisplayMetadataPatch
+} from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
 import { buildPersistenceVersionKey } from './services/boardPersistence/persistenceCursor';
 import {
@@ -758,6 +761,12 @@ function AppContent() {
             return;
         }
 
+        if (hasBoardDisplayMetadataPatch(nextMetadata)) {
+            nextMetadata = sanitizeBoardMetadataPatch(
+                await prepareBoardDisplayMetadataPatch(boardId, nextMetadata)
+            );
+        }
+
         if (hasBoardTitleMetadataPatch(nextMetadata)) {
             nextMetadata = sanitizeBoardMetadataPatch({
                 ...nextMetadata,
@@ -766,6 +775,10 @@ function AppContent() {
                     ...nextMetadata
                 })
             });
+        }
+
+        if (Object.keys(nextMetadata).length === 0) {
+            return;
         }
 
         if (!hasMeaningfulBoardMetadataChange(currentBoard, nextMetadata)) {

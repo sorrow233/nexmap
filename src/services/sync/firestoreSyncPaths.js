@@ -15,6 +15,14 @@ export const createUpdatesCollectionRef = (userId, boardId) => collection(
     FIREBASE_SYNC_COLLECTIONS.updates
 );
 
+export const createThumbnailResourceRef = (userId, thumbnailRef) => doc(
+    db,
+    FIREBASE_SYNC_COLLECTIONS.users,
+    userId,
+    FIREBASE_SYNC_COLLECTIONS.thumbnails,
+    thumbnailRef
+);
+
 export const createCheckpointSetRef = (userId, boardId, checkpointId) => doc(
     createBoardRootRef(userId, boardId),
     FIREBASE_SYNC_COLLECTIONS.snapshots,

@@ -6,6 +6,7 @@ import {
     pickBoardDisplayMetadata
 } from '../boardTitle/displayMetadata';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from '../boardTitle/metadata';
+import { prepareBoardThumbnailMetadataPatch } from './boardThumbnailStorage';
 
 const BOARD_PREFIX = 'mixboard_board_';
 
@@ -47,6 +48,61 @@ const loadBoardPayload = async (boardId) => {
         : null;
 };
 
+const stripLegacyThumbnailField = (payload = {}) => {
+    if (!payload || typeof payload !== 'object' || !Object.prototype.hasOwnProperty.call(payload, 'thumbnail')) {
+        return payload;
+    }
+
+    const nextPayload = { ...payload };
+    delete nextPayload.thumbnail;
+    return nextPayload;
+};
+
+export const prepareBoardDisplayMetadataPatch = async (boardId, metadata = {}) => {
+    if (!boardId || !metadata || typeof metadata !== 'object') {
+        return {};
+    }
+
+    const thumbnailPatch = await prepareBoardThumbnailMetadataPatch(boardId, metadata);
+    const nextPatch = {
+        ...metadata,
+        ...thumbnailPatch
+    };
+
+    if (Object.prototype.hasOwnProperty.call(nextPatch, 'thumbnail') && nextPatch.thumbnail == null) {
+        delete nextPatch.thumbnail;
+    }
+
+    return nextPatch;
+};
+
+const resolveBoardDisplayMetadataSnapshot = async (boardId, payload = {}) => {
+    if (!payload || typeof payload !== 'object') {
+        return {
+            payload: null,
+            metadata: null,
+            changed: false
+        };
+    }
+
+    const preparedPatch = await prepareBoardDisplayMetadataPatch(boardId, payload);
+    const nextPayload = {
+        ...stripLegacyThumbnailField(payload),
+        ...preparedPatch
+    };
+    const nextMetadata = pickBoardDisplayMetadata(nextPayload);
+    const changed = (
+        JSON.stringify(pickBoardDisplayMetadata(payload)) !== JSON.stringify(nextMetadata)
+        || Object.prototype.hasOwnProperty.call(payload, 'thumbnail')
+    );
+
+    return {
+        payload: nextPayload,
+        metadata: nextMetadata,
+        changed
+    };
+};
+
 const hasUsableDisplayValue = (key, value) => {
     if (key === 'summary') {
         return Boolean(normalizeBoardSummary(value));
@@ -56,8 +112,7 @@ const hasUsableDisplayValue = (key, value) => {
         : Boolean(value);
 };
 
-const buildMissingDisplayMetadataPatch = (board = {}, snapshot = {}) => {
-    const snapshotMetadata = pickBoardDisplayMetadata(snapshot);
+const buildMissingDisplayMetadataPatch = (board = {}, snapshotMetadata = {}) => {
     const patch = {};
 
     BOARD_DISPLAY_SYNC_KEYS.forEach((key) => {
@@ -76,7 +131,19 @@ const buildMissingDisplayMetadataPatch = (board = {}, snapshot = {}) => {
 export const loadBoardDisplayMetadataSnapshot = async (boardId) => {
     const payload = await loadBoardPayload(boardId);
     if (!payload) return null;
-    return pickBoardDisplayMetadata(payload);
+
+    const resolved = await resolveBoardDisplayMetadataSnapshot(boardId, payload);
+    if (resolved.changed && resolved.payload) {
+        const storageKey = `${BOARD_PREFIX}${boardId}`;
+        try {
+            await idbSet(storageKey, resolved.payload);
+            persistLegacyBoardPayload(boardId, resolved.payload);
+        } catch {
+            persistLegacyBoardPayload(boardId, resolved.payload);
+        }
+    }
+
+    return resolved.metadata;
 };
 
 export const hydrateBoardsDisplayMetadataList = async (boards = []) => {
@@ -97,7 +164,18 @@ export const hydrateBoardsDisplayMetadataList = async (boards = []) => {
             return board;
         }
 
-        const patch = buildMissingDisplayMetadataPatch(board, snapshot);
+        const resolved = await resolveBoardDisplayMetadataSnapshot(board.id, snapshot);
+        if (resolved.changed && resolved.payload) {
+            const storageKey = `${BOARD_PREFIX}${board.id}`;
+            try {
+                await idbSet(storageKey, resolved.payload);
+                persistLegacyBoardPayload(board.id, resolved.payload);
+            } catch {
+                persistLegacyBoardPayload(board.id, resolved.payload);
+            }
+        }
+
+        const patch = buildMissingDisplayMetadataPatch(board, resolved.metadata || {});
         if (Object.keys(patch).length === 0) {
             return board;
         }
@@ -125,12 +203,13 @@ export const persistBoardDisplayMetadataSnapshot = async (boardId, metadata = {}
         return false;
     }
 
+    const preparedMetadata = await prepareBoardDisplayMetadataPatch(boardId, metadata);
     const nextDisplayMetadata = pickBoardDisplayMetadata({
         ...existingPayload,
-        ...metadata
+        ...preparedMetadata
     });
 
-    const nextPayload = { ...existingPayload };
+    const nextPayload = stripLegacyThumbnailField({ ...existingPayload });
     BOARD_DISPLAY_SYNC_KEYS.forEach((key) => {
         if (Object.prototype.hasOwnProperty.call(nextDisplayMetadata, key)) {
             nextPayload[key] = nextDisplayMetadata[key];

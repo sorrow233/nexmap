@@ -103,9 +103,12 @@ export function useBackgroundBoardAutoGeneration({
             patch.backgroundImage = snapshotMetadata.backgroundImage;
         }
 
-        if (!hasUsableDisplayValue('thumbnail', board?.thumbnail) &&
-            hasUsableDisplayValue('thumbnail', snapshotMetadata?.thumbnail)) {
-            patch.thumbnail = snapshotMetadata.thumbnail;
+        if (!hasUsableDisplayValue('thumbnailRef', board?.thumbnailRef) &&
+            hasUsableDisplayValue('thumbnailRef', snapshotMetadata?.thumbnailRef)) {
+            patch.thumbnailRef = snapshotMetadata.thumbnailRef;
+            if (snapshotMetadata?.thumbnailUpdatedAt) {
+                patch.thumbnailUpdatedAt = snapshotMetadata.thumbnailUpdatedAt;
+            }
         }
 
         if (!hasUsableDisplayValue('summary', board?.summary) &&

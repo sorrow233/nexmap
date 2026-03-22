@@ -35,7 +35,8 @@ const TITLE_METADATA_KEYS = ['name', 'nameSource', 'autoTitle', 'autoTitleGenera
 const BOARD_PERSISTED_METADATA_KEYS = [
     'summary',
     'backgroundImage',
-    'thumbnail',
+    'thumbnailRef',
+    'thumbnailUpdatedAt',
     'deletedAt',
     'autoImageTriggeredAt',
     'autoSummaryTriggeredAt',
@@ -182,11 +183,19 @@ export const updateBoardMetadata = (id, metadata) => {
     const list = getRawBoardsList();
     const boardIndex = list.findIndex(b => b.id === id);
     if (boardIndex >= 0) {
-        list[boardIndex] = normalizeBoardTitleMeta({
+        const nextBoardMeta = {
             ...list[boardIndex],
             ...metadata,
             updatedAt: Date.now()
-        });
+        };
+        if (
+            Object.prototype.hasOwnProperty.call(metadata, 'thumbnailRef')
+            || (Object.prototype.hasOwnProperty.call(metadata, 'thumbnail') && metadata.thumbnail == null)
+        ) {
+            delete nextBoardMeta.thumbnail;
+        }
+
+        list[boardIndex] = normalizeBoardTitleMeta(nextBoardMeta);
         persistBoardsMetadataList(list, { reason: `updateBoardMetadata:${id}` });
         return true;
     }
@@ -251,6 +260,13 @@ export const saveBoard = async (id, data) => {
                 nextBoardMeta[key] = data[key];
             }
         });
+
+        if (
+            Object.prototype.hasOwnProperty.call(data, 'thumbnailRef')
+            || (Object.prototype.hasOwnProperty.call(data, 'thumbnail') && data.thumbnail == null)
+        ) {
+            delete nextBoardMeta.thumbnail;
+        }
 
         list[boardIndex] = normalizeBoardTitleMeta(nextBoardMeta);
         persistBoardsMetadataList(list, { reason: `saveBoard:${id}` });

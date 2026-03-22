@@ -1,5 +1,9 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { updateBoardMetadata } from '../services/storage';
+import {
+    persistBoardDisplayMetadataSnapshot,
+    prepareBoardDisplayMetadataPatch
+} from '../services/boardPersistence/boardDisplayMetadataStorage';
 
 /**
  * Calculate the bounding box for all cards.
@@ -273,13 +277,21 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
     /**
      * Save thumbnail to board metadata.
      */
-    const saveThumbnail = useCallback((thumbnail) => {
-        if (thumbnail && currentBoardId) {
-            try {
-                updateBoardMetadata(currentBoardId, { thumbnail });
-            } catch (e) {
-                console.error('[Thumbnail] Save failed:', e);
-            }
+    const saveThumbnail = useCallback(async (thumbnail) => {
+        if (!thumbnail || !currentBoardId) {
+            return;
+        }
+
+        try {
+            const patch = await prepareBoardDisplayMetadataPatch(currentBoardId, {
+                thumbnail,
+                thumbnailUpdatedAt: Date.now()
+            });
+
+            updateBoardMetadata(currentBoardId, patch);
+            await persistBoardDisplayMetadataSnapshot(currentBoardId, patch);
+        } catch (e) {
+            console.error('[Thumbnail] Save failed:', e);
         }
     }, [currentBoardId]);
 
@@ -300,7 +312,7 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
         // Wait 3 seconds after last card change (faster for mobile)
         captureTimeoutRef.current = setTimeout(() => {
             const thumbnail = captureThumbnail();
-            saveThumbnail(thumbnail);
+            void saveThumbnail(thumbnail);
         }, 3000);
     }, [captureThumbnail, saveThumbnail, hasBackgroundImage, cards]);
 
@@ -328,18 +340,14 @@ export function useThumbnailCapture(cards, connections, currentBoardId, hasBackg
                 // Immediate capture when user leaves
                 const thumbnail = renderCardsThumbnail(activeCards, connections);
                 if (thumbnail) {
-                    try {
-                        updateBoardMetadata(currentBoardId, { thumbnail });
-                    } catch (e) {
-                        console.error('[Thumbnail] Save on exit failed:', e);
-                    }
+                    void saveThumbnail(thumbnail);
                 }
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [cards, connections, currentBoardId, hasBackgroundImage]);
+    }, [cards, connections, currentBoardId, hasBackgroundImage, saveThumbnail]);
 
     return {
         canvasContainerRef,

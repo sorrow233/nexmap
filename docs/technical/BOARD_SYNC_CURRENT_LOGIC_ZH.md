@@ -31,12 +31,19 @@
 - `src/hooks/useBoardPersistence.js`
 - `src/services/storage.js`
 - `src/services/boardPersistence/localBoardShadow.js`
+- `src/services/boardPersistence/boardThumbnailStorage.js`
+- `src/services/boardPersistence/boardDisplayMetadataStorage.js`
+- `src/services/sync/boardThumbnailResourceSync.js`
 
 职责：
 
 - 监听画布状态变化
 - 做本地 shadow 保存、本地 durable save、视口保存
 - 影子快照现在优先写入 IndexedDB，而不是 `sessionStorage/localStorage`
+- 缩略图现在优先写入独立的 IndexedDB 资源存储，而不是继续内联在高频 metadata 正文里
+- 缩略图资源现在拆成“两层”：
+  - metadata 只保存 `thumbnailRef / thumbnailUpdatedAt`
+  - 实际缩略图数据保存在独立资源层，本地优先落 IndexedDB，远端用独立 Firestore 缩略图资源文档兜底
 - 在 `saveBoard` 成功后，只广播保存确认信号，不广播整份 payload
 
 ### 1.3 同步控制层
@@ -223,6 +230,41 @@ flowchart TD
 5. 清理策略：
    - durable save 成功后，shadow 会被异步清理
    - 清理时同时删 IndexedDB shadow 和旧 Web Storage 遗留项
+
+### 4.4 缩略图现在如何保存和迁移
+
+文件：
+
+- `src/services/boardPersistence/boardThumbnailStorage.js`
+- `src/services/boardPersistence/boardDisplayMetadataStorage.js`
+- `src/components/BoardCard.jsx`
+
+当前版本中，缩略图已经不再被设计成 metadata 正文的大字段，而是拆成：
+
+1. 资源层：
+   - 缩略图 data URL 写入 IndexedDB 独立 key
+   - key 由 `boardId + hash + length` 组成
+
+2. metadata 层：
+   - board metadata 只保留 `thumbnailRef`
+   - 可选保留 `thumbnailUpdatedAt`
+   - legacy `thumbnail` 字段只作为迁移输入，不再作为新的持久化输出
+
+3. 迁移层：
+   - 如果旧 board payload、旧 boards list、或远端 metadata 里还存在内联 `thumbnail`
+   - 新代码会先把它写入 IndexedDB 资源层
+   - 然后改写成 `thumbnailRef`
+   - 本地持久化时会把 legacy `thumbnail` 字段剥掉
+
+4. 读取层：
+   - `BoardCard` 不再直接依赖 `board.thumbnail`
+   - 它会优先读取 `board.backgroundImage`
+   - 否则按 `thumbnailRef` 到 IndexedDB 里取本地缩略图资源
+   - legacy `board.thumbnail` 只作为兼容兜底
+
+5. 远端 metadata 层：
+   - Firestore metadata 同步现在发 `thumbnailRef / thumbnailUpdatedAt`
+   - 同时显式删除旧的 `thumbnail` 内联字段
 
 ### 4.2 现在真正谁来驱动同步
 

@@ -15,11 +15,17 @@ const SUMMARY_THEME_SET = new Set(['blue', 'purple', 'indigo', 'emerald', 'orang
 export const BOARD_DISPLAY_SYNC_KEYS = Object.freeze([
     'summary',
     'backgroundImage',
-    'thumbnail',
+    'thumbnailRef',
+    'thumbnailUpdatedAt',
     'autoImageTriggeredAt',
     'autoSummaryTriggeredAt',
     'autoImageCompletedAt',
     'autoSummaryCompletedAt'
+]);
+
+export const BOARD_DISPLAY_PATCH_KEYS = Object.freeze([
+    ...BOARD_DISPLAY_SYNC_KEYS,
+    'thumbnail'
 ]);
 
 const normalizeLooseString = (value) => {
@@ -80,7 +86,11 @@ export const normalizeBoardDisplayMetadata = (board = {}) => ({
     ...board,
     summary: normalizeBoardSummary(board.summary),
     backgroundImage: normalizeLooseString(board.backgroundImage),
-    thumbnail: normalizeLooseString(board.thumbnail)
+    thumbnail: normalizeLooseString(board.thumbnail),
+    thumbnailRef: normalizeLooseString(board.thumbnailRef),
+    thumbnailUpdatedAt: Number.isFinite(Number(board.thumbnailUpdatedAt))
+        ? Number(board.thumbnailUpdatedAt)
+        : undefined
 });
 
 export const pickBoardDisplayMetadata = (board = {}) => {
@@ -98,4 +108,4 @@ export const pickBoardDisplayMetadata = (board = {}) => {
 
 export const hasBoardDisplayMetadataPatch = (metadata = {}) => BOARD_DISPLAY_SYNC_KEYS.some((key) => (
     Object.prototype.hasOwnProperty.call(metadata, key)
-));
+)) || Object.prototype.hasOwnProperty.call(metadata, 'thumbnail');

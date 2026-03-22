@@ -15,6 +15,7 @@ import { useStore } from '../store/useStore';
 import { useTabLock } from '../hooks/useTabLock';
 import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
+import useBoardThumbnailUrl from '../hooks/useBoardThumbnailUrl';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 const NotePage = lazyWithRetry(() => import('./NotePage'));
@@ -114,6 +115,13 @@ export default function BoardPage({
 
     } = useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBoardMetadata, onBack, isReadOnly });
 
+    const resolvedBoardThumbnailUrl = useBoardThumbnailUrl(
+        currentBoard?.id || '',
+        currentBoard?.thumbnailRef,
+        currentBoard?.thumbnail || '',
+        currentBoard?.thumbnailUpdatedAt
+    );
+
     useEffect(() => {
         if (!isIPhoneBoardMode) return;
         if (selectedIds.length === 0) return;
@@ -175,7 +183,7 @@ export default function BoardPage({
                         <ErrorBoundary level="canvas">
                             <div ref={canvasContainerRef} className="absolute inset-0">
                                 <Canvas
-                                    boardBackgroundImage={currentBoard?.backgroundImage || currentBoard?.thumbnail || ''}
+                                    boardBackgroundImage={currentBoard?.backgroundImage || resolvedBoardThumbnailUrl || ''}
                                     isSuspended={Boolean(expandedCardId)}
                                     onCreateNote={handleCreateNote}
                                     onCreateStandaloneNote={createStandaloneNote}

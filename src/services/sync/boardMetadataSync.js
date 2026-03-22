@@ -1,5 +1,6 @@
 import {
     collection,
+    deleteField,
     doc,
     getDocs,
     serverTimestamp,
@@ -12,11 +13,13 @@ import {
     normalizeBoardTitleMeta
 } from '../boardTitle/metadata';
 import { normalizeBoardSummary } from '../boardTitle/displayMetadata';
+import { prepareBoardDisplayMetadataPatch } from '../boardPersistence/boardDisplayMetadataStorage';
+import { syncBoardThumbnailResourceToRemote } from './boardThumbnailResourceSync';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 
-const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnail'];
+const DISPLAY_METADATA_KEYS = ['summary', 'backgroundImage', 'thumbnailRef', 'thumbnailUpdatedAt'];
 const FIRESTORE_WRITE_BATCH_LIMIT = 100;
 const METADATA_RETRY_DELAYS_MS = [0, 300, 900];
 const metadataSyncSignatureCache = new Map();
@@ -103,12 +106,16 @@ const pickRemoteBoardMetadata = (board = {}) => omitUndefinedFields({
     listOrder: Number.isFinite(Number(board.listOrder)) ? Number(board.listOrder) : null,
     summary: normalizeBoardSummary(board.summary),
     backgroundImage: normalizeOptionalString(board.backgroundImage),
-    thumbnail: normalizeOptionalString(board.thumbnail)
+    thumbnailRef: normalizeOptionalString(board.thumbnailRef),
+    thumbnailUpdatedAt: normalizeOptionalMillis(board.thumbnailUpdatedAt),
+    thumbnail: deleteField()
 });
 
 const buildRemoteBoardMetadataSignature = (board = {}) => {
     try {
-        return JSON.stringify(pickRemoteBoardMetadata(board));
+        const signaturePayload = { ...pickRemoteBoardMetadata(board) };
+        delete signaturePayload.thumbnail;
+        return JSON.stringify(signaturePayload);
     } catch (error) {
         console.warn('[FirebaseSync] Failed to build board metadata signature:', error);
         return String(board?.id || '');
@@ -143,7 +150,21 @@ const mergeFieldByPresence = (preferredBoard, fallbackBoard, key) => {
 export const loadRemoteBoardMetadataList = async (userId) => {
     if (!db || !userId) return [];
     const snapshot = await withRetry(() => getDocs(getBoardCollectionRef(userId)));
-    const boards = normalizeBoardMetadataList(snapshot.docs.map((item) => item.data()));
+    const boards = await Promise.all(snapshot.docs.map(async (item) => {
+        const rawBoard = item.data();
+        const preparedPatch = await prepareBoardDisplayMetadataPatch(rawBoard?.id, rawBoard);
+        if (preparedPatch?.thumbnailRef) {
+            await syncBoardThumbnailResourceToRemote(userId, {
+                id: rawBoard?.id,
+                thumbnailRef: preparedPatch.thumbnailRef,
+                thumbnailUpdatedAt: preparedPatch.thumbnailUpdatedAt
+            });
+        }
+        return normalizeBoardTitleMeta({
+            ...rawBoard,
+            ...preparedPatch
+        });
+    }));
     const cache = getUserMetadataSignatureCache(userId);
 
     boards.forEach((board) => {
@@ -295,6 +316,11 @@ const syncBoardMetadataListToRemoteNow = async (userId, boards = []) => {
     for (let offset = 0; offset < changedBoards.length; offset += FIRESTORE_WRITE_BATCH_LIMIT) {
         const currentSlice = changedBoards.slice(offset, offset + FIRESTORE_WRITE_BATCH_LIMIT);
         await withRetry(async () => {
+            await Promise.all(currentSlice.map(({ board, listOrder }) => syncBoardThumbnailResourceToRemote(userId, {
+                ...board,
+                listOrder
+            })));
+
             const batch = writeBatch(db);
 
             currentSlice.forEach(({ board, listOrder }) => {
