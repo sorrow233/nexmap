@@ -23,6 +23,7 @@ import {
 import { yieldToMainThread } from '../../utils/scheduling';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
 import { bumpBoardChangeState } from './utils/boardChangeState';
+import { resolveCardChatConfig } from './utils/cardChatConfig';
 
 const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
     if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
@@ -393,19 +394,33 @@ export const createAISlice = (set, get) => {
                 const freshState = get();
                 const card = freshState.cards.find(c => c.id === cardId);
 
-                let config;
-                if (freshState.isSystemCreditsUser) {
-                    config = {
-                        apiKey: AI_PROVIDERS.SYSTEM_CREDITS,
-                        model: AI_MODELS.FREE_TIER,
-                        id: AI_PROVIDERS.SYSTEM_CREDITS,
-                        protocol: AI_PROVIDERS.SYSTEM_CREDITS
-                    };
-                    if (card.data.model !== AI_MODELS.FREE_TIER) {
-                        updateCardFull(cardId, c => ({ ...c, model: AI_MODELS.FREE_TIER }));
+                const resolvedRunConfig = resolveCardChatConfig(freshState, card);
+                let config = resolvedRunConfig.config;
+
+                if (resolvedRunConfig.source === 'system-credits') {
+                    if (
+                        card?.data?.model !== resolvedRunConfig.model ||
+                        card?.data?.providerId !== resolvedRunConfig.providerId
+                    ) {
+                        updateCardFull(cardId, (currentData) => ({
+                            ...currentData,
+                            model: resolvedRunConfig.model,
+                            providerId: resolvedRunConfig.providerId
+                        }));
                     }
-                } else {
-                    config = freshState.getEffectiveChatConfig();
+                } else if (
+                    resolvedRunConfig.source === 'default' &&
+                    card &&
+                    (
+                        card.data?.model !== resolvedRunConfig.model ||
+                        card.data?.providerId !== resolvedRunConfig.providerId
+                    )
+                ) {
+                    updateCardFull(cardId, (currentData) => ({
+                        ...currentData,
+                        model: resolvedRunConfig.model,
+                        providerId: resolvedRunConfig.providerId
+                    }));
                 }
 
                 const runModel = config.model;
@@ -669,28 +684,24 @@ export const createAISlice = (set, get) => {
         },
 
         handleRegenerate: async () => {
-            const { cards, selectedIds, updateCardContent, setCardGenerating, handleChatGenerate, activeProviderId, isSystemCreditsUser } = get();
+            const { cards, selectedIds, updateCardContent, handleChatGenerate } = get();
             // Filter out cards that don't have messages (like sticky notes)
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
 
             // Get current active config to use for regeneration (Respect Session Overrides)
-            let currentModel, currentProviderId;
+            const runConfigsByCardId = new Map();
+            targets.forEach((card) => {
+                const resolvedConfig = resolveCardChatConfig(get(), card);
+                runConfigsByCardId.set(card.id, resolvedConfig);
+            });
 
-            if (isSystemCreditsUser) {
-                currentModel = AI_MODELS.FREE_TIER;
-                currentProviderId = AI_PROVIDERS.SYSTEM_CREDITS;
-            } else {
-                const effectiveConfig = get().getEffectiveChatConfig();
-                currentModel = effectiveConfig.model;
-                currentProviderId = effectiveConfig.providerId || effectiveConfig.id;
-            }
-
-            // Reset assistant messages first AND update to current model
+            // Reset assistant messages first while preserving each card's own model binding
             set(state => {
                 const updatedCards = [];
                 const nextCards = state.cards.map((c) => {
                     if (selectedIds.indexOf(c.id) !== -1) {
+                        const resolvedConfig = runConfigsByCardId.get(c.id);
                         const newMsgs = [...(c.data.messages || [])];
                         const assistantId = uuid();
                         if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
@@ -703,8 +714,8 @@ export const createAISlice = (set, get) => {
                             data: {
                                 ...c.data,
                                 messages: newMsgs,
-                                model: currentModel,
-                                providerId: currentProviderId
+                                model: resolvedConfig?.model || c.data?.model,
+                                providerId: resolvedConfig?.providerId || c.data?.providerId
                             }
                         };
                         updatedCards.push(updatedCard);

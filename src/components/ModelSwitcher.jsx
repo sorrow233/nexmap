@@ -1,51 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Sparkles, ChevronDown, Check, Image as ImageIcon, MessageSquare, Zap, Target, ShieldCheck, Globe, RefreshCw, Settings as SettingsIcon } from 'lucide-react';
+import { Bot, ChevronDown, Check, Globe, RefreshCw } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useLanguage } from '../contexts/LanguageContext';
-
-/**
- * 常用模型预设列表 - 增加图标分类
- */
-const PRESET_MODELS = {
-    chat: [
-        { id: 'google/gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'Google', icon: Sparkles, color: 'text-blue-500' },
-        { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'Google', icon: Zap, color: 'text-amber-500' },
-        { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', icon: Bot, color: 'text-emerald-500' },
-        { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', icon: Target, color: 'text-orange-500' },
-        { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', icon: ShieldCheck, color: 'text-cyan-600' },
-    ],
-    image: [
-        { id: 'gemini-3-pro-image-preview', name: 'Gemini Image', provider: 'Google', icon: ImageIcon, color: 'text-blue-500' },
-        { id: 'dall-e-3', name: 'DALL-E 3', provider: 'OpenAI', icon: ImageIcon, color: 'text-emerald-500' },
-        { id: 'flux-pro', name: 'Flux Pro', provider: 'Black Forest', icon: Sparkles, color: 'text-purple-500' },
-    ]
-};
-
-/**
- * 提取模型显示名称 (简化版，移除 ID)
- */
-function getModelDisplayName(modelId, customModels = []) {
-    if (!modelId) return '默认配置';
-
-    // 1. 自定义模型
-    const custom = customModels.find(m => m.id === modelId);
-    if (custom) return custom.name;
-
-    // 2. 预设模型
-    const allPresets = [...PRESET_MODELS.chat, ...PRESET_MODELS.image];
-    const preset = allPresets.find(m => m.id === modelId);
-    if (preset) return preset.name;
-
-    // 3. Fallback: 简单的名称处理
-    const parts = modelId.split('/');
-    const name = parts[parts.length - 1];
-    return name.replace(/-preview$/, '').replace(/-/g, ' ');
-}
-
-function buildModelEntryKey(model) {
-    return `${model.providerId || 'default'}::${model.id}`;
-}
+import {
+    PRESET_MODELS,
+    buildModelEntryKey,
+    collectProviderChatModels,
+    getModelDisplayName,
+    groupModelsByProvider
+} from './modelCatalog';
+import { normalizeModelIdForProvider, modelsMatch } from '../utils/modelConfig';
 
 /**
  * ModelSwitcher V2 - 极简主义设计
@@ -64,59 +29,10 @@ export default function ModelSwitcher({ compact = false }) {
     const setQuickChatModel = useStore(state => state.setQuickChatModel);
 
     // 动态提取用户在所有厂商配置中定义的模型
-    const userModels = useMemo(() => {
-        const chatModels = [];
-
-        Object.values(providers || {}).forEach(p => {
-            if (!p) return;
-
-            // 收集所有定义的模型 ID
-            const modelIds = new Set();
-            if (p.model) modelIds.add(p.model.trim());
-            if (p.customModels) {
-                p.customModels.split(',').forEach(m => {
-                    const id = m.trim();
-                    if (id) modelIds.add(id);
-                });
-            }
-
-            modelIds.forEach(id => {
-                const modelObj = {
-                    id,
-                    name: id,
-                    provider: p.name,
-                    providerId: p.id,
-                    icon: p.protocol === 'openai' ? Bot : p.protocol === 'gemini' ? Sparkles : Globe
-                };
-                chatModels.push(modelObj);
-            });
-
-            // 角色分配模型 (保持兼容)
-            if (p.roles?.chat) {
-                chatModels.push({ id: p.roles.chat, name: p.roles.chat, provider: p.name, providerId: p.id, icon: MessageSquare });
-            }
-        });
-
-        const unique = (arr) => Array.from(new Map(arr.map(item => [buildModelEntryKey(item), item])).values());
-        return unique(chatModels);
-    }, [providers]);
+    const userModels = useMemo(() => collectProviderChatModels(providers), [providers]);
 
     // 按 Provider 分组模型
-    const groupedModels = useMemo(() => {
-        const groups = {};
-        userModels.forEach(model => {
-            const providerKey = model.providerId || model.provider || 'other';
-            if (!groups[providerKey]) {
-                groups[providerKey] = {
-                    name: model.provider || 'Other',
-                    providerId: model.providerId,
-                    models: []
-                };
-            }
-            groups[providerKey].models.push(model);
-        });
-        return Object.values(groups);
-    }, [userModels]);
+    const groupedModels = useMemo(() => groupModelsByProvider(userModels), [userModels]);
 
     const displayProviderId = quickChatModel
         ? (quickChatProviderId || globalChatRole?.providerId || 'google')
@@ -125,9 +41,13 @@ export default function ModelSwitcher({ compact = false }) {
         || globalChatRole?.model
         || providers?.[displayProviderId]?.model
         || 'google/gemini-3-pro-preview';
+    const normalizedDisplayModel = normalizeModelIdForProvider(displayProviderId, displayModel);
     const selectedEntry = useMemo(() => {
-        return userModels.find(model => model.id === displayModel && model.providerId === displayProviderId) || null;
-    }, [displayModel, displayProviderId, userModels]);
+        return userModels.find((model) => (
+            model.providerId === displayProviderId &&
+            modelsMatch(model.id, normalizedDisplayModel, displayProviderId)
+        )) || null;
+    }, [displayProviderId, normalizedDisplayModel, userModels]);
 
     // 判断是否使用预设模型
     const isUsingPresets = groupedModels.length === 0;
@@ -173,7 +93,7 @@ export default function ModelSwitcher({ compact = false }) {
                 {!compact && (
                     <>
                         <span className="max-w-[120px] truncate">
-                            {getModelDisplayName(displayModel, userModels)}
+                            {getModelDisplayName(normalizedDisplayModel, userModels, displayProviderId)}
                         </span>
                         {selectedEntry?.provider && (
                             <span className="max-w-[88px] truncate text-[10px] text-slate-400">
@@ -234,7 +154,8 @@ export default function ModelSwitcher({ compact = false }) {
                                         {/* Provider 下的模型列表 */}
                                         <div className="space-y-0.5">
                                             {group.models.map((model) => {
-                                                const isSelected = displayModel === model.id && displayProviderId === model.providerId;
+                                                const isSelected = displayProviderId === model.providerId
+                                                    && modelsMatch(model.id, normalizedDisplayModel, model.providerId);
                                                 return (
                                                     <button
                                                         key={buildModelEntryKey(model)}
@@ -251,7 +172,7 @@ export default function ModelSwitcher({ compact = false }) {
                                                                 {model.icon ? <model.icon size={12} className={model.color} /> : <Bot size={12} />}
                                                             </div>
                                                             <div className="flex flex-col min-w-0">
-                                                                <span className="truncate text-xs">{getModelDisplayName(model.id, userModels)}</span>
+                                                                <span className="truncate text-xs">{getModelDisplayName(model.id, userModels, model.providerId)}</span>
                                                                 <span className="truncate text-[9px] text-slate-400">{model.providerId}</span>
                                                             </div>
                                                         </div>
@@ -265,7 +186,8 @@ export default function ModelSwitcher({ compact = false }) {
                             ) : (
                                 /* 预设模型 fallback */
                                 PRESET_MODELS.chat.map((model) => {
-                                    const isSelected = displayModel === model.id;
+                                    const isSelected = displayProviderId === model.providerId
+                                        && modelsMatch(model.id, normalizedDisplayModel, model.providerId);
                                     return (
                                         <button
                                             key={model.id}

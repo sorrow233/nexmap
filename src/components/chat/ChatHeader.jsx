@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Star, StickyNote, Loader2, Sprout } from 'lucide-react';
+import CardModelSwitcher from './CardModelSwitcher';
 
 const ChatHeader = ({
     card,
@@ -38,6 +39,11 @@ const ChatHeader = ({
 
             {/* Bottom/Right Section: Actions */}
             <div className="flex items-center gap-3 lg:flex-col lg:gap-4 lg:mb-2 opacity-30 group-hover/sidebar:opacity-100 transition-all duration-500">
+                <CardModelSwitcher
+                    card={card}
+                    onUpdate={onUpdate}
+                />
+
                 {card.data.marks?.length > 0 && (
                     <button
                         onClick={() => onUpdate(card.id, (currentData) => ({ ...currentData, marks: [] }))}
