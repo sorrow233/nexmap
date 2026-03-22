@@ -9,7 +9,6 @@ import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
 import {
-    appendStreamBufferUpdates,
     applyStreamTextUpdates,
     buildStreamBufferKey,
     collectStreamBufferUpdatesForCard,
@@ -94,14 +93,36 @@ export const createAISlice = (set, get) => {
         if (!updates || updates.size === 0) return;
 
         set((state) => {
-            const { nextBufferState, dirtyCardIds } = appendStreamBufferUpdates(
-                state.streamingMessages,
-                updates
-            );
-            if (nextBufferState === state.streamingMessages) return {};
+            const nextCards = applyStreamTextUpdates(state.cards, updates);
+            if (nextCards === state.cards) return {};
+
+            const dirtyCardIds = new Set();
+            const updatedCards = [];
+
+            updates.forEach((_, bufferKey) => {
+                const separatorIndex = bufferKey.indexOf(':');
+                const cardId = separatorIndex >= 0
+                    ? bufferKey.slice(0, separatorIndex)
+                    : bufferKey;
+
+                if (!cardId || dirtyCardIds.has(cardId)) return;
+                dirtyCardIds.add(cardId);
+                const updatedCard = nextCards.find((card) => card.id === cardId);
+                if (updatedCard) {
+                    updatedCards.push(updatedCard);
+                }
+            });
 
             return {
-                streamingMessages: nextBufferState,
+                cards: nextCards,
+                cardIndexMutation: updatedCards.length > 0
+                    ? nextCardIndexMutation(state.cardIndexMutation, {
+                        mode: 'patch',
+                        scope: 'content',
+                        updatedCards,
+                        reason: 'streamRenderBuffer:flushToMessages'
+                    })
+                    : state.cardIndexMutation,
                 streamingCardVersions: bumpStreamingCardVersions(
                     state.streamingCardVersions,
                     dirtyCardIds
