@@ -12,10 +12,8 @@ import {
     appendStreamBufferUpdates,
     applyStreamTextUpdates,
     buildStreamBufferKey,
-    collectStreamBufferUpdateByKey,
     collectStreamBufferUpdatesForCard,
     createStreamRenderBuffer,
-    removeStreamBufferUpdateByKey,
     removeStreamBufferUpdatesForCard
 } from './utils/streamRenderBuffer';
 import { createCardTimestampFields } from '../../services/cards/cardTimestamps';
@@ -563,7 +561,7 @@ export const createAISlice = (set, get) => {
             const bufferKey = buildStreamBufferKey(id, options?.messageId || null);
             const flushedTailUpdates = isGenerating
                 ? new Map()
-                : streamRenderBuffer.flushKeyNow(bufferKey);
+                : streamRenderBuffer.flushCardNow(id);
 
             if (isGenerating) {
                 streamRenderBuffer.cleanupKey(bufferKey);
@@ -585,7 +583,7 @@ export const createAISlice = (set, get) => {
                 const committedUpdates = isGenerating
                     ? new Map()
                     : mergeStreamUpdateMaps(
-                        collectStreamBufferUpdateByKey(state.streamingMessages, bufferKey),
+                        collectStreamBufferUpdatesForCard(state.streamingMessages, id),
                         flushedTailUpdates
                     );
                 const nextCards = committedUpdates.size > 0
@@ -597,7 +595,7 @@ export const createAISlice = (set, get) => {
 
                 const nextStreamingMessages = isGenerating
                     ? state.streamingMessages
-                    : removeStreamBufferUpdateByKey(state.streamingMessages, bufferKey);
+                    : removeStreamBufferUpdatesForCard(state.streamingMessages, id);
                 const nextStreamingCardVersions = nextCount > 0
                     ? state.streamingCardVersions
                     : clearStreamingCardVersion(state.streamingCardVersions, id);

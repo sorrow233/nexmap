@@ -325,6 +325,27 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         return updates;
     };
 
+    const flushCardNow = (cardId) => {
+        const updates = new Map();
+        if (destroyed || !cardId) return updates;
+
+        const matchesCard = (key) => key === cardId || key.startsWith(`${cardId}:`);
+
+        renderChunks.forEach((content, key) => {
+            if (!matchesCard(key)) return;
+            appendText(updates, key, content);
+            renderChunks.delete(key);
+        });
+
+        pendingChunks.forEach((content, key) => {
+            if (!matchesCard(key)) return;
+            appendText(updates, key, content);
+            pendingChunks.delete(key);
+        });
+
+        return updates;
+    };
+
     const cleanupCard = (cardId) => {
         if (!cardId) return;
 
@@ -362,6 +383,7 @@ export const createStreamRenderBuffer = (onFlush, options = {}) => {
         enqueue,
         flushNow,
         flushKeyNow,
+        flushCardNow,
         cleanupCard,
         cleanupKey,
         clearAll,
