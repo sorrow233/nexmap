@@ -264,7 +264,8 @@ export const saveBoardCheckpoint = async ({
     deviceId,
     updateBase64,
     reason = 'manual_snapshot',
-    cleanupStale = false
+    cleanupStale = false,
+    snapshotMetadata = {}
 }) => {
     if (!db || !userId || !boardId || !updateBase64) {
         return null;
@@ -277,18 +278,19 @@ export const saveBoardCheckpoint = async ({
     if (byteLength <= INLINE_CHECKPOINT_MAX_BYTES) {
         await setDoc(rootRef, {
             ...buildAuthoritativeRootPayload({
-            id: boardId,
-            checkpointStorage: CHECKPOINT_STORAGE_INLINE,
-            checkpointBase64: updateBase64,
-            checkpointSetId: '',
-            checkpointPartCount: 0,
-            checkpointByteLength: byteLength,
-            checkpointSavedAtMs: savedAtMs,
-            checkpointServerSavedAt: serverTimestamp(),
-            checkpointReason: reason,
-            syncTouchedAtMs: savedAtMs,
-            serverUpdatedAt: serverTimestamp(),
-            lastDeviceId: deviceId
+                id: boardId,
+                ...snapshotMetadata,
+                checkpointStorage: CHECKPOINT_STORAGE_INLINE,
+                checkpointBase64: updateBase64,
+                checkpointSetId: '',
+                checkpointPartCount: 0,
+                checkpointByteLength: byteLength,
+                checkpointSavedAtMs: savedAtMs,
+                checkpointServerSavedAt: serverTimestamp(),
+                checkpointReason: reason,
+                syncTouchedAtMs: savedAtMs,
+                serverUpdatedAt: serverTimestamp(),
+                lastDeviceId: deviceId
             })
         }, { merge: true });
 
@@ -317,18 +319,19 @@ export const saveBoardCheckpoint = async ({
 
     await setDoc(rootRef, {
         ...buildAuthoritativeRootPayload({
-        id: boardId,
-        checkpointStorage: CHECKPOINT_STORAGE_CHUNKED,
-        checkpointBase64: '',
-        checkpointSetId: checkpointId,
-        checkpointPartCount: partCount,
-        checkpointByteLength: byteLength,
-        checkpointSavedAtMs: savedAtMs,
-        checkpointServerSavedAt: serverTimestamp(),
-        checkpointReason: reason,
-        syncTouchedAtMs: savedAtMs,
-        serverUpdatedAt: serverTimestamp(),
-        lastDeviceId: deviceId
+            id: boardId,
+            ...snapshotMetadata,
+            checkpointStorage: CHECKPOINT_STORAGE_CHUNKED,
+            checkpointBase64: '',
+            checkpointSetId: checkpointId,
+            checkpointPartCount: partCount,
+            checkpointByteLength: byteLength,
+            checkpointSavedAtMs: savedAtMs,
+            checkpointServerSavedAt: serverTimestamp(),
+            checkpointReason: reason,
+            syncTouchedAtMs: savedAtMs,
+            serverUpdatedAt: serverTimestamp(),
+            lastDeviceId: deviceId
         })
     }, { merge: true });
 

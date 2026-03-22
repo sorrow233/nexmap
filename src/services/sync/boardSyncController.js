@@ -97,9 +97,17 @@ export class BoardSyncController {
             onSyncStateChange: this.onSyncStateChange
         });
 
-        const { remoteIsEmpty } = await this.fireSync.connect();
+        const {
+            remoteIsEmpty,
+            skippedRemoteApplyReason
+        } = await this.fireSync.connect({
+            localSnapshot: repairCandidateSnapshot,
+            expectedCardCount
+        });
         if (remoteIsEmpty && !isMeaningfullyEmptyBoardSnapshot(normalizedLocal)) {
             await this.fireSync.saveSnapshot('initial_local_seed');
+        } else if (skippedRemoteApplyReason) {
+            await this.fireSync.saveSnapshot(skippedRemoteApplyReason);
         } else {
             this.fireSync.planDeferredRepair(repairCandidateSnapshot, { expectedCardCount });
         }

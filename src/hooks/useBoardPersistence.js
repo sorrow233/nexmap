@@ -16,6 +16,7 @@ import {
 } from '../services/boardPersistence/localBoardShadow';
 import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
 import { emitLocalSaveConfirmed } from '../services/sync/localPersistedBoardSyncBridge';
+import { pickBoardSyncMetadata } from '../services/sync/boardSyncMetadata';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 
 const SHADOW_SAVE_DELAY_MS = 450;
@@ -281,7 +282,9 @@ export function useBoardPersistence({
                 boardId,
                 clientRevision: revision,
                 savedAt: now,
-                source: options.reason || 'local_persist'
+                source: options.reason || 'local_persist',
+                snapshot: payload,
+                metadata: pickBoardSyncMetadata(payload)
             });
         } catch (error) {
             console.error('[BoardPersistence] Local save failed:', error);

@@ -18,7 +18,8 @@ import {
 import { uuid } from '../../utils/uuid';
 import {
     encodeCompactBoardSnapshotUpdate,
-    isBoardDocEmpty
+    isBoardDocEmpty,
+    readBoardSnapshotFromDoc
 } from './boardYDoc';
 import { isMeaningfullyEmptyBoardSnapshot, normalizeBoardSnapshot } from './boardSnapshot';
 import { base64ToBytes, bytesToBase64 } from './base64';
@@ -33,6 +34,7 @@ import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncP
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 import { planDeferredRemoteCheckpointRepair } from './remoteCheckpointRepairPlanner';
+import { pickBoardSyncMetadata } from './boardSyncMetadata';
 
 const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
 const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
@@ -148,14 +150,39 @@ export class FirestoreBoardSync {
         return query(updatesRef, orderBy('createdAt', 'asc'));
     }
 
-    async connect() {
+    shouldDeferRemoteApply({ localSnapshot, expectedCardCount = 0 } = {}) {
+        const plan = planDeferredRemoteCheckpointRepair({
+            localSnapshot,
+            expectedCardCount,
+            remoteMetadata: {
+                ...this.remoteMetadata,
+                recoveredFromCompatibility: this.remoteCheckpointRecoveredFromCompatibility
+            }
+        });
+
+        if (!plan.shouldRepair) {
+            return null;
+        }
+
+        if (
+            plan.reason === 'local_snapshot_repair'
+            || plan.reason === 'local_snapshot_cardcount_repair'
+        ) {
+            this.queueDeferredCheckpointRepair(plan.reason);
+            return plan;
+        }
+
+        return null;
+    }
+
+    async connect(options = {}) {
         if (!db) {
             this.emitState('disabled');
             return { remoteIsEmpty: true };
         }
 
         this.emitState('connecting');
-        await this.loadRemoteCheckpoint();
+        const loadResult = await this.loadRemoteCheckpoint(null, options);
 
         if (this.updateLogEnabled) {
             try {
@@ -175,7 +202,10 @@ export class FirestoreBoardSync {
             remoteIsEmpty: this.remoteIsEmpty,
             mode: this.updateLogEnabled ? 'delta' : 'checkpoint_only'
         });
-        return { remoteIsEmpty: this.remoteIsEmpty };
+        return {
+            remoteIsEmpty: this.remoteIsEmpty,
+            skippedRemoteApplyReason: loadResult?.skippedApplyReason || ''
+        };
     }
 
     queueRecoveredCheckpointRepair(signature = '', format = 'unknown') {
@@ -241,7 +271,7 @@ export class FirestoreBoardSync {
         return result;
     }
 
-    async loadRemoteCheckpoint(rootData = null) {
+    async loadRemoteCheckpoint(rootData = null, options = {}) {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
         let effectiveRootData = rootData || (await getDoc(rootRef)).data();
         this.latestRootSyncTouchedAtMs = toFirestoreMillis(effectiveRootData?.syncTouchedAtMs);
@@ -284,6 +314,20 @@ export class FirestoreBoardSync {
         this.latestCheckpointSignature = checkpoint.signature || '';
         this.latestCheckpointRootKey = buildRootCheckpointKey(effectiveRootData);
         this.hasUnsnapshottedChanges = false;
+
+        const deferredPlan = this.shouldDeferRemoteApply({
+            localSnapshot: options.localSnapshot,
+            expectedCardCount: options.expectedCardCount
+        });
+        if (deferredPlan) {
+            this.emitState('warning', {
+                message: `Skipped stale remote checkpoint for ${this.boardId}, local snapshot will repair remote`
+            });
+            return {
+                skippedApplyReason: deferredPlan.reason
+            };
+        }
+
         try {
             this.applyLoadedCheckpoint(checkpoint, effectiveRootData);
         } catch (error) {
@@ -384,6 +428,15 @@ export class FirestoreBoardSync {
             this.latestCheckpointRootKey = nextRootCheckpointKey || this.latestCheckpointRootKey;
             this.latestRootSyncTouchedAtMs = remoteSyncTouchedAtMs;
             this.hasUnsnapshottedChanges = false;
+
+            const deferredPlan = this.shouldDeferRemoteApply({
+                localSnapshot: readBoardSnapshotFromDoc(this.doc),
+                expectedCardCount: this.remoteMetadata.cardCount
+            });
+            if (deferredPlan) {
+                return;
+            }
+
             try {
                 this.applyLoadedCheckpoint(checkpoint, data);
             } catch (error) {
@@ -540,9 +593,11 @@ export class FirestoreBoardSync {
                 }
 
                 try {
+                    const liveSnapshot = readBoardSnapshotFromDoc(this.doc);
                     await setDoc(createBoardRootRef(this.userId, this.boardId), {
                         ...buildAuthoritativeRootPayload({
                             id: this.boardId,
+                            ...pickBoardSyncMetadata(liveSnapshot),
                             syncTouchedAtMs: Date.now(),
                             serverUpdatedAt: serverTimestamp(),
                             lastDeviceId: this.deviceId
@@ -602,14 +657,16 @@ export class FirestoreBoardSync {
                         || (this.snapshotSaveCount % SNAPSHOT_CLEANUP_SAVE_INTERVAL) === 0
                     );
 
-                    const update = encodeCompactBoardSnapshotUpdate(this.doc);
+                    const liveSnapshot = readBoardSnapshotFromDoc(this.doc);
+                    const update = encodeCompactBoardSnapshotUpdate(liveSnapshot);
                     const checkpoint = await saveBoardCheckpoint({
                         userId: this.userId,
                         boardId: this.boardId,
                         deviceId: this.deviceId,
                         updateBase64: bytesToBase64(update),
                         reason: currentReason,
-                        cleanupStale: shouldCleanupStaleCheckpoints
+                        cleanupStale: shouldCleanupStaleCheckpoints,
+                        snapshotMetadata: pickBoardSyncMetadata(liveSnapshot)
                     });
 
                     if (checkpoint) {
@@ -728,7 +785,8 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
             boardId,
             deviceId,
             updateBase64: bytesToBase64(encodeCompactBoardSnapshotUpdate(normalizedSnapshot)),
-            reason: 'local_seed'
+            reason: 'local_seed',
+            snapshotMetadata: pickBoardSyncMetadata(normalizedSnapshot)
         });
     } catch (error) {
         console.error(`[FirebaseSync] Failed to seed local board ${boardId}:`, error);

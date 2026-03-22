@@ -78,13 +78,19 @@ import {
     prepareBoardDisplayMetadataPatch
 } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
-import { buildPersistenceVersionKey } from './services/boardPersistence/persistenceCursor';
+import {
+    buildPersistenceVersionKey,
+    isPersistenceSnapshotNewer
+} from './services/boardPersistence/persistenceCursor';
 import {
     createBoardChangeState,
     syncBoardChangeStateToCursor
 } from './store/slices/utils/boardChangeState';
 import { buildBoardChangeIntegrityHash } from './store/slices/utils/boardChangeIntegrity';
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
+import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
+import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
+import { isMeaningfullyEmptyBoardSnapshot } from './services/sync/boardSnapshot';
 
 export default function App() {
     return (
@@ -180,6 +186,7 @@ function AppContent() {
     const searchBufferedDataRef = useRef({});
     const searchFlushTimerRef = useRef(null);
     const boardsListRef = useRef(boardsList);
+    const activeBoardPersistenceRef = useRef(activeBoardPersistence);
 
     useBuildVersionRefresh();
 
@@ -207,6 +214,74 @@ function AppContent() {
     useEffect(() => {
         boardsListRef.current = boardsList;
     }, [boardsList]);
+
+    useEffect(() => {
+        activeBoardPersistenceRef.current = activeBoardPersistence;
+    }, [activeBoardPersistence]);
+
+    const syncBoardSnapshotMetadataIntoList = useCallback((boardId, snapshot) => {
+        if (!boardId || !snapshot) return;
+
+        const nextMetadata = pickBoardSyncMetadata(snapshot);
+        setBoardsList((prev) => {
+            let didChange = false;
+            const nextBoards = prev.map((board) => {
+                if (board.id !== boardId) return board;
+
+                if (
+                    (Number(board.updatedAt) || 0) === nextMetadata.updatedAt &&
+                    (Number(board.clientRevision) || 0) === nextMetadata.clientRevision &&
+                    (Number(board.cardCount) || 0) === nextMetadata.cardCount
+                ) {
+                    return board;
+                }
+
+                didChange = true;
+                return normalizeBoardTitleMeta({
+                    ...board,
+                    ...nextMetadata
+                });
+            });
+
+            if (!didChange) {
+                return prev;
+            }
+
+            boardsListRef.current = nextBoards;
+            return nextBoards;
+        });
+    }, [setBoardsList]);
+
+    const shouldApplyRemoteSnapshotToStore = useCallback((snapshot) => {
+        const normalizedSnapshot = normalizeBoardSnapshot(snapshot);
+        const currentCursor = activeBoardPersistenceRef.current || {};
+        const currentStoreState = useStore.getState();
+        const localDirty = currentCursor?.dirty === true;
+        const localSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot({
+            cards: currentStoreState.cards,
+            connections: currentStoreState.connections,
+            groups: currentStoreState.groups,
+            boardPrompts: currentStoreState.boardPrompts,
+            boardInstructionSettings: currentStoreState.boardInstructionSettings
+        });
+
+        if (isMeaningfullyEmptyBoardSnapshot(normalizedSnapshot)) {
+            return false;
+        }
+
+        if (localDirty) {
+            return false;
+        }
+
+        if (localSnapshotIsEmpty) {
+            return true;
+        }
+
+        return isPersistenceSnapshotNewer(normalizedSnapshot, {
+            updatedAt: Number(currentCursor?.updatedAt) || 0,
+            clientRevision: Number(currentCursor?.clientRevision) || 0
+        });
+    }, []);
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
@@ -291,6 +366,30 @@ function AppContent() {
             flushSearchDataBuffer();
         };
     }, [flushSearchDataBuffer]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeLocalSaveConfirmed((payload = {}) => {
+            const boardId = typeof payload.boardId === 'string' ? payload.boardId : '';
+            const snapshot = payload.snapshot ? normalizeBoardSnapshot(payload.snapshot) : null;
+
+            if (boardId && snapshot) {
+                syncBoardSnapshotMetadataIntoList(boardId, snapshot);
+            }
+
+            if (!snapshot || boardId !== currentBoardId) {
+                return;
+            }
+
+            const controller = boardSyncControllerRef.current;
+            if (!controller || controller.boardId !== boardId) {
+                return;
+            }
+
+            controller.applyLocalSnapshot(snapshot);
+        });
+
+        return () => unsubscribe?.();
+    }, [currentBoardId, syncBoardSnapshotMetadataIntoList]);
 
     useEffect(() => {
         let cancelled = false;
@@ -577,10 +676,14 @@ function AppContent() {
                             user,
                             onSnapshot: (nextSnapshot) => {
                                 if (isCancelled) return;
+                                if (!shouldApplyRemoteSnapshotToStore(nextSnapshot)) {
+                                    return;
+                                }
                                 applyBoardSnapshotToStore(nextSnapshot, {
                                     source: 'remote_sync',
                                     boardId: currentBoardId
                                 });
+                                syncBoardSnapshotMetadataIntoList(currentBoardId, nextSnapshot);
                             },
                             onSyncStateChange: () => { }
                         });
@@ -618,6 +721,8 @@ function AppContent() {
         setConnections,
         setGroups,
         setLastSavedAt,
+        shouldApplyRemoteSnapshotToStore,
+        syncBoardSnapshotMetadataIntoList,
         user
     ]); // Rely on currentBoardId changing
 
