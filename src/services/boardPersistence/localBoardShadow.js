@@ -83,27 +83,6 @@ const clearLegacyBoardShadowSnapshot = (boardId, scope = SHADOW_SCOPE_BOTH) => {
     });
 };
 
-const persistLegacyBoardShadowSnapshot = (boardId, payload, scope = SHADOW_SCOPE_SESSION) => {
-    const storage = getScopedStorage(scope);
-    if (!storage || !boardId || !payload) return false;
-
-    try {
-        const currentLegacySnapshot = loadLegacyBoardShadowSnapshot(boardId, scope);
-        if (currentLegacySnapshot && !isPersistenceSnapshotNewer(payload, currentLegacySnapshot)) {
-            return true;
-        }
-
-        storage.setItem(
-            getBoardShadowStorageKey(boardId),
-            JSON.stringify(buildBoardRecoverySnapshot(payload))
-        );
-        return true;
-    } catch (error) {
-        debugLog.error(`[Storage] ${scope} legacy shadow snapshot save failed for board ${boardId}`, error);
-        return false;
-    }
-};
-
 export const buildBoardRecoverySnapshot = (payload = {}, options = {}) => ({
     ...payload,
     updatedAt: toEpochMillis(options.updatedAt ?? payload.updatedAt ?? Date.now()),
@@ -134,26 +113,6 @@ export const persistBoardShadowSnapshot = async (boardId, payload, options = {})
             return false;
         }
     });
-};
-
-export const persistBoardShadowSnapshotSync = (boardId, payload, options = {}) => {
-    const scope = options.scope || SHADOW_SCOPE_SESSION;
-    if (!boardId || !payload) return false;
-
-    const nextSnapshot = buildBoardRecoverySnapshot(payload);
-    const scopes = getScopesToHandle(scope);
-    const results = scopes.map((currentScope) => (
-        persistLegacyBoardShadowSnapshot(boardId, nextSnapshot, currentScope)
-    ));
-
-    if (results.some(Boolean)) {
-        debugLog.storage(`[Storage] Synchronous legacy shadow snapshot saved for board ${boardId}`, {
-            scope
-        });
-        return true;
-    }
-
-    return false;
 };
 
 export const loadBoardShadowSnapshot = async (boardId, options = {}) => {

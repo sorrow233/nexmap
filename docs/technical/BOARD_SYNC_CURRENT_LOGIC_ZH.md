@@ -272,13 +272,12 @@ flowchart TD
    - 同一张 board、同一 scope 的 shadow 写入使用串行队列
    - 这样可以避免 “A 版本后发先至，B 版本先发后至，最终旧数据覆盖新数据” 的竞态
 
-4. 页面关闭/冻结兜底：
+4. 页面关闭/冻结时的可靠性：
+   - `shadow` 本身不再产生新的 `sessionStorage/localStorage` 写入
    - 在 `pagehide / beforeunload / freeze / unmount` 这类 critical flush 时
-   - 除了继续尝试异步写 IndexedDB shadow 之外
-   - 还会同步写一份 legacy shadow 到 `sessionStorage/localStorage`
-   - 这份同步兜底也带 `clientRevision / updatedAt` 比较
-   - 如果当前 legacy shadow 已经更新或相同，则拒绝旧版本回写覆盖
-   - 这样即使浏览器中断了异步 IndexedDB 写入，下一次打开仍有最近一次 shadow 可恢复
+   - 会由 `emergencyLocalSave` 同步写一份主 board fallback 到 legacy `mixboard_board_*`
+   - 也就是说，影子快照的职责已经收口为“纯 IndexedDB 恢复层”
+   - Web Storage 只剩主 board 的同步兜底，不再继续承担 shadow 的新写入
 
 5. 迁移层：
    - 读取时先查 IndexedDB
