@@ -6,6 +6,7 @@
  */
 
 import { auth } from '../firebase';
+import { drainOpenAIStreamBuffer } from './openAIStreamBuffer';
 
 const ENDPOINT = '/api/system-credits';
 
@@ -113,37 +114,19 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
     try {
         while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+                buffer += decoder.decode();
+                break;
+            }
 
             buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop(); // Keep incomplete line
-
-            for (const line of lines) {
-                if (line.trim().startsWith('data: ')) {
-                    const dataStr = line.trim().substring(6);
-                    if (dataStr === '[DONE]') continue;
-
-                    try {
-                        const data = JSON.parse(dataStr);
-
-                        if (data.error) {
-                            throw new Error(data.error.message || JSON.stringify(data.error));
-                        }
-
-                        // OpenAI Format: choices[0].delta.content
-                        const delta = data.choices?.[0]?.delta?.content;
-
-                        if (delta) {
-                            fullText += delta;
-                            onToken(delta);
-                        }
-                    } catch (jsonErr) {
-                        // Ignore parse errors on chunks or non-json lines
-                    }
-                }
-            }
+            const drained = drainOpenAIStreamBuffer(buffer, onToken);
+            fullText += drained.emittedText;
+            buffer = drained.remainingBuffer;
         }
+
+        const flushedTail = drainOpenAIStreamBuffer(buffer, onToken, { flushTail: true });
+        fullText += flushedTail.emittedText;
 
         return fullText;
     } finally {
