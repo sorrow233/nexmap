@@ -7,6 +7,8 @@ import { createThumbnailResourceRef } from './firestoreSyncPaths';
 
 const uploadSignatureCache = new Map();
 const remoteLoadCache = new Map();
+const thumbnailUploadQueueState = new Map();
+const THUMBNAIL_UPLOAD_SPACING_MS = 120;
 
 const normalizeLooseString = (value) => {
     if (value === undefined || value === null) return '';
@@ -25,14 +27,35 @@ const buildUploadSignature = (userId, thumbnailRef, thumbnailUpdatedAt) => (
     `${userId}:${thumbnailRef}:${normalizeUpdatedAt(thumbnailUpdatedAt)}`
 );
 
+const sleep = (ms) => new Promise((resolve) => {
+    setTimeout(resolve, ms);
+});
+
+const getThumbnailUploadQueue = (userId) => {
+    if (!thumbnailUploadQueueState.has(userId)) {
+        thumbnailUploadQueueState.set(userId, {
+            inFlight: null,
+            pending: new Map()
+        });
+    }
+    return thumbnailUploadQueueState.get(userId);
+};
+
+const normalizeBoardThumbnailPayload = (board = {}) => ({
+    id: normalizeLooseString(board?.id),
+    thumbnailRef: normalizeLooseString(board?.thumbnailRef),
+    thumbnailUpdatedAt: normalizeUpdatedAt(board?.thumbnailUpdatedAt)
+});
+
 export const syncBoardThumbnailResourceToRemote = async (userId, board = {}) => {
     const normalizedUserId = normalizeLooseString(userId);
-    const thumbnailRef = normalizeLooseString(board?.thumbnailRef);
+    const normalizedBoard = normalizeBoardThumbnailPayload(board);
+    const thumbnailRef = normalizedBoard.thumbnailRef;
     if (!normalizedUserId || !thumbnailRef) {
         return false;
     }
 
-    const thumbnailUpdatedAt = normalizeUpdatedAt(board?.thumbnailUpdatedAt);
+    const thumbnailUpdatedAt = normalizedBoard.thumbnailUpdatedAt;
     const uploadSignature = buildUploadSignature(normalizedUserId, thumbnailRef, thumbnailUpdatedAt);
     if (uploadSignatureCache.has(uploadSignature)) {
         return true;
@@ -44,7 +67,7 @@ export const syncBoardThumbnailResourceToRemote = async (userId, board = {}) => 
     }
 
     await setDoc(createThumbnailResourceRef(normalizedUserId, thumbnailRef), {
-        boardId: normalizeLooseString(board?.id),
+        boardId: normalizedBoard.id,
         thumbnailRef,
         thumbnailUpdatedAt,
         dataUrl: localThumbnailData,
@@ -53,6 +76,54 @@ export const syncBoardThumbnailResourceToRemote = async (userId, board = {}) => 
 
     uploadSignatureCache.set(uploadSignature, true);
     return true;
+};
+
+export const enqueueBoardThumbnailResourceSync = async (userId, board = {}) => {
+    const normalizedUserId = normalizeLooseString(userId);
+    const normalizedBoard = normalizeBoardThumbnailPayload(board);
+    if (!normalizedUserId || !normalizedBoard.thumbnailRef) {
+        return false;
+    }
+
+    const uploadSignature = buildUploadSignature(
+        normalizedUserId,
+        normalizedBoard.thumbnailRef,
+        normalizedBoard.thumbnailUpdatedAt
+    );
+
+    if (uploadSignatureCache.has(uploadSignature)) {
+        return true;
+    }
+
+    const queue = getThumbnailUploadQueue(normalizedUserId);
+    queue.pending.set(uploadSignature, normalizedBoard);
+
+    if (queue.inFlight) {
+        return queue.inFlight;
+    }
+
+    const runQueue = async () => {
+        while (queue.pending.size > 0) {
+            const [nextSignature, nextBoard] = queue.pending.entries().next().value;
+            queue.pending.delete(nextSignature);
+            try {
+                await syncBoardThumbnailResourceToRemote(normalizedUserId, nextBoard);
+            } finally {
+                if (queue.pending.size > 0) {
+                    await sleep(THUMBNAIL_UPLOAD_SPACING_MS);
+                }
+            }
+        }
+    };
+
+    queue.inFlight = runQueue().finally(() => {
+        queue.inFlight = null;
+        if (queue.pending.size === 0) {
+            thumbnailUploadQueueState.delete(normalizedUserId);
+        }
+    });
+
+    return queue.inFlight;
 };
 
 export const loadRemoteBoardThumbnailResource = async (userId, boardId, thumbnailRef, thumbnailUpdatedAt = 0) => {

@@ -15,7 +15,7 @@ import {
 import { normalizeBoardSummary } from '../boardTitle/displayMetadata';
 import { prepareBoardDisplayMetadataPatch } from '../boardPersistence/boardDisplayMetadataStorage';
 import { migrateBoardThumbnailRecord } from '../boardPersistence/boardThumbnailMigration';
-import { syncBoardThumbnailResourceToRemote } from './boardThumbnailResourceSync';
+import { enqueueBoardThumbnailResourceSync } from './boardThumbnailResourceSync';
 import { FIREBASE_SYNC_COLLECTIONS, isSampleBoardId } from './config';
 import { toFirestoreMillis } from './firestoreCheckpointStore';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
@@ -162,13 +162,6 @@ export const loadRemoteBoardMetadataList = async (userId) => {
             rawBoard?.id,
             migratedRecord.record || rawBoard
         );
-        if (preparedPatch?.thumbnailRef) {
-            await syncBoardThumbnailResourceToRemote(userId, {
-                id: rawBoard?.id,
-                thumbnailRef: preparedPatch.thumbnailRef,
-                thumbnailUpdatedAt: preparedPatch.thumbnailUpdatedAt
-            });
-        }
         return normalizeBoardTitleMeta({
             ...(migratedRecord.record || rawBoard),
             ...preparedPatch
@@ -325,11 +318,6 @@ const syncBoardMetadataListToRemoteNow = async (userId, boards = []) => {
     for (let offset = 0; offset < changedBoards.length; offset += FIRESTORE_WRITE_BATCH_LIMIT) {
         const currentSlice = changedBoards.slice(offset, offset + FIRESTORE_WRITE_BATCH_LIMIT);
         await withRetry(async () => {
-            await Promise.all(currentSlice.map(({ board, listOrder }) => syncBoardThumbnailResourceToRemote(userId, {
-                ...board,
-                listOrder
-            })));
-
             const batch = writeBatch(db);
 
             currentSlice.forEach(({ board, listOrder }) => {
@@ -349,6 +337,14 @@ const syncBoardMetadataListToRemoteNow = async (userId, boards = []) => {
             await batch.commit();
             currentSlice.forEach(({ board, signature }) => {
                 cache.set(board.id, signature);
+            });
+        });
+
+        currentSlice.forEach(({ board, listOrder }) => {
+            if (!board?.thumbnailRef) return;
+            void enqueueBoardThumbnailResourceSync(userId, {
+                ...board,
+                listOrder
             });
         });
     }

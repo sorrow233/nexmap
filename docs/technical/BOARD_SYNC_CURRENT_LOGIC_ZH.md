@@ -46,6 +46,9 @@
 - 缩略图资源现在拆成“两层”：
   - metadata 只保存 `thumbnailRef / thumbnailUpdatedAt`
   - 实际缩略图数据保存在独立资源层，本地优先落 IndexedDB，远端用独立 Firestore 缩略图资源文档兜底
+- 缩略图资源远端写入不再挂在画廊 metadata 批量同步主链上
+- metadata 批量同步现在只负责轻量 board root 文档
+- 缩略图资源改成独立串行队列异步上传，避免几十张 board 一起把 Firestore 本地写队列打满
 - 在 `saveBoard` 成功后，只广播保存确认信号，不广播整份 payload
 
 ### 1.3 同步控制层
@@ -215,6 +218,30 @@ flowchart TD
 - “是否有变化”现在是 O(1) 的 revision 判断，不再是整板深拷贝 + `JSON.stringify`
 - shadow 快照现在写入 IndexedDB，并带 `clientRevision / updatedAt` 保护，避免旧影子快照反盖新影子快照
 
+### 4.2 缩略图资源为什么不再和 metadata 批量同步绑死
+
+之前的错误做法是：
+
+- `syncBoardMetadataListToRemote()` 在提交 root metadata batch 之前
+- 先对当前批次中所有 changed boards 并发执行缩略图资源 `setDoc()`
+
+这会带来两个问题：
+
+1. 画廊列表本来只该同步轻量 metadata，却被额外混入了大资源写入
+2. 当 changed boards 很多时，缩略图资源写入会和 root metadata batch 一起把 Firestore 本地写队列挤满
+
+现在改成：
+
+1. 远端 metadata 加载流程保持只读，不再顺手回写缩略图资源
+2. root metadata batch 先单独提交
+3. 缩略图资源上传改为独立串行队列，按 `thumbnailRef + thumbnailUpdatedAt` 去重后逐个上传
+
+这样做的结果是：
+
+- 画廊 metadata 同步恢复成轻量路径
+- Firestore 峰值写入显著降低
+- 缩略图资源即使需要补传，也不会再以并发洪峰方式挤满写队列
+
 ### 4.1 本地保存成功事件现在只做什么
 
 这是当前版本里最关键的一点之一。
@@ -238,7 +265,7 @@ flowchart TD
 - 保存确认和数据同步已经解耦
 - 本地保存成功不再导致整板 snapshot 再次走同步控制器
 
-### 4.2 revision 可靠性现在如何保证
+### 4.3 revision 可靠性现在如何保证
 
 文件：
 
