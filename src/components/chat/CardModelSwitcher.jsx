@@ -130,12 +130,12 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                     transition-all duration-300 lg:h-11 lg:w-11 lg:px-0
                     ${isOpen
                         ? 'border-brand-300/60 bg-[#131b2f] text-brand-200 shadow-[0_18px_40px_-24px_rgba(34,211,238,0.45)] dark:border-brand-400/40 dark:bg-[#131b2f]'
-                        : 'border-slate-200/80 bg-white/80 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-white/10 dark:bg-[#11192d]/82 dark:text-slate-300 dark:hover:border-brand-400/30 dark:hover:text-white'
+                        : 'border-slate-200/80 bg-white/80 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-white/14 dark:bg-white/[0.08] dark:text-slate-100 dark:shadow-[0_18px_36px_-24px_rgba(2,8,23,0.95)] dark:hover:border-brand-400/30 dark:hover:bg-white/[0.11] dark:hover:text-white'
                     }
                 `}
                 title={t.settings.roles?.chatTitle || '卡片模型'}
             >
-                <Bot size={15} className={isOpen ? 'text-brand-300' : ''} />
+                <Bot size={15} className={isOpen ? 'text-brand-300' : 'text-slate-500 dark:text-slate-100'} />
                 <span className="max-w-[116px] truncate text-xs font-semibold lg:hidden">
                     {getModelDisplayName(currentModel, userModels, currentProviderId)}
                 </span>
@@ -181,38 +181,35 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                         <div className="h-px bg-white/8" />
 
                         <div className="mt-4 max-h-[min(24rem,calc(100vh-11rem))] overflow-y-auto pr-1 custom-scrollbar">
-                            <div className="grid grid-cols-2 gap-3">
-                                {displayModels.map((model, index) => {
+                            <div className="space-y-3">
+                                {displayModels.map((model) => {
                                     const isSelected = currentProviderId === model.providerId
                                         && modelsMatch(model.id, currentModel, model.providerId);
-                                    const isLeadSelected = index === 0 && isSelected;
 
                                     return (
                                         <button
                                             key={buildModelEntryKey(model)}
                                             onClick={() => handleModelSelect(model)}
-                                            className={`group flex min-h-[5.1rem] items-start justify-between rounded-[1.7rem] border px-4 py-3 text-left transition-all duration-200 ${
-                                                isLeadSelected ? 'col-span-2' : ''
-                                            } ${
+                                            className={`group flex w-full items-start justify-between gap-4 rounded-[1.65rem] border px-4 py-3.5 text-left transition-all duration-200 ${
                                                 isSelected
                                                     ? 'border-white/70 bg-white/[0.05] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
                                                     : 'border-white/8 bg-transparent text-slate-200 hover:border-white/18 hover:bg-white/[0.04]'
                                             }`}
                                         >
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full ${getProviderAccentClass(model.providerId)}`} />
-                                                    <div className="min-w-0">
-                                                        <div className={`truncate ${isLeadSelected ? 'text-[1.05rem]' : 'text-[0.95rem]'} font-semibold`}>
-                                                            {getModelDisplayName(model.id, userModels, model.providerId)}
-                                                        </div>
-                                                        <div className="mt-1 truncate text-[11px] text-slate-400">
-                                                            {model.provider || model.providerId}
-                                                        </div>
+                                            <div className="flex min-w-0 items-start gap-3.5">
+                                                <span className={`mt-1 h-4 w-4 shrink-0 rounded-full ${getProviderAccentClass(model.providerId)}`} />
+                                                <div className="min-w-0">
+                                                    <div className="whitespace-normal break-all text-[0.98rem] font-semibold leading-[1.28]">
+                                                        {getModelDisplayName(model.id, userModels, model.providerId)}
+                                                    </div>
+                                                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                                                        <span>{model.provider || model.providerId}</span>
+                                                        <span className="h-1 w-1 rounded-full bg-white/18" />
+                                                        <span className="break-all text-slate-500">{model.providerId}</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                            {isSelected && <Check size={18} className="ml-3 mt-0.5 shrink-0 text-white/85" />}
+                                            {isSelected && <Check size={18} className="mt-0.5 shrink-0 text-white/85" />}
                                         </button>
                                     );
                                 })}
