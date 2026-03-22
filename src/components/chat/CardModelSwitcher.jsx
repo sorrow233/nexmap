@@ -19,9 +19,16 @@ export default function CardModelSwitcher({ card, onUpdate }) {
     const { t } = useLanguage();
 
     const providers = useStore((state) => state.providers);
-    const effectiveChatConfig = useStore((state) => state.getEffectiveChatConfig());
     const globalChatRole = useStore((state) => state.globalRoles?.chat);
     const isSystemCreditsUser = useStore((state) => state.isSystemCreditsUser);
+    const quickChatModel = useStore((state) => state.quickChatModel);
+    const quickChatProviderId = useStore((state) => state.quickChatProviderId);
+
+    // Avoid selecting a freshly created config object from Zustand directly.
+    // A non-stable selector snapshot here can trigger React's infinite re-render guard.
+    const effectiveChatConfig = useMemo(() => (
+        useStore.getState().getEffectiveChatConfig()
+    ), [providers, globalChatRole, isSystemCreditsUser, quickChatModel, quickChatProviderId]);
 
     const userModels = useMemo(() => collectProviderChatModels(providers), [providers]);
     const groupedModels = useMemo(() => groupModelsByProvider(userModels), [userModels]);
