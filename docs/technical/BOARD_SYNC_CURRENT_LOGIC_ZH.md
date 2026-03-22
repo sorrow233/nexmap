@@ -36,7 +36,8 @@
 
 - 监听画布状态变化
 - 做本地 shadow 保存、本地 durable save、视口保存
-- 在 `saveBoard` 成功后，广播“已持久化成功的 board payload”
+- 影子快照现在优先写入 IndexedDB，而不是 `sessionStorage/localStorage`
+- 在 `saveBoard` 成功后，只广播保存确认信号，不广播整份 payload
 
 ### 1.3 同步控制层
 
@@ -81,17 +82,19 @@
 flowchart TD
     A["Zustand 画布状态变化"] --> B["useBoardPersistence"]
     B --> C["shadow 保存 / local save 调度"]
-    C --> D["saveBoard 成功"]
-    D --> E["localPersistedBoardSyncBridge 广播已保存 payload"]
-    E --> F["App.jsx 订阅桥接事件"]
-    F --> G["BoardSyncController.applyLocalSnapshot"]
-    G --> H["Y.Doc 更新"]
-    H --> I["FirestoreBoardSync.handleDocUpdate"]
-    I --> J["flushPendingUpdates / saveSnapshot"]
-    J --> K["saveBoardCheckpoint 写 Firestore"]
-    K --> L["远端设备监听 root checkpoint"]
-    L --> M["applyCheckpointPayloadToDoc"]
-    M --> N["App 收到远端 snapshot 并写回 store"]
+    C --> D["IndexedDB shadow 快照"]
+    C --> E["saveBoard 成功"]
+    A --> F["revision 前进"]
+    F --> G["useRevisionDrivenBoardSync"]
+    G --> H["BoardSyncController.applyLocalSnapshot"]
+    H --> I["Y.Doc 更新"]
+    I --> J["FirestoreBoardSync.handleDocUpdate"]
+    J --> K["flushPendingUpdates / saveSnapshot"]
+    K --> L["saveBoardCheckpoint 写 Firestore"]
+    E --> M["localPersistedBoardSyncBridge 广播 LOCAL_SAVE_CONFIRMED"]
+    L --> N["远端设备监听 root checkpoint"]
+    N --> O["applyCheckpointPayloadToDoc"]
+    O --> P["App 收到远端 snapshot 并写回 store"]
 ```
 
 ## 3. 进入画布时发生了什么
@@ -167,6 +170,7 @@ flowchart TD
 - shadow 保存更快，目的是兜底恢复
 - durable save 走真正的 `saveBoard(boardId, payload)`
 - “是否有变化”现在是 O(1) 的 revision 判断，不再是整板深拷贝 + `JSON.stringify`
+- shadow 快照现在写入 IndexedDB，并带 `clientRevision / updatedAt` 保护，避免旧影子快照反盖新影子快照
 
 ### 4.1 本地保存成功事件现在只做什么
 
@@ -190,6 +194,35 @@ flowchart TD
 
 - 保存确认和数据同步已经解耦
 - 本地保存成功不再导致整板 snapshot 再次走同步控制器
+
+### 4.3 影子快照现在如何保存和迁移
+
+文件：`src/services/boardPersistence/localBoardShadow.js`
+
+当前版本中，影子快照的处理规则已经改成：
+
+1. 新写入路径：
+   - 不再写 `sessionStorage/localStorage`
+   - 统一写入 IndexedDB 主 store，使用独立 key 前缀保存 shadow 记录
+
+2. 写入保护：
+   - 每次影子快照写入都会带 `clientRevision` 和 `updatedAt`
+   - 如果当前库里已经有更新或相同版本的 shadow，就拒绝旧写入覆盖
+
+3. 并发顺序保护：
+   - 同一张 board、同一 scope 的 shadow 写入使用串行队列
+   - 这样可以避免 “A 版本后发先至，B 版本先发后至，最终旧数据覆盖新数据” 的竞态
+
+4. 迁移层：
+   - 读取时先查 IndexedDB
+   - 如果 IndexedDB 没有，再查旧的 `sessionStorage/localStorage`
+   - 如果读到了旧影子快照，会先尝试写入 IndexedDB
+   - 只有 IndexedDB 写成功后，才清理旧位置的数据
+   - 如果迁移失败，则保留旧数据，不做删除
+
+5. 清理策略：
+   - durable save 成功后，shadow 会被异步清理
+   - 清理时同时删 IndexedDB shadow 和旧 Web Storage 遗留项
 
 ### 4.2 现在真正谁来驱动同步
 

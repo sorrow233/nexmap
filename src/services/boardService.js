@@ -309,7 +309,7 @@ export const loadBoard = async (id) => {
     }
 
     const legacySnapshot = loadLegacyBoardSnapshot(id);
-    const { snapshot: shadowSnapshot, source: shadowSource } = loadMostRecentBoardShadowSnapshot(id);
+    const { snapshot: shadowSnapshot, source: shadowSource } = await loadMostRecentBoardShadowSnapshot(id);
     const { snapshot: preferredSnapshot, source: preferredSource } = pickMostRecentBoardSnapshot([
         { snapshot: stored, source: 'idb' },
         { snapshot: legacySnapshot, source: 'legacy' },
@@ -353,7 +353,7 @@ export const loadBoard = async (id) => {
         try {
             await saveBoard(id, stored);
             clearLegacyBoardSnapshot(id);
-            clearBoardShadowSnapshot(id);
+            await clearBoardShadowSnapshot(id);
             debugLog.storage(`[Storage] Recovered board ${id} promoted back to durable storage from ${preferredSource}`);
             logPersistenceTrace('load:promotion-success', {
                 boardId: id,
@@ -374,7 +374,7 @@ export const loadBoard = async (id) => {
             clearLegacyBoardSnapshot(id);
         }
         if (shadowSnapshot) {
-            clearBoardShadowSnapshot(id);
+            await clearBoardShadowSnapshot(id);
         }
         logPersistenceTrace('load:idb-direct', {
             boardId: id,

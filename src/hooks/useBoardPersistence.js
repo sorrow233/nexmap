@@ -208,7 +208,7 @@ export function useBoardPersistence({
         return scheduledOperation;
     }, []);
 
-    const persistRecoverySnapshot = useCallback((data, options = {}) => {
+    const persistRecoverySnapshot = useCallback(async (data, options = {}) => {
         if (!boardId) return false;
 
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
@@ -221,9 +221,10 @@ export function useBoardPersistence({
         });
 
         const scopes = Array.isArray(options.scopes) ? options.scopes : ['session'];
-        const didPersist = scopes.reduce((saved, scope) => (
-            persistBoardShadowSnapshot(boardId, payload, { scope }) || saved
-        ), false);
+        const results = await Promise.all(
+            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, { scope }))
+        );
+        const didPersist = results.some(Boolean);
 
         if (didPersist && typeof options.revision === 'number') {
             trackerRef.current.shadowSavedRevision = Math.max(
@@ -265,7 +266,7 @@ export function useBoardPersistence({
             );
 
             if (trackerRef.current.localSavedRevision >= trackerRef.current.shadowSavedRevision) {
-                clearBoardShadowSnapshot(boardId);
+                void clearBoardShadowSnapshot(boardId);
             }
 
             applySaveStatus(setSaveStatus, 'saved');
@@ -321,7 +322,7 @@ export function useBoardPersistence({
             trackerRef.current.revision = Math.max(trackerRef.current.revision, revision);
             trackerRef.current.localSavedRevision = Math.max(trackerRef.current.localSavedRevision, revision);
             trackerRef.current.shadowSavedRevision = Math.max(trackerRef.current.shadowSavedRevision, revision);
-            clearBoardShadowSnapshot(boardId);
+            void clearBoardShadowSnapshot(boardId);
 
             if (typeof setLastSavedAt === 'function') {
                 setLastSavedAt(updatedAt);
@@ -367,7 +368,7 @@ export function useBoardPersistence({
             }
             idleShadowSaveCancelRef.current = runWhenBrowserIdle(() => {
                 idleShadowSaveCancelRef.current = null;
-                persistRecoverySnapshot(latestBoardDataRef.current, {
+                void persistRecoverySnapshot(latestBoardDataRef.current, {
                     revision: queuedShadowRevisionRef.current,
                     reason: 'debounced_shadow',
                     scopes: ['session']
@@ -428,7 +429,7 @@ export function useBoardPersistence({
         }
         shadowSaveWindowStartedAtRef.current = 0;
 
-        persistRecoverySnapshot(latestBoardDataRef.current, {
+        void persistRecoverySnapshot(latestBoardDataRef.current, {
             revision,
             reason,
             scopes: ['session', 'local']
