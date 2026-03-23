@@ -20,6 +20,16 @@ const BACKUP_ROOT_FOLDER = 'backups/full-data';
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_REMOTE_BACKUPS = 5;
 
+const KNOWN_S3_ERROR_NAMES = new Set([
+    'AccessDenied',
+    'InvalidAccessKeyId',
+    'SignatureDoesNotMatch',
+    'NoSuchBucket',
+    'NoSuchKey',
+    'NetworkingError',
+    'TimeoutError'
+]);
+
 const createBackupId = () => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return crypto.randomUUID();
@@ -132,6 +142,79 @@ const computeSha256Hex = async (text) => {
         .join('');
 };
 
+const formatS3BackupError = (error, fallbackMessage) => {
+    if (!error) {
+        return fallbackMessage;
+    }
+
+    const code = error.Code || error.code || error.name || '';
+    const httpStatus = error?.$metadata?.httpStatusCode || error?.statusCode || error?.status;
+    const rawMessage = error?.message || fallbackMessage;
+    const isKnownS3Error = KNOWN_S3_ERROR_NAMES.has(code) || Boolean(error?.$metadata);
+
+    if (!isKnownS3Error && rawMessage) {
+        return rawMessage;
+    }
+
+    if (code === 'NoSuchBucket' || httpStatus === 404) {
+        return '找不到这个 S3 Bucket 或备份文件，请检查 Bucket、Endpoint 和目录前缀。';
+    }
+
+    if (
+        code === 'AccessDenied' ||
+        code === 'InvalidAccessKeyId' ||
+        code === 'SignatureDoesNotMatch' ||
+        httpStatus === 401 ||
+        httpStatus === 403
+    ) {
+        return 'S3 凭证或权限不正确，请检查 Access Key、Secret、Bucket 权限和对象访问策略。';
+    }
+
+    if (
+        code === 'NetworkingError' ||
+        code === 'TimeoutError' ||
+        rawMessage.includes('Failed to fetch') ||
+        rawMessage.includes('NetworkError')
+    ) {
+        return '无法连接到 S3，请检查 Endpoint、网络连通性以及浏览器侧的 CORS 配置。';
+    }
+
+    return fallbackMessage || rawMessage;
+};
+
+const parseManifestEntry = (manifest, itemKey) => {
+    if (!manifest || typeof manifest !== 'object') {
+        throw new Error('manifest 不是合法的 JSON 对象。');
+    }
+
+    const backupFolder = manifest.backupFolder || itemKey.replace(/\/manifest\.json$/, '');
+    const backupKey = manifest.backupKey || '';
+    const backupId = manifest.backupId || itemKey;
+    const exportedAt = manifest.exportedAt || null;
+    const isRestorable = Boolean(backupKey);
+
+    return {
+        id: backupId,
+        bucket: manifest.bucket || '',
+        backupFolder,
+        backupKey,
+        backupFilename: backupKey ? backupKey.split('/').pop() : '',
+        manifestKey: itemKey,
+        exportedAt,
+        sizeBytes: Number(manifest.sizeBytes) || 0,
+        boardCount: Number(manifest.boardCount) || 0,
+        settingsCount: Number(manifest.settingsCount) || 0,
+        sha256: manifest.sha256 || '',
+        appVersion: manifest.appVersion || '',
+        schemaVersion: manifest.schemaVersion || '',
+        type: manifest.type || '',
+        status: isRestorable ? 'ready' : 'invalid_manifest',
+        isRestorable,
+        errorMessage: isRestorable ? '' : 'manifest 缺少 backupKey，无法定位完整备份文件。',
+        rawManifest: manifest
+    };
+};
+
 const listBackupEntries = async (client, config, options = {}) => {
     const limit = Number(options.limit) > 0 ? Number(options.limit) : DEFAULT_LIST_LIMIT;
     const prefix = `${getResolvedS3BackupFolder(config)}/`;
@@ -159,28 +242,43 @@ const listBackupEntries = async (client, config, options = {}) => {
         })
         .slice(0, options.scanAll ? undefined : limit);
 
-    const entries = await Promise.allSettled(sortedCandidates.map(async (item) => {
-        const manifest = await readJsonObject(client, config.bucket, item.Key);
-        return {
-            id: manifest.backupId || item.Key,
-            bucket: config.bucket,
-            backupFolder: manifest.backupFolder || item.Key.replace(/\/manifest\.json$/, ''),
-            backupKey: manifest.backupKey,
-            manifestKey: item.Key,
-            exportedAt: manifest.exportedAt || item.LastModified || null,
-            sizeBytes: Number(manifest.sizeBytes) || 0,
-            boardCount: Number(manifest.boardCount) || 0,
-            settingsCount: Number(manifest.settingsCount) || 0,
-            sha256: manifest.sha256 || '',
-            appVersion: manifest.appVersion || '',
-            schemaVersion: manifest.schemaVersion || '',
-            rawManifest: manifest
-        };
+    const entries = await Promise.all(sortedCandidates.map(async (item) => {
+        try {
+            const manifest = await readJsonObject(client, config.bucket, item.Key);
+            const parsedEntry = parseManifestEntry(
+                {
+                    ...manifest,
+                    bucket: manifest.bucket || config.bucket,
+                    exportedAt: manifest.exportedAt || item.LastModified || null
+                },
+                item.Key
+            );
+            return parsedEntry;
+        } catch (error) {
+            return {
+                id: item.Key,
+                bucket: config.bucket,
+                backupFolder: item.Key.replace(/\/manifest\.json$/, ''),
+                backupKey: '',
+                backupFilename: '',
+                manifestKey: item.Key,
+                exportedAt: item.LastModified || null,
+                sizeBytes: 0,
+                boardCount: 0,
+                settingsCount: 0,
+                sha256: '',
+                appVersion: '',
+                schemaVersion: '',
+                type: 'invalid',
+                status: 'invalid_manifest',
+                isRestorable: false,
+                errorMessage: formatS3BackupError(error, '这个 manifest 文件无法读取，无法用于恢复。'),
+                rawManifest: null
+            };
+        }
     }));
 
     return entries
-        .filter((entry) => entry.status === 'fulfilled')
-        .map((entry) => entry.value)
         .sort((left, right) => new Date(right.exportedAt || 0).getTime() - new Date(left.exportedAt || 0).getTime());
 };
 
@@ -224,114 +322,135 @@ export const getResolvedS3BackupFolder = (configOverride) => {
 };
 
 export async function uploadFullDataBackupToS3(configOverride = null) {
-    const config = resolveS3Config(configOverride);
-    validateS3Config(config);
+    try {
+        const config = resolveS3Config(configOverride);
+        validateS3Config(config);
 
-    const exportData = await exportAllData();
-    const exportJson = JSON.stringify(exportData, null, 2);
-    const stats = getBackupStats(exportData);
-    const sha256 = await computeSha256Hex(exportJson);
-    const now = new Date();
-    const backupId = createBackupId();
-    const backupFolder = buildBackupFolder(config, now, backupId);
-    const backupFilename = sanitizeBackupFilename(generateBackupFilename());
-    const backupKey = `${backupFolder}/${backupFilename}`;
-    const manifestKey = `${backupFolder}/manifest.json`;
-    const client = createS3Client(config);
-
-    const manifest = {
-        type: 'mixboard-full-backup',
-        appVersion: packageJson.version,
-        schemaVersion: exportData.version,
-        exportedAt: exportData.exportedAt,
-        backupId,
-        backupFolder,
-        bucket: config.bucket,
-        backupKey,
-        sizeBytes: new Blob([exportJson]).size,
-        sha256,
-        boardCount: stats?.boardCount || 0,
-        settingsCount: stats?.settingsCount || 0
-    };
-
-    await client.send(new PutObjectCommand({
-        Bucket: config.bucket,
-        Key: backupKey,
-        Body: exportJson,
-        ContentType: 'application/json; charset=utf-8'
-    }));
-
-    await client.send(new PutObjectCommand({
-        Bucket: config.bucket,
-        Key: manifestKey,
-        Body: JSON.stringify(manifest, null, 2),
-        ContentType: 'application/json; charset=utf-8'
-    }));
-
-    const retention = await enforceBackupRetention(client, config);
-
-    return {
-        bucket: config.bucket,
-        backupFolder,
-        backupKey,
-        manifestKey,
-        retention,
-        stats: {
-            ...stats,
-            sizeBytes: manifest.sizeBytes
+        const exportData = await exportAllData();
+        const validation = validateImportData(exportData);
+        if (!validation.valid) {
+            throw new Error(validation.error || '导出的全量备份格式无效，已中止上传。');
         }
-    };
+
+        const exportJson = JSON.stringify(exportData, null, 2);
+        const stats = getBackupStats(exportData);
+        const sha256 = await computeSha256Hex(exportJson);
+        const now = new Date();
+        const backupId = createBackupId();
+        const backupFolder = buildBackupFolder(config, now, backupId);
+        const backupFilename = sanitizeBackupFilename(generateBackupFilename());
+        const backupKey = `${backupFolder}/${backupFilename}`;
+        const manifestKey = `${backupFolder}/manifest.json`;
+        const client = createS3Client(config);
+
+        const manifest = {
+            type: 'mixboard-full-backup',
+            appVersion: packageJson.version,
+            schemaVersion: exportData.version,
+            exportedAt: exportData.exportedAt,
+            backupId,
+            backupFolder,
+            backupFilename,
+            bucket: config.bucket,
+            backupKey,
+            sizeBytes: new Blob([exportJson]).size,
+            sha256,
+            boardCount: stats?.boardCount || 0,
+            settingsCount: stats?.settingsCount || 0,
+            retentionLimit: MAX_REMOTE_BACKUPS
+        };
+
+        await client.send(new PutObjectCommand({
+            Bucket: config.bucket,
+            Key: backupKey,
+            Body: exportJson,
+            ContentType: 'application/json; charset=utf-8'
+        }));
+
+        await client.send(new PutObjectCommand({
+            Bucket: config.bucket,
+            Key: manifestKey,
+            Body: JSON.stringify(manifest, null, 2),
+            ContentType: 'application/json; charset=utf-8'
+        }));
+
+        const retention = await enforceBackupRetention(client, config);
+
+        return {
+            bucket: config.bucket,
+            backupFolder,
+            backupKey,
+            backupFilename,
+            manifestKey,
+            manifest,
+            retention,
+            stats: {
+                ...stats,
+                sizeBytes: manifest.sizeBytes
+            }
+        };
+    } catch (error) {
+        throw new Error(formatS3BackupError(error, '上传到 S3 失败，请检查配置和权限后重试。'));
+    }
 }
 
 export async function listFullDataBackups(configOverride = null, options = {}) {
-    const config = resolveS3Config(configOverride);
-    validateS3Config(config);
+    try {
+        const config = resolveS3Config(configOverride);
+        validateS3Config(config);
 
-    const client = createS3Client(config);
-    return listBackupEntries(client, config, options);
+        const client = createS3Client(config);
+        return listBackupEntries(client, config, options);
+    } catch (error) {
+        throw new Error(formatS3BackupError(error, '读取 S3 备份列表失败，请检查配置后重试。'));
+    }
 }
 
 export async function restoreFullDataBackupFromS3(configOverride = null, backupEntry, options = { importSettings: false }) {
-    if (!backupEntry?.backupKey) {
-        throw new Error('缺少可恢复的备份文件路径。');
-    }
-
-    const config = resolveS3Config(configOverride);
-    validateS3Config(config);
-    const client = createS3Client(config);
-    const response = await client.send(new GetObjectCommand({
-        Bucket: config.bucket,
-        Key: backupEntry.backupKey
-    }));
-    const backupText = await objectBodyToText(response.Body);
-    if (backupEntry.sha256) {
-        const actualSha256 = await computeSha256Hex(backupText);
-        if (!actualSha256 || actualSha256 !== backupEntry.sha256) {
-            throw new Error('S3 备份完整性校验失败，已中止恢复。');
-        }
-    }
-
-    let safetyBackup;
     try {
-        safetyBackup = await createSafetyBackup();
+        if (!backupEntry?.backupKey) {
+            throw new Error('缺少可恢复的备份文件路径。');
+        }
+
+        const config = resolveS3Config(configOverride);
+        validateS3Config(config);
+        const client = createS3Client(config);
+        const response = await client.send(new GetObjectCommand({
+            Bucket: config.bucket,
+            Key: backupEntry.backupKey
+        }));
+        const backupText = await objectBodyToText(response.Body);
+        if (backupEntry.sha256) {
+            const actualSha256 = await computeSha256Hex(backupText);
+            if (!actualSha256 || actualSha256 !== backupEntry.sha256) {
+                throw new Error('S3 备份完整性校验失败，已中止恢复。');
+            }
+        }
+
+        let safetyBackup;
+        try {
+            safetyBackup = await createSafetyBackup();
+        } catch (error) {
+            throw new Error(`恢复前创建本地安全备份失败：${error?.message || 'unknown_error'}`);
+        }
+
+        const backupData = JSON.parse(backupText);
+        const validation = validateImportData(backupData);
+        if (!validation.valid) {
+            throw new Error(validation.error || '备份文件格式无效。');
+        }
+
+        const result = await importData(backupData, options);
+        if (!result.success) {
+            return result;
+        }
+
+        return {
+            ...result,
+            integrityVerified: Boolean(backupEntry.sha256),
+            safetyBackupTimestamp: safetyBackup?.timestamp || null
+        };
     } catch (error) {
-        throw new Error(`恢复前创建本地安全备份失败：${error?.message || 'unknown_error'}`);
+        throw new Error(formatS3BackupError(error, '从 S3 恢复失败，请检查备份文件和权限后重试。'));
     }
-
-    const backupData = JSON.parse(backupText);
-    const validation = validateImportData(backupData);
-    if (!validation.valid) {
-        throw new Error(validation.error || '备份文件格式无效。');
-    }
-
-    const result = await importData(backupData, options);
-    if (!result.success) {
-        return result;
-    }
-
-    return {
-        ...result,
-        integrityVerified: Boolean(backupEntry.sha256),
-        safetyBackupTimestamp: safetyBackup?.timestamp || null
-    };
 }

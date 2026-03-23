@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { loadBoardsMetadata, saveBoard } from '../../services/storage';
@@ -20,6 +20,13 @@ import {
     restoreFullDataBackupFromS3,
     uploadFullDataBackupToS3
 } from '../../services/s3BackupService';
+import {
+    buildBackupRestoreConfirmMessage,
+    buildBackupRestoreSuccessMessage,
+    buildS3ConfigSignature,
+    formatBackupDisplayTime,
+    getBackupRankLabel
+} from './s3BackupUi';
 import DataMigrationSection from './DataMigrationSection';
 import {
     normalizeBoardMetadataList,
@@ -44,6 +51,19 @@ const formatBytes = (bytes) => {
         index += 1;
     }
     return `${value >= 10 || index === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
+};
+
+const buildRemoteBackupSummaryMessage = (backups) => {
+    if (!backups.length) {
+        return 'S3 备份目录已连接，但还没有找到历史备份。';
+    }
+
+    const invalidCount = backups.filter((backup) => !backup.isRestorable).length;
+    if (invalidCount > 0) {
+        return `已读取 ${backups.length} 份历史备份，其中 ${invalidCount} 份 manifest 异常，暂时无法直接恢复。`;
+    }
+
+    return '';
 };
 
 const storageFieldClassName = `w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] ${settingsDarkField}`;
@@ -75,6 +95,15 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const [restoreWithSettings, setRestoreWithSettings] = useState(false);
 
     const isS3Configured = Boolean(s3Config.bucket && s3Config.accessKeyId && s3Config.secretAccessKey);
+    const s3ConfigSignature = useMemo(() => buildS3ConfigSignature(s3Config), [
+        s3Config.enabled,
+        s3Config.endpoint,
+        s3Config.region,
+        s3Config.bucket,
+        s3Config.accessKeyId,
+        s3Config.secretAccessKey,
+        s3Config.folderPrefix
+    ]);
 
     const [hasBackup, setHasBackup] = useState(() => hasSafetyBackup());
 
@@ -88,6 +117,30 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         loadBackups();
     }, []);
 
+    const loadRemoteBackups = useCallback(async (config) => {
+        if (!config.bucket || !config.accessKeyId || !config.secretAccessKey) {
+            setRemoteBackups([]);
+            setRemoteBackupStatus('idle');
+            setRemoteBackupMsg('');
+            return [];
+        }
+
+        setRemoteBackupStatus('loading');
+        setRemoteBackupMsg('');
+        try {
+            const backups = await listFullDataBackups(config);
+            setRemoteBackups(backups);
+            setRemoteBackupStatus('success');
+            setRemoteBackupMsg(buildRemoteBackupSummaryMessage(backups));
+            return backups;
+        } catch (error) {
+            console.error('[S3Backup] Failed to list backups:', error);
+            setRemoteBackupStatus('error');
+            setRemoteBackupMsg(error?.message || '读取 S3 备份列表失败。');
+            return [];
+        }
+    }, []);
+
     useEffect(() => {
         if (!isS3Configured) {
             setRemoteBackups([]);
@@ -96,25 +149,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             return;
         }
 
-        const loadRemoteBackups = async () => {
-            setRemoteBackupStatus('loading');
-            setRemoteBackupMsg('');
-            try {
-                const backups = await listFullDataBackups(s3Config);
-                setRemoteBackups(backups);
-                setRemoteBackupStatus('success');
-                if (backups.length === 0) {
-                    setRemoteBackupMsg('S3 备份目录已连接，但还没有找到历史备份。');
-                }
-            } catch (error) {
-                console.error('[S3Backup] Failed to list backups:', error);
-                setRemoteBackupStatus('error');
-                setRemoteBackupMsg(error?.message || '读取 S3 备份列表失败。');
-            }
-        };
-
-        loadRemoteBackups();
-    }, [isS3Configured]);
+        loadRemoteBackups(s3Config);
+    }, [isS3Configured, s3ConfigSignature, loadRemoteBackups]);
 
     const handleRestoreBackup = async () => {
         try {
@@ -255,6 +291,12 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     };
 
     const handleUploadFullBackupToS3 = async () => {
+        if (!isS3Configured) {
+            setS3BackupStatus('error');
+            setS3BackupMsg('请先填写完整的 S3 配置，再执行全量备份上传。');
+            return;
+        }
+
         setS3BackupStatus('uploading');
         setS3BackupMsg('');
         setS3BackupResult(null);
@@ -269,10 +311,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             setS3BackupMsg(
                 `已上传 ${result.stats?.boardCount || 0} 个画板，备份体积 ${formatBytes(result.stats?.sizeBytes || 0)}。S3 最多保留最近 5 份，本次清理了 ${deletedCount} 份旧备份。${cleanupWarning}`
             );
-            const backups = await listFullDataBackups(s3Config);
-            setRemoteBackups(backups);
-            setRemoteBackupStatus('success');
-            setRemoteBackupMsg(backups.length === 0 ? 'S3 备份目录已连接，但还没有找到历史备份。' : '');
+            await loadRemoteBackups(s3Config);
         } catch (error) {
             console.error('[S3Backup] Upload failed:', error);
             setS3BackupStatus('error');
@@ -287,24 +326,23 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             return;
         }
 
-        setRemoteBackupStatus('loading');
-        setRemoteBackupMsg('');
-        try {
-            const backups = await listFullDataBackups(s3Config);
-            setRemoteBackups(backups);
-            setRemoteBackupStatus('success');
-            setRemoteBackupMsg(backups.length === 0 ? 'S3 备份目录已连接，但还没有找到历史备份。' : '');
-        } catch (error) {
-            console.error('[S3Backup] Refresh failed:', error);
-            setRemoteBackupStatus('error');
-            setRemoteBackupMsg(error?.message || '刷新 S3 备份列表失败。');
-        }
+        await loadRemoteBackups(s3Config);
     };
 
     const handleRestoreRemoteBackup = async (backup) => {
-        const confirmMessage = restoreWithSettings
-            ? '确定从这个 S3 备份恢复，并同时覆盖当前设备上的设置与密钥吗？'
-            : '确定从这个 S3 备份恢复画板和数据吗？当前设备的设置与密钥将保留。';
+        if (!backup?.isRestorable) {
+            setRemoteBackupStatus('error');
+            setRemoteBackupMsg(backup?.errorMessage || '这份历史备份的 manifest 已损坏，暂时无法恢复。');
+            return;
+        }
+
+        const confirmMessage = buildBackupRestoreConfirmMessage(
+            {
+                ...backup,
+                sizeLabel: formatBytes(backup.sizeBytes)
+            },
+            { restoreWithSettings }
+        );
         if (!window.confirm(confirmMessage)) {
             return;
         }
@@ -323,9 +361,10 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             }
             setRemoteBackupStatus('success');
             setRemoteBackupMsg(
-                result.integrityVerified
-                    ? 'S3 备份恢复成功，完整性校验已通过，并已先创建本地安全备份。页面即将刷新。'
-                    : 'S3 备份恢复成功，已先创建本地安全备份。页面即将刷新。'
+                buildBackupRestoreSuccessMessage(backup, {
+                    restoreWithSettings,
+                    integrityVerified: result.integrityVerified
+                })
             );
             setTimeout(() => window.location.reload(), 1500);
         } catch (error) {
@@ -439,7 +478,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
 
                     <button
                         onClick={handleUploadFullBackupToS3}
-                        disabled={s3BackupStatus === 'uploading'}
+                        disabled={s3BackupStatus === 'uploading' || !isS3Configured}
                         className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {s3BackupStatus === 'uploading' ? (
@@ -471,10 +510,18 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     <div className={`mt-4 rounded-2xl border border-[#eadfce] bg-[#f8f2e8] p-4 text-xs text-[#6f604f] ${settingsDarkSurfaceMuted} dark:text-slate-300`}>
                         <p className="font-semibold">最近一次上传结果</p>
                         <p className="mt-2 font-mono break-all">Bucket: {s3BackupResult.bucket}</p>
+                        <p className="mt-1 font-mono break-all">ExportedAt: {formatBackupDisplayTime(s3BackupResult.manifest?.exportedAt)}</p>
+                        <p className="mt-1 font-mono break-all">Boards: {s3BackupResult.stats?.boardCount || 0}</p>
+                        <p className="mt-1 font-mono break-all">Size: {formatBytes(s3BackupResult.stats?.sizeBytes || 0)}</p>
                         <p className="mt-1 font-mono break-all">Folder: {s3BackupResult.backupFolder}</p>
                         <p className="mt-1 font-mono break-all">Backup: {s3BackupResult.backupKey}</p>
                         <p className="mt-1 font-mono break-all">Manifest: {s3BackupResult.manifestKey}</p>
                         <p className="mt-1 font-mono break-all">RetentionDeleted: {(s3BackupResult.retention?.deletedBackupIds || []).length}</p>
+                        {s3BackupResult.retention?.deleteErrors?.length ? (
+                            <p className="mt-1 font-mono break-all text-red-500 dark:text-red-300">
+                                RetentionErrors: {s3BackupResult.retention.deleteErrors.length}
+                            </p>
+                        ) : null}
                     </div>
                 )}
 
@@ -526,23 +573,41 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
 
                     {remoteBackups.length > 0 ? (
                         <div className="mt-4 space-y-3">
-                            {remoteBackups.map((backup) => (
+                            {remoteBackups.map((backup, index) => (
                                 <div
                                     key={backup.id}
                                     className={`rounded-2xl border border-[#eadfce] bg-[#fffdf9] p-4 ${settingsDarkSurfaceMuted}`}
                                 >
                                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                         <div className="space-y-1 text-xs text-[#6f604f] dark:text-slate-300">
-                                            <p className="text-sm font-semibold text-[#43372c] dark:text-slate-200">
-                                                {backup.exportedAt ? new Date(backup.exportedAt).toLocaleString() : '未知时间'}
-                                            </p>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-sm font-semibold text-[#43372c] dark:text-slate-200">
+                                                    {formatBackupDisplayTime(backup.exportedAt)}
+                                                </p>
+                                                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${index === 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-[#f4eadb] text-[#8d6d49] dark:bg-[#1f2b38] dark:text-slate-300'}`}>
+                                                    {getBackupRankLabel(index)}
+                                                </span>
+                                                {!backup.sha256 ? (
+                                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                        无校验
+                                                    </span>
+                                                ) : null}
+                                                {!backup.isRestorable ? (
+                                                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-300">
+                                                        manifest 异常
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             <p>画板数：{backup.boardCount}，设置项：{backup.settingsCount}，体积：{formatBytes(backup.sizeBytes)}</p>
                                             <p>应用版本：{backup.appVersion || '未知'}，备份版本：{backup.schemaVersion || '未知'}，校验：{backup.sha256 ? 'SHA-256 已记录' : '旧备份，无校验指纹'}</p>
                                             <p className="font-mono break-all">Folder: {backup.backupFolder}</p>
+                                            {!backup.isRestorable && backup.errorMessage ? (
+                                                <p className="text-red-500 dark:text-red-300">{backup.errorMessage}</p>
+                                            ) : null}
                                         </div>
                                         <button
                                             onClick={() => handleRestoreRemoteBackup(backup)}
-                                            disabled={restoringBackupId === backup.id || remoteBackupStatus === 'loading'}
+                                            disabled={restoringBackupId === backup.id || remoteBackupStatus === 'loading' || !backup.isRestorable}
                                             className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             {restoringBackupId === backup.id ? (
