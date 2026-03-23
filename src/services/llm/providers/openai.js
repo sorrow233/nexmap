@@ -1,58 +1,6 @@
 import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
-import { sanitizeMessagesForGeneration } from '../messageSanitizer';
-
-const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 500, 502, 503, 504, 524]);
-const KEY_FAILURE_STATUS_CODES = new Set([401, 403]);
-const RETRYABLE_NETWORK_PATTERNS = [
-    'network',
-    'fetch failed',
-    'failed to fetch',
-    'timeout',
-    'timed out',
-    'socket',
-    'econnreset',
-    'etimedout'
-];
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-const computeRetryDelay = (attempt, baseMs = 900, maxMs = 10000) => {
-    const exp = Math.min(maxMs, baseMs * (2 ** Math.max(0, attempt - 1)));
-    const jitter = Math.floor(Math.random() * 250);
-    return exp + jitter;
-};
-
-const extractProviderErrorMessage = (body = '', fallback = '') => {
-    if (!body) return fallback;
-
-    try {
-        const parsed = JSON.parse(body);
-        return parsed?.error?.message || fallback || body;
-    } catch {
-        return body || fallback;
-    }
-};
-
-const createProviderHttpError = (message, status, body = '') => {
-    const error = new Error(message || `HTTP ${status}`);
-    error.status = status;
-    error.body = body;
-    error.retryable = RETRYABLE_STATUS_CODES.has(Number(status));
-    return error;
-};
-
-const shouldRetryProviderError = (error) => {
-    if (!error) return false;
-    if (error.name === 'AbortError') return false;
-    if (error.retryable === false) return false;
-    if (error.retryable === true) return true;
-
-    const message = String(error.message || error).toLowerCase();
-    return error instanceof TypeError
-        || RETRYABLE_NETWORK_PATTERNS.some((pattern) => message.includes(pattern));
-};
 
 export class OpenAIProvider extends LLMProvider {
     /**
@@ -93,14 +41,11 @@ export class OpenAIProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
-        const formattedMessages = this.formatMessages(sanitizeMessagesForGeneration(messages));
 
         let retries = 2; // 允许重试 2 次（使用不同 Key）
         let lastError = null;
-        let attempt = 0;
 
         while (retries >= 0) {
-            attempt += 1;
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
                 throw new Error('没有可用的 API Key');
@@ -115,7 +60,7 @@ export class OpenAIProvider extends LLMProvider {
                     },
                     body: JSON.stringify({
                         model: modelToUse,
-                        messages: formattedMessages,
+                        messages: this.formatMessages(messages),
                         max_tokens: resolveChatMaxOutputTokens(options),
                         ...(options.temperature !== undefined && { temperature: options.temperature }),
                         ...(options.tools && { tools: options.tools }),
@@ -124,32 +69,16 @@ export class OpenAIProvider extends LLMProvider {
                 });
 
                 if (!response.ok) {
-                    const responseText = await response.text();
-                    const errorMessage = extractProviderErrorMessage(
-                        responseText,
-                        response.statusText || `HTTP ${response.status}`
-                    );
-                    const error = createProviderHttpError(errorMessage, response.status, responseText);
+                    const err = await response.json().catch(() => ({}));
 
-                    if (KEY_FAILURE_STATUS_CODES.has(response.status)) {
+                    // Key 无效或超限，标记失效
+                    if ([401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
-                        lastError = error;
-                        if (retries > 0) {
-                            retries--;
-                            continue;
-                        }
-                        throw error;
-                    }
-
-                    if (error.retryable && retries > 0) {
-                        const delay = computeRetryDelay(attempt);
                         retries--;
-                        lastError = error;
-                        await sleep(delay);
+                        lastError = new Error(err.error?.message || `API 错误 ${response.status}`);
                         continue;
                     }
-
-                    throw error;
+                    throw new Error(err.error?.message || response.statusText);
                 }
 
                 const data = await response.json();
@@ -166,10 +95,9 @@ export class OpenAIProvider extends LLMProvider {
 
                 return content;
             } catch (e) {
-                if (retries > 0 && !e.message.includes('没有可用') && shouldRetryProviderError(e)) {
+                if (retries > 0 && !e.message.includes('没有可用')) {
                     retries--;
                     lastError = e;
-                    await sleep(computeRetryDelay(attempt));
                     continue;
                 }
                 throw e;
@@ -185,13 +113,11 @@ export class OpenAIProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
-        const formattedMessages = this.formatMessages(sanitizeMessagesForGeneration(messages));
 
         let retries = 2; // 允许重试（使用不同 Key）
-        let attempt = 0;
+        let delay = 1000;
 
         while (retries >= 0) {
-            attempt += 1;
             const apiKey = keyPool.getNextKey();
             if (!apiKey) {
                 throw new Error('没有可用的 API Key');
@@ -207,7 +133,7 @@ export class OpenAIProvider extends LLMProvider {
                     signal: options.signal,
                     body: JSON.stringify({
                         model: modelToUse,
-                        messages: formattedMessages,
+                        messages: this.formatMessages(messages),
                         max_tokens: resolveChatMaxOutputTokens(options),
                         ...(options.temperature !== undefined && { temperature: options.temperature }),
                         stream: true,
@@ -217,31 +143,20 @@ export class OpenAIProvider extends LLMProvider {
                 });
 
                 if (!response.ok) {
-                    const responseText = await response.text();
-                    const errorMessage = extractProviderErrorMessage(
-                        responseText,
-                        response.statusText || `HTTP ${response.status}`
-                    );
-                    const error = createProviderHttpError(errorMessage, response.status, responseText);
-
-                    if (KEY_FAILURE_STATUS_CODES.has(response.status)) {
+                    // Key 无效或超限，标记失效并切换
+                    if ([401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
-                        if (retries > 0) {
-                            retries--;
-                            continue;
-                        }
-                        throw error;
-                    }
-
-                    if (error.retryable && retries > 0) {
-                        const delay = computeRetryDelay(attempt);
-                        console.warn(`[OpenAI] Request failed with ${response.status}, retrying in ${delay}ms...`);
                         retries--;
-                        await sleep(delay);
                         continue;
                     }
-
-                    throw error;
+                    if ([500, 502, 503, 504].includes(response.status) && retries > 0) {
+                        console.warn(`[OpenAI] Request failed with ${response.status}, retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        retries--;
+                        delay *= 2;
+                        continue;
+                    }
+                    throw new Error(await response.text());
                 }
 
                 const reader = response.body.getReader();
@@ -324,11 +239,9 @@ export class OpenAIProvider extends LLMProvider {
                 }
 
             } catch (e) {
-                if (retries > 0 && !e.message.includes('没有可用') && shouldRetryProviderError(e)) {
-                    const delay = computeRetryDelay(attempt);
-                    console.warn(`[OpenAI] Stream error: ${e.message}, retrying in ${delay}ms...`);
+                if (retries > 0 && !e.message.includes('没有可用')) {
+                    console.warn(`[OpenAI] Stream error: ${e.message}, retrying...`);
                     retries--;
-                    await sleep(delay);
                     continue;
                 }
                 throw e;

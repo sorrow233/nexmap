@@ -388,34 +388,6 @@ export const syncBoardCardsToDoc = (doc, cards = []) => {
     });
 };
 
-export const syncBoardRuntimePatchToDoc = (doc, patch = {}, metadata = {}) => {
-    const root = doc.getMap('board');
-
-    Object.entries(patch).forEach(([key, value]) => {
-        if (!ROOT_KEYS.includes(key) || key === 'updatedAt' || key === 'clientRevision') {
-            return;
-        }
-
-        if (key === 'cards') {
-            const currentCards = root.has('cards')
-                ? readNodeToValue(root.get('cards'), ['cards'])
-                : [];
-            syncValueIntoParent(root, 'cards', mergeCardSnapshots(currentCards, Array.isArray(value) ? value : []), ['cards']);
-            return;
-        }
-
-        syncValueIntoParent(root, key, value, [key]);
-    });
-
-    if (Object.prototype.hasOwnProperty.call(metadata, 'updatedAt')) {
-        syncValueIntoParent(root, 'updatedAt', Number(metadata.updatedAt) || 0, ['updatedAt']);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(metadata, 'clientRevision')) {
-        syncValueIntoParent(root, 'clientRevision', Number(metadata.clientRevision) || 0, ['clientRevision']);
-    }
-};
-
 export const readBoardSnapshotFromDoc = (doc) => {
     const root = doc.getMap('board');
     const next = {};
@@ -423,28 +395,6 @@ export const readBoardSnapshotFromDoc = (doc) => {
         next[key] = root.has(key) ? readNodeToValue(root.get(key), [key]) : getEmptyBoardSnapshot()[key];
     });
     return normalizeBoardSnapshot(next);
-};
-
-export const readBoardFieldFromDoc = (doc, key) => {
-    if (!ROOT_KEYS.includes(key)) {
-        return undefined;
-    }
-
-    const root = doc.getMap('board');
-    return root.has(key)
-        ? readNodeToValue(root.get(key), [key])
-        : getEmptyBoardSnapshot()[key];
-};
-
-export const readBoardRuntimePatchFromDoc = (doc, keys = []) => {
-    const patch = {};
-    keys.forEach((key) => {
-        if (!ROOT_KEYS.includes(key) || key === 'updatedAt' || key === 'clientRevision') {
-            return;
-        }
-        patch[key] = readBoardFieldFromDoc(doc, key);
-    });
-    return patch;
 };
 
 export const encodeCompactBoardSnapshotUpdate = (source) => {

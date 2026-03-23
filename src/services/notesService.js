@@ -2,11 +2,6 @@ import { loadBoardDataForSearch, saveBoard } from './storage';
 import { getBoardDisplayName } from './boardTitle/metadata';
 import { normalizeBoardSnapshot } from './sync/boardSnapshot';
 import { normalizeCardTimestamps } from './cards/cardTimestamps';
-import {
-    commitActiveBoardRuntimePatch,
-    getActiveBoardRuntimeBoardId,
-    readActiveBoardRuntimeSnapshot
-} from './sync/boardRuntimeAuthority';
 
 const FALLBACK_TITLE = 'Untitled Note';
 const NOTE_UPDATES_EVENT = 'notes-updated';
@@ -109,13 +104,6 @@ const findActiveNoteIndex = (cards = [], noteId) => {
 };
 
 const loadBoardSafe = async (boardId) => {
-    if (getActiveBoardRuntimeBoardId() === boardId) {
-        const runtimeSnapshot = readActiveBoardRuntimeSnapshot();
-        if (runtimeSnapshot && typeof runtimeSnapshot === 'object') {
-            return normalizeBoardSnapshot(runtimeSnapshot);
-        }
-    }
-
     const data = await loadBoardDataForSearch(boardId);
     if (!data || typeof data !== 'object') {
         return { cards: [], connections: [], groups: [], boardPrompts: [] };
@@ -124,20 +112,6 @@ const loadBoardSafe = async (boardId) => {
 };
 
 const persistBoard = async (boardId, boardData) => {
-    if (getActiveBoardRuntimeBoardId() === boardId) {
-        const runtimeResult = commitActiveBoardRuntimePatch({
-            cards: boardData.cards,
-            connections: boardData.connections,
-            groups: boardData.groups,
-            boardPrompts: boardData.boardPrompts,
-            boardInstructionSettings: boardData.boardInstructionSettings
-        });
-        if (runtimeResult) {
-            emitNotesUpdated();
-            return;
-        }
-    }
-
     await saveBoard(boardId, boardData);
     emitNotesUpdated();
 };

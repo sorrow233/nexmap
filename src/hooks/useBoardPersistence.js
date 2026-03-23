@@ -14,10 +14,8 @@ import {
     clearBoardShadowSnapshot,
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
-import {
-    emitDurableLocalSaveWritten,
-    emitLocalSaveConfirmed
-} from '../services/sync/localPersistedBoardSyncBridge';
+import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
+import { emitLocalSaveConfirmed } from '../services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from '../services/sync/boardSyncMetadata';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 
@@ -114,7 +112,7 @@ export function useBoardPersistence({
     hasGeneratingCards = false,
     boardChangeState,
     activeBoardPersistence,
-    lastRemoteApplyToken,
+    lastExternalSyncMarker,
     setSaveStatus,
     setLastSavedAt,
     setActiveBoardPersistence,
@@ -143,7 +141,7 @@ export function useBoardPersistence({
     const localSaveWindowStartedAtRef = useRef(0);
     const pendingViewportRef = useRef(null);
     const lastSavedViewportRef = useRef(null);
-    const lastHandledRemoteApplyTokenRef = useRef(0);
+    const lastHandledExternalSyncTokenRef = useRef(0);
     const saveOperationChainRef = useRef(Promise.resolve());
     const idleShadowSaveCancelRef = useRef(null);
     const idleLocalSaveCancelRef = useRef(null);
@@ -215,10 +213,6 @@ export function useBoardPersistence({
         if (!boardId) return false;
 
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
-        if (revision <= trackerRef.current.shadowSavedRevision) {
-            return true;
-        }
-
         const payload = buildBoardRecoverySnapshot(buildBoardPayload(data, {
             clientRevision: revision,
             updatedAt: Date.now()
@@ -229,17 +223,14 @@ export function useBoardPersistence({
 
         const scopes = Array.isArray(options.scopes) ? options.scopes : ['session'];
         const results = await Promise.all(
-            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, {
-                scope,
-                skipExistingSnapshotCheck: true
-            }))
+            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, { scope }))
         );
         const didPersist = results.some(Boolean);
 
-        if (didPersist) {
+        if (didPersist && typeof options.revision === 'number') {
             trackerRef.current.shadowSavedRevision = Math.max(
                 trackerRef.current.shadowSavedRevision,
-                revision
+                options.revision
             );
         }
 
@@ -265,15 +256,6 @@ export function useBoardPersistence({
             });
 
             await enqueueDurableWrite(() => saveBoard(boardId, payload));
-            emitDurableLocalSaveWritten({
-                type: 'LOCAL_DURABLE_SAVE_WRITTEN',
-                boardId,
-                clientRevision: revision,
-                savedAt: now,
-                source: options.reason || 'local_persist',
-                snapshot: payload,
-                metadata: pickBoardSyncMetadata(payload)
-            });
 
             if (typeof setLastSavedAt === 'function') {
                 setLastSavedAt(now);
@@ -506,20 +488,23 @@ export function useBoardPersistence({
             updatedAt: loadedCursor.updatedAt,
             clientRevision: Math.max(loadedCursor.clientRevision, trackedRevision)
         });
-        const remoteApplyToken = Number(lastRemoteApplyToken) || 0;
-        const shouldMirrorRemoteApplyLocally = (
-            remoteApplyToken > 0 &&
-            remoteApplyToken !== lastHandledRemoteApplyTokenRef.current
+        const currentVersionKey = buildPersistenceVersionKey(currentPayload);
+        const externalSyncToken = Number(lastExternalSyncMarker?.token) || 0;
+        const isExternalSyncSnapshot = (
+            externalSyncToken > 0 &&
+            externalSyncToken !== lastHandledExternalSyncTokenRef.current &&
+            lastExternalSyncMarker?.boardId === boardId &&
+            lastExternalSyncMarker?.versionKey === currentVersionKey
         );
 
-        if (shouldMirrorRemoteApplyLocally) {
+        if (isExternalSyncSnapshot) {
             clearContentSaveTimers();
             queuedShadowRevisionRef.current = loadedCursor.clientRevision;
             queuedLocalRevisionRef.current = loadedCursor.clientRevision;
             tracker.revision = Math.max(tracker.revision, loadedCursor.clientRevision);
             tracker.isPrimed = true;
             latestBoardDataRef.current = currentPayload;
-            lastHandledRemoteApplyTokenRef.current = remoteApplyToken;
+            lastHandledExternalSyncTokenRef.current = externalSyncToken;
             void persistExternalSyncSnapshot(currentPayload);
             return;
         }
@@ -578,7 +563,9 @@ export function useBoardPersistence({
         boardChangeState?.revision,
         isBoardLoading,
         isReadOnly,
-        lastRemoteApplyToken,
+        lastExternalSyncMarker?.boardId,
+        lastExternalSyncMarker?.versionKey,
+        lastExternalSyncMarker?.token,
         clearContentSaveTimers,
         persistExternalSyncSnapshot,
         scheduleLocalSave,
@@ -608,7 +595,7 @@ export function useBoardPersistence({
         }
         pendingViewportRef.current = null;
         lastSavedViewportRef.current = null;
-        lastHandledRemoteApplyTokenRef.current = 0;
+        lastHandledExternalSyncTokenRef.current = 0;
 
         if (viewportSaveTimerRef.current) {
             clearTimeout(viewportSaveTimerRef.current);

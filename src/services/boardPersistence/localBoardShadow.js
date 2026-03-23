@@ -95,16 +95,13 @@ export const persistBoardShadowSnapshot = async (boardId, payload, options = {})
 
     const nextSnapshot = buildBoardRecoverySnapshot(payload);
     const idbKey = getBoardShadowIdbKey(boardId, scope);
-    const skipExistingSnapshotCheck = options.skipExistingSnapshotCheck === true;
 
     return withShadowOperationQueue(boardId, scope, async () => {
         try {
-            if (!skipExistingSnapshotCheck) {
-                const currentRecord = await idbGet(idbKey);
-                const currentSnapshot = currentRecord?.snapshot || null;
-                if (currentSnapshot && !isPersistenceSnapshotNewer(nextSnapshot, currentSnapshot)) {
-                    return true;
-                }
+            const currentRecord = await idbGet(idbKey);
+            const currentSnapshot = currentRecord?.snapshot || null;
+            if (currentSnapshot && !isPersistenceSnapshotNewer(nextSnapshot, currentSnapshot)) {
+                return true;
             }
 
             await idbSet(idbKey, normalizeShadowRecord(boardId, scope, nextSnapshot));

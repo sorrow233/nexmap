@@ -8,7 +8,6 @@ import {
     logAITaskQueued,
     logAITaskStarted
 } from './aiDebugLogging.js';
-import { sanitizeChatRequestMessages } from './chatRequestMessages.js';
 
 /**
  * Task Priorities
@@ -330,11 +329,10 @@ class AIManager {
 
             // Resolve active instructions: global + current-board enabled optional instructions
             const activeInstructions = resolveActiveInstructionsForCurrentBoard();
-            const sanitizedMessages = sanitizeChatRequestMessages(messages);
 
             // Inject time awareness and custom instructions into ALL chat requests
             const timeSystemMsg = getSystemPrompt(activeInstructions);
-            const enhancedMessages = [timeSystemMsg, ...sanitizedMessages];
+            const enhancedMessages = [timeSystemMsg, ...messages];
 
             // Wrapped streamChatCompletion that respects AbortSignal
             await streamChatCompletion(

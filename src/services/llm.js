@@ -3,7 +3,6 @@ import { DEFAULT_ROLES } from './llm/registry';
 import { parseStringArrayFromLLMResponse, splitTextFallback } from './llm/jsonArrayParser';
 import { userStatsService } from './stats/userStatsService';
 import { AGENT_INTENT, buildStructuredNumberedPlan, classifyAgentIntent, inferDynamicCardLimit } from './ai/structuredAgentPlan';
-import { sanitizeMessagesForGeneration } from './llm/messageSanitizer';
 
 
 export { DEFAULT_ROLES };
@@ -18,7 +17,7 @@ export async function chatCompletion(messages, config, model = null, options = {
     }
     const provider = ModelFactory.getProvider(config, { model });
     if (model) userStatsService.incrementModelUsage(model);
-    return provider.chat(sanitizeMessagesForGeneration(messages), model, options);
+    return provider.chat(messages, model, options);
 }
 
 /**
@@ -42,7 +41,7 @@ export async function streamChatCompletion(messages, config, onToken, model = nu
 
     const provider = ModelFactory.getProvider(config, { model });
     if (model) userStatsService.incrementModelUsage(model);
-    return provider.stream(sanitizeMessagesForGeneration(messages), onToken, model, options);
+    return provider.stream(messages, onToken, model, options);
 }
 
 /**

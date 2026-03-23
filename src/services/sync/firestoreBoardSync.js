@@ -33,6 +33,7 @@ import { applyCheckpointPayloadToDoc } from './checkpointCompatibility';
 import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncPaths';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
+import { planDeferredRemoteCheckpointRepair } from './remoteCheckpointRepairPlanner';
 import { pickBoardSyncMetadata } from './boardSyncMetadata';
 
 const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
@@ -62,11 +63,12 @@ const buildRootCheckpointKey = (rootData = {}) => {
 };
 
 export class FirestoreBoardSync {
-    constructor({ boardId, userId, deviceId, doc: ydoc, onSyncStateChange }) {
+    constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
         this.boardId = boardId;
         this.userId = userId;
         this.deviceId = deviceId;
         this.doc = ydoc;
+        this.onRemoteApplied = onRemoteApplied;
         this.onSyncStateChange = onSyncStateChange;
         this.unsubscribe = null;
         this.pendingUpdates = [];
@@ -90,24 +92,23 @@ export class FirestoreBoardSync {
         this.snapshotSavePromise = null;
         this.snapshotSaveQueuedReason = '';
         this.snapshotSaveCount = 0;
-        this.rewrittenCheckpointSignatures = new Set();
-        this.pendingCheckpointRewriteReason = '';
-        this.rootSyncTouchTimer = null;
-        this.rootSyncTouchPending = false;
-        this.rootSyncTouchReason = '';
-        this.rootSyncTouchPromise = null;
+        this.repairedCheckpointSignatures = new Set();
+        this.deferredCheckpointRepairReason = '';
+        this.remoteCheckpointRecoveredFromCompatibility = false;
+        this.remoteMetadata = {
+            hasCheckpoint: false,
+            updatedAt: 0,
+            clientRevision: 0,
+            cardCount: 0
+        };
         this.lastFlushCompletedAt = 0;
-        this.uploadPaused = false;
-        this.uploadPauseReason = '';
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
 
         this.immediateFlushHandler = () => {
             if (this.pendingUpdates.length > 0 || this.hasUnsnapshottedChanges || this.flushQueuedReason) {
-                this.flushPendingUpdates('pagehide_immediate')
-                    .then(() => this.flushRootSyncTouch('pagehide_immediate'))
-                    .catch(() => {});
+                this.flushPendingUpdates('pagehide_immediate').catch(() => {});
             }
         };
 
@@ -149,14 +150,39 @@ export class FirestoreBoardSync {
         return query(updatesRef, orderBy('createdAt', 'asc'));
     }
 
-    async connect() {
+    shouldDeferRemoteApply({ localSnapshot, expectedCardCount = 0 } = {}) {
+        const plan = planDeferredRemoteCheckpointRepair({
+            localSnapshot,
+            expectedCardCount,
+            remoteMetadata: {
+                ...this.remoteMetadata,
+                recoveredFromCompatibility: this.remoteCheckpointRecoveredFromCompatibility
+            }
+        });
+
+        if (!plan.shouldRepair) {
+            return null;
+        }
+
+        if (
+            plan.reason === 'local_snapshot_repair'
+            || plan.reason === 'local_snapshot_cardcount_repair'
+        ) {
+            this.queueDeferredCheckpointRepair(plan.reason);
+            return plan;
+        }
+
+        return null;
+    }
+
+    async connect(options = {}) {
         if (!db) {
             this.emitState('disabled');
             return { remoteIsEmpty: true };
         }
 
         this.emitState('connecting');
-        await this.loadRemoteCheckpoint();
+        const loadResult = await this.loadRemoteCheckpoint(null, options);
 
         if (this.updateLogEnabled) {
             try {
@@ -177,20 +203,56 @@ export class FirestoreBoardSync {
             mode: this.updateLogEnabled ? 'delta' : 'checkpoint_only'
         });
         return {
-            remoteIsEmpty: this.remoteIsEmpty
+            remoteIsEmpty: this.remoteIsEmpty,
+            skippedRemoteApplyReason: loadResult?.skippedApplyReason || ''
         };
     }
 
-    queueCheckpointRewrite(signature = '', format = 'unknown') {
-        if (!signature || this.rewrittenCheckpointSignatures.has(signature)) {
+    queueRecoveredCheckpointRepair(signature = '', format = 'unknown') {
+        if (!signature || this.repairedCheckpointSignatures.has(signature)) {
             return;
         }
 
-        this.rewrittenCheckpointSignatures.add(signature);
-        this.pendingCheckpointRewriteReason = 'checkpoint_decode_rewrite';
+        this.repairedCheckpointSignatures.add(signature);
+        this.remoteCheckpointRecoveredFromCompatibility = true;
+        this.queueDeferredCheckpointRepair('checkpoint_decode_repair');
         this.emitState('warning', {
             message: `Recovered ${format} checkpoint for ${this.boardId}, will rewrite on next save`
         });
+    }
+
+    queueDeferredCheckpointRepair(reason = 'local_snapshot_repair') {
+        if (!reason) return;
+        if (this.deferredCheckpointRepairReason === 'checkpoint_decode_repair') {
+            return;
+        }
+        this.deferredCheckpointRepairReason = reason;
+    }
+
+    updateRemoteMetadataFromRoot(rootData = null) {
+        this.remoteMetadata = {
+            hasCheckpoint: hasRemoteCheckpoint(rootData),
+            updatedAt: toFirestoreMillis(rootData?.updatedAt),
+            clientRevision: Number(rootData?.clientRevision) || 0,
+            cardCount: Number(rootData?.cardCount) || 0
+        };
+    }
+
+    planDeferredRepair(localSnapshot, { expectedCardCount = 0 } = {}) {
+        const plan = planDeferredRemoteCheckpointRepair({
+            localSnapshot,
+            expectedCardCount,
+            remoteMetadata: {
+                ...this.remoteMetadata,
+                recoveredFromCompatibility: this.remoteCheckpointRecoveredFromCompatibility
+            }
+        });
+
+        if (plan.shouldRepair) {
+            this.queueDeferredCheckpointRepair(plan.reason);
+        }
+
+        return plan;
     }
 
     applyLoadedCheckpoint(checkpoint, rootData) {
@@ -203,47 +265,13 @@ export class FirestoreBoardSync {
 
         if (result.recovered) {
             console.warn(`[FirebaseSync] Recovered incompatible checkpoint for board ${this.boardId} via ${result.format}`);
-            this.queueCheckpointRewrite(checkpoint.signature, result.format);
+            this.queueRecoveredCheckpointRepair(checkpoint.signature, result.format);
         }
 
         return result;
     }
 
-    setUploadPaused(paused, reason = '') {
-        const nextPaused = paused === true;
-        if (this.uploadPaused === nextPaused) {
-            if (nextPaused && reason) {
-                this.uploadPauseReason = reason;
-            }
-            return;
-        }
-
-        this.uploadPaused = nextPaused;
-        this.uploadPauseReason = nextPaused ? (reason || this.uploadPauseReason || 'manual_pause') : '';
-
-        if (nextPaused) {
-            if (this.flushTimer) {
-                clearTimeout(this.flushTimer);
-                this.flushTimer = null;
-            }
-            this.flushQueuedReason = '';
-            this.clearQueuedRootSyncTouch();
-            return;
-        }
-
-        const resumeReason = reason || this.uploadPauseReason || 'resume_after_pause';
-        this.uploadPauseReason = '';
-        if (this.pendingUpdates.length > 0) {
-            void this.flushPendingUpdates(resumeReason);
-            return;
-        }
-
-        if (this.hasUnsnapshottedChanges) {
-            void this.saveSnapshot(resumeReason);
-        }
-    }
-
-    async loadRemoteCheckpoint(rootData = null) {
+    async loadRemoteCheckpoint(rootData = null, options = {}) {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
         let effectiveRootData = rootData || (await getDoc(rootRef)).data();
         this.latestRootSyncTouchedAtMs = toFirestoreMillis(effectiveRootData?.syncTouchedAtMs);
@@ -264,6 +292,7 @@ export class FirestoreBoardSync {
         if (!hasRemoteCheckpoint(effectiveRootData)) {
             this.remoteIsEmpty = true;
             this.latestCheckpointServerSavedAt = null;
+            this.updateRemoteMetadataFromRoot(effectiveRootData);
             return;
         }
 
@@ -279,11 +308,25 @@ export class FirestoreBoardSync {
         }
 
         this.remoteIsEmpty = false;
+        this.updateRemoteMetadataFromRoot(effectiveRootData);
         this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || 0;
         this.latestCheckpointServerSavedAt = effectiveRootData?.checkpointServerSavedAt || null;
         this.latestCheckpointSignature = checkpoint.signature || '';
         this.latestCheckpointRootKey = buildRootCheckpointKey(effectiveRootData);
         this.hasUnsnapshottedChanges = false;
+
+        const deferredPlan = this.shouldDeferRemoteApply({
+            localSnapshot: options.localSnapshot,
+            expectedCardCount: options.expectedCardCount
+        });
+        if (deferredPlan) {
+            this.emitState('warning', {
+                message: `Skipped stale remote checkpoint for ${this.boardId}, local snapshot will repair remote`
+            });
+            return {
+                skippedApplyReason: deferredPlan.reason
+            };
+        }
 
         try {
             this.applyLoadedCheckpoint(checkpoint, effectiveRootData);
@@ -338,6 +381,8 @@ export class FirestoreBoardSync {
             if (!data || !hasRemoteCheckpoint(data)) {
                 return;
             }
+
+            this.updateRemoteMetadataFromRoot(data);
             const remoteSyncTouchedAtMs = toFirestoreMillis(data.syncTouchedAtMs);
 
             const remoteSavedAtMs = toFirestoreMillis(data.checkpointSavedAtMs);
@@ -384,6 +429,14 @@ export class FirestoreBoardSync {
             this.latestRootSyncTouchedAtMs = remoteSyncTouchedAtMs;
             this.hasUnsnapshottedChanges = false;
 
+            const deferredPlan = this.shouldDeferRemoteApply({
+                localSnapshot: readBoardSnapshotFromDoc(this.doc),
+                expectedCardCount: this.remoteMetadata.cardCount
+            });
+            if (deferredPlan) {
+                return;
+            }
+
             try {
                 this.applyLoadedCheckpoint(checkpoint, data);
             } catch (error) {
@@ -398,6 +451,7 @@ export class FirestoreBoardSync {
                 throw error;
             }
             this.remoteIsEmpty = false;
+            this.onRemoteApplied?.();
         }, (error) => {
             this.emitState('warning', {
                 message: error?.message || 'Checkpoint listener failed'
@@ -418,6 +472,7 @@ export class FirestoreBoardSync {
         const update = base64ToBytes(data.updateBase64);
         Y.applyUpdate(this.doc, update, FIREBASE_SYNC_ORIGINS.firestore);
         this.remoteIsEmpty = false;
+        this.onRemoteApplied?.();
     }
 
     handleDocUpdate(update, origin) {
@@ -426,13 +481,6 @@ export class FirestoreBoardSync {
             || origin === FIREBASE_SYNC_ORIGINS.indexeddb
             || origin === FIREBASE_SYNC_ORIGINS.forceOverride
         ) {
-            return;
-        }
-
-        if (this.uploadPaused) {
-            this.pendingUpdates.push(update);
-            this.pendingBytes += update.byteLength || update.length || 0;
-            this.hasUnsnapshottedChanges = true;
             return;
         }
 
@@ -485,89 +533,6 @@ export class FirestoreBoardSync {
         this.pendingUpdates = [];
         this.pendingBytes = 0;
         this.flushQueuedReason = '';
-    }
-
-    clearQueuedRootSyncTouch() {
-        if (this.rootSyncTouchTimer) {
-            clearTimeout(this.rootSyncTouchTimer);
-            this.rootSyncTouchTimer = null;
-        }
-
-        this.rootSyncTouchPending = false;
-        this.rootSyncTouchReason = '';
-    }
-
-    queueRootSyncTouch(reason = 'delta_flush') {
-        if (!db) return;
-
-        this.rootSyncTouchPending = true;
-        if (reason) {
-            this.rootSyncTouchReason = reason;
-        }
-
-        if (this.rootSyncTouchTimer || this.rootSyncTouchPromise) {
-            return;
-        }
-
-        this.rootSyncTouchTimer = setTimeout(() => {
-            this.rootSyncTouchTimer = null;
-            void this.flushRootSyncTouch(this.rootSyncTouchReason || 'delta_flush');
-        }, FIREBASE_SYNC_LIMITS.metadataSyncDebounceMs);
-    }
-
-    async flushRootSyncTouch(reason = 'manual') {
-        if (!db) return;
-
-        if (reason) {
-            this.rootSyncTouchReason = reason;
-        }
-
-        if (this.rootSyncTouchTimer) {
-            clearTimeout(this.rootSyncTouchTimer);
-            this.rootSyncTouchTimer = null;
-        }
-
-        if (this.rootSyncTouchPromise) {
-            this.rootSyncTouchPending = true;
-            return this.rootSyncTouchPromise;
-        }
-
-        if (!this.rootSyncTouchPending && !this.rootSyncTouchReason) {
-            return;
-        }
-
-        const runRootSyncTouch = async () => {
-            const currentReason = this.rootSyncTouchReason || reason || 'delta_flush';
-            this.rootSyncTouchPending = false;
-            this.rootSyncTouchReason = '';
-
-            try {
-                const liveSnapshot = readBoardSnapshotFromDoc(this.doc);
-                await setDoc(createBoardRootRef(this.userId, this.boardId), {
-                    ...buildAuthoritativeRootPayload({
-                        id: this.boardId,
-                        ...pickBoardSyncMetadata(liveSnapshot),
-                        syncTouchedAtMs: Date.now(),
-                        syncTouchReason: currentReason,
-                        serverUpdatedAt: serverTimestamp(),
-                        lastDeviceId: this.deviceId
-                    })
-                }, { merge: true });
-            } catch (error) {
-                this.emitState('warning', {
-                    message: error?.message || 'Root sync touch write failed'
-                });
-            }
-        };
-
-        this.rootSyncTouchPromise = runRootSyncTouch().finally(() => {
-            this.rootSyncTouchPromise = null;
-            if (this.rootSyncTouchPending || this.rootSyncTouchReason) {
-                this.queueRootSyncTouch(this.rootSyncTouchReason || 'delta_flush');
-            }
-        });
-
-        return this.rootSyncTouchPromise;
     }
 
     async flushPendingUpdates(reason = 'manual') {
@@ -628,7 +593,16 @@ export class FirestoreBoardSync {
                 }
 
                 try {
-                    this.queueRootSyncTouch(currentReason);
+                    const liveSnapshot = readBoardSnapshotFromDoc(this.doc);
+                    await setDoc(createBoardRootRef(this.userId, this.boardId), {
+                        ...buildAuthoritativeRootPayload({
+                            id: this.boardId,
+                            ...pickBoardSyncMetadata(liveSnapshot),
+                            syncTouchedAtMs: Date.now(),
+                            serverUpdatedAt: serverTimestamp(),
+                            lastDeviceId: this.deviceId
+                        })
+                    }, { merge: true });
                 } catch (error) {
                     this.emitState('warning', {
                         message: error?.message || 'Root sync touch write failed'
@@ -700,8 +674,8 @@ export class FirestoreBoardSync {
                         this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
                         this.remoteIsEmpty = false;
                         this.hasUnsnapshottedChanges = false;
-                        this.pendingCheckpointRewriteReason = '';
-                        this.clearQueuedRootSyncTouch();
+                        this.deferredCheckpointRepairReason = '';
+                        this.remoteCheckpointRecoveredFromCompatibility = false;
                     }
 
                     latestCheckpoint = checkpoint;
@@ -746,12 +720,8 @@ export class FirestoreBoardSync {
             }
         }
 
-        if (this.connected && (this.hasUnsnapshottedChanges || this.pendingCheckpointRewriteReason)) {
-            await this.saveSnapshot(this.pendingCheckpointRewriteReason || 'controller_stop');
-        }
-
-        if (this.rootSyncTouchPending || this.rootSyncTouchReason) {
-            await this.flushRootSyncTouch('controller_stop');
+        if (this.connected && (this.hasUnsnapshottedChanges || this.deferredCheckpointRepairReason)) {
+            await this.saveSnapshot(this.deferredCheckpointRepairReason || 'controller_stop');
         }
 
         if (this.unsubscribe) {
@@ -762,11 +732,6 @@ export class FirestoreBoardSync {
         if (this.rootUnsubscribe) {
             this.rootUnsubscribe();
             this.rootUnsubscribe = null;
-        }
-
-        if (this.rootSyncTouchTimer) {
-            clearTimeout(this.rootSyncTouchTimer);
-            this.rootSyncTouchTimer = null;
         }
 
         this.doc.off('update', this.handleDocUpdate);

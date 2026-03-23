@@ -1,5 +1,4 @@
 const listeners = new Set();
-const durableSaveListeners = new Set();
 
 export const emitLocalSaveConfirmed = (payload = {}) => {
     listeners.forEach((listener) => {
@@ -19,27 +18,6 @@ export const subscribeLocalSaveConfirmed = (listener) => {
     listeners.add(listener);
     return () => {
         listeners.delete(listener);
-    };
-};
-
-export const emitDurableLocalSaveWritten = (payload = {}) => {
-    durableSaveListeners.forEach((listener) => {
-        try {
-            listener(payload);
-        } catch (error) {
-            console.error('[LocalPersistedBoardSyncBridge] Durable save listener failed:', error);
-        }
-    });
-};
-
-export const subscribeDurableLocalSaveWritten = (listener) => {
-    if (typeof listener !== 'function') {
-        return () => { };
-    }
-
-    durableSaveListeners.add(listener);
-    return () => {
-        durableSaveListeners.delete(listener);
     };
 };
 

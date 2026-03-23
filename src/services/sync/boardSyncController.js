@@ -6,9 +6,7 @@ import {
 import {
     createBoardDoc,
     isBoardDocEmpty,
-    readBoardFieldFromDoc,
     readBoardSnapshotFromDoc,
-    syncBoardRuntimePatchToDoc,
     syncBoardSnapshotToDoc
 } from './boardYDoc';
 import { FirestoreBoardSync } from './firestoreBoardSync';
@@ -18,19 +16,21 @@ import {
     isSampleBoardId
 } from './config';
 import { getSyncDeviceId } from './deviceId';
-
-const isSnapshotUpdatedAtNewer = (nextSnapshot = {}, prevSnapshot = {}) => (
-    (Number(nextSnapshot?.updatedAt) || 0) > (Number(prevSnapshot?.updatedAt) || 0)
-);
+import {
+    buildPersistenceVersionKey,
+    isPersistenceSnapshotNewer
+} from '../boardPersistence/persistenceCursor';
 
 export class BoardSyncController {
-    constructor({ boardId, user, onSyncStateChange }) {
+    constructor({ boardId, user, onSnapshot, onSyncStateChange }) {
         this.boardId = boardId;
         this.user = user;
+        this.onSnapshot = onSnapshot;
         this.onSyncStateChange = onSyncStateChange;
         this.doc = createBoardDoc();
         this.persistence = null;
         this.fireSync = null;
+        this.lastVersionKey = '';
         this.started = false;
     }
 
@@ -42,7 +42,7 @@ export class BoardSyncController {
         });
     }
 
-    async start(initialLocalSnapshot = {}) {
+    async start(initialLocalSnapshot = {}, { expectedCardCount = 0 } = {}) {
         if (!FIREBASE_SYNC_ENABLED || !this.user?.uid || !this.boardId || isSampleBoardId(this.boardId)) {
             this.emitState('disabled');
             return;
@@ -55,11 +55,21 @@ export class BoardSyncController {
 
         const normalizedLocal = normalizeBoardSnapshot(initialLocalSnapshot);
         const persistedDocSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const repairCandidateSnapshot = (
+            isMeaningfullyEmptyBoardSnapshot(persistedDocSnapshot)
+                ? normalizedLocal
+                : (
+                    isMeaningfullyEmptyBoardSnapshot(normalizedLocal)
+                    || !isPersistenceSnapshotNewer(normalizedLocal, persistedDocSnapshot)
+                )
+                    ? persistedDocSnapshot
+                    : normalizedLocal
+        );
         const shouldApplyLocalSnapshot = (
             !isMeaningfullyEmptyBoardSnapshot(normalizedLocal) &&
             (
                 isBoardDocEmpty(this.doc) ||
-                isSnapshotUpdatedAtNewer(normalizedLocal, persistedDocSnapshot)
+                isPersistenceSnapshotNewer(normalizedLocal, persistedDocSnapshot)
             )
         );
 
@@ -67,51 +77,55 @@ export class BoardSyncController {
             syncBoardSnapshotToDoc(this.doc, normalizedLocal);
         }
 
+        this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
+
+        this.doc.on('update', (_update, origin) => {
+            if (origin === FIREBASE_SYNC_ORIGINS.store || origin === FIREBASE_SYNC_ORIGINS.runtime) {
+                return;
+            }
+            this.emitCurrentSnapshot();
+        });
+
         this.fireSync = new FirestoreBoardSync({
             boardId: this.boardId,
             userId: this.user.uid,
             deviceId: getSyncDeviceId(),
             doc: this.doc,
+            onRemoteApplied: () => {
+                this.emitCurrentSnapshot();
+            },
             onSyncStateChange: this.onSyncStateChange
         });
 
         const {
-            remoteIsEmpty
-        } = await this.fireSync.connect();
+            remoteIsEmpty,
+            skippedRemoteApplyReason
+        } = await this.fireSync.connect({
+            localSnapshot: repairCandidateSnapshot,
+            expectedCardCount
+        });
         if (remoteIsEmpty && !isMeaningfullyEmptyBoardSnapshot(normalizedLocal)) {
             await this.fireSync.saveSnapshot('initial_local_seed');
+        } else if (skippedRemoteApplyReason) {
+            await this.fireSync.saveSnapshot(skippedRemoteApplyReason);
+        } else {
+            this.fireSync.planDeferredRepair(repairCandidateSnapshot, { expectedCardCount });
         }
 
         this.started = true;
+        this.emitCurrentSnapshot();
         this.emitState('ready');
     }
 
+    emitCurrentSnapshot() {
+        const snapshot = readBoardSnapshotFromDoc(this.doc);
+        const versionKey = buildPersistenceVersionKey(snapshot);
+        if (versionKey === this.lastVersionKey) return;
+        this.lastVersionKey = versionKey;
+        this.onSnapshot?.(snapshot);
+    }
+
     readCurrentSnapshot() {
-        return readBoardSnapshotFromDoc(this.doc);
-    }
-
-    setFirestoreUploadPaused(paused, reason = '') {
-        this.fireSync?.setUploadPaused?.(paused, reason);
-    }
-
-    commitAuthoritativeLocalPatch(partial = {}) {
-        if (!this.started) {
-            return normalizeBoardSnapshot(partial);
-        }
-
-        const nextUpdatedAt = Math.max(
-            Date.now(),
-            Number(readBoardFieldFromDoc(this.doc, 'updatedAt')) || 0
-        );
-        const nextClientRevision = (Number(readBoardFieldFromDoc(this.doc, 'clientRevision')) || 0) + 1;
-
-        this.doc.transact(() => {
-            syncBoardRuntimePatchToDoc(this.doc, partial, {
-                updatedAt: nextUpdatedAt,
-                clientRevision: nextClientRevision
-            });
-        }, FIREBASE_SYNC_ORIGINS.runtime);
-
         return readBoardSnapshotFromDoc(this.doc);
     }
 
@@ -139,7 +153,36 @@ export class BoardSyncController {
             syncBoardSnapshotToDoc(this.doc, committedSnapshot);
         }, FIREBASE_SYNC_ORIGINS.runtime);
 
-        return readBoardSnapshotFromDoc(this.doc);
+        const nextCommittedSnapshot = readBoardSnapshotFromDoc(this.doc);
+        this.lastVersionKey = buildPersistenceVersionKey(nextCommittedSnapshot);
+        return nextCommittedSnapshot;
+    }
+
+    applyLocalSnapshot(nextSnapshot = {}) {
+        if (!this.started) return;
+        const normalized = normalizeBoardSnapshot(nextSnapshot);
+        const currentDocSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const nextVersionKey = buildPersistenceVersionKey(normalized);
+        if (nextVersionKey === this.lastVersionKey) return;
+
+        const currentDocIsEmpty = isMeaningfullyEmptyBoardSnapshot(currentDocSnapshot);
+        const nextSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot(normalized);
+        if (!currentDocIsEmpty && nextSnapshotIsEmpty) {
+            return;
+        }
+
+        if (
+            !currentDocIsEmpty &&
+            !isPersistenceSnapshotNewer(normalized, currentDocSnapshot)
+        ) {
+            return;
+        }
+
+        this.doc.transact(() => {
+            syncBoardSnapshotToDoc(this.doc, normalized);
+        }, FIREBASE_SYNC_ORIGINS.store);
+
+        this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
     }
 
     async forceOverwriteFromSnapshot(nextSnapshot = {}) {
@@ -157,7 +200,9 @@ export class BoardSyncController {
             syncBoardSnapshotToDoc(this.doc, normalized);
         }, FIREBASE_SYNC_ORIGINS.forceOverride);
 
+        this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
         const checkpoint = await this.fireSync.saveSnapshot('manual_force_override');
+        this.emitCurrentSnapshot();
         return Boolean(checkpoint);
     }
 
