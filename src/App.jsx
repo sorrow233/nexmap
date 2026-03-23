@@ -88,11 +88,13 @@ import {
 } from './store/slices/utils/boardChangeState';
 import { buildBoardChangeIntegrityHash } from './store/slices/utils/boardChangeIntegrity';
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
-import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
+import {
+    subscribeDurableLocalSaveWritten,
+    subscribeLocalSaveConfirmed
+} from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
 import { isMeaningfullyEmptyBoardSnapshot } from './services/sync/boardSnapshot';
 import {
-    isActiveBoardRuntimeController,
     registerActiveBoardRuntime,
     unregisterActiveBoardRuntime
 } from './services/sync/boardRuntimeAuthority';
@@ -112,6 +114,7 @@ export default function App() {
 const SESSION_START_TIME = Date.now();
 const SEARCH_DATA_FLUSH_DELAY_MS = 80;
 const REMOTE_METADATA_RETRY_MS = 5000;
+const PENDING_REMOTE_SNAPSHOT_TTL_MS = 60 * 1000;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
 );
@@ -192,6 +195,8 @@ function AppContent() {
     const searchFlushTimerRef = useRef(null);
     const boardsListRef = useRef(boardsList);
     const activeBoardPersistenceRef = useRef(activeBoardPersistence);
+    const pendingRemoteSnapshotRef = useRef(null);
+    const pendingRemoteSnapshotTimerRef = useRef(null);
 
     useBuildVersionRefresh();
 
@@ -257,7 +262,43 @@ function AppContent() {
         });
     }, [setBoardsList]);
 
-    const shouldApplyRemoteSnapshotToStore = useCallback((snapshot) => {
+    const clearPendingRemoteSnapshot = useCallback((boardId = '') => {
+        if (
+            boardId &&
+            pendingRemoteSnapshotRef.current?.boardId &&
+            pendingRemoteSnapshotRef.current.boardId !== boardId
+        ) {
+            return;
+        }
+
+        pendingRemoteSnapshotRef.current = null;
+        if (pendingRemoteSnapshotTimerRef.current) {
+            clearTimeout(pendingRemoteSnapshotTimerRef.current);
+            pendingRemoteSnapshotTimerRef.current = null;
+        }
+    }, []);
+
+    const queuePendingRemoteSnapshot = useCallback((boardId, snapshot) => {
+        if (!boardId || !snapshot) {
+            return;
+        }
+
+        pendingRemoteSnapshotRef.current = {
+            boardId,
+            snapshot: normalizeBoardSnapshot(snapshot),
+            queuedAt: Date.now()
+        };
+
+        if (pendingRemoteSnapshotTimerRef.current) {
+            clearTimeout(pendingRemoteSnapshotTimerRef.current);
+        }
+
+        pendingRemoteSnapshotTimerRef.current = setTimeout(() => {
+            clearPendingRemoteSnapshot(boardId);
+        }, PENDING_REMOTE_SNAPSHOT_TTL_MS);
+    }, [clearPendingRemoteSnapshot]);
+
+    const shouldApplyRemoteSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalizedSnapshot = normalizeBoardSnapshot(snapshot);
         const currentCursor = activeBoardPersistenceRef.current || {};
         const currentStoreState = useStore.getState();
@@ -271,22 +312,78 @@ function AppContent() {
         });
 
         if (isMeaningfullyEmptyBoardSnapshot(normalizedSnapshot)) {
-            return false;
+            return {
+                action: 'skip',
+                snapshot: normalizedSnapshot
+            };
         }
 
-        if (localDirty) {
-            return false;
+        if (localDirty && options.ignoreDirtyGate !== true) {
+            return {
+                action: 'queue',
+                snapshot: normalizedSnapshot
+            };
         }
 
         if (localSnapshotIsEmpty) {
+            return {
+                action: 'apply',
+                snapshot: normalizedSnapshot
+            };
+        }
+
+        return {
+            action: isPersistenceSnapshotNewer(normalizedSnapshot, {
+                updatedAt: Number(currentCursor?.updatedAt) || 0,
+                clientRevision: Number(currentCursor?.clientRevision) || 0
+            })
+                ? 'apply'
+                : 'skip',
+            snapshot: normalizedSnapshot
+        };
+    }, []);
+
+    const consumePendingRemoteSnapshot = useCallback((boardId) => {
+        const pending = pendingRemoteSnapshotRef.current;
+        if (!pending || pending.boardId !== boardId) {
+            return false;
+        }
+
+        if (Date.now() - pending.queuedAt > PENDING_REMOTE_SNAPSHOT_TTL_MS) {
+            clearPendingRemoteSnapshot(boardId);
+            return false;
+        }
+
+        const decision = shouldApplyRemoteSnapshotToStore(pending.snapshot, {
+            ignoreDirtyGate: true
+        });
+        if (decision.action === 'apply') {
+            clearPendingRemoteSnapshot(boardId);
+            applyBoardSnapshotToStore(decision.snapshot, {
+                source: 'remote_sync',
+                boardId
+            });
+            syncBoardSnapshotMetadataIntoList(boardId, decision.snapshot);
             return true;
         }
 
-        return isPersistenceSnapshotNewer(normalizedSnapshot, {
-            updatedAt: Number(currentCursor?.updatedAt) || 0,
-            clientRevision: Number(currentCursor?.clientRevision) || 0
-        });
-    }, []);
+        if (decision.action === 'skip') {
+            clearPendingRemoteSnapshot(boardId);
+        }
+
+        return false;
+    }, [
+        applyBoardSnapshotToStore,
+        clearPendingRemoteSnapshot,
+        shouldApplyRemoteSnapshotToStore,
+        syncBoardSnapshotMetadataIntoList
+    ]);
+
+    useEffect(() => {
+        return () => {
+            clearPendingRemoteSnapshot();
+        };
+    }, [clearPendingRemoteSnapshot]);
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
@@ -384,21 +481,23 @@ function AppContent() {
             if (!snapshot || boardId !== currentBoardId) {
                 return;
             }
-
-            const controller = boardSyncControllerRef.current;
-            if (!controller || controller.boardId !== boardId) {
-                return;
-            }
-
-            if (isActiveBoardRuntimeController(boardId, controller)) {
-                return;
-            }
-
-            controller.applyLocalSnapshot(snapshot);
         });
 
         return () => unsubscribe?.();
     }, [currentBoardId, syncBoardSnapshotMetadataIntoList]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeDurableLocalSaveWritten((payload = {}) => {
+            const boardId = typeof payload.boardId === 'string' ? payload.boardId : '';
+            if (!boardId || boardId !== currentBoardId) {
+                return;
+            }
+
+            void consumePendingRemoteSnapshot(boardId);
+        });
+
+        return () => unsubscribe?.();
+    }, [consumePendingRemoteSnapshot, currentBoardId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -625,6 +724,7 @@ function AppContent() {
 
         const load = async () => {
             if (currentBoardId) {
+                clearPendingRemoteSnapshot();
                 if (boardSyncControllerRef.current) {
                     unregisterActiveBoardRuntime({
                         boardId: boardSyncControllerRef.current.boardId,
@@ -689,14 +789,22 @@ function AppContent() {
                             user,
                             onSnapshot: (nextSnapshot) => {
                                 if (isCancelled) return;
-                                if (!shouldApplyRemoteSnapshotToStore(nextSnapshot)) {
+                                const decision = shouldApplyRemoteSnapshotToStore(nextSnapshot);
+                                if (decision.action === 'queue') {
+                                    queuePendingRemoteSnapshot(currentBoardId, decision.snapshot);
                                     return;
                                 }
-                                applyBoardSnapshotToStore(nextSnapshot, {
+
+                                if (decision.action !== 'apply') {
+                                    return;
+                                }
+
+                                clearPendingRemoteSnapshot(currentBoardId);
+                                applyBoardSnapshotToStore(decision.snapshot, {
                                     source: 'remote_sync',
                                     boardId: currentBoardId
                                 });
-                                syncBoardSnapshotMetadataIntoList(currentBoardId, nextSnapshot);
+                                syncBoardSnapshotMetadataIntoList(currentBoardId, decision.snapshot);
                             },
                             onSyncStateChange: () => { }
                         });
@@ -725,6 +833,7 @@ function AppContent() {
         // Cleanup function - mark as cancelled if effect re-runs
         return () => {
             isCancelled = true;
+            clearPendingRemoteSnapshot(currentBoardId || '');
             if (boardSyncControllerRef.current && boardSyncControllerRef.current.boardId === currentBoardId) {
                 unregisterActiveBoardRuntime({
                     boardId: currentBoardId,
@@ -745,6 +854,9 @@ function AppContent() {
         setGroups,
         setLastSavedAt,
         shouldApplyRemoteSnapshotToStore,
+        clearPendingRemoteSnapshot,
+        consumePendingRemoteSnapshot,
+        queuePendingRemoteSnapshot,
         syncBoardSnapshotMetadataIntoList,
         user
     ]); // Rely on currentBoardId changing

@@ -100,6 +100,11 @@ export function useRevisionDrivenBoardSync({
                 )
             });
 
+            console.info('[BoardSync] uplink via revision-driven snapshot', {
+                boardId,
+                revision,
+                changeType
+            });
             latestController.applyLocalSnapshot(nextSnapshot);
         }, resolveSyncDelay(changeType));
 

@@ -15,7 +15,10 @@ import {
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
 import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
-import { emitLocalSaveConfirmed } from '../services/sync/localPersistedBoardSyncBridge';
+import {
+    emitDurableLocalSaveWritten,
+    emitLocalSaveConfirmed
+} from '../services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from '../services/sync/boardSyncMetadata';
 import { runWhenBrowserIdle } from '../utils/idleTask';
 
@@ -256,6 +259,15 @@ export function useBoardPersistence({
             });
 
             await enqueueDurableWrite(() => saveBoard(boardId, payload));
+            emitDurableLocalSaveWritten({
+                type: 'LOCAL_DURABLE_SAVE_WRITTEN',
+                boardId,
+                clientRevision: revision,
+                savedAt: now,
+                source: options.reason || 'local_persist',
+                snapshot: payload,
+                metadata: pickBoardSyncMetadata(payload)
+            });
 
             if (typeof setLastSavedAt === 'function') {
                 setLastSavedAt(now);

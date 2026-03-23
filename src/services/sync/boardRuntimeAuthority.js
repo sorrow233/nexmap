@@ -1,5 +1,3 @@
-import { normalizeBoardSnapshot } from './boardSnapshot';
-
 const BOARD_RUNTIME_KEYS = Object.freeze([
     'cards',
     'connections',
@@ -7,6 +5,8 @@ const BOARD_RUNTIME_KEYS = Object.freeze([
     'boardPrompts',
     'boardInstructionSettings'
 ]);
+
+const AUTHORITATIVE_PATCH_DEBOUNCE_MS = 900;
 
 let activeBoardRuntime = null;
 
@@ -22,15 +22,95 @@ export const hasBoardRuntimePatch = (value = {}) => (
     BOARD_RUNTIME_KEYS.some((key) => hasOwn(value, key))
 );
 
+const clearRuntimeFlushTimer = (runtime = null) => {
+    if (!runtime?.flushTimer) return;
+    clearTimeout(runtime.flushTimer);
+    runtime.flushTimer = null;
+};
+
+const flushRuntimePatch = (runtime = null, reason = 'debounced_patch') => {
+    if (!runtime?.controller) {
+        return null;
+    }
+
+    clearRuntimeFlushTimer(runtime);
+
+    const pendingPatch = runtime.pendingPatch;
+    runtime.pendingPatch = null;
+
+    if (!pendingPatch || Object.keys(pendingPatch).length === 0) {
+        return null;
+    }
+
+    if (!runtime.controller.started || typeof runtime.controller.commitAuthoritativeLocalSnapshot !== 'function') {
+        return {
+            committedSnapshot: null,
+            boardPatch: pendingPatch
+        };
+    }
+
+    const currentSnapshot = runtime.controller.readCurrentSnapshot?.();
+    if (!currentSnapshot) {
+        return {
+            committedSnapshot: null,
+            boardPatch: pendingPatch
+        };
+    }
+
+    console.info('[BoardSync] uplink via runtime-authority snapshot', {
+        boardId: runtime.boardId,
+        reason,
+        keys: Object.keys(pendingPatch)
+    });
+
+    const committedSnapshot = runtime.controller.commitAuthoritativeLocalSnapshot({
+        ...currentSnapshot,
+        ...pendingPatch
+    });
+
+    return {
+        committedSnapshot,
+        boardPatch: pickBoardRuntimePatch(committedSnapshot)
+    };
+};
+
+const scheduleRuntimePatchFlush = (runtime = null, reason = 'debounced_patch') => {
+    if (!runtime?.controller) {
+        return;
+    }
+
+    if (runtime.flushTimer) {
+        return;
+    }
+
+    runtime.flushTimer = setTimeout(() => {
+        runtime.flushTimer = null;
+        flushRuntimePatch(runtime, reason);
+    }, AUTHORITATIVE_PATCH_DEBOUNCE_MS);
+};
+
 export const registerActiveBoardRuntime = ({ boardId, controller } = {}) => {
     if (!boardId || !controller) {
+        flushRuntimePatch(activeBoardRuntime, 'runtime_reset');
         activeBoardRuntime = null;
         return;
     }
 
+    if (
+        activeBoardRuntime &&
+        (
+            activeBoardRuntime.boardId !== boardId
+            || activeBoardRuntime.controller !== controller
+        )
+    ) {
+        flushRuntimePatch(activeBoardRuntime, 'runtime_switch');
+    }
+
     activeBoardRuntime = {
         boardId,
-        controller
+        controller,
+        pendingPatch: null,
+        flushTimer: null
     };
 };
 
@@ -45,6 +125,7 @@ export const unregisterActiveBoardRuntime = ({ boardId, controller } = {}) => {
         return;
     }
 
+    flushRuntimePatch(activeBoardRuntime, 'runtime_unregister');
     activeBoardRuntime = null;
 };
 
@@ -57,33 +138,46 @@ export const isActiveBoardRuntimeController = (boardId, controller) => (
 );
 
 export const commitActiveBoardRuntimePatch = (partial = {}) => {
-    const controller = activeBoardRuntime?.controller;
+    const runtime = activeBoardRuntime;
+    const controller = runtime?.controller;
     if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
         return null;
     }
 
-    const currentSnapshot = controller.readCurrentSnapshot?.();
-    if (!currentSnapshot) {
+    const boardPatch = pickBoardRuntimePatch(partial);
+    if (Object.keys(boardPatch).length === 0) {
         return null;
     }
 
-    const nextSnapshot = normalizeBoardSnapshot({
-        ...currentSnapshot,
-        ...pickBoardRuntimePatch(partial)
-    });
-    const committedSnapshot = controller.commitAuthoritativeLocalSnapshot(nextSnapshot);
+    runtime.pendingPatch = {
+        ...(runtime.pendingPatch || {}),
+        ...boardPatch
+    };
+    scheduleRuntimePatchFlush(runtime, 'queued_patch');
 
     return {
-        committedSnapshot,
-        boardPatch: pickBoardRuntimePatch(committedSnapshot)
+        committedSnapshot: null,
+        boardPatch
     };
 };
 
 export const commitActiveBoardRuntimeSnapshot = (snapshot = {}) => {
-    const controller = activeBoardRuntime?.controller;
+    const runtime = activeBoardRuntime;
+    const controller = runtime?.controller;
     if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
         return null;
     }
+
+    clearRuntimeFlushTimer(runtime);
+    if (runtime) {
+        runtime.pendingPatch = null;
+    }
+
+    console.info('[BoardSync] uplink via runtime-authority snapshot', {
+        boardId: runtime?.boardId,
+        reason: 'immediate_snapshot',
+        keys: Object.keys(pickBoardRuntimePatch(snapshot))
+    });
 
     const committedSnapshot = controller.commitAuthoritativeLocalSnapshot(snapshot);
     return {

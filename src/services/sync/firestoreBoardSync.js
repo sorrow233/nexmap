@@ -94,6 +94,10 @@ export class FirestoreBoardSync {
         this.snapshotSaveCount = 0;
         this.repairedCheckpointSignatures = new Set();
         this.deferredCheckpointRepairReason = '';
+        this.rootSyncTouchTimer = null;
+        this.rootSyncTouchPending = false;
+        this.rootSyncTouchReason = '';
+        this.rootSyncTouchPromise = null;
         this.remoteCheckpointRecoveredFromCompatibility = false;
         this.remoteMetadata = {
             hasCheckpoint: false,
@@ -108,7 +112,9 @@ export class FirestoreBoardSync {
 
         this.immediateFlushHandler = () => {
             if (this.pendingUpdates.length > 0 || this.hasUnsnapshottedChanges || this.flushQueuedReason) {
-                this.flushPendingUpdates('pagehide_immediate').catch(() => {});
+                this.flushPendingUpdates('pagehide_immediate')
+                    .then(() => this.flushRootSyncTouch('pagehide_immediate'))
+                    .catch(() => {});
             }
         };
 
@@ -535,6 +541,89 @@ export class FirestoreBoardSync {
         this.flushQueuedReason = '';
     }
 
+    clearQueuedRootSyncTouch() {
+        if (this.rootSyncTouchTimer) {
+            clearTimeout(this.rootSyncTouchTimer);
+            this.rootSyncTouchTimer = null;
+        }
+
+        this.rootSyncTouchPending = false;
+        this.rootSyncTouchReason = '';
+    }
+
+    queueRootSyncTouch(reason = 'delta_flush') {
+        if (!db) return;
+
+        this.rootSyncTouchPending = true;
+        if (reason) {
+            this.rootSyncTouchReason = reason;
+        }
+
+        if (this.rootSyncTouchTimer || this.rootSyncTouchPromise) {
+            return;
+        }
+
+        this.rootSyncTouchTimer = setTimeout(() => {
+            this.rootSyncTouchTimer = null;
+            void this.flushRootSyncTouch(this.rootSyncTouchReason || 'delta_flush');
+        }, FIREBASE_SYNC_LIMITS.metadataSyncDebounceMs);
+    }
+
+    async flushRootSyncTouch(reason = 'manual') {
+        if (!db) return;
+
+        if (reason) {
+            this.rootSyncTouchReason = reason;
+        }
+
+        if (this.rootSyncTouchTimer) {
+            clearTimeout(this.rootSyncTouchTimer);
+            this.rootSyncTouchTimer = null;
+        }
+
+        if (this.rootSyncTouchPromise) {
+            this.rootSyncTouchPending = true;
+            return this.rootSyncTouchPromise;
+        }
+
+        if (!this.rootSyncTouchPending && !this.rootSyncTouchReason) {
+            return;
+        }
+
+        const runRootSyncTouch = async () => {
+            const currentReason = this.rootSyncTouchReason || reason || 'delta_flush';
+            this.rootSyncTouchPending = false;
+            this.rootSyncTouchReason = '';
+
+            try {
+                const liveSnapshot = readBoardSnapshotFromDoc(this.doc);
+                await setDoc(createBoardRootRef(this.userId, this.boardId), {
+                    ...buildAuthoritativeRootPayload({
+                        id: this.boardId,
+                        ...pickBoardSyncMetadata(liveSnapshot),
+                        syncTouchedAtMs: Date.now(),
+                        syncTouchReason: currentReason,
+                        serverUpdatedAt: serverTimestamp(),
+                        lastDeviceId: this.deviceId
+                    })
+                }, { merge: true });
+            } catch (error) {
+                this.emitState('warning', {
+                    message: error?.message || 'Root sync touch write failed'
+                });
+            }
+        };
+
+        this.rootSyncTouchPromise = runRootSyncTouch().finally(() => {
+            this.rootSyncTouchPromise = null;
+            if (this.rootSyncTouchPending || this.rootSyncTouchReason) {
+                this.queueRootSyncTouch(this.rootSyncTouchReason || 'delta_flush');
+            }
+        });
+
+        return this.rootSyncTouchPromise;
+    }
+
     async flushPendingUpdates(reason = 'manual') {
         if (!db) return;
         if (this.flushPromise) {
@@ -593,16 +682,7 @@ export class FirestoreBoardSync {
                 }
 
                 try {
-                    const liveSnapshot = readBoardSnapshotFromDoc(this.doc);
-                    await setDoc(createBoardRootRef(this.userId, this.boardId), {
-                        ...buildAuthoritativeRootPayload({
-                            id: this.boardId,
-                            ...pickBoardSyncMetadata(liveSnapshot),
-                            syncTouchedAtMs: Date.now(),
-                            serverUpdatedAt: serverTimestamp(),
-                            lastDeviceId: this.deviceId
-                        })
-                    }, { merge: true });
+                    this.queueRootSyncTouch(currentReason);
                 } catch (error) {
                     this.emitState('warning', {
                         message: error?.message || 'Root sync touch write failed'
@@ -676,6 +756,7 @@ export class FirestoreBoardSync {
                         this.hasUnsnapshottedChanges = false;
                         this.deferredCheckpointRepairReason = '';
                         this.remoteCheckpointRecoveredFromCompatibility = false;
+                        this.clearQueuedRootSyncTouch();
                     }
 
                     latestCheckpoint = checkpoint;
@@ -724,6 +805,10 @@ export class FirestoreBoardSync {
             await this.saveSnapshot(this.deferredCheckpointRepairReason || 'controller_stop');
         }
 
+        if (this.rootSyncTouchPending || this.rootSyncTouchReason) {
+            await this.flushRootSyncTouch('controller_stop');
+        }
+
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
@@ -732,6 +817,11 @@ export class FirestoreBoardSync {
         if (this.rootUnsubscribe) {
             this.rootUnsubscribe();
             this.rootUnsubscribe = null;
+        }
+
+        if (this.rootSyncTouchTimer) {
+            clearTimeout(this.rootSyncTouchTimer);
+            this.rootSyncTouchTimer = null;
         }
 
         this.doc.off('update', this.handleDocUpdate);
