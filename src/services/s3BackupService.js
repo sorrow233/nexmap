@@ -12,6 +12,7 @@ import {
     importData,
     validateImportData
 } from './dataExportService';
+import { createSafetyBackup } from './safetyBackupService';
 import { getS3Config } from './s3';
 
 const BACKUP_ROOT_FOLDER = 'backups/full-data';
@@ -118,6 +119,17 @@ const readJsonObject = async (client, bucket, key) => {
     return JSON.parse(rawText);
 };
 
+const computeSha256Hex = async (text) => {
+    if (!globalThis.crypto?.subtle) {
+        return '';
+    }
+    const bytes = new TextEncoder().encode(text);
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+};
+
 export const getResolvedS3BackupFolder = (configOverride) => {
     const config = resolveS3Config(configOverride);
     return [config?.folderPrefix || '', BACKUP_ROOT_FOLDER].filter(Boolean).join('/');
@@ -130,6 +142,7 @@ export async function uploadFullDataBackupToS3(configOverride = null) {
     const exportData = await exportAllData();
     const exportJson = JSON.stringify(exportData, null, 2);
     const stats = getBackupStats(exportData);
+    const sha256 = await computeSha256Hex(exportJson);
     const now = new Date();
     const backupId = createBackupId();
     const backupFolder = buildBackupFolder(config, now, backupId);
@@ -148,6 +161,7 @@ export async function uploadFullDataBackupToS3(configOverride = null) {
         bucket: config.bucket,
         backupKey,
         sizeBytes: new Blob([exportJson]).size,
+        sha256,
         boardCount: stats?.boardCount || 0,
         settingsCount: stats?.settingsCount || 0
     };
@@ -221,6 +235,7 @@ export async function listFullDataBackups(configOverride = null, options = {}) {
             sizeBytes: Number(manifest.sizeBytes) || 0,
             boardCount: Number(manifest.boardCount) || 0,
             settingsCount: Number(manifest.settingsCount) || 0,
+            sha256: manifest.sha256 || '',
             appVersion: manifest.appVersion || '',
             schemaVersion: manifest.schemaVersion || '',
             rawManifest: manifest
@@ -241,11 +256,39 @@ export async function restoreFullDataBackupFromS3(configOverride = null, backupE
     const config = resolveS3Config(configOverride);
     validateS3Config(config);
     const client = createS3Client(config);
-    const backupData = await readJsonObject(client, config.bucket, backupEntry.backupKey);
+    const response = await client.send(new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: backupEntry.backupKey
+    }));
+    const backupText = await objectBodyToText(response.Body);
+    if (backupEntry.sha256) {
+        const actualSha256 = await computeSha256Hex(backupText);
+        if (!actualSha256 || actualSha256 !== backupEntry.sha256) {
+            throw new Error('S3 备份完整性校验失败，已中止恢复。');
+        }
+    }
+
+    let safetyBackup;
+    try {
+        safetyBackup = await createSafetyBackup();
+    } catch (error) {
+        throw new Error(`恢复前创建本地安全备份失败：${error?.message || 'unknown_error'}`);
+    }
+
+    const backupData = JSON.parse(backupText);
     const validation = validateImportData(backupData);
     if (!validation.valid) {
         throw new Error(validation.error || '备份文件格式无效。');
     }
 
-    return importData(backupData, options);
+    const result = await importData(backupData, options);
+    if (!result.success) {
+        return result;
+    }
+
+    return {
+        ...result,
+        integrityVerified: Boolean(backupEntry.sha256),
+        safetyBackupTimestamp: safetyBackup?.timestamp || null
+    };
 }

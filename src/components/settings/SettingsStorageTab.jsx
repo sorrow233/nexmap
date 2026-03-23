@@ -307,7 +307,11 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 throw new Error(result.error || '从 S3 恢复失败。');
             }
             setRemoteBackupStatus('success');
-            setRemoteBackupMsg('S3 备份恢复成功，页面即将刷新。');
+            setRemoteBackupMsg(
+                result.integrityVerified
+                    ? 'S3 备份恢复成功，完整性校验已通过，并已先创建本地安全备份。页面即将刷新。'
+                    : 'S3 备份恢复成功，已先创建本地安全备份。页面即将刷新。'
+            );
             setTimeout(() => window.location.reload(), 1500);
         } catch (error) {
             console.error('[S3Backup] Restore failed:', error);
@@ -516,7 +520,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                                 {backup.exportedAt ? new Date(backup.exportedAt).toLocaleString() : '未知时间'}
                                             </p>
                                             <p>画板数：{backup.boardCount}，设置项：{backup.settingsCount}，体积：{formatBytes(backup.sizeBytes)}</p>
-                                            <p>应用版本：{backup.appVersion || '未知'}，备份版本：{backup.schemaVersion || '未知'}</p>
+                                            <p>应用版本：{backup.appVersion || '未知'}，备份版本：{backup.schemaVersion || '未知'}，校验：{backup.sha256 ? 'SHA-256 已记录' : '旧备份，无校验指纹'}</p>
                                             <p className="font-mono break-all">Folder: {backup.backupFolder}</p>
                                         </div>
                                         <button
