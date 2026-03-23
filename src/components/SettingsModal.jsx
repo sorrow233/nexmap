@@ -329,7 +329,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 <button
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${isActive
-                        ? 'border-[#eadbc6] bg-[#fffaf3] text-[#5e4d3e] shadow-[0_10px_24px_rgba(92,74,50,0.10)]'
+                        ? 'border-[#dec5a8] bg-[#fff8ef] text-[#5e4d3e]'
                         : 'border-[#efe6da] bg-[rgba(255,252,247,0.84)] text-[#83705e] hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12 dark:hover:text-white'
                         }`}
                 >
@@ -344,8 +344,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         return (
             <button
                 onClick={() => setActiveTab(id)}
-                className={`group w-full rounded-[22px] border px-3 py-3 text-left transition-all ${isActive
-                    ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)]'
+                className={`group w-full rounded-[18px] border px-3 py-3 text-left transition-all ${isActive
+                    ? 'border-[#ebdecf] bg-[#fff9f1]'
                     : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-white/6'
                     }`}
             >
@@ -370,24 +370,24 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-[rgba(104,92,78,0.18)] p-2 backdrop-blur-[18px] dark:bg-slate-950/80 sm:p-6">
-            <div className="relative h-full w-full max-w-[1320px] overflow-hidden rounded-[38px] border border-[#efe5d8] bg-[linear-gradient(180deg,rgba(248,244,238,0.98),rgba(241,235,228,0.98))] shadow-[0_34px_100px_rgba(82,67,49,0.18)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,22,30,0.96),rgba(12,16,23,0.94))] dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
+        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-[rgba(104,92,78,0.16)] p-2 backdrop-blur-[16px] dark:bg-slate-950/80 sm:p-5">
+            <div className="relative h-full w-full max-w-[1200px] overflow-hidden rounded-[30px] border border-[#eadfce] bg-[linear-gradient(180deg,rgba(248,244,238,0.98),rgba(244,238,231,0.98))] shadow-[0_28px_80px_rgba(82,67,49,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,22,30,0.96),rgba(12,16,23,0.94))] dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
                 <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5d5a8]/35 blur-3xl" />
-                    <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-[#ddd7ef]/40 blur-3xl" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(250,239,222,0.8),transparent_30%),radial-gradient(circle_at_82%_14%,rgba(239,228,246,0.6),transparent_28%),radial-gradient(circle_at_72%_86%,rgba(235,240,226,0.55),transparent_28%)]" />
+                    <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#f5d5a8]/28 blur-3xl" />
+                    <div className="absolute bottom-0 left-10 h-64 w-64 rounded-full bg-[#ddd7ef]/26 blur-3xl" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(250,239,222,0.65),transparent_28%),radial-gradient(circle_at_82%_14%,rgba(239,228,246,0.45),transparent_24%),radial-gradient(circle_at_72%_86%,rgba(235,240,226,0.4),transparent_24%)]" />
                 </div>
 
                 <div className="relative flex h-full flex-col md:flex-row">
-                    <aside className="hidden w-[280px] shrink-0 border-r border-[#ebe0d3] bg-[rgba(255,251,246,0.8)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 md:flex">
-                        <div className="flex h-full w-full flex-col p-6">
-                            <div className="mb-6 flex items-center gap-3">
-                                <div className={`rounded-[18px] p-2.5 shadow-[0_10px_24px_rgba(94,73,51,0.10)] ${activeTabMeta.accent.iconActive}`}>
-                                    <Settings size={20} />
+                    <aside className="hidden w-[236px] shrink-0 border-r border-[#ebe0d3] bg-[rgba(255,251,246,0.76)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 md:flex">
+                        <div className="flex h-full w-full flex-col p-5">
+                            <div className="mb-5 flex items-center gap-3">
+                                <div className={`rounded-[16px] p-2.5 ${activeTabMeta.accent.iconActive}`}>
+                                    <Settings size={18} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-semibold text-[#2f241a] dark:text-white">{t.settings.title}</h2>
-                                    <p className="text-xs font-medium text-[#8f7e6b] dark:text-slate-300/70">轻一点，静一点，分类还在</p>
+                                    <h2 className="text-lg font-semibold text-[#2f241a] dark:text-white">{t.settings.title}</h2>
+                                    <p className="text-xs font-medium text-[#8f7e6b] dark:text-slate-300/70">更小、更清楚、更像系统设置</p>
                                 </div>
                             </div>
 
@@ -404,20 +404,16 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 ))}
                             </div>
 
-                            <div className="mt-5 border-t border-[#ece2d6] pt-4 dark:border-white/10">
+                            <div className="mt-4 border-t border-[#ece2d6] pt-4 dark:border-white/10">
                                 <p className="text-center font-mono text-[11px] text-[#ad9d8a] dark:text-slate-400/60">v{packageJson.version}</p>
                             </div>
                         </div>
                     </aside>
 
                     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[rgba(248,244,238,0.66)] dark:bg-[#0f141c]/82">
-                    <header className="border-b border-[#ece1d4] bg-[rgba(255,251,246,0.72)] px-4 py-4 backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 sm:px-8 sm:py-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <header className="border-b border-[#ece1d4] bg-[rgba(255,251,246,0.72)] px-4 py-4 backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 sm:px-6 sm:py-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="max-w-3xl">
-                                <div className="inline-flex items-center gap-2 rounded-full border border-[#eadbc8] bg-[#f8eee3] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
-                                    <Settings size={13} />
-                                    {t.settings.title}
-                                </div>
                                 <div className="mb-3 flex gap-2 overflow-x-auto md:hidden custom-scrollbar">
                                     {tabs.map((tab) => (
                                         <TabButton
@@ -431,11 +427,18 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                         />
                                     ))}
                                 </div>
-                                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-[#9a8771] dark:text-slate-300/70">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-[#eadbc8] bg-[#f8eee3] px-2.5 py-1 dark:border-white/10 dark:bg-white/8">
+                                        <Settings size={12} />
+                                        {t.settings.title}
+                                    </span>
+                                    <span>v{packageJson.version}</span>
+                                </div>
+                                <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
                                     {activeMeta.title}
                                 </h2>
-                                <p className="mt-2 text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
-                                    {activeMeta.subtitle}。当前版本 v{packageJson.version}
+                                <p className="mt-1 text-sm leading-6 text-[#7b6a58] dark:text-slate-300">
+                                    {activeMeta.subtitle}
                                 </p>
                             </div>
 
@@ -443,14 +446,14 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 <button
                                     onClick={onClose}
                                     disabled={isSaving}
-                                    className="rounded-[16px] border border-[#eaddca] bg-[#fffaf3] px-4 py-2 text-sm font-medium text-[#655545] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
+                                    className="rounded-[14px] border border-[#eaddca] bg-[#fffaf3] px-4 py-2 text-sm font-medium text-[#655545] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
                                 >
                                     {t.settings.cancel}
                                 </button>
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="rounded-[16px] bg-[#efb65a] px-5 py-2 text-sm font-semibold text-[#322515] shadow-[0_14px_30px_rgba(226,174,92,0.28)] transition-all hover:bg-[#f3bf6c] disabled:opacity-60"
+                                    className="rounded-[14px] bg-[#efb65a] px-5 py-2 text-sm font-semibold text-[#322515] shadow-[0_10px_24px_rgba(226,174,92,0.24)] transition-all hover:bg-[#f3bf6c] disabled:opacity-60"
                                 >
                                     <span className="flex items-center gap-2">
                                         {isSaving && <Loader2 size={14} className="animate-spin" />}
@@ -462,7 +465,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     </header>
 
                     {saveStatus.type !== 'idle' && (
-                        <div className="px-4 pt-4 sm:px-8">
+                        <div className="px-4 pt-4 sm:px-6">
                             <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${saveStatus.type === 'success'
                                 ? 'border-emerald-200/80 bg-[#f0f7f1]'
                                 : saveStatus.type === 'warning'
@@ -486,8 +489,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         </div>
                     )}
 
-                    <div className="relative z-10 min-h-0 flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
-                        <div className={`mx-auto ${activeTab === 'ai' ? 'max-w-[1120px]' : 'max-w-5xl'}`}>
+                    <div className="relative z-10 min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+                        <div className={`mx-auto ${activeTab === 'ai' ? 'max-w-[1040px]' : 'max-w-[980px]'}`}>
                             {activeTab === 'basic' && (
                                 <SettingsBasicSection
                                     customInstructions={customInstructions}
