@@ -80,7 +80,7 @@ export class BoardSyncController {
         this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
 
         this.doc.on('update', (_update, origin) => {
-            if (origin === FIREBASE_SYNC_ORIGINS.store) {
+            if (origin === FIREBASE_SYNC_ORIGINS.store || origin === FIREBASE_SYNC_ORIGINS.runtime) {
                 return;
             }
             this.emitCurrentSnapshot();
@@ -123,6 +123,39 @@ export class BoardSyncController {
         if (versionKey === this.lastVersionKey) return;
         this.lastVersionKey = versionKey;
         this.onSnapshot?.(snapshot);
+    }
+
+    readCurrentSnapshot() {
+        return readBoardSnapshotFromDoc(this.doc);
+    }
+
+    commitAuthoritativeLocalSnapshot(nextSnapshot = {}) {
+        if (!this.started) {
+            return normalizeBoardSnapshot(nextSnapshot);
+        }
+
+        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const normalizedIncoming = normalizeBoardSnapshot(nextSnapshot);
+        const committedSnapshot = normalizeBoardSnapshot({
+            ...currentSnapshot,
+            ...normalizedIncoming,
+            clientRevision: Math.max(
+                Number(currentSnapshot.clientRevision) || 0,
+                Number(normalizedIncoming.clientRevision) || 0
+            ) + 1,
+            updatedAt: Math.max(
+                Date.now(),
+                Number(currentSnapshot.updatedAt) || 0
+            )
+        });
+
+        this.doc.transact(() => {
+            syncBoardSnapshotToDoc(this.doc, committedSnapshot);
+        }, FIREBASE_SYNC_ORIGINS.runtime);
+
+        const nextCommittedSnapshot = readBoardSnapshotFromDoc(this.doc);
+        this.lastVersionKey = buildPersistenceVersionKey(nextCommittedSnapshot);
+        return nextCommittedSnapshot;
     }
 
     applyLocalSnapshot(nextSnapshot = {}) {

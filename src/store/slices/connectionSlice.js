@@ -56,5 +56,5 @@ export const createConnectionSlice = (set, get) => ({
         connections: [],
         isConnecting: false,
         connectionStartId: null
-    })
+    }, false, { skipBoardRuntime: true })
 });

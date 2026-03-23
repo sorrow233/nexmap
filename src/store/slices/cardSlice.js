@@ -572,17 +572,17 @@ export const createCardSlice = (set, get) => {
     // Reset card state on logout
     resetCardState: () => {
         cardLookup.clear();
-	        set({
-	            cards: [],
+        set({
+            cards: [],
                 cardIndexMutation: createCardIndexMutation(),
                 boardChangeState: createBoardChangeState(),
-	            expandedCardId: null,
-	            lastSavedAt: 0,
-	            activeBoardPersistence: {
-	                updatedAt: 0,
-	                clientRevision: 0,
-	                dirty: false
-	            },
+            expandedCardId: null,
+            lastSavedAt: 0,
+            activeBoardPersistence: {
+                updatedAt: 0,
+                clientRevision: 0,
+                dirty: false
+            },
                 lastExternalSyncMarker: {
                     token: 0,
                     boardId: '',
@@ -590,7 +590,7 @@ export const createCardSlice = (set, get) => {
                     updatedAt: 0,
                     clientRevision: 0
                 }
-	        });
-	    }
-	    };
+        }, false, { skipBoardRuntime: true });
+    }
+    };
 };

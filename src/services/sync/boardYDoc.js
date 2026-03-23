@@ -4,6 +4,7 @@ import {
     getEmptyBoardSnapshot,
     normalizeBoardSnapshot
 } from './boardSnapshot';
+import { protectHighValueCardContent } from './highValueCardContentGuard';
 
 const ROOT_KEYS = [
     'cards',
@@ -208,8 +209,9 @@ const mergeCardSnapshots = (currentCards = [], nextCards = []) => {
 
         seenIds.add(cardId);
         const currentCard = currentById.get(cardId);
-        return shouldPreferIncomingCard(currentCard, incomingCard)
-            ? incomingCard
+        const protectedIncomingCard = protectHighValueCardContent(currentCard, incomingCard);
+        return shouldPreferIncomingCard(currentCard, protectedIncomingCard)
+            ? protectedIncomingCard
             : currentCard;
     });
 

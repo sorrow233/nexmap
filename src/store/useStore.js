@@ -18,37 +18,84 @@ import {
     markBoardChangeStateValidated
 } from './slices/utils/boardChangeState';
 import { buildBoardChangeIntegrityHash } from './slices/utils/boardChangeIntegrity';
+import {
+    commitActiveBoardRuntimePatch,
+    commitActiveBoardRuntimeSnapshot,
+    hasBoardRuntimePatch
+} from '../services/sync/boardRuntimeAuthority';
 
 
 // --- Global Store with Temporal Middleware ---
 
 const useStoreBase = create(
     temporal(
-        (set, get) => ({
-            ...createCanvasSlice(set, get),
-            ...createCardSlice(set, get),
-            ...createConnectionSlice(set, get),
-            ...createGroupSlice(set, get),
-            ...createSelectionSlice(set, get),
-            ...createAISlice(set, get),
-            ...createSettingsSlice(set, get),
-            ...createShareSlice(set, get),
-            ...createCreditsSlice(set, get),
-            ...createBoardSlice(set, get),
+        (rawSet, get) => {
+            const set = (partial, replace, meta = {}) => {
+                if (replace === true || meta?.skipBoardRuntime) {
+                    return rawSet(partial, replace);
+                }
 
-            // Global reset for logout
-            resetAllState: () => {
-                console.log('[Store] Resetting all state...');
-                get().clearStreamingState?.();
-                get().resetGeneratingState?.();
-                get().resetCardState?.();
-                get().resetConnectionState?.();
-                get().resetGroupState?.();
-                get().resetSettingsState?.();
-                get().resetCreditsState?.();
-                console.log('[Store] All state reset complete');
-            }
-        }),
+                const currentState = get();
+                const nextPartial = typeof partial === 'function'
+                    ? partial(currentState)
+                    : partial;
+
+                if (nextPartial === currentState) {
+                    return currentState;
+                }
+
+                if (
+                    !nextPartial ||
+                    typeof nextPartial !== 'object' ||
+                    !hasBoardRuntimePatch(nextPartial)
+                ) {
+                    return rawSet(nextPartial, replace);
+                }
+
+                const runtimeResult = commitActiveBoardRuntimePatch(nextPartial);
+                if (!runtimeResult?.boardPatch) {
+                    return rawSet(nextPartial, replace);
+                }
+
+                const finalPatch = {
+                    ...nextPartial,
+                    ...runtimeResult.boardPatch
+                };
+                const setResult = rawSet(finalPatch, replace);
+
+                if (Object.prototype.hasOwnProperty.call(runtimeResult.boardPatch, 'cards')) {
+                    get().rebuildCardLookup?.(runtimeResult.boardPatch.cards || []);
+                }
+
+                return setResult;
+            };
+
+            return {
+                ...createCanvasSlice(set, get),
+                ...createCardSlice(set, get),
+                ...createConnectionSlice(set, get),
+                ...createGroupSlice(set, get),
+                ...createSelectionSlice(set, get),
+                ...createAISlice(set, get),
+                ...createSettingsSlice(set, get),
+                ...createShareSlice(set, get),
+                ...createCreditsSlice(set, get),
+                ...createBoardSlice(set, get),
+
+                // Global reset for logout
+                resetAllState: () => {
+                    console.log('[Store] Resetting all state...');
+                    get().clearStreamingState?.();
+                    get().resetGeneratingState?.();
+                    get().resetCardState?.();
+                    get().resetConnectionState?.();
+                    get().resetGroupState?.();
+                    get().resetSettingsState?.();
+                    get().resetCreditsState?.();
+                    console.log('[Store] All state reset complete');
+                }
+            };
+        },
         {
             limit: 50,
             equality: (a, b) => (
@@ -96,7 +143,21 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
             reason: `temporal:${changeType}`
         })
     });
-    useStoreBase.getState().rebuildCardLookup?.(currentState.cards);
+
+    const runtimeResult = commitActiveBoardRuntimeSnapshot({
+        cards: currentState.cards,
+        connections: currentState.connections,
+        groups: currentState.groups,
+        boardPrompts: currentState.boardPrompts,
+        boardInstructionSettings: currentState.boardInstructionSettings
+    });
+    if (runtimeResult?.boardPatch) {
+        useStoreBase.setState(runtimeResult.boardPatch);
+    }
+
+    useStoreBase.getState().rebuildCardLookup?.(
+        runtimeResult?.boardPatch?.cards || currentState.cards
+    );
 };
 
 

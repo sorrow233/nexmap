@@ -20,6 +20,7 @@ export const FIREBASE_SYNC_ORIGINS = {
     localSeed: 'firebase-sync-local-seed',
     firestore: 'firebase-sync-firestore',
     store: 'firebase-sync-store',
+    runtime: 'firebase-sync-runtime',
     indexeddb: 'firebase-sync-indexeddb',
     forceOverride: 'firebase-sync-force-override'
 };

@@ -127,5 +127,5 @@ export const createGroupSlice = (set, get) => ({
     // Reset group state on logout
     resetGroupState: () => set({
         groups: []
-    })
+    }, false, { skipBoardRuntime: true })
 });

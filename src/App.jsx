@@ -91,6 +91,11 @@ import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
 import { isMeaningfullyEmptyBoardSnapshot } from './services/sync/boardSnapshot';
+import {
+    isActiveBoardRuntimeController,
+    registerActiveBoardRuntime,
+    unregisterActiveBoardRuntime
+} from './services/sync/boardRuntimeAuthority';
 
 export default function App() {
     return (
@@ -385,6 +390,10 @@ function AppContent() {
                 return;
             }
 
+            if (isActiveBoardRuntimeController(boardId, controller)) {
+                return;
+            }
+
             controller.applyLocalSnapshot(snapshot);
         });
 
@@ -617,6 +626,10 @@ function AppContent() {
         const load = async () => {
             if (currentBoardId) {
                 if (boardSyncControllerRef.current) {
+                    unregisterActiveBoardRuntime({
+                        boardId: boardSyncControllerRef.current.boardId,
+                        controller: boardSyncControllerRef.current
+                    });
                     await boardSyncControllerRef.current.stop();
                     boardSyncControllerRef.current = null;
                 }
@@ -690,6 +703,12 @@ function AppContent() {
 
                         boardSyncControllerRef.current = syncController;
                         await syncController.start(data, { expectedCardCount });
+                        if (syncController.started) {
+                            registerActiveBoardRuntime({
+                                boardId: currentBoardId,
+                                controller: syncController
+                            });
+                        }
                     }
                 } catch (error) {
                     console.error(`[Board] Failed to load board ${currentBoardId}:`, error);
@@ -707,6 +726,10 @@ function AppContent() {
         return () => {
             isCancelled = true;
             if (boardSyncControllerRef.current && boardSyncControllerRef.current.boardId === currentBoardId) {
+                unregisterActiveBoardRuntime({
+                    boardId: currentBoardId,
+                    controller: boardSyncControllerRef.current
+                });
                 void boardSyncControllerRef.current.stop();
                 boardSyncControllerRef.current = null;
             }

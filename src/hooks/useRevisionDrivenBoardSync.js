@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { normalizeBoardSnapshot } from '../services/sync/boardSnapshot';
+import { isActiveBoardRuntimeController } from '../services/sync/boardRuntimeAuthority';
 
 const CHANGE_SYNC_DELAY_MS = Object.freeze({
     card_content: 900,
@@ -73,6 +74,10 @@ export function useRevisionDrivenBoardSync({
 
         const controller = boardSyncControllerRef.current;
         if (!controller || controller.boardId !== boardId) {
+            return undefined;
+        }
+
+        if (isActiveBoardRuntimeController(boardId, controller)) {
             return undefined;
         }
 
