@@ -7,40 +7,6 @@ import { AGENT_INTENT, buildStructuredNumberedPlan, classifyAgentIntent, inferDy
 
 export { DEFAULT_ROLES };
 
-const resolveInvocationMeta = (provider, config, model) => {
-    const providerConfig = provider?.config || config || {};
-    const providerClass = provider?.constructor?.name || 'UnknownProvider';
-    const protocol = providerClass === 'SystemCreditsProvider'
-        ? 'system-credits'
-        : (providerConfig.protocol || 'openai');
-    const providerId = providerClass === 'SystemCreditsProvider'
-        ? 'system-credits'
-        : (providerConfig.providerId || providerConfig.id || 'unknown');
-    const providerName = providerClass === 'SystemCreditsProvider'
-        ? 'System Credits'
-        : (providerConfig.name || providerId);
-    const resolvedModel = model || provider?.model || providerConfig.model || 'unknown';
-    const baseUrl = providerClass === 'SystemCreditsProvider'
-        ? 'system-credits'
-        : (providerConfig.baseUrl || 'default');
-
-    return {
-        providerClass,
-        providerId,
-        providerName,
-        protocol,
-        model: resolvedModel,
-        baseUrl
-    };
-};
-
-const logLLMInvocation = (operation, provider, config, model) => {
-    console.log('[LLM Call]', {
-        operation,
-        ...resolveInvocationMeta(provider, config, model)
-    });
-};
-
 /**
  * Main chat completion function
  * Requires config to be passed explicitly (Inversion of Control)
@@ -50,7 +16,6 @@ export async function chatCompletion(messages, config, model = null, options = {
         throw new Error("ChatCompletion: Config must be provided");
     }
     const provider = ModelFactory.getProvider(config, { model });
-    logLLMInvocation('chat', provider, config, model);
     if (model) userStatsService.incrementModelUsage(model);
     return provider.chat(messages, model, options);
 }
@@ -75,7 +40,6 @@ export async function streamChatCompletion(messages, config, onToken, model = nu
     // However, to keep it simple for now, we'll rely on the passed model.
 
     const provider = ModelFactory.getProvider(config, { model });
-    logLLMInvocation('stream', provider, config, model);
     if (model) userStatsService.incrementModelUsage(model);
     return provider.stream(messages, onToken, model, options);
 }
@@ -91,7 +55,6 @@ export async function imageGeneration(prompt, config, model = null, options = {}
     }
 
     const provider = ModelFactory.getProvider(config, { model });
-    logLLMInvocation('image', provider, config, model);
     // Track image generation as "dall-e-3" (or general image model) usage
     userStatsService.incrementModelUsage('dall-e-3');
     return provider.generateImage(prompt, model, options);
