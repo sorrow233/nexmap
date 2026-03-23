@@ -6,7 +6,9 @@ import {
 import {
     createBoardDoc,
     isBoardDocEmpty,
+    readBoardFieldFromDoc,
     readBoardSnapshotFromDoc,
+    syncBoardRuntimePatchToDoc,
     syncBoardSnapshotToDoc
 } from './boardYDoc';
 import { FirestoreBoardSync } from './firestoreBoardSync';
@@ -127,6 +129,29 @@ export class BoardSyncController {
 
     readCurrentSnapshot() {
         return readBoardSnapshotFromDoc(this.doc);
+    }
+
+    commitAuthoritativeLocalPatch(partial = {}) {
+        if (!this.started) {
+            return normalizeBoardSnapshot(partial);
+        }
+
+        const nextUpdatedAt = Math.max(
+            Date.now(),
+            Number(readBoardFieldFromDoc(this.doc, 'updatedAt')) || 0
+        );
+        const nextClientRevision = (Number(readBoardFieldFromDoc(this.doc, 'clientRevision')) || 0) + 1;
+
+        this.doc.transact(() => {
+            syncBoardRuntimePatchToDoc(this.doc, partial, {
+                updatedAt: nextUpdatedAt,
+                clientRevision: nextClientRevision
+            });
+        }, FIREBASE_SYNC_ORIGINS.runtime);
+
+        const nextCommittedSnapshot = readBoardSnapshotFromDoc(this.doc);
+        this.lastVersionKey = buildPersistenceVersionKey(nextCommittedSnapshot);
+        return nextCommittedSnapshot;
     }
 
     commitAuthoritativeLocalSnapshot(nextSnapshot = {}) {

@@ -63,6 +63,7 @@ import {
 import { loadBoardsSearchData } from './services/search/searchDataLoader';
 import { BoardSyncController } from './services/sync/boardSyncController';
 import {
+    FIREBASE_SYNC_ORIGINS,
     FIREBASE_SYNC_LIMITS,
     isSampleBoardId
 } from './services/sync/config';
@@ -79,8 +80,7 @@ import {
 } from './services/boardPersistence/boardDisplayMetadataStorage';
 import { persistBoardsMetadataList } from './services/boardPersistence/boardsListStorage';
 import {
-    buildPersistenceVersionKey,
-    isPersistenceSnapshotNewer
+    buildPersistenceVersionKey
 } from './services/boardPersistence/persistenceCursor';
 import {
     createBoardChangeState,
@@ -96,6 +96,7 @@ import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
 import { isMeaningfullyEmptyBoardSnapshot } from './services/sync/boardSnapshot';
 import {
     registerActiveBoardRuntime,
+    withBoardRuntimeStoreWriteScope,
     unregisterActiveBoardRuntime
 } from './services/sync/boardRuntimeAuthority';
 
@@ -118,6 +119,33 @@ const PENDING_REMOTE_SNAPSHOT_TTL_MS = 60 * 1000;
 const sanitizeBoardMetadataPatch = (metadata = {}) => Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
 );
+
+const getActiveCardCount = (cards = []) => (
+    Array.isArray(cards)
+        ? cards.filter((card) => card && !card.deletedAt).length
+        : 0
+);
+
+const resolveRuntimeCardsChangeType = (previousCards = [], nextCards = []) => {
+    const previousActiveCount = getActiveCardCount(previousCards);
+    const nextActiveCount = getActiveCardCount(nextCards);
+    if (nextActiveCount > previousActiveCount) return 'card_add';
+    if (nextActiveCount < previousActiveCount) return 'card_delete';
+
+    const previousById = new Map(previousCards.map((card) => [card.id, card]));
+    for (const nextCard of nextCards) {
+        const previousCard = previousById.get(nextCard.id);
+        if (!previousCard) {
+            return 'card_add';
+        }
+
+        if ((previousCard.x || 0) !== (nextCard.x || 0) || (previousCard.y || 0) !== (nextCard.y || 0)) {
+            return 'card_move';
+        }
+    }
+
+    return 'card_content';
+};
 
 const isBoardMetadataValueEqual = (left, right) => {
     if (left === right) return true;
@@ -303,15 +331,25 @@ function AppContent() {
         const currentCursor = activeBoardPersistenceRef.current || {};
         const currentStoreState = useStore.getState();
         const localDirty = currentCursor?.dirty === true;
-        const localSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot({
-            cards: currentStoreState.cards,
-            connections: currentStoreState.connections,
-            groups: currentStoreState.groups,
-            boardPrompts: currentStoreState.boardPrompts,
-            boardInstructionSettings: currentStoreState.boardInstructionSettings
-        });
+        const ignoredSignals = {
+            localSnapshotIsEmpty: isMeaningfullyEmptyBoardSnapshot({
+                cards: currentStoreState.cards,
+                connections: currentStoreState.connections,
+                groups: currentStoreState.groups,
+                boardPrompts: currentStoreState.boardPrompts,
+                boardInstructionSettings: currentStoreState.boardInstructionSettings
+            }),
+            lastExternalSyncMarker: currentStoreState.lastExternalSyncMarker,
+            localClientRevision: Number(currentCursor?.clientRevision) || 0
+        };
 
         if (isMeaningfullyEmptyBoardSnapshot(normalizedSnapshot)) {
+            if (import.meta.env.DEV) {
+                console.info('[BoardSync] skipped remote snapshot because it is empty', {
+                    boardId: options.boardId || currentBoardId,
+                    ignoredSignals
+                });
+            }
             return {
                 action: 'skip',
                 snapshot: normalizedSnapshot
@@ -325,22 +363,143 @@ function AppContent() {
             };
         }
 
-        if (localSnapshotIsEmpty) {
+        const remoteUpdatedAt = Number(normalizedSnapshot.updatedAt) || 0;
+        const localUpdatedAt = Number(currentCursor?.updatedAt) || 0;
+        if (remoteUpdatedAt <= localUpdatedAt) {
+            if (import.meta.env.DEV) {
+                console.info('[BoardSync] skipped remote snapshot because updatedAt is not newer', {
+                    boardId: options.boardId || currentBoardId,
+                    remoteUpdatedAt,
+                    localUpdatedAt,
+                    ignoredSignals
+                });
+            }
             return {
-                action: 'apply',
+                action: 'skip',
                 snapshot: normalizedSnapshot
             };
         }
 
         return {
-            action: isPersistenceSnapshotNewer(normalizedSnapshot, {
-                updatedAt: Number(currentCursor?.updatedAt) || 0,
-                clientRevision: Number(currentCursor?.clientRevision) || 0
-            })
-                ? 'apply'
-                : 'skip',
+            action: 'apply',
             snapshot: normalizedSnapshot
         };
+    }, [currentBoardId]);
+
+    const applyBoardRuntimeViewPatch = useCallback((runtimePatch = {}, metadata = {}, options = {}) => {
+        const currentState = useStore.getState();
+        const nextCards = Object.prototype.hasOwnProperty.call(runtimePatch, 'cards')
+            ? runtimePatch.cards
+            : currentState.cards;
+        const nextConnections = Object.prototype.hasOwnProperty.call(runtimePatch, 'connections')
+            ? runtimePatch.connections
+            : currentState.connections;
+        const nextGroups = Object.prototype.hasOwnProperty.call(runtimePatch, 'groups')
+            ? runtimePatch.groups
+            : currentState.groups;
+        const nextBoardPrompts = Object.prototype.hasOwnProperty.call(runtimePatch, 'boardPrompts')
+            ? runtimePatch.boardPrompts
+            : currentState.boardPrompts;
+        const nextBoardInstructionSettings = Object.prototype.hasOwnProperty.call(runtimePatch, 'boardInstructionSettings')
+            ? normalizeBoardInstructionSettings(runtimePatch.boardInstructionSettings)
+            : currentState.boardInstructionSettings;
+        const nextUpdatedAt = Number(metadata.updatedAt) || Number(currentState.activeBoardPersistence?.updatedAt) || 0;
+        const nextClientRevision = Number(metadata.clientRevision) || Number(currentState.activeBoardPersistence?.clientRevision) || 0;
+        const nextSnapshot = normalizeBoardSnapshot({
+            cards: nextCards,
+            connections: nextConnections,
+            groups: nextGroups,
+            boardPrompts: nextBoardPrompts,
+            boardInstructionSettings: nextBoardInstructionSettings,
+            updatedAt: nextUpdatedAt,
+            clientRevision: nextClientRevision
+        });
+        const integrityHash = buildBoardChangeIntegrityHash(nextSnapshot);
+        const isRemoteSync = options.source === 'remote_sync';
+        const isRuntimeRegister = options.source === 'runtime_register';
+        let nextBoardChangeState = currentState.boardChangeState;
+        if (isRemoteSync || isRuntimeRegister) {
+            nextBoardChangeState = syncBoardChangeStateToCursor(
+                currentState.boardChangeState,
+                nextSnapshot,
+                isRemoteSync ? 'sync_apply' : 'local_load',
+                {
+                    integrityHash,
+                    validatedAt: nextUpdatedAt || Date.now()
+                }
+            );
+        } else {
+            const nextChangeType = Object.prototype.hasOwnProperty.call(runtimePatch, 'cards')
+                ? resolveRuntimeCardsChangeType(currentState.cards, nextCards)
+                : (
+                    Object.prototype.hasOwnProperty.call(runtimePatch, 'connections')
+                        ? 'connection_change'
+                        : (
+                            Object.prototype.hasOwnProperty.call(runtimePatch, 'groups')
+                                ? 'group_change'
+                                : (
+                                    Object.prototype.hasOwnProperty.call(runtimePatch, 'boardPrompts')
+                                        ? 'board_prompt_change'
+                                        : 'board_instruction_change'
+                                )
+                        )
+                );
+            nextBoardChangeState = syncBoardChangeStateToCursor(
+                currentState.boardChangeState,
+                nextSnapshot,
+                nextChangeType,
+                {
+                    integrityHash,
+                    validatedAt: nextUpdatedAt || Date.now()
+                }
+            );
+        }
+
+        const patch = {
+            cards: nextCards,
+            connections: nextConnections,
+            groups: nextGroups,
+            boardPrompts: nextBoardPrompts,
+            boardInstructionSettings: nextBoardInstructionSettings,
+            activeBoardPersistence: {
+                updatedAt: nextUpdatedAt,
+                clientRevision: nextClientRevision,
+                dirty: isRemoteSync || isRuntimeRegister ? false : true
+            },
+            boardChangeState: nextBoardChangeState
+        };
+
+        if (isRemoteSync || isRuntimeRegister) {
+            patch.lastSavedAt = nextUpdatedAt;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(runtimePatch, 'cards')) {
+            patch.cardIndexMutation = nextCardIndexMutation(currentState.cardIndexMutation, {
+                mode: 'bulk',
+                reason: `applyBoardRuntimeViewPatch:${options.source || 'unknown'}`
+            });
+        }
+
+        if (options.source === 'remote_sync' && options.boardId) {
+            const token = (currentState.lastExternalSyncMarker?.token || 0) + 1;
+            patch.lastExternalSyncMarker = {
+                token,
+                boardId: options.boardId,
+                versionKey: buildPersistenceVersionKey(nextSnapshot),
+                updatedAt: nextUpdatedAt,
+                clientRevision: nextClientRevision
+            };
+        }
+
+        withBoardRuntimeStoreWriteScope('authority_observe', () => {
+            useStore.setState(patch);
+        });
+
+        if (Object.prototype.hasOwnProperty.call(runtimePatch, 'cards')) {
+            useStore.getState().rebuildCardLookup?.(nextCards);
+        }
+
+        return nextSnapshot;
     }, []);
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
@@ -393,7 +552,9 @@ function AppContent() {
         }
 
         // Single atomic zustand update — triggers exactly ONE render pass.
-        useStore.setState(patch);
+        withBoardRuntimeStoreWriteScope('authority_bootstrap', () => {
+            useStore.setState(patch);
+        });
 
         // Rebuild card lookup cache outside of set() so it stays consistent.
         useStore.getState().rebuildCardLookup?.(normalized.cards);
@@ -415,11 +576,17 @@ function AppContent() {
         });
         if (decision.action === 'apply') {
             clearPendingRemoteSnapshot(boardId);
-            applyBoardSnapshotToStore(decision.snapshot, {
+            const latestSnapshot = (
+                boardSyncControllerRef.current?.boardId === boardId &&
+                typeof boardSyncControllerRef.current.readCurrentSnapshot === 'function'
+            )
+                ? boardSyncControllerRef.current.readCurrentSnapshot()
+                : decision.snapshot;
+            applyBoardSnapshotToStore(latestSnapshot, {
                 source: 'remote_sync',
                 boardId
             });
-            syncBoardSnapshotMetadataIntoList(boardId, decision.snapshot);
+            syncBoardSnapshotMetadataIntoList(boardId, latestSnapshot);
             return true;
         }
 
@@ -787,25 +954,7 @@ function AppContent() {
                         const syncController = new BoardSyncController({
                             boardId: currentBoardId,
                             user,
-                            onSnapshot: (nextSnapshot) => {
-                                if (isCancelled) return;
-                                const decision = shouldApplyRemoteSnapshotToStore(nextSnapshot);
-                                if (decision.action === 'queue') {
-                                    queuePendingRemoteSnapshot(currentBoardId, decision.snapshot);
-                                    return;
-                                }
-
-                                if (decision.action !== 'apply') {
-                                    return;
-                                }
-
-                                clearPendingRemoteSnapshot(currentBoardId);
-                                applyBoardSnapshotToStore(decision.snapshot, {
-                                    source: 'remote_sync',
-                                    boardId: currentBoardId
-                                });
-                                syncBoardSnapshotMetadataIntoList(currentBoardId, decision.snapshot);
-                            },
+                            onSnapshot: () => { },
                             onSyncStateChange: () => { }
                         });
 
@@ -814,7 +963,46 @@ function AppContent() {
                         if (syncController.started) {
                             registerActiveBoardRuntime({
                                 boardId: currentBoardId,
-                                controller: syncController
+                                controller: syncController,
+                                onViewSync: ({ origin, patch, updatedAt, clientRevision, readSnapshot }) => {
+                                    if (isCancelled) return;
+
+                                    const metadata = { updatedAt, clientRevision };
+                                    if (origin === FIREBASE_SYNC_ORIGINS.firestore) {
+                                        const fullSnapshot = normalizeBoardSnapshot(readSnapshot?.() || {
+                                            ...patch,
+                                            updatedAt,
+                                            clientRevision
+                                        });
+                                        const decision = shouldApplyRemoteSnapshotToStore(fullSnapshot, {
+                                            boardId: currentBoardId
+                                        });
+                                        if (decision.action === 'queue') {
+                                            queuePendingRemoteSnapshot(currentBoardId, fullSnapshot);
+                                            return;
+                                        }
+
+                                        if (decision.action !== 'apply') {
+                                            return;
+                                        }
+
+                                        clearPendingRemoteSnapshot(currentBoardId);
+                                        const appliedSnapshot = applyBoardRuntimeViewPatch(patch, metadata, {
+                                            source: 'remote_sync',
+                                            boardId: currentBoardId
+                                        });
+                                        syncBoardSnapshotMetadataIntoList(currentBoardId, appliedSnapshot);
+                                        return;
+                                    }
+
+                                    const appliedSnapshot = applyBoardRuntimeViewPatch(patch, metadata, {
+                                        source: origin === 'runtime_register' ? 'runtime_register' : 'runtime_sync',
+                                        boardId: currentBoardId
+                                    });
+                                    if (origin === 'runtime_register') {
+                                        syncBoardSnapshotMetadataIntoList(currentBoardId, appliedSnapshot);
+                                    }
+                                }
                             });
                         }
                     }
@@ -845,6 +1033,7 @@ function AppContent() {
         };
     }, [
         applyBoardSnapshotToStore,
+        applyBoardRuntimeViewPatch,
         currentBoardId,
         setActiveBoardPersistence,
         setBoardInstructionSettings,

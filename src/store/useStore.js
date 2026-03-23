@@ -19,9 +19,14 @@ import {
 } from './slices/utils/boardChangeState';
 import { buildBoardChangeIntegrityHash } from './slices/utils/boardChangeIntegrity';
 import {
+    BOARD_RUNTIME_KEYS,
     commitActiveBoardRuntimePatch,
     commitActiveBoardRuntimeSnapshot,
-    hasBoardRuntimePatch
+    getActiveBoardRuntimeBoardId,
+    getBoardRuntimeStoreWriteScope,
+    hasActiveBoardRuntime,
+    hasBoardRuntimePatch,
+    withBoardRuntimeStoreWriteScope
 } from '../services/sync/boardRuntimeAuthority';
 
 
@@ -57,16 +62,18 @@ const useStoreBase = create(
                     return rawSet(nextPartial, replace);
                 }
 
-                const finalPatch = {
-                    ...nextPartial,
-                    ...runtimeResult.boardPatch
-                };
-                const setResult = rawSet(finalPatch, replace);
+                const finalPatch = { ...nextPartial };
+                Object.keys(runtimeResult.boardPatch).forEach((key) => {
+                    delete finalPatch[key];
+                });
+                delete finalPatch.cardIndexMutation;
+                delete finalPatch.boardChangeState;
 
-                if (Object.prototype.hasOwnProperty.call(runtimeResult.boardPatch, 'cards')) {
-                    get().rebuildCardLookup?.(runtimeResult.boardPatch.cards || []);
+                if (Object.keys(finalPatch).length === 0) {
+                    return currentState;
                 }
 
+                const setResult = rawSet(finalPatch, replace);
                 return setResult;
             };
 
@@ -114,7 +121,7 @@ const useStoreBase = create(
             })
         }
     )
-);
+    );
 
 
 const reconcileBoardStateAfterHistoryAction = (changeType) => {
@@ -151,10 +158,6 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
         boardPrompts: currentState.boardPrompts,
         boardInstructionSettings: currentState.boardInstructionSettings
     });
-    if (runtimeResult?.boardPatch) {
-        useStoreBase.setState(runtimeResult.boardPatch);
-    }
-
     useStoreBase.getState().rebuildCardLookup?.(
         runtimeResult?.boardPatch?.cards || currentState.cards
     );
@@ -180,7 +183,9 @@ export const undo = () => {
         return;
     }
 
-    temporalState.undo();
+    withBoardRuntimeStoreWriteScope('authority_bootstrap', () => {
+        temporalState.undo();
+    });
     reconcileBoardStateAfterHistoryAction('undo');
 };
 
@@ -190,8 +195,36 @@ export const redo = () => {
         return;
     }
 
-    temporalState.redo();
+    withBoardRuntimeStoreWriteScope('authority_bootstrap', () => {
+        temporalState.redo();
+    });
     reconcileBoardStateAfterHistoryAction('redo');
 };
 
 export const clearHistory = () => useStoreBase.temporal.getState().clear();
+
+if (import.meta.env.DEV) {
+    useStoreBase.subscribe((nextState, previousState) => {
+        if (!hasActiveBoardRuntime()) {
+            return;
+        }
+
+        const changedRuntimeKeys = BOARD_RUNTIME_KEYS.filter((key) => (
+            nextState[key] !== previousState[key]
+        ));
+        if (changedRuntimeKeys.length === 0) {
+            return;
+        }
+
+        const source = getBoardRuntimeStoreWriteScope();
+        if (source === 'authority_observe' || source === 'authority_bootstrap') {
+            return;
+        }
+
+        console.warn('[BoardRuntimeAuthority] Detected runtime field write outside Y.Doc authority', {
+            boardId: getActiveBoardRuntimeBoardId(),
+            changedRuntimeKeys,
+            source: source || 'unknown'
+        });
+    });
+}

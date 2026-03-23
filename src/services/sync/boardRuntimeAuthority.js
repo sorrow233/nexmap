@@ -1,4 +1,9 @@
-const BOARD_RUNTIME_KEYS = Object.freeze([
+import {
+    readBoardFieldFromDoc,
+    readBoardRuntimePatchFromDoc
+} from './boardYDoc';
+
+export const BOARD_RUNTIME_KEYS = Object.freeze([
     'cards',
     'connections',
     'groups',
@@ -6,9 +11,8 @@ const BOARD_RUNTIME_KEYS = Object.freeze([
     'boardInstructionSettings'
 ]);
 
-const AUTHORITATIVE_PATCH_DEBOUNCE_MS = 900;
-
 let activeBoardRuntime = null;
+let boardRuntimeStoreWriteScope = '';
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 
@@ -18,100 +22,171 @@ const pickBoardRuntimePatch = (value = {}) => Object.fromEntries(
         .map((key) => [key, value[key]])
 );
 
-export const hasBoardRuntimePatch = (value = {}) => (
-    BOARD_RUNTIME_KEYS.some((key) => hasOwn(value, key))
-);
-
-const clearRuntimeFlushTimer = (runtime = null) => {
-    if (!runtime?.flushTimer) return;
-    clearTimeout(runtime.flushTimer);
-    runtime.flushTimer = null;
-};
-
-const flushRuntimePatch = (runtime = null, reason = 'debounced_patch') => {
-    if (!runtime?.controller) {
-        return null;
+const flushRuntimeViewSync = (runtime = null) => {
+    if (!runtime?.controller?.started || typeof runtime.onViewSync !== 'function') {
+        if (runtime) {
+            runtime.pendingViewKeys.clear();
+            runtime.pendingViewOrigin = '';
+            runtime.viewSyncScheduled = false;
+        }
+        return;
     }
 
-    clearRuntimeFlushTimer(runtime);
+    runtime.viewSyncScheduled = false;
 
-    const pendingPatch = runtime.pendingPatch;
-    runtime.pendingPatch = null;
-
-    if (!pendingPatch || Object.keys(pendingPatch).length === 0) {
-        return null;
+    const keys = Array.from(runtime.pendingViewKeys);
+    runtime.pendingViewKeys.clear();
+    if (keys.length === 0) {
+        runtime.pendingViewOrigin = '';
+        return;
     }
 
-    if (!runtime.controller.started || typeof runtime.controller.commitAuthoritativeLocalSnapshot !== 'function') {
-        return {
-            committedSnapshot: null,
-            boardPatch: pendingPatch
-        };
-    }
+    const origin = runtime.pendingViewOrigin || 'runtime_observe';
+    runtime.pendingViewOrigin = '';
 
-    const currentSnapshot = runtime.controller.readCurrentSnapshot?.();
-    if (!currentSnapshot) {
-        return {
-            committedSnapshot: null,
-            boardPatch: pendingPatch
-        };
-    }
-
-    console.info('[BoardSync] uplink via runtime-authority snapshot', {
+    runtime.onViewSync({
         boardId: runtime.boardId,
-        reason,
-        keys: Object.keys(pendingPatch)
+        origin,
+        keys,
+        patch: readBoardRuntimePatchFromDoc(runtime.controller.doc, keys),
+        updatedAt: Number(readBoardFieldFromDoc(runtime.controller.doc, 'updatedAt')) || 0,
+        clientRevision: Number(readBoardFieldFromDoc(runtime.controller.doc, 'clientRevision')) || 0,
+        readSnapshot: () => runtime.controller.readCurrentSnapshot?.()
     });
-
-    const committedSnapshot = runtime.controller.commitAuthoritativeLocalSnapshot({
-        ...currentSnapshot,
-        ...pendingPatch
-    });
-
-    return {
-        committedSnapshot,
-        boardPatch: pickBoardRuntimePatch(committedSnapshot)
-    };
 };
 
-const scheduleRuntimePatchFlush = (runtime = null, reason = 'debounced_patch') => {
-    if (!runtime?.controller) {
-        return;
-    }
-
-    if (runtime.flushTimer) {
-        return;
-    }
-
-    runtime.flushTimer = setTimeout(() => {
-        runtime.flushTimer = null;
-        flushRuntimePatch(runtime, reason);
-    }, AUTHORITATIVE_PATCH_DEBOUNCE_MS);
-};
-
-export const registerActiveBoardRuntime = ({ boardId, controller } = {}) => {
-    if (!boardId || !controller) {
-        flushRuntimePatch(activeBoardRuntime, 'runtime_reset');
-        activeBoardRuntime = null;
+const scheduleRuntimeViewSync = (runtime = null, key, origin = 'runtime_observe') => {
+    if (!runtime || !BOARD_RUNTIME_KEYS.includes(key)) {
         return;
     }
 
     if (
-        activeBoardRuntime &&
-        (
-            activeBoardRuntime.boardId !== boardId
-            || activeBoardRuntime.controller !== controller
-        )
+        runtime.viewSyncScheduled &&
+        runtime.pendingViewOrigin &&
+        runtime.pendingViewOrigin !== origin
     ) {
-        flushRuntimePatch(activeBoardRuntime, 'runtime_switch');
+        flushRuntimeViewSync(runtime);
+    }
+
+    runtime.pendingViewKeys.add(key);
+    runtime.pendingViewOrigin = (
+        runtime.pendingViewOrigin &&
+        runtime.pendingViewOrigin !== origin
+    )
+        ? 'mixed'
+        : origin;
+
+    if (runtime.viewSyncScheduled) {
+        return;
+    }
+
+    runtime.viewSyncScheduled = true;
+    const schedule = typeof queueMicrotask === 'function'
+        ? queueMicrotask
+        : (callback) => Promise.resolve().then(callback);
+    schedule(() => {
+        if (activeBoardRuntime !== runtime) {
+            return;
+        }
+        flushRuntimeViewSync(runtime);
+    });
+};
+
+const bindRuntimeFieldObserver = (runtime = null, key) => {
+    const root = runtime?.controller?.doc?.getMap?.('board');
+    const node = root?.get(key);
+    if (!node) {
+        return () => { };
+    }
+
+    const handler = (events, transaction) => {
+        const tx = transaction || events?.[0]?.transaction;
+        scheduleRuntimeViewSync(runtime, key, tx?.origin || 'runtime_observe');
+    };
+
+    if (typeof node.observeDeep === 'function') {
+        node.observeDeep(handler);
+        return () => node.unobserveDeep(handler);
+    }
+
+    if (typeof node.observe === 'function') {
+        node.observe(handler);
+        return () => node.unobserve(handler);
+    }
+
+    return () => { };
+};
+
+const cleanupRuntimeObservers = (runtime = null) => {
+    if (!runtime?.observerCleanups) {
+        return;
+    }
+
+    runtime.observerCleanups.forEach((cleanup) => {
+        try {
+            cleanup?.();
+        } catch (error) {
+            console.error('[BoardSync] Failed to cleanup runtime observer:', error);
+        }
+    });
+    runtime.observerCleanups = [];
+    runtime.pendingViewKeys.clear();
+    runtime.pendingViewOrigin = '';
+    runtime.viewSyncScheduled = false;
+};
+
+export const hasBoardRuntimePatch = (value = {}) => (
+    BOARD_RUNTIME_KEYS.some((key) => hasOwn(value, key))
+);
+
+export const hasActiveBoardRuntime = () => Boolean(activeBoardRuntime?.controller);
+
+export const getActiveBoardRuntimeBoardId = () => activeBoardRuntime?.boardId || '';
+
+export const getBoardRuntimeStoreWriteScope = () => boardRuntimeStoreWriteScope;
+
+export const withBoardRuntimeStoreWriteScope = (scope, callback) => {
+    const previousScope = boardRuntimeStoreWriteScope;
+    boardRuntimeStoreWriteScope = scope || previousScope;
+    try {
+        return callback();
+    } finally {
+        boardRuntimeStoreWriteScope = previousScope;
+    }
+};
+
+export const readActiveBoardRuntimeSnapshot = () => (
+    activeBoardRuntime?.controller?.readCurrentSnapshot?.() || null
+);
+
+export const registerActiveBoardRuntime = ({ boardId, controller, onViewSync } = {}) => {
+    if (!boardId || !controller) {
+        cleanupRuntimeObservers(activeBoardRuntime);
+        activeBoardRuntime = null;
+        return;
+    }
+
+    if (activeBoardRuntime) {
+        cleanupRuntimeObservers(activeBoardRuntime);
     }
 
     activeBoardRuntime = {
         boardId,
         controller,
-        pendingPatch: null,
-        flushTimer: null
+        onViewSync: typeof onViewSync === 'function' ? onViewSync : null,
+        observerCleanups: [],
+        pendingViewKeys: new Set(),
+        pendingViewOrigin: '',
+        viewSyncScheduled: false
     };
+
+    activeBoardRuntime.observerCleanups = BOARD_RUNTIME_KEYS.map((key) => (
+        bindRuntimeFieldObserver(activeBoardRuntime, key)
+    ));
+
+    activeBoardRuntime.pendingViewOrigin = 'runtime_register';
+    BOARD_RUNTIME_KEYS.forEach((key) => activeBoardRuntime.pendingViewKeys.add(key));
+    flushRuntimeViewSync(activeBoardRuntime);
 };
 
 export const unregisterActiveBoardRuntime = ({ boardId, controller } = {}) => {
@@ -125,7 +200,7 @@ export const unregisterActiveBoardRuntime = ({ boardId, controller } = {}) => {
         return;
     }
 
-    flushRuntimePatch(activeBoardRuntime, 'runtime_unregister');
+    cleanupRuntimeObservers(activeBoardRuntime);
     activeBoardRuntime = null;
 };
 
@@ -138,9 +213,8 @@ export const isActiveBoardRuntimeController = (boardId, controller) => (
 );
 
 export const commitActiveBoardRuntimePatch = (partial = {}) => {
-    const runtime = activeBoardRuntime;
-    const controller = runtime?.controller;
-    if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
+    const controller = activeBoardRuntime?.controller;
+    if (!controller?.started || typeof controller.commitAuthoritativeLocalPatch !== 'function') {
         return null;
     }
 
@@ -149,35 +223,33 @@ export const commitActiveBoardRuntimePatch = (partial = {}) => {
         return null;
     }
 
-    runtime.pendingPatch = {
-        ...(runtime.pendingPatch || {}),
-        ...boardPatch
-    };
-    scheduleRuntimePatchFlush(runtime, 'queued_patch');
+    if (import.meta.env.DEV) {
+        console.info('[BoardSync] local authority patch', {
+            boardId: activeBoardRuntime?.boardId,
+            keys: Object.keys(boardPatch)
+        });
+    }
 
+    const committedSnapshot = controller.commitAuthoritativeLocalPatch(boardPatch);
     return {
-        committedSnapshot: null,
-        boardPatch
+        committedSnapshot,
+        boardPatch: pickBoardRuntimePatch(committedSnapshot)
     };
 };
 
 export const commitActiveBoardRuntimeSnapshot = (snapshot = {}) => {
-    const runtime = activeBoardRuntime;
-    const controller = runtime?.controller;
+    const controller = activeBoardRuntime?.controller;
     if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
         return null;
     }
 
-    clearRuntimeFlushTimer(runtime);
-    if (runtime) {
-        runtime.pendingPatch = null;
+    if (import.meta.env.DEV) {
+        console.info('[BoardSync] uplink via runtime-authority snapshot', {
+            boardId: activeBoardRuntime?.boardId,
+            reason: 'immediate_snapshot',
+            keys: Object.keys(pickBoardRuntimePatch(snapshot))
+        });
     }
-
-    console.info('[BoardSync] uplink via runtime-authority snapshot', {
-        boardId: runtime?.boardId,
-        reason: 'immediate_snapshot',
-        keys: Object.keys(pickBoardRuntimePatch(snapshot))
-    });
 
     const committedSnapshot = controller.commitAuthoritativeLocalSnapshot(snapshot);
     return {
