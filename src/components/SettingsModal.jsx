@@ -275,30 +275,30 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             id: 'basic',
             icon: Sparkles,
             label: '基础体验',
-            description: '大多数人只改这里',
+            description: '语言、默认规则、额度',
             accent: {
-                icon: 'bg-[#f7dfcf] text-[#9f6f4d]',
-                iconActive: 'bg-[#f3d5c0] text-[#8f6143]'
+                icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-200',
+                iconActive: 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
             }
         },
         {
             id: 'ai',
             icon: Cpu,
             label: 'AI 设置',
-            description: '接自己的 Key 再看',
+            description: '模型、Key、角色',
             accent: {
-                icon: 'bg-[#ebe4f7] text-[#776496]',
-                iconActive: 'bg-[#e1d7f3] text-[#695784]'
+                icon: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
+                iconActive: 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
             }
         },
         {
             id: 'advanced',
             icon: SlidersHorizontal,
             label: '高级设置',
-            description: '备份与进阶能力',
+            description: '恢复、存储、绑定',
             accent: {
-                icon: 'bg-[#e5efe6] text-[#5f7666]',
-                iconActive: 'bg-[#dbe9de] text-[#4e6555]'
+                icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300',
+                iconActive: 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
             }
         }
     ];
@@ -306,31 +306,30 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     const activeMetaMap = {
         basic: {
             title: '基础体验',
-            subtitle: '大多数人只会改语言和 AI 回复方式'
+            subtitle: '只保留最常改的设置，其他都往后收。'
         },
         ai: {
             title: 'AI 设置',
-            subtitle: '只有接自己的模型或 API Key 时才需要这里'
+            subtitle: '模型、连接和角色统一在一个小面板里解决。'
         },
         advanced: {
             title: '高级设置',
-            subtitle: '备份、恢复和多指令等进阶能力'
+            subtitle: '不常用的能力还在，但默认折叠。'
         }
     };
 
     const activeMeta = activeMetaMap[activeTab] || activeMetaMap.basic;
-    const activeTabMeta = tabs.find(tab => tab.id === activeTab) || tabs[0];
 
-    const TabButton = ({ id, icon: Icon, label, accent, compact = false }) => {
+    const TabButton = ({ id, icon: Icon, label, description, accent, compact = false }) => {
         const isActive = activeTab === id;
 
         if (compact) {
             return (
                 <button
                     onClick={() => setActiveTab(id)}
-                    className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${isActive
-                        ? 'border-[#dec5a8] bg-[#fff8ef] text-[#5e4d3e]'
-                        : 'border-[#efe6da] bg-[rgba(255,252,247,0.84)] text-[#83705e] hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12 dark:hover:text-white'
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${isActive
+                        ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-white'
                         }`}
                 >
                     <span className={`rounded-full p-1 ${isActive ? accent?.iconActive : accent?.icon}`}>
@@ -344,45 +343,48 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         return (
             <button
                 onClick={() => setActiveTab(id)}
-                className={`group w-full rounded-[16px] border px-3 py-2.5 text-left transition-all ${isActive
-                    ? 'border-[#e7d9c8] bg-[#fff8ef]'
-                    : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-white/6'
+                className={`group w-full rounded-[20px] border px-3 py-3 text-left transition-all ${isActive
+                    ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                    : 'border-transparent bg-transparent hover:bg-gray-50 dark:hover:bg-gray-900'
                     }`}
             >
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <div className={`rounded-xl p-2 transition-colors ${isActive
-                            ? accent?.iconActive
-                            : `${accent?.icon} opacity-80 group-hover:opacity-100`
-                            }`}>
-                            <Icon size={16} />
-                        </div>
-                        <div className={`truncate text-sm font-semibold ${isActive ? 'text-[#2f241a] dark:text-white' : 'text-[#584c40] dark:text-slate-200'}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`rounded-xl p-2 transition-colors ${isActive
+                        ? accent?.iconActive
+                        : `${accent?.icon} opacity-80 group-hover:opacity-100`
+                        }`}>
+                        <Icon size={16} />
+                    </div>
+                    <div className="min-w-0">
+                        <div className={`truncate text-sm font-medium ${isActive ? 'text-white dark:text-gray-900' : 'text-gray-900 dark:text-white'}`}>
                             {label}
                         </div>
+                        <div className={`truncate text-[11px] ${isActive ? 'text-white/65 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                            {description}
+                        </div>
                     </div>
-                    {isActive && <span className="h-2 w-2 rounded-full bg-[#d0a065] dark:bg-slate-200" />}
                 </div>
             </button>
         );
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-[rgba(91,80,67,0.16)] p-2 backdrop-blur-[10px] dark:bg-slate-950/80 sm:p-3">
-            <div className="relative h-full w-full max-w-[960px] overflow-hidden rounded-[24px] border border-[#e7dccd] bg-[#f6f1ea] shadow-[0_20px_56px_rgba(82,67,49,0.14)] dark:border-white/10 dark:bg-[#11161f] dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
+        <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-white/60 p-2 backdrop-blur-md dark:bg-black/70 sm:p-5">
+            <div className="relative h-full w-full max-w-[1100px] overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950">
                 <div className="relative flex h-full flex-col md:flex-row">
-                    <aside className="hidden w-[168px] shrink-0 border-r border-[#e9decf] bg-[#fbf7f1] dark:border-white/10 dark:bg-white/6 md:flex">
-                        <div className="flex h-full w-full flex-col p-3">
-                            <div className="mb-3 flex items-center gap-2.5">
-                                <div className={`rounded-[12px] p-2 ${activeTabMeta.accent.iconActive}`}>
-                                    <Settings size={16} />
+                    <aside className="hidden w-[220px] shrink-0 border-r border-gray-100 bg-white md:flex dark:border-gray-800 dark:bg-gray-950">
+                        <div className="flex h-full w-full flex-col p-5">
+                            <div className="mb-5 flex items-center gap-3">
+                                <div className="rounded-[16px] bg-gray-100 p-2.5 text-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                    <Settings size={18} />
                                 </div>
                                 <div>
-                                    <h2 className="text-sm font-semibold text-[#2f241a] dark:text-white">{t.settings.title}</h2>
+                                    <h2 className="text-lg font-light text-gray-900 dark:text-white">{t.settings.title}</h2>
+                                    <p className="text-xs tracking-wide text-gray-400 dark:text-gray-500">minimal system panel</p>
                                 </div>
                             </div>
 
-                            <div className="flex-1 space-y-1 overflow-y-auto pr-1 custom-scrollbar">
+                            <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
                                 {tabs.map((tab) => (
                                     <TabButton
                                         key={tab.id}
@@ -395,81 +397,84 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 ))}
                             </div>
 
-                            <div className="mt-4 border-t border-[#ece2d6] pt-4 dark:border-white/10">
-                                <p className="text-center font-mono text-[11px] text-[#ad9d8a] dark:text-slate-400/60">v{packageJson.version}</p>
+                            <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+                                <p className="text-center font-mono text-[11px] text-gray-400 dark:text-gray-500">v{packageJson.version}</p>
                             </div>
                         </div>
                     </aside>
 
-                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f7f3ed] dark:bg-[#0f141c]/82">
-                        <header className="border-b border-[#e9decf] bg-[#fbf8f3] px-3 py-2.5 dark:border-white/10 dark:bg-white/6 sm:px-4 sm:py-3">
-                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                <div className="max-w-3xl">
-                                    <div className="mb-2 flex gap-2 overflow-x-auto md:hidden custom-scrollbar">
-                                        {tabs.map((tab) => (
-                                            <TabButton
-                                                key={tab.id}
-                                                id={tab.id}
-                                                icon={tab.icon}
-                                                label={tab.label}
-                                                accent={tab.accent}
-                                                compact
-                                            />
-                                        ))}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-[#9a8771] dark:text-slate-300/70">
-                                        <span>v{packageJson.version}</span>
-                                        <span>·</span>
-                                        <span>{activeTabMeta.description}</span>
-                                    </div>
-                                    <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
-                                        {activeMeta.title}
-                                    </h2>
-                                    <p className="mt-0.5 text-xs leading-5 text-[#7b6a58] dark:text-slate-300">
-                                        {activeMeta.subtitle}
-                                    </p>
+                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-white dark:bg-gray-950">
+                    <header className="border-b border-gray-100 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950 sm:px-6 sm:py-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="max-w-3xl">
+                                <div className="mb-3 flex gap-2 overflow-x-auto md:hidden custom-scrollbar">
+                                    {tabs.map((tab) => (
+                                        <TabButton
+                                            key={tab.id}
+                                            id={tab.id}
+                                            icon={tab.icon}
+                                            label={tab.label}
+                                            description={tab.description}
+                                            accent={tab.accent}
+                                            compact
+                                        />
+                                    ))}
                                 </div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                        onClick={onClose}
-                                        disabled={isSaving}
-                                        className="rounded-[14px] border border-[#eaddca] bg-[#fffaf3] px-4 py-2 text-sm font-medium text-[#655545] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
-                                    >
-                                        {t.settings.cancel}
-                                    </button>
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={isSaving}
-                                        className="rounded-[14px] bg-[#efb65a] px-5 py-2 text-sm font-semibold text-[#322515] shadow-[0_10px_24px_rgba(226,174,92,0.24)] transition-all hover:bg-[#f3bf6c] disabled:opacity-60"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            {isSaving && <Loader2 size={14} className="animate-spin" />}
-                                            {isSaving ? '保存中...' : t.settings.saveChanges}
-                                        </span>
-                                    </button>
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-900">
+                                        <Settings size={12} />
+                                        {t.settings.title}
+                                    </span>
+                                    <span>v{packageJson.version}</span>
                                 </div>
+                                <h2 className="mt-2 text-[28px] font-light tracking-[-0.03em] text-gray-900 dark:text-white">
+                                    {activeMeta.title}
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-gray-400 dark:text-gray-500">
+                                    {activeMeta.subtitle}
+                                </p>
                             </div>
-                        </header>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={onClose}
+                                    disabled={isSaving}
+                                    className="rounded-[14px] border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-white"
+                                >
+                                    {t.settings.cancel}
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                    className="rounded-[14px] bg-gray-900 px-5 py-2 text-sm font-medium text-white transition-all hover:bg-gray-700 disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        {isSaving && <Loader2 size={14} className="animate-spin" />}
+                                        {isSaving ? '保存中...' : t.settings.saveChanges}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
 
                     {saveStatus.type !== 'idle' && (
                         <div className="px-4 pt-4 sm:px-6">
                             <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${saveStatus.type === 'success'
-                                ? 'border-emerald-200/80 bg-[#f0f7f1]'
+                                ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/20'
                                 : saveStatus.type === 'warning'
-                                    ? 'border-[#eed8ae] bg-[#fbf5e8]'
+                                    ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20'
                                     : saveStatus.type === 'error'
-                                        ? 'border-rose-200/80 bg-[#fbefef]'
-                                        : 'border-[#ece1d4] bg-[rgba(255,252,247,0.88)]'
+                                        ? 'border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/20'
+                                        : 'border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900'
                                 }`}>
                                 <div className="flex min-w-0 items-center gap-2">
-                                    {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-[#7b6a58] dark:text-slate-200" />}
+                                    {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-gray-500 dark:text-gray-300" />}
                                     {saveStatus.type === 'success' && <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300" />}
-                                    {saveStatus.type === 'warning' && <AlertCircle size={16} className="text-[#b58834] dark:text-amber-300" />}
+                                    {saveStatus.type === 'warning' && <AlertCircle size={16} className="text-amber-600 dark:text-amber-300" />}
                                     {saveStatus.type === 'error' && <AlertCircle size={16} className="text-rose-600 dark:text-rose-300" />}
                                     <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold text-[#34291f] dark:text-white">{saveStatus.title}</p>
-                                        <p className="truncate text-xs text-[#7a6956] dark:text-slate-300">{saveStatus.message}</p>
+                                        <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{saveStatus.title}</p>
+                                        <p className="truncate text-xs text-gray-500 dark:text-gray-400">{saveStatus.message}</p>
                                     </div>
                                 </div>
 
@@ -477,8 +482,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         </div>
                     )}
 
-                    <div className="relative z-10 min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar">
-                        <div className={`mx-auto ${activeTab === 'ai' ? 'max-w-[920px]' : 'max-w-[760px]'}`}>
+                    <div className="relative z-10 min-h-0 flex-1 overflow-y-auto bg-gray-50/40 p-4 dark:bg-black/10 sm:p-6 custom-scrollbar">
+                        <div className={`mx-auto ${activeTab === 'ai' ? 'max-w-[1040px]' : 'max-w-[980px]'}`}>
                             {activeTab === 'basic' && (
                                 <SettingsBasicSection
                                     customInstructions={customInstructions}
@@ -533,25 +538,25 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 </div>
 
                 {showResetConfirm && (
-                    <div className="absolute inset-0 z-[150] flex items-center justify-center bg-[rgba(85,74,61,0.32)] p-4 backdrop-blur-sm">
-                        <div className="w-full max-w-sm rounded-[30px] border border-[#efe1d2] bg-[rgba(255,251,246,0.92)] p-7 shadow-[0_24px_60px_rgba(78,63,44,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#11161f]/92">
-                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7e7e7] text-rose-500 dark:bg-rose-500/15 dark:text-rose-300">
+                    <div className="absolute inset-0 z-[150] flex items-center justify-center bg-white/50 p-4 backdrop-blur-sm dark:bg-black/60">
+                        <div className="w-full max-w-sm rounded-[30px] border border-gray-100 bg-white p-7 shadow-2xl dark:border-gray-800 dark:bg-gray-950">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-300">
                                 <AlertCircle size={32} />
                             </div>
-                            <h3 className="mb-2 text-center text-xl font-semibold text-[#2f241a] dark:text-white">{t.settings.resetConfiguration}</h3>
-                            <p className="mb-6 text-center text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
+                            <h3 className="mb-2 text-center text-xl font-light text-gray-900 dark:text-white">{t.settings.resetConfiguration}</h3>
+                            <p className="mb-6 text-center text-sm leading-7 text-gray-500 dark:text-gray-400">
                                 {t.settings.resetWarning}
                             </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowResetConfirm(false)}
-                                    className="flex-1 rounded-[14px] border border-[#eadfcd] bg-[#fffaf3] py-2.5 font-medium text-[#655545] transition-all hover:bg-white dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/12"
+                                    className="flex-1 rounded-[14px] border border-gray-200 bg-white py-2.5 font-medium text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-white"
                                 >
                                     {t.settings.cancel}
                                 </button>
                                 <button
                                     onClick={confirmReset}
-                                    className="flex-1 rounded-[14px] bg-[#e58b88] py-2.5 font-semibold text-white transition-all hover:bg-[#ea9a98]"
+                                    className="flex-1 rounded-[14px] bg-gray-900 py-2.5 font-medium text-white transition-all hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
                                 >
                                     {t.settings.yesReset}
                                 </button>

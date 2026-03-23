@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Layers3, Sparkles } from 'lucide-react';
+import { Globe, Layers3, Sparkles, Wand2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import SettingsUsageSummaryCard from './SettingsUsageSummaryCard';
 import {
@@ -17,65 +17,63 @@ const LANGUAGES = [
 
 const BASIC_COPY = {
     zh: {
-        summaryTitle: '常用项',
-        summaryDesc: '语言 / 回复方式',
         languageTitle: '界面语言',
-        languageDesc: '只改界面',
-        instructionTitle: 'AI 怎么回你',
-        instructionDesc: '先点风格，再补一句',
+        languageDesc: '只改这里，就能立刻切换整个界面的阅读习惯。',
+        instructionTitle: '默认回复规则',
+        instructionDesc: '大多数用户只需要写这一条，AI 就会一直按这个风格回应。',
+        presetsTitle: '常用预设',
+        presetsDesc: '不想自己写时，点一个就能直接开始。',
+        advancedCount: '其余高级指令',
         manageAdvanced: '管理高级指令',
-        textareaLabel: '补充',
-        textareaHint: '可留空。例：先给结论，再用短列表说明原因。',
-        helperText: '全局生效',
-        advancedCount: '高级指令',
+        textareaHint: '一句话描述你想要的回答方式，例如：请直接给结论，并用短列表说明理由。',
+        helperText: '这条规则会默认作用于所有对话；更复杂的多条指令仍可在高级设置里管理。',
         presets: [
             {
-                label: '简洁',
-                hint: '直接给结论',
+                label: '更简洁',
+                hint: '先给结论',
                 content: '请优先直接回答结论，控制篇幅，必要时用简短列表说明重点。'
             },
             {
-                label: '耐心',
+                label: '更耐心',
                 hint: '像老师一样讲',
                 content: '请用耐心、友好的语气解释问题，先说结论，再分步骤补充原因和做法。'
             },
             {
-                label: '步骤',
-                hint: '按步骤写',
+                label: '步骤清晰',
+                hint: '按步骤执行',
                 content: '请把回答拆成清晰步骤，每一步都尽量短，方便我直接照着做。'
             },
             {
-                label: '双语',
+                label: '双语输出',
                 hint: '中文 + English',
                 content: '请先用中文回答，再附上一版简洁英文摘要；格式尽量整齐好扫读。'
             }
         ]
     },
     en: {
-        summaryTitle: 'Common',
-        summaryDesc: 'Language / Reply',
         languageTitle: 'Interface language',
-        languageDesc: 'UI only',
-        instructionTitle: 'How AI should reply',
-        instructionDesc: 'Pick one, then add one line if needed.',
+        languageDesc: 'Change this once and the whole app follows the same reading style.',
+        instructionTitle: 'Default reply rule',
+        instructionDesc: 'Most people only need one global rule here for the AI to stay consistent.',
+        presetsTitle: 'Quick presets',
+        presetsDesc: 'Pick one if you do not want to write the rule from scratch.',
+        advancedCount: 'Other advanced rules',
         manageAdvanced: 'Manage advanced rules',
-        textareaLabel: 'Extra line',
-        textareaHint: 'Optional. Example: give the answer first, then list short reasons.',
-        helperText: 'Global',
-        advancedCount: 'Advanced rules',
+        textareaHint: 'Describe the reply style you want in one sentence, for example: answer first, then give short reasons in bullets.',
+        helperText: 'This rule applies to all chats by default. Multi-rule setups are still available in Advanced settings.',
         presets: [
             {
-                label: 'Concise',
+                label: 'More concise',
                 hint: 'Answer first',
                 content: 'Please lead with the conclusion, keep the answer concise, and use short bullet points when helpful.'
             },
             {
-                label: 'Patient',
+                label: 'More patient',
                 hint: 'Explain gently',
                 content: 'Please explain in a patient, friendly tone. Start with the conclusion, then walk through the reasoning step by step.'
             },
             {
-                label: 'Steps',
+                label: 'Step by step',
                 hint: 'Easy to follow',
                 content: 'Please break the answer into clear steps, keep each step short, and make it easy to follow directly.'
             },
@@ -87,30 +85,29 @@ const BASIC_COPY = {
         ]
     },
     ja: {
-        summaryTitle: '基本',
-        summaryDesc: '言語 / 返答',
         languageTitle: '表示言語',
-        languageDesc: '画面のみ',
-        instructionTitle: 'AI の返答スタイル',
-        instructionDesc: '先に選び、必要なら一文追加',
+        languageDesc: 'ここを変えるだけで、画面全体の読みやすさをすぐ切り替えられます。',
+        instructionTitle: 'デフォルト返信ルール',
+        instructionDesc: 'ほとんどの人はここに 1 つだけ書けば、AI の返答方針が安定します。',
+        presetsTitle: 'よく使うプリセット',
+        presetsDesc: '自分で考えたくないときは、1 つ選ぶだけで始められます。',
+        advancedCount: 'その他の高度なルール',
         manageAdvanced: '高度なルールを管理',
-        textareaLabel: '追加',
-        textareaHint: '空でも大丈夫です。例: まず結論、その後に短い箇条書きで理由を説明してください。',
-        helperText: '全体適用',
-        advancedCount: '高度なルール',
+        textareaHint: 'ほしい返答スタイルを 1 文で書いてください。例: まず結論、その後に短い箇条書きで理由を説明してください。',
+        helperText: 'このルールはすべての会話に既定で適用されます。複数ルールの管理は高度な設定で続けて使えます。',
         presets: [
             {
-                label: '簡潔',
+                label: '簡潔に',
                 hint: 'まず結論',
                 content: 'まず結論を簡潔に伝え、必要な場合だけ短い箇条書きで要点を補足してください。'
             },
             {
-                label: '丁寧',
+                label: '丁寧に',
                 hint: 'やさしく説明',
                 content: 'やさしく丁寧な口調で説明し、最初に結論、その後に理由と手順を順番に補足してください。'
             },
             {
-                label: '手順',
+                label: '手順重視',
                 hint: 'そのまま実行しやすく',
                 content: '回答をわかりやすい手順に分け、各手順は短く、すぐ実行できる形で示してください。'
             },
@@ -123,43 +120,31 @@ const BASIC_COPY = {
     }
 };
 
-function StepBadge({ number, tone }) {
-    return (
-        <div className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${tone}`}>
-            {number}
-        </div>
-    );
-}
-
-function OptionChip({ active, label, caption, onClick }) {
+function LanguageChip({ active, label, caption, onClick }) {
     return (
         <button
             onClick={onClick}
-            className={`rounded-full border px-2.5 py-1.5 text-left transition-all duration-200 ${active
-                ? 'border-[#d8bea1] bg-[#fff6eb] text-[#2f241a]'
-                : 'border-[#e7dccf] bg-white text-[#665746] hover:bg-[#fffaf4] dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:border-white/20'
+            className={`rounded-2xl border px-3 py-3 text-left transition-all duration-200 ${active
+                ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                : 'border-gray-100 bg-white text-gray-600 hover:border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700'
                 }`}
         >
-            <div className="text-xs font-semibold leading-none">{label}</div>
-            {caption && (
-                <div className={`mt-1 text-[10px] leading-none ${active ? 'text-[#8e7c68] dark:text-slate-300/70' : 'text-[#938270] dark:text-slate-400'}`}>{caption}</div>
-            )}
+            <div className="text-sm font-medium">{label}</div>
+            <div className={`mt-1 text-xs ${active ? 'text-white/65 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'}`}>{caption}</div>
         </button>
     );
 }
 
-function SettingsRow({ step, stepTone, title, description, children }) {
+function PresetButton({ label, hint, onClick }) {
     return (
-        <div className="grid gap-3 px-3 py-3 sm:grid-cols-[170px,minmax(0,1fr)] sm:px-4">
-            <div className="flex gap-3">
-                <StepBadge number={step} tone={stepTone} />
-                <div className="min-w-0">
-                    <h3 className="text-xs font-semibold text-[#2f241a] dark:text-white">{title}</h3>
-                    <p className="mt-0.5 text-[10px] leading-4 text-[#82715f] dark:text-slate-300/80">{description}</p>
-                </div>
-            </div>
-            <div className="min-w-0">{children}</div>
-        </div>
+        <button
+            type="button"
+            onClick={onClick}
+            className="rounded-2xl border border-gray-100 bg-white px-3 py-2.5 text-left transition-all hover:border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:bg-gray-800"
+        >
+            <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
+            <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">{hint}</div>
+        </button>
     );
 }
 
@@ -218,82 +203,98 @@ export default function SettingsBasicSection({
     };
 
     return (
-        <section className="space-y-3">
+        <section className="space-y-4">
             <SettingsUsageSummaryCard />
 
-            <div className="overflow-hidden rounded-[18px] border border-[#e9decf] bg-[#fffdf8] dark:border-white/10 dark:bg-white/6">
-                <div className="border-b border-[#eee3d7] px-3 py-2 sm:px-4 dark:border-white/10">
-                    <div className="text-xs font-semibold text-[#2f241a] dark:text-white">{copy.summaryTitle}</div>
-                    <p className="mt-0.5 text-[10px] leading-4 text-[#84725f] dark:text-slate-300/80">{copy.summaryDesc}</p>
+            <div className="grid gap-4 xl:grid-cols-[240px,minmax(0,1fr)]">
+                <div className="rounded-[28px] border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                    <div className="flex items-center gap-3">
+                        <div className="rounded-2xl bg-blue-50 p-2.5 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                            <Globe size={17} />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-medium text-gray-900 dark:text-white">
+                                {copy.languageTitle || t.settings.language || '语言'}
+                            </h3>
+                            <p className="text-sm leading-6 text-gray-400 dark:text-gray-500">
+                                {copy.languageDesc || t.settings.languageChoose || '选择界面显示语言。'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                        {LANGUAGES.map((lang) => (
+                            <LanguageChip
+                                key={lang.code}
+                                active={language === lang.code}
+                                label={lang.native}
+                                caption={lang.name}
+                                onClick={() => handleLanguageChange(lang.code)}
+                            />
+                        ))}
+                    </div>
                 </div>
 
-                <div className="divide-y divide-[#eee3d7] dark:divide-white/10">
-                    <SettingsRow
-                        step="1"
-                        stepTone="bg-[#e8eff4] text-[#647f92] dark:bg-white/10 dark:text-slate-200"
-                        title={copy.languageTitle || t.settings.language || '语言'}
-                        description={copy.languageDesc || t.settings.languageChoose || '选择界面显示语言。'}
-                    >
-                        <div className="flex flex-wrap gap-2">
-                            {LANGUAGES.map((lang) => (
-                                <OptionChip
-                                    key={lang.code}
-                                    active={language === lang.code}
-                                    label={lang.native}
-                                    caption={lang.name}
-                                    onClick={() => handleLanguageChange(lang.code)}
-                                />
-                            ))}
+                <div className="rounded-[28px] border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600 dark:bg-amber-950/30 dark:text-amber-200">
+                                <Sparkles size={17} />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-medium text-gray-900 dark:text-white">
+                                    {copy.instructionTitle}
+                                </h3>
+                                <p className="text-sm leading-6 text-gray-400 dark:text-gray-500">
+                                    {copy.instructionDesc}
+                                </p>
+                            </div>
                         </div>
-                    </SettingsRow>
 
-                    <SettingsRow
-                        step="2"
-                        stepTone="bg-[#faedd7] text-[#af7c36] dark:bg-white/10 dark:text-slate-200"
-                        title={copy.instructionTitle}
-                        description={copy.instructionDesc}
-                    >
-                        <div className="flex flex-wrap gap-2">
+                        <div className="inline-flex items-center gap-2 self-start rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500">
+                            <Layers3 size={13} />
+                            {copy.advancedCount}
+                            <span className="font-semibold text-gray-900 dark:text-white">{advancedInstructionCount}</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 rounded-[24px] border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                            <Wand2 size={14} />
+                            {copy.presetsTitle}
+                        </div>
+                        <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">{copy.presetsDesc}</p>
+
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                             {copy.presets.map((preset) => (
-                                <OptionChip
+                                <PresetButton
                                     key={preset.label}
-                                    active={(primaryInstruction?.content || '') === preset.content}
                                     label={preset.label}
-                                    caption={preset.hint}
+                                    hint={preset.hint}
                                     onClick={() => handlePrimaryInstructionChange(preset.content)}
                                 />
                             ))}
                         </div>
+                    </div>
 
-                        <div className="mt-3">
-                            <label className="mb-1.5 block text-[10px] font-medium text-[#7f6c59] dark:text-slate-300/80">
-                                {copy.textareaLabel}
-                            </label>
-                            <textarea
-                                value={primaryInstruction?.content || ''}
-                                onChange={(e) => handlePrimaryInstructionChange(e.target.value)}
-                                placeholder={copy.textareaHint || t.settings?.customInstructionsPlaceholder || '示例：请用轻松友好的语气回复。使用项目符号列表。回答尽量简洁。'}
-                                className="min-h-[88px] w-full rounded-[14px] border border-[#e7dccf] bg-white px-3 py-2.5 text-xs leading-6 text-[#43372c] outline-none transition-all placeholder:text-[#b0a08e] focus:border-[#dcc2a3] focus:ring-4 focus:ring-[#f6ead8] dark:border-white/10 dark:bg-[#111826]/80 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-white/20 dark:focus:ring-white/10"
-                            />
-                        </div>
+                    <textarea
+                        value={primaryInstruction?.content || ''}
+                        onChange={(e) => handlePrimaryInstructionChange(e.target.value)}
+                        placeholder={copy.textareaHint || t.settings?.customInstructionsPlaceholder || '示例：请用轻松友好的语气回复。使用项目符号列表。回答尽量简洁。'}
+                        className="mt-4 min-h-[124px] w-full rounded-[24px] border border-gray-100 bg-white px-4 py-3 text-sm leading-7 text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-gray-300 focus:ring-4 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-600 dark:focus:border-gray-700 dark:focus:ring-gray-800"
+                    />
 
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-1.5 text-[10px] text-[#7e6c5a] dark:text-slate-300/80">
-                                <Sparkles size={12} />
-                                {copy.helperText}
-                            </div>
-                            <button
-                                onClick={onOpenAdvancedInstructions}
-                                className="inline-flex items-center gap-1.5 self-start rounded-full border border-[#e8dccd] bg-[#fffaf3] px-2.5 py-1 text-[10px] font-semibold text-[#8c6b47] transition-all hover:bg-[#fff6eb] dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
-                            >
-                                <Layers3 size={12} />
-                                {copy.manageAdvanced}
-                                <span className="rounded-full bg-[#f2e5d4] px-1.5 py-0.5 text-[9px] text-[#6c5844] dark:bg-white/10 dark:text-slate-200">
-                                    {advancedInstructionCount}
-                                </span>
-                            </button>
-                        </div>
-                    </SettingsRow>
+                    <div className="mt-3 flex flex-col gap-3 border-t border-gray-100 pt-3 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm leading-6 text-gray-400 dark:text-gray-500">
+                            {copy.helperText}
+                        </p>
+                        <button
+                            onClick={onOpenAdvancedInstructions}
+                            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-500 transition-all hover:border-gray-300 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-200"
+                        >
+                            {copy.manageAdvanced}
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>

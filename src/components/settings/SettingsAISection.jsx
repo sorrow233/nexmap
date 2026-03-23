@@ -17,14 +17,14 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getSuggestedRoleModel } from './modelRoleUtils';
 
-const fieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-medium text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:focus:border-white/20 dark:focus:ring-white/10';
-const monoFieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-white/20 dark:focus:ring-white/10';
-const subtleActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12';
-const dangerActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15';
+const fieldClassName = 'w-full rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none transition-all focus:border-gray-300 focus:ring-4 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:focus:border-gray-700 dark:focus:ring-gray-800';
+const monoFieldClassName = 'w-full rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm font-mono text-gray-900 outline-none transition-all focus:border-gray-300 focus:ring-4 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-600 dark:focus:border-gray-700 dark:focus:ring-gray-800';
+const subtleActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-white';
+const dangerActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600 transition-all hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-950/40';
 
 function SectionLabel({ icon: Icon, children }) {
     return (
-        <label className="flex items-center gap-2 text-[11px] font-medium text-[#8d7a67] dark:text-slate-300/70">
+        <label className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
             <Icon size={14} />
             {children}
         </label>
@@ -44,8 +44,8 @@ function RoleRow({
     const currentProvider = providers?.[roleValue?.providerId];
 
     return (
-        <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.9)] p-5 shadow-[0_18px_46px_rgba(95,74,49,0.06)] dark:border-white/10 dark:bg-white/6">
-            <div className="mb-4 flex items-center gap-3 text-sm font-semibold text-[#2f241a] dark:text-white">
+        <div className="rounded-[28px] border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+            <div className="mb-4 flex items-center gap-3 text-sm font-medium text-gray-900 dark:text-white">
                 <span className={`rounded-[16px] p-2 ${accent}`}>
                     <Icon size={16} />
                 </span>
@@ -97,8 +97,8 @@ export default function SettingsAISection({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const providerList = Object.values(providers || {});
     const roleAccents = useMemo(() => ({
-        chat: 'bg-[#ece6f7] text-[#765f98]',
-        image: 'bg-[#dcecf0] text-[#61818c]'
+        chat: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
+        image: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
     }), []);
     const providerKeys = String(currentProvider?.apiKey || '')
         .split(',')
@@ -122,19 +122,18 @@ export default function SettingsAISection({
     }
 
     return (
-        <section className="rounded-[32px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.94),rgba(246,240,234,0.92))] p-6 shadow-[0_24px_60px_rgba(95,74,50,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]">
+        <section className="rounded-[32px] border border-gray-100 bg-white p-5 dark:border-gray-800 dark:bg-gray-950">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500">
                         <Cpu size={13} />
                         AI 设置
                     </div>
-                    <h3 className="mt-4 text-[28px] font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
-                        把模型、Key 和角色合并到一个地方
+                    <h3 className="mt-4 text-[28px] font-light tracking-[-0.03em] text-gray-900 dark:text-white">
+                        模型、连接和角色都收进一个面板
                     </h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
-                        默认只展示真正常用的内容：对话模型、图片模型、当前连接。
-                        只有你确实要折腾多提供商或自定义 Base URL 时，才展开高级选项。
+                    <p className="mt-2 max-w-2xl text-sm leading-7 text-gray-400 dark:text-gray-500">
+                        先改最常用的两项。只有需要多个提供商、Base URL 或自定义模型时，再展开下面的高级区。
                     </p>
                 </div>
 
@@ -147,7 +146,7 @@ export default function SettingsAISection({
                 </button>
             </div>
 
-            <div className="mt-6 grid gap-4 xl:grid-cols-[1.15fr,1fr]">
+            <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
                 <div className="space-y-4">
                     <RoleRow
                         icon={MessageSquare}
@@ -169,7 +168,7 @@ export default function SettingsAISection({
                     />
                 </div>
 
-                <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.86)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6">
+                <div className="rounded-[28px] border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-900/50">
                     <SectionLabel icon={Server}>当前连接</SectionLabel>
 
                     {providerList.length > 1 && (
@@ -190,30 +189,30 @@ export default function SettingsAISection({
 
                     <div className="mt-3 space-y-3">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                            <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
                                 {t.settings.apiKey || 'API 密钥'}
                             </label>
                             <div className="relative">
-                                <div className="pointer-events-none absolute left-4 top-4 text-[#b7a895] dark:text-slate-500">
+                                <div className="pointer-events-none absolute left-4 top-4 text-gray-400 dark:text-gray-600">
                                     <Key size={16} />
                                 </div>
                                 <textarea
                                     value={currentProvider.apiKey || ''}
                                     onChange={(e) => handleUpdateProvider('apiKey', e.target.value)}
                                     rows={3}
-                                    className="w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:focus:border-white/20 dark:focus:ring-white/10"
+                                    className="w-full rounded-[24px] border border-gray-100 bg-white px-4 py-4 pl-11 text-sm font-mono text-gray-900 outline-none transition-all focus:border-gray-300 focus:ring-4 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:focus:border-gray-700 dark:focus:ring-gray-800"
                                     placeholder={currentProvider.protocol === 'gemini'
                                         ? (t.settings.geminiKeyPlaceholder || 'Gemini API Key')
                                         : (t.settings.openaiKeyPlaceholder || 'sk-...')}
                                 />
                             </div>
-                            <p className="mt-2 text-xs leading-6 text-[#8d7b68] dark:text-slate-300/75">
+                            <p className="mt-2 text-xs leading-6 text-gray-400 dark:text-gray-500">
                                 不填也能用默认体验；只有你要接自己的服务时才需要这里。
                             </p>
                         </div>
 
                         {routeHint && (
-                            <div className="rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                            <div className="rounded-[20px] border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                                 {routeHint}
                             </div>
                         )}
@@ -222,7 +221,7 @@ export default function SettingsAISection({
                             <button
                                 onClick={handleTestConnection}
                                 disabled={testStatus === 'testing' || !currentProvider.apiKey}
-                                className="rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#332412] shadow-[0_12px_28px_rgba(226,174,92,0.25)] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
                             >
                                 {testStatus === 'testing' ? (t.settings.testing || '测试中...') : (t.settings.testConnection || '测试连接')}
                             </button>
@@ -246,7 +245,7 @@ export default function SettingsAISection({
             </div>
 
             {showAdvanced && (
-                <div className="mt-6 rounded-[28px] border border-[#eee2d6] bg-[rgba(251,247,241,0.9)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6">
+                <div className="mt-5 rounded-[28px] border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-900/50">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <SectionLabel icon={Globe}>高级 AI 设置</SectionLabel>
                         <div className="flex items-center gap-2">
@@ -275,8 +274,8 @@ export default function SettingsAISection({
                                     <div
                                         key={provider.id}
                                         className={`flex items-center gap-2 rounded-[22px] border px-3 py-3 transition-all ${isActive
-                                            ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_10px_24px_rgba(93,75,52,0.08)]'
-                                            : 'border-[#eee4d8] bg-[rgba(255,252,247,0.86)] text-[#665746] hover:bg-white dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:border-white/20'
+                                            ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                                            : 'border-gray-100 bg-white text-gray-600 hover:border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-800'
                                             }`}
                                     >
                                         <button
@@ -284,7 +283,7 @@ export default function SettingsAISection({
                                             className="min-w-0 flex-1 text-left"
                                         >
                                             <div className="truncate text-sm font-semibold">{provider.name || 'Untitled Provider'}</div>
-                                            <div className="truncate text-xs text-[#938270] dark:text-slate-300/70">
+                                            <div className={`truncate text-xs ${isActive ? 'text-white/65 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'}`}>
                                                 {provider.protocol === 'gemini'
                                                     ? (t.settings.geminiNative || 'Gemini 原生')
                                                     : (t.settings.openaiCompat || 'OpenAI 兼容')}
@@ -293,7 +292,7 @@ export default function SettingsAISection({
                                         {providerList.length > 1 && (
                                             <button
                                                 onClick={() => handleRemoveProvider(provider.id)}
-                                                className="rounded-full p-1 text-[#b0a08e] transition-all hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                                                className={`rounded-full p-1 transition-all ${isActive ? 'text-white/70 hover:bg-white/10 hover:text-white dark:text-gray-500 dark:hover:bg-gray-200 dark:hover:text-gray-900' : 'text-gray-400 hover:bg-rose-50 hover:text-rose-500 dark:text-gray-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-200'}`}
                                                 aria-label={`删除 ${provider.name || provider.id}`}
                                             >
                                                 <Trash2 size={14} />
@@ -307,7 +306,7 @@ export default function SettingsAISection({
                         <div className="grid gap-4">
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
                                         {t.settings.providerName || '提供商名称'}
                                     </label>
                                     <input
@@ -319,7 +318,7 @@ export default function SettingsAISection({
                                 </div>
 
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
                                         {t.settings.protocol || '协议'}
                                     </label>
                                     <select
@@ -335,7 +334,7 @@ export default function SettingsAISection({
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
                                         {t.settings.baseUrl || 'Base URL'}
                                     </label>
                                     <input
@@ -347,7 +346,7 @@ export default function SettingsAISection({
                                 </div>
 
                                 <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                    <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
                                         {t.settings.modelName || '模型名称'}
                                     </label>
                                     <input
@@ -360,14 +359,14 @@ export default function SettingsAISection({
                             </div>
 
                             <div>
-                                <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
+                                <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
                                     {t.settings?.modelList || '可用模型列表'}
                                 </label>
                                 <textarea
                                     value={currentProvider.customModels || ''}
                                     onChange={(e) => handleUpdateProvider('customModels', e.target.value)}
                                     rows={3}
-                                    className="w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:focus:border-white/20 dark:focus:ring-white/10"
+                                    className="w-full rounded-[24px] border border-gray-100 bg-white px-4 py-4 text-sm font-mono text-gray-900 outline-none transition-all focus:border-gray-300 focus:ring-4 focus:ring-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:focus:border-gray-700 dark:focus:ring-gray-800"
                                 />
                             </div>
                         </div>

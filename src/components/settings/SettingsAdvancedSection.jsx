@@ -16,7 +16,7 @@ import SettingsLinkageTab from './SettingsLinkageTab';
 
 function AdvancedPanel({ title, description, icon: Icon, tone, open, onToggle, children }) {
     return (
-        <div className="rounded-[30px] border border-[#eee3d7] bg-[rgba(255,252,247,0.84)] shadow-[0_18px_44px_rgba(95,74,50,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6">
+        <div className="rounded-[28px] border border-gray-100 bg-gray-50/70 dark:border-gray-800 dark:bg-gray-900/50">
             <button
                 onClick={onToggle}
                 className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
@@ -26,14 +26,14 @@ function AdvancedPanel({ title, description, icon: Icon, tone, open, onToggle, c
                         <Icon size={18} />
                     </div>
                     <div className="min-w-0">
-                        <div className="text-base font-semibold text-[#2f241a] dark:text-white">{title}</div>
-                        <div className="mt-1 text-sm leading-6 text-[#7b6a58] dark:text-slate-300/80">{description}</div>
+                        <div className="text-base font-medium text-gray-900 dark:text-white">{title}</div>
+                        <div className="mt-1 text-sm leading-6 text-gray-400 dark:text-gray-500">{description}</div>
                     </div>
                 </div>
-                {open ? <ChevronUp size={18} className="text-[#b0a08e] dark:text-slate-300/70" /> : <ChevronDown size={18} className="text-[#b0a08e] dark:text-slate-300/70" />}
+                {open ? <ChevronUp size={18} className="text-gray-400 dark:text-gray-500" /> : <ChevronDown size={18} className="text-gray-400 dark:text-gray-500" />}
             </button>
             {open && (
-                <div className="border-t border-[#eee3d7] px-6 py-6 dark:border-white/10">
+                <div className="border-t border-gray-100 px-6 py-6 dark:border-gray-800">
                     {children}
                 </div>
             )}
@@ -68,26 +68,26 @@ export default function SettingsAdvancedSection({
     };
 
     return (
-        <section className="space-y-5">
-            <div className="rounded-[32px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.94),rgba(246,240,234,0.92))] p-6 shadow-[0_24px_60px_rgba(95,74,50,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]">
+        <section className="space-y-4">
+            <div className="rounded-[32px] border border-gray-100 bg-white p-5 dark:border-gray-800 dark:bg-gray-950">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500">
                             <Settings2 size={13} />
                             高级设置
                         </div>
-                        <h3 className="mt-4 text-[28px] font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">
-                            复杂能力都留在这里，但默认不打扰用户
+                        <h3 className="mt-4 text-[28px] font-light tracking-[-0.03em] text-gray-900 dark:text-white">
+                            不常用的能力统一折叠收纳
                         </h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7b6a58] dark:text-slate-300">
-                            包含恢复、导入导出、复杂指令库和本地绑定等能力。只有需要时再展开。
+                        <p className="mt-2 max-w-2xl text-sm leading-7 text-gray-400 dark:text-gray-500">
+                            恢复、存储、复杂指令和本地绑定都还在，只是默认退到第二层，不占首屏空间。
                         </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
                         <button
                             onClick={handleReset}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600 transition-all hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-950/40"
                         >
                             <RefreshCw size={14} />
                             重置默认配置
@@ -100,7 +100,7 @@ export default function SettingsAdvancedSection({
                 title="额度与兑换"
                 description="查看更详细的额度信息、兑换码与购买入口。"
                 icon={Gift}
-                tone="bg-[#faedd7] text-[#af7c36]"
+                tone="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-200"
                 open={activePanel === 'credits'}
                 onToggle={() => togglePanel('credits')}
             >
@@ -111,7 +111,7 @@ export default function SettingsAdvancedSection({
                 title="高级指令库"
                 description="多条规则、画布可选规则、AI 推荐等仍然保留在这里。"
                 icon={FileText}
-                tone="bg-[#ebe4f7] text-[#776496]"
+                tone="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
                 open={activePanel === 'instructions'}
                 onToggle={() => togglePanel('instructions')}
             >
@@ -125,7 +125,7 @@ export default function SettingsAdvancedSection({
                 title="存储与恢复"
                 description="S3、自定义备份、恢复、导入导出等能力。"
                 icon={Database}
-                tone="bg-[#e5eee8] text-[#5f7666]"
+                tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
                 open={activePanel === 'storage'}
                 onToggle={() => togglePanel('storage')}
             >
@@ -139,7 +139,7 @@ export default function SettingsAdvancedSection({
                 title="跨应用联动"
                 description="管理 FlowStudio 与 Light 的 UID 本地绑定。"
                 icon={Link2}
-                tone="bg-[#e7eef4] text-[#6a7f90]"
+                tone="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                 open={activePanel === 'linkage'}
                 onToggle={() => togglePanel('linkage')}
             >
