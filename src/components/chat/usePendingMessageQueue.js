@@ -46,7 +46,10 @@ export function usePendingMessageQueue({
             const nextMsg = popPendingMessage(cardId);
             if (!nextMsg) break;
 
-            onBeforeDispatch?.(nextMsg);
+            onBeforeDispatch?.({
+                source: 'queue',
+                message: nextMsg
+            });
 
             try {
                 await onDispatch(nextMsg.text || '', nextMsg.images || []);
@@ -101,7 +104,10 @@ export function usePendingMessageQueue({
         if (isMountedRef.current) {
             setIsDispatching(true);
         }
-        onBeforeDispatch?.({ text, images });
+        onBeforeDispatch?.({
+            source: 'direct',
+            message: { text, images }
+        });
         Promise.resolve(onDispatch(text, images)).finally(() => {
             directDispatchActiveRef.current = false;
             if (isMountedRef.current) {

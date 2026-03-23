@@ -314,6 +314,7 @@ export const ko = {
         branch: "분기",
         captureAsNote: "메모로 캡처",
         markTopic: "주제 마크",
+        queueStartedHint: "대기열 메시지 전송이 시작되었습니다",
         refineNote: "AI에게 이 메모 다듬기 요청...",
         refineThought: "이 생각 다듬기...",
         insightArchive: "인사이트 아카이브"

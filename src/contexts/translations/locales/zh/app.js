@@ -131,6 +131,7 @@ export const app = {
         branch: "分支",
         captureAsNote: "捕获为便签",
         markTopic: "标记主题",
+        queueStartedHint: "队列已开始发送",
         refineNote: "请 AI 完善这条笔记...",
         refineThought: "完善这个想法...",
         insightArchive: "洞见档案"

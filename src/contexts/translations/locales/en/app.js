@@ -131,6 +131,7 @@ export const app = {
         branch: "Branch",
         captureAsNote: "Capture as Note",
         markTopic: "Mark Topic",
+        queueStartedHint: "Queued message is now sending",
         refineNote: "Ask AI to refine this note...",
         refineThought: "Refine this thought...",
         insightArchive: "Insight Archive"

@@ -314,6 +314,7 @@ export const ja = {
         branch: "ブランチ",
         captureAsNote: "メモとしてキャプチャ",
         markTopic: "トピックをマーク",
+        queueStartedHint: "キューの送信を開始しました",
         refineNote: "AIにこのメモを改善させる...",
         refineThought: "この考えを改善...",
         insightArchive: "インサイトアーカイブ"

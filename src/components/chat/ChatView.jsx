@@ -55,6 +55,8 @@ export default function ChatView({
     const [isAtBottom, setIsAtBottom] = useState(true);
     const isAtBottomRef = useRef(true);
     const scrollFrameRef = useRef(null);
+    const scrollRequestRef = useRef(null);
+    const scrollCommitRef = useRef(null);
     const queueDispatchNoticeTimerRef = useRef(null);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
@@ -90,17 +92,44 @@ export default function ChatView({
         container.scrollTop = container.scrollHeight;
     }, []);
 
-    const showQueueDispatchHint = React.useCallback(() => {
+    const cancelScheduledScrollToBottom = React.useCallback(() => {
+        if (scrollRequestRef.current) {
+            cancelAnimationFrame(scrollRequestRef.current);
+            scrollRequestRef.current = null;
+        }
+        if (scrollCommitRef.current) {
+            cancelAnimationFrame(scrollCommitRef.current);
+            scrollCommitRef.current = null;
+        }
+    }, []);
+
+    const scheduleScrollToBottom = React.useCallback((force = false) => {
+        cancelScheduledScrollToBottom();
+        scrollRequestRef.current = requestAnimationFrame(() => {
+            scrollRequestRef.current = null;
+            scrollCommitRef.current = requestAnimationFrame(() => {
+                scrollCommitRef.current = null;
+                scrollToBottom(force);
+            });
+        });
+    }, [cancelScheduledScrollToBottom, scrollToBottom]);
+
+    const clearQueueDispatchHint = React.useCallback(() => {
         if (queueDispatchNoticeTimerRef.current) {
             clearTimeout(queueDispatchNoticeTimerRef.current);
+            queueDispatchNoticeTimerRef.current = null;
         }
+        setShowQueueDispatchNotice(false);
+    }, []);
 
+    const showQueueDispatchHint = React.useCallback(() => {
+        clearQueueDispatchHint();
         setShowQueueDispatchNotice(true);
         queueDispatchNoticeTimerRef.current = setTimeout(() => {
             queueDispatchNoticeTimerRef.current = null;
             setShowQueueDispatchNotice(false);
         }, 2600);
-    }, []);
+    }, [clearQueueDispatchHint]);
 
     const {
         isDispatching,
@@ -114,9 +143,16 @@ export default function ChatView({
         isReadOnly,
         isCardGenerating,
         onDispatch: dispatchMessage,
-        onBeforeDispatch: () => {
+        onBeforeDispatch: ({ source }) => {
+            if (source === 'direct') {
+                clearQueueDispatchHint();
+                scheduleScrollToBottom(true);
+                return;
+            }
+
             if (isAtBottomRef.current) {
-                setTimeout(() => scrollToBottom(), 10);
+                clearQueueDispatchHint();
+                scheduleScrollToBottom();
                 return;
             }
 
@@ -195,28 +231,23 @@ export default function ChatView({
 
     // Force scroll to bottom on initial open
     useEffect(() => {
-        const timerId = setTimeout(() => scrollToBottom(true), 0);
-        return () => clearTimeout(timerId);
-    }, [scrollToBottom]);
+        scheduleScrollToBottom(true);
+        return () => cancelScheduledScrollToBottom();
+    }, [cancelScheduledScrollToBottom, scheduleScrollToBottom]);
 
     useEffect(() => () => {
         if (scrollFrameRef.current) {
             cancelAnimationFrame(scrollFrameRef.current);
         }
-        if (queueDispatchNoticeTimerRef.current) {
-            clearTimeout(queueDispatchNoticeTimerRef.current);
-        }
-    }, []);
+        cancelScheduledScrollToBottom();
+        clearQueueDispatchHint();
+    }, [cancelScheduledScrollToBottom, clearQueueDispatchHint]);
 
     useEffect(() => {
         if (isAtBottom || !isStreaming) {
-            if (queueDispatchNoticeTimerRef.current) {
-                clearTimeout(queueDispatchNoticeTimerRef.current);
-                queueDispatchNoticeTimerRef.current = null;
-            }
-            setShowQueueDispatchNotice(false);
+            clearQueueDispatchHint();
         }
-    }, [isAtBottom, isStreaming]);
+    }, [clearQueueDispatchHint, isAtBottom, isStreaming]);
 
 
     // --- Handlers Wrapper ---
