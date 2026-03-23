@@ -329,8 +329,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 <button
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${isActive
-                        ? 'border-[#eadbc6] bg-[#fffaf3] text-[#5e4d3e] shadow-[0_10px_24px_rgba(92,74,50,0.10)] dark:border-white/15 dark:bg-white/12 dark:text-white dark:shadow-[0_12px_30px_rgba(2,6,23,0.35)]'
-                        : 'border-[#efe6da] bg-[rgba(255,252,247,0.84)] text-[#83705e] hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12 dark:hover:text-white'
+                        ? 'border-[#eadbc6] bg-[#fffaf3] text-[#5e4d3e] shadow-[0_10px_24px_rgba(92,74,50,0.10)] dark:border-slate-600/70 dark:bg-[#1a2330] dark:text-white dark:shadow-[0_12px_30px_rgba(2,6,23,0.42)]'
+                        : 'border-[#efe6da] bg-[rgba(255,252,247,0.84)] text-[#83705e] hover:bg-white dark:border-slate-800/80 dark:bg-[#121a24] dark:text-slate-300 dark:hover:bg-[#1a2330] dark:hover:text-white'
                         }`}
                 >
                     <span className={`rounded-full p-1 ${isActive ? accent?.iconActive : accent?.icon}`}>
@@ -345,7 +345,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             <button
                 onClick={() => setActiveTab(id)}
                 className={`group w-full rounded-[22px] border px-3 py-3 text-left transition-all ${isActive
-                    ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_18px_38px_rgba(2,6,23,0.32)]'
+                    ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#19222e] dark:shadow-[0_18px_38px_rgba(2,6,23,0.42)]'
                     : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-white/6'
                     }`}
             >
@@ -371,7 +371,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-[rgba(104,92,78,0.18)] p-2 backdrop-blur-[18px] dark:bg-slate-950/80 sm:p-6">
-            <div className="relative h-full w-full max-w-[1320px] overflow-hidden rounded-[38px] border border-[#efe5d8] bg-[linear-gradient(180deg,rgba(248,244,238,0.98),rgba(241,235,228,0.98))] shadow-[0_34px_100px_rgba(82,67,49,0.18)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,22,30,0.96),rgba(12,16,23,0.94))] dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
+            <div className="relative h-full w-full max-w-[1320px] overflow-hidden rounded-[38px] border border-[#efe5d8] bg-[linear-gradient(180deg,rgba(248,244,238,0.98),rgba(241,235,228,0.98))] shadow-[0_34px_100px_rgba(82,67,49,0.18)] dark:border-slate-800/90 dark:bg-[#0b1118] dark:shadow-[0_35px_120px_rgba(2,6,23,0.72)]">
                 <div className="pointer-events-none absolute inset-0">
                     <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5d5a8]/35 blur-3xl dark:bg-amber-300/10" />
                     <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-[#ddd7ef]/40 blur-3xl dark:bg-violet-300/10" />
@@ -379,7 +379,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 </div>
 
                 <div className="relative flex h-full flex-col md:flex-row">
-                    <aside className="hidden w-[280px] shrink-0 border-r border-[#ebe0d3] bg-[rgba(255,251,246,0.8)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 md:flex">
+                    <aside className="hidden w-[280px] shrink-0 border-r border-[#ebe0d3] bg-[rgba(255,251,246,0.8)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#101822]/95 md:flex">
                         <div className="flex h-full w-full flex-col p-6">
                             <div className="mb-6 flex items-center gap-3">
                                 <div className={`rounded-[18px] p-2.5 shadow-[0_10px_24px_rgba(94,73,51,0.10)] ${activeTabMeta.accent.iconActive}`}>
@@ -410,11 +410,11 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         </div>
                     </aside>
 
-                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[rgba(248,244,238,0.66)] dark:bg-[#0f141c]/82">
-                    <header className="border-b border-[#ece1d4] bg-[rgba(255,251,246,0.72)] px-4 py-4 backdrop-blur-2xl dark:border-white/10 dark:bg-white/6 sm:px-8 sm:py-6">
+                    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[rgba(248,244,238,0.66)] dark:bg-[#0d141d]/96">
+                    <header className="border-b border-[#ece1d4] bg-[rgba(255,251,246,0.72)] px-4 py-4 backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#101822]/92 sm:px-8 sm:py-6">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                             <div className="max-w-3xl">
-                                <div className="inline-flex items-center gap-2 rounded-full border border-[#eadbc8] bg-[#f8eee3] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-[#eadbc8] bg-[#f8eee3] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100">
                                     <Settings size={13} />
                                     {t.settings.title}
                                 </div>
@@ -443,7 +443,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 <button
                                     onClick={onClose}
                                     disabled={isSaving}
-                                    className="rounded-[16px] border border-[#eaddca] bg-[#fffaf3] px-4 py-2 text-sm font-medium text-[#655545] transition-all hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12"
+                                    className="rounded-[16px] border border-[#eaddca] bg-[#fffaf3] px-4 py-2 text-sm font-medium text-[#655545] transition-all hover:bg-white disabled:opacity-60 dark:border-slate-700/80 dark:bg-[#17202c] dark:text-slate-100 dark:hover:bg-[#1d2835]"
                                 >
                                     {t.settings.cancel}
                                 </button>
@@ -469,7 +469,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     ? 'border-[#eed8ae] bg-[#fbf5e8] dark:border-amber-300/20 dark:bg-amber-500/10'
                                     : saveStatus.type === 'error'
                                         ? 'border-rose-200/80 bg-[#fbefef] dark:border-rose-400/20 dark:bg-rose-500/10'
-                                        : 'border-[#ece1d4] bg-[rgba(255,252,247,0.88)] dark:border-white/10 dark:bg-white/8'
+                                        : 'border-[#ece1d4] bg-[rgba(255,252,247,0.88)] dark:border-slate-800/70 dark:bg-[#16202a]'
                                 }`}>
                                 <div className="flex min-w-0 items-center gap-2">
                                     {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-[#7b6a58] dark:text-slate-200" />}

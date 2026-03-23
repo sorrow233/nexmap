@@ -17,9 +17,9 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getSuggestedRoleModel } from './modelRoleUtils';
 
-const fieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-medium text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:focus:border-white/20 dark:focus:ring-white/10';
-const monoFieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-white/20 dark:focus:ring-white/10';
-const subtleActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12';
+const fieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-medium text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-slate-700/80 dark:bg-[#0f1722] dark:text-white dark:focus:border-slate-500/70 dark:focus:ring-slate-700/60';
+const monoFieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-slate-700/80 dark:bg-[#0f1722] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-slate-500/70 dark:focus:ring-slate-700/60';
+const subtleActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white dark:border-slate-700/80 dark:bg-[#17202c] dark:text-slate-100 dark:hover:bg-[#1d2835]';
 const dangerActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15';
 
 function SectionLabel({ icon: Icon, children }) {
@@ -44,7 +44,7 @@ function RoleRow({
     const currentProvider = providers?.[roleValue?.providerId];
 
     return (
-        <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.9)] p-5 shadow-[0_18px_46px_rgba(95,74,49,0.06)] dark:border-white/10 dark:bg-white/6">
+        <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.9)] p-5 shadow-[0_18px_46px_rgba(95,74,49,0.06)] dark:border-slate-800/80 dark:bg-[#141c26]/90">
             <div className="mb-4 flex items-center gap-3 text-sm font-semibold text-[#2f241a] dark:text-white">
                 <span className={`rounded-[16px] p-2 ${accent}`}>
                     <Icon size={16} />
@@ -125,7 +125,7 @@ export default function SettingsAISection({
         <section className="rounded-[32px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.94),rgba(246,240,234,0.92))] p-6 shadow-[0_24px_60px_rgba(95,74,50,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100">
                         <Cpu size={13} />
                         AI 设置
                     </div>
@@ -169,7 +169,7 @@ export default function SettingsAISection({
                     />
                 </div>
 
-                <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.86)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6">
+                <div className="rounded-[28px] border border-[#eee2d6] bg-[rgba(255,252,247,0.86)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#141c26]/90">
                     <SectionLabel icon={Server}>当前连接</SectionLabel>
 
                     {providerList.length > 1 && (
@@ -213,7 +213,7 @@ export default function SettingsAISection({
                         </div>
 
                         {routeHint && (
-                            <div className="rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                            <div className="rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] dark:border-slate-800/70 dark:bg-[#17202c] dark:text-slate-200">
                                 {routeHint}
                             </div>
                         )}
@@ -246,7 +246,7 @@ export default function SettingsAISection({
             </div>
 
             {showAdvanced && (
-                <div className="mt-6 rounded-[28px] border border-[#eee2d6] bg-[rgba(251,247,241,0.9)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6">
+                <div className="mt-6 rounded-[28px] border border-[#eee2d6] bg-[rgba(251,247,241,0.9)] p-5 shadow-[0_16px_40px_rgba(95,74,49,0.05)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#141c26]/90">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <SectionLabel icon={Globe}>高级 AI 设置</SectionLabel>
                         <div className="flex items-center gap-2">
@@ -275,8 +275,8 @@ export default function SettingsAISection({
                                     <div
                                         key={provider.id}
                                         className={`flex items-center gap-2 rounded-[22px] border px-3 py-3 transition-all ${isActive
-                                            ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/12 dark:text-white dark:shadow-[0_14px_32px_rgba(2,6,23,0.32)]'
-                                            : 'border-[#eee4d8] bg-[rgba(255,252,247,0.86)] text-[#665746] hover:bg-white dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:border-white/20'
+                                            ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#1b2430] dark:text-white dark:shadow-[0_14px_32px_rgba(2,6,23,0.42)]'
+                                            : 'border-[#eee4d8] bg-[rgba(255,252,247,0.86)] text-[#665746] hover:bg-white dark:border-slate-800/80 dark:bg-[#141c26] dark:text-slate-200 dark:hover:border-slate-700/80 dark:hover:bg-[#1a2330]'
                                             }`}
                                     >
                                         <button

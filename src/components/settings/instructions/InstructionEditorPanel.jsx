@@ -114,7 +114,7 @@ export default function InstructionEditorPanel({
                     </label>
 
                     {item.isGlobal !== true && (
-                        <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] text-[#8f7e6b] dark:bg-white/10 dark:text-slate-300">
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] text-[#8f7e6b] dark:bg-[#17202c] dark:text-slate-300">
                             <Layers3 size={11} />
                             {t.settings?.instructionOptionalHint || '由画布单独选择'}
                         </span>

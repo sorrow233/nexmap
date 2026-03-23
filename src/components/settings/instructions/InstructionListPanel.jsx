@@ -32,7 +32,7 @@ export default function InstructionListPanel({
     isEmptyState = false
 }) {
     return (
-        <section className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 dark:border-white/10 dark:bg-white/5">
+        <section className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 dark:border-slate-800/80 dark:bg-[#141c26]/90">
             <div className="mb-3 flex items-center justify-between gap-2">
                 <h4 className="text-sm font-semibold text-[#4a3e33] dark:text-slate-100">
                     {t.settings?.customInstructions || '自定义指令'}
@@ -47,10 +47,10 @@ export default function InstructionListPanel({
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-2 text-[11px]">
-                <span className="rounded-xl bg-[#f4eee6] px-2 py-1 text-[#7d6c5a] dark:bg-white/10 dark:text-slate-200">
+                <span className="rounded-xl bg-[#f4eee6] px-2 py-1 text-[#7d6c5a] dark:bg-[#17202c] dark:text-slate-200">
                     {(t.settings?.instructionMetricTotal || '总数')} {summary?.total ?? 0}
                 </span>
-                <span className="rounded-xl bg-[#f8f2e8] px-2 py-1 text-[#8d6d49] dark:bg-white/10 dark:text-slate-200">
+                <span className="rounded-xl bg-[#f8f2e8] px-2 py-1 text-[#8d6d49] dark:bg-[#17202c] dark:text-slate-200">
                     {(t.settings?.instructionMetricEnabled || '已启用')} {summary?.enabled ?? 0}
                 </span>
                 <span className="rounded-xl bg-[#edf5ee] px-2 py-1 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
@@ -143,7 +143,7 @@ export default function InstructionListPanel({
                             key={item.id}
                             onClick={() => onSelect?.(item.id)}
                             className={`group w-full rounded-xl border px-3 py-2 text-left transition-all ${isActive
-                                ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_14px_28px_rgba(2,6,23,0.32)]'
+                                ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#1b2430] dark:shadow-[0_14px_28px_rgba(2,6,23,0.42)]'
                                 : 'border-[#eee3d7] bg-[#fffdf9] hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20'
                                 }`}
                         >
@@ -181,7 +181,7 @@ export default function InstructionListPanel({
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                 <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${item.enabled !== false
-                                    ? 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/10 dark:text-slate-200'
+                                    ? 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-[#17202c] dark:text-slate-200'
                                     : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
                                     }`}>
                                     {item.enabled !== false ? '启用' : '停用'}

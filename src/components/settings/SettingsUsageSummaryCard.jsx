@@ -5,7 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 function UsageMetric({ icon: Icon, label, value }) {
     return (
-        <div className="rounded-[24px] border border-[#efe2d5] bg-[rgba(255,252,247,0.94)] px-4 py-4 shadow-[0_14px_28px_rgba(91,72,49,0.06)] dark:border-white/10 dark:bg-white/8">
+        <div className="rounded-[24px] border border-[#efe2d5] bg-[rgba(255,252,247,0.94)] px-4 py-4 shadow-[0_14px_28px_rgba(91,72,49,0.06)] dark:border-slate-800/70 dark:bg-[#18212c]">
             <div className="flex items-center gap-2 text-xs font-medium text-[#8b7a68] dark:text-slate-300/70">
                 <Icon size={13} />
                 {label}
@@ -32,7 +32,7 @@ export default function SettingsUsageSummaryCard() {
                 <div className="max-w-2xl">
                     <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${isPro
                         ? 'border-[#ead6b5] bg-[#faf2df] text-[#9a7338] dark:border-amber-200/20 dark:bg-amber-400/10 dark:text-amber-200'
-                        : 'border-[#eadcc9] bg-[#f7efe5] text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200'
+                        : 'border-[#eadcc9] bg-[#f7efe5] text-[#8d6d49] dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100'
                         }`}>
                         {isPro ? <Crown size={13} /> : <Sparkles size={13} />}
                         {isPro ? (t.credits.proUser || 'Pro 已启用') : (t.credits.noConfigNeeded || '默认体验已准备好')}

@@ -16,7 +16,7 @@ import SettingsLinkageTab from './SettingsLinkageTab';
 
 function AdvancedPanel({ title, description, icon: Icon, tone, open, onToggle, children }) {
     return (
-        <div className="rounded-[30px] border border-[#eee3d7] bg-[rgba(255,252,247,0.84)] shadow-[0_18px_44px_rgba(95,74,50,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/6">
+        <div className="rounded-[30px] border border-[#eee3d7] bg-[rgba(255,252,247,0.84)] shadow-[0_18px_44px_rgba(95,74,50,0.06)] backdrop-blur-2xl dark:border-slate-800/80 dark:bg-[#141c26]/90">
             <button
                 onClick={onToggle}
                 className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
@@ -72,7 +72,7 @@ export default function SettingsAdvancedSection({
             <div className="rounded-[32px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.94),rgba(246,240,234,0.92))] p-6 shadow-[0_24px_60px_rgba(95,74,50,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[#e9dccb] bg-[#f8efe4] px-3 py-1 text-[11px] font-semibold text-[#8d6d49] dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100">
                             <Settings2 size={13} />
                             高级设置
                         </div>

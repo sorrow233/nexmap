@@ -128,7 +128,7 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <section className="relative overflow-hidden rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(247,241,235,0.92))] p-5 shadow-[0_14px_36px_rgba(95,74,50,0.07)] dark:border-white/10 dark:bg-white/6">
+            <section className="relative overflow-hidden rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(247,241,235,0.92))] p-5 shadow-[0_14px_36px_rgba(95,74,50,0.07)] dark:border-slate-800/80 dark:bg-[#141c26]/90">
                 <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#efe1f7]/60 blur-3xl dark:bg-white/10" />
                 <div className="relative">
                     <h3 className="mb-2 flex items-center gap-2 text-xl font-semibold text-[#2f241a] dark:text-white">
@@ -192,7 +192,7 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
                     </div>
                 </div>
 
-                <div className="flex gap-3 rounded-[26px] border border-[#eee3d7] bg-[#f8f2e8] p-4 dark:border-white/10 dark:bg-white/8">
+                <div className="flex gap-3 rounded-[26px] border border-[#eee3d7] bg-[#f8f2e8] p-4 dark:border-slate-800/70 dark:bg-[#17202c]">
                     <Info size={18} className="mt-0.5 flex-shrink-0 text-[#8d6d49] dark:text-slate-200" />
                     <div className="text-sm leading-relaxed text-[#6f5f4e] dark:text-slate-200">
                         <p className="mb-1 font-semibold text-[#8d6d49] dark:text-slate-200">
