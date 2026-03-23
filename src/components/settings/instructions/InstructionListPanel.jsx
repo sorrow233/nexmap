@@ -5,6 +5,10 @@ import {
     getInstructionDisplayTitle,
     getInstructionSnippet
 } from './helpers';
+import {
+    settingsDarkChip,
+    settingsDarkFieldSoft
+} from '../themeClasses';
 
 const SORT_OPTIONS = [
     { id: 'updated_desc', label: '最近更新' },
@@ -68,7 +72,7 @@ export default function InstructionListPanel({
                         value={query}
                         onChange={(e) => onQueryChange?.(e.target.value)}
                         placeholder={t.settings?.canvasInstructionOpenSettings ? '搜索标题或正文...' : '搜索...'}
-                        className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-8 pr-3 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
+                        className={`w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-8 pr-3 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
                     />
                 </div>
 
@@ -78,7 +82,7 @@ export default function InstructionListPanel({
                         <select
                             value={filter}
                             onChange={(e) => onFilterChange?.(e.target.value)}
-                            className="w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
+                            className={`w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
                         >
                             {FILTER_OPTIONS.map(option => (
                                 <option key={option.id} value={option.id}>
@@ -93,7 +97,7 @@ export default function InstructionListPanel({
                         <select
                             value={sort}
                             onChange={(e) => onSortChange?.(e.target.value)}
-                            className="w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-100"
+                            className={`w-full appearance-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] py-2 pl-7 pr-2 text-xs text-[#5d503f] outline-none transition-colors focus:border-[#e7d4bb] ${settingsDarkFieldSoft}`}
                         >
                             {SORT_OPTIONS.map(option => (
                                 <option key={option.id} value={option.id}>{option.label}</option>
@@ -106,7 +110,7 @@ export default function InstructionListPanel({
                     {query && (
                         <button
                             onClick={() => onQueryChange?.('')}
-                            className="inline-flex items-center gap-1 rounded-full border border-[#eadfce] bg-[#fffaf4] px-2.5 py-1 text-[11px] text-[#6d5d4d] transition-colors hover:bg-white dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-200 dark:hover:bg-slate-800"
+                            className={`inline-flex items-center gap-1 rounded-full border border-[#eadfce] bg-[#fffaf4] px-2.5 py-1 text-[11px] text-[#6d5d4d] transition-colors hover:bg-white dark:hover:bg-[#1a2330] ${settingsDarkChip}`}
                         >
                             <XCircle size={11} />
                             清空搜索
@@ -144,7 +148,7 @@ export default function InstructionListPanel({
                             onClick={() => onSelect?.(item.id)}
                             className={`group w-full rounded-xl border px-3 py-2 text-left transition-all ${isActive
                                 ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#1b2430] dark:shadow-[0_14px_28px_rgba(2,6,23,0.42)]'
-                                : 'border-[#eee3d7] bg-[#fffdf9] hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20'
+                                : 'border-[#eee3d7] bg-[#fffdf9] hover:bg-white dark:border-slate-700/80 dark:bg-[#111923]/88 dark:hover:border-slate-600/80 dark:hover:bg-[#1a2330]'
                                 }`}
                         >
                             <div className="mb-1 flex items-center justify-between gap-2">
@@ -181,7 +185,7 @@ export default function InstructionListPanel({
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                 <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${item.enabled !== false
-                                    ? 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-[#17202c] dark:text-slate-200'
+                                    ? `bg-[#f8f2e8] text-[#8d6d49] ${settingsDarkChip}`
                                     : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
                                     }`}>
                                     {item.enabled !== false ? '启用' : '停用'}

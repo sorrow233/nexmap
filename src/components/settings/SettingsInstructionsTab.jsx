@@ -4,6 +4,10 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import InstructionListPanel from './instructions/InstructionListPanel';
 import InstructionEditorPanel from './instructions/InstructionEditorPanel';
 import {
+    settingsDarkSurfaceGradient,
+    settingsDarkSurfaceMuted
+} from './themeClasses';
+import {
     MAX_CONTENT_LENGTH,
     createInstructionId,
     defaultInstruction,
@@ -128,8 +132,8 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <section className="relative overflow-hidden rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(247,241,235,0.92))] p-5 shadow-[0_14px_36px_rgba(95,74,50,0.07)] dark:border-slate-800/80 dark:bg-[#141c26]/90">
-                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#efe1f7]/60 blur-3xl dark:bg-white/10" />
+            <section className={`relative overflow-hidden rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(247,241,235,0.92))] p-5 shadow-[0_14px_36px_rgba(95,74,50,0.07)] ${settingsDarkSurfaceGradient}`}>
+                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full bg-[#efe1f7]/60 blur-3xl dark:bg-slate-700/30" />
                 <div className="relative">
                     <h3 className="mb-2 flex items-center gap-2 text-xl font-semibold text-[#2f241a] dark:text-white">
                         <FileText size={20} className="text-[#776496] dark:text-slate-200" />
@@ -174,7 +178,7 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 dark:border-white/10 dark:bg-white/5">
+                <div className={`rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-4 ${settingsDarkSurfaceMuted}`}>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#a08e7b]">
                         {t.settings?.exampleInstructions || '示例指令'}
                     </p>
@@ -183,7 +187,7 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
                             <button
                                 key={idx}
                                 onClick={() => handleAddInstruction(example)}
-                                className="inline-flex items-start gap-2 rounded-2xl border border-[#eee3d7] bg-[#fffaf4] px-3 py-2 text-left text-sm text-[#5d503f] transition-colors hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:text-slate-100 dark:hover:border-white/20 dark:hover:bg-white/10"
+                                className="inline-flex items-start gap-2 rounded-2xl border border-[#eee3d7] bg-[#fffaf4] px-3 py-2 text-left text-sm text-[#5d503f] transition-colors hover:bg-white dark:border-slate-700/80 dark:bg-[#17202c] dark:text-slate-100 dark:hover:border-slate-600/80 dark:hover:bg-[#1a2330]"
                             >
                                 <Sparkles size={14} className="mt-0.5 text-[#af7c36] dark:text-amber-200" />
                                 <span>{example}</span>

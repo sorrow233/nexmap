@@ -1,3 +1,5 @@
+import { settingsDarkOverlay } from './themeClasses';
+
 export default function CreditMeterCard({
     icon: Icon,
     label,
@@ -30,7 +32,7 @@ export default function CreditMeterCard({
                     className={`relative h-full rounded-full transition-[width] duration-500 ${progressBarClassName}`}
                     style={{ width: `${percent}%` }}
                 >
-                    <div className="absolute inset-0 bg-white/25" />
+                    <div className={`absolute inset-0 bg-white/25 ${settingsDarkOverlay}`} />
                 </div>
             </div>
         </div>

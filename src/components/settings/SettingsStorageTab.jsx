@@ -26,6 +26,13 @@ import {
     normalizeBoardTitleMeta,
 } from '../../services/boardTitle/metadata';
 import { persistBoardsMetadataList } from '../../services/boardPersistence/boardsListStorage';
+import {
+    settingsDarkChip,
+    settingsDarkField,
+    settingsDarkSurface,
+    settingsDarkSurfaceMuted,
+    settingsDarkSurfaceStrong
+} from './themeClasses';
 
 const formatBytes = (bytes) => {
     if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
@@ -38,6 +45,8 @@ const formatBytes = (bytes) => {
     }
     return `${value >= 10 || index === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
 };
+
+const storageFieldClassName = `w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] ${settingsDarkField}`;
 
 export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const { t } = useLanguage();
@@ -327,13 +336,13 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         <div className="space-y-6">
 
 
-            <div className="rounded-[24px] border border-[#eadfce] bg-[#f8f2e8] p-4 text-sm text-[#7d6b57] dark:border-white/10 dark:bg-white/8 dark:text-slate-200">
+            <div className={`rounded-[24px] border border-[#eadfce] bg-[#f8f2e8] p-4 text-sm text-[#7d6b57] ${settingsDarkSurfaceStrong} dark:text-slate-200`}>
                 <p className="font-bold mb-1">{t.settings.storageConfig?.byok || 'BYOK (Bring Your Own Key)'}</p>
                 <p>{t.settings.storageConfig?.byokDesc || 'Use your own S3 storage (AWS, Cloudflare R2, MinIO) to store images.'}</p>
             </div>
 
             {/* Enable Toggle */}
-            <div className="flex items-center justify-between rounded-[24px] border border-[#eee3d7] p-4 dark:border-white/10">
+            <div className={`flex items-center justify-between rounded-[24px] border border-[#eee3d7] p-4 ${settingsDarkSurfaceMuted}`}>
                 <div>
                     <h3 className="font-semibold text-[#43372c] dark:text-slate-200">{t.settings.storageConfig?.enable || 'Enable S3 Storage'}</h3>
                     <p className="text-xs text-[#8f7e6b] dark:text-slate-400">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
@@ -345,7 +354,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         checked={s3Config.enabled}
                         onChange={e => setS3ConfigState({ ...s3Config, enabled: e.target.checked })}
                     />
-                    <div className="h-6 w-11 rounded-full bg-[#e9dfd2] peer after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-[#e1d4c4] after:bg-white after:transition-all after:content-[''] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#f4e7d2] peer-checked:bg-[#efb65a] peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-700 dark:border-gray-600 dark:peer-focus:ring-white/10"></div>
+                    <div className="h-6 w-11 rounded-full bg-[#e9dfd2] peer after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-[#e1d4c4] after:bg-white after:transition-all after:content-[''] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#f4e7d2] peer-checked:bg-[#efb65a] peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-[#1b2430] dark:border-slate-600 dark:peer-focus:ring-slate-700/60"></div>
                 </label>
             </div>
 
@@ -358,7 +367,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             value={s3Config.endpoint}
                             onChange={e => setS3ConfigState({ ...s3Config, endpoint: e.target.value })}
                             placeholder="https://<account>.r2.cloudflarestorage.com"
-                            className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
+                            className={storageFieldClassName}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -369,7 +378,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 value={s3Config.region}
                                 onChange={e => setS3ConfigState({ ...s3Config, region: e.target.value })}
                                 placeholder="auto"
-                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
+                                className={storageFieldClassName}
                             />
                         </div>
                         <div>
@@ -378,7 +387,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 type="text"
                                 value={s3Config.bucket}
                                 onChange={e => setS3ConfigState({ ...s3Config, bucket: e.target.value })}
-                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
+                                className={storageFieldClassName}
                             />
                         </div>
                     </div>
@@ -389,7 +398,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 type="text"
                                 value={s3Config.accessKeyId}
                                 onChange={e => setS3ConfigState({ ...s3Config, accessKeyId: e.target.value })}
-                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
+                                className={storageFieldClassName}
                             />
                         </div>
                         <div>
@@ -398,14 +407,14 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 type="password"
                                 value={s3Config.secretAccessKey}
                                 onChange={e => setS3ConfigState({ ...s3Config, secretAccessKey: e.target.value })}
-                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 font-mono text-sm text-[#40342a] outline-none transition-all focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-800 dark:text-white"
+                                className={storageFieldClassName}
                             />
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className="rounded-[24px] border border-[#eee3d7] bg-[#fffaf2] p-5 dark:border-white/10 dark:bg-white/5">
+            <div className={`rounded-[24px] border border-[#eee3d7] bg-[#fffaf2] p-5 ${settingsDarkSurface}`}>
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                         <div>
@@ -445,14 +454,14 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
                             : s3BackupStatus === 'error'
                                 ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300'
-                                : 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/8 dark:text-slate-200'
+                                : `bg-[#f8f2e8] text-[#8d6d49] ${settingsDarkChip}`
                         }`}>
                         {s3BackupMsg}
                     </div>
                 )}
 
                 {s3BackupResult && (
-                    <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#f8f2e8] p-4 text-xs text-[#6f604f] dark:border-white/10 dark:bg-black/20 dark:text-slate-300">
+                    <div className={`mt-4 rounded-2xl border border-[#eadfce] bg-[#f8f2e8] p-4 text-xs text-[#6f604f] ${settingsDarkSurfaceMuted} dark:text-slate-300`}>
                         <p className="font-semibold">最近一次上传结果</p>
                         <p className="mt-2 font-mono break-all">Bucket: {s3BackupResult.bucket}</p>
                         <p className="mt-1 font-mono break-all">Folder: {s3BackupResult.backupFolder}</p>
@@ -472,7 +481,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         <button
                             onClick={handleRefreshRemoteBackups}
                             disabled={remoteBackupStatus === 'loading' || remoteBackupStatus === 'restoring'}
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] px-4 py-2 text-sm font-semibold text-[#6f604f] transition-all hover:bg-[#f8f2e8] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] px-4 py-2 text-sm font-semibold text-[#6f604f] transition-all hover:bg-[#f8f2e8] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:text-slate-300 dark:hover:bg-[#1a2330]"
                         >
                             {remoteBackupStatus === 'loading' ? (
                                 <>
@@ -501,7 +510,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     {remoteBackupMsg && (
                         <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${remoteBackupStatus === 'error'
                                 ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300'
-                                : 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/8 dark:text-slate-200'
+                                : `bg-[#f8f2e8] text-[#8d6d49] ${settingsDarkChip}`
                             }`}>
                             {remoteBackupMsg}
                         </div>
@@ -512,7 +521,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             {remoteBackups.map((backup) => (
                                 <div
                                     key={backup.id}
-                                    className="rounded-2xl border border-[#eadfce] bg-[#fffdf9] p-4 dark:border-white/10 dark:bg-black/20"
+                                    className={`rounded-2xl border border-[#eadfce] bg-[#fffdf9] p-4 ${settingsDarkSurfaceMuted}`}
                                 >
                                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                         <div className="space-y-1 text-xs text-[#6f604f] dark:text-slate-300">
@@ -545,7 +554,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             ))}
                         </div>
                     ) : remoteBackupStatus === 'loading' ? null : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-[#eadfce] p-4 text-xs text-[#8f7e6b] dark:border-white/10 dark:text-slate-400">
+                        <div className="mt-4 rounded-2xl border border-dashed border-[#eadfce] p-4 text-xs text-[#8f7e6b] dark:border-slate-700/80 dark:bg-[#111923]/80 dark:text-slate-400">
                             暂时没有找到可恢复的 S3 历史备份。
                         </div>
                     )}
@@ -571,7 +580,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         </div>
 
                         {restoreStatus === 'success' ? (
-                            <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-white/50 dark:bg-black/20 p-2 rounded-lg">
+                            <div className="flex items-center gap-2 rounded-lg bg-white/50 p-2 text-sm font-bold text-emerald-600 dark:bg-[#17202c] dark:text-emerald-400">
                                 <CheckCircle2 size={16} />
                                 <span>{restoreMsg || t.settings.storageConfig?.restoreComplete || "Restoration Complete!"}</span>
                             </div>
@@ -606,7 +615,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         )}
                     </div>
                 ) : (
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700/80 dark:bg-[#17202c] dark:text-slate-400">
                         <CheckCircle2 size={16} className="text-slate-400" />
                         {t.settings.storageConfig?.noBackup || 'No pending safety backups found.'}
                     </div>
@@ -623,7 +632,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 </button>
 
                 {showManualImport && (
-                    <div className="mt-4 p-6 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-white/10 animate-fade-in shadow-xl">
+                    <div className="mt-4 rounded-[2rem] border border-slate-200 bg-slate-50/80 p-6 shadow-xl backdrop-blur-xl animate-fade-in dark:border-slate-700/80 dark:bg-[#111923]/90">
                         <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2 text-sm">{t.settings.storageConfig?.manualImport || "Manual JSON Import"}</h4>
                         <p className="text-xs text-slate-500 mb-3">
                             {t.settings.storageConfig?.manualImportDesc || "Paste the raw backup data JSON provided by support below."}
@@ -633,7 +642,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             value={manualJson}
                             onChange={(e) => setManualJson(e.target.value)}
                             placeholder='[{"id":"123", "name":"My Board"...}]'
-                            className="mb-3 h-32 w-full resize-none rounded-2xl border border-[#eee3d7] bg-[#fffdf9] p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-black/20"
+                            className={`${storageFieldClassName} mb-3 h-32 resize-none text-xs`}
                         />
 
                         <div className="flex items-center justify-between">
@@ -683,14 +692,14 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 {backupActionStatus !== 'idle' && backupActionMsg && (
                     <div className={`mb-3 p-2 rounded-lg text-xs font-bold ${backupActionStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
                         backupActionStatus === 'error' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' :
-                            'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/8 dark:text-slate-200'
+                            `bg-[#f8f2e8] text-[#8d6d49] ${settingsDarkChip}`
                         }`}>
                         {backupActionMsg}
                     </div>
                 )}
 
                 {backupHistory.length === 0 ? (
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-center text-slate-500 dark:text-slate-400 text-sm">
+                    <div className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-[#17202c] dark:text-slate-400">
                         {t.settings.storageConfig?.noBackupsYet || "No backups yet. Backups are created automatically at scheduled times."}
                     </div>
                 ) : (
@@ -698,10 +707,10 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         {backupHistory.map((backup) => (
                             <div
                                 key={backup.id}
-                                className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-white/5"
+                                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#17202c]"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="rounded-lg bg-[#f8f2e8] p-1.5 text-[#8d6d49] dark:bg-white/10 dark:text-slate-200">
+                                    <div className={`rounded-lg bg-[#f8f2e8] p-1.5 text-[#8d6d49] ${settingsDarkChip}`}>
                                         <Calendar size={14} />
                                     </div>
                                     <div>
@@ -716,7 +725,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => handleRestoreScheduledBackup(backup.id)}
-                                        className="px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700/80 dark:bg-[#1a2330] dark:text-slate-300 dark:hover:bg-[#233041]"
                                     >
                                         {t.settings.storageConfig?.restore || "Restore"}
                                     </button>

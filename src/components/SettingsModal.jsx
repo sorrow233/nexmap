@@ -346,7 +346,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 onClick={() => setActiveTab(id)}
                 className={`group w-full rounded-[22px] border px-3 py-3 text-left transition-all ${isActive
                     ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)] dark:border-slate-600/70 dark:bg-[#19222e] dark:shadow-[0_18px_38px_rgba(2,6,23,0.42)]'
-                    : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-white/6'
+                    : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-[#16202b]'
                     }`}
             >
                 <div className="flex items-center gap-3">
@@ -554,7 +554,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowResetConfirm(false)}
-                                    className="flex-1 rounded-[14px] border border-[#eadfcd] bg-[#fffaf3] py-2.5 font-medium text-[#655545] transition-all hover:bg-white dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/12"
+                                    className="flex-1 rounded-[14px] border border-[#eadfcd] bg-[#fffaf3] py-2.5 font-medium text-[#655545] transition-all hover:bg-white dark:border-white/10 dark:text-slate-200 dark:hover:bg-[#1a2330]"
                                 >
                                     {t.settings.cancel}
                                 </button>

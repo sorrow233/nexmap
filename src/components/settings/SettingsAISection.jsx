@@ -16,10 +16,16 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getSuggestedRoleModel } from './modelRoleUtils';
+import {
+    settingsDarkChip,
+    settingsDarkField,
+    settingsDarkFieldSoft,
+    settingsDarkSurfaceStrong
+} from './themeClasses';
 
-const fieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-medium text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-slate-700/80 dark:bg-[#0f1722] dark:text-white dark:focus:border-slate-500/70 dark:focus:ring-slate-700/60';
-const monoFieldClassName = 'w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-slate-700/80 dark:bg-[#0f1722] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-slate-500/70 dark:focus:ring-slate-700/60';
-const subtleActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white dark:border-slate-700/80 dark:bg-[#17202c] dark:text-slate-100 dark:hover:bg-[#1d2835]';
+const fieldClassName = `w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-medium text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkField}`;
+const monoFieldClassName = `w-full rounded-[20px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-3 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkField}`;
+const subtleActionClassName = `inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-4 py-2 text-sm font-medium text-[#685745] transition-all hover:bg-white dark:hover:bg-[#1d2835] ${settingsDarkChip}`;
 const dangerActionClassName = 'inline-flex items-center gap-1.5 rounded-full border border-[#edcfce] bg-[#fbefee] px-4 py-2 text-sm font-medium text-[#c66d6d] transition-all hover:bg-[#fff5f4] dark:border-rose-300/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15';
 
 function SectionLabel({ icon: Icon, children }) {
@@ -201,7 +207,7 @@ export default function SettingsAISection({
                                     value={currentProvider.apiKey || ''}
                                     onChange={(e) => handleUpdateProvider('apiKey', e.target.value)}
                                     rows={3}
-                                    className="w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:focus:border-white/20 dark:focus:ring-white/10"
+                                    className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
                                     placeholder={currentProvider.protocol === 'gemini'
                                         ? (t.settings.geminiKeyPlaceholder || 'Gemini API Key')
                                         : (t.settings.openaiKeyPlaceholder || 'sk-...')}
@@ -213,7 +219,7 @@ export default function SettingsAISection({
                         </div>
 
                         {routeHint && (
-                            <div className="rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] dark:border-slate-800/70 dark:bg-[#17202c] dark:text-slate-200">
+                            <div className={`rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] ${settingsDarkSurfaceStrong} dark:text-slate-200`}>
                                 {routeHint}
                             </div>
                         )}
@@ -367,7 +373,7 @@ export default function SettingsAISection({
                                     value={currentProvider.customModels || ''}
                                     onChange={(e) => handleUpdateProvider('customModels', e.target.value)}
                                     rows={3}
-                                    className="w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-white/8 dark:text-white dark:focus:border-white/20 dark:focus:ring-white/10"
+                                    className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
                                 />
                             </div>
                         </div>

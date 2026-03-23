@@ -1,0 +1,12 @@
+export const settingsDarkSurface = 'dark:border-slate-800/80 dark:bg-[#141c26]/90';
+export const settingsDarkSurfaceGradient = 'dark:border-slate-800/80 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))]';
+export const settingsDarkSurfaceMuted = 'dark:border-slate-800/80 dark:bg-[#111923]/88';
+export const settingsDarkSurfaceStrong = 'dark:border-slate-700/80 dark:bg-[#17202c]';
+export const settingsDarkSurfaceRaised = 'dark:border-slate-700/80 dark:bg-[#1b2430]';
+export const settingsDarkField = 'dark:border-slate-700/80 dark:bg-[#0f1722] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500/70 dark:focus:ring-slate-700/60';
+export const settingsDarkFieldSoft = 'dark:border-slate-700/80 dark:bg-[#101924] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500/70 dark:focus:ring-slate-700/60';
+export const settingsDarkChip = 'dark:border-slate-700/70 dark:bg-[#17202c] dark:text-slate-100';
+export const settingsDarkChipRaised = 'dark:border-slate-700/70 dark:bg-[#1a2330] dark:text-slate-100';
+export const settingsDarkIcon = 'dark:bg-[#17202c] dark:text-slate-200';
+export const settingsDarkTrack = 'dark:bg-[#0f1722]';
+export const settingsDarkOverlay = 'dark:bg-black/10';

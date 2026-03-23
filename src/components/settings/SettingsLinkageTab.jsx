@@ -1,6 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, ClipboardPaste, Link2 } from 'lucide-react';
 import { LINKAGE_TARGET_LIST } from '../../services/linkageTargets';
+import {
+    settingsDarkChip,
+    settingsDarkFieldSoft,
+    settingsDarkIcon,
+    settingsDarkSurface,
+    settingsDarkSurfaceGradient,
+    settingsDarkSurfaceMuted
+} from './themeClasses';
 
 export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChange, appUserUid }) {
     const [pasteErrors, setPasteErrors] = useState({});
@@ -27,10 +35,10 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(245,240,234,0.92))] p-6 dark:border-white/10 dark:bg-white/6">
+            <div className={`rounded-[28px] border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(245,240,234,0.92))] p-6 ${settingsDarkSurfaceGradient}`}>
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="rounded-2xl bg-[#e7eef4] p-2.5 text-[#6a7f90] dark:bg-white/10 dark:text-slate-200">
+                        <div className={`rounded-2xl bg-[#e7eef4] p-2.5 text-[#6a7f90] ${settingsDarkIcon}`}>
                             <Link2 size={20} />
                         </div>
                         <div>
@@ -58,14 +66,14 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
                     return (
                         <div
                             key={target.id}
-                            className="rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-5 shadow-[0_16px_36px_rgba(95,74,50,0.06)] dark:border-white/10 dark:bg-slate-900/70"
+                            className={`rounded-[26px] border border-[#eee3d7] bg-[rgba(255,252,247,0.92)] p-5 shadow-[0_16px_36px_rgba(95,74,50,0.06)] ${settingsDarkSurface}`}
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-3">
                                     <img
                                         src={target.iconPath}
                                         alt={target.label}
-                                        className="h-10 w-10 rounded-2xl border border-[#eee3d7] bg-white p-1.5 object-contain dark:border-white/10 dark:bg-slate-950"
+                                        className="h-10 w-10 rounded-2xl border border-[#eee3d7] bg-white p-1.5 object-contain dark:border-slate-700/80 dark:bg-[#0f1722]"
                                     />
                                     <div>
                                         <h4 className="text-base font-semibold tracking-[-0.02em] text-[#2f241a] dark:text-white">{target.label}</h4>
@@ -90,13 +98,13 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
                                 value={value}
                                 onChange={(e) => onLinkageFieldChange(target.settingsKey, e.target.value)}
                                 placeholder={`请输入 ${target.label} 用户 UID`}
-                                className="w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] px-4 py-3 text-sm text-[#40342a] placeholder:text-[#b0a08e] outline-none transition-colors focus:border-[#e7d4bb] focus:ring-2 focus:ring-[#f4e7d2] dark:border-white/10 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                                className={`w-full rounded-2xl border border-[#eee3d7] bg-[#fffdf9] px-4 py-3 text-sm text-[#40342a] placeholder:text-[#b0a08e] outline-none transition-colors focus:border-[#e7d4bb] focus:ring-2 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
                             />
 
                             <div className="mt-3 flex flex-wrap gap-2">
                                 <button
                                     onClick={() => handlePaste(target.settingsKey)}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-3 py-1.5 text-xs font-semibold text-[#6d5d4d] transition-all hover:bg-white dark:border-white/15 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                                    className={`inline-flex items-center gap-1.5 rounded-full border border-[#eadfce] bg-[#fffaf4] px-3 py-1.5 text-xs font-semibold text-[#6d5d4d] transition-all hover:bg-white dark:hover:bg-[#1a2330] ${settingsDarkChip}`}
                                 >
                                     <ClipboardPaste size={13} />
                                     从剪贴板粘贴
@@ -113,7 +121,7 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
                                 <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">{pasteError}</p>
                             )}
 
-                            <div className="mt-4 rounded-[22px] border border-[#eee3d7] bg-[rgba(255,252,247,0.88)] p-4 dark:border-white/10 dark:bg-slate-900/60">
+                            <div className={`mt-4 rounded-[22px] border border-[#eee3d7] bg-[rgba(255,252,247,0.88)] p-4 ${settingsDarkSurfaceMuted}`}>
                                 <div className="mb-2 flex items-center gap-2 text-[#4e4237] dark:text-slate-100">
                                     {isBound ? <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-300" /> : <AlertCircle size={16} className="text-amber-600 dark:text-amber-300" />}
                                     <p className="text-sm font-semibold">发送状态</p>
@@ -130,14 +138,14 @@ export default function SettingsLinkageTab({ linkageSettings, onLinkageFieldChan
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.9)] p-4 dark:border-white/10 dark:bg-slate-900/60">
+                <div className={`rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.9)] p-4 ${settingsDarkSurfaceMuted}`}>
                     <p className="mb-2 text-sm font-semibold text-[#4e4237] dark:text-slate-100">保存提醒</p>
                     <p className="text-xs text-[#7b6a58] dark:text-slate-300">
                         修改绑定后，请点击右上角“保存更改”，这样这台设备上的本地绑定才会更新。
                     </p>
                 </div>
 
-                <div className="rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.9)] p-4 dark:border-white/10 dark:bg-slate-900/60">
+                <div className={`rounded-[24px] border border-[#eee3d7] bg-[rgba(255,252,247,0.9)] p-4 ${settingsDarkSurfaceMuted}`}>
                     <p className="mb-2 text-sm font-semibold text-[#4e4237] dark:text-slate-100">当前 Aimainmap 账号</p>
                     <p className="break-all text-xs text-[#7b6a58] dark:text-slate-300">
                         {appUserUid || '未登录（仍可本地保存绑定）'}
