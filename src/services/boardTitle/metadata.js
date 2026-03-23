@@ -31,6 +31,11 @@ const normalizeListOrder = (value) => {
     return Number.isFinite(numeric) && numeric >= 0 ? Math.trunc(numeric) : Number.NaN;
 };
 
+const normalizeTimestampLikeBoardId = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+};
+
 export const isPlaceholderBoardTitle = (value) => {
     const normalized = normalizeTitleString(value).toLowerCase();
     if (!normalized) return true;
@@ -129,6 +134,11 @@ export const getBoardDisplayName = (board, fallbackTitle = 'Untitled Board') => 
     return normalized.name || fallbackTitle;
 };
 
+export const getBoardCreatedAtValue = (board = {}) => {
+    const normalized = normalizeBoardTitleMeta(board);
+    return normalizeTimestamp(normalized.createdAt) || normalizeTimestampLikeBoardId(normalized.id);
+};
+
 export const compareBoardsByGalleryOrder = (left, right) => {
     const leftListOrder = normalizeListOrder(left?.listOrder);
     const rightListOrder = normalizeListOrder(right?.listOrder);
@@ -164,46 +174,21 @@ export const compareBoardsByGalleryOrder = (left, right) => {
     return String(right?.id || '').localeCompare(String(left?.id || ''));
 };
 
-const getBoardHomeRankMeta = (board = {}) => {
-    const normalized = normalizeBoardTitleMeta(board);
-    const cardCount = Math.max(0, Number(normalized.cardCount) || 0);
-
-    return {
-        hasMeaningfulTitle: normalized.nameSource !== 'placeholder',
-        hasContent: cardCount > 0,
-        lastAccessedAt: normalizeTimestamp(normalized.lastAccessedAt),
-        updatedAt: normalizeTimestamp(normalized.updatedAt),
-        createdAt: normalizeTimestamp(normalized.createdAt),
-        cardCount
-    };
-};
-
 export const compareBoardsByGalleryHomeRank = (left, right) => {
-    const leftMeta = getBoardHomeRankMeta(left);
-    const rightMeta = getBoardHomeRankMeta(right);
+    const leftCreatedAt = getBoardCreatedAtValue(left);
+    const rightCreatedAt = getBoardCreatedAtValue(right);
 
-    if (rightMeta.hasMeaningfulTitle !== leftMeta.hasMeaningfulTitle) {
-        return Number(rightMeta.hasMeaningfulTitle) - Number(leftMeta.hasMeaningfulTitle);
+    if (rightCreatedAt !== leftCreatedAt) {
+        return rightCreatedAt - leftCreatedAt;
     }
 
-    if (rightMeta.hasContent !== leftMeta.hasContent) {
-        return Number(rightMeta.hasContent) - Number(leftMeta.hasContent);
-    }
+    // Keep the homepage stable by creation time; only fall back to updatedAt when
+    // legacy data does not provide a distinguishable creation timestamp.
+    const leftUpdatedAt = normalizeTimestamp(left?.updatedAt);
+    const rightUpdatedAt = normalizeTimestamp(right?.updatedAt);
 
-    if (rightMeta.lastAccessedAt !== leftMeta.lastAccessedAt) {
-        return rightMeta.lastAccessedAt - leftMeta.lastAccessedAt;
-    }
-
-    if (rightMeta.updatedAt !== leftMeta.updatedAt) {
-        return rightMeta.updatedAt - leftMeta.updatedAt;
-    }
-
-    if (rightMeta.createdAt !== leftMeta.createdAt) {
-        return rightMeta.createdAt - leftMeta.createdAt;
-    }
-
-    if (rightMeta.cardCount !== leftMeta.cardCount) {
-        return rightMeta.cardCount - leftMeta.cardCount;
+    if (rightUpdatedAt !== leftUpdatedAt) {
+        return rightUpdatedAt - leftUpdatedAt;
     }
 
     return String(right?.id || '').localeCompare(String(left?.id || ''));

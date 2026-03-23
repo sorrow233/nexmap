@@ -3,7 +3,10 @@ import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
 import useBoardThumbnailUrl from '../hooks/useBoardThumbnailUrl';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getBoardDisplayName } from '../services/boardTitle/metadata';
+import {
+    getBoardCreatedAtValue,
+    getBoardDisplayName
+} from '../services/boardTitle/metadata';
 import {
     getBoardSummaryTags,
     getBoardSummaryTheme
@@ -24,6 +27,9 @@ export default function BoardCard({
 }) {
     const { t } = useLanguage();
     const displayName = getBoardDisplayName(board, t.gallery?.untitledBoard || 'Untitled Board');
+    const boardCreatedAt = getBoardCreatedAtValue(board);
+    const boardDisplayDate = new Date(boardCreatedAt || board.updatedAt || Date.now())
+        .toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const summaryTheme = getBoardSummaryTheme(board?.summary);
     const summaryTags = getBoardSummaryTags(board?.summary);
     const hasSummaryContent = summaryTags.length > 0;
@@ -189,7 +195,7 @@ export default function BoardCard({
                             <span className={`w-2 h-2 rounded-full ${board.cardCount > 0 ? 'bg-cyan-500' : 'bg-slate-300 dark:bg-neutral-700'}`} />
                             <span>{board.cardCount || 0} Cards</span>
                         </div>
-                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span>{boardDisplayDate}</span>
                     </div>
 
                     {isTrashView && (
@@ -278,7 +284,7 @@ export default function BoardCard({
                         <div className="mt-auto flex items-center justify-between pt-4">
                             <div className="flex items-center gap-3">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {boardDisplayDate}
                                 </span>
                             </div>
 
@@ -322,7 +328,7 @@ export default function BoardCard({
                         {displayName}
                     </h3>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                        <span>{new Date(board.updatedAt || board.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span>{boardDisplayDate}</span>
                         <span>•</span>
                         <span>{board.cardCount || 0} items</span>
                     </div>
