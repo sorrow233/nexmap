@@ -216,6 +216,10 @@ export function useBoardPersistence({
         if (!boardId) return false;
 
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
+        if (revision <= trackerRef.current.shadowSavedRevision) {
+            return true;
+        }
+
         const payload = buildBoardRecoverySnapshot(buildBoardPayload(data, {
             clientRevision: revision,
             updatedAt: Date.now()
@@ -226,14 +230,17 @@ export function useBoardPersistence({
 
         const scopes = Array.isArray(options.scopes) ? options.scopes : ['session'];
         const results = await Promise.all(
-            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, { scope }))
+            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, {
+                scope,
+                skipExistingSnapshotCheck: true
+            }))
         );
         const didPersist = results.some(Boolean);
 
-        if (didPersist && typeof options.revision === 'number') {
+        if (didPersist) {
             trackerRef.current.shadowSavedRevision = Math.max(
                 trackerRef.current.shadowSavedRevision,
-                options.revision
+                revision
             );
         }
 
