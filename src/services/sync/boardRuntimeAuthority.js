@@ -11,6 +11,8 @@ export const BOARD_RUNTIME_KEYS = Object.freeze([
     'boardInstructionSettings'
 ]);
 
+const RUNTIME_VIEW_SYNC_DEBOUNCE_MS = 500;
+
 let activeBoardRuntime = null;
 let boardRuntimeStoreWriteScope = '';
 
@@ -28,11 +30,19 @@ const flushRuntimeViewSync = (runtime = null) => {
             runtime.pendingViewKeys.clear();
             runtime.pendingViewOrigin = '';
             runtime.viewSyncScheduled = false;
+            if (runtime.viewSyncTimer) {
+                clearTimeout(runtime.viewSyncTimer);
+                runtime.viewSyncTimer = null;
+            }
         }
         return;
     }
 
     runtime.viewSyncScheduled = false;
+    if (runtime.viewSyncTimer) {
+        clearTimeout(runtime.viewSyncTimer);
+        runtime.viewSyncTimer = null;
+    }
 
     const keys = Array.from(runtime.pendingViewKeys);
     runtime.pendingViewKeys.clear();
@@ -81,15 +91,12 @@ const scheduleRuntimeViewSync = (runtime = null, key, origin = 'runtime_observe'
     }
 
     runtime.viewSyncScheduled = true;
-    const schedule = typeof queueMicrotask === 'function'
-        ? queueMicrotask
-        : (callback) => Promise.resolve().then(callback);
-    schedule(() => {
+    runtime.viewSyncTimer = setTimeout(() => {
         if (activeBoardRuntime !== runtime) {
             return;
         }
         flushRuntimeViewSync(runtime);
-    });
+    }, RUNTIME_VIEW_SYNC_DEBOUNCE_MS);
 };
 
 const bindRuntimeFieldObserver = (runtime = null, key) => {
@@ -133,6 +140,10 @@ const cleanupRuntimeObservers = (runtime = null) => {
     runtime.pendingViewKeys.clear();
     runtime.pendingViewOrigin = '';
     runtime.viewSyncScheduled = false;
+    if (runtime.viewSyncTimer) {
+        clearTimeout(runtime.viewSyncTimer);
+        runtime.viewSyncTimer = null;
+    }
 };
 
 export const hasBoardRuntimePatch = (value = {}) => (
@@ -177,7 +188,8 @@ export const registerActiveBoardRuntime = ({ boardId, controller, onViewSync } =
         observerCleanups: [],
         pendingViewKeys: new Set(),
         pendingViewOrigin: '',
-        viewSyncScheduled: false
+        viewSyncScheduled: false,
+        viewSyncTimer: null
     };
 
     activeBoardRuntime.observerCleanups = BOARD_RUNTIME_KEYS.map((key) => (

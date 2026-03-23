@@ -14,7 +14,6 @@ import {
     clearBoardShadowSnapshot,
     persistBoardShadowSnapshot
 } from '../services/boardPersistence/localBoardShadow';
-import { buildPersistenceVersionKey } from '../services/boardPersistence/persistenceCursor';
 import {
     emitDurableLocalSaveWritten,
     emitLocalSaveConfirmed
@@ -115,7 +114,7 @@ export function useBoardPersistence({
     hasGeneratingCards = false,
     boardChangeState,
     activeBoardPersistence,
-    lastExternalSyncMarker,
+    lastRemoteApplyToken,
     setSaveStatus,
     setLastSavedAt,
     setActiveBoardPersistence,
@@ -144,7 +143,7 @@ export function useBoardPersistence({
     const localSaveWindowStartedAtRef = useRef(0);
     const pendingViewportRef = useRef(null);
     const lastSavedViewportRef = useRef(null);
-    const lastHandledExternalSyncTokenRef = useRef(0);
+    const lastHandledRemoteApplyTokenRef = useRef(0);
     const saveOperationChainRef = useRef(Promise.resolve());
     const idleShadowSaveCancelRef = useRef(null);
     const idleLocalSaveCancelRef = useRef(null);
@@ -507,23 +506,20 @@ export function useBoardPersistence({
             updatedAt: loadedCursor.updatedAt,
             clientRevision: Math.max(loadedCursor.clientRevision, trackedRevision)
         });
-        const currentVersionKey = buildPersistenceVersionKey(currentPayload);
-        const externalSyncToken = Number(lastExternalSyncMarker?.token) || 0;
-        const isExternalSyncSnapshot = (
-            externalSyncToken > 0 &&
-            externalSyncToken !== lastHandledExternalSyncTokenRef.current &&
-            lastExternalSyncMarker?.boardId === boardId &&
-            lastExternalSyncMarker?.versionKey === currentVersionKey
+        const remoteApplyToken = Number(lastRemoteApplyToken) || 0;
+        const shouldMirrorRemoteApplyLocally = (
+            remoteApplyToken > 0 &&
+            remoteApplyToken !== lastHandledRemoteApplyTokenRef.current
         );
 
-        if (isExternalSyncSnapshot) {
+        if (shouldMirrorRemoteApplyLocally) {
             clearContentSaveTimers();
             queuedShadowRevisionRef.current = loadedCursor.clientRevision;
             queuedLocalRevisionRef.current = loadedCursor.clientRevision;
             tracker.revision = Math.max(tracker.revision, loadedCursor.clientRevision);
             tracker.isPrimed = true;
             latestBoardDataRef.current = currentPayload;
-            lastHandledExternalSyncTokenRef.current = externalSyncToken;
+            lastHandledRemoteApplyTokenRef.current = remoteApplyToken;
             void persistExternalSyncSnapshot(currentPayload);
             return;
         }
@@ -582,9 +578,7 @@ export function useBoardPersistence({
         boardChangeState?.revision,
         isBoardLoading,
         isReadOnly,
-        lastExternalSyncMarker?.boardId,
-        lastExternalSyncMarker?.versionKey,
-        lastExternalSyncMarker?.token,
+        lastRemoteApplyToken,
         clearContentSaveTimers,
         persistExternalSyncSnapshot,
         scheduleLocalSave,
@@ -614,7 +608,7 @@ export function useBoardPersistence({
         }
         pendingViewportRef.current = null;
         lastSavedViewportRef.current = null;
-        lastHandledExternalSyncTokenRef.current = 0;
+        lastHandledRemoteApplyTokenRef.current = 0;
 
         if (viewportSaveTimerRef.current) {
             clearTimeout(viewportSaveTimerRef.current);

@@ -49,7 +49,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const globalPrompts = useStore(state => state.globalPrompts);
     const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
-    const lastExternalSyncMarker = useStore(state => state.lastExternalSyncMarker);
+    const lastRemoteApplyToken = useStore(state => state.lastRemoteApplyToken);
     const boardChangeState = useStore(state => state.boardChangeState);
 
     // Store Actions
@@ -163,7 +163,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         hasGeneratingCards: generatingCardIds.size > 0,
         boardChangeState,
         activeBoardPersistence,
-        lastExternalSyncMarker,
+        lastRemoteApplyToken,
         setSaveStatus,
         setLastSavedAt,
         setActiveBoardPersistence,

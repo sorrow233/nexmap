@@ -81,21 +81,6 @@ export const createCardSlice = (set, get) => {
         };
     };
 
-    const normalizeExternalSyncMarker = (marker = {}) => {
-        const token = Number(marker.token);
-        return {
-            token: Number.isFinite(token) && token > 0 ? token : 0,
-            boardId: typeof marker.boardId === 'string' ? marker.boardId : '',
-            versionKey: typeof marker.versionKey === 'string' ? marker.versionKey : '',
-            updatedAt: Number.isFinite(Number(marker.updatedAt)) && Number(marker.updatedAt) >= 0
-                ? Number(marker.updatedAt)
-                : 0,
-            clientRevision: Number.isFinite(Number(marker.clientRevision)) && Number(marker.clientRevision) >= 0
-                ? Number(marker.clientRevision)
-                : 0
-        };
-    };
-
     return {
     cards: [],
     cardIndexMutation: createCardIndexMutation(),
@@ -107,13 +92,7 @@ export const createCardSlice = (set, get) => {
 	        clientRevision: 0,
 	        dirty: false
 	    },
-        lastExternalSyncMarker: {
-            token: 0,
-            boardId: '',
-            versionKey: '',
-            updatedAt: 0,
-            clientRevision: 0
-        },
+        lastRemoteApplyToken: 0,
 
 	    setLastSavedAt: (val) => set({ lastSavedAt: val }),
 	    setActiveBoardPersistence: (cursor) => set((state) => ({
@@ -122,16 +101,6 @@ export const createCardSlice = (set, get) => {
 	            ...cursor
 	        })
 	    })),
-        setExternalSyncMarker: (marker) => set((state) => {
-            const normalizedMarker = normalizeExternalSyncMarker(marker);
-            const nextToken = state.lastExternalSyncMarker.token + 1;
-            return {
-                lastExternalSyncMarker: {
-                    ...normalizedMarker,
-                    token: normalizedMarker.token || nextToken
-                }
-            };
-        }),
         setBoardChangeState: (nextBoardChangeState) => set({
             boardChangeState: createBoardChangeState(nextBoardChangeState)
         }),
@@ -583,13 +552,7 @@ export const createCardSlice = (set, get) => {
                 clientRevision: 0,
                 dirty: false
             },
-                lastExternalSyncMarker: {
-                    token: 0,
-                    boardId: '',
-                    versionKey: '',
-                    updatedAt: 0,
-                    clientRevision: 0
-                }
+                lastRemoteApplyToken: 0
         }, false, { skipBoardRuntime: true });
     }
     };
