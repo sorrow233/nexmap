@@ -30,6 +30,9 @@ export default function CardModelSwitcher({ card, onUpdate }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const { t } = useLanguage();
+    const followGlobalLabel = t.settings?.followGlobal || '跟随全局';
+    const lockedLabel = t.settings?.lockedToCard || '已锁定';
+    const unlockLabel = t.settings?.unlockModelOverride || '解除锁定';
 
     const providers = useStore((state) => state.providers);
     const globalChatRole = useStore((state) => state.globalRoles?.chat);
@@ -55,6 +58,7 @@ export default function CardModelSwitcher({ card, onUpdate }) {
 
     const currentProviderId = resolvedCardConfig.providerId;
     const currentModel = normalizeModelIdForProvider(currentProviderId, resolvedCardConfig.model);
+    const isCardModelLocked = card?.data?.modelLocked === true;
 
     const displayModels = useMemo(() => {
         const sourceModels = groupedModels.length > 0
@@ -97,6 +101,7 @@ export default function CardModelSwitcher({ card, onUpdate }) {
 
         onUpdate(card.id, (currentData) => ({
             ...currentData,
+            modelLocked: true,
             model: normalizeModelIdForProvider(model.providerId, model.id),
             providerId: model.providerId
         }));
@@ -106,14 +111,10 @@ export default function CardModelSwitcher({ card, onUpdate }) {
     const handleResetToDefault = () => {
         if (!card?.id || !onUpdate) return;
 
-        const defaultProviderId = effectiveChatConfig.providerId || effectiveChatConfig.id;
-        const defaultModel = normalizeModelIdForProvider(defaultProviderId, effectiveChatConfig.model);
-
-        onUpdate(card.id, (currentData) => ({
-            ...currentData,
-            model: defaultModel,
-            providerId: defaultProviderId
-        }));
+        onUpdate(card.id, (currentData = {}) => {
+            const { modelLocked, model, providerId, ...rest } = currentData;
+            return rest;
+        });
         setIsOpen(false);
     };
 
@@ -164,18 +165,20 @@ export default function CardModelSwitcher({ card, onUpdate }) {
                                     <span className={`h-2.5 w-2.5 rounded-full ${getProviderAccentClass(currentProviderId)}`} />
                                     <span className="truncate">{currentProviderId}</span>
                                     <span className="rounded-full border border-[#313b51] bg-[#161f31] px-2 py-0.5 text-[9px] font-semibold text-slate-300">
-                                        当前卡片
+                                        {isCardModelLocked ? lockedLabel : followGlobalLabel}
                                     </span>
                                 </div>
                             </div>
 
-                            <button
-                                onClick={handleResetToDefault}
-                                className="mt-0.5 inline-flex shrink-0 items-center gap-2 rounded-full border border-[#313b51] bg-[#161f31] px-3 py-2 text-[10px] font-semibold text-slate-300 transition-all hover:border-brand-400/30 hover:bg-[#1d2840] hover:text-white"
-                            >
-                                <RefreshCw size={13} />
-                                <span>{t.settings.resetDefaults || '恢复默认'}</span>
-                            </button>
+                            {isCardModelLocked && (
+                                <button
+                                    onClick={handleResetToDefault}
+                                    className="mt-0.5 inline-flex shrink-0 items-center gap-2 rounded-full border border-[#313b51] bg-[#161f31] px-3 py-2 text-[10px] font-semibold text-slate-300 transition-all hover:border-brand-400/30 hover:bg-[#1d2840] hover:text-white"
+                                >
+                                    <RefreshCw size={13} />
+                                    <span>{unlockLabel}</span>
+                                </button>
+                            )}
                         </div>
 
                         <div className="h-px bg-white/8" />

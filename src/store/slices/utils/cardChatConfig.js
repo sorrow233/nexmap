@@ -37,11 +37,25 @@ export function resolveCardChatConfig(state, card) {
         fallbackConfig.model || getProviderConfig(state, fallbackProviderId).model
     );
 
-    const cardProviderId = card?.data?.providerId || fallbackProviderId;
-    const cardModel = normalizeModelIdForProvider(cardProviderId, card?.data?.model);
-    const providerConfig = getProviderConfig(state, cardProviderId);
+    const isCardModelLocked = card?.data?.modelLocked === true;
+    if (isCardModelLocked) {
+        const cardProviderId = card?.data?.providerId || fallbackProviderId;
+        const cardModel = normalizeModelIdForProvider(cardProviderId, card?.data?.model);
+        const providerConfig = getProviderConfig(state, cardProviderId);
 
-    if (cardModel) {
+        if (!cardModel) {
+            return {
+                source: 'default',
+                providerId: fallbackProviderId,
+                model: fallbackModel,
+                config: {
+                    ...getProviderConfig(state, fallbackProviderId),
+                    model: fallbackModel,
+                    providerId: fallbackProviderId
+                }
+            };
+        }
+
         return {
             source: 'card',
             providerId: cardProviderId,

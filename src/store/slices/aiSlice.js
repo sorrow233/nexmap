@@ -356,7 +356,7 @@ export const createAISlice = (set, get) => {
         },
 
         handleChatGenerate: async (cardId, messages, onToken, options = {}) => {
-            const { setCardGenerating, updateCardContent, updateCardFull } = get();
+            const { setCardGenerating, updateCardContent } = get();
             const assistantMessageId = options?.assistantMessageId || null;
             setCardGenerating(cardId, true, { messageId: assistantMessageId });
             await yieldToMainThread();
@@ -389,39 +389,13 @@ export const createAISlice = (set, get) => {
                 const fullMessages = [...contextMessages, ...cleanMessages];
 
 
-                // FIXED: 使用新的 getEffectiveChatConfig 这种隔离机制来获取配置
-                // 这确保了画布上的切换只影响对话，不影响全局 activeId (从而保护了功能模型和绘图模型)
+                // Resolve run config without mutating card-level model binding.
+                // Only the explicit card model switcher is allowed to lock a card.
                 const freshState = get();
                 const card = freshState.cards.find(c => c.id === cardId);
 
                 const resolvedRunConfig = resolveCardChatConfig(freshState, card);
-                let config = resolvedRunConfig.config;
-
-                if (resolvedRunConfig.source === 'system-credits') {
-                    if (
-                        card?.data?.model !== resolvedRunConfig.model ||
-                        card?.data?.providerId !== resolvedRunConfig.providerId
-                    ) {
-                        updateCardFull(cardId, (currentData) => ({
-                            ...currentData,
-                            model: resolvedRunConfig.model,
-                            providerId: resolvedRunConfig.providerId
-                        }));
-                    }
-                } else if (
-                    resolvedRunConfig.source === 'default' &&
-                    card &&
-                    (
-                        card.data?.model !== resolvedRunConfig.model ||
-                        card.data?.providerId !== resolvedRunConfig.providerId
-                    )
-                ) {
-                    updateCardFull(cardId, (currentData) => ({
-                        ...currentData,
-                        model: resolvedRunConfig.model,
-                        providerId: resolvedRunConfig.providerId
-                    }));
-                }
+                const config = resolvedRunConfig.config;
 
                 const runModel = config.model;
                 const runProviderId = config.providerId || config.id;
@@ -689,19 +663,11 @@ export const createAISlice = (set, get) => {
             const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
 
-            // Get current active config to use for regeneration (Respect Session Overrides)
-            const runConfigsByCardId = new Map();
-            targets.forEach((card) => {
-                const resolvedConfig = resolveCardChatConfig(get(), card);
-                runConfigsByCardId.set(card.id, resolvedConfig);
-            });
-
-            // Reset assistant messages first while preserving each card's own model binding
+            // Reset assistant messages without mutating card-level model binding.
             set(state => {
                 const updatedCards = [];
                 const nextCards = state.cards.map((c) => {
                     if (selectedIds.indexOf(c.id) !== -1) {
-                        const resolvedConfig = runConfigsByCardId.get(c.id);
                         const newMsgs = [...(c.data.messages || [])];
                         const assistantId = uuid();
                         if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
@@ -713,9 +679,7 @@ export const createAISlice = (set, get) => {
                             ...c,
                             data: {
                                 ...c.data,
-                                messages: newMsgs,
-                                model: resolvedConfig?.model || c.data?.model,
-                                providerId: resolvedConfig?.providerId || c.data?.providerId
+                                messages: newMsgs
                             }
                         };
                         updatedCards.push(updatedCard);
