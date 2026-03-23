@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { getBestAnchorPair, generateBezierPath } from '../utils/geometry';
+import { isDarkThemeActive, subscribeToThemeChange } from '../utils/theme';
 
 /**
  * ConnectionLayer
@@ -183,15 +184,13 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
         window.addEventListener('resize', resize);
         resize();
 
-        const darkMatcher = window.matchMedia('(prefers-color-scheme: dark)');
-
         // Loop Function
         const loop = () => {
             if (!isRunning) return;
 
             const { x: cx, y: cy, s: cs } = transformRef.current;
             const cv = pathVersionRef.current;
-            const isDark = document.documentElement.classList.contains('dark') || darkMatcher.matches;
+            const isDark = isDarkThemeActive();
 
             // Check if anything changed
             const hasChanged =
@@ -278,6 +277,11 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
         // Initial Start
         loop();
 
+        const unsubscribeThemeChange = subscribeToThemeChange(() => {
+            lastRenderState = { ...lastRenderState, d: null };
+            startLoop();
+        }, { emitCurrent: false });
+
         // Wake up listeners
         // We need to attach startLoop to the refs so the OTHER effects can call it?
         // Actually, the other effects can't access this scope.
@@ -295,6 +299,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
 
         return () => {
             window.removeEventListener('resize', resize);
+            unsubscribeThemeChange();
             cancelAnimationFrame(animationFrameId);
             isRunning = false;
         };

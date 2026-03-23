@@ -7,6 +7,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { setupMobileViewportFix } from './utils/browser.js';
 import { installChunkLoadRecovery } from './utils/chunkLoadRecovery.js';
 import { stripBuildReloadParams } from './utils/buildVersion.js';
+import { startSystemThemeSync } from './utils/theme.js';
 import {
     installFetchErrorLogging,
     installGlobalErrorLogging,
@@ -23,24 +24,7 @@ installGlobalErrorLogging();
 installFetchErrorLogging();
 stripBuildReloadParams();
 runtimeLog(`%c NexMap v${packageJson.version} - Loaded at ${new Date().toISOString()} (build ${__APP_BUILD_TIMESTAMP__})`, 'background: #222; color: #bada55; padding: 4px; border-radius: 4px;');
-
-const syncRootThemeClass = (isDark) => {
-    document.documentElement.classList.toggle('dark', Boolean(isDark));
-    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
-};
-
-const darkMatcher = window.matchMedia('(prefers-color-scheme: dark)');
-syncRootThemeClass(darkMatcher.matches);
-
-const handleSystemThemeChange = (event) => {
-    syncRootThemeClass(event.matches);
-};
-
-if (typeof darkMatcher.addEventListener === 'function') {
-    darkMatcher.addEventListener('change', handleSystemThemeChange);
-} else if (typeof darkMatcher.addListener === 'function') {
-    darkMatcher.addListener(handleSystemThemeChange);
-}
+startSystemThemeSync();
 
 // Initialize iOS Safari 100vh viewport fix
 setupMobileViewportFix();
