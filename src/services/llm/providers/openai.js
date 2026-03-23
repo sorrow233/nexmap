@@ -2,6 +2,22 @@ import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 
+const createProviderHttpError = (message, status, body = '') => {
+    const error = new Error(message || `HTTP ${status}`);
+    error.status = status;
+    error.body = body;
+    error.retryable = status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+    return error;
+};
+
+const shouldRetryProviderError = (error) => {
+    if (!error) return false;
+    if (error.name === 'AbortError') return false;
+    if (error.retryable === false) return false;
+    if (error.retryable === true) return true;
+    return error instanceof TypeError;
+};
+
 export class OpenAIProvider extends LLMProvider {
     /**
      * 获取 KeyPool（支持多 Key 轮询）
@@ -69,16 +85,32 @@ export class OpenAIProvider extends LLMProvider {
                 });
 
                 if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
+                    const responseText = await response.text();
+                    const err = (() => {
+                        try {
+                            return JSON.parse(responseText);
+                        } catch {
+                            return {};
+                        }
+                    })();
+                    const errorMessage = err.error?.message || responseText || response.statusText || `HTTP ${response.status}`;
 
                     // Key 无效或超限，标记失效
                     if ([401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
                         retries--;
-                        lastError = new Error(err.error?.message || `API 错误 ${response.status}`);
+                        lastError = createProviderHttpError(errorMessage, response.status, responseText);
                         continue;
                     }
-                    throw new Error(err.error?.message || response.statusText);
+
+                    const error = createProviderHttpError(errorMessage, response.status, responseText);
+                    if (error.retryable && retries > 0) {
+                        retries--;
+                        lastError = error;
+                        continue;
+                    }
+
+                    throw error;
                 }
 
                 const data = await response.json();
@@ -95,7 +127,7 @@ export class OpenAIProvider extends LLMProvider {
 
                 return content;
             } catch (e) {
-                if (retries > 0 && !e.message.includes('没有可用')) {
+                if (retries > 0 && !e.message.includes('没有可用') && shouldRetryProviderError(e)) {
                     retries--;
                     lastError = e;
                     continue;
@@ -143,6 +175,9 @@ export class OpenAIProvider extends LLMProvider {
                 });
 
                 if (!response.ok) {
+                    const responseText = await response.text();
+                    const errorMessage = responseText || response.statusText || `HTTP ${response.status}`;
+
                     // Key 无效或超限，标记失效并切换
                     if ([401, 403, 429].includes(response.status)) {
                         keyPool.markKeyFailed(apiKey, `HTTP ${response.status}`);
@@ -156,7 +191,8 @@ export class OpenAIProvider extends LLMProvider {
                         delay *= 2;
                         continue;
                     }
-                    throw new Error(await response.text());
+
+                    throw createProviderHttpError(errorMessage, response.status, responseText);
                 }
 
                 const reader = response.body.getReader();
@@ -239,7 +275,7 @@ export class OpenAIProvider extends LLMProvider {
                 }
 
             } catch (e) {
-                if (retries > 0 && !e.message.includes('没有可用')) {
+                if (retries > 0 && !e.message.includes('没有可用') && shouldRetryProviderError(e)) {
                     console.warn(`[OpenAI] Stream error: ${e.message}, retrying...`);
                     retries--;
                     continue;

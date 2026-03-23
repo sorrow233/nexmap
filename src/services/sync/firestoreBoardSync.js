@@ -222,13 +222,22 @@ export class FirestoreBoardSync {
         this.uploadPauseReason = nextPaused ? (reason || this.uploadPauseReason || 'manual_pause') : '';
 
         if (nextPaused) {
-            this.clearPendingLocalQueue();
+            if (this.flushTimer) {
+                clearTimeout(this.flushTimer);
+                this.flushTimer = null;
+            }
+            this.flushQueuedReason = '';
             this.clearQueuedRootSyncTouch();
             return;
         }
 
         const resumeReason = reason || this.uploadPauseReason || 'resume_after_pause';
         this.uploadPauseReason = '';
+        if (this.pendingUpdates.length > 0) {
+            void this.flushPendingUpdates(resumeReason);
+            return;
+        }
+
         if (this.hasUnsnapshottedChanges) {
             void this.saveSnapshot(resumeReason);
         }
@@ -421,6 +430,8 @@ export class FirestoreBoardSync {
         }
 
         if (this.uploadPaused) {
+            this.pendingUpdates.push(update);
+            this.pendingBytes += update.byteLength || update.length || 0;
             this.hasUnsnapshottedChanges = true;
             return;
         }
