@@ -343,48 +343,6 @@ function AppContent() {
         };
     }, []);
 
-    const consumePendingRemoteSnapshot = useCallback((boardId) => {
-        const pending = pendingRemoteSnapshotRef.current;
-        if (!pending || pending.boardId !== boardId) {
-            return false;
-        }
-
-        if (Date.now() - pending.queuedAt > PENDING_REMOTE_SNAPSHOT_TTL_MS) {
-            clearPendingRemoteSnapshot(boardId);
-            return false;
-        }
-
-        const decision = shouldApplyRemoteSnapshotToStore(pending.snapshot, {
-            ignoreDirtyGate: true
-        });
-        if (decision.action === 'apply') {
-            clearPendingRemoteSnapshot(boardId);
-            applyBoardSnapshotToStore(decision.snapshot, {
-                source: 'remote_sync',
-                boardId
-            });
-            syncBoardSnapshotMetadataIntoList(boardId, decision.snapshot);
-            return true;
-        }
-
-        if (decision.action === 'skip') {
-            clearPendingRemoteSnapshot(boardId);
-        }
-
-        return false;
-    }, [
-        applyBoardSnapshotToStore,
-        clearPendingRemoteSnapshot,
-        shouldApplyRemoteSnapshotToStore,
-        syncBoardSnapshotMetadataIntoList
-    ]);
-
-    useEffect(() => {
-        return () => {
-            clearPendingRemoteSnapshot();
-        };
-    }, [clearPendingRemoteSnapshot]);
-
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
@@ -440,6 +398,48 @@ function AppContent() {
         // Rebuild card lookup cache outside of set() so it stays consistent.
         useStore.getState().rebuildCardLookup?.(normalized.cards);
     }, []);
+
+    const consumePendingRemoteSnapshot = useCallback((boardId) => {
+        const pending = pendingRemoteSnapshotRef.current;
+        if (!pending || pending.boardId !== boardId) {
+            return false;
+        }
+
+        if (Date.now() - pending.queuedAt > PENDING_REMOTE_SNAPSHOT_TTL_MS) {
+            clearPendingRemoteSnapshot(boardId);
+            return false;
+        }
+
+        const decision = shouldApplyRemoteSnapshotToStore(pending.snapshot, {
+            ignoreDirtyGate: true
+        });
+        if (decision.action === 'apply') {
+            clearPendingRemoteSnapshot(boardId);
+            applyBoardSnapshotToStore(decision.snapshot, {
+                source: 'remote_sync',
+                boardId
+            });
+            syncBoardSnapshotMetadataIntoList(boardId, decision.snapshot);
+            return true;
+        }
+
+        if (decision.action === 'skip') {
+            clearPendingRemoteSnapshot(boardId);
+        }
+
+        return false;
+    }, [
+        applyBoardSnapshotToStore,
+        clearPendingRemoteSnapshot,
+        shouldApplyRemoteSnapshotToStore,
+        syncBoardSnapshotMetadataIntoList
+    ]);
+
+    useEffect(() => {
+        return () => {
+            clearPendingRemoteSnapshot();
+        };
+    }, [clearPendingRemoteSnapshot]);
 
     const flushSearchDataBuffer = useCallback(() => {
         const pendingChunk = searchBufferedDataRef.current;
