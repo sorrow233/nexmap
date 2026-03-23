@@ -185,7 +185,7 @@ export default function SettingsInstructionsTab({ customInstructions, setCustomI
                                 onClick={() => handleAddInstruction(example)}
                                 className="inline-flex items-start gap-2 rounded-2xl border border-[#eee3d7] bg-[#fffaf4] px-3 py-2 text-left text-sm text-[#5d503f] transition-colors hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:text-slate-100 dark:hover:border-white/20 dark:hover:bg-white/10"
                             >
-                                <Sparkles size={14} className="mt-0.5 text-[#af7c36]" />
+                                <Sparkles size={14} className="mt-0.5 text-[#af7c36] dark:text-amber-200" />
                                 <span>{example}</span>
                             </button>
                         ))}

@@ -100,7 +100,7 @@ export default function SettingsAdvancedSection({
                 title="额度与兑换"
                 description="查看更详细的额度信息、兑换码与购买入口。"
                 icon={Gift}
-                tone="bg-[#faedd7] text-[#af7c36]"
+                tone="bg-[#faedd7] text-[#af7c36] dark:bg-amber-400/15 dark:text-amber-200"
                 open={activePanel === 'credits'}
                 onToggle={() => togglePanel('credits')}
             >
@@ -111,7 +111,7 @@ export default function SettingsAdvancedSection({
                 title="高级指令库"
                 description="多条规则、画布可选规则、AI 推荐等仍然保留在这里。"
                 icon={FileText}
-                tone="bg-[#ebe4f7] text-[#776496]"
+                tone="bg-[#ebe4f7] text-[#776496] dark:bg-violet-400/15 dark:text-violet-200"
                 open={activePanel === 'instructions'}
                 onToggle={() => togglePanel('instructions')}
             >
@@ -125,7 +125,7 @@ export default function SettingsAdvancedSection({
                 title="存储与恢复"
                 description="S3、自定义备份、恢复、导入导出等能力。"
                 icon={Database}
-                tone="bg-[#e5eee8] text-[#5f7666]"
+                tone="bg-[#e5eee8] text-[#5f7666] dark:bg-emerald-400/15 dark:text-emerald-200"
                 open={activePanel === 'storage'}
                 onToggle={() => togglePanel('storage')}
             >
@@ -139,7 +139,7 @@ export default function SettingsAdvancedSection({
                 title="跨应用联动"
                 description="管理 FlowStudio 与 Light 的 UID 本地绑定。"
                 icon={Link2}
-                tone="bg-[#e7eef4] text-[#6a7f90]"
+                tone="bg-[#e7eef4] text-[#6a7f90] dark:bg-cyan-400/15 dark:text-cyan-200"
                 open={activePanel === 'linkage'}
                 onToggle={() => togglePanel('linkage')}
             >

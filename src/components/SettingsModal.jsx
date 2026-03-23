@@ -277,8 +277,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             label: '基础体验',
             description: '语言、默认回复规则、基础额度',
             accent: {
-                icon: 'bg-[#f7dfcf] text-[#9f6f4d]',
-                iconActive: 'bg-[#f3d5c0] text-[#8f6143]'
+                icon: 'bg-[#f7dfcf] text-[#9f6f4d] dark:bg-amber-400/15 dark:text-amber-200',
+                iconActive: 'bg-[#f3d5c0] text-[#8f6143] dark:bg-amber-300/20 dark:text-amber-100'
             }
         },
         {
@@ -287,8 +287,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             label: 'AI 设置',
             description: '模型、Key、连接与角色',
             accent: {
-                icon: 'bg-[#ebe4f7] text-[#776496]',
-                iconActive: 'bg-[#e1d7f3] text-[#695784]'
+                icon: 'bg-[#ebe4f7] text-[#776496] dark:bg-violet-400/15 dark:text-violet-200',
+                iconActive: 'bg-[#e1d7f3] text-[#695784] dark:bg-violet-300/20 dark:text-violet-100'
             }
         },
         {
@@ -297,8 +297,8 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             label: '高级设置',
             description: '存储、指令库、绑定与恢复',
             accent: {
-                icon: 'bg-[#e5efe6] text-[#5f7666]',
-                iconActive: 'bg-[#dbe9de] text-[#4e6555]'
+                icon: 'bg-[#e5efe6] text-[#5f7666] dark:bg-emerald-400/15 dark:text-emerald-200',
+                iconActive: 'bg-[#dbe9de] text-[#4e6555] dark:bg-emerald-300/20 dark:text-emerald-100'
             }
         }
     ];
@@ -329,7 +329,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 <button
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${isActive
-                        ? 'border-[#eadbc6] bg-[#fffaf3] text-[#5e4d3e] shadow-[0_10px_24px_rgba(92,74,50,0.10)]'
+                        ? 'border-[#eadbc6] bg-[#fffaf3] text-[#5e4d3e] shadow-[0_10px_24px_rgba(92,74,50,0.10)] dark:border-white/15 dark:bg-white/12 dark:text-white dark:shadow-[0_12px_30px_rgba(2,6,23,0.35)]'
                         : 'border-[#efe6da] bg-[rgba(255,252,247,0.84)] text-[#83705e] hover:bg-white dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12 dark:hover:text-white'
                         }`}
                 >
@@ -345,7 +345,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             <button
                 onClick={() => setActiveTab(id)}
                 className={`group w-full rounded-[22px] border px-3 py-3 text-left transition-all ${isActive
-                    ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)]'
+                    ? 'border-[#ebdecf] bg-[#fffaf3] shadow-[0_16px_32px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_18px_38px_rgba(2,6,23,0.32)]'
                     : 'border-transparent bg-transparent hover:bg-[#fbf6ef] dark:hover:bg-white/6'
                     }`}
             >
@@ -373,9 +373,9 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-[rgba(104,92,78,0.18)] p-2 backdrop-blur-[18px] dark:bg-slate-950/80 sm:p-6">
             <div className="relative h-full w-full max-w-[1320px] overflow-hidden rounded-[38px] border border-[#efe5d8] bg-[linear-gradient(180deg,rgba(248,244,238,0.98),rgba(241,235,228,0.98))] shadow-[0_34px_100px_rgba(82,67,49,0.18)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,22,30,0.96),rgba(12,16,23,0.94))] dark:shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
                 <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5d5a8]/35 blur-3xl" />
-                    <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-[#ddd7ef]/40 blur-3xl" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(250,239,222,0.8),transparent_30%),radial-gradient(circle_at_82%_14%,rgba(239,228,246,0.6),transparent_28%),radial-gradient(circle_at_72%_86%,rgba(235,240,226,0.55),transparent_28%)]" />
+                    <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5d5a8]/35 blur-3xl dark:bg-amber-300/10" />
+                    <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-[#ddd7ef]/40 blur-3xl dark:bg-violet-300/10" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(250,239,222,0.8),transparent_30%),radial-gradient(circle_at_82%_14%,rgba(239,228,246,0.6),transparent_28%),radial-gradient(circle_at_72%_86%,rgba(235,240,226,0.55),transparent_28%)] dark:bg-[radial-gradient(circle_at_14%_16%,rgba(245,158,11,0.09),transparent_26%),radial-gradient(circle_at_82%_14%,rgba(168,85,247,0.10),transparent_24%),radial-gradient(circle_at_72%_86%,rgba(52,211,153,0.08),transparent_24%)]" />
                 </div>
 
                 <div className="relative flex h-full flex-col md:flex-row">
@@ -464,12 +464,12 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                     {saveStatus.type !== 'idle' && (
                         <div className="px-4 pt-4 sm:px-8">
                             <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${saveStatus.type === 'success'
-                                ? 'border-emerald-200/80 bg-[#f0f7f1]'
+                                ? 'border-emerald-200/80 bg-[#f0f7f1] dark:border-emerald-400/20 dark:bg-emerald-500/10'
                                 : saveStatus.type === 'warning'
-                                    ? 'border-[#eed8ae] bg-[#fbf5e8]'
+                                    ? 'border-[#eed8ae] bg-[#fbf5e8] dark:border-amber-300/20 dark:bg-amber-500/10'
                                     : saveStatus.type === 'error'
-                                        ? 'border-rose-200/80 bg-[#fbefef]'
-                                        : 'border-[#ece1d4] bg-[rgba(255,252,247,0.88)]'
+                                        ? 'border-rose-200/80 bg-[#fbefef] dark:border-rose-400/20 dark:bg-rose-500/10'
+                                        : 'border-[#ece1d4] bg-[rgba(255,252,247,0.88)] dark:border-white/10 dark:bg-white/8'
                                 }`}>
                                 <div className="flex min-w-0 items-center gap-2">
                                     {saveStatus.type === 'saving' && <Loader2 size={16} className="animate-spin text-[#7b6a58] dark:text-slate-200" />}

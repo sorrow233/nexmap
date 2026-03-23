@@ -97,8 +97,8 @@ export default function SettingsAISection({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const providerList = Object.values(providers || {});
     const roleAccents = useMemo(() => ({
-        chat: 'bg-[#ece6f7] text-[#765f98]',
-        image: 'bg-[#dcecf0] text-[#61818c]'
+        chat: 'bg-[#ece6f7] text-[#765f98] dark:bg-violet-400/15 dark:text-violet-200',
+        image: 'bg-[#dcecf0] text-[#61818c] dark:bg-cyan-400/15 dark:text-cyan-200'
     }), []);
     const providerKeys = String(currentProvider?.apiKey || '')
         .split(',')
@@ -275,7 +275,7 @@ export default function SettingsAISection({
                                     <div
                                         key={provider.id}
                                         className={`flex items-center gap-2 rounded-[22px] border px-3 py-3 transition-all ${isActive
-                                            ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_10px_24px_rgba(93,75,52,0.08)]'
+                                            ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/12 dark:text-white dark:shadow-[0_14px_32px_rgba(2,6,23,0.32)]'
                                             : 'border-[#eee4d8] bg-[rgba(255,252,247,0.86)] text-[#665746] hover:bg-white dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:border-white/20'
                                             }`}
                                     >

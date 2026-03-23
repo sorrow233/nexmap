@@ -205,7 +205,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             <div className="flex items-center justify-between rounded-[24px] border border-[#eee3d7] p-4 dark:border-white/10">
                 <div>
                     <h3 className="font-semibold text-[#43372c] dark:text-slate-200">{t.settings.storageConfig?.enable || 'Enable S3 Storage'}</h3>
-                    <p className="text-xs text-[#8f7e6b]">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
+                    <p className="text-xs text-[#8f7e6b] dark:text-slate-400">{t.settings.storageConfig?.enableDesc || 'Upload images to your own cloud bucket'}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                     <input

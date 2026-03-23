@@ -115,7 +115,7 @@ export default function InstructionListPanel({
                     <button
                         onClick={onClearEmptyInstructions}
                         disabled={(summary?.empty || 0) === 0}
-                        className="inline-flex items-center gap-1 rounded-full border border-[#eed8ae] bg-[#fbf3e7] px-2.5 py-1 text-[11px] font-semibold text-[#b17d31] transition-colors hover:bg-[#fff7ed] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500/10 dark:text-amber-200"
+                        className="inline-flex items-center gap-1 rounded-full border border-[#eed8ae] bg-[#fbf3e7] px-2.5 py-1 text-[11px] font-semibold text-[#b17d31] transition-colors hover:bg-[#fff7ed] disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-300/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/15"
                     >
                         <Trash2 size={11} />
                         清理空白
@@ -143,7 +143,7 @@ export default function InstructionListPanel({
                             key={item.id}
                             onClick={() => onSelect?.(item.id)}
                             className={`group w-full rounded-xl border px-3 py-2 text-left transition-all ${isActive
-                                ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)]'
+                                ? 'border-[#eadbc9] bg-[#fffaf3] shadow-[0_10px_24px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/10 dark:shadow-[0_14px_28px_rgba(2,6,23,0.32)]'
                                 : 'border-[#eee3d7] bg-[#fffdf9] hover:bg-white dark:border-white/10 dark:bg-slate-900/30 dark:hover:border-white/20'
                                 }`}
                         >

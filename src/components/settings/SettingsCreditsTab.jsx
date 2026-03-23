@@ -88,34 +88,34 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
 
     const heroTheme = isPro
         ? {
-            wrapper: 'border border-[#ead6b5] bg-[linear-gradient(135deg,rgba(255,248,235,0.96),rgba(248,237,221,0.94))] text-[#2f241a] shadow-[0_22px_54px_rgba(168,124,54,0.10)]',
-            glowPrimary: 'bg-[#f6dea7]/40',
-            glowSecondary: 'bg-[#f1c9b2]/30',
+            wrapper: 'border border-[#ead6b5] bg-[linear-gradient(135deg,rgba(255,248,235,0.96),rgba(248,237,221,0.94))] text-[#2f241a] shadow-[0_22px_54px_rgba(168,124,54,0.10)] dark:border-amber-200/15 dark:bg-[linear-gradient(135deg,rgba(39,28,12,0.92),rgba(29,22,14,0.96))] dark:text-white dark:shadow-[0_24px_60px_rgba(2,6,23,0.45)]',
+            glowPrimary: 'bg-[#f6dea7]/40 dark:bg-amber-300/10',
+            glowSecondary: 'bg-[#f1c9b2]/30 dark:bg-orange-300/10',
             texture: '',
-            iconBox: 'bg-[#f5e2bf] ring-[#ebcf9b]',
-            description: 'text-[#7b6751]',
-            highlightPill: 'border-[#ead6b5] bg-[#fff8ec] text-[#9a7338]',
-            meterContainer: 'border-[#eadcc9] bg-white/85',
-            meterLabel: 'text-[#8f7d69]',
-            meterValue: 'text-[#2f241a]',
-            meterTotal: 'text-[#a88b68]',
-            meterTrack: 'bg-[#f5eee5]',
+            iconBox: 'bg-[#f5e2bf] ring-[#ebcf9b] dark:bg-amber-300/15 dark:ring-amber-200/20',
+            description: 'text-[#7b6751] dark:text-amber-50/80',
+            highlightPill: 'border-[#ead6b5] bg-[#fff8ec] text-[#9a7338] dark:border-amber-200/15 dark:bg-amber-300/10 dark:text-amber-100',
+            meterContainer: 'border-[#eadcc9] bg-white/85 dark:border-white/10 dark:bg-white/8',
+            meterLabel: 'text-[#8f7d69] dark:text-slate-300/75',
+            meterValue: 'text-[#2f241a] dark:text-white',
+            meterTotal: 'text-[#a88b68] dark:text-slate-400',
+            meterTrack: 'bg-[#f5eee5] dark:bg-white/10',
             conversationBar: 'bg-gradient-to-r from-[#f3c97b] to-[#e59f6b]',
             imageBar: 'bg-gradient-to-r from-[#d7c5e9] to-[#a9bfd8]'
         }
         : {
-            wrapper: 'border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(246,240,234,0.94))] text-[#2f241a] shadow-[0_22px_54px_rgba(95,74,50,0.08)]',
-            glowPrimary: 'bg-[#efe1f7]/45',
-            glowSecondary: 'bg-[#dfe8ef]/45',
+            wrapper: 'border border-[#eee3d7] bg-[linear-gradient(135deg,rgba(255,252,247,0.96),rgba(246,240,234,0.94))] text-[#2f241a] shadow-[0_22px_54px_rgba(95,74,50,0.08)] dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(20,24,31,0.94),rgba(12,17,24,0.94))] dark:text-white dark:shadow-[0_24px_60px_rgba(2,6,23,0.45)]',
+            glowPrimary: 'bg-[#efe1f7]/45 dark:bg-violet-300/10',
+            glowSecondary: 'bg-[#dfe8ef]/45 dark:bg-cyan-300/10',
             texture: '',
-            iconBox: 'bg-[#f0e7da] ring-[#ebddca]',
-            description: 'text-[#7b6a58]',
-            highlightPill: 'border-[#eadcc9] bg-[#fffaf3] text-[#8d6d49]',
-            meterContainer: 'border-[#eadcc9] bg-white/85',
-            meterLabel: 'text-[#8f7d69]',
-            meterValue: 'text-[#2f241a]',
-            meterTotal: 'text-[#a88b68]',
-            meterTrack: 'bg-[#f5eee5]',
+            iconBox: 'bg-[#f0e7da] ring-[#ebddca] dark:bg-white/10 dark:ring-white/10',
+            description: 'text-[#7b6a58] dark:text-slate-300',
+            highlightPill: 'border-[#eadcc9] bg-[#fffaf3] text-[#8d6d49] dark:border-white/10 dark:bg-white/8 dark:text-slate-100',
+            meterContainer: 'border-[#eadcc9] bg-white/85 dark:border-white/10 dark:bg-white/8',
+            meterLabel: 'text-[#8f7d69] dark:text-slate-300/75',
+            meterValue: 'text-[#2f241a] dark:text-white',
+            meterTotal: 'text-[#a88b68] dark:text-slate-400',
+            meterTrack: 'bg-[#f5eee5] dark:bg-white/10',
             conversationBar: 'bg-gradient-to-r from-[#f3c97b] to-[#e59f6b]',
             imageBar: 'bg-gradient-to-r from-[#d7c5e9] to-[#a9bfd8]'
         };
@@ -135,11 +135,11 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                                 <>
                                     <Crown size={32} className="text-[#9a7338] drop-shadow-md" />
                                     <div className="absolute -right-1 -top-1">
-                                        <Sparkles size={16} className="animate-pulse text-[#d89e47]" />
+                                        <Sparkles size={16} className="animate-pulse text-[#d89e47] dark:text-amber-200" />
                                     </div>
                                 </>
                             ) : (
-                                <CheckCircle2 size={32} className="text-[#8d6d49]" />
+                                <CheckCircle2 size={32} className="text-[#8d6d49] dark:text-slate-100" />
                             )}
                         </div>
 
@@ -157,7 +157,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                             <>
                                 <h2 className="text-3xl font-semibold tracking-[-0.02em] sm:text-[34px]">{t.credits.noConfigNeeded}</h2>
                                 <p className={`mt-2 max-w-lg text-lg leading-relaxed ${heroTheme.description}`}>
-                                    {t.credits.readyToUse} <strong className="border-b-2 border-[#ead6b5] text-[#2f241a]">{totalCap}</strong> {t.credits.conversations}
+                                    {t.credits.readyToUse} <strong className="border-b-2 border-[#ead6b5] text-[#2f241a] dark:border-amber-200/30 dark:text-white">{totalCap}</strong> {t.credits.conversations}
                                 </p>
                             </>
                         )}
@@ -206,7 +206,7 @@ export default function SettingsCreditsTab({ onOpenAdvanced }) {
                     </div>
                     <div>
                         <h3 className="font-semibold text-[#3b3025] dark:text-white">{t.credits.redeemCode}</h3>
-                        <p className="text-xs text-[#8f7e6b]">{t.credits.redeemCodeDesc}</p>
+                        <p className="text-xs text-[#8f7e6b] dark:text-slate-400">{t.credits.redeemCodeDesc}</p>
                     </div>
                 </div>
 

@@ -46,7 +46,7 @@ export default function InstructionEditorPanel({
                     </button>
                     <button
                         onClick={() => onRemove?.(item.id)}
-                        className="inline-flex items-center gap-1 rounded-full border border-[#edcfce] bg-[#fbefee] px-3 py-1.5 text-xs font-semibold text-[#c66d6d] transition-colors hover:bg-[#fff5f4] dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+                        className="inline-flex items-center gap-1 rounded-full border border-[#edcfce] bg-[#fbefee] px-3 py-1.5 text-xs font-semibold text-[#c66d6d] transition-colors hover:bg-[#fff5f4] dark:border-rose-300/25 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
                     >
                         <Trash2 size={12} />
                         删除
@@ -84,10 +84,10 @@ export default function InstructionEditorPanel({
                             }`}
                     />
                     <div className="mt-1 flex items-center justify-between text-[11px]">
-                        <span className={`${isEmpty ? 'text-[#b17d31] dark:text-amber-200' : 'text-[#b0a08e]'}`}>
+                        <span className={`${isEmpty ? 'text-[#b17d31] dark:text-amber-200' : 'text-[#b0a08e] dark:text-slate-400'}`}>
                             {isEmpty ? '内容为空时不会生效' : '建议单条指令聚焦一个行为目标'}
                         </span>
-                        <span className="text-[#b0a08e]">{(item.content || '').length}/{MAX_CONTENT_LENGTH}</span>
+                        <span className="text-[#b0a08e] dark:text-slate-400">{(item.content || '').length}/{MAX_CONTENT_LENGTH}</span>
                     </div>
                 </div>
 

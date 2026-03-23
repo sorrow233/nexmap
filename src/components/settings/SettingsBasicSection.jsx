@@ -20,7 +20,7 @@ function LanguageChip({ active, label, caption, onClick }) {
         <button
             onClick={onClick}
             className={`rounded-[24px] border px-4 py-3 text-left transition-all duration-200 ${active
-                ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_14px_28px_rgba(93,75,52,0.08)]'
+                ? 'border-[#eadbc9] bg-[#fffaf3] text-[#2f241a] shadow-[0_14px_28px_rgba(93,75,52,0.08)] dark:border-white/15 dark:bg-white/12 dark:text-white dark:shadow-[0_16px_34px_rgba(2,6,23,0.32)]'
                 : 'border-[#efe4d8] bg-[rgba(255,252,247,0.84)] text-[#665746] hover:bg-white dark:border-white/10 dark:bg-white/6 dark:text-slate-200 dark:hover:border-white/20'
                 }`}
         >
