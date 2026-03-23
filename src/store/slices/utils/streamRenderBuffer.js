@@ -1,5 +1,5 @@
 const DEFAULT_OPTIONS = {
-    frameIntervalMs: 16,
+    frameIntervalMs: 48,
     baseChunkSize: 24,
     maxChunkSize: 320,
     targetDrainSteps: 8

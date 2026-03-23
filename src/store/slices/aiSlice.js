@@ -10,16 +10,29 @@ import { assembleContext } from '../../utils/aiContextUtils';
 import translations from '../../contexts/translations';
 import {
     applyStreamTextUpdates,
+    appendStreamBufferUpdates,
     buildStreamBufferKey,
     collectStreamBufferUpdatesForCard,
     createStreamRenderBuffer,
+    removeStreamBufferUpdateByKey,
     removeStreamBufferUpdatesForCard
 } from './utils/streamRenderBuffer';
+import {
+    applyStreamingMessageMetaUpdates,
+    collectStreamingMessageMetaForCard,
+    mergeStreamingMessageMeta,
+    removeStreamingMessageMetaByKey,
+    removeStreamingMessageMetaForCard
+} from './utils/streamingMessageMeta';
 import { createCardTimestampFields } from '../../services/cards/cardTimestamps';
 import {
     createMessageContentWithImages,
     persistCardMessageImagesToIDB
 } from '../../services/ai/messageContent';
+import {
+    extractTextFromMessageContent,
+    isMessageContentEmpty
+} from '../../services/ai/chatRequestMessages';
 import { yieldToMainThread } from '../../utils/scheduling';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
 import { bumpBoardChangeState } from './utils/boardChangeState';
@@ -95,39 +108,20 @@ export const createAISlice = (set, get) => {
         if (!updates || updates.size === 0) return;
 
         set((state) => {
-            const nextCards = applyStreamTextUpdates(state.cards, updates);
-            if (nextCards === state.cards) return {};
+            const { nextBufferState, dirtyCardIds } = appendStreamBufferUpdates(
+                state.streamingMessages,
+                updates
+            );
 
-            const dirtyCardIds = new Set();
-            const updatedCards = [];
-
-            updates.forEach((_, bufferKey) => {
-                const separatorIndex = bufferKey.indexOf(':');
-                const cardId = separatorIndex >= 0
-                    ? bufferKey.slice(0, separatorIndex)
-                    : bufferKey;
-
-                if (!cardId || dirtyCardIds.has(cardId)) return;
-                dirtyCardIds.add(cardId);
-                const updatedCard = nextCards.find((card) => card.id === cardId);
-                if (updatedCard) {
-                    updatedCards.push(updatedCard);
-                }
-            });
+            if (
+                nextBufferState === state.streamingMessages &&
+                dirtyCardIds.size === 0
+            ) {
+                return {};
+            }
 
             return {
-                cards: nextCards,
-                cardIndexMutation: updatedCards.length > 0
-                    ? nextCardIndexMutation(state.cardIndexMutation, {
-                        mode: 'patch',
-                        scope: 'content',
-                        updatedCards,
-                        reason: 'streamRenderBuffer:flushToMessages'
-                    })
-                    : state.cardIndexMutation,
-                boardChangeState: updatedCards.length > 0
-                    ? bumpBoardChangeState(state.boardChangeState, 'card_content')
-                    : state.boardChangeState,
+                streamingMessages: nextBufferState,
                 streamingCardVersions: bumpStreamingCardVersions(
                     state.streamingCardVersions,
                     dirtyCardIds
@@ -140,6 +134,7 @@ export const createAISlice = (set, get) => {
         generatingCardIds: new Set(),
         generatingCardTaskCounts: {},
         streamingMessages: {},
+        streamingMessageMeta: {},
         streamingCardVersions: {},
 
         // Persistent message queue: { cardId: [{ text, images }] }
@@ -162,6 +157,7 @@ export const createAISlice = (set, get) => {
             if (!cardId) {
                 if (
                     Object.keys(state.streamingMessages || {}).length === 0 &&
+                    Object.keys(state.streamingMessageMeta || {}).length === 0 &&
                     Object.keys(state.streamingCardVersions || {}).length === 0
                 ) {
                     return {};
@@ -169,12 +165,17 @@ export const createAISlice = (set, get) => {
 
                 return {
                     streamingMessages: {},
+                    streamingMessageMeta: {},
                     streamingCardVersions: {}
                 };
             }
 
             const nextStreamingMessages = removeStreamBufferUpdatesForCard(
                 state.streamingMessages,
+                cardId
+            );
+            const nextStreamingMessageMeta = removeStreamingMessageMetaForCard(
+                state.streamingMessageMeta,
                 cardId
             );
             const nextStreamingCardVersions = clearStreamingCardVersion(
@@ -184,6 +185,7 @@ export const createAISlice = (set, get) => {
 
             if (
                 nextStreamingMessages === state.streamingMessages &&
+                nextStreamingMessageMeta === state.streamingMessageMeta &&
                 nextStreamingCardVersions === state.streamingCardVersions
             ) {
                 return {};
@@ -191,6 +193,7 @@ export const createAISlice = (set, get) => {
 
             return {
                 streamingMessages: nextStreamingMessages,
+                streamingMessageMeta: nextStreamingMessageMeta,
                 streamingCardVersions: nextStreamingCardVersions
             };
         }),
@@ -377,9 +380,9 @@ export const createAISlice = (set, get) => {
                 const ERROR_MARKERS = ['⚠️', 'AI服务暂时不可用', 'AI Service', 'Service Unavailable', 'Rate Limited', 'Generation Failed', 'Request Timeout'];
                 const cleanMessages = messages.filter(msg => {
                     if (msg.role !== 'assistant') return true;
-                    const content = msg.content || '';
+                    const content = extractTextFromMessageContent(msg.content);
                     // Skip empty or error-only messages
-                    if (!content.trim()) return false;
+                    if (isMessageContentEmpty(msg.content)) return false;
                     // Check if message starts with or contains error markers
                     return !ERROR_MARKERS.some(marker => content.includes(marker));
                 });
@@ -541,6 +544,24 @@ export const createAISlice = (set, get) => {
             if (!cardId || !messageId || !metaUpdates || typeof metaUpdates !== 'object') return;
 
             set(state => {
+                const isStreamingCard = (state.generatingCardTaskCounts?.[cardId] || 0) > 0
+                    || state.generatingCardIds?.has?.(cardId);
+                if (isStreamingCard) {
+                    const nextStreamingMessageMeta = mergeStreamingMessageMeta(
+                        state.streamingMessageMeta,
+                        buildStreamBufferKey(cardId, messageId),
+                        metaUpdates
+                    );
+
+                    if (nextStreamingMessageMeta === state.streamingMessageMeta) {
+                        return {};
+                    }
+
+                    return {
+                        streamingMessageMeta: nextStreamingMessageMeta
+                    };
+                }
+
                 const updatedCards = [];
                 const nextCards = state.cards.map((card) => {
                     if (card.id !== cardId) return card;
@@ -612,16 +633,25 @@ export const createAISlice = (set, get) => {
                         collectStreamBufferUpdatesForCard(state.streamingMessages, id),
                         flushedTailUpdates
                     );
-                const nextCards = committedUpdates.size > 0
+                const committedMetaUpdates = isGenerating
+                    ? {}
+                    : collectStreamingMessageMetaForCard(state.streamingMessageMeta, id);
+                const nextCardsAfterText = committedUpdates.size > 0
                     ? applyStreamTextUpdates(state.cards, committedUpdates)
                     : state.cards;
-                const updatedCards = committedUpdates.size > 0
+                const nextCards = Object.keys(committedMetaUpdates).length > 0
+                    ? applyStreamingMessageMetaUpdates(nextCardsAfterText, committedMetaUpdates)
+                    : nextCardsAfterText;
+                const updatedCards = nextCards !== state.cards
                     ? nextCards.filter((card) => card.id === id)
                     : [];
 
                 const nextStreamingMessages = isGenerating
-                    ? state.streamingMessages
+                    ? removeStreamBufferUpdateByKey(state.streamingMessages, bufferKey)
                     : removeStreamBufferUpdatesForCard(state.streamingMessages, id);
+                const nextStreamingMessageMeta = isGenerating
+                    ? removeStreamingMessageMetaByKey(state.streamingMessageMeta, bufferKey)
+                    : removeStreamingMessageMetaForCard(state.streamingMessageMeta, id);
                 const nextStreamingCardVersions = nextCount > 0
                     ? state.streamingCardVersions
                     : clearStreamingCardVersion(state.streamingCardVersions, id);
@@ -647,6 +677,10 @@ export const createAISlice = (set, get) => {
 
                 if (nextStreamingMessages !== state.streamingMessages) {
                     patch.streamingMessages = nextStreamingMessages;
+                }
+
+                if (nextStreamingMessageMeta !== state.streamingMessageMeta) {
+                    patch.streamingMessageMeta = nextStreamingMessageMeta;
                 }
 
                 if (nextStreamingCardVersions !== state.streamingCardVersions) {
@@ -716,11 +750,19 @@ export const createAISlice = (set, get) => {
                     const currentMsgs = [...(freshCard.data.messages || [])];
                     const assistantMsg = currentMsgs.slice().reverse().find(m => m.role === 'assistant');
                     const messageId = assistantMsg?.id;
+                    const requestMessages = (
+                        messageId
+                        && currentMsgs.length > 0
+                        && currentMsgs[currentMsgs.length - 1]?.id === messageId
+                        && currentMsgs[currentMsgs.length - 1]?.role === 'assistant'
+                    )
+                        ? currentMsgs.slice(0, -1)
+                        : currentMsgs;
 
                     // handleChatGenerate handles config resolution and AIManager enqueuing
                     return handleChatGenerate(
                         card.id,
-                        currentMsgs,
+                        requestMessages,
                         (chunk, msgId) => updateCardContent(card.id, chunk, msgId || messageId),
                         { assistantMessageId: messageId }
                     );
