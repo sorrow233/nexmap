@@ -14,12 +14,28 @@ import {
     hasSafetyBackup,
     restoreSafetyBackup
 } from '../../services/safetyBackupService';
+import {
+    getResolvedS3BackupFolder,
+    uploadFullDataBackupToS3
+} from '../../services/s3BackupService';
 import DataMigrationSection from './DataMigrationSection';
 import {
     normalizeBoardMetadataList,
     normalizeBoardTitleMeta,
 } from '../../services/boardTitle/metadata';
 import { persistBoardsMetadataList } from '../../services/boardPersistence/boardsListStorage';
+
+const formatBytes = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let index = 0;
+    while (value >= 1024 && index < units.length - 1) {
+        value /= 1024;
+        index += 1;
+    }
+    return `${value >= 10 || index === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
+};
 
 export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const { t } = useLanguage();
@@ -37,6 +53,10 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const [nextBackupTime, setNextBackupTime] = useState(null);
     const [backupActionStatus, setBackupActionStatus] = useState('idle'); // idle, loading, success, error
     const [backupActionMsg, setBackupActionMsg] = useState('');
+
+    const [s3BackupStatus, setS3BackupStatus] = useState('idle'); // idle, uploading, success, error
+    const [s3BackupMsg, setS3BackupMsg] = useState('');
+    const [s3BackupResult, setS3BackupResult] = useState(null);
 
 
 
@@ -190,6 +210,21 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         }
     };
 
+    const handleUploadFullBackupToS3 = async () => {
+        setS3BackupStatus('uploading');
+        setS3BackupMsg('');
+        setS3BackupResult(null);
+        try {
+            const result = await uploadFullDataBackupToS3(s3Config);
+            setS3BackupStatus('success');
+            setS3BackupResult(result);
+            setS3BackupMsg(`已上传 ${result.stats?.boardCount || 0} 个画板，备份体积 ${formatBytes(result.stats?.sizeBytes || 0)}。`);
+        } catch (error) {
+            console.error('[S3Backup] Upload failed:', error);
+            setS3BackupStatus('error');
+            setS3BackupMsg(error?.message || '上传到 S3 失败，请检查配置后重试。');
+        }
+    };
 
 
     return (
@@ -273,6 +308,63 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     </div>
                 </div>
             )}
+
+            <div className="rounded-[24px] border border-[#eee3d7] bg-[#fffaf2] p-5 dark:border-white/10 dark:bg-white/5">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                        <div>
+                            <h3 className="font-semibold text-[#43372c] dark:text-slate-200">S3 全量备份</h3>
+                            <p className="text-xs text-[#8f7e6b] dark:text-slate-400">
+                                把当前设备上的全部本地数据直接导出为 JSON 并上传到你自己的 S3。适合 67MB 这类大体积备份，不再依赖浏览器本地下载。
+                            </p>
+                        </div>
+                        <div className="space-y-1 text-xs text-[#7d6b57] dark:text-slate-300">
+                            <p>包含：全部画板、IndexedDB 内容、本地设置、收藏、提示词，以及当前保存的 S3/Provider 配置。</p>
+                            <p>专用目录：<span className="font-mono">{getResolvedS3BackupFolder(s3Config) || 'backups/full-data'}</span></p>
+                            <p>每次上传都会在该目录下再创建一层时间戳子文件夹，并同时写入完整备份文件和 `manifest.json`。</p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleUploadFullBackupToS3}
+                        disabled={s3BackupStatus === 'uploading'}
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {s3BackupStatus === 'uploading' ? (
+                            <>
+                                <RotateCcw size={14} className="animate-spin" />
+                                正在上传到 S3...
+                            </>
+                        ) : (
+                            <>
+                                <Database size={14} />
+                                上传本地全部数据到 S3
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {s3BackupMsg && (
+                    <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${s3BackupStatus === 'success'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                            : s3BackupStatus === 'error'
+                                ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300'
+                                : 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/8 dark:text-slate-200'
+                        }`}>
+                        {s3BackupMsg}
+                    </div>
+                )}
+
+                {s3BackupResult && (
+                    <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#f8f2e8] p-4 text-xs text-[#6f604f] dark:border-white/10 dark:bg-black/20 dark:text-slate-300">
+                        <p className="font-semibold">最近一次上传结果</p>
+                        <p className="mt-2 font-mono break-all">Bucket: {s3BackupResult.bucket}</p>
+                        <p className="mt-1 font-mono break-all">Folder: {s3BackupResult.backupFolder}</p>
+                        <p className="mt-1 font-mono break-all">Backup: {s3BackupResult.backupKey}</p>
+                        <p className="mt-1 font-mono break-all">Manifest: {s3BackupResult.manifestKey}</p>
+                    </div>
+                )}
+            </div>
 
             {/* Data Recovery Section */}
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
