@@ -1,4 +1,5 @@
 import {
+    DeleteObjectCommand,
     GetObjectCommand,
     ListObjectsV2Command,
     PutObjectCommand,
@@ -17,6 +18,7 @@ import { getS3Config } from './s3';
 
 const BACKUP_ROOT_FOLDER = 'backups/full-data';
 const DEFAULT_LIST_LIMIT = 20;
+const MAX_REMOTE_BACKUPS = 5;
 
 const createBackupId = () => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -130,6 +132,92 @@ const computeSha256Hex = async (text) => {
         .join('');
 };
 
+const listBackupEntries = async (client, config, options = {}) => {
+    const limit = Number(options.limit) > 0 ? Number(options.limit) : DEFAULT_LIST_LIMIT;
+    const prefix = `${getResolvedS3BackupFolder(config)}/`;
+    const manifestObjects = [];
+    let continuationToken;
+
+    do {
+        const response = await client.send(new ListObjectsV2Command({
+            Bucket: config.bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken
+        }));
+
+        const currentBatch = (response.Contents || [])
+            .filter((item) => item.Key && item.Key.endsWith('/manifest.json'));
+        manifestObjects.push(...currentBatch);
+        continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
+    } while (continuationToken && (options.scanAll || manifestObjects.length < limit * 2));
+
+    const sortedCandidates = manifestObjects
+        .sort((left, right) => {
+            const leftTime = new Date(left.LastModified || 0).getTime();
+            const rightTime = new Date(right.LastModified || 0).getTime();
+            return rightTime - leftTime;
+        })
+        .slice(0, options.scanAll ? undefined : limit);
+
+    const entries = await Promise.allSettled(sortedCandidates.map(async (item) => {
+        const manifest = await readJsonObject(client, config.bucket, item.Key);
+        return {
+            id: manifest.backupId || item.Key,
+            bucket: config.bucket,
+            backupFolder: manifest.backupFolder || item.Key.replace(/\/manifest\.json$/, ''),
+            backupKey: manifest.backupKey,
+            manifestKey: item.Key,
+            exportedAt: manifest.exportedAt || item.LastModified || null,
+            sizeBytes: Number(manifest.sizeBytes) || 0,
+            boardCount: Number(manifest.boardCount) || 0,
+            settingsCount: Number(manifest.settingsCount) || 0,
+            sha256: manifest.sha256 || '',
+            appVersion: manifest.appVersion || '',
+            schemaVersion: manifest.schemaVersion || '',
+            rawManifest: manifest
+        };
+    }));
+
+    return entries
+        .filter((entry) => entry.status === 'fulfilled')
+        .map((entry) => entry.value)
+        .sort((left, right) => new Date(right.exportedAt || 0).getTime() - new Date(left.exportedAt || 0).getTime());
+};
+
+const deleteBackupEntry = async (client, bucket, entry) => {
+    const keys = [entry.backupKey, entry.manifestKey].filter(Boolean);
+    for (const key of keys) {
+        await client.send(new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: key
+        }));
+    }
+};
+
+const enforceBackupRetention = async (client, config) => {
+    const backups = await listBackupEntries(client, config, { scanAll: true });
+    const staleBackups = backups.slice(MAX_REMOTE_BACKUPS);
+    const deletedBackupIds = [];
+    const deleteErrors = [];
+
+    for (const backup of staleBackups) {
+        try {
+            await deleteBackupEntry(client, config.bucket, backup);
+            deletedBackupIds.push(backup.id);
+        } catch (error) {
+            deleteErrors.push({
+                backupId: backup.id,
+                message: error?.message || 'unknown_error'
+            });
+        }
+    }
+
+    return {
+        deletedBackupIds,
+        deleteErrors
+    };
+};
+
 export const getResolvedS3BackupFolder = (configOverride) => {
     const config = resolveS3Config(configOverride);
     return [config?.folderPrefix || '', BACKUP_ROOT_FOLDER].filter(Boolean).join('/');
@@ -180,11 +268,14 @@ export async function uploadFullDataBackupToS3(configOverride = null) {
         ContentType: 'application/json; charset=utf-8'
     }));
 
+    const retention = await enforceBackupRetention(client, config);
+
     return {
         bucket: config.bucket,
         backupFolder,
         backupKey,
         manifestKey,
+        retention,
         stats: {
             ...stats,
             sizeBytes: manifest.sizeBytes
@@ -196,56 +287,8 @@ export async function listFullDataBackups(configOverride = null, options = {}) {
     const config = resolveS3Config(configOverride);
     validateS3Config(config);
 
-    const limit = Number(options.limit) > 0 ? Number(options.limit) : DEFAULT_LIST_LIMIT;
     const client = createS3Client(config);
-    const prefix = `${getResolvedS3BackupFolder(config)}/`;
-    const manifestObjects = [];
-    let continuationToken;
-
-    do {
-        const response = await client.send(new ListObjectsV2Command({
-            Bucket: config.bucket,
-            Prefix: prefix,
-            ContinuationToken: continuationToken
-        }));
-
-        const currentBatch = (response.Contents || [])
-            .filter((item) => item.Key && item.Key.endsWith('/manifest.json'));
-        manifestObjects.push(...currentBatch);
-        continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
-    } while (continuationToken && manifestObjects.length < limit * 2);
-
-    const sortedCandidates = manifestObjects
-        .sort((left, right) => {
-            const leftTime = new Date(left.LastModified || 0).getTime();
-            const rightTime = new Date(right.LastModified || 0).getTime();
-            return rightTime - leftTime;
-        })
-        .slice(0, limit);
-
-    const entries = await Promise.allSettled(sortedCandidates.map(async (item) => {
-        const manifest = await readJsonObject(client, config.bucket, item.Key);
-        return {
-            id: manifest.backupId || item.Key,
-            bucket: config.bucket,
-            backupFolder: manifest.backupFolder || item.Key.replace(/\/manifest\.json$/, ''),
-            backupKey: manifest.backupKey,
-            manifestKey: item.Key,
-            exportedAt: manifest.exportedAt || item.LastModified || null,
-            sizeBytes: Number(manifest.sizeBytes) || 0,
-            boardCount: Number(manifest.boardCount) || 0,
-            settingsCount: Number(manifest.settingsCount) || 0,
-            sha256: manifest.sha256 || '',
-            appVersion: manifest.appVersion || '',
-            schemaVersion: manifest.schemaVersion || '',
-            rawManifest: manifest
-        };
-    }));
-
-    return entries
-        .filter((entry) => entry.status === 'fulfilled')
-        .map((entry) => entry.value)
-        .sort((left, right) => new Date(right.exportedAt || 0).getTime() - new Date(left.exportedAt || 0).getTime());
+    return listBackupEntries(client, config, options);
 }
 
 export async function restoreFullDataBackupFromS3(configOverride = null, backupEntry, options = { importSettings: false }) {

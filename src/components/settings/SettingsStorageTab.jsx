@@ -262,7 +262,13 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             const result = await uploadFullDataBackupToS3(s3Config);
             setS3BackupStatus('success');
             setS3BackupResult(result);
-            setS3BackupMsg(`已上传 ${result.stats?.boardCount || 0} 个画板，备份体积 ${formatBytes(result.stats?.sizeBytes || 0)}。`);
+            const deletedCount = result.retention?.deletedBackupIds?.length || 0;
+            const cleanupWarning = result.retention?.deleteErrors?.length
+                ? `但有 ${result.retention.deleteErrors.length} 份旧备份清理失败，请稍后重试。`
+                : '';
+            setS3BackupMsg(
+                `已上传 ${result.stats?.boardCount || 0} 个画板，备份体积 ${formatBytes(result.stats?.sizeBytes || 0)}。S3 最多保留最近 5 份，本次清理了 ${deletedCount} 份旧备份。${cleanupWarning}`
+            );
             const backups = await listFullDataBackups(s3Config);
             setRemoteBackups(backups);
             setRemoteBackupStatus('success');
@@ -427,6 +433,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <p>包含：全部画板、IndexedDB 内容、本地设置、收藏、提示词，以及当前保存的 S3/Provider 配置。</p>
                             <p>专用目录：<span className="font-mono">{getResolvedS3BackupFolder(s3Config) || 'backups/full-data'}</span></p>
                             <p>每次上传都会在该目录下再创建一层时间戳子文件夹，并同时写入完整备份文件和 `manifest.json`。</p>
+                            <p>保留策略：S3 端最多只保留最近 5 份全量备份，新的成功后自动删除最老的一份。</p>
                         </div>
                     </div>
 
@@ -467,6 +474,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         <p className="mt-1 font-mono break-all">Folder: {s3BackupResult.backupFolder}</p>
                         <p className="mt-1 font-mono break-all">Backup: {s3BackupResult.backupKey}</p>
                         <p className="mt-1 font-mono break-all">Manifest: {s3BackupResult.manifestKey}</p>
+                        <p className="mt-1 font-mono break-all">RetentionDeleted: {(s3BackupResult.retention?.deletedBackupIds || []).length}</p>
                     </div>
                 )}
 
