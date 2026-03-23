@@ -31,6 +31,7 @@ export default function ChatView({
     isReadOnly = false // NEW
 }) {
     const [input, setInput] = useState('');
+    const [showQueueDispatchNotice, setShowQueueDispatchNotice] = useState(false);
 
     // Get config from Store
     const activeId = useStore(state => state.activeId);
@@ -54,6 +55,7 @@ export default function ChatView({
     const [isAtBottom, setIsAtBottom] = useState(true);
     const isAtBottomRef = useRef(true);
     const scrollFrameRef = useRef(null);
+    const queueDispatchNoticeTimerRef = useRef(null);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -79,6 +81,27 @@ export default function ChatView({
         }
     };
 
+    const scrollToBottom = React.useCallback((force = false) => {
+        if ((!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
+            return;
+        }
+
+        const container = scrollContainerRef.current;
+        container.scrollTop = container.scrollHeight;
+    }, []);
+
+    const showQueueDispatchHint = React.useCallback(() => {
+        if (queueDispatchNoticeTimerRef.current) {
+            clearTimeout(queueDispatchNoticeTimerRef.current);
+        }
+
+        setShowQueueDispatchNotice(true);
+        queueDispatchNoticeTimerRef.current = setTimeout(() => {
+            queueDispatchNoticeTimerRef.current = null;
+            setShowQueueDispatchNotice(false);
+        }, 2600);
+    }, []);
+
     const {
         isDispatching,
         isQueueRunning,
@@ -92,8 +115,12 @@ export default function ChatView({
         isCardGenerating,
         onDispatch: dispatchMessage,
         onBeforeDispatch: () => {
-            setIsAtBottom(true);
-            setTimeout(() => scrollToBottom(true), 10);
+            if (isAtBottomRef.current) {
+                setTimeout(() => scrollToBottom(), 10);
+                return;
+            }
+
+            showQueueDispatchHint();
         }
     });
 
@@ -141,15 +168,6 @@ export default function ChatView({
         }
     };
 
-    const scrollToBottom = React.useCallback((force = false) => {
-        if ((!force && !isAtBottomRef.current) || !scrollContainerRef.current) {
-            return;
-        }
-
-        const container = scrollContainerRef.current;
-        container.scrollTop = container.scrollHeight;
-    }, []);
-
     const handleScroll = React.useCallback(() => {
         if (scrollFrameRef.current) return;
 
@@ -185,7 +203,20 @@ export default function ChatView({
         if (scrollFrameRef.current) {
             cancelAnimationFrame(scrollFrameRef.current);
         }
+        if (queueDispatchNoticeTimerRef.current) {
+            clearTimeout(queueDispatchNoticeTimerRef.current);
+        }
     }, []);
+
+    useEffect(() => {
+        if (isAtBottom || !isStreaming) {
+            if (queueDispatchNoticeTimerRef.current) {
+                clearTimeout(queueDispatchNoticeTimerRef.current);
+                queueDispatchNoticeTimerRef.current = null;
+            }
+            setShowQueueDispatchNotice(false);
+        }
+    }, [isAtBottom, isStreaming]);
 
 
     // --- Handlers Wrapper ---
@@ -441,6 +472,14 @@ export default function ChatView({
                         />
                     )}
                 </div>
+
+                {showQueueDispatchNotice && (
+                    <div className="pointer-events-none px-6 sm:px-10 pb-2">
+                        <div className="mx-auto w-fit rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3 py-1 text-[11px] font-medium text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                            {t.chat?.queueStartedHint || '队列已开始发送'}
+                        </div>
+                    </div>
+                )}
 
                 {/* Premium Input Bar */}
                 <ChatInput
