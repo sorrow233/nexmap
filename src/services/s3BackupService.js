@@ -1,9 +1,21 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+    GetObjectCommand,
+    ListObjectsV2Command,
+    PutObjectCommand,
+    S3Client
+} from '@aws-sdk/client-s3';
 import packageJson from '../../package.json';
-import { exportAllData, generateBackupFilename, getBackupStats } from './dataExportService';
+import {
+    exportAllData,
+    generateBackupFilename,
+    getBackupStats,
+    importData,
+    validateImportData
+} from './dataExportService';
 import { getS3Config } from './s3';
 
 const BACKUP_ROOT_FOLDER = 'backups/full-data';
+const DEFAULT_LIST_LIMIT = 20;
 
 const createBackupId = () => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -65,6 +77,47 @@ const createS3Client = (config) => {
     });
 };
 
+const objectBodyToText = async (body) => {
+    if (!body) return '';
+    if (typeof body.transformToString === 'function') {
+        return body.transformToString();
+    }
+    if (typeof body.text === 'function') {
+        return body.text();
+    }
+    if (typeof body.arrayBuffer === 'function') {
+        const buffer = await body.arrayBuffer();
+        return new TextDecoder().decode(buffer);
+    }
+    if (typeof body.getReader === 'function') {
+        const reader = body.getReader();
+        const chunks = [];
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+        }
+        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const bytes = new Uint8Array(totalLength);
+        let offset = 0;
+        chunks.forEach((chunk) => {
+            bytes.set(chunk, offset);
+            offset += chunk.length;
+        });
+        return new TextDecoder().decode(bytes);
+    }
+    throw new Error('无法读取 S3 对象内容。');
+};
+
+const readJsonObject = async (client, bucket, key) => {
+    const response = await client.send(new GetObjectCommand({
+        Bucket: bucket,
+        Key: key
+    }));
+    const rawText = await objectBodyToText(response.Body);
+    return JSON.parse(rawText);
+};
+
 export const getResolvedS3BackupFolder = (configOverride) => {
     const config = resolveS3Config(configOverride);
     return [config?.folderPrefix || '', BACKUP_ROOT_FOLDER].filter(Boolean).join('/');
@@ -123,4 +176,76 @@ export async function uploadFullDataBackupToS3(configOverride = null) {
             sizeBytes: manifest.sizeBytes
         }
     };
+}
+
+export async function listFullDataBackups(configOverride = null, options = {}) {
+    const config = resolveS3Config(configOverride);
+    validateS3Config(config);
+
+    const limit = Number(options.limit) > 0 ? Number(options.limit) : DEFAULT_LIST_LIMIT;
+    const client = createS3Client(config);
+    const prefix = `${getResolvedS3BackupFolder(config)}/`;
+    const manifestObjects = [];
+    let continuationToken;
+
+    do {
+        const response = await client.send(new ListObjectsV2Command({
+            Bucket: config.bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken
+        }));
+
+        const currentBatch = (response.Contents || [])
+            .filter((item) => item.Key && item.Key.endsWith('/manifest.json'));
+        manifestObjects.push(...currentBatch);
+        continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
+    } while (continuationToken && manifestObjects.length < limit * 2);
+
+    const sortedCandidates = manifestObjects
+        .sort((left, right) => {
+            const leftTime = new Date(left.LastModified || 0).getTime();
+            const rightTime = new Date(right.LastModified || 0).getTime();
+            return rightTime - leftTime;
+        })
+        .slice(0, limit);
+
+    const entries = await Promise.allSettled(sortedCandidates.map(async (item) => {
+        const manifest = await readJsonObject(client, config.bucket, item.Key);
+        return {
+            id: manifest.backupId || item.Key,
+            bucket: config.bucket,
+            backupFolder: manifest.backupFolder || item.Key.replace(/\/manifest\.json$/, ''),
+            backupKey: manifest.backupKey,
+            manifestKey: item.Key,
+            exportedAt: manifest.exportedAt || item.LastModified || null,
+            sizeBytes: Number(manifest.sizeBytes) || 0,
+            boardCount: Number(manifest.boardCount) || 0,
+            settingsCount: Number(manifest.settingsCount) || 0,
+            appVersion: manifest.appVersion || '',
+            schemaVersion: manifest.schemaVersion || '',
+            rawManifest: manifest
+        };
+    }));
+
+    return entries
+        .filter((entry) => entry.status === 'fulfilled')
+        .map((entry) => entry.value)
+        .sort((left, right) => new Date(right.exportedAt || 0).getTime() - new Date(left.exportedAt || 0).getTime());
+}
+
+export async function restoreFullDataBackupFromS3(configOverride = null, backupEntry, options = { importSettings: false }) {
+    if (!backupEntry?.backupKey) {
+        throw new Error('缺少可恢复的备份文件路径。');
+    }
+
+    const config = resolveS3Config(configOverride);
+    validateS3Config(config);
+    const client = createS3Client(config);
+    const backupData = await readJsonObject(client, config.bucket, backupEntry.backupKey);
+    const validation = validateImportData(backupData);
+    if (!validation.valid) {
+        throw new Error(validation.error || '备份文件格式无效。');
+    }
+
+    return importData(backupData, options);
 }

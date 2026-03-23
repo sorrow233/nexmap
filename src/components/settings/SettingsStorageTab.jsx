@@ -16,6 +16,8 @@ import {
 } from '../../services/safetyBackupService';
 import {
     getResolvedS3BackupFolder,
+    listFullDataBackups,
+    restoreFullDataBackupFromS3,
     uploadFullDataBackupToS3
 } from '../../services/s3BackupService';
 import DataMigrationSection from './DataMigrationSection';
@@ -57,8 +59,13 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const [s3BackupStatus, setS3BackupStatus] = useState('idle'); // idle, uploading, success, error
     const [s3BackupMsg, setS3BackupMsg] = useState('');
     const [s3BackupResult, setS3BackupResult] = useState(null);
+    const [remoteBackups, setRemoteBackups] = useState([]);
+    const [remoteBackupStatus, setRemoteBackupStatus] = useState('idle'); // idle, loading, success, error, restoring
+    const [remoteBackupMsg, setRemoteBackupMsg] = useState('');
+    const [restoringBackupId, setRestoringBackupId] = useState(null);
+    const [restoreWithSettings, setRestoreWithSettings] = useState(false);
 
-
+    const isS3Configured = Boolean(s3Config.bucket && s3Config.accessKeyId && s3Config.secretAccessKey);
 
     const [hasBackup, setHasBackup] = useState(() => hasSafetyBackup());
 
@@ -71,6 +78,34 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         };
         loadBackups();
     }, []);
+
+    useEffect(() => {
+        if (!isS3Configured) {
+            setRemoteBackups([]);
+            setRemoteBackupStatus('idle');
+            setRemoteBackupMsg('');
+            return;
+        }
+
+        const loadRemoteBackups = async () => {
+            setRemoteBackupStatus('loading');
+            setRemoteBackupMsg('');
+            try {
+                const backups = await listFullDataBackups(s3Config);
+                setRemoteBackups(backups);
+                setRemoteBackupStatus('success');
+                if (backups.length === 0) {
+                    setRemoteBackupMsg('S3 备份目录已连接，但还没有找到历史备份。');
+                }
+            } catch (error) {
+                console.error('[S3Backup] Failed to list backups:', error);
+                setRemoteBackupStatus('error');
+                setRemoteBackupMsg(error?.message || '读取 S3 备份列表失败。');
+            }
+        };
+
+        loadRemoteBackups();
+    }, [isS3Configured]);
 
     const handleRestoreBackup = async () => {
         try {
@@ -219,10 +254,67 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             setS3BackupStatus('success');
             setS3BackupResult(result);
             setS3BackupMsg(`已上传 ${result.stats?.boardCount || 0} 个画板，备份体积 ${formatBytes(result.stats?.sizeBytes || 0)}。`);
+            const backups = await listFullDataBackups(s3Config);
+            setRemoteBackups(backups);
+            setRemoteBackupStatus('success');
+            setRemoteBackupMsg(backups.length === 0 ? 'S3 备份目录已连接，但还没有找到历史备份。' : '');
         } catch (error) {
             console.error('[S3Backup] Upload failed:', error);
             setS3BackupStatus('error');
             setS3BackupMsg(error?.message || '上传到 S3 失败，请检查配置后重试。');
+        }
+    };
+
+    const handleRefreshRemoteBackups = async () => {
+        if (!isS3Configured) {
+            setRemoteBackupStatus('error');
+            setRemoteBackupMsg('请先填写完整的 S3 配置。');
+            return;
+        }
+
+        setRemoteBackupStatus('loading');
+        setRemoteBackupMsg('');
+        try {
+            const backups = await listFullDataBackups(s3Config);
+            setRemoteBackups(backups);
+            setRemoteBackupStatus('success');
+            setRemoteBackupMsg(backups.length === 0 ? 'S3 备份目录已连接，但还没有找到历史备份。' : '');
+        } catch (error) {
+            console.error('[S3Backup] Refresh failed:', error);
+            setRemoteBackupStatus('error');
+            setRemoteBackupMsg(error?.message || '刷新 S3 备份列表失败。');
+        }
+    };
+
+    const handleRestoreRemoteBackup = async (backup) => {
+        const confirmMessage = restoreWithSettings
+            ? '确定从这个 S3 备份恢复，并同时覆盖当前设备上的设置与密钥吗？'
+            : '确定从这个 S3 备份恢复画板和数据吗？当前设备的设置与密钥将保留。';
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        setRestoringBackupId(backup.id);
+        setRemoteBackupStatus('restoring');
+        setRemoteBackupMsg('');
+        try {
+            const result = await restoreFullDataBackupFromS3(
+                s3Config,
+                backup,
+                { importSettings: restoreWithSettings }
+            );
+            if (!result.success) {
+                throw new Error(result.error || '从 S3 恢复失败。');
+            }
+            setRemoteBackupStatus('success');
+            setRemoteBackupMsg('S3 备份恢复成功，页面即将刷新。');
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+            console.error('[S3Backup] Restore failed:', error);
+            setRemoteBackupStatus('error');
+            setRemoteBackupMsg(error?.message || '从 S3 恢复失败。');
+        } finally {
+            setRestoringBackupId(null);
         }
     };
 
@@ -364,6 +456,96 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                         <p className="mt-1 font-mono break-all">Manifest: {s3BackupResult.manifestKey}</p>
                     </div>
                 )}
+
+                <div className="mt-5 border-t border-[#eadfce] pt-5 dark:border-white/10">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h4 className="font-semibold text-[#43372c] dark:text-slate-200">S3 历史备份</h4>
+                            <p className="text-xs text-[#8f7e6b] dark:text-slate-400">
+                                从专用备份目录读取 `manifest.json`，列出可以恢复的历史版本。
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleRefreshRemoteBackups}
+                            disabled={remoteBackupStatus === 'loading' || remoteBackupStatus === 'restoring'}
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] px-4 py-2 text-sm font-semibold text-[#6f604f] transition-all hover:bg-[#f8f2e8] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                        >
+                            {remoteBackupStatus === 'loading' ? (
+                                <>
+                                    <RotateCcw size={14} className="animate-spin" />
+                                    正在读取...
+                                </>
+                            ) : (
+                                <>
+                                    <RotateCcw size={14} />
+                                    刷新备份列表
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    <label className="mt-4 flex items-center gap-2 text-xs text-[#7d6b57] dark:text-slate-300">
+                        <input
+                            type="checkbox"
+                            checked={restoreWithSettings}
+                            onChange={(event) => setRestoreWithSettings(event.target.checked)}
+                            className="h-4 w-4 rounded border-[#d7c8b4] text-[#efb65a] focus:ring-[#efb65a]"
+                        />
+                        恢复时同时导入设置和密钥（默认关闭，更安全）
+                    </label>
+
+                    {remoteBackupMsg && (
+                        <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${remoteBackupStatus === 'error'
+                                ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300'
+                                : 'bg-[#f8f2e8] text-[#8d6d49] dark:bg-white/8 dark:text-slate-200'
+                            }`}>
+                            {remoteBackupMsg}
+                        </div>
+                    )}
+
+                    {remoteBackups.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                            {remoteBackups.map((backup) => (
+                                <div
+                                    key={backup.id}
+                                    className="rounded-2xl border border-[#eadfce] bg-[#fffdf9] p-4 dark:border-white/10 dark:bg-black/20"
+                                >
+                                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                        <div className="space-y-1 text-xs text-[#6f604f] dark:text-slate-300">
+                                            <p className="text-sm font-semibold text-[#43372c] dark:text-slate-200">
+                                                {backup.exportedAt ? new Date(backup.exportedAt).toLocaleString() : '未知时间'}
+                                            </p>
+                                            <p>画板数：{backup.boardCount}，设置项：{backup.settingsCount}，体积：{formatBytes(backup.sizeBytes)}</p>
+                                            <p>应用版本：{backup.appVersion || '未知'}，备份版本：{backup.schemaVersion || '未知'}</p>
+                                            <p className="font-mono break-all">Folder: {backup.backupFolder}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRestoreRemoteBackup(backup)}
+                                            disabled={restoringBackupId === backup.id || remoteBackupStatus === 'loading'}
+                                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-sm font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {restoringBackupId === backup.id ? (
+                                                <>
+                                                    <RotateCcw size={14} className="animate-spin" />
+                                                    正在恢复...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <RotateCcw size={14} />
+                                                    从这个版本恢复
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : remoteBackupStatus === 'loading' ? null : (
+                        <div className="mt-4 rounded-2xl border border-dashed border-[#eadfce] p-4 text-xs text-[#8f7e6b] dark:border-white/10 dark:text-slate-400">
+                            暂时没有找到可恢复的 S3 历史备份。
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Data Recovery Section */}
