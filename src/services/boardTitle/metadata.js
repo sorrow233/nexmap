@@ -72,6 +72,10 @@ export const normalizeBoardTitleMeta = (board = {}) => {
     const normalizedAutoTitle = normalizeTitleString(board.autoTitle);
     const autoTitleGeneratedAt = normalizeTimestamp(board.autoTitleGeneratedAt);
     const manualTitleUpdatedAt = normalizeTimestamp(board.manualTitleUpdatedAt);
+    const createdAt = normalizeTimestamp(board.createdAt) || normalizeTimestampLikeBoardId(board.id);
+    const updatedAt = normalizeTimestamp(board.updatedAt);
+    const lastAccessedAt = normalizeTimestamp(board.lastAccessedAt);
+    const cardCount = Math.max(0, Number(board.cardCount) || 0);
 
     let nameSource = inferNameSource({
         ...board,
@@ -99,6 +103,10 @@ export const normalizeBoardTitleMeta = (board = {}) => {
         autoTitle: normalizedAutoTitle,
         autoTitleGeneratedAt,
         manualTitleUpdatedAt,
+        createdAt: createdAt || undefined,
+        updatedAt: updatedAt || undefined,
+        lastAccessedAt: lastAccessedAt || undefined,
+        cardCount,
         listOrder: Number.isFinite(listOrder) ? listOrder : undefined
     };
 };
@@ -136,7 +144,7 @@ export const getBoardDisplayName = (board, fallbackTitle = 'Untitled Board') => 
 
 export const getBoardCreatedAtValue = (board = {}) => {
     const normalized = normalizeBoardTitleMeta(board);
-    return normalizeTimestamp(normalized.createdAt) || normalizeTimestampLikeBoardId(normalized.id);
+    return normalizeTimestamp(normalized.createdAt);
 };
 
 export const compareBoardsByGalleryOrder = (left, right) => {

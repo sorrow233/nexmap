@@ -244,8 +244,8 @@ export async function importData(data, options = { importSettings: false }) {
                         autoTitle: board.data.autoTitle || '',
                         autoTitleGeneratedAt: board.data.autoTitleGeneratedAt || 0,
                         manualTitleUpdatedAt: board.data.manualTitleUpdatedAt || 0,
-                        createdAt: board.data.createdAt || Date.now(),
-                        updatedAt: board.data.updatedAt || Date.now(),
+                        createdAt: board.data.createdAt,
+                        updatedAt: board.data.updatedAt,
                         lastAccessedAt: Date.now(),
                         cardCount: getEffectiveBoardCardCount(board.data.cards),
                         ...(board.meta || {})
