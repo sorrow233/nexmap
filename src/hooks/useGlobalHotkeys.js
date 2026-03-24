@@ -3,22 +3,11 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore, undo, redo } from '../store/useStore';
 
 export function useGlobalHotkeys(clipboard, setClipboard) {
-    const selectedIds = useStore(state => state.selectedIds);
-    const cards = useStore(state => state.cards);
-    const setCards = useStore(state => state.setCards);
-    const handleBatchDelete = useStore(state => state.handleBatchDelete);
-    const handleRegenerate = useStore(state => state.handleRegenerate);
-    const handleConnect = useStore(state => state.handleConnect);
-    const setConnections = useStore(state => state.setConnections);
-    const connections = useStore(state => state.connections);
-    const setSelectedIds = useStore(state => state.setSelectedIds);
-    const offset = useStore(state => state.offset);
-    const scale = useStore(state => state.scale);
-    const selectedIdSet = new Set(selectedIds);
-
     // Helper for Copy
     const handleCopy = async () => {
+        const { selectedIds, cards } = useStore.getState();
         if (selectedIds.length === 0) return;
+        const selectedIdSet = new Set(selectedIds);
         const selectedCards = cards.filter(c => selectedIdSet.has(c.id));
         setClipboard(selectedCards);
         try {
@@ -33,6 +22,13 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
     // Helper for Paste
     const handlePaste = () => {
         if (!clipboard || clipboard.length === 0) return;
+        const {
+            cards,
+            offset,
+            scale,
+            setCards,
+            setSelectedIds
+        } = useStore.getState();
         const newCards = clipboard.map((card, index) => {
             const newId = (Date.now() + Math.random()).toString();
             return {
@@ -51,8 +47,9 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
 
     // Delete / Backspace
     useHotkeys('delete, backspace', () => {
+        const { selectedIds, handleBatchDelete } = useStore.getState();
         if (selectedIds.length > 0) handleBatchDelete();
-    }, [selectedIds]);
+    }, []);
 
     // R -> Regenerate (with input field protection)
     useHotkeys('r', () => {
@@ -61,11 +58,18 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
             activeEl?.tagName === 'TEXTAREA' ||
             activeEl?.isContentEditable;
         if (isEditing) return;
+        const { selectedIds, handleRegenerate } = useStore.getState();
         if (selectedIds.length > 0) handleRegenerate();
-    }, [selectedIds]);
+    }, []);
 
     // L -> Link
     useHotkeys('l', () => {
+        const {
+            selectedIds,
+            connections,
+            handleConnect,
+            setConnections
+        } = useStore.getState();
         if (selectedIds.length > 1) {
             const newConns = [...connections];
             let added = false;
@@ -85,11 +89,13 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         } else if (selectedIds.length === 1) {
             handleConnect(selectedIds[0]); // Starts connection mode
         }
-    }, [selectedIds, connections]);
+    }, []);
 
     // C -> Disconnect
     useHotkeys('c', (e) => {
         if (e.metaKey || e.ctrlKey) return;
+        const { selectedIds, connections, setConnections } = useStore.getState();
+        const selectedIdSet = new Set(selectedIds);
         if (selectedIds.length > 1) {
             setConnections(connections.filter(c =>
                 !(selectedIdSet.has(c.from) && selectedIdSet.has(c.to))
@@ -101,7 +107,7 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
                 changeType: 'connection_change'
             });
         }
-    }, [selectedIds, connections]);
+    }, []);
 
     // Undo / Redo
     useHotkeys('mod+z', (e) => {
@@ -119,7 +125,7 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         if (window.getSelection()?.toString()) return;
         e.preventDefault();
         handleCopy();
-    }, [clipboard, selectedIds, cards]);
+    }, [clipboard, setClipboard]);
 
     useHotkeys('mod+v', (e) => {
         e.preventDefault();

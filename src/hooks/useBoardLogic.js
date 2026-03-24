@@ -2,14 +2,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
-import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys';
 import { useToast } from '../components/Toast';
-// import { useThumbnailCapture } from '../hooks/useThumbnailCapture';
 import { useAISprouting } from '../hooks/useAISprouting';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useCurrentBoardAutoNaming } from './useCurrentBoardAutoNaming';
-import { useBoardPersistence } from './useBoardPersistence';
-import { useBoardChangeIntegrityMonitor } from './useBoardChangeIntegrityMonitor';
 import {
     DEFAULT_BOARD_INSTRUCTION_SETTINGS,
     normalizeBoardInstructionSettings,
@@ -36,21 +31,12 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
 
     // Store Selectors
     const cards = useStore(state => state.cards);
-    const connections = useStore(state => state.connections);
-    const groups = useStore(state => state.groups);
     const selectedIds = useStore(state => state.selectedIds);
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const expandedCardId = useStore(state => state.expandedCardId);
-    const offset = useStore(state => state.offset);
-    const scale = useStore(state => state.scale);
-    const isBoardLoading = useStore(state => state.isBoardLoading);
-    const favoritesLastUpdate = useStore(state => state.favoritesLastUpdate);
     const boardPrompts = useStore(state => state.boardPrompts);
     const boardInstructionSettings = useStore(state => state.boardInstructionSettings);
     const globalPrompts = useStore(state => state.globalPrompts);
-    const activeBoardPersistence = useStore(state => state.activeBoardPersistence);
-    const lastExternalSyncMarker = useStore(state => state.lastExternalSyncMarker);
-    const boardChangeState = useStore(state => state.boardChangeState);
 
     // Store Actions
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
@@ -64,8 +50,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     const getConnectedCards = useStore(state => state.getConnectedCards);
     const setSelectedIds = useStore(state => state.setSelectedIds);
     const arrangeSelectionGrid = useStore(state => state.arrangeSelectionGrid);
-    const setLastSavedAt = useStore(state => state.setLastSavedAt);
-    const setActiveBoardPersistence = useStore(state => state.setActiveBoardPersistence);
     const updateBoardInstructionSettings = useStore(state => state.updateBoardInstructionSettings);
 
     // Custom Hooks
@@ -139,49 +123,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         };
     }, [instructionCatalogBreakdown, normalizedBoardInstructionSettings]);
 
-    useCurrentBoardAutoNaming({
-        board: currentBoard,
-        boardId: currentBoardId,
-        cards,
-        generatingCardIds,
-        isReadOnly,
-        onUpdateBoardMetadata
-    });
-
-    useBoardPersistence({
-        boardId: currentBoardId,
-        user,
-        cards,
-        connections,
-        groups,
-        boardPrompts,
-        boardInstructionSettings: normalizedBoardInstructionSettings,
-        offset,
-        scale,
-        isBoardLoading,
-        isReadOnly,
-        hasGeneratingCards: generatingCardIds.size > 0,
-        boardChangeState,
-        activeBoardPersistence,
-        lastExternalSyncMarker,
-        setSaveStatus,
-        setLastSavedAt,
-        setActiveBoardPersistence,
-        toast
-    });
-
-    useBoardChangeIntegrityMonitor({
-        boardId: currentBoardId,
-        cards,
-        connections,
-        groups,
-        boardPrompts,
-        boardInstructionSettings: normalizedBoardInstructionSettings,
-        boardChangeState,
-        isBoardLoading,
-        hasGeneratingCards: generatingCardIds.size > 0
-    });
-
     // --- PASTE LOGIC ---
 
     const handleGlobalPaste = useCallback((e) => {
@@ -217,9 +158,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         }
         return () => { document.title = 'NexMap'; };
     }, [currentBoardId, boardsList, t.gallery?.untitledBoard]);
-
-    // Hotkeys
-    useGlobalHotkeys(clipboard, setClipboard);
 
     // Global Paste Listener (Images) - ONLY for canvas-level, NOT for card modals
     useEffect(() => {
@@ -581,6 +519,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         if (isReadOnly) return;
         const sourceCard = cards.find(c => c.id === sourceId);
         if (!sourceCard) return;
+        const { offset, scale } = useStore.getState();
 
         // Position modal to the right of the card, with bounds checking
         let screenX = (sourceCard.x * scale) + offset.x + 350 * scale;
@@ -608,15 +547,9 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     return {
         // Data
         cards,
-        connections,
-        groups,
         selectedIds,
         generatingCardIds,
         expandedCardId,
-        offset,
-        scale,
-        isBoardLoading,
-        favoritesLastUpdate,
         boardPrompts,
         boardInstructionSettings: normalizedBoardInstructionSettings,
         customInstructionCatalog,
@@ -627,6 +560,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         globalPrompts,
         globalImages,
         clipboard,
+        setClipboard,
         isSettingsOpen,
         isInstructionPanelOpen,
         isAutoRecommending,
@@ -642,6 +576,7 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         canvasContainerRef,
 
         // Actions & Handlers
+        setSaveStatus,
         setIsSettingsOpen,
         setGlobalImages,
         setQuickPrompt,

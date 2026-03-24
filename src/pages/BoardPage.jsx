@@ -8,6 +8,7 @@ import StatusBar from '../components/StatusBar';
 import BoardTopBar from '../components/board/BoardTopBar';
 import Sidebar from '../components/board/Sidebar';
 import BoardInstructionPanel from '../components/board/BoardInstructionPanel';
+import BoardRuntimeEffects from '../components/board/BoardRuntimeEffects';
 import MobileBoardComposer from '../components/board/mobile/MobileBoardComposer';
 import MobileBoardShell from '../components/board/mobile/MobileBoardShell';
 import QuickPromptModal from '../components/QuickPromptModal';
@@ -46,6 +47,7 @@ export default function BoardPage({
         expandedCardId,
         currentBoard,
         saveStatus,
+        clipboard,
         globalImages,
         isSettingsOpen,
         quickPrompt,
@@ -68,7 +70,9 @@ export default function BoardPage({
 
         // Actions
         setIsSettingsOpen,
+        setSaveStatus,
         setGlobalImages,
+        setClipboard,
         setQuickPrompt,
         setExpandedCardId,
         setSelectedIds,
@@ -143,6 +147,16 @@ export default function BoardPage({
 
     return (
         <div className={`${isIPhoneBoardMode ? 'h-screen-safe' : 'h-screen'} w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative`}>
+            <BoardRuntimeEffects
+                board={currentBoard}
+                boardId={currentBoardId}
+                user={user}
+                isReadOnly={isReadOnly}
+                onUpdateBoardMetadata={onUpdateBoardMetadata}
+                setSaveStatus={setSaveStatus}
+                clipboard={clipboard}
+                setClipboard={setClipboard}
+            />
 
             <div className="absolute inset-0 h-full overflow-hidden">
                 {isReadOnly && (
