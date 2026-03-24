@@ -1,7 +1,4 @@
-const MAX_CONTEXT_CARDS = 6;
-const MAX_MESSAGES_PER_CARD = 4;
-const MAX_MESSAGE_CHARS = 600;
-const MAX_TOTAL_CONTEXT_CHARS = 6000;
+const MAX_CHARS_PER_CARD = 100000;
 
 const stringifyMessageContent = (content) => {
     if (typeof content === 'string') {
@@ -22,9 +19,12 @@ const stringifyMessageContent = (content) => {
         .join(' ');
 };
 
-const truncateText = (text, maxLength) => {
-    if (!text || text.length <= maxLength) return text;
-    return `${text.slice(0, maxLength)}...`;
+const truncateCardContext = (text) => {
+    if (!text || text.length <= MAX_CHARS_PER_CARD) {
+        return text;
+    }
+
+    return `${text.slice(0, MAX_CHARS_PER_CARD)}...`;
 };
 
 export const buildSelectedCardsContext = (cards = []) => {
@@ -32,42 +32,25 @@ export const buildSelectedCardsContext = (cards = []) => {
         return '';
     }
 
-    const selectedCards = cards.slice(0, MAX_CONTEXT_CARDS);
-    const sections = [];
-    let totalChars = 0;
-
-    for (const card of selectedCards) {
+    const sections = cards
+        .map((card) => {
         const title = card?.data?.title || 'Untitled';
-        const messages = Array.isArray(card?.data?.messages) ? card.data.messages.slice(-MAX_MESSAGES_PER_CARD) : [];
+        const messages = Array.isArray(card?.data?.messages) ? card.data.messages : [];
+        const messageLines = messages
+            .map((message) => {
+                const content = stringifyMessageContent(message?.content);
+                if (!content) return '';
+                return `${message?.role || 'user'}: ${content}`;
+            })
+            .filter(Boolean);
 
-        const messageLines = [];
-        for (const message of messages) {
-            const content = truncateText(stringifyMessageContent(message?.content), MAX_MESSAGE_CHARS);
-            if (!content) continue;
-
-            const line = `${message?.role || 'user'}: ${content}`;
-            if (totalChars + line.length > MAX_TOTAL_CONTEXT_CHARS) {
-                break;
-            }
-
-            messageLines.push(line);
-            totalChars += line.length;
+        if (messageLines.length === 0) {
+            return '';
         }
 
-        if (messageLines.length === 0) continue;
-
-        const section = `--- Card: "${title}" ---\n${messageLines.join('\n')}`;
-        if (totalChars + section.length > MAX_TOTAL_CONTEXT_CHARS && sections.length > 0) {
-            break;
-        }
-
-        sections.push(section);
-        totalChars += section.length;
-
-        if (totalChars >= MAX_TOTAL_CONTEXT_CHARS) {
-            break;
-        }
-    }
+        return truncateCardContext(`--- Card: "${title}" ---\n${messageLines.join('\n')}`);
+    })
+        .filter(Boolean);
 
     if (sections.length === 0) {
         return '';
