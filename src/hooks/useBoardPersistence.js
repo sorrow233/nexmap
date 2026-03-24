@@ -18,6 +18,10 @@ import { buildPersistenceVersionKey } from '../services/boardPersistence/persist
 import { emitLocalSaveConfirmed } from '../services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from '../services/sync/boardSyncMetadata';
 import { runWhenBrowserIdle } from '../utils/idleTask';
+import {
+    applyStreamTextUpdates,
+    collectStreamBufferUpdatesForCardIds
+} from '../store/slices/utils/streamRenderBuffer';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -111,6 +115,8 @@ export function useBoardPersistence({
     isReadOnly,
     hasGeneratingCards = false,
     boardChangeState,
+    streamingMessages,
+    streamingPersistenceToken = 0,
     activeBoardPersistence,
     lastExternalSyncMarker,
     setSaveStatus,
@@ -146,6 +152,10 @@ export function useBoardPersistence({
     const idleShadowSaveCancelRef = useRef(null);
     const idleLocalSaveCancelRef = useRef(null);
     const generationDeferredRevisionRef = useRef(0);
+    const streamingMessagesRef = useRef(streamingMessages || {});
+    const streamingPersistenceTokenRef = useRef(toSafeRevision(streamingPersistenceToken));
+    const shadowSavedStreamingTokenRef = useRef(0);
+    const localSavedStreamingTokenRef = useRef(0);
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -158,6 +168,11 @@ export function useBoardPersistence({
             )
         };
     }, [cards, connections, groups, boardPrompts, boardInstructionSettings]);
+
+    useLayoutEffect(() => {
+        streamingMessagesRef.current = streamingMessages || {};
+        streamingPersistenceTokenRef.current = toSafeRevision(streamingPersistenceToken);
+    }, [streamingMessages, streamingPersistenceToken]);
 
     useEffect(() => {
         isBoardLoadingRef.current = isBoardLoading;
@@ -209,11 +224,37 @@ export function useBoardPersistence({
         return scheduledOperation;
     }, []);
 
+    const buildPersistableBoardData = useCallback((data = {}) => {
+        const normalizedData = {
+            cards: data.cards || [],
+            connections: data.connections || [],
+            groups: data.groups || [],
+            boardPrompts: data.boardPrompts || [],
+            boardInstructionSettings: normalizeBoardInstructionSettings(
+                data.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+            )
+        };
+
+        const pendingStreamUpdates = collectStreamBufferUpdatesForCardIds(
+            streamingMessagesRef.current,
+            normalizedData.cards.map((card) => card.id)
+        );
+
+        if (pendingStreamUpdates.size === 0) {
+            return normalizedData;
+        }
+
+        return {
+            ...normalizedData,
+            cards: applyStreamTextUpdates(normalizedData.cards, pendingStreamUpdates)
+        };
+    }, []);
+
     const persistRecoverySnapshot = useCallback(async (data, options = {}) => {
         if (!boardId) return false;
 
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
-        const payload = buildBoardRecoverySnapshot(buildBoardPayload(data, {
+        const payload = buildBoardRecoverySnapshot(buildBoardPayload(buildPersistableBoardData(data), {
             clientRevision: revision,
             updatedAt: Date.now()
         }), {
@@ -234,14 +275,22 @@ export function useBoardPersistence({
             );
         }
 
+        if (didPersist) {
+            shadowSavedStreamingTokenRef.current = Math.max(
+                shadowSavedStreamingTokenRef.current,
+                toSafeRevision(options.streamingToken ?? streamingPersistenceTokenRef.current)
+            );
+        }
+
         return didPersist;
-    }, [boardId]);
+    }, [boardId, buildPersistableBoardData]);
 
     const performLocalSave = useCallback(async (data, options = {}) => {
         if (!boardId) return;
 
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
         const now = Date.now();
+        const persistableData = buildPersistableBoardData(data);
 
         applySaveStatus(setSaveStatus, 'saving');
         updateActivePersistenceCursor({
@@ -250,7 +299,7 @@ export function useBoardPersistence({
         });
 
         try {
-            const payload = buildBoardPayload(data, {
+            const payload = buildBoardPayload(persistableData, {
                 clientRevision: revision,
                 updatedAt: now
             });
@@ -264,6 +313,10 @@ export function useBoardPersistence({
             trackerRef.current.localSavedRevision = Math.max(
                 trackerRef.current.localSavedRevision,
                 revision
+            );
+            localSavedStreamingTokenRef.current = Math.max(
+                localSavedStreamingTokenRef.current,
+                toSafeRevision(options.streamingToken ?? streamingPersistenceTokenRef.current)
             );
 
             if (trackerRef.current.localSavedRevision >= trackerRef.current.shadowSavedRevision) {
@@ -297,16 +350,16 @@ export function useBoardPersistence({
                 toast?.error?.('本地保存失败，请检查存储空间');
             }
         }
-    }, [boardId, enqueueDurableWrite, saveBoard, setActiveBoardPersistence, setLastSavedAt, setSaveStatus, toast, updateActivePersistenceCursor]);
+    }, [boardId, buildPersistableBoardData, enqueueDurableWrite, saveBoard, setActiveBoardPersistence, setLastSavedAt, setSaveStatus, toast, updateActivePersistenceCursor]);
 
     const performEmergencyLocalSave = useCallback((data, options = {}) => {
         if (!boardId) return false;
 
-        return emergencyLocalSave(boardId, buildBoardPayload(data, {
+        return emergencyLocalSave(boardId, buildBoardPayload(buildPersistableBoardData(data), {
             clientRevision: toSafeRevision(options.revision ?? trackerRef.current.revision),
             updatedAt: Date.now()
         }));
-    }, [boardId]);
+    }, [boardId, buildPersistableBoardData]);
 
     const persistExternalSyncSnapshot = useCallback(async (snapshot = {}) => {
         if (!boardId) return;
@@ -374,7 +427,8 @@ export function useBoardPersistence({
                 void persistRecoverySnapshot(latestBoardDataRef.current, {
                     revision: queuedShadowRevisionRef.current,
                     reason: 'debounced_shadow',
-                    scopes: ['session']
+                    scopes: ['session'],
+                    streamingToken: streamingPersistenceTokenRef.current
                 });
             }, { timeout: SHADOW_SAVE_MAX_WAIT_MS, fallbackDelay: 120 });
         }, delayConfig.delayMs);
@@ -411,7 +465,8 @@ export function useBoardPersistence({
                 idleLocalSaveCancelRef.current = null;
                 void performLocalSave(latestBoardDataRef.current, {
                     revision: queuedLocalRevisionRef.current,
-                    reason: 'debounced_local'
+                    reason: 'debounced_local',
+                    streamingToken: streamingPersistenceTokenRef.current
                 });
             }, { timeout: LOCAL_SAVE_MAX_WAIT_MS, fallbackDelay: 180 });
         }, delayConfig.delayMs);
@@ -424,7 +479,10 @@ export function useBoardPersistence({
         if (!tracker.isPrimed) return;
 
         const revision = tracker.revision;
-        if (revision <= tracker.localSavedRevision) return;
+        const currentStreamingToken = streamingPersistenceTokenRef.current;
+        const hasUnsavedRevision = revision > tracker.localSavedRevision;
+        const hasUnsavedStreaming = currentStreamingToken > localSavedStreamingTokenRef.current;
+        if (!hasUnsavedRevision && !hasUnsavedStreaming) return;
 
         if (shadowSaveTimerRef.current) {
             clearTimeout(shadowSaveTimerRef.current);
@@ -435,14 +493,15 @@ export function useBoardPersistence({
         void persistRecoverySnapshot(latestBoardDataRef.current, {
             revision,
             reason,
-            scopes: ['session', 'local']
+            scopes: ['session', 'local'],
+            streamingToken: currentStreamingToken
         });
 
         if (CRITICAL_LOCAL_FALLBACK_REASONS.has(reason)) {
-            const criticalSnapshotTimestamp = Date.now();
             performEmergencyLocalSave(latestBoardDataRef.current, {
                 revision,
-                reason
+                reason,
+                streamingToken: currentStreamingToken
             });
         }
 
@@ -459,7 +518,8 @@ export function useBoardPersistence({
         void performLocalSave(latestBoardDataRef.current, {
             revision,
             reason,
-            silent: options.silent !== false
+            silent: options.silent !== false,
+            streamingToken: currentStreamingToken
         });
     }, [boardId, performEmergencyLocalSave, performLocalSave, persistRecoverySnapshot]);
 
@@ -575,6 +635,42 @@ export function useBoardPersistence({
     ]);
 
     useEffect(() => {
+        if (!boardId || isBoardLoading || isReadOnly || !hasGeneratingCards) {
+            return;
+        }
+
+        const tracker = trackerRef.current;
+        if (!tracker.isPrimed) {
+            return;
+        }
+
+        const currentStreamingToken = toSafeRevision(streamingPersistenceToken);
+        if (currentStreamingToken <= shadowSavedStreamingTokenRef.current) {
+            return;
+        }
+
+        applySaveStatus(setSaveStatus, 'local_dirty');
+        if (activePersistenceCursorRef.current.dirty !== true) {
+            updateActivePersistenceCursor({
+                updatedAt: activePersistenceCursorRef.current.updatedAt || Date.now(),
+                clientRevision: activePersistenceCursorRef.current.clientRevision || tracker.revision,
+                dirty: true
+            });
+        }
+
+        scheduleShadowSave(tracker.revision);
+    }, [
+        boardId,
+        hasGeneratingCards,
+        isBoardLoading,
+        isReadOnly,
+        scheduleShadowSave,
+        setSaveStatus,
+        streamingPersistenceToken,
+        updateActivePersistenceCursor
+    ]);
+
+    useEffect(() => {
         trackerRef.current = createSaveTracker(boardId);
         activePersistenceCursorRef.current = createActivePersistenceCursor();
         clearContentSaveTimers();
@@ -585,6 +681,9 @@ export function useBoardPersistence({
         shadowSaveWindowStartedAtRef.current = 0;
         localSaveWindowStartedAtRef.current = 0;
         generationDeferredRevisionRef.current = 0;
+        shadowSavedStreamingTokenRef.current = 0;
+        localSavedStreamingTokenRef.current = 0;
+        streamingPersistenceTokenRef.current = 0;
         if (idleShadowSaveCancelRef.current) {
             idleShadowSaveCancelRef.current();
             idleShadowSaveCancelRef.current = null;

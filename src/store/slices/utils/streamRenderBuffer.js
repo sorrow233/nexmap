@@ -79,6 +79,30 @@ export const collectStreamBufferUpdatesForCard = (bufferState = {}, cardId) => {
     return updates;
 };
 
+export const collectStreamBufferUpdatesForCardIds = (bufferState = {}, cardIds = []) => {
+    const updates = new Map();
+    if (!bufferState) return updates;
+
+    const cardIdSet = cardIds instanceof Set
+        ? cardIds
+        : new Set((Array.isArray(cardIds) ? cardIds : []).filter(Boolean));
+
+    if (cardIdSet.size === 0) {
+        return updates;
+    }
+
+    Object.entries(bufferState).forEach(([bufferKey, content]) => {
+        if (!content || !bufferKey) return;
+
+        const { cardId } = parseBufferKey(bufferKey);
+        if (!cardId || !cardIdSet.has(cardId)) return;
+
+        updates.set(bufferKey, content);
+    });
+
+    return updates;
+};
+
 export const collectStreamBufferUpdateByKey = (bufferState = {}, bufferKey) => {
     const updates = new Map();
     if (!bufferKey || !bufferState) return updates;

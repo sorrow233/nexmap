@@ -32,6 +32,8 @@ export default function BoardRuntimeEffects({
     const activeBoardPersistence = useStore((state) => state.activeBoardPersistence);
     const lastExternalSyncMarker = useStore((state) => state.lastExternalSyncMarker);
     const boardChangeState = useStore((state) => state.boardChangeState);
+    const streamingMessages = useStore((state) => state.streamingMessages);
+    const streamingCardVersions = useStore((state) => state.streamingCardVersions);
     const setLastSavedAt = useStore((state) => state.setLastSavedAt);
     const setActiveBoardPersistence = useStore((state) => state.setActiveBoardPersistence);
     const toast = useToast();
@@ -39,6 +41,11 @@ export default function BoardRuntimeEffects({
     const normalizedBoardInstructionSettings = useMemo(
         () => normalizeBoardInstructionSettings(boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS),
         [boardInstructionSettings]
+    );
+
+    const streamingPersistenceToken = useMemo(
+        () => cards.reduce((total, card) => total + (Number(streamingCardVersions?.[card.id]) || 0), 0),
+        [cards, streamingCardVersions]
     );
 
     useCurrentBoardAutoNaming({
@@ -64,6 +71,8 @@ export default function BoardRuntimeEffects({
         isReadOnly,
         hasGeneratingCards: generatingCardIds.size > 0,
         boardChangeState,
+        streamingMessages,
+        streamingPersistenceToken,
         activeBoardPersistence,
         lastExternalSyncMarker,
         setSaveStatus,
