@@ -353,7 +353,10 @@ const MessageItem = React.memo(({ cardId, message, index, marks, capturedNotes, 
     };
 
     return (
-        <div id={`message-${index}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'} group relative`}>
+        <div
+            id={`message-${index}`}
+            className={`chat-message-frame ${isUser ? 'chat-message-frame--user justify-end' : 'chat-message-frame--assistant justify-start'} flex group relative`}
+        >
             {isUser && (
                 <div className="flex flex-col justify-end pb-4 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button

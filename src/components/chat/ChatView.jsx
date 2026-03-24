@@ -54,7 +54,6 @@ export default function ChatView({
     const [shareContent, setShareContent] = useState(null);
     const [isAtBottom, setIsAtBottom] = useState(true);
     const isAtBottomRef = useRef(true);
-    const scrollFrameRef = useRef(null);
     const scrollRequestRef = useRef(null);
     const scrollCommitRef = useRef(null);
     const queueDispatchNoticeTimerRef = useRef(null);
@@ -131,6 +130,15 @@ export default function ChatView({
         }, 2600);
     }, [clearQueueDispatchHint]);
 
+    const commitIsAtBottomState = React.useCallback((nextAtBottom) => {
+        if (isAtBottomRef.current === nextAtBottom) {
+            return;
+        }
+
+        isAtBottomRef.current = nextAtBottom;
+        setIsAtBottom(nextAtBottom);
+    }, []);
+
     const {
         isDispatching,
         isQueueRunning,
@@ -204,24 +212,45 @@ export default function ChatView({
         }
     };
 
-    const handleScroll = React.useCallback(() => {
-        if (scrollFrameRef.current) return;
+    useEffect(() => {
+        const root = scrollContainerRef.current;
+        const bottomSentinel = messagesEndRef.current;
 
-        scrollFrameRef.current = requestAnimationFrame(() => {
-            scrollFrameRef.current = null;
-            if (!scrollContainerRef.current) return;
+        if (!root || !bottomSentinel) {
+            return undefined;
+        }
 
-            const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-            const nextAtBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        if (typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') {
+            const syncBottomState = () => {
+                const nextAtBottom = root.scrollTop + root.clientHeight >= root.scrollHeight - 100;
+                commitIsAtBottomState(nextAtBottom);
+            };
 
-            if (isAtBottomRef.current === nextAtBottom) {
-                return;
+            syncBottomState();
+            root.addEventListener('scroll', syncBottomState, { passive: true });
+
+            return () => {
+                root.removeEventListener('scroll', syncBottomState);
+            };
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                commitIsAtBottomState(Boolean(entry?.isIntersecting));
+            },
+            {
+                root,
+                threshold: 0,
+                rootMargin: '0px 0px 120px 0px'
             }
+        );
 
-            isAtBottomRef.current = nextAtBottom;
-            setIsAtBottom(nextAtBottom);
-        });
-    }, []);
+        observer.observe(bottomSentinel);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [card.id, card.type, commitIsAtBottomState]);
 
     useEffect(() => {
         if (!isStreaming) return;
@@ -235,9 +264,6 @@ export default function ChatView({
     }, [cancelScheduledScrollToBottom, scheduleScrollToBottom]);
 
     useEffect(() => () => {
-        if (scrollFrameRef.current) {
-            cancelAnimationFrame(scrollFrameRef.current);
-        }
         cancelScheduledScrollToBottom();
         clearQueueDispatchHint();
     }, [cancelScheduledScrollToBottom, clearQueueDispatchHint]);
@@ -476,7 +502,6 @@ export default function ChatView({
                         card={card}
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
-                        handleScroll={handleScroll}
                         isStreaming={isStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}

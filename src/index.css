@@ -243,6 +243,26 @@ body,
         touch-action: pan-y !important;
     }
 
+    .chat-messages-viewport {
+        overscroll-behavior: contain;
+    }
+
+    @supports (content-visibility: auto) {
+        .chat-message-frame {
+            content-visibility: auto;
+            contain: layout paint style;
+            contain-intrinsic-size: 1px 320px;
+        }
+
+        .chat-message-frame--assistant {
+            contain-intrinsic-size: 1px 960px;
+        }
+
+        .chat-message-frame--user {
+            contain-intrinsic-size: 1px 180px;
+        }
+    }
+
     /* Dark mode specific scrollbar override for better visibility */
     .dark .custom-scrollbar::-webkit-scrollbar-thumb {
         background-color: rgba(255, 255, 255, 0.15);
