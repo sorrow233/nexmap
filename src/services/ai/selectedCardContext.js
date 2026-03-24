@@ -19,12 +19,12 @@ const stringifyMessageContent = (content) => {
         .join(' ');
 };
 
-const truncateCardContext = (text) => {
+const truncateCardContextFromTail = (text) => {
     if (!text || text.length <= MAX_CHARS_PER_CARD) {
         return text;
     }
 
-    return `${text.slice(0, MAX_CHARS_PER_CARD)}...`;
+    return `...${text.slice(-MAX_CHARS_PER_CARD)}`;
 };
 
 export const buildSelectedCardsContext = (cards = []) => {
@@ -48,7 +48,8 @@ export const buildSelectedCardsContext = (cards = []) => {
             return '';
         }
 
-        return truncateCardContext(`--- Card: "${title}" ---\n${messageLines.join('\n')}`);
+        const messageBody = messageLines.join('\n');
+        return `--- Card: "${title}" ---\n${truncateCardContextFromTail(messageBody)}`;
     })
         .filter(Boolean);
 
