@@ -261,6 +261,16 @@ body,
         .chat-message-frame--user {
             contain-intrinsic-size: 1px 180px;
         }
+
+        .chat-message-block {
+            content-visibility: auto;
+            contain: layout paint;
+            contain-intrinsic-size: 1px 72px;
+        }
+
+        .chat-message-block--code {
+            contain-intrinsic-size: 1px 360px;
+        }
     }
 
     /* Dark mode specific scrollbar override for better visibility */

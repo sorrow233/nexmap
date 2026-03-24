@@ -10,6 +10,13 @@ import { buildStreamBufferKey } from '../../store/slices/utils/streamRenderBuffe
 let codeBlockCounter = 0;
 let codeBlocks = [];
 
+const escapeHtmlFragment = (text = '') => (
+    String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+);
+
 const markedRenderer = createMarkdownRenderer();
 markedRenderer.code = function (code, language) {
     const id = codeBlockCounter++;
@@ -19,48 +26,63 @@ markedRenderer.code = function (code, language) {
 
 // Component to render message content with code blocks as React components
 const MessageContentWithCodeBlocks = React.memo(({ html, codeBlocks, onClick }) => {
-    // Parse HTML and split by code block placeholders
+    const codeBlocksById = React.useMemo(
+        () => new Map(codeBlocks.map((block) => [block.id, block])),
+        [codeBlocks]
+    );
+
+    // Parse HTML and split it into top-level render blocks so long answers can skip offscreen sections.
     const parts = React.useMemo(() => {
         if (!html) return [];
 
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+        const container = doc.body.firstChild;
         const result = [];
-        let lastIndex = 0;
-        const regex = /<div data-code-block-id="(\d+)"><\/div>/g;
-        let match;
 
-        while ((match = regex.exec(html)) !== null) {
-            // Add HTML before this code block
-            if (match.index > lastIndex) {
-                result.push({
-                    type: 'html',
-                    content: html.slice(lastIndex, match.index)
-                });
-            }
-
-            // Add code block
-            const blockId = parseInt(match[1], 10);
-            const block = codeBlocks.find(b => b.id === blockId);
-            if (block) {
-                result.push({
-                    type: 'code',
-                    code: block.code,
-                    language: block.language
-                });
-            }
-
-            lastIndex = match.index + match[0].length;
+        if (!container) {
+            return result;
         }
 
-        // Add remaining HTML
-        if (lastIndex < html.length) {
+        Array.from(container.childNodes).forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const textContent = node.textContent?.trim();
+                if (textContent) {
+                    result.push({
+                        type: 'html',
+                        content: `<p>${escapeHtmlFragment(textContent)}</p>`
+                    });
+                }
+                return;
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return;
+            }
+
+            const element = /** @type {HTMLElement} */ (node);
+            const blockIdAttr = element.getAttribute('data-code-block-id');
+            if (blockIdAttr) {
+                const blockId = parseInt(blockIdAttr, 10);
+                const block = codeBlocksById.get(blockId);
+                if (block) {
+                    result.push({
+                        type: 'code',
+                        code: block.code,
+                        language: block.language
+                    });
+                }
+                return;
+            }
+
             result.push({
                 type: 'html',
-                content: html.slice(lastIndex)
+                content: element.outerHTML
             });
-        }
+        });
 
         return result;
-    }, [html, codeBlocks]);
+    }, [html, codeBlocksById]);
 
     return (
         <div
@@ -70,16 +92,18 @@ const MessageContentWithCodeBlocks = React.memo(({ html, codeBlocks, onClick }) 
         >
             {parts.map((part, index) => (
                 part.type === 'html' ? (
-                    <span
+                    <div
                         key={index}
+                        className="chat-message-block"
                         dangerouslySetInnerHTML={{ __html: part.content }}
                     />
                 ) : (
-                    <CodeBlock
-                        key={index}
-                        code={part.code}
-                        language={part.language}
-                    />
+                    <div key={index} className="chat-message-block chat-message-block--code">
+                        <CodeBlock
+                            code={part.code}
+                            language={part.language}
+                        />
+                    </div>
                 )
             ))}
         </div>
