@@ -224,10 +224,9 @@ export default function ChatView({
     }, []);
 
     useEffect(() => {
-        if (isStreaming) {
-            scrollToBottom();
-        }
-    }, [card.data.messages, isStreaming, streamingCardVersion]);
+        if (!isStreaming) return;
+        scheduleScrollToBottom();
+    }, [isStreaming, scheduleScrollToBottom, streamingCardVersion]);
 
     // Force scroll to bottom on initial open
     useEffect(() => {
