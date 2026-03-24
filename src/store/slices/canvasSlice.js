@@ -1,5 +1,38 @@
 import { debugLog } from '../../utils/debugLogger';
 
+const isSameOffset = (current = {}, next = {}) => (
+    (current?.x ?? 0) === (next?.x ?? 0) &&
+    (current?.y ?? 0) === (next?.y ?? 0)
+);
+
+const isSameNumber = (a, b) => Object.is(a, b);
+
+const isSameArray = (current = [], next = []) => {
+    if (current === next) return true;
+    if (!Array.isArray(current) || !Array.isArray(next)) return false;
+    if (current.length !== next.length) return false;
+
+    for (let index = 0; index < current.length; index += 1) {
+        if (current[index] !== next[index]) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
+const isSameSelectionRect = (current, next) => {
+    if (current === next) return true;
+    if (!current || !next) return current === next;
+
+    return (
+        current.x1 === next.x1 &&
+        current.y1 === next.y1 &&
+        current.x2 === next.x2 &&
+        current.y2 === next.y2
+    );
+};
+
 export const createCanvasSlice = (set, get) => ({
     offset: { x: 0, y: 0 },
     scale: 1,
@@ -14,35 +47,71 @@ export const createCanvasSlice = (set, get) => ({
 
     setOffset: (valOrUpdater) => {
         const nextOffset = typeof valOrUpdater === 'function' ? valOrUpdater(get().offset) : valOrUpdater;
+        if (isSameOffset(get().offset, nextOffset)) {
+            return get().offset;
+        }
         // debugLog.ui('Canvas offset change', nextOffset); // Too frequent during pan
         set({ offset: nextOffset });
     },
     setScale: (valOrUpdater) => {
         const nextScale = typeof valOrUpdater === 'function' ? valOrUpdater(get().scale) : valOrUpdater;
+        if (isSameNumber(get().scale, nextScale)) {
+            return get().scale;
+        }
         debugLog.ui('Canvas zoom change', { scale: nextScale });
         set({ scale: nextScale });
     },
     setSelectedIds: (valOrUpdater) => {
         const nextIds = typeof valOrUpdater === 'function' ? valOrUpdater(get().selectedIds) : valOrUpdater;
+        if (isSameArray(get().selectedIds, nextIds)) {
+            return get().selectedIds;
+        }
         debugLog.ui('Selection change', { count: nextIds.length, ids: nextIds });
         set({ selectedIds: nextIds });
     },
     setInteractionMode: (valOrUpdater) => {
         const nextMode = typeof valOrUpdater === 'function' ? valOrUpdater(get().interactionMode) : valOrUpdater;
+        if (get().interactionMode === nextMode) {
+            return get().interactionMode;
+        }
         debugLog.ui('Interaction mode change', { mode: nextMode });
         set({ interactionMode: nextMode });
     },
-    setIsSpacePanning: (val) => set({ isSpacePanning: Boolean(val) }),
-    setSelectionRect: (valOrUpdater) => set((state) => ({
-        selectionRect: typeof valOrUpdater === 'function' ? valOrUpdater(state.selectionRect) : valOrUpdater
-    })),
+    setIsSpacePanning: (val) => {
+        const nextValue = Boolean(val);
+        if (get().isSpacePanning === nextValue) {
+            return get().isSpacePanning;
+        }
+        set({ isSpacePanning: nextValue });
+    },
+    setSelectionRect: (valOrUpdater) => set((state) => {
+        const nextRect = typeof valOrUpdater === 'function' ? valOrUpdater(state.selectionRect) : valOrUpdater;
+        if (isSameSelectionRect(state.selectionRect, nextRect)) {
+            return state;
+        }
+
+        return {
+            selectionRect: nextRect
+        };
+    }),
     setIsConnecting: (val) => {
+        if (get().isConnecting === Boolean(val)) {
+            return get().isConnecting;
+        }
         debugLog.ui(`Connection state: ${val}`);
         set({ isConnecting: val });
     },
-    setConnectionStartId: (val) => set({ connectionStartId: val }),
+    setConnectionStartId: (val) => {
+        if (get().connectionStartId === val) {
+            return get().connectionStartId;
+        }
+        set({ connectionStartId: val });
+    },
 
     setCanvasMode: (mode) => {
+        if (get().canvasMode === mode) {
+            return get().canvasMode;
+        }
         debugLog.ui('Canvas mode change', { mode });
         set({ canvasMode: mode });
     },

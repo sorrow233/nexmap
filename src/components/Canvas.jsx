@@ -25,6 +25,18 @@ const isTextInputElement = (element) => {
 
 const EMPTY_POSITION_OVERRIDES = new Map();
 
+const isSameSelectionRect = (current, next) => {
+    if (current === next) return true;
+    if (!current || !next) return false;
+
+    return (
+        current.x1 === next.x1 &&
+        current.y1 === next.y1 &&
+        current.x2 === next.x2 &&
+        current.y2 === next.y2
+    );
+};
+
 export default function Canvas({
     boardBackgroundImage,
     isSuspended = false,
@@ -123,7 +135,6 @@ export default function Canvas({
     const { performSelectionCheck } = useSelection(cardSpatialIndex);
     const {
         scheduleDragPreview,
-        flushDragPreview,
         resetDragPreview
     } = useDragPreviewSync({
         buildOverrides: ({ dx, dy }) => buildCardPositionOverridesFromMap(
@@ -245,6 +256,8 @@ export default function Canvas({
     };
 
     const lastSelectionCheckRef = useRef(0);
+    const lastCommittedSelectionRectRef = useRef(null);
+    const selectionFinalizeFrameRef = useRef(null);
 
     const handleMouseMove = (e) => {
         if (interactionMode === 'panning') {
@@ -258,6 +271,7 @@ export default function Canvas({
             if (now - lastSelectionCheckRef.current > 50) {
                 performSelectionCheck(newSelectionRect);
                 lastSelectionCheckRef.current = now;
+                lastCommittedSelectionRectRef.current = newSelectionRect;
             }
         }
     };
@@ -280,10 +294,25 @@ export default function Canvas({
             return;
         }
 
-        // Perform final check to ensure accuracy
-        if (interactionMode === 'selecting' && selectionRect) {
-            performSelectionCheck(selectionRect);
+        if (selectionFinalizeFrameRef.current) {
+            cancelAnimationFrame(selectionFinalizeFrameRef.current);
+            selectionFinalizeFrameRef.current = null;
         }
+
+        // Perform final check only if the last throttled pass is stale.
+        if (
+            interactionMode === 'selecting' &&
+            selectionRect &&
+            !isSameSelectionRect(lastCommittedSelectionRectRef.current, selectionRect)
+        ) {
+            const finalRect = selectionRect;
+            selectionFinalizeFrameRef.current = requestAnimationFrame(() => {
+                selectionFinalizeFrameRef.current = null;
+                performSelectionCheck(finalRect);
+                lastCommittedSelectionRectRef.current = finalRect;
+            });
+        }
+
         setInteractionMode('none');
         setSelectionRect(null);
         isSpaceHoldPanningRef.current = false;
@@ -293,6 +322,9 @@ export default function Canvas({
         return () => {
             if (rightPressTimerRef.current) {
                 clearTimeout(rightPressTimerRef.current);
+            }
+            if (selectionFinalizeFrameRef.current) {
+                cancelAnimationFrame(selectionFinalizeFrameRef.current);
             }
         };
     }, []);
@@ -345,29 +377,9 @@ export default function Canvas({
     }, [resetDragPreview, scheduleDragPreview]);
 
     const handleCardCommitMove = useCallback((id, newX, newY, moveWithConnections = false) => {
-        const {
-            connections: sourceConnections,
-            selectedIds: sourceSelectedIds,
-            getCardMap
-        } = useStore.getState();
-        const sourceCard = getCardMap().get(id);
-
-        if (sourceCard) {
-            dragPreviewContextRef.current = {
-                moveIds: resolveDraggedCardIds({
-                    cardId: id,
-                    selectedIds: sourceSelectedIds,
-                    connections: sourceConnections,
-                    moveWithConnections
-                }),
-                sourceCardMap: getCardMap()
-            };
-            flushDragPreview();
-        }
-
         handleCardMoveEnd(id, newX, newY, moveWithConnections);
         resetDragPreview(EMPTY_POSITION_OVERRIDES);
-    }, [flushDragPreview, handleCardMoveEnd, resetDragPreview]);
+    }, [handleCardMoveEnd, resetDragPreview]);
 
     // Touch Support for Panning/Selection
     const lastTouchRef = useRef(null);

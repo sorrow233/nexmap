@@ -48,17 +48,12 @@ export function useDraggable({
         }
     };
 
-    const flushPendingMove = () => {
+    const discardPendingMove = () => {
         if (moveFrameRef.current) {
             cancelAnimationFrame(moveFrameRef.current);
             moveFrameRef.current = null;
         }
-
-        if (pendingMoveRef.current && onMove) {
-            const { nextX, nextY, moveWithConnections } = pendingMoveRef.current;
-            pendingMoveRef.current = null;
-            onMove(id, nextX, nextY, moveWithConnections);
-        }
+        pendingMoveRef.current = null;
     };
 
     const scheduleMove = (nextX, nextY, moveWithConnections) => {
@@ -209,7 +204,7 @@ export function useDraggable({
             }
 
             if (dragHappened && onDragEnd) {
-                flushPendingMove();
+                discardPendingMove();
 
                 let clientX, clientY;
                 if (e.type === 'touchend' || e.type === 'touchcancel') {
