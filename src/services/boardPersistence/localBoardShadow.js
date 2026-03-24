@@ -9,12 +9,20 @@ import {
     toEpochMillis,
     toSafeClientRevision
 } from './persistenceCursor';
+import { normalizeBoardSnapshot } from '../sync/boardSnapshot';
 
 const BOARD_SHADOW_PREFIX = 'mixboard_board_shadow_';
 const BOARD_SHADOW_IDB_PREFIX = 'mixboard_shadow_snapshot_';
 const SHADOW_SCOPE_SESSION = 'session';
 const SHADOW_SCOPE_LOCAL = 'local';
 const SHADOW_SCOPE_BOTH = 'both';
+const RECOVERY_TRACKED_KEYS = Object.freeze([
+    'cards',
+    'connections',
+    'groups',
+    'boardPrompts',
+    'boardInstructionSettings'
+]);
 
 const shadowOperationChains = new Map();
 
@@ -33,6 +41,31 @@ const getScopesToHandle = (scope = SHADOW_SCOPE_BOTH) => (
         ? [SHADOW_SCOPE_SESSION, SHADOW_SCOPE_LOCAL]
         : [scope]
 );
+
+const hasOwnField = (value, key) => (
+    Boolean(value) && Object.prototype.hasOwnProperty.call(value, key)
+);
+
+const buildRecoverySnapshotExtras = (payload = {}) => Object.fromEntries(
+    Object.entries(payload).filter(([key]) => !RECOVERY_TRACKED_KEYS.includes(key))
+);
+
+const fillMissingTrackedFields = (primarySnapshot = {}, candidates = []) => {
+    const nextSnapshot = { ...primarySnapshot };
+
+    RECOVERY_TRACKED_KEYS.forEach((key) => {
+        if (hasOwnField(primarySnapshot, key)) {
+            return;
+        }
+
+        const fallbackCandidate = candidates.find((candidate) => hasOwnField(candidate?.snapshot, key));
+        if (fallbackCandidate) {
+            nextSnapshot[key] = fallbackCandidate.snapshot[key];
+        }
+    });
+
+    return nextSnapshot;
+};
 
 const withShadowOperationQueue = (boardId, scope, operation) => {
     const queueKey = `${scope}:${boardId}`;
@@ -83,11 +116,16 @@ const clearLegacyBoardShadowSnapshot = (boardId, scope = SHADOW_SCOPE_BOTH) => {
     });
 };
 
-export const buildBoardRecoverySnapshot = (payload = {}, options = {}) => ({
-    ...payload,
-    updatedAt: toEpochMillis(options.updatedAt ?? payload.updatedAt ?? Date.now()),
-    clientRevision: toSafeClientRevision(options.clientRevision ?? payload.clientRevision)
-});
+export const buildBoardRecoverySnapshot = (payload = {}, options = {}) => {
+    const normalized = normalizeBoardSnapshot(payload);
+
+    return {
+        ...buildRecoverySnapshotExtras(payload),
+        ...normalized,
+        updatedAt: toEpochMillis(options.updatedAt ?? payload.updatedAt ?? Date.now()),
+        clientRevision: toSafeClientRevision(options.clientRevision ?? payload.clientRevision)
+    };
+};
 
 export const persistBoardShadowSnapshot = async (boardId, payload, options = {}) => {
     const scope = options.scope || SHADOW_SCOPE_SESSION;
@@ -124,7 +162,7 @@ export const loadBoardShadowSnapshot = async (boardId, options = {}) => {
 
     try {
         const record = await idbGet(idbKey);
-        indexedSnapshot = record?.snapshot ? buildBoardRecoverySnapshot(record.snapshot) : null;
+        indexedSnapshot = record?.snapshot || null;
     } catch (error) {
         debugLog.error(`[Storage] ${scope} shadow snapshot IndexedDB load failed for board ${boardId}`, error);
     }
@@ -165,10 +203,10 @@ export const clearBoardShadowSnapshot = async (boardId, options = {}) => {
 };
 
 export const pickMostRecentBoardSnapshot = (candidates = []) => {
+    const validCandidates = candidates.filter((candidate) => candidate?.snapshot);
     let bestCandidate = null;
 
-    candidates.forEach((candidate) => {
-        if (!candidate?.snapshot) return;
+    validCandidates.forEach((candidate) => {
         if (!bestCandidate || isPersistenceSnapshotNewer(candidate.snapshot, bestCandidate.snapshot)) {
             bestCandidate = candidate;
         }
@@ -178,7 +216,13 @@ export const pickMostRecentBoardSnapshot = (candidates = []) => {
         return { snapshot: null, source: 'empty' };
     }
 
-    return bestCandidate;
+    return {
+        snapshot: buildBoardRecoverySnapshot(fillMissingTrackedFields(
+            bestCandidate.snapshot,
+            validCandidates.filter((candidate) => candidate !== bestCandidate)
+        )),
+        source: bestCandidate.source
+    };
 };
 
 export const loadMostRecentBoardShadowSnapshot = async (boardId) => {
