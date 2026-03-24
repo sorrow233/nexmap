@@ -87,8 +87,11 @@ export function useVisibleCanvasData({
     }, [connectionIndex, selectedIdSet]);
 
     const { visibleConnections, connectionCardIds } = useMemo(
-        () => getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, selectedIdSet),
-        [connectionIndex, selectedIdSet, visibleCardIds]
+        () => getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, selectedIdSet, {
+            viewportRect,
+            cardRectMap: cardSpatialIndex.rectMap
+        }),
+        [geometryVersion, cardSpatialIndex.rectMap, connectionIndex, selectedIdSet, viewportRect, visibleCardIds]
     );
 
     const connectionCards = useMemo(

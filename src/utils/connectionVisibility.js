@@ -1,3 +1,19 @@
+const CONNECTION_VIEWPORT_MARGIN = 1200;
+
+const expandRect = (rect, margin) => ({
+    left: rect.left - margin,
+    top: rect.top - margin,
+    right: rect.right + margin,
+    bottom: rect.bottom + margin
+});
+
+const isRectIntersect = (rectA, rectB) => (
+    rectA.left < rectB.right &&
+    rectA.right > rectB.left &&
+    rectA.top < rectB.bottom &&
+    rectA.bottom > rectB.top
+);
+
 export function createConnectionVisibilityIndex(connections = []) {
     const connectionsByCardId = new Map();
     const neighborsByCardId = new Map();
@@ -60,13 +76,58 @@ export function getTargetCardIdsFromIndex(connectionIndex, selectedIdSet) {
     return targets;
 }
 
-export function getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, alwaysIncludeCardIds = new Set()) {
+export function getVisibleConnectionDataFromIndex(
+    connectionIndex,
+    visibleCardIds,
+    alwaysIncludeCardIds = new Set(),
+    options = {}
+) {
     const visibleConnectionEntries = [];
     const connectionCardIds = new Set(alwaysIncludeCardIds);
+    const viewportRect = options.viewportRect || null;
+    const cardRectMap = options.cardRectMap || null;
+    const expandedViewportRect = viewportRect
+        ? expandRect(viewportRect, options.viewportMargin || CONNECTION_VIEWPORT_MARGIN)
+        : null;
 
     if (!connectionIndex) {
         return { visibleConnections: [], connectionCardIds };
     }
+
+    const isCardNearViewport = (cardId) => {
+        if (!expandedViewportRect || !cardRectMap) return false;
+        const rect = cardRectMap.get(cardId);
+        return rect ? isRectIntersect(expandedViewportRect, rect) : false;
+    };
+
+    const shouldIncludeConnection = (connection) => {
+        const { from, to } = connection;
+
+        if (alwaysIncludeCardIds.has(from) || alwaysIncludeCardIds.has(to)) {
+            return true;
+        }
+
+        const fromVisible = visibleCardIds.has(from);
+        const toVisible = visibleCardIds.has(to);
+
+        if (fromVisible && toVisible) {
+            return true;
+        }
+
+        if (!fromVisible && !toVisible) {
+            return false;
+        }
+
+        if (!expandedViewportRect || !cardRectMap) {
+            return true;
+        }
+
+        if (fromVisible) {
+            return isCardNearViewport(to);
+        }
+
+        return isCardNearViewport(from);
+    };
 
     const seenKeys = new Set();
     const candidateCardIds = new Set(visibleCardIds);
@@ -78,6 +139,7 @@ export function getVisibleConnectionDataFromIndex(connectionIndex, visibleCardId
 
         relatedConnections.forEach(({ key, connection, index }) => {
             if (seenKeys.has(key)) return;
+            if (!shouldIncludeConnection(connection)) return;
             seenKeys.add(key);
             visibleConnectionEntries.push({ connection, index });
             connectionCardIds.add(connection.from);
