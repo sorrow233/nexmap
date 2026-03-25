@@ -14,6 +14,7 @@ import {
 import useCachedBackgroundImage from '../hooks/useCachedBackgroundImage';
 import InstantTooltip from './InstantTooltip';
 import { optimizeImageUrl } from '../utils/imageOptimizer';
+import { capturePerfSnapshot } from '../utils/perfProbe';
 
 const isTextInputElement = (element) => {
     if (!element || !(element instanceof Element)) return false;
@@ -87,6 +88,7 @@ export default function Canvas({
         moveIds: new Set(),
         sourceCardMap: new Map()
     });
+    const canvasPerfTimerRef = useRef(null);
 
     const {
         cardSpatialIndex,
@@ -112,6 +114,42 @@ export default function Canvas({
     useEffect(() => {
         stateRef.current = { offset, scale };
     }, [offset, scale]);
+
+    useEffect(() => {
+        if (canvasPerfTimerRef.current) {
+            clearTimeout(canvasPerfTimerRef.current);
+        }
+
+        canvasPerfTimerRef.current = setTimeout(() => {
+            canvasPerfTimerRef.current = null;
+            capturePerfSnapshot('canvas-viewport-snapshot', {
+                offsetX: offset.x,
+                offsetY: offset.y,
+                scale,
+                visibleCardsCount: visibleCards.length,
+                visibleConnectionsCount: visibleConnections.length,
+                visibleGroupsCount: visibleGroups.length,
+                selectedCardsCount: selectedIds.length,
+                isSuspended
+            });
+        }, 240);
+
+        return () => {
+            if (canvasPerfTimerRef.current) {
+                clearTimeout(canvasPerfTimerRef.current);
+                canvasPerfTimerRef.current = null;
+            }
+        };
+    }, [
+        isSuspended,
+        offset.x,
+        offset.y,
+        scale,
+        selectedIds.length,
+        visibleCards.length,
+        visibleConnections.length,
+        visibleGroups.length
+    ]);
 
     // Keep DOM transform/background in sync with canonical store state.
     // This avoids occasional style conflicts with gesture-level direct DOM updates.

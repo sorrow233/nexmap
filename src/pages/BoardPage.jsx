@@ -18,6 +18,11 @@ import { useParams } from 'react-router-dom';
 import { useIPhoneBoardMode } from '../hooks/useIPhoneBoardMode';
 import useBoardThumbnailUrl from '../hooks/useBoardThumbnailUrl';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
+import {
+    capturePerfSnapshot,
+    endPerfMeasure,
+    startPerfMeasure
+} from '../utils/perfProbe';
 
 const NotePage = lazyWithRetry(() => import('./NotePage'));
 const ChatModal = lazyWithRetry(() => import('../components/ChatModal'));
@@ -37,6 +42,9 @@ export default function BoardPage({
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
+    const perfBoardIdRef = React.useRef('');
+    const perfBoardReadyRef = React.useRef('');
+    const perfExpandedCardIdRef = React.useRef('');
 
     // Extracted Logic
     const {
@@ -125,6 +133,64 @@ export default function BoardPage({
         currentBoard?.thumbnail || '',
         currentBoard?.thumbnailUpdatedAt
     );
+
+    useEffect(() => {
+        if (!currentBoardId || perfBoardIdRef.current === currentBoardId) {
+            return;
+        }
+
+        perfBoardIdRef.current = currentBoardId;
+        perfBoardReadyRef.current = '';
+        startPerfMeasure(`board-open:${currentBoardId}`, {
+            boardId: currentBoardId
+        });
+        capturePerfSnapshot('board-open-start', {
+            boardId: currentBoardId
+        });
+    }, [currentBoardId]);
+
+    useEffect(() => {
+        if (!currentBoardId || !currentBoard || perfBoardReadyRef.current === currentBoardId) {
+            return;
+        }
+
+        perfBoardReadyRef.current = currentBoardId;
+        endPerfMeasure(`board-open:${currentBoardId}`, {
+            boardId: currentBoardId,
+            cardsCount: cards.length
+        });
+        capturePerfSnapshot('board-open-ready', {
+            boardId: currentBoardId,
+            cardsCount: cards.length,
+            expandedCardId: expandedCardId || ''
+        });
+    }, [cards.length, currentBoard, currentBoardId, expandedCardId]);
+
+    useEffect(() => {
+        if (!expandedCardId) {
+            perfExpandedCardIdRef.current = '';
+            return;
+        }
+
+        if (!expandedCardId || perfExpandedCardIdRef.current === expandedCardId) {
+            return;
+        }
+
+        perfExpandedCardIdRef.current = expandedCardId;
+        startPerfMeasure(`card-open:${expandedCardId}`, {
+            boardId: currentBoardId || '',
+            cardId: expandedCardId
+        });
+        startPerfMeasure(`chat-interactive:${expandedCardId}`, {
+            boardId: currentBoardId || '',
+            cardId: expandedCardId
+        });
+        capturePerfSnapshot('card-open-start', {
+            boardId: currentBoardId || '',
+            cardId: expandedCardId,
+            cardsCount: cards.length
+        });
+    }, [cards.length, currentBoardId, expandedCardId]);
 
     useEffect(() => {
         if (!isIPhoneBoardMode) return;

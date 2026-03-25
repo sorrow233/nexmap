@@ -9,6 +9,11 @@ import { useAISprouting } from '../../hooks/useAISprouting';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ensureLatestBuildOrRefresh } from '../../utils/buildVersion';
 import { usePendingMessageQueue } from './usePendingMessageQueue';
+import {
+    capturePerfSnapshot,
+    endPerfMeasure,
+    markPerfEvent
+} from '../../utils/perfProbe';
 
 import SproutModal from './SproutModal';
 import ChatInput from './ChatInput';
@@ -59,8 +64,11 @@ export default function ChatView({
     const queueDispatchNoticeTimerRef = useRef(null);
     const messagesEndRef = useRef(null);
     const scrollContainerRef = useRef(null);
+    const scrollToMessageIndexRef = useRef(null);
     const fileInputRef = useRef(null);
     const modalRef = useRef(null);
+    const perfMountedCardIdRef = useRef('');
+    const perfInteractiveCardIdRef = useRef('');
 
     // Sprout Feature State
     const [isSprouting, setIsSprouting] = useState(false);
@@ -273,6 +281,71 @@ export default function ChatView({
             clearQueueDispatchHint();
         }
     }, [clearQueueDispatchHint, isAtBottom, isStreaming]);
+
+    useEffect(() => {
+        if (perfMountedCardIdRef.current === card.id) {
+            return;
+        }
+
+        perfMountedCardIdRef.current = card.id;
+        endPerfMeasure(`card-open:${card.id}`, {
+            cardId: card.id,
+            messageCount: card.data.messages?.length || 0,
+            cardType: card.type || 'chat'
+        });
+        markPerfEvent('chat-view-mounted', {
+            cardId: card.id,
+            messageCount: card.data.messages?.length || 0,
+            cardType: card.type || 'chat'
+        });
+        capturePerfSnapshot('chat-view-mounted', {
+            cardId: card.id,
+            messageCount: card.data.messages?.length || 0,
+            renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0
+        });
+    }, [card.id, card.data.messages?.length, card.type]);
+
+    useEffect(() => {
+        if (perfInteractiveCardIdRef.current === card.id) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        const markInteractive = () => {
+            if (cancelled) return;
+            const textarea = modalRef.current?.querySelector('textarea');
+            if (!textarea) return;
+
+            perfInteractiveCardIdRef.current = card.id;
+            endPerfMeasure(`chat-interactive:${card.id}`, {
+                cardId: card.id,
+                messageCount: card.data.messages?.length || 0
+            });
+            capturePerfSnapshot('chat-input-ready', {
+                cardId: card.id,
+                messageCount: card.data.messages?.length || 0,
+                renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0
+            });
+        };
+
+        const frame = requestAnimationFrame(() => {
+            requestAnimationFrame(markInteractive);
+        });
+
+        return () => {
+            cancelled = true;
+            cancelAnimationFrame(frame);
+        };
+    }, [card.id, card.data.messages?.length]);
+
+    useEffect(() => {
+        capturePerfSnapshot('chat-render-snapshot', {
+            cardId: card.id,
+            messageCount: card.data.messages?.length || 0,
+            renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0,
+            streaming: isStreaming
+        });
+    }, [card.id, card.data.messages?.length, isStreaming]);
 
 
     // --- Handlers Wrapper ---
@@ -502,6 +575,7 @@ export default function ChatView({
                         card={card}
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
+                        scrollToMessageIndexRef={scrollToMessageIndexRef}
                         isStreaming={isStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
@@ -519,6 +593,11 @@ export default function ChatView({
                         <ChatIndexSidebar
                             messages={card.data.messages || []}
                             onScrollTo={(index) => {
+                                if (scrollToMessageIndexRef.current) {
+                                    scrollToMessageIndexRef.current(index, { align: 'center' });
+                                    return;
+                                }
+
                                 const el = document.getElementById(`message-${index}`);
                                 if (el) {
                                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });

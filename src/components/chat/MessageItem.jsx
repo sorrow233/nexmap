@@ -131,7 +131,7 @@ const getLastSafeStreamingBoundary = (text = '') => {
     return boundary;
 };
 
-const MessageItem = React.memo(({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onContinueTopic, onBranch }) => {
+const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, parseModelOutput, isStreaming, handleRetry, onShare, onToggleFavorite, isFavorite, onContinueTopic, onBranch }) => {
     const isUser = message.role === 'user';
     // Use getState() instead of subscribing to entire cards array to prevent re-renders
     const focusOnCard = useStore(state => state.focusOnCard);
@@ -499,7 +499,7 @@ const MessageItem = React.memo(({ cardId, message, index, marks, capturedNotes, 
                 {!isUser && !isStreaming && canShareMessage && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                            onClick={() => onToggleFavorite && onToggleFavorite(index, textContent)}
+                            onClick={() => onToggleFavorite && onToggleFavorite(cardId, index, textContent)}
                             className={`p-2 rounded-full transition-all ring-1 ring-inset ${isFavorite
                                 ? 'text-orange-500 bg-orange-50/80 ring-orange-200 dark:bg-orange-500/20 dark:ring-orange-500/40'
                                 : 'text-slate-400 hover:text-orange-500 bg-slate-50/50 hover:bg-orange-50 ring-transparent hover:ring-orange-200 dark:bg-white/5 dark:hover:bg-orange-500/10'}`}
@@ -560,6 +560,18 @@ const MessageItem = React.memo(({ cardId, message, index, marks, capturedNotes, 
             </div>
         </div>
     );
-});
+};
+
+const areMessageItemPropsEqual = (prevProps, nextProps) => (
+    prevProps.cardId === nextProps.cardId &&
+    prevProps.message === nextProps.message &&
+    prevProps.index === nextProps.index &&
+    prevProps.marks === nextProps.marks &&
+    prevProps.capturedNotes === nextProps.capturedNotes &&
+    prevProps.isStreaming === nextProps.isStreaming &&
+    prevProps.isFavorite === nextProps.isFavorite
+);
+
+const MessageItem = React.memo(MessageItemComponent, areMessageItemPropsEqual);
 
 export default MessageItem;

@@ -1,13 +1,11 @@
 import React from 'react';
-import ErrorBoundary from '../ErrorBoundary';
-import MessageItem from './MessageItem';
-import favoritesService from '../../services/favoritesService';
-import PendingQueueIndicator from './PendingQueueIndicator';
+import MessageVirtualList from './virtualized/MessageVirtualList';
 
 const MessageList = React.memo(function MessageList({
     card,
     messagesEndRef,
     scrollContainerRef,
+    scrollToMessageIndexRef,
     isStreaming,
     handleRetry,
     parseModelOutput,
@@ -45,46 +43,24 @@ const MessageList = React.memo(function MessageList({
                         />
                     </div>
                 ) : (
-                    <div className="space-y-16">
-                        {messages.map((m, i) => {
-                            const isStreamingMessage = isStreaming && i === messages.length - 1 && m.role === 'assistant';
-
-                            return (
-                                <ErrorBoundary key={m.id || i} level="card">
-                                    <MessageItem
-                                        cardId={card.id}
-                                        message={m}
-                                        index={i}
-                                        marks={card.data.marks}
-                                        capturedNotes={card.data.capturedNotes}
-                                        parseModelOutput={parseModelOutput}
-                                        isStreaming={isStreamingMessage}
-                                        handleRetry={handleRetry}
-                                        onShare={onShare}
-                                        onToggleFavorite={(idx, content) => onToggleFavorite(card.id, idx, content)}
-                                        isFavorite={favoritesService.isFavorite(card.id, i)}
-                                        onContinueTopic={onContinueTopic}
-                                        onBranch={onBranch}
-                                    />
-                                </ErrorBoundary>
-                            );
-                        })}
-
-                        {isStreaming && (
-                            <div className="pt-8 flex justify-start">
-                                <div className="flex gap-2 items-center text-brand-500/40 dark:text-brand-400/30">
-                                    <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0s]" />
-                                    <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.2s]" />
-                                    <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.4s]" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] ml-2">Streaming Intelligence</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {pendingCount > 0 && <PendingQueueIndicator pendingMessages={pendingMessages} />}
-
-                        <div ref={messagesEndRef} className="h-32" />
-                    </div>
+                    <MessageVirtualList
+                        cardId={card.id}
+                        messages={messages}
+                        scrollContainerRef={scrollContainerRef}
+                        messagesEndRef={messagesEndRef}
+                        scrollToMessageIndexRef={scrollToMessageIndexRef}
+                        isStreaming={isStreaming}
+                        handleRetry={handleRetry}
+                        marks={card.data.marks}
+                        capturedNotes={card.data.capturedNotes}
+                        parseModelOutput={parseModelOutput}
+                        onShare={onShare}
+                        onToggleFavorite={onToggleFavorite}
+                        pendingCount={pendingCount}
+                        pendingMessages={pendingMessages}
+                        onContinueTopic={onContinueTopic}
+                        onBranch={onBranch}
+                    />
                 )}
             </div>
         </div>
