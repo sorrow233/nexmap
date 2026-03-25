@@ -120,7 +120,7 @@ export class BoardSyncController {
             await this.fireSync.saveSnapshot('initial_local_seed');
         } else if (skippedRemoteApplyReason) {
             await this.fireSync.saveSnapshot(skippedRemoteApplyReason);
-        } else {
+        } else if (!FIREBASE_SYNC_SAFE_MODE) {
             this.fireSync.planDeferredRepair(repairCandidateSnapshot, { expectedCardCount });
         }
 

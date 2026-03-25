@@ -156,6 +156,10 @@ export class FirestoreBoardSync {
     }
 
     shouldDeferRemoteApply({ localSnapshot, expectedCardCount = 0 } = {}) {
+        if (FIREBASE_SYNC_SAFE_MODE) {
+            return null;
+        }
+
         const plan = planDeferredRemoteCheckpointRepair({
             localSnapshot,
             expectedCardCount,
@@ -216,6 +220,10 @@ export class FirestoreBoardSync {
     }
 
     queueRecoveredCheckpointRepair(signature = '', format = 'unknown') {
+        if (FIREBASE_SYNC_SAFE_MODE) {
+            return;
+        }
+
         if (!signature || this.repairedCheckpointSignatures.has(signature)) {
             return;
         }
@@ -229,6 +237,10 @@ export class FirestoreBoardSync {
     }
 
     queueDeferredCheckpointRepair(reason = 'local_snapshot_repair') {
+        if (FIREBASE_SYNC_SAFE_MODE) {
+            return;
+        }
+
         if (!reason) return;
         if (this.deferredCheckpointRepairReason === 'checkpoint_decode_repair') {
             return;
@@ -246,6 +258,13 @@ export class FirestoreBoardSync {
     }
 
     planDeferredRepair(localSnapshot, { expectedCardCount = 0 } = {}) {
+        if (FIREBASE_SYNC_SAFE_MODE) {
+            return {
+                shouldRepair: false,
+                reason: 'safe_mode_disabled'
+            };
+        }
+
         const plan = planDeferredRemoteCheckpointRepair({
             localSnapshot,
             expectedCardCount,

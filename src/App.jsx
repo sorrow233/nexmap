@@ -201,6 +201,7 @@ function AppContent() {
     const searchFlushTimerRef = useRef(null);
     const boardsListRef = useRef(boardsList);
     const activeBoardPersistenceRef = useRef(activeBoardPersistence);
+    const pendingRemoteSnapshotRef = useRef(null);
 
     useBuildVersionRefresh();
 
@@ -369,6 +370,45 @@ function AppContent() {
         // Rebuild card lookup cache outside of set() so it stays consistent.
         useStore.getState().rebuildCardLookup?.(runtimeCards);
     }, [currentBoardId]);
+
+    useEffect(() => {
+        if (!currentBoardId) {
+            pendingRemoteSnapshotRef.current = null;
+            return;
+        }
+
+        const pendingRemote = pendingRemoteSnapshotRef.current;
+        if (!pendingRemote || pendingRemote.boardId !== currentBoardId) {
+            return;
+        }
+
+        if (activeBoardPersistence?.dirty === true) {
+            return;
+        }
+
+        if (!shouldApplyRemoteSnapshotToStore(pendingRemote.snapshot)) {
+            pendingRemoteSnapshotRef.current = null;
+            return;
+        }
+
+        logPersistenceTrace('sync:pending-remote-snapshot-apply', {
+            boardId: currentBoardId,
+            safeMode: FIREBASE_SYNC_SAFE_MODE,
+            cursor: buildBoardCursorTrace(pendingRemote.snapshot)
+        });
+        applyBoardSnapshotToStore(pendingRemote.snapshot, {
+            source: 'remote_sync',
+            boardId: currentBoardId
+        });
+        syncBoardSnapshotMetadataIntoList(currentBoardId, pendingRemote.snapshot);
+        pendingRemoteSnapshotRef.current = null;
+    }, [
+        activeBoardPersistence?.dirty,
+        applyBoardSnapshotToStore,
+        currentBoardId,
+        shouldApplyRemoteSnapshotToStore,
+        syncBoardSnapshotMetadataIntoList
+    ]);
 
     const flushSearchDataBuffer = useCallback(() => {
         const pendingChunk = searchBufferedDataRef.current;
@@ -732,6 +772,25 @@ function AppContent() {
                             onSnapshot: (nextSnapshot) => {
                                 if (isCancelled) return;
                                 if (!shouldApplyRemoteSnapshotToStore(nextSnapshot)) {
+                                    if (activeBoardPersistenceRef.current?.dirty === true) {
+                                        const normalizedPendingSnapshot = normalizeBoardSnapshot(nextSnapshot);
+                                        const currentPendingSnapshot = pendingRemoteSnapshotRef.current?.snapshot || null;
+                                        if (
+                                            !currentPendingSnapshot
+                                            || pendingRemoteSnapshotRef.current?.boardId !== currentBoardId
+                                            || isPersistenceSnapshotNewer(normalizedPendingSnapshot, currentPendingSnapshot)
+                                        ) {
+                                            pendingRemoteSnapshotRef.current = {
+                                                boardId: currentBoardId,
+                                                snapshot: normalizedPendingSnapshot
+                                            };
+                                            logPersistenceTrace('sync:remote-snapshot-deferred', {
+                                                boardId: currentBoardId,
+                                                safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                                cursor: buildBoardCursorTrace(normalizedPendingSnapshot)
+                                            });
+                                        }
+                                    }
                                     return;
                                 }
                                 logPersistenceTrace('sync:remote-snapshot-apply', {
@@ -781,6 +840,7 @@ function AppContent() {
         // Cleanup function - mark as cancelled if effect re-runs
         return () => {
             isCancelled = true;
+            pendingRemoteSnapshotRef.current = null;
             if (boardSyncControllerRef.current && boardSyncControllerRef.current.boardId === currentBoardId) {
                 unregisterActiveBoardRuntime({
                     boardId: currentBoardId,
