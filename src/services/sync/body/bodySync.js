@@ -22,24 +22,17 @@ const pickCardBodyFields = (card = {}) => {
 
     return {
         id: card.id,
-        type: card.type,
-        x: card.x,
-        y: card.y,
-        createdAt: card.createdAt,
-        updatedAt: card.updatedAt,
-        deletedAt: card.deletedAt,
         data: nextData
     };
 };
 
 const mergeBodyCard = (currentCard, incomingCard) => {
     if (!currentCard) {
-        return incomingCard;
+        return null;
     }
 
     return {
         ...currentCard,
-        ...incomingCard,
         data: {
             ...(currentCard.data || {}),
             ...(incomingCard.data || {})
@@ -70,12 +63,12 @@ export const mergeBodySnapshot = (currentSnapshot = {}, incomingSnapshot = {}) =
     const cards = incoming.cards.map((incomingCard) => {
         const cardId = incomingCard?.id;
         if (!cardId) {
-            return incomingCard;
+            return null;
         }
 
         seenIds.add(cardId);
         return mergeBodyCard(currentById.get(cardId), incomingCard);
-    });
+    }).filter(Boolean);
 
     current.cards.forEach((currentCard) => {
         const cardId = currentCard?.id;
