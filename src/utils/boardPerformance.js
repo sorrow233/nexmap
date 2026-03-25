@@ -29,7 +29,6 @@ export const extractMessageContentText = (content) => {
 };
 
 export const estimateCardTextChars = (card = {}) => {
-    const persistedTextChars = Number(card?.data?.persistedTextChars) || 0;
     const title = typeof card?.data?.title === 'string' ? card.data.title.length : 0;
     const summaryTitle = typeof card?.summary?.title === 'string' ? card.summary.title.length : 0;
     const summaryBody = typeof card?.summary?.summary === 'string' ? card.summary.summary.length : 0;
@@ -42,7 +41,7 @@ export const estimateCardTextChars = (card = {}) => {
         total + extractMessageContentText(message?.content).length
     ), 0);
 
-    return Math.max(title + summaryTitle + summaryBody + marks + messageChars, persistedTextChars);
+    return title + summaryTitle + summaryBody + marks + messageChars;
 };
 
 export const estimateBoardTextChars = (cards = []) => (

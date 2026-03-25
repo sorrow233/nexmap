@@ -16,11 +16,6 @@ import {
 } from '../services/customInstructionsService';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
 import { isDialogActive, isEventInsideDialog } from '../utils/dialogScope';
-import {
-    hasExternalCardBody,
-    hydrateCardBody as loadHydratedCardBody,
-    pickHydratedCardBodyData
-} from '../services/boardPersistence/cardBodyStorage';
 
 const isSameStringArray = (a = [], b = []) => {
     if (a.length !== b.length) return false;
@@ -46,7 +41,6 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     // Store Actions
     const setExpandedCardId = useStore(state => state.setExpandedCardId);
     const updateCardFull = useStore(state => state.updateCardFull);
-    const hydrateCardBodyInStore = useStore(state => state.hydrateCardBody);
     const handleRegenerate = useStore(state => state.handleRegenerate);
     const handleBatchDelete = useStore(state => state.handleBatchDelete);
     const handleChatGenerate = useStore(state => state.handleChatGenerate);
@@ -77,10 +71,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
     );
     const hasBackgroundImage = !!currentBoard?.backgroundImage;
     const conversationCount = useMemo(() => cards.reduce((total, card) => {
-        const messages = Array.isArray(card?.data?.messages) ? card.data.messages : [];
-        const userCount = messages.length > 0
-            ? messages.filter(msg => msg?.role === 'user').length
-            : Number(card?.data?.userMessageCount) || 0;
+        const messages = card?.data?.messages || [];
+        const userCount = messages.filter(msg => msg?.role === 'user').length;
         return total + userCount;
     }, 0), [cards]);
     const normalizedBoardInstructionSettings = useMemo(
@@ -379,18 +371,10 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
 
     const handleChatModalGenerate = async (cardId, text, images = []) => {
         if (isReadOnly) return;
-        const state = useStore.getState();
-        let card = state.getCardById?.(cardId) || state.cards.find(c => c.id === cardId);
+        const freshCards = useStore.getState().cards;
+        const card = freshCards.find(c => c.id === cardId);
 
         if (!card) return;
-
-        if (currentBoardId && hasExternalCardBody(card)) {
-            const hydratedCard = await loadHydratedCardBody(currentBoardId, card);
-            if (hydratedCard && !hasExternalCardBody(hydratedCard)) {
-                hydrateCardBodyInStore(cardId, pickHydratedCardBodyData(hydratedCard));
-                card = hydratedCard;
-            }
-        }
 
         let finalText = text;
         if (tempInstructions.length > 0) {

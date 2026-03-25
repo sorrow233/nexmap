@@ -22,8 +22,6 @@ import {
     applyStreamTextUpdates,
     collectStreamBufferUpdatesForCardIds
 } from '../store/slices/utils/streamRenderBuffer';
-import { useStore } from '../store/useStore';
-import { isLargeBoardCards } from '../utils/boardPerformance';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -226,34 +224,6 @@ export function useBoardPersistence({
         return scheduledOperation;
     }, []);
 
-    const releaseLargeBoardRuntimeBodies = useCallback((snapshot = null) => {
-        if (!boardId) return;
-
-        const sourceCards = Array.isArray(snapshot?.cards) ? snapshot.cards : [];
-        if (!isLargeBoardCards(sourceCards)) {
-            return;
-        }
-
-        const storeState = useStore.getState();
-        const excludeIds = new Set();
-
-        if (storeState.expandedCardId) {
-            excludeIds.add(storeState.expandedCardId);
-        }
-
-        const generatingCardIds = storeState.generatingCardIds instanceof Set
-            ? storeState.generatingCardIds
-            : new Set(storeState.generatingCardIds || []);
-
-        generatingCardIds.forEach((cardId) => {
-            if (cardId) {
-                excludeIds.add(cardId);
-            }
-        });
-
-        storeState.externalizeHydratedCardBodies?.(boardId, Array.from(excludeIds));
-    }, [boardId]);
-
     const buildPersistableBoardData = useCallback((data = {}) => {
         const normalizedData = {
             cards: data.cards || [],
@@ -334,7 +304,7 @@ export function useBoardPersistence({
                 updatedAt: now
             });
 
-            const persistedPayload = await enqueueDurableWrite(() => saveBoard(boardId, payload));
+            await enqueueDurableWrite(() => saveBoard(boardId, payload));
 
             if (typeof setLastSavedAt === 'function') {
                 setLastSavedAt(now);
@@ -366,11 +336,9 @@ export function useBoardPersistence({
                 clientRevision: revision,
                 savedAt: now,
                 source: options.reason || 'local_persist',
-                snapshot: persistedPayload || payload,
-                metadata: pickBoardSyncMetadata(persistedPayload || payload)
+                snapshot: payload,
+                metadata: pickBoardSyncMetadata(payload)
             });
-
-            releaseLargeBoardRuntimeBodies(persistedPayload || payload);
         } catch (error) {
             console.error('[BoardPersistence] Local save failed:', error);
             applySaveStatus(setSaveStatus, 'error');
@@ -382,7 +350,7 @@ export function useBoardPersistence({
                 toast?.error?.('本地保存失败，请检查存储空间');
             }
         }
-    }, [boardId, buildPersistableBoardData, enqueueDurableWrite, releaseLargeBoardRuntimeBodies, saveBoard, setActiveBoardPersistence, setLastSavedAt, setSaveStatus, toast, updateActivePersistenceCursor]);
+    }, [boardId, buildPersistableBoardData, enqueueDurableWrite, saveBoard, setActiveBoardPersistence, setLastSavedAt, setSaveStatus, toast, updateActivePersistenceCursor]);
 
     const performEmergencyLocalSave = useCallback((data, options = {}) => {
         if (!boardId) return false;
