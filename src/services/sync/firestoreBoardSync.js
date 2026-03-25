@@ -100,6 +100,7 @@ export class FirestoreBoardSync {
         this.snapshotSaveQueuedReason = '';
         this.snapshotSaveCount = 0;
         this.localUpdateSequence = 0;
+        this.lastProtectedRepairSourceKey = '';
         this.remoteMetadata = {
             hasCheckpoint: false,
             updatedAt: 0,
@@ -134,6 +135,30 @@ export class FirestoreBoardSync {
             boardId: this.boardId,
             ...extra
         });
+    }
+
+    async saveNonDestructiveRepair(reason = 'non_destructive_remote_repair', sourceKey = '') {
+        const nextSourceKey = String(sourceKey || '');
+        if (nextSourceKey && this.lastProtectedRepairSourceKey === nextSourceKey) {
+            return null;
+        }
+
+        if (nextSourceKey) {
+            this.lastProtectedRepairSourceKey = nextSourceKey;
+        }
+
+        this.emitState('warning', {
+            message: `Detected conservative sync repair for ${this.boardId}, uploading protected checkpoint`
+        });
+
+        try {
+            return await this.saveSnapshot(reason);
+        } catch (error) {
+            if (nextSourceKey && this.lastProtectedRepairSourceKey === nextSourceKey) {
+                this.lastProtectedRepairSourceKey = '';
+            }
+            throw error;
+        }
     }
 
     hasQueuedLocalWrites() {
@@ -198,6 +223,13 @@ export class FirestoreBoardSync {
             this.doc.transact(() => {
                 syncBoardSnapshotToDoc(this.doc, resolution.snapshot);
             }, FIREBASE_SYNC_ORIGINS.firestore);
+        }
+
+        if (decodedCheckpoint.recovered || resolution.shouldRepairRemote) {
+            await this.saveNonDestructiveRepair(
+                decodedCheckpoint.recovered ? 'checkpoint_decode_repair' : resolution.reason,
+                checkpoint.signature || buildRootCheckpointKey(rootData)
+            );
         }
 
         return {

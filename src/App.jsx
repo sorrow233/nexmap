@@ -221,8 +221,7 @@ function AppContent() {
         groups,
         boardPrompts,
         boardInstructionSettings,
-        isBoardLoading,
-        hasGeneratingCards: (generatingCardIds?.size || 0) > 0
+        isBoardLoading
     });
 
     // Cmd+K shortcut for search

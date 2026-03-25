@@ -24,8 +24,7 @@ export function useRevisionDrivenBoardSync({
     groups,
     boardPrompts,
     boardInstructionSettings,
-    isBoardLoading,
-    hasGeneratingCards
+    isBoardLoading
 }) {
     const timerRef = useRef(null);
 
@@ -59,7 +58,7 @@ export function useRevisionDrivenBoardSync({
             return undefined;
         }
 
-        if (isBoardLoading || hasGeneratingCards) {
+        if (isBoardLoading) {
             return undefined;
         }
 
@@ -107,7 +106,6 @@ export function useRevisionDrivenBoardSync({
         cards,
         connections,
         groups,
-        hasGeneratingCards,
         isBoardLoading
     ]);
 }
