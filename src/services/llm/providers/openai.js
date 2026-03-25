@@ -1,6 +1,77 @@
 import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
+import { resolveAllImages } from '../utils';
+
+const hasMeaningfulText = (text) => String(text ?? '').trim().length > 0;
+const isPermanentOpenAIStatus = (statusCode) => {
+    const code = Number(statusCode);
+    return Number.isFinite(code) && code >= 400 && code < 500 && ![401, 403, 408, 409, 429].includes(code);
+};
+
+const hasResolvableImageSource = (part = {}) => {
+    const source = part?.source;
+    if (!source) return false;
+    return Boolean(source.data || source.url || source.s3Url || source.id);
+};
+
+const sanitizeMessageContent = (content) => {
+    if (Array.isArray(content)) {
+        const nextParts = content.map((part) => {
+            if (!part || typeof part !== 'object') {
+                return null;
+            }
+
+            if (part.type === 'text') {
+                const text = String(part.text ?? '');
+                if (!hasMeaningfulText(text)) {
+                    return null;
+                }
+                return {
+                    ...part,
+                    text
+                };
+            }
+
+            if (part.type === 'image') {
+                if (!hasResolvableImageSource(part)) {
+                    return null;
+                }
+                return part;
+            }
+
+            return null;
+        }).filter(Boolean);
+
+        return nextParts.length > 0 ? nextParts : null;
+    }
+
+    if (typeof content === 'string') {
+        return hasMeaningfulText(content) ? content : null;
+    }
+
+    return null;
+};
+
+const sanitizeMessages = (messages = []) => (
+    Array.isArray(messages)
+        ? messages.map((msg) => {
+            if (!msg || typeof msg !== 'object' || !msg.role) {
+                return null;
+            }
+
+            const content = sanitizeMessageContent(msg.content);
+            if (content == null) {
+                return null;
+            }
+
+            return {
+                ...msg,
+                content
+            };
+        }).filter(Boolean)
+        : []
+);
 
 export class OpenAIProvider extends LLMProvider {
     /**
@@ -15,7 +86,7 @@ export class OpenAIProvider extends LLMProvider {
      * OpenAI 协议转换
      */
     formatMessages(messages) {
-        return messages.map(msg => {
+        return sanitizeMessages(messages).map(msg => {
             if (Array.isArray(msg.content)) {
                 return {
                     role: msg.role,
@@ -41,6 +112,12 @@ export class OpenAIProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
+        const resolvedMessages = await resolveAllImages(messages);
+        const formattedMessages = this.formatMessages(resolvedMessages);
+
+        if (formattedMessages.length === 0) {
+            throw new Error('没有可发送的有效消息');
+        }
 
         let retries = 2; // 允许重试 2 次（使用不同 Key）
         let lastError = null;
@@ -60,7 +137,7 @@ export class OpenAIProvider extends LLMProvider {
                     },
                     body: JSON.stringify({
                         model: modelToUse,
-                        messages: this.formatMessages(messages),
+                        messages: formattedMessages,
                         max_tokens: resolveChatMaxOutputTokens(options),
                         ...(options.temperature !== undefined && { temperature: options.temperature }),
                         ...(options.tools && { tools: options.tools }),
@@ -78,7 +155,9 @@ export class OpenAIProvider extends LLMProvider {
                         lastError = new Error(err.error?.message || `API 错误 ${response.status}`);
                         continue;
                     }
-                    throw new Error(err.error?.message || response.statusText);
+                    const error = new Error(err.error?.message || response.statusText);
+                    error.statusCode = response.status;
+                    throw error;
                 }
 
                 const data = await response.json();
@@ -95,7 +174,7 @@ export class OpenAIProvider extends LLMProvider {
 
                 return content;
             } catch (e) {
-                if (retries > 0 && !e.message.includes('没有可用')) {
+                if (retries > 0 && !e.message.includes('没有可用') && !isPermanentOpenAIStatus(e?.statusCode)) {
                     retries--;
                     lastError = e;
                     continue;
@@ -113,6 +192,12 @@ export class OpenAIProvider extends LLMProvider {
         const modelToUse = model || this.config.model;
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
+        const resolvedMessages = await resolveAllImages(messages);
+        const formattedMessages = this.formatMessages(resolvedMessages);
+
+        if (formattedMessages.length === 0) {
+            throw new Error('没有可发送的有效消息');
+        }
 
         let retries = 2; // 允许重试（使用不同 Key）
         let delay = 1000;
@@ -133,7 +218,7 @@ export class OpenAIProvider extends LLMProvider {
                     signal: options.signal,
                     body: JSON.stringify({
                         model: modelToUse,
-                        messages: this.formatMessages(messages),
+                        messages: formattedMessages,
                         max_tokens: resolveChatMaxOutputTokens(options),
                         ...(options.temperature !== undefined && { temperature: options.temperature }),
                         stream: true,
@@ -156,7 +241,9 @@ export class OpenAIProvider extends LLMProvider {
                         delay *= 2;
                         continue;
                     }
-                    throw new Error(await response.text());
+                    const error = new Error(await response.text());
+                    error.statusCode = response.status;
+                    throw error;
                 }
 
                 const reader = response.body.getReader();
@@ -239,7 +326,7 @@ export class OpenAIProvider extends LLMProvider {
                 }
 
             } catch (e) {
-                if (retries > 0 && !e.message.includes('没有可用')) {
+                if (retries > 0 && !e.message.includes('没有可用') && !isPermanentOpenAIStatus(e?.statusCode)) {
                     console.warn(`[OpenAI] Stream error: ${e.message}, retrying...`);
                     retries--;
                     continue;
