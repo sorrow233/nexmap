@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { normalizeBoardSnapshot } from '../services/sync/boardSnapshot';
 import { isActiveBoardRuntimeController } from '../services/sync/boardRuntimeAuthority';
+import { isLargeBoardCards } from '../utils/boardPerformance';
 
 const CHANGE_SYNC_DELAY_MS = Object.freeze({
     card_content: 900,
@@ -42,6 +43,7 @@ export function useRevisionDrivenBoardSync({
     hasGeneratingCards
 }) {
     const timerRef = useRef(null);
+    const isLargeBoard = isLargeBoardCards(cards);
 
     useEffect(() => {
         return () => {
@@ -77,7 +79,7 @@ export function useRevisionDrivenBoardSync({
             return undefined;
         }
 
-        if (isActiveBoardRuntimeController(boardId, controller)) {
+        if (isActiveBoardRuntimeController(boardId, controller) && !isLargeBoard) {
             return undefined;
         }
 
@@ -121,6 +123,7 @@ export function useRevisionDrivenBoardSync({
         connections,
         groups,
         hasGeneratingCards,
+        isLargeBoard,
         isBoardLoading
     ]);
 }

@@ -1,23 +1,7 @@
-const MAX_CHARS_PER_CARD = 100000;
+import { extractMessageContentText } from '../../utils/boardPerformance';
 
-const stringifyMessageContent = (content) => {
-    if (typeof content === 'string') {
-        return content;
-    }
-
-    if (!Array.isArray(content)) {
-        return '';
-    }
-
-    return content
-        .map((part) => {
-            if (part?.type === 'text') return part.text || '';
-            if (part?.type === 'image') return '[Image]';
-            return '';
-        })
-        .filter(Boolean)
-        .join(' ');
-};
+const MAX_CHARS_PER_CARD = 12_000;
+const MAX_TOTAL_CONTEXT_CHARS = 48_000;
 
 const truncateCardContextFromTail = (text) => {
     if (!text || text.length <= MAX_CHARS_PER_CARD) {
@@ -32,13 +16,18 @@ export const buildSelectedCardsContext = (cards = []) => {
         return '';
     }
 
+    let remainingChars = MAX_TOTAL_CONTEXT_CHARS;
     const sections = cards
         .map((card) => {
+        if (remainingChars <= 0) {
+            return '';
+        }
+
         const title = card?.data?.title || 'Untitled';
         const messages = Array.isArray(card?.data?.messages) ? card.data.messages : [];
         const messageLines = messages
             .map((message) => {
-                const content = stringifyMessageContent(message?.content);
+                const content = extractMessageContentText(message?.content);
                 if (!content) return '';
                 return `${message?.role || 'user'}: ${content}`;
             })
@@ -48,8 +37,17 @@ export const buildSelectedCardsContext = (cards = []) => {
             return '';
         }
 
-        const messageBody = messageLines.join('\n');
-        return `--- Card: "${title}" ---\n${truncateCardContextFromTail(messageBody)}`;
+        const messageBody = truncateCardContextFromTail(messageLines.join('\n'));
+        if (!messageBody) {
+            return '';
+        }
+
+        const limitedMessageBody = messageBody.length <= remainingChars
+            ? messageBody
+            : `...${messageBody.slice(-remainingChars)}`;
+
+        remainingChars -= limitedMessageBody.length;
+        return `--- Card: "${title}" ---\n${limitedMessageBody}`;
     })
         .filter(Boolean);
 

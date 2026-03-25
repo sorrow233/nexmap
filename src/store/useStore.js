@@ -23,18 +23,134 @@ import {
     commitActiveBoardRuntimeSnapshot,
     hasBoardRuntimePatch
 } from '../services/sync/boardRuntimeAuthority';
+import {
+    isLargeBoardCards,
+    resolveBoardHistoryLimit
+} from '../utils/boardPerformance';
 
+const DEFAULT_HISTORY_DEBOUNCE_MS = 180;
+const CARD_CONTENT_HISTORY_DEBOUNCE_MS = 900;
+const CARD_MOVE_HISTORY_DEBOUNCE_MS = 320;
 
-// --- Global Store with Temporal Middleware ---
+const temporalApiRef = { current: null };
+const historyHandleSetRef = { current: null };
+const historyControlRef = {
+    pausedDepth: 0,
+    behavior: {
+        skip: false,
+        maxEntries: 12,
+        debounceMs: DEFAULT_HISTORY_DEBOUNCE_MS
+    },
+    debounceTimer: null,
+    pendingEntry: null
+};
+
+const cancelPendingHistoryCommit = () => {
+    if (historyControlRef.debounceTimer) {
+        clearTimeout(historyControlRef.debounceTimer);
+        historyControlRef.debounceTimer = null;
+    }
+    historyControlRef.pendingEntry = null;
+};
+
+const trimTemporalHistory = (maxEntries) => {
+    if (!Number.isFinite(maxEntries) || maxEntries < 0) {
+        return;
+    }
+
+    const temporalApi = temporalApiRef.current;
+    if (!temporalApi) {
+        return;
+    }
+
+    const temporalState = temporalApi.getState();
+    const nextPastStates = temporalState.pastStates.length > maxEntries
+        ? temporalState.pastStates.slice(-maxEntries)
+        : temporalState.pastStates;
+    const nextFutureStates = temporalState.futureStates.length > maxEntries
+        ? temporalState.futureStates.slice(-maxEntries)
+        : temporalState.futureStates;
+
+    if (
+        nextPastStates !== temporalState.pastStates ||
+        nextFutureStates !== temporalState.futureStates
+    ) {
+        temporalApi.setState({
+            pastStates: nextPastStates,
+            futureStates: nextFutureStates
+        });
+    }
+};
+
+const flushPendingHistoryCommit = () => {
+    const baseHandleSet = historyHandleSetRef.current;
+    const pendingEntry = historyControlRef.pendingEntry;
+    if (!baseHandleSet || !pendingEntry) {
+        return;
+    }
+
+    historyControlRef.pendingEntry = null;
+    if (historyControlRef.debounceTimer) {
+        clearTimeout(historyControlRef.debounceTimer);
+        historyControlRef.debounceTimer = null;
+    }
+
+    baseHandleSet(
+        pendingEntry.pastState,
+        pendingEntry.replace,
+        pendingEntry.currentState,
+        undefined
+    );
+    trimTemporalHistory(pendingEntry.maxEntries);
+};
+
+const setHistoryBehavior = (behavior = {}) => {
+    historyControlRef.behavior = {
+        skip: behavior.skip === true,
+        maxEntries: Number.isFinite(behavior.maxEntries) ? behavior.maxEntries : 12,
+        debounceMs: Number.isFinite(behavior.debounceMs) ? behavior.debounceMs : DEFAULT_HISTORY_DEBOUNCE_MS
+    };
+
+    if (historyControlRef.behavior.skip) {
+        cancelPendingHistoryCommit();
+    }
+};
+
+const resolveHistoryBehavior = (currentState, nextPartial, replace = false, meta = {}) => {
+    if (replace === true || meta?.skipHistory) {
+        return {
+            skip: true,
+            maxEntries: 0,
+            debounceMs: 0
+        };
+    }
+
+    const nextCards = Array.isArray(nextPartial?.cards) ? nextPartial.cards : currentState.cards || [];
+    const largeBoard = isLargeBoardCards(nextCards);
+    const changeType = nextPartial?.boardChangeState?.lastChangeType || meta?.changeType || '';
+
+    let debounceMs = DEFAULT_HISTORY_DEBOUNCE_MS;
+    if (changeType === 'card_content') {
+        debounceMs = CARD_CONTENT_HISTORY_DEBOUNCE_MS;
+    } else if (changeType === 'card_move') {
+        debounceMs = CARD_MOVE_HISTORY_DEBOUNCE_MS;
+    }
+
+    if (largeBoard) {
+        debounceMs = Math.max(debounceMs, 260);
+    }
+
+    return {
+        skip: false,
+        maxEntries: resolveBoardHistoryLimit(nextCards),
+        debounceMs
+    };
+};
 
 const useStoreBase = create(
     temporal(
         (rawSet, get) => {
             const set = (partial, replace, meta = {}) => {
-                if (replace === true || meta?.skipBoardRuntime) {
-                    return rawSet(partial, replace);
-                }
-
                 const currentState = get();
                 const nextPartial = typeof partial === 'function'
                     ? partial(currentState)
@@ -42,6 +158,12 @@ const useStoreBase = create(
 
                 if (nextPartial === currentState) {
                     return currentState;
+                }
+
+                setHistoryBehavior(resolveHistoryBehavior(currentState, nextPartial, replace, meta));
+
+                if (replace === true || meta?.skipBoardRuntime) {
+                    return rawSet(nextPartial, replace);
                 }
 
                 if (
@@ -82,7 +204,6 @@ const useStoreBase = create(
                 ...createCreditsSlice(set, get),
                 ...createBoardSlice(set, get),
 
-                // Global reset for logout
                 resetAllState: () => {
                     console.log('[Store] Resetting all state...');
                     get().clearStreamingState?.();
@@ -97,7 +218,7 @@ const useStoreBase = create(
             };
         },
         {
-            limit: 50,
+            limit: 12,
             equality: (a, b) => (
                 a.cards === b.cards &&
                 a.connections === b.connections &&
@@ -105,17 +226,61 @@ const useStoreBase = create(
                 a.boardPrompts === b.boardPrompts &&
                 a.boardInstructionSettings === b.boardInstructionSettings
             ),
+            handleSet: (baseHandleSet) => {
+                historyHandleSetRef.current = baseHandleSet;
+
+                return (pastState, replace, currentState) => {
+                    const behavior = historyControlRef.behavior;
+                    if (historyControlRef.pausedDepth > 0 || behavior.skip) {
+                        return;
+                    }
+
+                    const commitEntry = {
+                        pastState,
+                        replace,
+                        currentState,
+                        maxEntries: behavior.maxEntries
+                    };
+
+                    if (behavior.debounceMs > 0) {
+                        if (!historyControlRef.pendingEntry) {
+                            historyControlRef.pendingEntry = commitEntry;
+                        } else {
+                            historyControlRef.pendingEntry = {
+                                ...historyControlRef.pendingEntry,
+                                currentState,
+                                replace,
+                                maxEntries: behavior.maxEntries
+                            };
+                        }
+
+                        if (historyControlRef.debounceTimer) {
+                            clearTimeout(historyControlRef.debounceTimer);
+                        }
+
+                        historyControlRef.debounceTimer = setTimeout(() => {
+                            flushPendingHistoryCommit();
+                        }, behavior.debounceMs);
+                        return;
+                    }
+
+                    flushPendingHistoryCommit();
+                    baseHandleSet(pastState, replace, currentState, undefined);
+                    trimTemporalHistory(behavior.maxEntries);
+                };
+            },
             partialize: (state) => ({
                 cards: state.cards,
                 connections: state.connections,
-                groups: state.groups, // Persist groups
-                boardPrompts: state.boardPrompts, // Persist board prompts
+                groups: state.groups,
+                boardPrompts: state.boardPrompts,
                 boardInstructionSettings: state.boardInstructionSettings
             })
         }
     )
 );
 
+temporalApiRef.current = useStoreBase.temporal;
 
 const reconcileBoardStateAfterHistoryAction = (changeType) => {
     const currentState = useStoreBase.getState();
@@ -160,21 +325,40 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
     );
 };
 
-
-
 export const useStore = useStoreBase;
 
-// Expose store to window for debugging
 if (typeof window !== 'undefined') {
     window.useStore = useStoreBase;
 }
 
-// Correctly implement useTemporalStore using useStoreWithEqualityFn
 export function useTemporalStore(selector, equality) {
     return useStoreWithEqualityFn(useStoreBase.temporal, selector, equality);
 }
 
+export const pauseHistoryTracking = () => {
+    historyControlRef.pausedDepth += 1;
+    cancelPendingHistoryCommit();
+    useStoreBase.temporal.getState().pause();
+};
+
+export const resumeHistoryTracking = () => {
+    historyControlRef.pausedDepth = Math.max(0, historyControlRef.pausedDepth - 1);
+    if (historyControlRef.pausedDepth === 0) {
+        useStoreBase.temporal.getState().resume();
+    }
+};
+
+export const runWithoutHistory = (callback) => {
+    pauseHistoryTracking();
+    try {
+        return callback();
+    } finally {
+        resumeHistoryTracking();
+    }
+};
+
 export const undo = () => {
+    flushPendingHistoryCommit();
     const temporalState = useStoreBase.temporal.getState();
     if (!temporalState.pastStates?.length) {
         return;
@@ -185,6 +369,7 @@ export const undo = () => {
 };
 
 export const redo = () => {
+    flushPendingHistoryCommit();
     const temporalState = useStoreBase.temporal.getState();
     if (!temporalState.futureStates?.length) {
         return;
@@ -194,4 +379,7 @@ export const redo = () => {
     reconcileBoardStateAfterHistoryAction('redo');
 };
 
-export const clearHistory = () => useStoreBase.temporal.getState().clear();
+export const clearHistory = () => {
+    cancelPendingHistoryCommit();
+    return useStoreBase.temporal.getState().clear();
+};

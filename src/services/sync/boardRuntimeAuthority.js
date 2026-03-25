@@ -1,4 +1,5 @@
 import { normalizeBoardSnapshot } from './boardSnapshot';
+import { isLargeBoardCards } from '../../utils/boardPerformance';
 
 const BOARD_RUNTIME_KEYS = Object.freeze([
     'cards',
@@ -30,7 +31,8 @@ export const registerActiveBoardRuntime = ({ boardId, controller } = {}) => {
 
     activeBoardRuntime = {
         boardId,
-        controller
+        controller,
+        largeBoardMode: controller?.largeBoardMode === true
     };
 };
 
@@ -57,8 +59,16 @@ export const isActiveBoardRuntimeController = (boardId, controller) => (
 );
 
 export const commitActiveBoardRuntimePatch = (partial = {}) => {
+    if (activeBoardRuntime?.largeBoardMode) {
+        return null;
+    }
+
     const controller = activeBoardRuntime?.controller;
     if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
+        return null;
+    }
+
+    if (Array.isArray(partial?.cards) && isLargeBoardCards(partial.cards)) {
         return null;
     }
 
@@ -80,8 +90,16 @@ export const commitActiveBoardRuntimePatch = (partial = {}) => {
 };
 
 export const commitActiveBoardRuntimeSnapshot = (snapshot = {}) => {
+    if (activeBoardRuntime?.largeBoardMode) {
+        return null;
+    }
+
     const controller = activeBoardRuntime?.controller;
     if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
+        return null;
+    }
+
+    if (Array.isArray(snapshot?.cards) && isLargeBoardCards(snapshot.cards)) {
         return null;
     }
 

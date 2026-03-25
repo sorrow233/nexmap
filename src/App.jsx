@@ -4,7 +4,7 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from './services/firebase';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAppInit } from './hooks/useAppInit';
-import { useStore } from './store/useStore';
+import { clearHistory, runWithoutHistory, useStore } from './store/useStore';
 import { nextCardIndexMutation } from './store/slices/utils/cardIndexMutation';
 import { useCardCreator } from './hooks/useCardCreator';
 import Loading from './components/Loading';
@@ -18,6 +18,7 @@ import { useBackgroundBoardAutoGeneration } from './hooks/useBackgroundBoardAuto
 import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceTrace';
 import { runtimeLog, runtimeWarn } from './utils/runtimeLogging';
 import { aiManager } from './services/ai/AIManager';
+import { isLargeBoardCards } from './utils/boardPerformance';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -338,7 +339,9 @@ function AppContent() {
         }
 
         // Single atomic zustand update — triggers exactly ONE render pass.
-        useStore.setState(patch);
+        runWithoutHistory(() => {
+            useStore.setState(patch);
+        });
 
         // Rebuild card lookup cache outside of set() so it stays consistent.
         useStore.getState().rebuildCardLookup?.(normalized.cards);
@@ -641,16 +644,19 @@ function AppContent() {
                     aiManager.cancelByTags([`card:${cardId}`]);
                 });
 
-                storeState.clearStreamingState?.();
-                storeState.setGeneratingCardIds?.(new Set());
-                storeState.setIsBoardLoading(true);
-                setCards([]);
-                setConnections([]);
-                setGroups([]);
-                setBoardPrompts([]);
-                setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
-                setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
-                storeState.setBoardChangeState?.(createBoardChangeState());
+                runWithoutHistory(() => {
+                    clearHistory();
+                    storeState.clearStreamingState?.();
+                    storeState.setGeneratingCardIds?.(new Set());
+                    storeState.setIsBoardLoading(true);
+                    setCards([]);
+                    setConnections([]);
+                    setGroups([]);
+                    setBoardPrompts([]);
+                    setBoardInstructionSettings(normalizeBoardInstructionSettings(DEFAULT_BOARD_INSTRUCTION_SETTINGS));
+                    setActiveBoardPersistence({ updatedAt: 0, clientRevision: 0, dirty: false });
+                    storeState.setBoardChangeState?.(createBoardChangeState());
+                });
 
                 try {
                     // 2. Load new data
@@ -684,6 +690,7 @@ function AppContent() {
                     if (user?.uid && !isSampleBoardId(currentBoardId)) {
                         const currentBoardMeta = boardsListRef.current.find((board) => board.id === currentBoardId);
                         const expectedCardCount = Number(currentBoardMeta?.cardCount) || 0;
+                        const largeBoardMode = isLargeBoardCards(data?.cards || []);
                         const syncController = new BoardSyncController({
                             boardId: currentBoardId,
                             user,
@@ -700,6 +707,7 @@ function AppContent() {
                             },
                             onSyncStateChange: () => { }
                         });
+                        syncController.largeBoardMode = largeBoardMode;
 
                         boardSyncControllerRef.current = syncController;
                         await syncController.start(data, { expectedCardCount });
