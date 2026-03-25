@@ -7,6 +7,7 @@ import favoritesService from '../../services/favoritesService';
 import { CreditsExhaustedError } from '../../services/systemCredits/systemCreditsService';
 import { AI_MODELS, AI_PROVIDERS } from '../../services/aiConstants';
 import { assembleContext } from '../../utils/aiContextUtils';
+import { extractMessageContentText } from '../../utils/boardPerformance';
 import translations from '../../contexts/translations';
 import {
     appendStreamBufferUpdates,
@@ -21,6 +22,7 @@ import {
     createMessageContentWithImages,
     persistCardMessageImagesToIDB
 } from '../../services/ai/messageContent';
+import { cacheHydratedCardBody } from '../../services/cardBodyRuntimeCache';
 import { yieldToMainThread } from '../../utils/scheduling';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
 import { bumpBoardChangeState } from './utils/boardChangeState';
@@ -88,6 +90,57 @@ const mergeStreamUpdateMaps = (...maps) => {
     });
 
     return merged;
+};
+
+const ERROR_MARKERS = Object.freeze([
+    '⚠️',
+    'AI服务暂时不可用',
+    'AI Service',
+    'Service Unavailable',
+    'Rate Limited',
+    'Generation Failed',
+    'Request Timeout'
+]);
+
+const MAX_CHAT_CONTEXT_MESSAGES = 8;
+const MAX_CHAT_CONTEXT_TOTAL_CHARS = 24_000;
+
+const getMessageContextText = (message = {}) => (
+    extractMessageContentText(message?.content).trim()
+);
+
+const isContextErrorAssistantMessage = (message = {}) => {
+    if (message?.role !== 'assistant') {
+        return false;
+    }
+
+    const content = getMessageContextText(message);
+    if (!content) {
+        return true;
+    }
+
+    return ERROR_MARKERS.some((marker) => content.includes(marker));
+};
+
+const trimConversationMessagesForContext = (messages = []) => {
+    const filteredMessages = (Array.isArray(messages) ? messages : [])
+        .filter((message) => !isContextErrorAssistantMessage(message))
+        .filter((message) => (
+            message?.role !== 'assistant' || Boolean(getMessageContextText(message))
+        ));
+
+    const tailMessages = filteredMessages.slice(-MAX_CHAT_CONTEXT_MESSAGES);
+    let totalChars = tailMessages.reduce((sum, message) => (
+        sum + getMessageContextText(message).length
+    ), 0);
+    let startIndex = 0;
+
+    while ((tailMessages.length - startIndex) > 1 && totalChars > MAX_CHAT_CONTEXT_TOTAL_CHARS) {
+        totalChars -= getMessageContextText(tailMessages[startIndex]).length;
+        startIndex += 1;
+    }
+
+    return startIndex > 0 ? tailMessages.slice(startIndex) : tailMessages;
 };
 
 
@@ -349,19 +402,7 @@ export const createAISlice = (set, get) => {
                 const { connections, getCardById } = get();
 
                 const contextMessages = assembleContext(cardId, connections || [], getCardById);
-
-
-                // Filter out error messages that were accidentally saved to history
-                // These error messages pollute the context and may cause API issues
-                const ERROR_MARKERS = ['⚠️', 'AI服务暂时不可用', 'AI Service', 'Service Unavailable', 'Rate Limited', 'Generation Failed', 'Request Timeout'];
-                const cleanMessages = messages.filter(msg => {
-                    if (msg.role !== 'assistant') return true;
-                    const content = msg.content || '';
-                    // Skip empty or error-only messages
-                    if (!content.trim()) return false;
-                    // Check if message starts with or contains error markers
-                    return !ERROR_MARKERS.some(marker => content.includes(marker));
-                });
+                const cleanMessages = trimConversationMessagesForContext(messages);
 
                 // Messages are now [contextMessages, ...cleanMessages]
                 // Time injection will be handled by AIManager globally
@@ -576,6 +617,9 @@ export const createAISlice = (set, get) => {
                 const updatedCards = committedUpdates.size > 0
                     ? nextCards.filter((card) => card.id === id)
                     : [];
+                updatedCards.forEach((card) => {
+                    cacheHydratedCardBody(card, { touch: false });
+                });
 
                 const nextStreamingMessages = isGenerating
                     ? state.streamingMessages
@@ -599,7 +643,7 @@ export const createAISlice = (set, get) => {
                     });
                     patch.boardChangeState = bumpBoardChangeState(
                         state.boardChangeState,
-                        'card_content'
+                        'card_body_content'
                     );
                 }
 
@@ -649,6 +693,9 @@ export const createAISlice = (set, get) => {
                     }
                     return c;
                 });
+                updatedCards.forEach((card) => {
+                    cacheHydratedCardBody(card, { touch: false });
+                });
 
                 return {
                     cards: nextCards,
@@ -661,7 +708,7 @@ export const createAISlice = (set, get) => {
                         })
                         : state.cardIndexMutation,
                     boardChangeState: updatedCards.length > 0
-                        ? bumpBoardChangeState(state.boardChangeState, 'card_content')
+                        ? bumpBoardChangeState(state.boardChangeState, 'card_body_content')
                         : state.boardChangeState,
                     // Create new Set properly: spread existing Set, then add each selectedId
                     generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])

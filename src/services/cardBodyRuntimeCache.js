@@ -1,3 +1,5 @@
+import { isLargeBoardCards } from '../utils/boardPerformance';
+
 const PREVIEW_TEXT_LIMIT = 360;
 const PREVIEW_MESSAGE_LIMIT = 220;
 const HOT_HYDRATED_CARD_LIMIT = 3;
@@ -7,6 +9,8 @@ const bodyRegistry = new Map();
 const hotTouchOrder = new Map();
 let activeBoardId = '';
 let touchCounter = 0;
+let lastHistoryCardsInput = null;
+let lastHistoryCardsOutput = null;
 
 const normalizeBoardId = (boardId = '') => (
     typeof boardId === 'string' ? boardId : ''
@@ -19,6 +23,8 @@ const ensureBoardContext = (boardId = activeBoardId) => {
         bodyRegistry.clear();
         hotTouchOrder.clear();
         touchCounter = 0;
+        lastHistoryCardsInput = null;
+        lastHistoryCardsOutput = null;
     } else if (!activeBoardId && normalizedBoardId) {
         activeBoardId = normalizedBoardId;
     }
@@ -178,6 +184,8 @@ export const clearCardBodyRuntimeCache = (boardId = '') => {
         bodyRegistry.clear();
         hotTouchOrder.clear();
         touchCounter = 0;
+        lastHistoryCardsInput = null;
+        lastHistoryCardsOutput = null;
     }
 };
 
@@ -236,6 +244,14 @@ export const cacheHydratedCardBody = (card, options = {}) => {
 export const hydrateCardBodyFromRuntimeCache = (card, options = {}) => {
     ensureBoardContext(options.boardId);
     if (!card?.id) return card;
+
+    if (isCardBodyRuntimeManaged(card) && !isCardBodyRuntimeDehydrated(card)) {
+        cacheHydratedCardBody(card, {
+            boardId: options.boardId,
+            touch: options.touch
+        });
+        return card;
+    }
 
     const entry = resolveCardBodyEntry(card.id);
     if (!entry) return card;
@@ -358,18 +374,58 @@ export const resolvePreferredHydratedCardIds = (baseCardIds = []) => {
 export const buildRuntimeCardsForStore = (cards = [], options = {}) => {
     ensureBoardContext(options.boardId);
     const preferredHydratedIds = resolvePreferredHydratedCardIds(options.keepHydratedIds || []);
+    let didChange = false;
     const nextCards = cards.map((card) => {
         if (!card?.id) return card;
         if (preferredHydratedIds.has(card.id)) {
-            return hydrateCardBodyFromRuntimeCache(card, { boardId: options.boardId, touch: false });
+            const nextCard = hydrateCardBodyFromRuntimeCache(card, {
+                boardId: options.boardId,
+                touch: false
+            });
+            if (nextCard !== card) {
+                didChange = true;
+            }
+            return nextCard;
         }
-        return dehydrateCardBodyForRuntime(card, { boardId: options.boardId, touch: false });
+        const nextCard = dehydrateCardBodyForRuntime(card, {
+            boardId: options.boardId,
+            touch: false
+        });
+        if (nextCard !== card) {
+            didChange = true;
+        }
+        return nextCard;
     });
 
     return {
-        cards: nextCards,
+        cards: didChange ? nextCards : cards,
         preferredHydratedIds
     };
+};
+
+export const buildHistoryCardsForRuntime = (cards = [], options = {}) => {
+    if (cards === lastHistoryCardsInput) {
+        return lastHistoryCardsOutput;
+    }
+
+    const hasRuntimeManagedCards = Array.isArray(cards)
+        && (
+            isLargeBoardCards(cards)
+            || cards.some((card) => isCardBodyRuntimeManaged(card) || isCardBodyRuntimeDehydrated(card))
+        );
+    if (!hasRuntimeManagedCards) {
+        lastHistoryCardsInput = cards;
+        lastHistoryCardsOutput = cards;
+        return cards;
+    }
+
+    const nextCards = buildRuntimeCardsForStore(cards, {
+        ...options,
+        keepHydratedIds: []
+    }).cards;
+    lastHistoryCardsInput = cards;
+    lastHistoryCardsOutput = nextCards;
+    return nextCards;
 };
 
 export const mergeRuntimeCardBodies = (cards = [], options = {}) => {

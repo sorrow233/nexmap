@@ -15,6 +15,7 @@ const toSafeOptionalTimestamp = (value) => {
 
 const CHANGE_FIELD_MAP = Object.freeze({
     card_content: ['contentRevision'],
+    card_body_content: ['contentRevision'],
     card_add: ['structureRevision'],
     card_delete: ['structureRevision'],
     card_restore: ['structureRevision'],

@@ -17,6 +17,7 @@ import {
     cacheHydratedCardBody,
     clearCardBodyRuntimeCache,
     hydrateCardBodyFromRuntimeCache,
+    isCardBodyRuntimeDehydrated,
     removeCardBodyFromRuntimeCache
 } from '../../services/cardBodyRuntimeCache';
 import { isLargeBoardCards } from '../../utils/boardPerformance';
@@ -125,6 +126,27 @@ export const createCardSlice = (set, get) => {
         )
     );
 
+    const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
+
+    const didCardBodyChange = (currentData = {}, updatedData = {}) => (
+        (hasOwn(updatedData, 'messages') && updatedData.messages !== currentData?.messages)
+        || (hasOwn(updatedData, 'content') && updatedData.content !== currentData?.content)
+    );
+
+    const syncRuntimeCacheForCards = (cards = []) => {
+        if (!shouldManageRuntimeBodies(cards)) {
+            return;
+        }
+
+        cards.forEach((card) => {
+            if (!card?.id || isCardBodyRuntimeDehydrated(card)) {
+                return;
+            }
+
+            cacheHydratedCardBody(card, { touch: false });
+        });
+    };
+
     return {
     cards: [],
     cardIndexMutation: createCardIndexMutation(),
@@ -171,6 +193,7 @@ export const createCardSlice = (set, get) => {
 	    setCards: (cardsOrUpdater, options = {}) => {
 	        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
 	        debugLog.store('Bulk setting cards', { count: nextCards.length });
+            syncRuntimeCacheForCards(nextCards);
 	        cardLookup.rebuild(nextCards);
         set((state) => ({
             cards: nextCards,
@@ -334,6 +357,9 @@ export const createCardSlice = (set, get) => {
             };
 
             const updatedCard = nextCards[index];
+            const changeType = didCardBodyChange(currentCard.data, updatedData)
+                ? 'card_body_content'
+                : 'card_content';
             cardLookup.patch(nextCards, [updatedCard]);
             return {
                 cards: nextCards,
@@ -343,7 +369,7 @@ export const createCardSlice = (set, get) => {
                     updatedCards: [updatedCard],
                     reason: 'updateCard'
                 }),
-                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_content')
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, changeType)
             };
         });
     },
@@ -382,6 +408,9 @@ export const createCardSlice = (set, get) => {
             };
 
             const updatedCard = nextCards[index];
+            const changeType = didCardBodyChange(currentCard.data, updatedData)
+                ? 'card_body_content'
+                : 'card_content';
             cardLookup.patch(nextCards, [updatedCard]);
             return {
                 cards: nextCards,
@@ -391,7 +420,7 @@ export const createCardSlice = (set, get) => {
                     updatedCards: [updatedCard],
                     reason: 'updateCardFull'
                 }),
-                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_content')
+                boardChangeState: bumpBoardChangeState(state.boardChangeState, changeType)
             };
         });
     },

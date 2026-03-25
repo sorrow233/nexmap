@@ -93,7 +93,7 @@ import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoard
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
 import { isMeaningfullyEmptyBoardSnapshot } from './services/sync/boardSnapshot';
 import {
-    isActiveBoardRuntimeController,
+    getActiveBoardRuntimeState,
     registerActiveBoardRuntime,
     unregisterActiveBoardRuntime
 } from './services/sync/boardRuntimeAuthority';
@@ -415,7 +415,8 @@ function AppContent() {
                 return;
             }
 
-            if (isActiveBoardRuntimeController(boardId, controller)) {
+            const runtimeState = getActiveBoardRuntimeState(boardId, controller);
+            if (runtimeState && !runtimeState.largeBoardMode) {
                 return;
             }
 

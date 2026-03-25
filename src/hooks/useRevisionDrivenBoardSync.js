@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { normalizeBoardSnapshot } from '../services/sync/boardSnapshot';
-import { isActiveBoardRuntimeController } from '../services/sync/boardRuntimeAuthority';
+import { getActiveBoardRuntimeState } from '../services/sync/boardRuntimeAuthority';
 import { isLargeBoardCards } from '../utils/boardPerformance';
 import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 
 const CHANGE_SYNC_DELAY_MS = Object.freeze({
     card_content: 900,
+    card_body_content: 900,
     card_move: 1200,
     card_add: 350,
     card_delete: 350,
@@ -80,7 +81,12 @@ export function useRevisionDrivenBoardSync({
             return undefined;
         }
 
-        if (isActiveBoardRuntimeController(boardId, controller) && !isLargeBoard) {
+        const runtimeState = getActiveBoardRuntimeState(boardId, controller);
+        if (runtimeState && !runtimeState.largeBoardMode) {
+            return undefined;
+        }
+
+        if ((runtimeState?.largeBoardMode || isLargeBoard) && changeType === 'card_body_content') {
             return undefined;
         }
 

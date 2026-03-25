@@ -171,7 +171,7 @@ export function useCardGeneration() {
             }
             return c;
         }), {
-            changeType: 'card_content',
+            changeType: 'card_body_content',
             reason: 'handleBatchChat:optimistic_messages'
         });
 

@@ -23,7 +23,10 @@ import {
     commitActiveBoardRuntimeSnapshot,
     hasBoardRuntimePatch
 } from '../services/sync/boardRuntimeAuthority';
-import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
+import {
+    buildHistoryCardsForRuntime,
+    mergeRuntimeCardBodies
+} from '../services/cardBodyRuntimeCache';
 import {
     isLargeBoardCards,
     resolveBoardHistoryLimit
@@ -131,7 +134,15 @@ const resolveHistoryBehavior = (currentState, nextPartial, replace = false, meta
     const changeType = nextPartial?.boardChangeState?.lastChangeType || meta?.changeType || '';
 
     let debounceMs = DEFAULT_HISTORY_DEBOUNCE_MS;
-    if (changeType === 'card_content') {
+    if (largeBoard && changeType === 'card_body_content') {
+        return {
+            skip: true,
+            maxEntries: 0,
+            debounceMs: 0
+        };
+    }
+
+    if (changeType === 'card_content' || changeType === 'card_body_content') {
         debounceMs = CARD_CONTENT_HISTORY_DEBOUNCE_MS;
     } else if (changeType === 'card_move') {
         debounceMs = CARD_MOVE_HISTORY_DEBOUNCE_MS;
@@ -271,7 +282,7 @@ const useStoreBase = create(
                 };
             },
             partialize: (state) => ({
-                cards: state.cards,
+                cards: buildHistoryCardsForRuntime(state.cards),
                 connections: state.connections,
                 groups: state.groups,
                 boardPrompts: state.boardPrompts,

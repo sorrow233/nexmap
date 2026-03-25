@@ -58,6 +58,18 @@ export const isActiveBoardRuntimeController = (boardId, controller) => (
     )
 );
 
+export const getActiveBoardRuntimeState = (boardId, controller) => {
+    if (!isActiveBoardRuntimeController(boardId, controller)) {
+        return null;
+    }
+
+    return {
+        boardId: activeBoardRuntime.boardId,
+        controller: activeBoardRuntime.controller,
+        largeBoardMode: activeBoardRuntime.largeBoardMode === true
+    };
+};
+
 export const commitActiveBoardRuntimePatch = (partial = {}) => {
     if (activeBoardRuntime?.largeBoardMode) {
         return null;

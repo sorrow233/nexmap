@@ -1,9 +1,9 @@
 import { getConnectedGraph } from './graphUtils';
 import { extractMessageContentText } from './boardPerformance';
 
-const MAX_LINKED_CONTEXT_CARDS = 6;
-const MAX_CONTEXT_CHARS_PER_CARD = 12_000;
-const MAX_CONTEXT_TOTAL_CHARS = 36_000;
+const MAX_LINKED_CONTEXT_CARDS = 3;
+const MAX_CONTEXT_CHARS_PER_CARD = 8_000;
+const MAX_CONTEXT_TOTAL_CHARS = 18_000;
 
 const truncateTextFromTail = (text, limit) => {
     if (!text || text.length <= limit) {

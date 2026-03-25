@@ -1,7 +1,8 @@
 import { extractMessageContentText } from '../../utils/boardPerformance';
 
-const MAX_CHARS_PER_CARD = 12_000;
-const MAX_TOTAL_CONTEXT_CHARS = 48_000;
+const MAX_SELECTED_CONTEXT_CARDS = 3;
+const MAX_CHARS_PER_CARD = 8_000;
+const MAX_TOTAL_CONTEXT_CHARS = 24_000;
 
 const truncateCardContextFromTail = (text) => {
     if (!text || text.length <= MAX_CHARS_PER_CARD) {
@@ -18,6 +19,7 @@ export const buildSelectedCardsContext = (cards = []) => {
 
     let remainingChars = MAX_TOTAL_CONTEXT_CHARS;
     const sections = cards
+        .slice(0, MAX_SELECTED_CONTEXT_CARDS)
         .map((card) => {
         if (remainingChars <= 0) {
             return '';
