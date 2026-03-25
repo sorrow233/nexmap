@@ -2,17 +2,32 @@ import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore, undo, redo } from '../store/useStore';
 
+const stripRuntimeBodyState = (card) => {
+    if (!card?.data?.runtimeBodyState) {
+        return card;
+    }
+
+    const { runtimeBodyState, ...nextData } = card.data;
+    return {
+        ...card,
+        data: nextData
+    };
+};
+
 export function useGlobalHotkeys(clipboard, setClipboard) {
     // Helper for Copy
     const handleCopy = async () => {
-        const { selectedIds, cards } = useStore.getState();
+        const { selectedIds, getCardsByIds } = useStore.getState();
         if (selectedIds.length === 0) return;
-        const selectedIdSet = new Set(selectedIds);
-        const selectedCards = cards.filter(c => selectedIdSet.has(c.id));
-        setClipboard(selectedCards);
+        const selectedCards = typeof getCardsByIds === 'function'
+            ? getCardsByIds(selectedIds)
+            : [];
+        const clipboardCards = selectedCards.map((card) => stripRuntimeBodyState(card));
+        setClipboard(clipboardCards);
         try {
-            const textContent = selectedCards.map(c => {
-                const lastMsg = c.data.messages[c.data.messages.length - 1];
+            const textContent = clipboardCards.map(c => {
+                const messages = Array.isArray(c?.data?.messages) ? c.data.messages : [];
+                const lastMsg = messages[messages.length - 1];
                 return lastMsg ? lastMsg.content : '';
             }).join('\n\n---\n\n');
             if (textContent) await navigator.clipboard.writeText(textContent);
@@ -31,11 +46,12 @@ export function useGlobalHotkeys(clipboard, setClipboard) {
         } = useStore.getState();
         const newCards = clipboard.map((card, index) => {
             const newId = (Date.now() + Math.random()).toString();
+            const sanitizedCard = stripRuntimeBodyState(card);
             return {
-                ...card, id: newId,
+                ...sanitizedCard, id: newId,
                 x: (window.innerWidth / 2 - offset.x) / scale + (index * 20),
                 y: (window.innerHeight / 2 - offset.y) / scale + (index * 20),
-                data: { ...card.data }
+                data: { ...(sanitizedCard.data || {}) }
             };
         });
         setCards([...cards, ...newCards], {

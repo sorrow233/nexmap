@@ -195,6 +195,19 @@ export const touchCardBodyRuntimeCache = (cardId) => {
 
 export const primeCardBodyRuntimeCache = (boardId, cards = []) => {
     ensureBoardContext(boardId);
+    const activeCardIds = new Set(
+        (Array.isArray(cards) ? cards : [])
+            .map((card) => card?.id)
+            .filter(Boolean)
+    );
+
+    Array.from(bodyRegistry.keys()).forEach((cardId) => {
+        if (!activeCardIds.has(cardId)) {
+            bodyRegistry.delete(cardId);
+            hotTouchOrder.delete(cardId);
+        }
+    });
+
     cards.forEach((card) => {
         if (!card?.id || isCardBodyRuntimeDehydrated(card)) return;
         const entry = createBodyEntryFromCard(card);

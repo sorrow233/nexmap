@@ -125,6 +125,7 @@ export function useCardGeneration() {
             .map((cardId) => state.getCardById?.(cardId) || state.cards.find(c => c.id === cardId))
             .filter(c => c && c.data && Array.isArray(c.data.messages));
         if (targetCards.length === 0) return false;
+        const targetCardMap = new Map(targetCards.map((card) => [card.id, card]));
 
         debugLog.ai('Starting batch chat', { text: safeText, targetCount: targetCards.length });
 
@@ -158,10 +159,14 @@ export function useCardGeneration() {
 
         // Optimistic UI Update
         setCards(prev => prev.map(c => {
-            if (selectedIdSet.has(c.id) && c.data && Array.isArray(c.data.messages)) {
+            const targetCard = targetCardMap.get(c.id);
+            if (targetCard && targetCard.data && Array.isArray(targetCard.data.messages)) {
                 return {
                     ...c,
-                    data: { ...c.data, messages: [...c.data.messages, userMsg, assistantMsg] }
+                    data: {
+                        ...targetCard.data,
+                        messages: [...targetCard.data.messages, userMsg, assistantMsg]
+                    }
                 };
             }
             return c;
@@ -175,7 +180,8 @@ export function useCardGeneration() {
             try {
                 const history = [...card.data.messages, userMsg];
                 // Find the specific assistant message ID we just created for this card in the optimistic update
-                const freshCard = useStore.getState().cards.find(c => c.id === card.id);
+                const freshCard = useStore.getState().getCardById?.(card.id)
+                    || useStore.getState().cards.find(c => c.id === card.id);
                 const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
                 const messageId = assistantMsg?.id;
 

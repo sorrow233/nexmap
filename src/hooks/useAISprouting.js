@@ -557,12 +557,12 @@ Respond in the same language as the focus topic.
 
         // Selected card context helps the planner infer what to branch from.
         const selectedSourceIds = (state.selectedIds || []).filter(id => {
-            const card = state.cards.find(c => c.id === id);
+            const card = state.getCardById?.(id) || state.cards.find(c => c.id === id);
             return !!card && !card.deletedAt;
         });
         const selectedContext = selectedSourceIds
             .map((id) => {
-                const card = state.cards.find(c => c.id === id);
+                const card = state.getCardById?.(id) || state.cards.find(c => c.id === id);
                 if (!card) return '';
                 const title = card.data?.title || 'Untitled';
                 const recent = (card.data?.messages || []).slice(-4)
