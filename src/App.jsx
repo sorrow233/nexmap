@@ -92,7 +92,7 @@ import { buildBoardChangeIntegrityHash } from './store/slices/utils/boardChangeI
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
-import { isMeaningfullyEmptyBoardSnapshot } from './services/sync/boardSnapshot';
+import { resolveRemoteSnapshotForStore } from './services/sync/protocol/syncResolver';
 import {
     getActiveBoardRuntimeState,
     registerActiveBoardRuntime,
@@ -267,36 +267,29 @@ function AppContent() {
         });
     }, [setBoardsList]);
 
-    const shouldApplyRemoteSnapshotToStore = useCallback((snapshot) => {
+    const resolveRemoteSnapshotToStore = useCallback((snapshot) => {
         const normalizedSnapshot = normalizeBoardSnapshot(snapshot);
         const currentCursor = activeBoardPersistenceRef.current || {};
         const currentStoreState = useStore.getState();
-        const localDirty = currentCursor?.dirty === true;
-        const localSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot({
-            cards: currentStoreState.cards,
+        const currentStoreSnapshot = normalizeBoardSnapshot({
+            cards: mergeRuntimeCardBodies(currentStoreState.cards, { boardId: currentBoardId }),
             connections: currentStoreState.connections,
             groups: currentStoreState.groups,
             boardPrompts: currentStoreState.boardPrompts,
-            boardInstructionSettings: currentStoreState.boardInstructionSettings
-        });
-
-        if (isMeaningfullyEmptyBoardSnapshot(normalizedSnapshot)) {
-            return false;
-        }
-
-        if (localDirty) {
-            return false;
-        }
-
-        if (localSnapshotIsEmpty) {
-            return true;
-        }
-
-        return isPersistenceSnapshotNewer(normalizedSnapshot, {
+            boardInstructionSettings: currentStoreState.boardInstructionSettings,
             updatedAt: Number(currentCursor?.updatedAt) || 0,
             clientRevision: Number(currentCursor?.clientRevision) || 0
         });
-    }, []);
+        return resolveRemoteSnapshotForStore({
+            currentSnapshot: currentStoreSnapshot,
+            incomingSnapshot: normalizedSnapshot,
+            currentCursor: {
+                updatedAt: Number(currentCursor?.updatedAt) || 0,
+                clientRevision: Number(currentCursor?.clientRevision) || 0
+            },
+            localDirty: currentCursor?.dirty === true
+        });
+    }, [currentBoardId]);
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
@@ -386,7 +379,8 @@ function AppContent() {
             return;
         }
 
-        if (!shouldApplyRemoteSnapshotToStore(pendingRemote.snapshot)) {
+        const pendingResolution = resolveRemoteSnapshotToStore(pendingRemote.snapshot);
+        if (pendingResolution.action !== 'apply') {
             pendingRemoteSnapshotRef.current = null;
             return;
         }
@@ -394,19 +388,20 @@ function AppContent() {
         logPersistenceTrace('sync:pending-remote-snapshot-apply', {
             boardId: currentBoardId,
             safeMode: FIREBASE_SYNC_SAFE_MODE,
-            cursor: buildBoardCursorTrace(pendingRemote.snapshot)
+            reason: pendingResolution.reason,
+            cursor: buildBoardCursorTrace(pendingResolution.snapshot)
         });
-        applyBoardSnapshotToStore(pendingRemote.snapshot, {
+        applyBoardSnapshotToStore(pendingResolution.snapshot, {
             source: 'remote_sync',
             boardId: currentBoardId
         });
-        syncBoardSnapshotMetadataIntoList(currentBoardId, pendingRemote.snapshot);
+        syncBoardSnapshotMetadataIntoList(currentBoardId, pendingResolution.snapshot);
         pendingRemoteSnapshotRef.current = null;
     }, [
         activeBoardPersistence?.dirty,
         applyBoardSnapshotToStore,
         currentBoardId,
-        shouldApplyRemoteSnapshotToStore,
+        resolveRemoteSnapshotToStore,
         syncBoardSnapshotMetadataIntoList
     ]);
 
@@ -771,9 +766,10 @@ function AppContent() {
                             user,
                             onSnapshot: (nextSnapshot) => {
                                 if (isCancelled) return;
-                                if (!shouldApplyRemoteSnapshotToStore(nextSnapshot)) {
+                                const remoteResolution = resolveRemoteSnapshotToStore(nextSnapshot);
+                                if (remoteResolution.action === 'defer') {
                                     if (activeBoardPersistenceRef.current?.dirty === true) {
-                                        const normalizedPendingSnapshot = normalizeBoardSnapshot(nextSnapshot);
+                                        const normalizedPendingSnapshot = normalizeBoardSnapshot(remoteResolution.snapshot);
                                         const currentPendingSnapshot = pendingRemoteSnapshotRef.current?.snapshot || null;
                                         if (
                                             !currentPendingSnapshot
@@ -787,22 +783,27 @@ function AppContent() {
                                             logPersistenceTrace('sync:remote-snapshot-deferred', {
                                                 boardId: currentBoardId,
                                                 safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                                reason: remoteResolution.reason,
                                                 cursor: buildBoardCursorTrace(normalizedPendingSnapshot)
                                             });
                                         }
                                     }
                                     return;
                                 }
+                                if (remoteResolution.action !== 'apply') {
+                                    return;
+                                }
                                 logPersistenceTrace('sync:remote-snapshot-apply', {
                                     boardId: currentBoardId,
                                     safeMode: FIREBASE_SYNC_SAFE_MODE,
-                                    cursor: buildBoardCursorTrace(nextSnapshot)
+                                    reason: remoteResolution.reason,
+                                    cursor: buildBoardCursorTrace(remoteResolution.snapshot)
                                 });
-                                applyBoardSnapshotToStore(nextSnapshot, {
+                                applyBoardSnapshotToStore(remoteResolution.snapshot, {
                                     source: 'remote_sync',
                                     boardId: currentBoardId
                                 });
-                                syncBoardSnapshotMetadataIntoList(currentBoardId, nextSnapshot);
+                                syncBoardSnapshotMetadataIntoList(currentBoardId, remoteResolution.snapshot);
                             },
                             onSyncStateChange: (state) => {
                                 logPersistenceTrace('sync:controller-state', {
@@ -860,7 +861,7 @@ function AppContent() {
         setConnections,
         setGroups,
         setLastSavedAt,
-        shouldApplyRemoteSnapshotToStore,
+        resolveRemoteSnapshotToStore,
         syncBoardSnapshotMetadataIntoList,
         user
     ]); // Rely on currentBoardId changing

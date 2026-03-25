@@ -20,6 +20,7 @@ import {
 import { uuid } from '../../utils/uuid';
 import {
     encodeCompactBoardSnapshotUpdate,
+    syncBoardSnapshotToDoc,
     isBoardDocEmpty,
     readBoardSnapshotFromDoc
 } from './boardYDoc';
@@ -31,13 +32,14 @@ import {
     saveBoardCheckpoint,
     toFirestoreMillis
 } from './firestoreCheckpointStore';
-import { applyCheckpointPayloadToDoc } from './checkpointCompatibility';
+import { readCheckpointPayloadSnapshot } from './checkpointCompatibility';
 import { createBoardRootRef, createUpdatesCollectionRef } from './firestoreSyncPaths';
 import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 import { planDeferredRemoteCheckpointRepair } from './remoteCheckpointRepairPlanner';
 import { pickBoardSyncMetadata } from './boardSyncMetadata';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
+import { resolveCheckpointSnapshotForDoc } from './protocol/syncResolver';
 
 const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
 const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
@@ -281,20 +283,46 @@ export class FirestoreBoardSync {
         return plan;
     }
 
-    applyLoadedCheckpoint(checkpoint, rootData) {
-        const result = applyCheckpointPayloadToDoc({
-            doc: this.doc,
+    async saveNonDestructiveRepair(reason = 'non_destructive_remote_repair') {
+        this.emitState('warning', {
+            message: `Detected conservative sync repair for ${this.boardId}, uploading protected checkpoint`
+        });
+        return this.saveSnapshot(reason);
+    }
+
+    async applyLoadedCheckpoint(checkpoint, rootData) {
+        const decodedCheckpoint = readCheckpointPayloadSnapshot({
             updateBase64: checkpoint.updateBase64,
-            rootData,
-            origin: FIREBASE_SYNC_ORIGINS.firestore
+            rootData
+        });
+        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const resolution = resolveCheckpointSnapshotForDoc({
+            currentSnapshot,
+            incomingSnapshot: decodedCheckpoint.snapshot
         });
 
-        if (result.recovered) {
-            console.warn(`[FirebaseSync] Recovered incompatible checkpoint for board ${this.boardId} via ${result.format}`);
-            this.queueRecoveredCheckpointRepair(checkpoint.signature, result.format);
+        if (decodedCheckpoint.recovered) {
+            console.warn(`[FirebaseSync] Recovered incompatible checkpoint for board ${this.boardId} via ${decodedCheckpoint.format}`);
+            this.queueRecoveredCheckpointRepair(checkpoint.signature, decodedCheckpoint.format);
         }
 
-        return result;
+        if (resolution.action === 'apply') {
+            this.doc.transact(() => {
+                syncBoardSnapshotToDoc(this.doc, resolution.snapshot);
+            }, FIREBASE_SYNC_ORIGINS.firestore);
+        }
+
+        if (resolution.shouldRepairRemote) {
+            await this.saveNonDestructiveRepair(resolution.reason);
+        }
+
+        return {
+            format: decodedCheckpoint.format,
+            recovered: decodedCheckpoint.recovered,
+            applied: resolution.action === 'apply',
+            reason: resolution.reason,
+            shouldRepairRemote: resolution.shouldRepairRemote
+        };
     }
 
     async loadRemoteCheckpoint(rootData = null, options = {}) {
@@ -355,7 +383,7 @@ export class FirestoreBoardSync {
         }
 
         try {
-            this.applyLoadedCheckpoint(checkpoint, effectiveRootData);
+            await this.applyLoadedCheckpoint(checkpoint, effectiveRootData);
         } catch (error) {
             if (!isBoardDocEmpty(this.doc)) {
                 console.error(`[FirebaseSync] Failed to decode remote checkpoint for board ${this.boardId}, keeping local snapshot:`, error);
@@ -464,7 +492,11 @@ export class FirestoreBoardSync {
             }
 
             try {
-                this.applyLoadedCheckpoint(checkpoint, data);
+                const applyResult = await this.applyLoadedCheckpoint(checkpoint, data);
+                if (applyResult.applied) {
+                    this.remoteIsEmpty = false;
+                    this.onRemoteApplied?.();
+                }
             } catch (error) {
                 if (!isBoardDocEmpty(this.doc)) {
                     console.error(`[FirebaseSync] Failed to decode remote checkpoint update for board ${this.boardId}, keeping current snapshot:`, error);
@@ -476,8 +508,6 @@ export class FirestoreBoardSync {
 
                 throw error;
             }
-            this.remoteIsEmpty = false;
-            this.onRemoteApplied?.();
         }, (error) => {
             this.emitState('warning', {
                 message: error?.message || 'Checkpoint listener failed'

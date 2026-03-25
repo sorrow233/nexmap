@@ -22,6 +22,7 @@ import {
     isPersistenceSnapshotNewer
 } from '../boardPersistence/persistenceCursor';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
+import { resolveLocalSnapshotForDoc } from './protocol/syncResolver';
 
 export class BoardSyncController {
     constructor({ boardId, user, onSnapshot, onSyncStateChange }) {
@@ -172,27 +173,19 @@ export class BoardSyncController {
 
     applyLocalSnapshot(nextSnapshot = {}) {
         if (!this.started) return;
-        const normalized = normalizeBoardSnapshot(nextSnapshot);
         const currentDocSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const resolution = resolveLocalSnapshotForDoc({
+            currentSnapshot: currentDocSnapshot,
+            incomingSnapshot: nextSnapshot
+        });
+        const normalized = normalizeBoardSnapshot(resolution.snapshot);
         const nextVersionKey = buildPersistenceVersionKey(normalized);
-        if (nextVersionKey === this.lastVersionKey) return;
-
-        const currentDocIsEmpty = isMeaningfullyEmptyBoardSnapshot(currentDocSnapshot);
-        const nextSnapshotIsEmpty = isMeaningfullyEmptyBoardSnapshot(normalized);
-        if (!currentDocIsEmpty && nextSnapshotIsEmpty) {
-            return;
-        }
-
-        if (
-            !currentDocIsEmpty &&
-            !isPersistenceSnapshotNewer(normalized, currentDocSnapshot)
-        ) {
-            return;
-        }
+        if (nextVersionKey === this.lastVersionKey || resolution.action !== 'apply') return;
 
         logPersistenceTrace('sync:controller-apply-local', {
             boardId: this.boardId,
             safeMode: FIREBASE_SYNC_SAFE_MODE,
+            reason: resolution.reason,
             cursor: buildBoardCursorTrace(normalized)
         });
 

@@ -4,7 +4,7 @@ import {
     getEmptyBoardSnapshot,
     normalizeBoardSnapshot
 } from './boardSnapshot';
-import { protectHighValueCardContent } from './highValueCardContentGuard';
+import { mergeCardSnapshots } from './protocol/syncResolver';
 
 const ROOT_KEYS = [
     'cards',
@@ -98,134 +98,6 @@ const createNodeFromValue = (value, path = []) => {
 const replaceArrayValue = (yarray, index, nextValue, path = []) => {
     yarray.delete(index, 1);
     yarray.insert(index, [createNodeFromValue(nextValue, path)]);
-};
-
-const getCardId = (card) => (
-    card && typeof card === 'object' && typeof card.id === 'string' && card.id.trim()
-        ? card.id.trim()
-        : ''
-);
-
-const getCardUpdatedAt = (card) => {
-    if (!card || typeof card !== 'object') return 0;
-    const updatedAt = Number(card.updatedAt);
-    if (Number.isFinite(updatedAt) && updatedAt > 0) {
-        return updatedAt;
-    }
-
-    const createdAt = Number(card.createdAt);
-    return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : 0;
-};
-
-const getCardDeletedAt = (card) => {
-    if (!card || typeof card !== 'object') return 0;
-    const deletedAt = Number(card.deletedAt);
-    return Number.isFinite(deletedAt) && deletedAt > 0 ? deletedAt : 0;
-};
-
-const getCardMessages = (card) => (
-    Array.isArray(card?.data?.messages) ? card.data.messages : []
-);
-
-const getCardConversationTurnCount = (card) => (
-    getCardMessages(card).reduce((count, message) => (
-        message?.role === 'user' ? count + 1 : count
-    ), 0)
-);
-
-const getCardMessageCount = (card) => getCardMessages(card).length;
-
-const getMessageTextLength = (content) => {
-    if (typeof content === 'string') return content.length;
-    if (!Array.isArray(content)) return 0;
-
-    return content.reduce((total, part) => {
-        if (part?.type === 'text' && typeof part.text === 'string') {
-            return total + part.text.length;
-        }
-        return total;
-    }, 0);
-};
-
-const getCardConversationTextLength = (card) => (
-    getCardMessages(card).reduce((total, message) => (
-        total + getMessageTextLength(message?.content)
-    ), 0)
-);
-
-const shouldPreferIncomingCard = (currentCard, incomingCard) => {
-    if (!currentCard) return true;
-
-    const currentDeletedAt = getCardDeletedAt(currentCard);
-    const incomingDeletedAt = getCardDeletedAt(incomingCard);
-    if (currentDeletedAt !== incomingDeletedAt) {
-        return incomingDeletedAt > currentDeletedAt;
-    }
-
-    if (currentDeletedAt === 0 && incomingDeletedAt === 0) {
-        const currentTurnCount = getCardConversationTurnCount(currentCard);
-        const incomingTurnCount = getCardConversationTurnCount(incomingCard);
-        if (currentTurnCount !== incomingTurnCount) {
-            return incomingTurnCount > currentTurnCount;
-        }
-
-        const currentMessageCount = getCardMessageCount(currentCard);
-        const incomingMessageCount = getCardMessageCount(incomingCard);
-        if (currentMessageCount !== incomingMessageCount) {
-            return incomingMessageCount > currentMessageCount;
-        }
-
-        const currentConversationTextLength = getCardConversationTextLength(currentCard);
-        const incomingConversationTextLength = getCardConversationTextLength(incomingCard);
-        if (currentConversationTextLength !== incomingConversationTextLength) {
-            return incomingConversationTextLength >= currentConversationTextLength;
-        }
-    }
-
-    const currentUpdatedAt = getCardUpdatedAt(currentCard);
-    const incomingUpdatedAt = getCardUpdatedAt(incomingCard);
-    if (currentUpdatedAt !== incomingUpdatedAt) {
-        return incomingUpdatedAt >= currentUpdatedAt;
-    }
-
-    return true;
-};
-
-const mergeCardSnapshots = (currentCards = [], nextCards = []) => {
-    const currentById = new Map();
-    currentCards.forEach((card) => {
-        const cardId = getCardId(card);
-        if (cardId) {
-            currentById.set(cardId, card);
-        }
-    });
-
-    const seenIds = new Set();
-    const mergedCards = nextCards.map((incomingCard) => {
-        const cardId = getCardId(incomingCard);
-        if (!cardId) {
-            return incomingCard;
-        }
-
-        seenIds.add(cardId);
-        const currentCard = currentById.get(cardId);
-        const protectedIncomingCard = protectHighValueCardContent(currentCard, incomingCard);
-        return shouldPreferIncomingCard(currentCard, protectedIncomingCard)
-            ? protectedIncomingCard
-            : currentCard;
-    });
-
-    currentCards.forEach((currentCard) => {
-        const cardId = getCardId(currentCard);
-        if (!cardId || seenIds.has(cardId)) {
-            return;
-        }
-
-        // Missing card ids are preserved; only an explicit deletedAt update may retire them.
-        mergedCards.push(currentCard);
-    });
-
-    return mergedCards;
 };
 
 const syncObjectToYMap = (ymap, nextObject = {}, path = []) => {
