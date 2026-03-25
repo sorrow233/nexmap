@@ -4,6 +4,11 @@ import { FIREBASE_SYNC_SAFE_MODE } from '../services/sync/config';
 import { getActiveBoardRuntimeState } from '../services/sync/boardRuntimeAuthority';
 import { isLargeBoardCards } from '../utils/boardPerformance';
 import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
+import {
+    buildSkeletonSyncSnapshot,
+    isSkeletonSyncChangeType,
+    resolveSkeletonSyncDelay
+} from '../services/sync/skeleton/skeletonSync';
 
 const CHANGE_SYNC_DELAY_MS = Object.freeze({
     card_content: 900,
@@ -63,12 +68,9 @@ export function useRevisionDrivenBoardSync({
             timerRef.current = null;
         }
 
-        if (FIREBASE_SYNC_SAFE_MODE) {
-            return undefined;
-        }
-
         const revision = Number(boardChangeState?.revision) || 0;
         const changeType = boardChangeState?.lastChangeType || 'init';
+        const skeletonEligible = isSkeletonSyncChangeType(changeType);
         if (!boardId || revision <= 0) {
             return undefined;
         }
@@ -77,7 +79,11 @@ export function useRevisionDrivenBoardSync({
             return undefined;
         }
 
-        if (isBoardLoading || hasGeneratingCards) {
+        if (FIREBASE_SYNC_SAFE_MODE && !skeletonEligible) {
+            return undefined;
+        }
+
+        if (isBoardLoading || (!skeletonEligible && hasGeneratingCards)) {
             return undefined;
         }
 
@@ -87,7 +93,7 @@ export function useRevisionDrivenBoardSync({
         }
 
         const runtimeState = getActiveBoardRuntimeState(boardId, controller);
-        if (runtimeState && !runtimeState.largeBoardMode) {
+        if (!FIREBASE_SYNC_SAFE_MODE && runtimeState && !runtimeState.largeBoardMode) {
             return undefined;
         }
 
@@ -114,8 +120,15 @@ export function useRevisionDrivenBoardSync({
                 )
             });
 
+            if (FIREBASE_SYNC_SAFE_MODE) {
+                latestController.applyLocalSkeletonSnapshot(buildSkeletonSyncSnapshot(nextSnapshot));
+                return;
+            }
+
             latestController.applyLocalSnapshot(nextSnapshot);
-        }, resolveSyncDelay(changeType));
+        }, FIREBASE_SYNC_SAFE_MODE
+            ? resolveSkeletonSyncDelay(changeType)
+            : resolveSyncDelay(changeType));
 
         return () => {
             if (timerRef.current) {

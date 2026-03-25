@@ -23,6 +23,24 @@ import {
 } from '../boardPersistence/persistenceCursor';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
 import { resolveLocalSnapshotForDoc } from './protocol/syncResolver';
+import {
+    normalizeSyncLane,
+    SYNC_LANES
+} from './protocol/syncLane';
+import { mergeSkeletonSnapshot } from './skeleton/skeletonSync';
+import { mergeBodySnapshot } from './body/bodySync';
+
+const buildStoreOriginForLane = (lane) => {
+    switch (normalizeSyncLane(lane)) {
+    case SYNC_LANES.SKELETON:
+        return FIREBASE_SYNC_ORIGINS.storeSkeleton;
+    case SYNC_LANES.BODY:
+        return FIREBASE_SYNC_ORIGINS.storeBody;
+    case SYNC_LANES.FULL:
+    default:
+        return FIREBASE_SYNC_ORIGINS.storeFull;
+    }
+};
 
 export class BoardSyncController {
     constructor({ boardId, user, onSnapshot, onSyncStateChange }) {
@@ -35,6 +53,11 @@ export class BoardSyncController {
         this.fireSync = null;
         this.lastVersionKey = '';
         this.started = false;
+        this.lastAppliedLocalLaneRevisions = {
+            [SYNC_LANES.SKELETON]: 0,
+            [SYNC_LANES.BODY]: 0,
+            [SYNC_LANES.FULL]: 0
+        };
     }
 
     emitState(status, extra = {}) {
@@ -83,7 +106,12 @@ export class BoardSyncController {
         this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
 
         this.doc.on('update', (_update, origin) => {
-            if (origin === FIREBASE_SYNC_ORIGINS.store || origin === FIREBASE_SYNC_ORIGINS.runtime) {
+            if (
+                origin === FIREBASE_SYNC_ORIGINS.storeFull
+                || origin === FIREBASE_SYNC_ORIGINS.storeSkeleton
+                || origin === FIREBASE_SYNC_ORIGINS.storeBody
+                || origin === FIREBASE_SYNC_ORIGINS.runtime
+            ) {
                 return;
             }
             logPersistenceTrace('sync:controller-doc-update', {
@@ -142,6 +170,33 @@ export class BoardSyncController {
         return readBoardSnapshotFromDoc(this.doc);
     }
 
+    rememberAppliedLocalLaneRevision(lane, revision) {
+        const normalizedLane = normalizeSyncLane(lane);
+        const safeRevision = Number(revision) || 0;
+        if (safeRevision <= 0) return;
+
+        if (normalizedLane === SYNC_LANES.FULL) {
+            this.lastAppliedLocalLaneRevisions[SYNC_LANES.FULL] = Math.max(
+                this.lastAppliedLocalLaneRevisions[SYNC_LANES.FULL],
+                safeRevision
+            );
+            this.lastAppliedLocalLaneRevisions[SYNC_LANES.SKELETON] = Math.max(
+                this.lastAppliedLocalLaneRevisions[SYNC_LANES.SKELETON],
+                safeRevision
+            );
+            this.lastAppliedLocalLaneRevisions[SYNC_LANES.BODY] = Math.max(
+                this.lastAppliedLocalLaneRevisions[SYNC_LANES.BODY],
+                safeRevision
+            );
+            return;
+        }
+
+        this.lastAppliedLocalLaneRevisions[normalizedLane] = Math.max(
+            this.lastAppliedLocalLaneRevisions[normalizedLane],
+            safeRevision
+        );
+    }
+
     commitAuthoritativeLocalSnapshot(nextSnapshot = {}) {
         if (!this.started) {
             return normalizeBoardSnapshot(nextSnapshot);
@@ -171,12 +226,37 @@ export class BoardSyncController {
         return nextCommittedSnapshot;
     }
 
-    applyLocalSnapshot(nextSnapshot = {}) {
+    applyLocalSkeletonSnapshot(nextSnapshot = {}) {
+        this.applyLocalSnapshot(nextSnapshot, { lane: SYNC_LANES.SKELETON });
+    }
+
+    applyLocalBodySnapshot(nextSnapshot = {}) {
+        this.applyLocalSnapshot(nextSnapshot, { lane: SYNC_LANES.BODY });
+    }
+
+    applyLocalSnapshot(nextSnapshot = {}, options = {}) {
         if (!this.started) return;
+        const lane = normalizeSyncLane(options.lane || SYNC_LANES.FULL);
         const currentDocSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const incomingSnapshot = normalizeBoardSnapshot(nextSnapshot);
+        const incomingRevision = Number(incomingSnapshot.clientRevision) || 0;
+
+        if (
+            lane !== SYNC_LANES.FULL
+            && incomingRevision > 0
+            && incomingRevision <= (this.lastAppliedLocalLaneRevisions[lane] || 0)
+        ) {
+            return;
+        }
+
+        const mergedSnapshot = lane === SYNC_LANES.SKELETON
+            ? mergeSkeletonSnapshot(currentDocSnapshot, incomingSnapshot)
+            : (lane === SYNC_LANES.BODY
+                ? mergeBodySnapshot(currentDocSnapshot, incomingSnapshot)
+                : incomingSnapshot);
         const resolution = resolveLocalSnapshotForDoc({
             currentSnapshot: currentDocSnapshot,
-            incomingSnapshot: nextSnapshot
+            incomingSnapshot: mergedSnapshot
         });
         const normalized = normalizeBoardSnapshot(resolution.snapshot);
         const nextVersionKey = buildPersistenceVersionKey(normalized);
@@ -185,15 +265,17 @@ export class BoardSyncController {
         logPersistenceTrace('sync:controller-apply-local', {
             boardId: this.boardId,
             safeMode: FIREBASE_SYNC_SAFE_MODE,
+            lane,
             reason: resolution.reason,
             cursor: buildBoardCursorTrace(normalized)
         });
 
         this.doc.transact(() => {
             syncBoardSnapshotToDoc(this.doc, normalized);
-        }, FIREBASE_SYNC_ORIGINS.store);
+        }, buildStoreOriginForLane(lane));
 
         this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
+        this.rememberAppliedLocalLaneRevision(lane, incomingRevision || normalized.clientRevision);
     }
 
     async forceOverwriteFromSnapshot(nextSnapshot = {}) {

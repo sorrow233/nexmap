@@ -23,6 +23,13 @@ import {
     collectStreamBufferUpdatesForCardIds
 } from '../store/slices/utils/streamRenderBuffer';
 import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
+import {
+    mergeSyncLanes,
+    normalizeSyncLane,
+    SYNC_LANES
+} from '../services/sync/protocol/syncLane';
+import { isSkeletonSyncChangeType } from '../services/sync/skeleton/skeletonSync';
+import { isBodySyncChangeType } from '../services/sync/body/bodySync';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -103,6 +110,22 @@ const applySaveStatus = (setSaveStatus, status) => {
     }
 };
 
+const resolveSyncLaneForChangeType = (changeType = '') => {
+    if (isSkeletonSyncChangeType(changeType)) {
+        return SYNC_LANES.SKELETON;
+    }
+
+    if (isBodySyncChangeType(changeType)) {
+        return SYNC_LANES.BODY;
+    }
+
+    if (!changeType || changeType === 'init' || changeType === 'local_load' || changeType === 'sync_apply') {
+        return SYNC_LANES.NONE;
+    }
+
+    return SYNC_LANES.FULL;
+};
+
 export function useBoardPersistence({
     boardId,
     cards,
@@ -146,6 +169,7 @@ export function useBoardPersistence({
     const lastLocalScheduleAtRef = useRef(0);
     const shadowSaveWindowStartedAtRef = useRef(0);
     const localSaveWindowStartedAtRef = useRef(0);
+    const queuedLocalSyncLaneRef = useRef(SYNC_LANES.NONE);
     const pendingViewportRef = useRef(null);
     const lastSavedViewportRef = useRef(null);
     const lastHandledExternalSyncTokenRef = useRef(0);
@@ -292,6 +316,7 @@ export function useBoardPersistence({
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
         const now = Date.now();
         const persistableData = buildPersistableBoardData(data);
+        const syncLane = normalizeSyncLane(options.syncLane ?? queuedLocalSyncLaneRef.current);
 
         applySaveStatus(setSaveStatus, 'saving');
         updateActivePersistenceCursor({
@@ -337,9 +362,14 @@ export function useBoardPersistence({
                 clientRevision: revision,
                 savedAt: now,
                 source: options.reason || 'local_persist',
+                syncLane,
                 snapshot: payload,
                 metadata: pickBoardSyncMetadata(payload)
             });
+
+            if (revision >= trackerRef.current.revision) {
+                queuedLocalSyncLaneRef.current = SYNC_LANES.NONE;
+            }
         } catch (error) {
             console.error('[BoardPersistence] Local save failed:', error);
             applySaveStatus(setSaveStatus, 'error');
@@ -467,7 +497,8 @@ export function useBoardPersistence({
                 void performLocalSave(latestBoardDataRef.current, {
                     revision: queuedLocalRevisionRef.current,
                     reason: 'debounced_local',
-                    streamingToken: streamingPersistenceTokenRef.current
+                    streamingToken: streamingPersistenceTokenRef.current,
+                    syncLane: queuedLocalSyncLaneRef.current
                 });
             }, { timeout: LOCAL_SAVE_MAX_WAIT_MS, fallbackDelay: 180 });
         }, delayConfig.delayMs);
@@ -520,7 +551,8 @@ export function useBoardPersistence({
             revision,
             reason,
             silent: options.silent !== false,
-            streamingToken: currentStreamingToken
+            streamingToken: currentStreamingToken,
+            syncLane: queuedLocalSyncLaneRef.current
         });
     }, [boardId, performEmergencyLocalSave, performLocalSave, persistRecoverySnapshot]);
 
@@ -562,6 +594,7 @@ export function useBoardPersistence({
             clearContentSaveTimers();
             queuedShadowRevisionRef.current = loadedCursor.clientRevision;
             queuedLocalRevisionRef.current = loadedCursor.clientRevision;
+            queuedLocalSyncLaneRef.current = SYNC_LANES.NONE;
             tracker.revision = Math.max(tracker.revision, loadedCursor.clientRevision);
             tracker.isPrimed = true;
             latestBoardDataRef.current = {
@@ -578,6 +611,7 @@ export function useBoardPersistence({
             tracker.localSavedRevision = loadedCursor.clientRevision;
             tracker.shadowSavedRevision = loadedCursor.clientRevision;
             tracker.isPrimed = true;
+            queuedLocalSyncLaneRef.current = SYNC_LANES.NONE;
             applySaveStatus(setSaveStatus, 'saved');
             updateActivePersistenceCursor({
                 updatedAt: loadedCursor.updatedAt,
@@ -593,6 +627,10 @@ export function useBoardPersistence({
 
         tracker.revision = trackedRevision;
         const revision = trackedRevision;
+        queuedLocalSyncLaneRef.current = mergeSyncLanes(
+            queuedLocalSyncLaneRef.current,
+            resolveSyncLaneForChangeType(boardChangeState?.lastChangeType)
+        );
         latestBoardDataRef.current = {
             ...latestBoardDataRef.current,
             clientRevision: revision
@@ -623,6 +661,7 @@ export function useBoardPersistence({
         scheduleLocalSave(revision);
     }, [
         boardId,
+        boardChangeState?.lastChangeType,
         boardChangeState?.revision,
         isBoardLoading,
         isReadOnly,
@@ -679,6 +718,7 @@ export function useBoardPersistence({
         clearContentSaveTimers();
         queuedShadowRevisionRef.current = 0;
         queuedLocalRevisionRef.current = 0;
+        queuedLocalSyncLaneRef.current = SYNC_LANES.NONE;
         lastShadowScheduleAtRef.current = 0;
         lastLocalScheduleAtRef.current = 0;
         shadowSaveWindowStartedAtRef.current = 0;

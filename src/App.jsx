@@ -92,6 +92,13 @@ import { buildBoardChangeIntegrityHash } from './store/slices/utils/boardChangeI
 import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
+import {
+    isBodySyncLane,
+    isSkeletonSyncLane,
+    normalizeSyncLane
+} from './services/sync/protocol/syncLane';
+import { buildSkeletonSyncSnapshot } from './services/sync/skeleton/skeletonSync';
+import { buildBodySyncSnapshot } from './services/sync/body/bodySync';
 import { resolveRemoteSnapshotForStore } from './services/sync/protocol/syncResolver';
 import {
     getActiveBoardRuntimeState,
@@ -437,6 +444,7 @@ function AppContent() {
         const unsubscribe = subscribeLocalSaveConfirmed((payload = {}) => {
             const boardId = typeof payload.boardId === 'string' ? payload.boardId : '';
             const snapshot = payload.snapshot ? normalizeBoardSnapshot(payload.snapshot) : null;
+            const syncLane = normalizeSyncLane(payload.syncLane);
 
             if (boardId && snapshot) {
                 syncBoardSnapshotMetadataIntoList(boardId, snapshot);
@@ -461,9 +469,20 @@ function AppContent() {
             logPersistenceTrace('sync:local-save-bridge-apply', {
                 boardId,
                 safeMode: FIREBASE_SYNC_SAFE_MODE,
+                lane: syncLane,
                 source: payload.source || 'local_persist',
                 cursor: buildBoardCursorTrace(snapshot)
             });
+            if (isSkeletonSyncLane(syncLane)) {
+                controller.applyLocalSkeletonSnapshot(buildSkeletonSyncSnapshot(snapshot));
+                return;
+            }
+
+            if (isBodySyncLane(syncLane)) {
+                controller.applyLocalBodySnapshot(buildBodySyncSnapshot(snapshot));
+                return;
+            }
+
             controller.applyLocalSnapshot(snapshot);
         });
 

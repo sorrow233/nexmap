@@ -40,10 +40,31 @@ import { planDeferredRemoteCheckpointRepair } from './remoteCheckpointRepairPlan
 import { pickBoardSyncMetadata } from './boardSyncMetadata';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
 import { resolveCheckpointSnapshotForDoc } from './protocol/syncResolver';
+import {
+    mergeSyncLanes,
+    resolveSafeModeDebounceByLane,
+    SYNC_LANES
+} from './protocol/syncLane';
 
 const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
 const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
 const SNAPSHOT_CLEANUP_SAVE_INTERVAL = 8;
+
+const parseCheckpointReason = (reason = '') => {
+    const normalizedReason = String(reason || '');
+    if (!normalizedReason.includes(':')) {
+        return {
+            reason: normalizedReason,
+            lane: SYNC_LANES.FULL
+        };
+    }
+
+    const [baseReason, lane] = normalizedReason.split(':');
+    return {
+        reason: baseReason || normalizedReason,
+        lane: lane || SYNC_LANES.FULL
+    };
+};
 
 const buildRootCheckpointKey = (rootData = {}) => {
     if (!rootData || typeof rootData !== 'object') return '';
@@ -109,6 +130,7 @@ export class FirestoreBoardSync {
             cardCount: 0
         };
         this.lastFlushCompletedAt = 0;
+        this.pendingSyncLane = SYNC_LANES.NONE;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -543,6 +565,12 @@ export class FirestoreBoardSync {
         this.pendingUpdates.push(update);
         this.pendingBytes += update.byteLength || update.length || 0;
         this.hasUnsnapshottedChanges = true;
+        const updateLane = origin === FIREBASE_SYNC_ORIGINS.storeSkeleton
+            ? SYNC_LANES.SKELETON
+            : (origin === FIREBASE_SYNC_ORIGINS.storeBody
+                ? SYNC_LANES.BODY
+                : SYNC_LANES.FULL);
+        this.pendingSyncLane = mergeSyncLanes(this.pendingSyncLane, updateLane);
         this.scheduleFlush();
     }
 
@@ -553,7 +581,10 @@ export class FirestoreBoardSync {
         const debounceMs = this.updateLogEnabled
             ? FIREBASE_SYNC_LIMITS.uploadDebounceMs
             : (FIREBASE_SYNC_SAFE_MODE
-                ? FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS
+                ? resolveSafeModeDebounceByLane(
+                    this.pendingSyncLane,
+                    FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS
+                )
                 : CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS);
 
         if (this.pendingBytes >= maxPendingBytes) {
@@ -590,6 +621,7 @@ export class FirestoreBoardSync {
 
         this.pendingUpdates = [];
         this.pendingBytes = 0;
+        this.pendingSyncLane = SYNC_LANES.NONE;
         this.flushQueuedReason = '';
     }
 
@@ -618,14 +650,17 @@ export class FirestoreBoardSync {
             this.flushQueuedReason = '';
             
             if (this.pendingUpdates.length === 0) {
+                this.pendingSyncLane = SYNC_LANES.NONE;
                 return;
             }
 
             const currentReason = nextReason || 'debounced';
+            const currentSyncLane = this.pendingSyncLane;
             
             const merged = Y.mergeUpdates(this.pendingUpdates);
             this.pendingUpdates = [];
             this.pendingBytes = 0;
+            this.pendingSyncLane = SYNC_LANES.NONE;
 
             if (this.updateLogEnabled) {
                 const updatesRef = createUpdatesCollectionRef(this.userId, this.boardId);
@@ -673,7 +708,7 @@ export class FirestoreBoardSync {
                     await this.saveSnapshot('periodic_compaction');
                 }
             } else {
-                await this.saveSnapshot('checkpoint_only_flush');
+                await this.saveSnapshot(`checkpoint_only_flush:${currentSyncLane}`);
             }
         };
 
@@ -709,9 +744,10 @@ export class FirestoreBoardSync {
 
                 try {
                     this.snapshotSaveCount += 1;
+                    const checkpointReason = parseCheckpointReason(currentReason);
                     const shouldCleanupStaleCheckpoints = (
-                        currentReason === 'controller_stop'
-                        || currentReason === 'periodic_compaction'
+                        checkpointReason.reason === 'controller_stop'
+                        || checkpointReason.reason === 'periodic_compaction'
                         || (this.snapshotSaveCount % SNAPSHOT_CLEANUP_SAVE_INTERVAL) === 0
                     );
 
@@ -722,7 +758,7 @@ export class FirestoreBoardSync {
                         boardId: this.boardId,
                         deviceId: this.deviceId,
                         updateBase64: bytesToBase64(update),
-                        reason: currentReason,
+                        reason: checkpointReason.reason,
                         cleanupStale: shouldCleanupStaleCheckpoints,
                         snapshotMetadata: pickBoardSyncMetadata(liveSnapshot)
                     });
@@ -736,7 +772,8 @@ export class FirestoreBoardSync {
                         this.remoteCheckpointRecoveredFromCompatibility = false;
                         logPersistenceTrace('sync:firestore-checkpoint-saved', {
                             boardId: this.boardId,
-                            reason: currentReason,
+                            reason: checkpointReason.reason,
+                            lane: checkpointReason.lane,
                             safeMode: FIREBASE_SYNC_SAFE_MODE,
                             cursor: buildBoardCursorTrace(liveSnapshot)
                         });

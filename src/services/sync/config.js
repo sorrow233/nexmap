@@ -23,7 +23,10 @@ export const FIREBASE_SYNC_LIMITS = {
 export const FIREBASE_SYNC_ORIGINS = {
     localSeed: 'firebase-sync-local-seed',
     firestore: 'firebase-sync-firestore',
-    store: 'firebase-sync-store',
+    store: 'firebase-sync-store-full',
+    storeFull: 'firebase-sync-store-full',
+    storeSkeleton: 'firebase-sync-store-skeleton',
+    storeBody: 'firebase-sync-store-body',
     runtime: 'firebase-sync-runtime',
     indexeddb: 'firebase-sync-indexeddb',
     forceOverride: 'firebase-sync-force-override'
