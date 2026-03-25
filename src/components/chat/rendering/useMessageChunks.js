@@ -171,11 +171,9 @@ const splitListMarkdown = (markdown = '') => {
         pieces.push(currentPiece);
     }
 
-    return pieces.flatMap((piece) => (
-        piece.length > SOFT_CHUNK_MAX_CHARS
-            ? splitParagraphMarkdown(piece)
-            : [piece]
-    ));
+    // Keep list syntax stable. If a single list item is extremely long, we prefer a large
+    // list chunk over cutting through the bullet marker and corrupting Markdown semantics.
+    return pieces;
 };
 
 const splitQuoteMarkdown = (markdown = '') => {
@@ -198,11 +196,9 @@ const splitQuoteMarkdown = (markdown = '') => {
         pieces.push(currentPiece.join('\n'));
     }
 
-    return pieces.flatMap((piece) => (
-        piece.length > SOFT_CHUNK_MAX_CHARS
-            ? splitParagraphMarkdown(piece)
-            : [piece]
-    ));
+    // Preserve quote markers. Splitting mid-quote by characters can drop the leading `>`
+    // and silently turn the rest into plain paragraphs.
+    return pieces;
 };
 
 const splitOversizedMarkdown = (type, markdown = '') => {
