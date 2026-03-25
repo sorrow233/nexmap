@@ -46,10 +46,6 @@ export default function BoardPage({
     const perfBoardIdRef = React.useRef('');
     const perfBoardReadyRef = React.useRef('');
     const perfExpandedCardIdRef = React.useRef('');
-    const persistentHydratedCardIds = React.useMemo(
-        () => [expandedCardId, noteId].filter(Boolean),
-        [expandedCardId, noteId]
-    );
 
     // Extracted Logic
     const {
@@ -137,6 +133,10 @@ export default function BoardPage({
         currentBoard?.thumbnailRef,
         currentBoard?.thumbnail || '',
         currentBoard?.thumbnailUpdatedAt
+    );
+    const persistentHydratedCardIds = React.useMemo(
+        () => [expandedCardId, noteId].filter(Boolean),
+        [expandedCardId, noteId]
     );
 
     useEffect(() => {
