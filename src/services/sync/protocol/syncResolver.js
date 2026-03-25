@@ -11,7 +11,6 @@ import {
     getCardUpdatedAt,
     isIncomingSnapshotNewer,
     normalizeSnapshotForRules,
-    shouldPreserveNonEmptyCollection,
     shouldRejectEmptySnapshotOverwrite
 } from './syncRules';
 
@@ -135,36 +134,11 @@ export const mergeBoardSnapshotsConservatively = (currentSnapshot = {}, incoming
         normalizedCurrent.cards,
         normalizedIncoming.cards
     );
-    const preservedCollections = [];
-
-    const connections = shouldPreserveNonEmptyCollection(
-        normalizedCurrent.connections,
-        normalizedIncoming.connections
-    )
-        ? (preservedCollections.push('connections'), normalizedCurrent.connections)
-        : normalizedIncoming.connections;
-
-    const groups = shouldPreserveNonEmptyCollection(
-        normalizedCurrent.groups,
-        normalizedIncoming.groups
-    )
-        ? (preservedCollections.push('groups'), normalizedCurrent.groups)
-        : normalizedIncoming.groups;
-
-    const boardPrompts = shouldPreserveNonEmptyCollection(
-        normalizedCurrent.boardPrompts,
-        normalizedIncoming.boardPrompts
-    )
-        ? (preservedCollections.push('boardPrompts'), normalizedCurrent.boardPrompts)
-        : normalizedIncoming.boardPrompts;
 
     return {
         snapshot: normalizeBoardSnapshot({
             ...normalizedIncoming,
             cards: mergedCardsResult.cards,
-            connections,
-            groups,
-            boardPrompts,
             updatedAt: Math.max(
                 Number(normalizedCurrent.updatedAt) || 0,
                 Number(normalizedIncoming.updatedAt) || 0
@@ -175,7 +149,7 @@ export const mergeBoardSnapshotsConservatively = (currentSnapshot = {}, incoming
             )
         }),
         preservedCurrentCardIds: mergedCardsResult.preservedCurrentCardIds,
-        preservedCollections
+        preservedCollections: []
     };
 };
 
@@ -254,10 +228,7 @@ export const resolveCheckpointSnapshotForDoc = ({
 
     const mergedResult = mergeBoardSnapshotsConservatively(normalizedCurrent, normalizedIncoming);
     const changed = createBoardSnapshotFingerprint(normalizedCurrent) !== createBoardSnapshotFingerprint(mergedResult.snapshot);
-    const shouldRepairRemote = (
-        mergedResult.preservedCurrentCardIds.length > 0
-        || mergedResult.preservedCollections.length > 0
-    );
+    const shouldRepairRemote = mergedResult.preservedCurrentCardIds.length > 0;
 
     return {
         action: changed ? 'apply' : 'noop',
