@@ -2,6 +2,7 @@ import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { resolveAllImages } from '../utils';
+import { normalizeOpenAIImagePayloads } from './openai/imagePayload';
 
 const hasMeaningfulText = (text) => String(text ?? '').trim().length > 0;
 const isPermanentOpenAIStatus = (statusCode) => {
@@ -113,7 +114,8 @@ export class OpenAIProvider extends LLMProvider {
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
         const resolvedMessages = await resolveAllImages(messages);
-        const formattedMessages = this.formatMessages(resolvedMessages);
+        const normalizedMessages = await normalizeOpenAIImagePayloads(resolvedMessages);
+        const formattedMessages = this.formatMessages(normalizedMessages);
 
         if (formattedMessages.length === 0) {
             throw new Error('没有可发送的有效消息');
@@ -193,7 +195,8 @@ export class OpenAIProvider extends LLMProvider {
         const safeBaseUrl = baseUrl || 'https://api.openai.com/v1';
         const endpoint = `${safeBaseUrl.replace(/\/$/, '')}/chat/completions`;
         const resolvedMessages = await resolveAllImages(messages);
-        const formattedMessages = this.formatMessages(resolvedMessages);
+        const normalizedMessages = await normalizeOpenAIImagePayloads(resolvedMessages);
+        const formattedMessages = this.formatMessages(normalizedMessages);
 
         if (formattedMessages.length === 0) {
             throw new Error('没有可发送的有效消息');
