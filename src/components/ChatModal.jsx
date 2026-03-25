@@ -3,8 +3,9 @@ import { isSafari, isIOS } from '../utils/browser';
 import ChatView from './chat/ChatView';
 
 export default function ChatModal(props) {
-    const { card, isOpen, onClose } = props;
+    const { card, isOpen, onClose, isHydrating = false } = props;
     if (!isOpen || !card) return null;
+    const shouldShowLoading = isHydrating;
 
     return (
         <div
@@ -18,7 +19,13 @@ export default function ChatModal(props) {
                 onClick={onClose}
             />
             <div className={`w-full max-w-[1100px] h-full sm:h-[92vh] sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] flex flex-col relative z-10`}>
-                <ChatView {...props} />
+                {shouldShowLoading ? (
+                    <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                        正在安全加载这张卡片的正文...
+                    </div>
+                ) : (
+                    <ChatView {...props} />
+                )}
             </div>
         </div>
     );

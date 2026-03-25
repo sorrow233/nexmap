@@ -1,5 +1,9 @@
 import { calculateLayout, calculateGridLayout } from '../../utils/autoLayout';
 import {
+    createCardRuntimeSkeleton,
+    hasLoadedCardMessages
+} from '../../services/boardPersistence/cardBodyStorage';
+import {
     resolveDraggedCardIds
 } from '../../utils/cardDrag';
 import { debugLog } from '../../utils/debugLogger';
@@ -303,6 +307,81 @@ export const createCardSlice = (set, get) => {
                 boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_content')
             };
         });
+    },
+
+    hydrateCardBody: (id, hydratedData) => {
+        if (!id || !hydratedData || typeof hydratedData !== 'object') return;
+
+        set((state) => {
+            const { indexById } = cardLookup.ensure(state.cards);
+            const index = indexById.get(id);
+            if (index === undefined) return state;
+
+            const nextCards = state.cards.slice();
+            const currentCard = nextCards[index];
+            const nextCard = {
+                ...currentCard,
+                data: {
+                    ...(currentCard.data || {}),
+                    ...hydratedData
+                }
+            };
+
+            nextCards[index] = nextCard;
+            cardLookup.patch(nextCards, [nextCard]);
+
+            return {
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'patch',
+                    scope: 'content',
+                    updatedCards: [nextCard],
+                    reason: 'hydrateCardBody'
+                })
+            };
+        }, false, { skipHistory: true, skipBoardRuntime: true });
+    },
+
+    externalizeHydratedCardBodies: (boardId, excludeIds = []) => {
+        if (!boardId) return;
+
+        set((state) => {
+            const excludeIdSet = excludeIds instanceof Set
+                ? excludeIds
+                : new Set(Array.isArray(excludeIds) ? excludeIds : [excludeIds].filter(Boolean));
+
+            const nextCards = state.cards.slice();
+            const updatedCards = [];
+
+            state.cards.forEach((card, index) => {
+                if (!card || excludeIdSet.has(card.id) || !hasLoadedCardMessages(card)) {
+                    return;
+                }
+
+                const externalizedCard = createCardRuntimeSkeleton(boardId, card);
+                if (externalizedCard === card) {
+                    return;
+                }
+
+                nextCards[index] = externalizedCard;
+                updatedCards.push(externalizedCard);
+            });
+
+            if (updatedCards.length === 0) {
+                return state;
+            }
+
+            cardLookup.patch(nextCards, updatedCards);
+            return {
+                cards: nextCards,
+                cardIndexMutation: buildCardIndexMutation(state, {
+                    mode: 'patch',
+                    scope: 'content',
+                    updatedCards,
+                    reason: 'externalizeHydratedCardBodies'
+                })
+            };
+        }, false, { skipHistory: true, skipBoardRuntime: true });
     },
 
     // Soft delete: mark card as deleted instead of removing

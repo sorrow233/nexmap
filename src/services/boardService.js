@@ -23,9 +23,18 @@ import {
     pickMostRecentBoardSnapshot
 } from './boardPersistence/localBoardShadow';
 import {
+    clearBoardCardBodies,
+    createCardRuntimeSkeleton,
+    hasExternalCardBody,
+    hasLoadedCardMessages,
+    materializeBoardCardsFromBodies,
+    persistBoardCardBodies
+} from './boardPersistence/cardBodyStorage';
+import {
     persistBoardsMetadataList,
     readBoardsMetadataListFromStorage
 } from './boardPersistence/boardsListStorage';
+import { isLargeBoardCards } from '../utils/boardPerformance';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
@@ -82,6 +91,51 @@ const persistBoardToLegacyStorage = (id, payload) => {
         });
         return false;
     }
+};
+
+const loadPersistedBoardSnapshot = async (id) => {
+    let stored = null;
+    try {
+        stored = await idbGet(BOARD_PREFIX + id);
+    } catch {
+        stored = null;
+    }
+
+    if (stored) {
+        return stored;
+    }
+
+    return loadLegacyBoardSnapshot(id);
+};
+
+const materializeCardsForPersistence = async (boardId, cards = []) => {
+    const safeCards = Array.isArray(cards) ? cards : [];
+    const loadedCards = safeCards.filter((card) => hasLoadedCardMessages(card));
+
+    if (loadedCards.length > 0) {
+        await persistBoardCardBodies(boardId, loadedCards);
+    }
+
+    const requiresHydration = safeCards.some((card) => hasExternalCardBody(card));
+    const fallbackSnapshot = requiresHydration
+        ? await loadPersistedBoardSnapshot(boardId)
+        : null;
+
+    const materializedCards = await materializeBoardCardsFromBodies(
+        boardId,
+        safeCards,
+        fallbackSnapshot?.cards || []
+    );
+    return materializedCards;
+};
+
+const buildRuntimeBoardCards = (boardId, cards = []) => {
+    const safeCards = Array.isArray(cards) ? cards : [];
+    if (!boardId || !isLargeBoardCards(safeCards)) {
+        return safeCards;
+    }
+
+    return safeCards.map((card) => createCardRuntimeSkeleton(boardId, card));
 };
 
 export const getCurrentBoardId = () => sessionStorage.getItem(CURRENT_BOARD_ID_KEY);
@@ -217,8 +271,10 @@ export const saveBoard = async (id, data) => {
     const boardIndex = list.findIndex(b => b.id === id);
     const currentClientRevision = boardIndex >= 0 ? (list[boardIndex].clientRevision || 0) : 0;
     const effectiveClientRevision = data.clientRevision !== undefined ? data.clientRevision : currentClientRevision;
+    const materializedCards = await materializeCardsForPersistence(id, data.cards || []);
     const payload = {
         ...data,
+        cards: materializedCards,
         updatedAt: timestamp,
         clientRevision: effectiveClientRevision
     };
@@ -281,7 +337,7 @@ export const saveBoard = async (id, data) => {
                 boardId: id,
                 cursor: buildBoardCursorTrace(payload)
             });
-            return;
+            return payload;
         } catch (e) {
             lastError = e;
             debugLog.error(`[Storage] IDB save attempt ${attempt}/${MAX_IDB_SAVE_RETRIES} failed for board ${id}`, e);
@@ -301,6 +357,8 @@ export const saveBoard = async (id, data) => {
     if (!fallbackOk) {
         throw (lastError || new Error(`Failed to save board ${id}`));
     }
+
+    return payload;
 };
 
 export const loadBoard = async (id) => {
@@ -340,7 +398,16 @@ export const loadBoard = async (id) => {
         shadow: buildBoardCursorTrace(shadowSnapshot)
     });
 
-    stored = preferredSnapshot;
+    stored = preferredSnapshot
+        ? {
+            ...preferredSnapshot,
+            cards: await materializeBoardCardsFromBodies(
+                id,
+                preferredSnapshot.cards || [],
+                preferredSnapshot.cards || []
+            )
+        }
+        : preferredSnapshot;
 
     if (!stored) {
         debugLog.storage(`Board ${id} not found, returning empty template`);
@@ -431,11 +498,23 @@ export const loadBoard = async (id) => {
         }
     }
 
-    debugLog.storage(`Board ${id} loaded successfully`, { cards: finalBoard.cards?.length || 0 });
-    return {
+    const loadedFinalCards = (finalBoard.cards || []).filter((card) => hasLoadedCardMessages(card));
+    if (loadedFinalCards.length > 0) {
+        await persistBoardCardBodies(id, loadedFinalCards);
+    }
+
+    const runtimeCards = buildRuntimeBoardCards(id, finalBoard.cards || []);
+    const runtimeBoard = {
         ...finalBoard,
+        cards: runtimeCards,
         boardInstructionSettings: normalizeBoardInstructionSettings(finalBoard.boardInstructionSettings)
     };
+
+    debugLog.storage(`Board ${id} loaded successfully`, {
+        cards: runtimeBoard.cards?.length || 0,
+        skeletonized: runtimeCards !== finalBoard.cards
+    });
+    return runtimeBoard;
 };
 
 // Optimized loader for Search (Direct IDB access, NO S3 processing)
@@ -447,8 +526,18 @@ export const loadBoardDataForSearch = async (id) => {
             const legacy = localStorage.getItem(BOARD_PREFIX + id);
             if (legacy) stored = JSON.parse(legacy);
         }
-        // Return raw stored data (we just need text content for search, no base64 conversion needed)
-        return stored;
+        if (!stored) {
+            return null;
+        }
+
+        return {
+            ...stored,
+            cards: await materializeBoardCardsFromBodies(
+                id,
+                stored.cards || [],
+                stored.cards || []
+            )
+        };
     } catch (e) {
         console.warn(`[Search] Failed to load board ${id}`, e);
         return null;
@@ -540,6 +629,7 @@ export const permanentlyDeleteBoard = async (id) => {
     persistBoardsMetadataList(newList, { reason: `permanentlyDeleteBoard:${id}` });
 
     await idbDel(BOARD_PREFIX + id);
+    await clearBoardCardBodies(id);
     localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy
     localStorage.removeItem(`mixboard_viewport_${id}`); // Cleanup viewport state
 };

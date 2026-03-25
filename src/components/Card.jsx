@@ -118,16 +118,18 @@ const Card = React.memo(function Card({
         if (marks.length > 0) {
             text = marks.map(m => `- **${m}**`).join('\n');
         } else {
-            text = cleanThinkingTags(getPreviewContent(lastMessage?.content));
+            text = cleanThinkingTags(
+                getPreviewContent(lastMessage?.content || data.data?.previewText || '')
+            );
         }
 
-        if (!text) text = "_Thinking..._";
+        if (!text) text = data.data?.messageCount > 0 ? '_Message preview unavailable_' : "_Thinking..._";
 
         if (text.length > 300) {
             text = text.slice(0, 300) + "...";
         }
         return text;
-    }, [data.data?.marks, lastMessage, data.data?.messages]); // Dependencies: marks and lastMessage (which comes from data.data.messages)
+    }, [data.data?.marks, data.data?.messageCount, data.data?.messages, data.data?.previewText, lastMessage]); // Dependencies: marks and lastMessage (which comes from data.data.messages)
 
 
     const handleCopyFullCard = async (e) => {

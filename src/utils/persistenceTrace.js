@@ -65,13 +65,17 @@ export const buildBoardCursorTrace = (snapshot = {}) => {
     const cards = Array.isArray(snapshot?.cards) ? snapshot.cards : [];
     const cardMessageStats = cards.slice(0, MAX_CARD_MESSAGE_STATS).map((card) => {
         const messages = Array.isArray(card?.data?.messages) ? card.data.messages : [];
-        const userMessages = messages.filter((message) => message?.role === 'user').length;
-        const assistantMessages = messages.filter((message) => message?.role === 'assistant').length;
+        const userMessages = messages.length > 0
+            ? messages.filter((message) => message?.role === 'user').length
+            : Number(card?.data?.userMessageCount) || 0;
+        const assistantMessages = messages.length > 0
+            ? messages.filter((message) => message?.role === 'assistant').length
+            : Math.max(0, (Number(card?.data?.messageCount) || 0) - userMessages);
 
         return {
             cardId: card?.id || '',
             type: card?.type || 'chat',
-            messages: messages.length,
+            messages: messages.length > 0 ? messages.length : (Number(card?.data?.messageCount) || 0),
             userMessages,
             assistantMessages
         };

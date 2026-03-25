@@ -19,6 +19,10 @@ import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceT
 import { runtimeLog, runtimeWarn } from './utils/runtimeLogging';
 import { aiManager } from './services/ai/AIManager';
 import { isLargeBoardCards } from './utils/boardPerformance';
+import {
+    createCardRuntimeSkeleton,
+    persistBoardCardBodies
+} from './services/boardPersistence/cardBodyStorage';
 
 // Lazy Load Pages
 const GalleryPage = lazyWithRetry(() => import('./pages/GalleryPage'));
@@ -291,34 +295,44 @@ function AppContent() {
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
+        const shouldSkeletonize = Boolean(options.boardId) && isLargeBoardCards(normalized.cards || []);
+        if (shouldSkeletonize) {
+            void persistBoardCardBodies(options.boardId, normalized.cards || []);
+        }
+        const runtimeSnapshot = shouldSkeletonize
+            ? {
+                ...normalized,
+                cards: (normalized.cards || []).map((card) => createCardRuntimeSkeleton(options.boardId, card))
+            }
+            : normalized;
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
         const currentBoardChangeState = useStore.getState().boardChangeState;
-        const integrityHash = buildBoardChangeIntegrityHash(normalized);
+        const integrityHash = buildBoardChangeIntegrityHash(runtimeSnapshot);
 
         // Build the merged state patch — single zustand set() to avoid N separate renders.
         // In async callbacks (IDB / Firebase), React 18 automatic batching does NOT cover
         // zustand set() calls, so each independent set triggers a full render pass.
         const patch = {
-            cards: normalized.cards,
-            connections: normalized.connections,
-            groups: normalized.groups,
-            boardPrompts: normalized.boardPrompts,
+            cards: runtimeSnapshot.cards,
+            connections: runtimeSnapshot.connections,
+            groups: runtimeSnapshot.groups,
+            boardPrompts: runtimeSnapshot.boardPrompts,
             boardInstructionSettings: normalizeBoardInstructionSettings(
-                normalized.boardInstructionSettings
+                runtimeSnapshot.boardInstructionSettings
             ),
-            lastSavedAt: normalized.updatedAt || 0,
+            lastSavedAt: runtimeSnapshot.updatedAt || 0,
             activeBoardPersistence: {
-                updatedAt: normalized.updatedAt || 0,
-                clientRevision: normalized.clientRevision || 0,
+                updatedAt: runtimeSnapshot.updatedAt || 0,
+                clientRevision: runtimeSnapshot.clientRevision || 0,
                 dirty: false
             },
             boardChangeState: syncBoardChangeStateToCursor(
                 currentBoardChangeState,
-                normalized,
+                runtimeSnapshot,
                 options.source === 'remote_sync' ? 'sync_apply' : 'local_load',
                 {
                     integrityHash,
-                    validatedAt: normalized.updatedAt || Date.now()
+                    validatedAt: runtimeSnapshot.updatedAt || Date.now()
                 }
             ),
             cardIndexMutation: nextCardIndexMutation(currentCardIndexMutation, {
@@ -333,8 +347,8 @@ function AppContent() {
                 token,
                 boardId: options.boardId,
                 versionKey: buildPersistenceVersionKey(normalized),
-                updatedAt: normalized.updatedAt || 0,
-                clientRevision: normalized.clientRevision || 0
+                updatedAt: runtimeSnapshot.updatedAt || 0,
+                clientRevision: runtimeSnapshot.clientRevision || 0
             };
         }
 
@@ -344,7 +358,7 @@ function AppContent() {
         });
 
         // Rebuild card lookup cache outside of set() so it stays consistent.
-        useStore.getState().rebuildCardLookup?.(normalized.cards);
+        useStore.getState().rebuildCardLookup?.(runtimeSnapshot.cards);
     }, []);
 
     const flushSearchDataBuffer = useCallback(() => {

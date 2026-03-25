@@ -24,6 +24,14 @@ const ChatModal = lazyWithRetry(() => import('../components/ChatModal'));
 const SettingsModal = lazyWithRetry(() => import('../components/SettingsModal'));
 
 import { useBoardLogic } from '../hooks/useBoardLogic';
+import {
+    hasExternalCardBody,
+    hasLoadedCardMessages,
+    hydrateCardBody as loadHydratedCardBody,
+    persistCardBodyRecord,
+    pickHydratedCardBodyData
+} from '../services/boardPersistence/cardBodyStorage';
+import { isLargeBoardCards } from '../utils/boardPerformance';
 
 export default function BoardPage({
     user,
@@ -37,6 +45,8 @@ export default function BoardPage({
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
+    const hydrateCardBodyInStore = useStore(state => state.hydrateCardBody);
+    const externalizeHydratedCardBodies = useStore(state => state.externalizeHydratedCardBodies);
 
     // Extracted Logic
     const {
@@ -125,6 +135,108 @@ export default function BoardPage({
         currentBoard?.thumbnail || '',
         currentBoard?.thumbnailUpdatedAt
     );
+
+    const expandedCard = React.useMemo(
+        () => cards.find(card => card.id === expandedCardId) || null,
+        [cards, expandedCardId]
+    );
+    const [isExpandedCardHydrating, setIsExpandedCardHydrating] = React.useState(false);
+    const previousBoardIdRef = React.useRef(currentBoardId);
+    const previousExpandedCardIdRef = React.useRef(null);
+
+    const releaseInactiveHydratedBodies = React.useCallback(async (activeCardId = null) => {
+        if (!currentBoardId) {
+            return;
+        }
+
+        const storeState = useStore.getState();
+        if (!isLargeBoardCards(storeState.cards || [])) {
+            return;
+        }
+
+        const excludeIds = new Set();
+        const nonGeneratingLoadedCards = (storeState.cards || []).filter((card) => {
+            if (!card?.id || !hasLoadedCardMessages(card)) {
+                return false;
+            }
+
+            if (generatingCardIds?.has?.(card.id)) {
+                excludeIds.add(card.id);
+                return false;
+            }
+
+            return true;
+        });
+
+        if (activeCardId) {
+            excludeIds.add(activeCardId);
+        }
+
+        if (nonGeneratingLoadedCards.length === 0) {
+            return;
+        }
+
+        try {
+            await Promise.all(nonGeneratingLoadedCards.map((card) => (
+                persistCardBodyRecord(currentBoardId, card)
+            )));
+            externalizeHydratedCardBodies(currentBoardId, Array.from(excludeIds));
+        } catch (error) {
+            console.error('[BoardPage] Failed to release hydrated card bodies safely:', error);
+        }
+    }, [currentBoardId, externalizeHydratedCardBodies, generatingCardIds]);
+
+    useEffect(() => {
+        if (previousBoardIdRef.current !== currentBoardId) {
+            previousBoardIdRef.current = currentBoardId;
+            previousExpandedCardIdRef.current = expandedCardId || null;
+            return;
+        }
+
+        const previousExpandedCardId = previousExpandedCardIdRef.current;
+        if (previousExpandedCardId && previousExpandedCardId !== expandedCardId) {
+            void releaseInactiveHydratedBodies(expandedCardId || null);
+        }
+
+        previousExpandedCardIdRef.current = expandedCardId || null;
+    }, [expandedCardId, releaseInactiveHydratedBodies]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!currentBoardId || !expandedCardId || !expandedCard) {
+            setIsExpandedCardHydrating(false);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        if (!hasExternalCardBody(expandedCard)) {
+            setIsExpandedCardHydrating(false);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        setIsExpandedCardHydrating(true);
+        void loadHydratedCardBody(currentBoardId, expandedCard)
+            .then((hydratedCard) => {
+                if (cancelled || !hydratedCard || hasExternalCardBody(hydratedCard)) {
+                    return;
+                }
+
+                hydrateCardBodyInStore(expandedCardId, pickHydratedCardBodyData(hydratedCard));
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setIsExpandedCardHydrating(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [currentBoardId, expandedCard, expandedCardId, hydrateCardBodyInStore]);
 
     useEffect(() => {
         if (!isIPhoneBoardMode) return;
@@ -349,8 +461,9 @@ export default function BoardPage({
                 {expandedCardId && (
                     <Suspense fallback={null}>
                         <ChatModal
-                            card={cards.find(c => c.id === expandedCardId)}
+                            card={expandedCard}
                             isOpen={!!expandedCardId}
+                            isHydrating={isExpandedCardHydrating}
                             onClose={() => setExpandedCardId(null)}
                             onUpdate={updateCardFull}
                             onGenerateResponse={handleChatModalGenerate}
