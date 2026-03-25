@@ -1,7 +1,9 @@
 import { getCardRect, isRectIntersect } from './geometry';
 
 const DEFAULT_BUCKET_SIZE = 480;
-const DEFAULT_VIEWPORT_MARGIN = 400;
+const DEFAULT_VIEWPORT_SCREEN_MARGIN = 260;
+const MIN_VIEWPORT_SCREEN_MARGIN = 180;
+const MAX_VIEWPORT_SCREEN_MARGIN = 360;
 
 const getCellKey = (x, y) => `${x}:${y}`;
 
@@ -12,12 +14,30 @@ const getBucketRange = (rect, bucketSize) => ({
     maxY: Math.floor(rect.bottom / bucketSize)
 });
 
-export function buildViewportRect(offset, scale, margin = DEFAULT_VIEWPORT_MARGIN) {
+const resolveViewportScreenMargin = (viewportSize = {}) => {
+    const width = Number(viewportSize?.width) || window.innerWidth || 0;
+    const height = Number(viewportSize?.height) || window.innerHeight || 0;
+    const baseMargin = Math.min(width || Infinity, height || Infinity) * 0.28;
+    return Math.max(
+        MIN_VIEWPORT_SCREEN_MARGIN,
+        Math.min(MAX_VIEWPORT_SCREEN_MARGIN, baseMargin || DEFAULT_VIEWPORT_SCREEN_MARGIN)
+    );
+};
+
+export function buildViewportRect(offset, scale, viewportSize = null, screenMargin = null) {
+    const safeScale = Math.max(Number(scale) || 1, 0.05);
+    const width = Number(viewportSize?.width) || window.innerWidth || 0;
+    const height = Number(viewportSize?.height) || window.innerHeight || 0;
+    const resolvedScreenMargin = Number.isFinite(Number(screenMargin))
+        ? Number(screenMargin)
+        : resolveViewportScreenMargin(viewportSize || {});
+    const margin = resolvedScreenMargin / safeScale;
+
     return {
-        left: (0 - offset.x) / scale - margin,
-        top: (0 - offset.y) / scale - margin,
-        right: (window.innerWidth - offset.x) / scale + margin,
-        bottom: (window.innerHeight - offset.y) / scale + margin
+        left: (0 - offset.x) / safeScale - margin,
+        top: (0 - offset.y) / safeScale - margin,
+        right: (width - offset.x) / safeScale + margin,
+        bottom: (height - offset.y) / safeScale + margin
     };
 }
 

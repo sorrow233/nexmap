@@ -12,6 +12,14 @@ import {
     bumpBoardChangeState,
     createBoardChangeState
 } from './utils/boardChangeState';
+import {
+    buildRuntimeCardsForStore,
+    cacheHydratedCardBody,
+    clearCardBodyRuntimeCache,
+    hydrateCardBodyFromRuntimeCache,
+    removeCardBodyFromRuntimeCache
+} from '../../services/cardBodyRuntimeCache';
+import { isLargeBoardCards } from '../../utils/boardPerformance';
 
 const createCardLookupCache = () => {
     let cachedCardsRef = null;
@@ -96,6 +104,27 @@ export const createCardSlice = (set, get) => {
         };
     };
 
+    const hydrateCardForAccess = (card, { touch = false } = {}) => (
+        hydrateCardBodyFromRuntimeCache(card, { touch })
+    );
+
+    const cacheCardBodyForRuntime = (card, { touch = true } = {}) => {
+        cacheHydratedCardBody(card, { touch });
+        return card;
+    };
+
+    const areCardsReferenceEqual = (left = [], right = []) => (
+        left.length === right.length &&
+        left.every((card, index) => card === right[index])
+    );
+
+    const shouldManageRuntimeBodies = (cards = []) => (
+        Array.isArray(cards) && (
+            cards.some((card) => card?.data?.runtimeBodyState)
+            || isLargeBoardCards(cards)
+        )
+    );
+
     return {
     cards: [],
     cardIndexMutation: createCardIndexMutation(),
@@ -135,6 +164,9 @@ export const createCardSlice = (set, get) => {
         setBoardChangeState: (nextBoardChangeState) => set({
             boardChangeState: createBoardChangeState(nextBoardChangeState)
         }),
+        rebuildCardLookup: (cards = get().cards) => {
+            cardLookup.rebuild(cards || []);
+        },
 
 	    setCards: (cardsOrUpdater, options = {}) => {
 	        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
@@ -155,13 +187,13 @@ export const createCardSlice = (set, get) => {
     getCardById: (id) => {
         if (!id) return null;
         const { cardMap } = cardLookup.ensure(get().cards);
-        return cardMap.get(id) || null;
+        return hydrateCardForAccess(cardMap.get(id) || null);
     },
 
     getCardsByIds: (ids = []) => {
         const { cardMap, indexById } = cardLookup.ensure(get().cards);
         return Array.from(ids)
-            .map((id) => cardMap.get(id))
+            .map((id) => hydrateCardForAccess(cardMap.get(id)))
             .filter(Boolean)
             .sort((a, b) => (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0));
     },
@@ -213,14 +245,54 @@ export const createCardSlice = (set, get) => {
 
     setExpandedCardId: (id) => {
         debugLog.ui(`Focusing/Expanding card: ${id}`);
-        set({ expandedCardId: id });
+        set((state) => {
+            if (!id) {
+                if (state.expandedCardId === null) {
+                    return state;
+                }
+
+                return { expandedCardId: null };
+            }
+
+            const { indexById } = cardLookup.ensure(state.cards);
+            const index = indexById.get(id);
+            if (index === undefined) {
+                return {
+                    expandedCardId: id
+                };
+            }
+
+            const currentCard = state.cards[index];
+            const hydratedCard = hydrateCardForAccess(currentCard, { touch: true });
+            if (hydratedCard === currentCard && state.expandedCardId === id) {
+                return state;
+            }
+
+            if (hydratedCard === currentCard) {
+                return {
+                    expandedCardId: id
+                };
+            }
+
+            const nextCards = state.cards.slice();
+            nextCards[index] = hydratedCard;
+            cardLookup.patch(nextCards, [hydratedCard]);
+            return {
+                cards: nextCards,
+                expandedCardId: id
+            };
+        }, false, { skipHistory: true, skipBoardRuntime: true });
     },
 
     addCard: (card) => {
         const newCard = normalizeCardTimestamps(card);
         debugLog.store(`Adding new card: ${newCard.id}`, newCard);
         set((state) => {
-            const nextCards = [...state.cards, newCard];
+            const runtimeManaged = shouldManageRuntimeBodies(state.cards);
+            const cardForStore = runtimeManaged
+                ? cacheCardBodyForRuntime(newCard)
+                : newCard;
+            const nextCards = [...state.cards, cardForStore];
             cardLookup.rebuild(nextCards);
             return {
                 cards: nextCards,
@@ -243,12 +315,20 @@ export const createCardSlice = (set, get) => {
             if (index === undefined) return state;
 
             const nextCards = state.cards.slice();
-            const currentCard = nextCards[index];
+            const runtimeManaged = shouldManageRuntimeBodies(state.cards);
+            const currentCard = runtimeManaged
+                ? hydrateCardForAccess(nextCards[index], { touch: true })
+                : nextCards[index];
             const updatedData = typeof updater === 'function'
                 ? updater(currentCard.data)
                 : updater;
 
-            nextCards[index] = {
+            nextCards[index] = runtimeManaged
+                ? cacheCardBodyForRuntime({
+                    ...currentCard,
+                    data: { ...currentCard.data, ...updatedData }
+                })
+                : {
                 ...currentCard,
                 data: { ...currentCard.data, ...updatedData }
             };
@@ -277,12 +357,23 @@ export const createCardSlice = (set, get) => {
             if (index === undefined) return state;
 
             const nextCards = state.cards.slice();
-            const currentCard = nextCards[index];
+            const runtimeManaged = shouldManageRuntimeBodies(state.cards);
+            const currentCard = runtimeManaged
+                ? hydrateCardForAccess(nextCards[index], { touch: true })
+                : nextCards[index];
             const updatedData = typeof updater === 'function'
                 ? updater(currentCard.data)
                 : updater;
 
-            nextCards[index] = {
+            nextCards[index] = runtimeManaged
+                ? cacheCardBodyForRuntime({
+                    ...currentCard,
+                    data: {
+                        ...(currentCard.data || {}),
+                        ...updatedData
+                    }
+                })
+                : {
                 ...currentCard,
                 data: {
                     ...(currentCard.data || {}),
@@ -378,6 +469,7 @@ export const createCardSlice = (set, get) => {
     // Permanently delete a card (used for cleanup after retention period)
     permanentlyDeleteCard: (id) => {
         debugLog.store(`Permanently deleting card: ${id}`);
+        removeCardBodyFromRuntimeCache(id);
         set((state) => {
             const nextCards = state.cards.filter(c => c.id !== id);
             cardLookup.rebuild(nextCards);
@@ -569,9 +661,33 @@ export const createCardSlice = (set, get) => {
         }
     },
 
+    syncRuntimeCardBodies: (keepHydratedIds = []) => set((state) => {
+        if (!Array.isArray(state.cards) || state.cards.length === 0) {
+            return state;
+        }
+
+        if (!shouldManageRuntimeBodies(state.cards)) {
+            return state;
+        }
+
+        const { cards: nextCards } = buildRuntimeCardsForStore(state.cards, {
+            keepHydratedIds
+        });
+
+        if (areCardsReferenceEqual(nextCards, state.cards)) {
+            return state;
+        }
+
+        cardLookup.rebuild(nextCards);
+        return {
+            cards: nextCards
+        };
+    }, false, { skipHistory: true, skipBoardRuntime: true }),
+
     // Reset card state on logout
     resetCardState: () => {
         cardLookup.clear();
+        clearCardBodyRuntimeCache();
         set({
             cards: [],
                 cardIndexMutation: createCardIndexMutation(),

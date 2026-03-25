@@ -21,11 +21,23 @@ export const cloneSerializable = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
+const stripRuntimeBodyStateFromCard = (card = {}) => {
+    if (!card?.data?.runtimeBodyState) {
+        return card;
+    }
+
+    const { runtimeBodyState, ...nextData } = card.data;
+    return {
+        ...card,
+        data: nextData
+    };
+};
+
 export const normalizeBoardSnapshot = (snapshot = {}) => ({
     cards: normalizeCardsTimestamps(
         Array.isArray(snapshot.cards) ? cloneSerializable(snapshot.cards) : [],
         { boardCreatedAt: Number(snapshot.createdAt) || 0 }
-    ),
+    ).map((card) => stripRuntimeBodyStateFromCard(card)),
     connections: Array.isArray(snapshot.connections) ? cloneSerializable(snapshot.connections) : [],
     groups: Array.isArray(snapshot.groups) ? cloneSerializable(snapshot.groups) : [],
     boardPrompts: Array.isArray(snapshot.boardPrompts) ? cloneSerializable(snapshot.boardPrompts) : [],

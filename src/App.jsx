@@ -97,6 +97,13 @@ import {
     registerActiveBoardRuntime,
     unregisterActiveBoardRuntime
 } from './services/sync/boardRuntimeAuthority';
+import {
+    buildRuntimeCardsForStore,
+    clearCardBodyRuntimeCache,
+    mergeRuntimeCardBodies,
+    primeCardBodyRuntimeCache,
+    setCardBodyRuntimeBoard
+} from './services/cardBodyRuntimeCache';
 
 export default function App() {
     return (
@@ -291,6 +298,21 @@ function AppContent() {
 
     const applyBoardSnapshotToStore = useCallback((snapshot, options = {}) => {
         const normalized = normalizeBoardSnapshot(snapshot);
+        const targetBoardId = options.boardId || currentBoardId || '';
+        const largeBoardMode = isLargeBoardCards(normalized.cards);
+        if (targetBoardId && largeBoardMode) {
+            setCardBodyRuntimeBoard(targetBoardId);
+            primeCardBodyRuntimeCache(targetBoardId, normalized.cards);
+        } else if (targetBoardId) {
+            clearCardBodyRuntimeCache(targetBoardId);
+        }
+
+        const runtimeCards = largeBoardMode
+            ? buildRuntimeCardsForStore(normalized.cards, {
+                boardId: targetBoardId,
+                keepHydratedIds: []
+            }).cards
+            : normalized.cards;
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
         const currentBoardChangeState = useStore.getState().boardChangeState;
         const integrityHash = buildBoardChangeIntegrityHash(normalized);
@@ -299,7 +321,7 @@ function AppContent() {
         // In async callbacks (IDB / Firebase), React 18 automatic batching does NOT cover
         // zustand set() calls, so each independent set triggers a full render pass.
         const patch = {
-            cards: normalized.cards,
+            cards: runtimeCards,
             connections: normalized.connections,
             groups: normalized.groups,
             boardPrompts: normalized.boardPrompts,
@@ -344,8 +366,8 @@ function AppContent() {
         });
 
         // Rebuild card lookup cache outside of set() so it stays consistent.
-        useStore.getState().rebuildCardLookup?.(normalized.cards);
-    }, []);
+        useStore.getState().rebuildCardLookup?.(runtimeCards);
+    }, [currentBoardId]);
 
     const flushSearchDataBuffer = useCallback(() => {
         const pendingChunk = searchBufferedDataRef.current;
@@ -628,6 +650,9 @@ function AppContent() {
 
         const load = async () => {
             if (currentBoardId) {
+                clearCardBodyRuntimeCache();
+                setCardBodyRuntimeBoard(currentBoardId);
+
                 if (boardSyncControllerRef.current) {
                     unregisterActiveBoardRuntime({
                         boardId: boardSyncControllerRef.current.boardId,
@@ -726,6 +751,8 @@ function AppContent() {
                         useStore.getState().setIsBoardLoading(false);
                     }
                 }
+            } else {
+                clearCardBodyRuntimeCache();
             }
         };
         load();
@@ -834,8 +861,11 @@ function AppContent() {
                     Number(activeBoardPersistence?.clientRevision) || 0,
                     Number(currentBoard?.clientRevision) || 0
                 ) + 1;
+                const mergedCards = mergeRuntimeCardBodies(cards, {
+                    boardId: currentBoardId
+                });
                 const snapshot = normalizeBoardSnapshot({
-                    cards,
+                    cards: mergedCards,
                     connections,
                     groups,
                     boardPrompts,

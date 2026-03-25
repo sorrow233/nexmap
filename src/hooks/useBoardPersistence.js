@@ -22,6 +22,7 @@ import {
     applyStreamTextUpdates,
     collectStreamBufferUpdatesForCardIds
 } from '../store/slices/utils/streamRenderBuffer';
+import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -226,7 +227,7 @@ export function useBoardPersistence({
 
     const buildPersistableBoardData = useCallback((data = {}) => {
         const normalizedData = {
-            cards: data.cards || [],
+            cards: mergeRuntimeCardBodies(data.cards || [], { boardId }),
             connections: data.connections || [],
             groups: data.groups || [],
             boardPrompts: data.boardPrompts || [],
@@ -248,7 +249,7 @@ export function useBoardPersistence({
             ...normalizedData,
             cards: applyStreamTextUpdates(normalizedData.cards, pendingStreamUpdates)
         };
-    }, []);
+    }, [boardId]);
 
     const persistRecoverySnapshot = useCallback(async (data, options = {}) => {
         if (!boardId) return false;
@@ -544,7 +545,7 @@ export function useBoardPersistence({
                 : 0,
             clientRevision: toSafeRevision(currentActivePersistence?.clientRevision)
         };
-        const currentPayload = buildBoardPayload(latestBoardDataRef.current, {
+        const currentPayload = buildBoardPayload(buildPersistableBoardData(latestBoardDataRef.current), {
             updatedAt: loadedCursor.updatedAt,
             clientRevision: Math.max(loadedCursor.clientRevision, trackedRevision)
         });
@@ -563,14 +564,16 @@ export function useBoardPersistence({
             queuedLocalRevisionRef.current = loadedCursor.clientRevision;
             tracker.revision = Math.max(tracker.revision, loadedCursor.clientRevision);
             tracker.isPrimed = true;
-            latestBoardDataRef.current = currentPayload;
+            latestBoardDataRef.current = {
+                ...latestBoardDataRef.current,
+                clientRevision: loadedCursor.clientRevision
+            };
             lastHandledExternalSyncTokenRef.current = externalSyncToken;
             void persistExternalSyncSnapshot(currentPayload);
             return;
         }
 
         if (!tracker.isPrimed) {
-            latestBoardDataRef.current = currentPayload;
             tracker.revision = Math.max(loadedCursor.clientRevision, trackedRevision);
             tracker.localSavedRevision = loadedCursor.clientRevision;
             tracker.shadowSavedRevision = loadedCursor.clientRevision;

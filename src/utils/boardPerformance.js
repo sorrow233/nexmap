@@ -35,11 +35,15 @@ export const estimateCardTextChars = (card = {}) => {
     const marks = Array.isArray(card?.data?.marks)
         ? card.data.marks.reduce((total, mark) => total + String(mark || '').length, 0)
         : 0;
+    const runtimeEstimatedChars = Number(card?.data?.runtimeBodyState?.estimatedChars);
+    const hasRuntimeEstimate = Number.isFinite(runtimeEstimatedChars) && runtimeEstimatedChars > 0;
     const messages = Array.isArray(card?.data?.messages) ? card.data.messages : [];
 
-    const messageChars = messages.reduce((total, message) => (
-        total + extractMessageContentText(message?.content).length
-    ), 0);
+    const messageChars = hasRuntimeEstimate
+        ? runtimeEstimatedChars
+        : messages.reduce((total, message) => (
+            total + extractMessageContentText(message?.content).length
+        ), 0);
 
     return title + summaryTitle + summaryBody + marks + messageChars;
 };

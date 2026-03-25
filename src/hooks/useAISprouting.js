@@ -55,7 +55,7 @@ export function useAISprouting() {
 
     const applySearchMetaToLatestAssistant = (cardId, metadata = {}) => {
         const store = useStore.getState();
-        const card = store.cards.find(c => c.id === cardId);
+        const card = store.getCardById?.(cardId) || store.cards.find(c => c.id === cardId);
         const assistantMsg = card?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
         if (!assistantMsg?.id || typeof store.setAssistantMessageMeta !== 'function') return;
         store.setAssistantMessageMeta(cardId, assistantMsg.id, {
@@ -91,9 +91,14 @@ export function useAISprouting() {
         return results;
     };
 
+    const resolveSourceCard = (cardId) => (
+        useStore.getState().getCardById?.(cardId)
+        || useStore.getState().cards.find(c => c.id === cardId)
+        || null
+    );
+
     const handleExpandTopics = async (sourceId) => {
-        const cards = useStore.getState().cards || [];
-        const source = cards.find(c => c.id === sourceId);
+        const source = resolveSourceCard(sourceId);
         if (!source || !source.data.marks) return;
 
         debugLog.ai(`Expanding topics for card: ${sourceId}`, { count: source.data.marks.length });
@@ -146,8 +151,7 @@ export function useAISprouting() {
     };
 
     const handleSprout = async (sourceId, topics) => {
-        const cards = useStore.getState().cards || [];
-        const source = cards.find(c => c.id === sourceId);
+        const source = resolveSourceCard(sourceId);
         if (!source || !topics.length) return;
 
         debugLog.ai(`Sprouting ideas for card: ${sourceId}`, { topicsCount: topics.length });
@@ -219,8 +223,7 @@ export function useAISprouting() {
      * This is a SEPARATE feature from the original Sprout
      */
     const handleQuickSprout = async (sourceId) => {
-        const cards = useStore.getState().cards || [];
-        const source = cards.find(c => c.id === sourceId);
+        const source = resolveSourceCard(sourceId);
         if (!source) return;
 
         debugLog.ai(`Quick sprouting for card: ${sourceId}`);
@@ -303,8 +306,7 @@ export function useAISprouting() {
      * Does NOT create new cards - stays in current conversation
      */
     const handleContinueTopic = async (cardId, onSendMessage) => {
-        const cards = useStore.getState().cards || [];
-        const source = cards.find(c => c.id === cardId);
+        const source = resolveSourceCard(cardId);
         if (!source) return;
 
         debugLog.ai(`Continue topic for card: ${cardId}`);
@@ -336,8 +338,7 @@ export function useAISprouting() {
      * 3. AI generates detailed explanation for each substring
      */
     const handleBranch = async (sourceId, targetMessageId) => {
-        const cards = useStore.getState().cards || [];
-        const source = cards.find(c => c.id === sourceId);
+        const source = resolveSourceCard(sourceId);
         if (!source) return;
 
         const messages = source.data.messages || [];
@@ -463,8 +464,7 @@ Respond in the same language as the focus topic.
     };
 
     const handleDirectedSprout = async (sourceId, instruction) => {
-        const cards = useStore.getState().cards || [];
-        const source = cards.find(c => c.id === sourceId);
+        const source = resolveSourceCard(sourceId);
         if (!source || !instruction) return;
 
         debugLog.ai(`Directed sprout for card: ${sourceId}`, { instruction });

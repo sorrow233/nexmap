@@ -23,6 +23,7 @@ import {
     commitActiveBoardRuntimeSnapshot,
     hasBoardRuntimePatch
 } from '../services/sync/boardRuntimeAuthority';
+import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 import {
     isLargeBoardCards,
     resolveBoardHistoryLimit
@@ -284,8 +285,9 @@ temporalApiRef.current = useStoreBase.temporal;
 
 const reconcileBoardStateAfterHistoryAction = (changeType) => {
     const currentState = useStoreBase.getState();
+    const mergedCards = mergeRuntimeCardBodies(currentState.cards);
     const integrityHash = buildBoardChangeIntegrityHash({
-        cards: currentState.cards,
+        cards: mergedCards,
         connections: currentState.connections,
         groups: currentState.groups,
         boardPrompts: currentState.boardPrompts,
@@ -310,7 +312,7 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
     });
 
     const runtimeResult = commitActiveBoardRuntimeSnapshot({
-        cards: currentState.cards,
+        cards: mergedCards,
         connections: currentState.connections,
         groups: currentState.groups,
         boardPrompts: currentState.boardPrompts,

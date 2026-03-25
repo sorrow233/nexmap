@@ -31,7 +31,8 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
     onCustomSprout,
     onSummarize,
     offset,
-    scale
+    scale,
+    viewportSize
 }) {
     return (
         <>
@@ -42,6 +43,7 @@ const CanvasViewportLayer = React.memo(function CanvasViewportLayer({
                     connections={visibleConnections}
                     offset={offset}
                     scale={scale}
+                    viewportSize={viewportSize}
                 />
             )}
 

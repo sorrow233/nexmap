@@ -23,7 +23,14 @@ import {
  *    - Uses `pathCacheRef` to draw.
  *    - Clears and transforms canvas context.
  */
-const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, connections, offset, scale }) {
+const ConnectionLayer = React.memo(function ConnectionLayer({
+    cards,
+    cardMap,
+    connections,
+    offset,
+    scale,
+    viewportSize
+}) {
     const canvasRef = useRef(null);
 
     // =========================================================================
@@ -230,14 +237,15 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
 
         const resize = () => {
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = window.innerWidth * dpr;
-            canvas.height = window.innerHeight * dpr;
+            const viewportWidth = Number(viewportSize?.width) || window.innerWidth;
+            const viewportHeight = Number(viewportSize?.height) || window.innerHeight;
+            canvas.width = viewportWidth * dpr;
+            canvas.height = viewportHeight * dpr;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             renderStateRef.current = { ...renderStateRef.current, x: null };
             scheduleRender();
         };
 
-        window.addEventListener('resize', resize);
         resize();
 
         const unsubscribeThemeChange = subscribeToThemeChange(() => {
@@ -246,7 +254,6 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
         }, { emitCurrent: false });
 
         return () => {
-            window.removeEventListener('resize', resize);
             unsubscribeThemeChange();
             if (renderRequestRef.current) {
                 cancelAnimationFrame(renderRequestRef.current);
@@ -254,7 +261,7 @@ const ConnectionLayer = React.memo(function ConnectionLayer({ cards, cardMap, co
             }
             scheduleRenderRef.current = () => {};
         };
-    }, []);
+    }, [viewportSize?.height, viewportSize?.width]);
 
     useEffect(() => {
         scheduleRenderRef.current();

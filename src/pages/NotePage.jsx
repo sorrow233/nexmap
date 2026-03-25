@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useCardCreator } from '../hooks/useCardCreator';
@@ -9,17 +9,30 @@ export default function NotePage({ onBack, isReadOnly = false }) {
     const { noteId } = useParams();
     const navigate = useNavigate();
     const cards = useStore(state => state.cards);
+    const getCardById = useStore(state => state.getCardById);
     const updateCardFull = useStore(state => state.updateCardFull);
     const handleChatGenerate = useStore(state => state.handleChatGenerate);
     const updateCardContent = useStore(state => state.updateCardContent);
     const toggleFavorite = useStore(state => state.toggleFavorite);
+    const syncRuntimeCardBodies = useStore(state => state.syncRuntimeCardBodies);
 
     const {
         handleCreateNote,
         handleSprout
     } = useCardCreator();
 
-    const card = useMemo(() => cards.find(c => c.id === noteId), [cards, noteId]);
+    const card = useMemo(
+        () => getCardById?.(noteId) || cards.find(c => c.id === noteId),
+        [cards, getCardById, noteId]
+    );
+
+    useEffect(() => {
+        if (!noteId || typeof syncRuntimeCardBodies !== 'function') {
+            return;
+        }
+
+        syncRuntimeCardBodies([noteId]);
+    }, [noteId, syncRuntimeCardBodies]);
 
     const handleClose = () => {
         if (onBack) onBack();
@@ -32,8 +45,8 @@ export default function NotePage({ onBack, isReadOnly = false }) {
         if (isReadOnly) return; // Block in Read-Only mode
 
         // FIX: Gets fresh state to avoid stale closures in message queue
-        const freshCards = useStore.getState().cards;
-        const card = freshCards.find(c => c.id === cardId);
+        const card = useStore.getState().getCardById?.(cardId)
+            || useStore.getState().cards.find(c => c.id === cardId);
         if (!card) return;
 
         let userContent;

@@ -11,7 +11,8 @@ import { useIncrementalCardSpatialIndex } from './useIncrementalCardSpatialIndex
 import {
     createConnectionVisibilityIndex,
     getTargetCardIdsFromIndex,
-    getVisibleConnectionDataFromIndex
+    getVisibleConnectionDataFromIndex,
+    resolveConnectionViewportMargin
 } from '../utils/connectionVisibility';
 
 const EMPTY_POSITION_OVERRIDES = new Map();
@@ -22,6 +23,7 @@ export function useVisibleCanvasData({
     groups,
     offset,
     scale,
+    viewportSize,
     selectedIds,
     generatingCardIds,
     positionOverrides = EMPTY_POSITION_OVERRIDES
@@ -40,8 +42,12 @@ export function useVisibleCanvasData({
     const contentVersion = mutationVersion;
 
     const viewportRect = useMemo(
-        () => buildViewportRect(offset, scale),
-        [offset.x, offset.y, scale]
+        () => buildViewportRect(offset, scale, viewportSize),
+        [offset.x, offset.y, scale, viewportSize?.height, viewportSize?.width]
+    );
+    const connectionViewportMargin = useMemo(
+        () => resolveConnectionViewportMargin(viewportSize, scale),
+        [scale, viewportSize?.height, viewportSize?.width]
     );
 
     const selectedIdSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
@@ -89,9 +95,18 @@ export function useVisibleCanvasData({
     const { visibleConnections, connectionCardIds } = useMemo(
         () => getVisibleConnectionDataFromIndex(connectionIndex, visibleCardIds, selectedIdSet, {
             viewportRect,
-            cardRectMap: cardSpatialIndex.rectMap
+            cardRectMap: cardSpatialIndex.rectMap,
+            viewportMargin: connectionViewportMargin
         }),
-        [geometryVersion, cardSpatialIndex.rectMap, connectionIndex, selectedIdSet, viewportRect, visibleCardIds]
+        [
+            cardSpatialIndex.rectMap,
+            connectionIndex,
+            connectionViewportMargin,
+            geometryVersion,
+            selectedIdSet,
+            viewportRect,
+            visibleCardIds
+        ]
     );
 
     const connectionCards = useMemo(

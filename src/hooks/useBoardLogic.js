@@ -371,8 +371,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
 
     const handleChatModalGenerate = async (cardId, text, images = []) => {
         if (isReadOnly) return;
-        const freshCards = useStore.getState().cards;
-        const card = freshCards.find(c => c.id === cardId);
+        const card = useStore.getState().getCardById?.(cardId)
+            || useStore.getState().cards.find(c => c.id === cardId);
 
         if (!card) return;
 
@@ -517,7 +517,8 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
 
     const handleCustomSprout = (sourceId) => {
         if (isReadOnly) return;
-        const sourceCard = cards.find(c => c.id === sourceId);
+        const sourceCard = useStore.getState().getCardById?.(sourceId)
+            || cards.find(c => c.id === sourceId);
         if (!sourceCard) return;
         const { offset, scale } = useStore.getState();
 

@@ -518,47 +518,26 @@ export const createAISlice = (set, get) => {
 
         setAssistantMessageMeta: (cardId, messageId, metaUpdates = {}) => {
             if (!cardId || !messageId || !metaUpdates || typeof metaUpdates !== 'object') return;
+            const card = get().getCardById?.(cardId) || get().cards.find(c => c.id === cardId);
+            if (!card) return;
 
-            set(state => {
-                const updatedCards = [];
-                const nextCards = state.cards.map((card) => {
-                    if (card.id !== cardId) return card;
-                    const messages = [...(card.data.messages || [])];
-                    const targetIndex = messages.findIndex(msg => msg.id === messageId);
-                    if (targetIndex === -1) return card;
+            const messages = [...(card.data.messages || [])];
+            const targetIndex = messages.findIndex(msg => msg.id === messageId);
+            if (targetIndex === -1) return;
 
-                    const targetMsg = messages[targetIndex];
-                    messages[targetIndex] = {
-                        ...targetMsg,
-                        meta: {
-                            ...(targetMsg.meta || {}),
-                            ...metaUpdates
-                        }
-                    };
+            const targetMsg = messages[targetIndex];
+            messages[targetIndex] = {
+                ...targetMsg,
+                meta: {
+                    ...(targetMsg.meta || {}),
+                    ...metaUpdates
+                }
+            };
 
-                    const updatedCard = {
-                        ...card,
-                        data: { ...card.data, messages }
-                    };
-                    updatedCards.push(updatedCard);
-                    return updatedCard;
-                });
-
-                return {
-                    cards: nextCards,
-                    cardIndexMutation: updatedCards.length > 0
-                        ? nextCardIndexMutation(state.cardIndexMutation, {
-                            mode: 'patch',
-                            scope: 'content',
-                            updatedCards,
-                            reason: 'setAssistantMessageMeta'
-                        })
-                        : state.cardIndexMutation,
-                    boardChangeState: updatedCards.length > 0
-                        ? bumpBoardChangeState(state.boardChangeState, 'card_content')
-                        : state.boardChangeState
-                };
-            });
+            get().updateCardFull(cardId, (currentData) => ({
+                ...currentData,
+                messages
+            }));
         },
 
         setCardGenerating: (id, isGenerating, options = {}) => {
@@ -639,15 +618,19 @@ export const createAISlice = (set, get) => {
         handleRegenerate: async () => {
             const { cards, selectedIds, updateCardContent, handleChatGenerate } = get();
             // Filter out cards that don't have messages (like sticky notes)
-            const targets = cards.filter(c => selectedIds.indexOf(c.id) !== -1 && c.data && Array.isArray(c.data.messages));
+            const targets = selectedIds
+                .map((cardId) => get().getCardById?.(cardId) || cards.find(c => c.id === cardId))
+                .filter(c => c && c.data && Array.isArray(c.data.messages));
             if (targets.length === 0) return;
 
             // Reset assistant messages without mutating card-level model binding.
+            const hydratedTargets = new Map(targets.map((card) => [card.id, card]));
             set(state => {
                 const updatedCards = [];
                 const nextCards = state.cards.map((c) => {
                     if (selectedIds.indexOf(c.id) !== -1) {
-                        const newMsgs = [...(c.data.messages || [])];
+                        const sourceCard = hydratedTargets.get(c.id) || c;
+                        const newMsgs = [...(sourceCard.data.messages || [])];
                         const assistantId = uuid();
                         if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
                             newMsgs.pop();
@@ -672,7 +655,7 @@ export const createAISlice = (set, get) => {
                     cardIndexMutation: updatedCards.length > 0
                         ? nextCardIndexMutation(state.cardIndexMutation, {
                             mode: 'patch',
-                            scope: 'geometry',
+                            scope: 'content',
                             updatedCards,
                             reason: 'handleRegenerate:resetAssistant'
                         })
@@ -689,7 +672,7 @@ export const createAISlice = (set, get) => {
             try {
                 await Promise.all(targets.map(async (card) => {
                     // BUG FIX: 必须从freshCard获取更新后的messages，而不是targets中的旧数据
-                    const freshCard = get().cards.find(c => c.id === card.id);
+                    const freshCard = get().getCardById?.(card.id) || get().cards.find(c => c.id === card.id);
                     if (!freshCard) return;
 
                     const currentMsgs = [...(freshCard.data.messages || [])];

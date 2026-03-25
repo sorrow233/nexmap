@@ -1,4 +1,6 @@
-const CONNECTION_VIEWPORT_MARGIN = 1200;
+const CONNECTION_VIEWPORT_SCREEN_MARGIN = 560;
+const MIN_CONNECTION_VIEWPORT_SCREEN_MARGIN = 360;
+const MAX_CONNECTION_VIEWPORT_SCREEN_MARGIN = 760;
 
 const expandRect = (rect, margin) => ({
     left: rect.left - margin,
@@ -57,6 +59,20 @@ export function createConnectionVisibilityIndex(connections = []) {
     };
 }
 
+export const resolveConnectionViewportMargin = (viewportSize = {}, scale = 1) => {
+    const safeScale = Math.max(Number(scale) || 1, 0.05);
+    const width = Number(viewportSize?.width) || window.innerWidth || 0;
+    const height = Number(viewportSize?.height) || window.innerHeight || 0;
+    const screenMargin = Math.max(
+        MIN_CONNECTION_VIEWPORT_SCREEN_MARGIN,
+        Math.min(
+            MAX_CONNECTION_VIEWPORT_SCREEN_MARGIN,
+            Math.max(width, height) * 0.46 || CONNECTION_VIEWPORT_SCREEN_MARGIN
+        )
+    );
+    return screenMargin / safeScale;
+};
+
 export function getTargetCardIdsFromIndex(connectionIndex, selectedIdSet) {
     const targets = new Set();
     if (!connectionIndex || !selectedIdSet || selectedIdSet.size === 0) {
@@ -87,7 +103,7 @@ export function getVisibleConnectionDataFromIndex(
     const viewportRect = options.viewportRect || null;
     const cardRectMap = options.cardRectMap || null;
     const expandedViewportRect = viewportRect
-        ? expandRect(viewportRect, options.viewportMargin || CONNECTION_VIEWPORT_MARGIN)
+        ? expandRect(viewportRect, options.viewportMargin || resolveConnectionViewportMargin({}, 1))
         : null;
 
     if (!connectionIndex) {

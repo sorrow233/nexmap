@@ -42,9 +42,14 @@ export default function BoardPage({
     const { id: boardId } = useParams();
     const { isReadOnly, takeOverMaster } = useTabLock(boardId);
     const isIPhoneBoardMode = useIPhoneBoardMode();
+    const getCardById = useStore(state => state.getCardById);
     const perfBoardIdRef = React.useRef('');
     const perfBoardReadyRef = React.useRef('');
     const perfExpandedCardIdRef = React.useRef('');
+    const persistentHydratedCardIds = React.useMemo(
+        () => [expandedCardId, noteId].filter(Boolean),
+        [expandedCardId, noteId]
+    );
 
     // Extracted Logic
     const {
@@ -199,7 +204,7 @@ export default function BoardPage({
     }, [isIPhoneBoardMode, selectedIds.length, setSelectedIds]);
 
     const handleMobileOpenCard = React.useCallback((cardId) => {
-        const targetCard = cards.find(card => card.id === cardId && !card.deletedAt);
+        const targetCard = getCardById?.(cardId) || cards.find(card => card.id === cardId && !card.deletedAt);
         if (!targetCard) return;
 
         if (targetCard.type === 'note') {
@@ -208,7 +213,7 @@ export default function BoardPage({
         }
 
         setExpandedCardId(cardId);
-    }, [cards, handleFullScreen, setExpandedCardId]);
+    }, [cards, getCardById, handleFullScreen, setExpandedCardId]);
 
 
     return (
@@ -265,6 +270,7 @@ export default function BoardPage({
                                 <Canvas
                                     boardBackgroundImage={currentBoard?.backgroundImage || resolvedBoardThumbnailUrl || ''}
                                     isSuspended={Boolean(expandedCardId)}
+                                    extraHydratedCardIds={persistentHydratedCardIds}
                                     onCreateNote={handleCreateNote}
                                     onCreateStandaloneNote={createStandaloneNote}
                                     onCanvasDoubleClick={handleCanvasDoubleClick}
@@ -415,7 +421,7 @@ export default function BoardPage({
                 {expandedCardId && (
                     <Suspense fallback={null}>
                         <ChatModal
-                            card={cards.find(c => c.id === expandedCardId)}
+                            card={getCardById?.(expandedCardId) || cards.find(c => c.id === expandedCardId)}
                             isOpen={!!expandedCardId}
                             onClose={() => setExpandedCardId(null)}
                             onUpdate={updateCardFull}

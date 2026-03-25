@@ -6,6 +6,7 @@ import {
     extractCustomInstructionsPlainText
 } from './customInstructionsService';
 import { runtimeLog } from '../utils/runtimeLogging';
+import { mergeRuntimeCardBodies } from './cardBodyRuntimeCache';
 
 /**
  * Service to generate concise AI summaries for cards
@@ -19,10 +20,11 @@ export const aiSummaryService = {
      */
     async generateBatchSummaries(cards, config) {
         if (!cards || cards.length === 0) return {};
+        const mergedCards = mergeRuntimeCardBodies(cards);
 
         // Prepare card content for the prompt
         // Limit content length to avoid token limits
-        const cardContexts = cards.map(c => {
+        const cardContexts = mergedCards.map(c => {
             const content = c.data?.messages
                 ? c.data.messages.map(m => `${m.role}: ${typeof m.content === 'string' ? m.content.substring(0, 200) : '[Multimodal]'}`).join('\n')
                 : (typeof c.data?.content === 'string' ? c.data.content.substring(0, 500) : "No Content");
@@ -110,6 +112,7 @@ OUTPUT FORMAT:
      */
     async generateBoardSummary(boardData, cards, config) {
         if (!cards || cards.length === 0) return null;
+        const mergedCards = mergeRuntimeCardBodies(cards);
 
         // Get user's custom instructions to filter them out
         const customInstructionsText = extractCustomInstructionsPlainText(
@@ -117,7 +120,7 @@ OUTPUT FORMAT:
         );
 
         // Prepare context - filter out custom instructions content
-        const context = cards.slice(0, 5).map(c => {
+        const context = mergedCards.slice(0, 5).map(c => {
             let content = c.data?.messages
                 ? c.data.messages.map(m => m.content).join(' ')
                 : (c.data?.content || '');

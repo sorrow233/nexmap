@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { normalizeBoardSnapshot } from '../services/sync/boardSnapshot';
 import { isActiveBoardRuntimeController } from '../services/sync/boardRuntimeAuthority';
 import { isLargeBoardCards } from '../utils/boardPerformance';
+import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 
 const CHANGE_SYNC_DELAY_MS = Object.freeze({
     card_content: 900,
@@ -90,7 +91,7 @@ export function useRevisionDrivenBoardSync({
             }
 
             const nextSnapshot = normalizeBoardSnapshot({
-                cards,
+                cards: mergeRuntimeCardBodies(cards, { boardId }),
                 connections,
                 groups,
                 boardPrompts,

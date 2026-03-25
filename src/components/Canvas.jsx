@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Sparkles, Crosshair, Hand, MousePointer2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import CanvasViewportLayer from './canvas/CanvasViewportLayer';
+import { useCanvasViewportMetrics } from '../hooks/useCanvasViewportMetrics';
 import { useCanvasGestures } from '../hooks/useCanvasGestures';
 import { useCanvasPanSync } from '../hooks/useCanvasPanSync';
 import { useVisibleCanvasData } from '../hooks/useVisibleCanvasData';
@@ -41,6 +42,7 @@ const isSameSelectionRect = (current, next) => {
 export default function Canvas({
     boardBackgroundImage,
     isSuspended = false,
+    extraHydratedCardIds = [],
     onCreateNote,
     onCustomSprout,
     onCanvasDoubleClick,
@@ -62,6 +64,7 @@ export default function Canvas({
     const generatingCardIds = useStore(state => state.generatingCardIds);
     const isConnecting = useStore(state => state.isConnecting);
     const connectionStartId = useStore(state => state.connectionStartId);
+    const syncRuntimeCardBodies = useStore(state => state.syncRuntimeCardBodies);
 
     // Actions - stable references, but good to be explicit
     const setOffset = useStore(state => state.setOffset);
@@ -89,6 +92,7 @@ export default function Canvas({
         sourceCardMap: new Map()
     });
     const canvasPerfTimerRef = useRef(null);
+    const viewportSize = useCanvasViewportMetrics(canvasRef);
 
     const {
         cardSpatialIndex,
@@ -105,10 +109,25 @@ export default function Canvas({
         groups,
         offset,
         scale,
+        viewportSize,
         selectedIds,
         generatingCardIds,
         positionOverrides: dragPositionOverrides
     });
+
+    const runtimeHydratedCardIds = React.useMemo(() => {
+        const ids = new Set(extraHydratedCardIds || []);
+        visibleCards.forEach((card) => {
+            if (card?.id) ids.add(card.id);
+        });
+        generatingCardIds?.forEach?.((cardId) => ids.add(cardId));
+        return Array.from(ids);
+    }, [extraHydratedCardIds, generatingCardIds, visibleCards]);
+
+    const runtimeHydratedCardIdsKey = React.useMemo(
+        () => runtimeHydratedCardIds.slice().sort().join('|'),
+        [runtimeHydratedCardIds]
+    );
 
     // Keep stateRef fresh for event handlers (needed for useCanvasGestures)
     useEffect(() => {
@@ -126,10 +145,13 @@ export default function Canvas({
                 offsetX: offset.x,
                 offsetY: offset.y,
                 scale,
+                viewportWidth: viewportSize.width,
+                viewportHeight: viewportSize.height,
                 visibleCardsCount: visibleCards.length,
                 visibleConnectionsCount: visibleConnections.length,
                 visibleGroupsCount: visibleGroups.length,
                 selectedCardsCount: selectedIds.length,
+                runtimeHydratedCardsCount: runtimeHydratedCardIds.length,
                 isSuspended
             });
         }, 240);
@@ -145,11 +167,22 @@ export default function Canvas({
         offset.x,
         offset.y,
         scale,
+        viewportSize.height,
+        viewportSize.width,
+        runtimeHydratedCardIds.length,
         selectedIds.length,
         visibleCards.length,
         visibleConnections.length,
         visibleGroups.length
     ]);
+
+    useEffect(() => {
+        if (typeof syncRuntimeCardBodies !== 'function') {
+            return;
+        }
+
+        syncRuntimeCardBodies(runtimeHydratedCardIds);
+    }, [runtimeHydratedCardIds, runtimeHydratedCardIdsKey, syncRuntimeCardBodies]);
 
     // Keep DOM transform/background in sync with canonical store state.
     // This avoids occasional style conflicts with gesture-level direct DOM updates.
@@ -675,6 +708,7 @@ export default function Canvas({
                 onSummarize={handleSingleSummary}
                 offset={offset}
                 scale={scale}
+                viewportSize={viewportSize}
             />
 
             {/* Status Indicator - raised on mobile to avoid ChatBar overlap */}

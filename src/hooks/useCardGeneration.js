@@ -64,7 +64,8 @@ export function useCardGeneration() {
                         options: {
                             onResponseMetadata: (metadata = {}) => {
                                 const store = useStore.getState();
-                                const freshCard = store.cards.find(c => c.id === newId);
+                                const freshCard = store.getCardById?.(newId)
+                                    || store.cards.find(c => c.id === newId);
                                 const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
                                 if (!assistantMsg?.id || typeof store.setAssistantMessageMeta !== 'function') return;
                                 store.setAssistantMessageMeta(newId, assistantMsg.id, {
@@ -83,7 +84,8 @@ export function useCardGeneration() {
                         perfMonitor.onChunk(chunk);
 
                         // Find the assistant message ID to ensure isolated buffering
-                        const freshCard = useStore.getState().cards.find(c => c.id === newId);
+                        const freshCard = useStore.getState().getCardById?.(newId)
+                            || useStore.getState().cards.find(c => c.id === newId);
                         const assistantMsg = freshCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant');
                         updateCardContent(newId, chunk, assistantMsg?.id);
                     }
@@ -118,10 +120,10 @@ export function useCardGeneration() {
         await yieldToMainThread();
         const state = useStore.getState();
         const selectedIds = state.selectedIds || [];
-        const cards = state.cards || [];
         const selectedIdSet = new Set(selectedIds);
-
-        const targetCards = cards.filter(c => selectedIdSet.has(c.id) && c.data && Array.isArray(c.data.messages));
+        const targetCards = selectedIds
+            .map((cardId) => state.getCardById?.(cardId) || state.cards.find(c => c.id === cardId))
+            .filter(c => c && c.data && Array.isArray(c.data.messages));
         if (targetCards.length === 0) return false;
 
         debugLog.ai('Starting batch chat', { text: safeText, targetCount: targetCards.length });

@@ -7,6 +7,7 @@ import {
     markBoardChangeStateValidated,
     repairBoardChangeStateIntegrity
 } from '../store/slices/utils/boardChangeState';
+import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 
 const INTEGRITY_VALIDATION_IDLE_MS = 5 * 60 * 1000;
 
@@ -75,8 +76,11 @@ export function useBoardChangeIntegrityMonitor({
                 }
 
                 const currentBoardChangeState = createBoardChangeState(useStore.getState().boardChangeState);
+                const mergedCards = mergeRuntimeCardBodies(latest.cards, {
+                    boardId: latest.boardId
+                });
                 const integrityHash = buildBoardChangeIntegrityHash({
-                    cards: latest.cards,
+                    cards: mergedCards,
                     connections: latest.connections,
                     groups: latest.groups,
                     boardPrompts: latest.boardPrompts,

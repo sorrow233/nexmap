@@ -5,6 +5,7 @@ import {
     getEffectiveBoardCardCount,
     shouldAutoNameBoard
 } from '../services/boardTitle/metadata';
+import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 
 export function useCurrentBoardAutoNaming({
     board,
@@ -36,10 +37,11 @@ export function useCurrentBoardAutoNaming({
 
                 const config = useStore.getState().getRoleConfig('analysis');
                 const { generateBoardAutoTitle } = await import('../services/ai/boardAutoTitleService');
+                const mergedCards = mergeRuntimeCardBodies(cards, { boardId });
                 const result = await generateBoardAutoTitle({
                     boardId,
                     boardMeta: latestBoard,
-                    boardData: { cards },
+                    boardData: { cards: mergedCards },
                     config
                 });
 
