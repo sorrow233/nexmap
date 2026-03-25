@@ -64,6 +64,7 @@ import {
 import { loadBoardsSearchData } from './services/search/searchDataLoader';
 import { BoardSyncController } from './services/sync/boardSyncController';
 import {
+    FIREBASE_SYNC_SAFE_MODE,
     FIREBASE_SYNC_LIMITS,
     isSampleBoardId
 } from './services/sync/config';
@@ -415,11 +416,19 @@ function AppContent() {
                 return;
             }
 
-            const runtimeState = getActiveBoardRuntimeState(boardId, controller);
-            if (runtimeState && !runtimeState.largeBoardMode) {
-                return;
+            if (!FIREBASE_SYNC_SAFE_MODE) {
+                const runtimeState = getActiveBoardRuntimeState(boardId, controller);
+                if (runtimeState && !runtimeState.largeBoardMode) {
+                    return;
+                }
             }
 
+            logPersistenceTrace('sync:local-save-bridge-apply', {
+                boardId,
+                safeMode: FIREBASE_SYNC_SAFE_MODE,
+                source: payload.source || 'local_persist',
+                cursor: buildBoardCursorTrace(snapshot)
+            });
             controller.applyLocalSnapshot(snapshot);
         });
 
@@ -725,13 +734,24 @@ function AppContent() {
                                 if (!shouldApplyRemoteSnapshotToStore(nextSnapshot)) {
                                     return;
                                 }
+                                logPersistenceTrace('sync:remote-snapshot-apply', {
+                                    boardId: currentBoardId,
+                                    safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                    cursor: buildBoardCursorTrace(nextSnapshot)
+                                });
                                 applyBoardSnapshotToStore(nextSnapshot, {
                                     source: 'remote_sync',
                                     boardId: currentBoardId
                                 });
                                 syncBoardSnapshotMetadataIntoList(currentBoardId, nextSnapshot);
                             },
-                            onSyncStateChange: () => { }
+                            onSyncStateChange: (state) => {
+                                logPersistenceTrace('sync:controller-state', {
+                                    boardId: currentBoardId,
+                                    safeMode: FIREBASE_SYNC_SAFE_MODE,
+                                    ...state
+                                });
+                            }
                         });
                         syncController.largeBoardMode = largeBoardMode;
 

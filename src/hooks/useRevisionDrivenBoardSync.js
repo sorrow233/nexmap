@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { normalizeBoardSnapshot } from '../services/sync/boardSnapshot';
+import { FIREBASE_SYNC_SAFE_MODE } from '../services/sync/config';
 import { getActiveBoardRuntimeState } from '../services/sync/boardRuntimeAuthority';
 import { isLargeBoardCards } from '../utils/boardPerformance';
 import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
@@ -60,6 +61,10 @@ export function useRevisionDrivenBoardSync({
         if (timerRef.current) {
             clearTimeout(timerRef.current);
             timerRef.current = null;
+        }
+
+        if (FIREBASE_SYNC_SAFE_MODE) {
+            return undefined;
         }
 
         const revision = Number(boardChangeState?.revision) || 0;

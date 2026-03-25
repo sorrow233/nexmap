@@ -1,4 +1,5 @@
 import { normalizeBoardSnapshot } from './boardSnapshot';
+import { FIREBASE_SYNC_SAFE_MODE } from './config';
 import { isLargeBoardCards } from '../../utils/boardPerformance';
 
 const BOARD_RUNTIME_KEYS = Object.freeze([
@@ -71,6 +72,10 @@ export const getActiveBoardRuntimeState = (boardId, controller) => {
 };
 
 export const commitActiveBoardRuntimePatch = (partial = {}) => {
+    if (FIREBASE_SYNC_SAFE_MODE) {
+        return null;
+    }
+
     if (activeBoardRuntime?.largeBoardMode) {
         return null;
     }
@@ -102,6 +107,10 @@ export const commitActiveBoardRuntimePatch = (partial = {}) => {
 };
 
 export const commitActiveBoardRuntimeSnapshot = (snapshot = {}) => {
+    if (FIREBASE_SYNC_SAFE_MODE) {
+        return null;
+    }
+
     if (activeBoardRuntime?.largeBoardMode) {
         return null;
     }

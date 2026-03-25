@@ -13,6 +13,8 @@ import {
 import { db } from '../firebase';
 import {
     FIREBASE_SYNC_LIMITS,
+    FIREBASE_SYNC_SAFE_MODE,
+    FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS,
     FIREBASE_SYNC_ORIGINS
 } from './config';
 import { uuid } from '../../utils/uuid';
@@ -35,6 +37,7 @@ import { buildAuthoritativeRootPayload } from './firestoreRootDocument';
 import { migrateLegacyRootSnapshotToCheckpoint } from './legacyCloudBoardMigration';
 import { planDeferredRemoteCheckpointRepair } from './remoteCheckpointRepairPlanner';
 import { pickBoardSyncMetadata } from './boardSyncMetadata';
+import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
 
 const CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS = 12000;
 const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
@@ -85,7 +88,9 @@ export class FirestoreBoardSync {
         this.latestRootSyncTouchedAtMs = 0;
         this.connected = false;
         this.rootUnsubscribe = null;
-        this.updateLogEnabled = Boolean(FIREBASE_SYNC_LIMITS.enableDeltaUpdateLog);
+        this.updateLogEnabled = FIREBASE_SYNC_SAFE_MODE
+            ? false
+            : Boolean(FIREBASE_SYNC_LIMITS.enableDeltaUpdateLog);
         this.hasUnsnapshottedChanges = false;
         this.flushPromise = null;
         this.flushQueuedReason = '';
@@ -200,7 +205,9 @@ export class FirestoreBoardSync {
         this.connected = true;
         this.emitState('connected', {
             remoteIsEmpty: this.remoteIsEmpty,
-            mode: this.updateLogEnabled ? 'delta' : 'checkpoint_only'
+            mode: this.updateLogEnabled
+                ? 'delta'
+                : (FIREBASE_SYNC_SAFE_MODE ? 'safe_checkpoint_only' : 'checkpoint_only')
         });
         return {
             remoteIsEmpty: this.remoteIsEmpty,
@@ -496,7 +503,9 @@ export class FirestoreBoardSync {
             : CHECKPOINT_ONLY_MAX_PENDING_BYTES;
         const debounceMs = this.updateLogEnabled
             ? FIREBASE_SYNC_LIMITS.uploadDebounceMs
-            : CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS;
+            : (FIREBASE_SYNC_SAFE_MODE
+                ? FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS
+                : CHECKPOINT_ONLY_UPLOAD_DEBOUNCE_MS);
 
         if (this.pendingBytes >= maxPendingBytes) {
             void this.flushPendingUpdates('size_limit');
@@ -676,6 +685,12 @@ export class FirestoreBoardSync {
                         this.hasUnsnapshottedChanges = false;
                         this.deferredCheckpointRepairReason = '';
                         this.remoteCheckpointRecoveredFromCompatibility = false;
+                        logPersistenceTrace('sync:firestore-checkpoint-saved', {
+                            boardId: this.boardId,
+                            reason: currentReason,
+                            safeMode: FIREBASE_SYNC_SAFE_MODE,
+                            cursor: buildBoardCursorTrace(liveSnapshot)
+                        });
                     }
 
                     latestCheckpoint = checkpoint;

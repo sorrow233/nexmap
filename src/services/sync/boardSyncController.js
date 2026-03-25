@@ -12,6 +12,7 @@ import {
 import { FirestoreBoardSync } from './firestoreBoardSync';
 import {
     FIREBASE_SYNC_ENABLED,
+    FIREBASE_SYNC_SAFE_MODE,
     FIREBASE_SYNC_ORIGINS,
     isSampleBoardId
 } from './config';
@@ -20,6 +21,7 @@ import {
     buildPersistenceVersionKey,
     isPersistenceSnapshotNewer
 } from '../boardPersistence/persistenceCursor';
+import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
 
 export class BoardSyncController {
     constructor({ boardId, user, onSnapshot, onSyncStateChange }) {
@@ -83,6 +85,11 @@ export class BoardSyncController {
             if (origin === FIREBASE_SYNC_ORIGINS.store || origin === FIREBASE_SYNC_ORIGINS.runtime) {
                 return;
             }
+            logPersistenceTrace('sync:controller-doc-update', {
+                boardId: this.boardId,
+                origin,
+                safeMode: FIREBASE_SYNC_SAFE_MODE
+            });
             this.emitCurrentSnapshot();
         });
 
@@ -92,6 +99,11 @@ export class BoardSyncController {
             deviceId: getSyncDeviceId(),
             doc: this.doc,
             onRemoteApplied: () => {
+                logPersistenceTrace('sync:controller-remote-applied', {
+                    boardId: this.boardId,
+                    safeMode: FIREBASE_SYNC_SAFE_MODE,
+                    cursor: buildBoardCursorTrace(readBoardSnapshotFromDoc(this.doc))
+                });
                 this.emitCurrentSnapshot();
             },
             onSyncStateChange: this.onSyncStateChange
@@ -177,6 +189,12 @@ export class BoardSyncController {
         ) {
             return;
         }
+
+        logPersistenceTrace('sync:controller-apply-local', {
+            boardId: this.boardId,
+            safeMode: FIREBASE_SYNC_SAFE_MODE,
+            cursor: buildBoardCursorTrace(normalized)
+        });
 
         this.doc.transact(() => {
             syncBoardSnapshotToDoc(this.doc, normalized);

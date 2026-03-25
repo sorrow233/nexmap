@@ -1,4 +1,8 @@
 export const FIREBASE_SYNC_ENABLED = import.meta.env.VITE_FIREBASE_SYNC_ENABLED !== 'false';
+export const FIREBASE_SYNC_SAFE_MODE = import.meta.env.VITE_FIREBASE_SYNC_SAFE_MODE !== 'false';
+export const FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS = Number(
+    import.meta.env.VITE_FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS
+) || 1800;
 
 export const FIREBASE_SYNC_COLLECTIONS = {
     users: import.meta.env.VITE_FIREBASE_SYNC_USERS_COLLECTION || 'users',
