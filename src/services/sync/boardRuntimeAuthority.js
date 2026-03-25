@@ -1,28 +1,4 @@
-import { normalizeBoardSnapshot } from './boardSnapshot';
-import { FIREBASE_SYNC_SAFE_MODE } from './config';
-import { isLargeBoardCards } from '../../utils/boardPerformance';
-
-const BOARD_RUNTIME_KEYS = Object.freeze([
-    'cards',
-    'connections',
-    'groups',
-    'boardPrompts',
-    'boardInstructionSettings'
-]);
-
 let activeBoardRuntime = null;
-
-const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
-
-const pickBoardRuntimePatch = (value = {}) => Object.fromEntries(
-    BOARD_RUNTIME_KEYS
-        .filter((key) => hasOwn(value, key))
-        .map((key) => [key, value[key]])
-);
-
-export const hasBoardRuntimePatch = (value = {}) => (
-    BOARD_RUNTIME_KEYS.some((key) => hasOwn(value, key))
-);
 
 export const registerActiveBoardRuntime = ({ boardId, controller } = {}) => {
     if (!boardId || !controller) {
@@ -68,65 +44,5 @@ export const getActiveBoardRuntimeState = (boardId, controller) => {
         boardId: activeBoardRuntime.boardId,
         controller: activeBoardRuntime.controller,
         largeBoardMode: activeBoardRuntime.largeBoardMode === true
-    };
-};
-
-export const commitActiveBoardRuntimePatch = (partial = {}) => {
-    if (FIREBASE_SYNC_SAFE_MODE) {
-        return null;
-    }
-
-    if (activeBoardRuntime?.largeBoardMode) {
-        return null;
-    }
-
-    const controller = activeBoardRuntime?.controller;
-    if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
-        return null;
-    }
-
-    if (Array.isArray(partial?.cards) && isLargeBoardCards(partial.cards)) {
-        return null;
-    }
-
-    const currentSnapshot = controller.readCurrentSnapshot?.();
-    if (!currentSnapshot) {
-        return null;
-    }
-
-    const nextSnapshot = normalizeBoardSnapshot({
-        ...currentSnapshot,
-        ...pickBoardRuntimePatch(partial)
-    });
-    const committedSnapshot = controller.commitAuthoritativeLocalSnapshot(nextSnapshot);
-
-    return {
-        committedSnapshot,
-        boardPatch: pickBoardRuntimePatch(committedSnapshot)
-    };
-};
-
-export const commitActiveBoardRuntimeSnapshot = (snapshot = {}) => {
-    if (FIREBASE_SYNC_SAFE_MODE) {
-        return null;
-    }
-
-    if (activeBoardRuntime?.largeBoardMode) {
-        return null;
-    }
-
-    const controller = activeBoardRuntime?.controller;
-    if (!controller?.started || typeof controller.commitAuthoritativeLocalSnapshot !== 'function') {
-        return null;
-    }
-
-    if (Array.isArray(snapshot?.cards) && isLargeBoardCards(snapshot.cards)) {
-        return null;
-    }
-
-    const committedSnapshot = controller.commitAuthoritativeLocalSnapshot(snapshot);
-    return {
-        committedSnapshot,
-        boardPatch: pickBoardRuntimePatch(committedSnapshot)
     };
 };

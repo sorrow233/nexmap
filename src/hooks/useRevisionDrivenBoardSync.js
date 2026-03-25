@@ -1,8 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { normalizeBoardSnapshot } from '../services/sync/boardSnapshot';
-import { FIREBASE_SYNC_SAFE_MODE } from '../services/sync/config';
-import { getActiveBoardRuntimeState } from '../services/sync/boardRuntimeAuthority';
-import { isLargeBoardCards } from '../utils/boardPerformance';
 import { mergeRuntimeCardBodies } from '../services/cardBodyRuntimeCache';
 import {
     buildSkeletonSyncSnapshot,
@@ -10,32 +7,12 @@ import {
     resolveSkeletonSyncDelay
 } from '../services/sync/skeleton/skeletonSync';
 
-const CHANGE_SYNC_DELAY_MS = Object.freeze({
-    card_content: 900,
-    card_body_content: 900,
-    card_move: 1200,
-    card_add: 350,
-    card_delete: 350,
-    card_restore: 350,
-    connection_change: 500,
-    group_change: 500,
-    board_prompt_change: 500,
-    board_instruction_change: 500,
-    undo: 450,
-    redo: 450,
-    integrity_repair: 450
-});
-
 const SKIPPED_CHANGE_TYPES = new Set([
     'init',
     'sync_apply',
     'local_load',
     'manual_force_override'
 ]);
-
-const resolveSyncDelay = (changeType) => (
-    CHANGE_SYNC_DELAY_MS[changeType] ?? 700
-);
 
 export function useRevisionDrivenBoardSync({
     boardId,
@@ -51,7 +28,6 @@ export function useRevisionDrivenBoardSync({
     hasGeneratingCards
 }) {
     const timerRef = useRef(null);
-    const isLargeBoard = isLargeBoardCards(cards);
 
     useEffect(() => {
         return () => {
@@ -79,25 +55,16 @@ export function useRevisionDrivenBoardSync({
             return undefined;
         }
 
-        if (FIREBASE_SYNC_SAFE_MODE && !skeletonEligible) {
+        if (!skeletonEligible) {
             return undefined;
         }
 
-        if (isBoardLoading || (!skeletonEligible && hasGeneratingCards)) {
+        if (isBoardLoading || hasGeneratingCards) {
             return undefined;
         }
 
         const controller = boardSyncControllerRef.current;
         if (!controller || controller.boardId !== boardId) {
-            return undefined;
-        }
-
-        const runtimeState = getActiveBoardRuntimeState(boardId, controller);
-        if (!FIREBASE_SYNC_SAFE_MODE && runtimeState && !runtimeState.largeBoardMode) {
-            return undefined;
-        }
-
-        if ((runtimeState?.largeBoardMode || isLargeBoard) && changeType === 'card_body_content') {
             return undefined;
         }
 
@@ -120,15 +87,8 @@ export function useRevisionDrivenBoardSync({
                 )
             });
 
-            if (FIREBASE_SYNC_SAFE_MODE) {
-                latestController.applyLocalSkeletonSnapshot(buildSkeletonSyncSnapshot(nextSnapshot));
-                return;
-            }
-
-            latestController.applyLocalSnapshot(nextSnapshot);
-        }, FIREBASE_SYNC_SAFE_MODE
-            ? resolveSkeletonSyncDelay(changeType)
-            : resolveSyncDelay(changeType));
+            latestController.applyLocalSkeletonSnapshot(buildSkeletonSyncSnapshot(nextSnapshot));
+        }, resolveSkeletonSyncDelay(changeType));
 
         return () => {
             if (timerRef.current) {
@@ -148,7 +108,6 @@ export function useRevisionDrivenBoardSync({
         connections,
         groups,
         hasGeneratingCards,
-        isLargeBoard,
         isBoardLoading
     ]);
 }

@@ -19,11 +19,6 @@ import {
 } from './slices/utils/boardChangeState';
 import { buildBoardChangeIntegrityHash } from './slices/utils/boardChangeIntegrity';
 import {
-    commitActiveBoardRuntimePatch,
-    commitActiveBoardRuntimeSnapshot,
-    hasBoardRuntimePatch
-} from '../services/sync/boardRuntimeAuthority';
-import {
     buildHistoryCardsForRuntime,
     mergeRuntimeCardBodies
 } from '../services/cardBodyRuntimeCache';
@@ -173,35 +168,7 @@ const useStoreBase = create(
                 }
 
                 setHistoryBehavior(resolveHistoryBehavior(currentState, nextPartial, replace, meta));
-
-                if (replace === true || meta?.skipBoardRuntime) {
-                    return rawSet(nextPartial, replace);
-                }
-
-                if (
-                    !nextPartial ||
-                    typeof nextPartial !== 'object' ||
-                    !hasBoardRuntimePatch(nextPartial)
-                ) {
-                    return rawSet(nextPartial, replace);
-                }
-
-                const runtimeResult = commitActiveBoardRuntimePatch(nextPartial);
-                if (!runtimeResult?.boardPatch) {
-                    return rawSet(nextPartial, replace);
-                }
-
-                const finalPatch = {
-                    ...nextPartial,
-                    ...runtimeResult.boardPatch
-                };
-                const setResult = rawSet(finalPatch, replace);
-
-                if (Object.prototype.hasOwnProperty.call(runtimeResult.boardPatch, 'cards')) {
-                    get().rebuildCardLookup?.(runtimeResult.boardPatch.cards || []);
-                }
-
-                return setResult;
+                return rawSet(nextPartial, replace);
             };
 
             return {
@@ -315,27 +282,14 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
     );
 
     useStoreBase.setState({
+        cards: mergedCards,
         boardChangeState: nextBoardChangeState,
         cardIndexMutation: nextCardIndexMutation(currentState.cardIndexMutation, {
             mode: 'bulk',
             reason: `temporal:${changeType}`
         })
     });
-
-    const runtimeResult = commitActiveBoardRuntimeSnapshot({
-        cards: mergedCards,
-        connections: currentState.connections,
-        groups: currentState.groups,
-        boardPrompts: currentState.boardPrompts,
-        boardInstructionSettings: currentState.boardInstructionSettings
-    });
-    if (runtimeResult?.boardPatch) {
-        useStoreBase.setState(runtimeResult.boardPatch);
-    }
-
-    useStoreBase.getState().rebuildCardLookup?.(
-        runtimeResult?.boardPatch?.cards || currentState.cards
-    );
+    useStoreBase.getState().rebuildCardLookup?.(mergedCards);
 };
 
 export const useStore = useStoreBase;

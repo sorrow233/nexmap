@@ -101,7 +101,6 @@ import { buildSkeletonSyncSnapshot } from './services/sync/skeleton/skeletonSync
 import { buildBodySyncSnapshot } from './services/sync/body/bodySync';
 import { resolveRemoteSnapshotForStore } from './services/sync/protocol/syncResolver';
 import {
-    getActiveBoardRuntimeState,
     registerActiveBoardRuntime,
     unregisterActiveBoardRuntime
 } from './services/sync/boardRuntimeAuthority';
@@ -457,13 +456,6 @@ function AppContent() {
             const controller = boardSyncControllerRef.current;
             if (!controller || controller.boardId !== boardId) {
                 return;
-            }
-
-            if (!FIREBASE_SYNC_SAFE_MODE) {
-                const runtimeState = getActiveBoardRuntimeState(boardId, controller);
-                if (runtimeState && !runtimeState.largeBoardMode) {
-                    return;
-                }
             }
 
             logPersistenceTrace('sync:local-save-bridge-apply', {

@@ -110,7 +110,6 @@ export class BoardSyncController {
                 origin === FIREBASE_SYNC_ORIGINS.storeFull
                 || origin === FIREBASE_SYNC_ORIGINS.storeSkeleton
                 || origin === FIREBASE_SYNC_ORIGINS.storeBody
-                || origin === FIREBASE_SYNC_ORIGINS.runtime
             ) {
                 return;
             }
@@ -149,8 +148,6 @@ export class BoardSyncController {
             await this.fireSync.saveSnapshot('initial_local_seed');
         } else if (skippedRemoteApplyReason) {
             await this.fireSync.saveSnapshot(skippedRemoteApplyReason);
-        } else if (!FIREBASE_SYNC_SAFE_MODE) {
-            this.fireSync.planDeferredRepair(repairCandidateSnapshot, { expectedCardCount });
         }
 
         this.started = true;
@@ -195,35 +192,6 @@ export class BoardSyncController {
             this.lastAppliedLocalLaneRevisions[normalizedLane],
             safeRevision
         );
-    }
-
-    commitAuthoritativeLocalSnapshot(nextSnapshot = {}) {
-        if (!this.started) {
-            return normalizeBoardSnapshot(nextSnapshot);
-        }
-
-        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
-        const normalizedIncoming = normalizeBoardSnapshot(nextSnapshot);
-        const committedSnapshot = normalizeBoardSnapshot({
-            ...currentSnapshot,
-            ...normalizedIncoming,
-            clientRevision: Math.max(
-                Number(currentSnapshot.clientRevision) || 0,
-                Number(normalizedIncoming.clientRevision) || 0
-            ) + 1,
-            updatedAt: Math.max(
-                Date.now(),
-                Number(currentSnapshot.updatedAt) || 0
-            )
-        });
-
-        this.doc.transact(() => {
-            syncBoardSnapshotToDoc(this.doc, committedSnapshot);
-        }, FIREBASE_SYNC_ORIGINS.runtime);
-
-        const nextCommittedSnapshot = readBoardSnapshotFromDoc(this.doc);
-        this.lastVersionKey = buildPersistenceVersionKey(nextCommittedSnapshot);
-        return nextCommittedSnapshot;
     }
 
     applyLocalSkeletonSnapshot(nextSnapshot = {}) {
