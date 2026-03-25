@@ -2,120 +2,16 @@ import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Share2, Star, ChevronDown, ChevronUp, Sprout, GitBranch, Copy, Check, Globe } from 'lucide-react';
 import MessageImage from './MessageImage';
-import CodeBlock from './CodeBlock';
-import { createMarkdownRenderer, parseMarkdown, sanitizeMarkdownHtml } from '../../utils/markdownRenderer';
 import { isShareableMessageContent, normalizeShareContent } from '../share/shareContent';
 import { buildStreamBufferKey } from '../../store/slices/utils/streamRenderBuffer';
-
-let codeBlockCounter = 0;
-let codeBlocks = [];
-
-const escapeHtmlFragment = (text = '') => (
-    String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-);
-
-const markedRenderer = createMarkdownRenderer();
-markedRenderer.code = function (code, language) {
-    const id = codeBlockCounter++;
-    codeBlocks.push({ id, code, language });
-    return `<div data-code-block-id="${id}"></div>`;
-};
-
-// Component to render message content with code blocks as React components
-const MessageContentWithCodeBlocks = React.memo(({ html, codeBlocks, onClick }) => {
-    const codeBlocksById = React.useMemo(
-        () => new Map(codeBlocks.map((block) => [block.id, block])),
-        [codeBlocks]
-    );
-
-    // Parse HTML and split it into top-level render blocks so long answers can skip offscreen sections.
-    const parts = React.useMemo(() => {
-        if (!html) return [];
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-        const container = doc.body.firstChild;
-        const result = [];
-
-        if (!container) {
-            return result;
-        }
-
-        Array.from(container.childNodes).forEach((node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const textContent = node.textContent?.trim();
-                if (textContent) {
-                    result.push({
-                        type: 'html',
-                        content: `<p>${escapeHtmlFragment(textContent)}</p>`
-                    });
-                }
-                return;
-            }
-
-            if (node.nodeType !== Node.ELEMENT_NODE) {
-                return;
-            }
-
-            const element = /** @type {HTMLElement} */ (node);
-            const blockIdAttr = element.getAttribute('data-code-block-id');
-            if (blockIdAttr) {
-                const blockId = parseInt(blockIdAttr, 10);
-                const block = codeBlocksById.get(blockId);
-                if (block) {
-                    result.push({
-                        type: 'code',
-                        code: block.code,
-                        language: block.language
-                    });
-                }
-                return;
-            }
-
-            result.push({
-                type: 'html',
-                content: element.outerHTML
-            });
-        });
-
-        return result;
-    }, [html, codeBlocksById]);
-
-    return (
-        <div
-            className="font-sans break-words"
-            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
-            onClick={onClick}
-        >
-            {parts.map((part, index) => (
-                part.type === 'html' ? (
-                    <div
-                        key={index}
-                        className="chat-message-block"
-                        dangerouslySetInnerHTML={{ __html: part.content }}
-                    />
-                ) : (
-                    <div key={index} className="chat-message-block chat-message-block--code">
-                        <CodeBlock
-                            code={part.code}
-                            language={part.language}
-                        />
-                    </div>
-                )
-            ))}
-        </div>
-    );
-});
-
-MessageContentWithCodeBlocks.displayName = 'MessageContentWithCodeBlocks';
+import MarkdownChunk from './rendering/MarkdownChunk';
+import { useMessageChunks } from './rendering/useMessageChunks';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
 const STREAMING_TAIL_LENGTH = 16;
 const STREAMING_SAFE_BREAK_MARKERS = ['\n\n', '\n', '```', '。', '！', '？', '. ', '! ', '? ', '；', ';', '，', ',', ' '];
+const EMPTY_MESSAGE_ANNOTATIONS = Object.freeze([]);
 
 const getLastSafeStreamingBoundary = (text = '') => {
     if (!text) return -1;
@@ -229,129 +125,10 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
 
     const normalizedShareContent = React.useMemo(() => normalizeShareContent(content), [content]);
     const canShareMessage = React.useMemo(() => isShareableMessageContent(content), [content]);
-
-    // Helper to render content with highlights safely
-    const renderMessageContent = (cnt, currentMarks, currentNotes) => {
-        if (!cnt) return { html: '', codeBlocksData: [] };
-
-        // Reset code block tracking for this render
-        codeBlockCounter = 0;
-        codeBlocks = [];
-
-        let html = parseMarkdown(cnt, { renderer: markedRenderer });
-        const capturedCodeBlocks = [...codeBlocks];
-
-        if ((!currentMarks || currentMarks.length === 0) && (!currentNotes || currentNotes.length === 0)) {
-            return { html, codeBlocksData: capturedCodeBlocks };
-        }
-
-        // Sort marks by length descending to match longest phrases first
-        const sortedMarks = currentMarks ? [...currentMarks].sort((a, b) => b.length - a.length) : [];
-        const sortedNotes = currentNotes ? [...currentNotes].sort((a, b) => b.length - a.length) : [];
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-        const container = doc.body.firstChild;
-
-        const highlightNode = (node) => {
-            if (node.nodeType === 3) { // Text node
-                let text = node.nodeValue;
-                let hasChange = false;
-                let newHtml = text;
-
-                sortedMarks.forEach(mark => {
-                    const escapedMark = mark.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`(${escapedMark})`, 'gi');
-                    // Avoid matching inside already replaced tags if possible, but simplest is plain replace
-                    // Note: This simple replacement might break if marks overlap or are nested ideally.
-                    // Given the simple use case, we proceed.
-                    if (regex.test(newHtml)) {
-                        newHtml = newHtml.replace(regex, '___MARK_START___$1___MARK_END___');
-                        hasChange = true;
-                    }
-                });
-
-                sortedNotes.forEach(note => {
-                    const escapedNote = note.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    // We need a regex that matches the text BUT NOT if it is part of our special tags
-                    // However, `newHtml` here contains special tags.
-                    // If we just replace, we might replace part of a tag.
-                    // E.g. "MARK" is in ___MARK_START___.
-                    // We should use a regex that matches word boundaries or ensure we don't match tags.
-                    // But tags are UPPERCASE with underscores.
-                    // As long as user text doesn't look like ___MARK_START___ we describe.
-                    const regex = new RegExp(`(${escapedNote})`, 'gi');
-                    if (regex.test(newHtml)) {
-                        // Check if the match is inside a tag? No, assume text.
-                        newHtml = newHtml.replace(regex, '___NOTE_START___$1___NOTE_END___');
-                        hasChange = true;
-                    }
-                });
-
-                if (hasChange) {
-                    const span = doc.createElement('span');
-                    const escapedText = newHtml
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/___MARK_START___/g, '<mark class="bg-yellow-200/60 dark:bg-yellow-500/30 text-inherit px-1 rounded-sm border-b border-yellow-400/50">')
-                        .replace(/___MARK_END___/g, '</mark>')
-                        .replace(/___NOTE_START___/g, '<span class="border-b-[1.5px] border-dashed border-slate-400/60 dark:border-slate-400/50 decoration-slate-400/30">')
-                        .replace(/___NOTE_END___/g, '</span>');
-                    span.innerHTML = escapedText;
-                    node.parentNode.replaceChild(span, node);
-                }
-            } else if (node.nodeType === 1 && node.tagName !== 'MARK') {
-                Array.from(node.childNodes).forEach(highlightNode);
-            }
-        };
-
-        Array.from(container.childNodes).forEach(highlightNode);
-        return { html: container.innerHTML, codeBlocksData: capturedCodeBlocks };
-    };
-
-    // Card Reference Resolution Logic
-    const resolveCardReferences = (html) => {
-        if (!html) return '';
-
-        // Regex to match UUID: [xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx]
-        // This regex looks for UUIDs optionally wrapped in brackets
-        const uuidRegex = /\[?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\]?/gi;
-
-        // Use getState() to avoid re-renders from cards array changes
-        const cards = useStore.getState().cards;
-
-        return html.replace(uuidRegex, (match, id) => {
-            const card = cards.find(c => c.id === id);
-            if (card) {
-                const title = card.data?.title || "Untitled Card";
-                // Return a styled link-like span with z-index and pointer-events
-                return `<span class="card-ref-link relative z-10 text-brand-500 font-bold cursor-pointer hover:underline bg-brand-500/5 px-1.5 py-0.5 rounded-md border border-brand-500/10 shadow-sm transition-all hover:bg-brand-500/10 active:scale-95" data-card-id="${id}" style="pointer-events: auto !important;">@${title}</span>`;
-            }
-            return match;
-        });
-    };
-
-    const { renderedHtml, codeBlocksToRender } = React.useMemo(() => {
-        if (isUser || isAssistantStreaming) return { renderedHtml: null, codeBlocksToRender: [] };
-        const result = content ? renderMessageContent(content, marks, capturedNotes) : { html: '', codeBlocksData: [] };
-        return {
-            renderedHtml: resolveCardReferences(result.html),
-            codeBlocksToRender: result.codeBlocksData
-        };
-    }, [content, marks, capturedNotes, isUser, isAssistantStreaming]);
-
-    const { streamingRenderedHtml, streamingCodeBlocksToRender } = React.useMemo(() => {
-        if (!isAssistantStreaming || !streamingStableText) {
-            return { streamingRenderedHtml: '', streamingCodeBlocksToRender: [] };
-        }
-
-        const streamingResult = renderMessageContent(streamingStableText, [], []);
-        return {
-            streamingRenderedHtml: resolveCardReferences(streamingResult.html),
-            streamingCodeBlocksToRender: streamingResult.codeBlocksData
-        };
-    }, [isAssistantStreaming, streamingStableText]);
+    const stableMarks = marks || EMPTY_MESSAGE_ANNOTATIONS;
+    const stableCapturedNotes = capturedNotes || EMPTY_MESSAGE_ANNOTATIONS;
+    const renderedChunks = useMessageChunks(content);
+    const streamingStableChunks = useMessageChunks(streamingStableText);
 
     const handleMessageClick = (e) => {
         const externalLink = e.target.closest('a[data-external-link="true"]');
@@ -473,13 +250,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                         </div>
                     ) : isAssistantStreaming ? (
                         <div className="font-sans break-words leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
-                            {streamingRenderedHtml && (
-                                <MessageContentWithCodeBlocks
-                                    html={sanitizeMarkdownHtml(streamingRenderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
-                                    codeBlocks={streamingCodeBlocksToRender}
-                                    onClick={handleMessageClick}
+                            {streamingStableChunks.map((chunk) => (
+                                <MarkdownChunk
+                                    key={chunk.id}
+                                    chunk={chunk}
+                                    marks={EMPTY_MESSAGE_ANNOTATIONS}
+                                    capturedNotes={EMPTY_MESSAGE_ANNOTATIONS}
+                                    shouldRenderImmediately={chunk.shouldRenderImmediately}
                                 />
-                            )}
+                            ))}
                             <div className="whitespace-pre-wrap break-words leading-relaxed">
                                 <span>{streamingLiveMainText}</span>
                                 {streamingLiveTailText && <span className="stream-flow-tail">{streamingLiveTailText}</span>}
@@ -487,11 +266,15 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                             </div>
                         </div>
                     ) : (
-                        <MessageContentWithCodeBlocks
-                            html={sanitizeMarkdownHtml(renderedHtml, { ADD_ATTR: ['data-code-block-id'] })}
-                            codeBlocks={codeBlocksToRender}
-                            onClick={handleMessageClick}
-                        />
+                        renderedChunks.map((chunk) => (
+                            <MarkdownChunk
+                                key={chunk.id}
+                                chunk={chunk}
+                                marks={stableMarks}
+                                capturedNotes={stableCapturedNotes}
+                                shouldRenderImmediately={chunk.shouldRenderImmediately}
+                            />
+                        ))
                     )}
                 </div>
 

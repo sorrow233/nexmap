@@ -301,7 +301,9 @@ export default function ChatView({
         capturePerfSnapshot('chat-view-mounted', {
             cardId: card.id,
             messageCount: card.data.messages?.length || 0,
-            renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0
+            renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0,
+            renderedChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="true"]').length || 0,
+            pendingChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="false"]').length || 0
         });
     }, [card.id, card.data.messages?.length, card.type]);
 
@@ -324,7 +326,9 @@ export default function ChatView({
             capturePerfSnapshot('chat-input-ready', {
                 cardId: card.id,
                 messageCount: card.data.messages?.length || 0,
-                renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0
+                renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0,
+                renderedChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="true"]').length || 0,
+                pendingChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="false"]').length || 0
             });
         };
 
@@ -343,6 +347,8 @@ export default function ChatView({
             cardId: card.id,
             messageCount: card.data.messages?.length || 0,
             renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0,
+            renderedChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="true"]').length || 0,
+            pendingChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="false"]').length || 0,
             streaming: isStreaming
         });
     }, [card.id, card.data.messages?.length, isStreaming]);

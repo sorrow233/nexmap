@@ -56,30 +56,82 @@ hljs.registerLanguage('php', php);
 hljs.registerLanguage('yaml', yaml);
 hljs.registerLanguage('yml', yaml);
 
-const CodeBlock = React.memo(({ code, language }) => {
+const escapeCodeHtml = (value = '') => (
+    String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+);
+
+const highlightCode = (code = '', normalizedLang = '') => {
+    try {
+        if (normalizedLang && hljs.getLanguage(normalizedLang)) {
+            return hljs.highlight(code, { language: normalizedLang }).value;
+        }
+
+        return hljs.highlightAuto(code).value;
+    } catch {
+        return escapeCodeHtml(code);
+    }
+};
+
+const LARGE_CODE_CHAR_THRESHOLD = 1800;
+const LARGE_CODE_LINE_THRESHOLD = 48;
+
+const CodeBlock = React.memo(({ code, language, deferHighlight = false }) => {
     const [copied, setCopied] = useState(false);
     const codeRef = useRef(null);
+    const safeCode = React.useMemo(() => String(code || ''), [code]);
 
     // Normalize language name
     const normalizedLang = language?.toLowerCase()?.trim() || '';
+    const lineCount = React.useMemo(() => safeCode.split('\n').length, [safeCode]);
+    const shouldDeferHighlight = deferHighlight || safeCode.length > LARGE_CODE_CHAR_THRESHOLD || lineCount > LARGE_CODE_LINE_THRESHOLD;
+    const immediateHighlightedCode = React.useMemo(() => (
+        shouldDeferHighlight
+            ? escapeCodeHtml(safeCode)
+            : highlightCode(safeCode, normalizedLang)
+    ), [normalizedLang, safeCode, shouldDeferHighlight]);
+    const [highlightedCode, setHighlightedCode] = useState(immediateHighlightedCode);
 
-    // Highlight code
-    const highlightedCode = React.useMemo(() => {
-        try {
-            if (normalizedLang && hljs.getLanguage(normalizedLang)) {
-                return hljs.highlight(code, { language: normalizedLang }).value;
-            }
-            // Auto-detect if no language specified
-            return hljs.highlightAuto(code).value;
-        } catch (e) {
-            // Fallback to plain text
-            return code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    useEffect(() => {
+        setHighlightedCode(immediateHighlightedCode);
+
+        if (!shouldDeferHighlight) {
+            return undefined;
         }
-    }, [code, normalizedLang]);
+
+        let cancelled = false;
+        let timerId = null;
+        let idleId = null;
+        const scheduleHighlight = () => {
+            if (cancelled) return;
+            const nextHighlightedCode = highlightCode(safeCode, normalizedLang);
+            if (!cancelled) {
+                setHighlightedCode(nextHighlightedCode);
+            }
+        };
+
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            idleId = window.requestIdleCallback(scheduleHighlight, { timeout: 180 });
+        } else {
+            timerId = window.setTimeout(scheduleHighlight, 32);
+        }
+
+        return () => {
+            cancelled = true;
+            if (idleId != null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+                window.cancelIdleCallback(idleId);
+            }
+            if (timerId != null) {
+                window.clearTimeout(timerId);
+            }
+        };
+    }, [immediateHighlightedCode, normalizedLang, safeCode, shouldDeferHighlight]);
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(code);
+            await navigator.clipboard.writeText(safeCode);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
@@ -94,6 +146,11 @@ const CodeBlock = React.memo(({ code, language }) => {
                 <span className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {normalizedLang || 'code'}
                 </span>
+                {shouldDeferHighlight && highlightedCode === immediateHighlightedCode && (
+                    <span className="ml-2 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                        highlighting...
+                    </span>
+                )}
                 <button
                     onClick={handleCopy}
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${copied
