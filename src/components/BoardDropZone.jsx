@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Star, ImageIcon, X } from 'lucide-react';
 import useImageUpload from '../hooks/useImageUpload';
 import { useLanguage } from '../contexts/LanguageContext';
+import { IMAGE_UPLOAD_ACCEPT } from '../services/image/uploadImageNormalizer';
 
 /**
  * A dedicated component for the board creation interface, 
@@ -143,7 +144,7 @@ export default function BoardDropZone({ onCreateBoard, variant = 'default' }) {
                                 ref={fileInputRef}
                                 onChange={handleImageUpload}
                                 className="hidden"
-                                accept="image/*"
+                                accept={IMAGE_UPLOAD_ACCEPT}
                                 multiple
                                 disabled={isSubmitting}
                             />
@@ -188,7 +189,7 @@ export default function BoardDropZone({ onCreateBoard, variant = 'default' }) {
                             ref={fileInputRef}
                             onChange={handleImageUpload}
                             className="hidden"
-                            accept="image/*"
+                            accept={IMAGE_UPLOAD_ACCEPT}
                             multiple
                             disabled={isSubmitting}
                         />

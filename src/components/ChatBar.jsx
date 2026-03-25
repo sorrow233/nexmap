@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import Spotlight from './shared/Spotlight';
 import InstructionChips from './chat/InstructionChips';
 import ModelSwitcher from './ModelSwitcher';
+import { IMAGE_UPLOAD_ACCEPT } from '../services/image/uploadImageNormalizer';
 
 /**
  * ChatBar Component - Integrated Card Style Redesign
@@ -213,7 +214,7 @@ const ChatBar = React.memo(function ChatBar({
                                 <IconButton onClick={() => !isReadOnly && fileInputRef.current?.click()} title={t.chatBar.uploadImage} disabled={isReadOnly}>
                                     <ImageIcon size={16} className={`${isReadOnly ? 'text-slate-300' : 'text-slate-400 hover:text-cyan-400'}`} />
                                 </IconButton>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={onImageUpload} disabled={isReadOnly} />
+                                <input type="file" ref={fileInputRef} className="hidden" accept={IMAGE_UPLOAD_ACCEPT} multiple onChange={onImageUpload} disabled={isReadOnly} />
 
                                 <IconButton title="Files" disabled={isReadOnly}>
                                     <FileText size={16} className={`${isReadOnly ? 'text-slate-300' : 'text-slate-400 hover:text-cyan-400'}`} />

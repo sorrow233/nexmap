@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Image as ImageIcon, Trash2, Link, ListOrdered } from 'lucide-react';
 import { isSafari, isIOS } from '../utils/browser';
+import { IMAGE_UPLOAD_ACCEPT } from '../services/image/uploadImageNormalizer';
 
 import { useDraggable } from '../hooks/useDraggable';
 
@@ -215,7 +216,7 @@ const StickyNote = React.memo(function StickyNote({
                         type="file"
                         ref={fileInputRef}
                         className="hidden"
-                        accept="image/*"
+                        accept={IMAGE_UPLOAD_ACCEPT}
                         onChange={handleImageUpload}
                     />
                     <button

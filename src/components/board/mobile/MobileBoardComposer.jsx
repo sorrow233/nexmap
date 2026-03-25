@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Image as ImageIcon, Plus, Send, X } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getMobileBoardCopy } from './mobileBoardCopy';
+import { IMAGE_UPLOAD_ACCEPT } from '../../../services/image/uploadImageNormalizer';
 
 export default function MobileBoardComposer({
     onSubmit,
@@ -65,7 +66,7 @@ export default function MobileBoardComposer({
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept={IMAGE_UPLOAD_ACCEPT}
                         multiple
                         className="hidden"
                         onChange={onImageUpload}

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getColorForString } from '../../utils/colors';
 import InstructionChips from './InstructionChips';
+import { IMAGE_UPLOAD_ACCEPT } from '../../services/image/uploadImageNormalizer';
 
 /**
  * ChatInput Component - Integrated Card Style
@@ -124,7 +125,7 @@ export default function ChatInput({
                     <div className="flex items-center gap-3 px-6 pb-6 pt-2">
                         {/* Left Side: functional cluster */}
                         <div className="flex items-center gap-1">
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} disabled={isReadOnly} />
+                            <input type="file" ref={fileInputRef} className="hidden" accept={IMAGE_UPLOAD_ACCEPT} multiple onChange={handleImageUpload} disabled={isReadOnly} />
                             <button
                                 onClick={() => !isReadOnly && fileInputRef.current?.click()}
                                 disabled={isReadOnly}

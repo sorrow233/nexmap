@@ -1,4 +1,9 @@
 import { useState, useEffect } from 'react';
+import {
+    getAcceptedImageTypeLabel,
+    isSupportedImageUploadFile,
+    normalizeImageUploadFile
+} from '../services/image/uploadImageNormalizer';
 
 /**
  * useImageUpload Hook
@@ -12,33 +17,41 @@ export default function useImageUpload(options = {}) {
     } = options;
     const [images, setImages] = useState([]);
 
-    const processFiles = (files) => {
-        Array.from(files).forEach(file => {
+    const processFiles = async (files) => {
+        for (const file of Array.from(files)) {
             // Security: Check file type blacklist/whitelist
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-            if (!allowedTypes.includes(file.type)) {
-                alert(`File type not allowed: ${file.name}. Only images (JPG, PNG, WebP, GIF) are accepted.`);
-                return;
+            if (!isSupportedImageUploadFile(file)) {
+                alert(`File type not allowed: ${file.name}. Only images (${getAcceptedImageTypeLabel()}) are accepted.`);
+                continue;
+            }
+
+            let normalizedFile = file;
+            try {
+                normalizedFile = await normalizeImageUploadFile(file);
+            } catch (error) {
+                console.error('[useImageUpload] Failed to normalize uploaded image', error);
+                alert(`Failed to process image: ${file.name}. Please convert it to JPG or PNG and try again.`);
+                continue;
             }
 
             // Optional file size guard. Disabled by default in local-only workflow.
-            if (typeof maxFileSizeBytes === 'number' && maxFileSizeBytes > 0 && file.size > maxFileSizeBytes) {
+            if (typeof maxFileSizeBytes === 'number' && maxFileSizeBytes > 0 && normalizedFile.size > maxFileSizeBytes) {
                 const maxMB = (maxFileSizeBytes / (1024 * 1024)).toFixed(1);
-                alert(`File too large: ${file.name}. Maximum size is ${maxMB}MB.`);
-                return;
+                alert(`File too large: ${normalizedFile.name}. Maximum size is ${maxMB}MB.`);
+                continue;
             }
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 setImages(prev => [...prev, {
-                    file,
-                    previewUrl: URL.createObjectURL(file),
+                    file: normalizedFile,
+                    previewUrl: URL.createObjectURL(normalizedFile),
                     base64: e.target.result.split(',')[1],
-                    mimeType: file.type
+                    mimeType: normalizedFile.type
                 }]);
             };
-            reader.readAsDataURL(file);
-        });
+            reader.readAsDataURL(normalizedFile);
+        }
     };
 
     const handleImageUpload = (e) => {
