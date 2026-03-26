@@ -80,7 +80,14 @@ const toFirestoreBodyDoc = (entry = {}, deviceId = '') => {
         return nextDoc;
     }
 
-    const compressedPayload = compressCardBodyPayload(normalizedEntry);
+    let compressedPayload = null;
+    try {
+        compressedPayload = compressCardBodyPayload(normalizedEntry);
+    } catch (error) {
+        const details = error?.message ? `: ${error.message}` : '';
+        throw new Error(`Card body ${normalizedEntry.cardId} compression failed${details}`);
+    }
+
     if (!compressedPayload) {
         return null;
     }

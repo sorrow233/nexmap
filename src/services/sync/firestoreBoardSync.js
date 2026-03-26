@@ -407,6 +407,38 @@ export class FirestoreBoardSync {
         return committedCardIds;
     }
 
+    async saveQueuedCardBodyJobsBestEffort(entries = [], reason = 'body_sync') {
+        if (!hasCardBodySyncJobs(entries)) {
+            return {
+                committedCardIds: [],
+                failedCardIds: []
+            };
+        }
+
+        const normalizedEntries = normalizeCardBodySyncJobs(entries);
+        const committedCardIds = [];
+        const failedCardIds = [];
+
+        for (const entry of normalizedEntries) {
+            try {
+                const committed = await this.saveQueuedCardBodyJobs([entry], reason);
+                committedCardIds.push(...committed);
+            } catch (error) {
+                const cardId = entry?.cardId || 'unknown';
+                failedCardIds.push(cardId);
+                console.error(`[FirebaseSync] Skipped card body backfill for ${cardId} on board ${this.boardId}:`, error);
+                this.emitState('warning', {
+                    message: `Card body backfill skipped for ${cardId}: ${error?.message || 'unknown error'}`
+                });
+            }
+        }
+
+        return {
+            committedCardIds,
+            failedCardIds
+        };
+    }
+
     async syncSnapshotToRemote(snapshot = {}, options = {}) {
         const normalizedSnapshot = normalizeBoardSnapshot(snapshot);
         await this.saveSkeletonRootSnapshot(options.reason || 'manual_sync', normalizedSnapshot);
@@ -474,7 +506,7 @@ export class FirestoreBoardSync {
             );
 
             if (missingRemoteBodyEntries.length > 0) {
-                await this.saveQueuedCardBodyJobs(
+                await this.saveQueuedCardBodyJobsBestEffort(
                     missingRemoteBodyEntries,
                     'connect_missing_remote_bodies_backfill'
                 );
