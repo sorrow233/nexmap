@@ -126,13 +126,15 @@ export class BoardSyncController {
             userId: this.user.uid,
             deviceId: getSyncDeviceId(),
             doc: this.doc,
-            onRemoteApplied: () => {
+            onRemoteApplied: (payload = {}) => {
                 logPersistenceTrace('sync:controller-remote-applied', {
                     boardId: this.boardId,
                     safeMode: FIREBASE_SYNC_SAFE_MODE,
+                    lane: payload.lane || SYNC_LANES.FULL,
+                    reason: payload.reason || '',
                     cursor: buildBoardCursorTrace(readBoardSnapshotFromDoc(this.doc))
                 });
-                this.emitCurrentSnapshot();
+                this.emitCurrentSnapshot(payload);
             },
             onSyncStateChange: this.onSyncStateChange
         });
@@ -161,12 +163,14 @@ export class BoardSyncController {
         this.emitState('ready');
     }
 
-    emitCurrentSnapshot() {
-        const snapshot = readBoardSnapshotFromDoc(this.doc);
+    emitCurrentSnapshot(meta = {}) {
+        const snapshot = meta?.mergedSnapshot
+            ? normalizeBoardSnapshot(meta.mergedSnapshot)
+            : readBoardSnapshotFromDoc(this.doc);
         const versionKey = buildPersistenceVersionKey(snapshot);
         if (versionKey === this.lastVersionKey) return;
         this.lastVersionKey = versionKey;
-        this.onSnapshot?.(snapshot);
+        this.onSnapshot?.(snapshot, meta);
     }
 
     readCurrentSnapshot() {

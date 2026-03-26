@@ -3,7 +3,9 @@ import {
     isMeaningfullyEmptyBoardSnapshot,
     normalizeBoardSnapshot
 } from '../boardSnapshot';
+import { mergeBodySnapshot } from '../body/bodySync';
 import { protectHighValueCardContent } from '../highValueCardContentGuard';
+import { mergeSkeletonSnapshot } from '../skeleton/skeletonSync';
 import {
     canIncomingCardRetireCurrent,
     getCardDeletedAt,
@@ -295,3 +297,54 @@ export const resolveRemoteSnapshotForStore = ({
         snapshot: mergedResult.snapshot
     };
 };
+
+const resolveRemoteLaneSnapshotForStore = ({
+    currentSnapshot,
+    incomingSnapshot,
+    localDirty = false,
+    mergeSnapshot,
+    applyReason = 'apply_remote_lane_snapshot'
+} = {}) => {
+    const normalizedCurrent = normalizeSnapshotForRules(currentSnapshot);
+    const normalizedIncoming = normalizeSnapshotForRules(incomingSnapshot);
+    const mergedSnapshot = mergeSnapshot(normalizedCurrent, normalizedIncoming);
+
+    if (localDirty) {
+        return {
+            action: 'defer',
+            reason: 'local_dirty',
+            snapshot: mergedSnapshot
+        };
+    }
+
+    if (shouldRejectEmptySnapshotOverwrite({
+        currentSnapshot: normalizedCurrent,
+        incomingSnapshot: mergedSnapshot
+    })) {
+        return {
+            action: 'reject',
+            reason: 'incoming_empty_cannot_overwrite_non_empty',
+            snapshot: normalizedCurrent
+        };
+    }
+
+    return {
+        action: createBoardSnapshotFingerprint(normalizedCurrent) === createBoardSnapshotFingerprint(mergedSnapshot)
+            ? 'noop'
+            : 'apply',
+        reason: applyReason,
+        snapshot: mergedSnapshot
+    };
+};
+
+export const resolveRemoteSkeletonSnapshotForStore = (options = {}) => resolveRemoteLaneSnapshotForStore({
+    ...options,
+    mergeSnapshot: mergeSkeletonSnapshot,
+    applyReason: 'apply_remote_skeleton_snapshot'
+});
+
+export const resolveRemoteBodySnapshotForStore = (options = {}) => resolveRemoteLaneSnapshotForStore({
+    ...options,
+    mergeSnapshot: mergeBodySnapshot,
+    applyReason: 'apply_remote_body_snapshot'
+});

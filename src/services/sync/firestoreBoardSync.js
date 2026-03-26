@@ -35,6 +35,7 @@ import {
     SYNC_LANES
 } from './protocol/syncLane';
 import {
+    buildBodySyncSnapshotFromEntries,
     buildCardBodySyncEntries,
     mergeCardBodyEntriesIntoSnapshot,
     normalizeCardBodySyncEntry
@@ -166,6 +167,27 @@ export class FirestoreBoardSync {
         });
     }
 
+    emitRemoteApplied(payload = {}) {
+        if (typeof this.onRemoteApplied !== 'function') {
+            return;
+        }
+
+        const mergedSnapshot = normalizeBoardSnapshot(
+            payload.mergedSnapshot || readBoardSnapshotFromDoc(this.doc)
+        );
+        const partialSnapshot = normalizeBoardSnapshot(
+            payload.partialSnapshot || mergedSnapshot
+        );
+
+        this.onRemoteApplied({
+            lane: payload.lane || SYNC_LANES.FULL,
+            source: payload.source || 'remote_sync',
+            reason: payload.reason || '',
+            partialSnapshot,
+            mergedSnapshot
+        });
+    }
+
     async saveNonDestructiveRepair(reason = 'non_destructive_remote_repair', sourceKey = '') {
         const nextSourceKey = String(sourceKey || '');
         if (nextSourceKey && this.lastProtectedRepairSourceKey === nextSourceKey) {
@@ -203,13 +225,13 @@ export class FirestoreBoardSync {
 
     applyRemoteSkeletonSnapshot(rootData = {}) {
         if (!hasRemoteBoardSkeleton(rootData)) {
-            return false;
+            return null;
         }
 
         const skeletonSnapshot = loadBoardSkeletonFromRoot(rootData);
         const nextVersionKey = buildSkeletonVersionKey(skeletonSnapshot);
         if (!nextVersionKey || nextVersionKey === this.latestSkeletonVersionKey) {
-            return false;
+            return null;
         }
 
         const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
@@ -218,7 +240,7 @@ export class FirestoreBoardSync {
             currentVersionKey
             && (Number(skeletonSnapshot.clientRevision) || 0) < (Number(currentSnapshot.clientRevision) || 0)
         ) {
-            return false;
+            return null;
         }
 
         const mergedSnapshot = mergeSkeletonSnapshot(currentSnapshot, skeletonSnapshot);
@@ -227,16 +249,28 @@ export class FirestoreBoardSync {
         }, FIREBASE_SYNC_ORIGINS.firestore);
         this.latestSkeletonVersionKey = nextVersionKey;
 
+        const appliedPayload = {
+            lane: SYNC_LANES.SKELETON,
+            source: 'remote_skeleton',
+            reason: 'remote_skeleton_applied',
+            partialSnapshot: skeletonSnapshot,
+            mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
+        };
+
+        let flushedBodyPayload = null;
         if (this.pendingRemoteBodyEntries.size > 0) {
-            this.applyRemoteCardBodyEntries(Array.from(this.pendingRemoteBodyEntries.values()));
+            flushedBodyPayload = this.applyRemoteCardBodyEntries(Array.from(this.pendingRemoteBodyEntries.values()));
         }
 
-        return true;
+        return {
+            ...appliedPayload,
+            flushedBodyPayload
+        };
     }
 
     applyRemoteCardBodyEntries(entries = []) {
         if (!Array.isArray(entries) || entries.length === 0) {
-            return false;
+            return null;
         }
 
         const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
@@ -256,7 +290,7 @@ export class FirestoreBoardSync {
             });
 
         if (normalizedEntries.length === 0) {
-            return false;
+            return null;
         }
 
         const applicableEntries = [];
@@ -271,7 +305,7 @@ export class FirestoreBoardSync {
         });
 
         if (applicableEntries.length === 0) {
-            return false;
+            return null;
         }
 
         const mergedSnapshot = mergeCardBodyEntriesIntoSnapshot(currentSnapshot, applicableEntries);
@@ -286,7 +320,13 @@ export class FirestoreBoardSync {
             );
         });
 
-        return true;
+        return {
+            lane: SYNC_LANES.BODY,
+            source: 'remote_body',
+            reason: 'remote_body_applied',
+            partialSnapshot: buildBodySyncSnapshotFromEntries(applicableEntries),
+            mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
+        };
     }
 
     async saveSkeletonRootSnapshot(reason = 'skeleton_sync', sourceSnapshot = null) {
@@ -364,7 +404,7 @@ export class FirestoreBoardSync {
             );
         }
 
-        if (options.includeCheckpoint !== false) {
+        if (options.includeCheckpoint === true) {
             await this.saveSnapshot(options.reason || 'manual_sync');
         }
 
@@ -394,9 +434,18 @@ export class FirestoreBoardSync {
         this.latestRootSyncTouchedAtMs = toFirestoreMillis(rootData?.syncTouchedAtMs);
         this.updateRemoteMetadataFromRoot(rootData);
 
-        this.applyRemoteSkeletonSnapshot(rootData);
-        const loadResult = await this.loadRemoteCheckpoint(rootData);
+        const skeletonApplyResult = this.applyRemoteSkeletonSnapshot(rootData);
+        if (skeletonApplyResult) {
+            this.emitRemoteApplied(skeletonApplyResult);
+            if (skeletonApplyResult.flushedBodyPayload) {
+                this.emitRemoteApplied(skeletonApplyResult.flushedBodyPayload);
+            }
+        }
         const bodyEntries = await this.loadRemoteCardBodies();
+        const shouldRecoverFromCheckpoint = bodyEntries.length === 0 && hasRemoteCheckpoint(rootData);
+        const loadResult = shouldRecoverFromCheckpoint
+            ? await this.loadRemoteCheckpoint(rootData, { recoveryOnly: true })
+            : null;
 
         this.subscribeToRootCheckpoint();
         this.subscribeToCardBodies();
@@ -427,8 +476,9 @@ export class FirestoreBoardSync {
             boardId: this.boardId
         });
 
-        if (this.applyRemoteCardBodyEntries(entries)) {
-            this.onRemoteApplied?.();
+        const applyResult = this.applyRemoteCardBodyEntries(entries);
+        if (applyResult) {
+            this.emitRemoteApplied(applyResult);
         }
 
         return entries;
@@ -470,11 +520,12 @@ export class FirestoreBoardSync {
             recovered: decodedCheckpoint.recovered,
             applied: resolution.action === 'apply',
             reason: resolution.reason,
-            shouldRepairRemote: resolution.shouldRepairRemote
+            shouldRepairRemote: resolution.shouldRepairRemote,
+            snapshot: resolution.snapshot
         };
     }
 
-    async loadRemoteCheckpoint(rootData = null) {
+    async loadRemoteCheckpoint(rootData = null, options = {}) {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
         let effectiveRootData = rootData || (await getDoc(rootRef)).data();
         this.latestRootSyncTouchedAtMs = toFirestoreMillis(effectiveRootData?.syncTouchedAtMs);
@@ -521,14 +572,35 @@ export class FirestoreBoardSync {
         }
 
         try {
-            await this.applyLoadedCheckpoint(checkpoint, effectiveRootData);
+            const applyResult = await this.applyLoadedCheckpoint(checkpoint, effectiveRootData);
+            if (applyResult?.applied) {
+                this.emitRemoteApplied({
+                    lane: SYNC_LANES.FULL,
+                    source: options.recoveryOnly ? 'checkpoint_recovery' : 'remote_checkpoint',
+                    reason: options.recoveryOnly ? 'checkpoint_recovery_applied' : applyResult.reason,
+                    partialSnapshot: applyResult.snapshot,
+                    mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
+                });
+            }
+            if (options.recoveryOnly && applyResult?.snapshot) {
+                await this.saveNonDestructiveRepair(
+                    'checkpoint_recovery_layered_backfill',
+                    checkpoint.signature || buildRootCheckpointKey(effectiveRootData)
+                );
+            }
+            return {
+                ...applyResult,
+                skippedApplyReason: ''
+            };
         } catch (error) {
             if (!isBoardDocEmpty(this.doc)) {
                 console.error(`[FirebaseSync] Failed to decode remote checkpoint for board ${this.boardId}, keeping local snapshot:`, error);
                 this.emitState('warning', {
                     message: `Remote checkpoint decode failed for ${this.boardId}, kept local snapshot`
                 });
-                return;
+                return {
+                    skippedApplyReason: ''
+                };
             }
 
             throw error;
@@ -553,71 +625,13 @@ export class FirestoreBoardSync {
                     this.latestRootSyncTouchedAtMs,
                     remoteSyncTouchedAtMs
                 );
-                this.onRemoteApplied?.();
+                this.emitRemoteApplied(appliedSkeleton);
+                if (appliedSkeleton.flushedBodyPayload) {
+                    this.emitRemoteApplied(appliedSkeleton.flushedBodyPayload);
+                }
             }
 
-            if (!hasRemoteCheckpoint(data)) {
-                this.latestRootSyncTouchedAtMs = Math.max(
-                    this.latestRootSyncTouchedAtMs,
-                    remoteSyncTouchedAtMs
-                );
-                return;
-            }
-
-            const remoteSavedAtMs = toFirestoreMillis(data.checkpointSavedAtMs);
-            const nextRootCheckpointKey = buildRootCheckpointKey(data);
-            if (
-                nextRootCheckpointKey &&
-                nextRootCheckpointKey === this.latestCheckpointRootKey &&
-                remoteSavedAtMs <= this.latestCheckpointSavedAtMs
-            ) {
-                this.latestRootSyncTouchedAtMs = Math.max(
-                    this.latestRootSyncTouchedAtMs,
-                    remoteSyncTouchedAtMs
-                );
-                return;
-            }
-
-            if (remoteSavedAtMs < this.latestCheckpointSavedAtMs) {
-                return;
-            }
-
-            const checkpoint = await loadBoardCheckpoint({
-                userId: this.userId,
-                boardId: this.boardId,
-                rootData: data
-            });
-
-            if (!checkpoint?.updateBase64 || checkpoint.signature === this.latestCheckpointSignature) {
-                return;
-            }
-
-            this.latestCheckpointSavedAtMs = checkpoint.savedAtMs || remoteSavedAtMs || 0;
-            this.latestCheckpointServerSavedAt = data.checkpointServerSavedAt || this.latestCheckpointServerSavedAt;
-            this.latestCheckpointSignature = checkpoint.signature || '';
-            this.latestCheckpointRootKey = nextRootCheckpointKey || this.latestCheckpointRootKey;
             this.latestRootSyncTouchedAtMs = remoteSyncTouchedAtMs;
-            if (!this.hasQueuedLocalWrites()) {
-                this.hasUnsnapshottedChanges = false;
-            }
-
-            try {
-                const applyResult = await this.applyLoadedCheckpoint(checkpoint, data);
-                if (applyResult.applied) {
-                    this.remoteIsEmpty = false;
-                    this.onRemoteApplied?.();
-                }
-            } catch (error) {
-                if (!isBoardDocEmpty(this.doc)) {
-                    console.error(`[FirebaseSync] Failed to decode remote checkpoint update for board ${this.boardId}, keeping current snapshot:`, error);
-                    this.emitState('warning', {
-                        message: `Remote checkpoint update decode failed for ${this.boardId}, kept current snapshot`
-                    });
-                    return;
-                }
-
-                throw error;
-            }
         }, (error) => {
             this.emitState('warning', {
                 message: error?.message || 'Checkpoint listener failed'
@@ -630,9 +644,10 @@ export class FirestoreBoardSync {
             userId: this.userId,
             boardId: this.boardId,
             onEntries: (entries) => {
-                if (this.applyRemoteCardBodyEntries(entries)) {
+                const applyResult = this.applyRemoteCardBodyEntries(entries);
+                if (applyResult) {
                     this.remoteIsEmpty = false;
-                    this.onRemoteApplied?.();
+                    this.emitRemoteApplied(applyResult);
                 }
             },
             onError: (error) => {
