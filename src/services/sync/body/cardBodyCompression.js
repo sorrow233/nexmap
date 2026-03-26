@@ -2,6 +2,7 @@ import LZString from 'lz-string';
 import { cloneSerializable } from '../boardSnapshot';
 
 export const CARD_BODY_COMPRESSION_ENCODING = 'lz-string-base64';
+export const CARD_BODY_INLINE_RAW_BYTES_SOFT_LIMIT = 512 * 1024;
 
 const CARD_BODY_FIELDS = ['messages', 'content', 'image', 'text'];
 
@@ -40,8 +41,29 @@ export const serializeCardBodyPayload = (value = {}) => {
     };
 };
 
-export const compressCardBodyPayload = (value = {}) => {
+export const inspectCardBodyPayload = (value = {}) => {
     const serializedPayload = serializeCardBodyPayload(value);
+    if (!serializedPayload) {
+        return null;
+    }
+
+    return {
+        ...serializedPayload,
+        rawBytes: new TextEncoder().encode(serializedPayload.serialized).length
+    };
+};
+
+export const shouldPreferCheckpointBodyFallback = (value = {}) => {
+    const payload = inspectCardBodyPayload(value);
+    if (!payload) {
+        return false;
+    }
+
+    return payload.rawBytes > CARD_BODY_INLINE_RAW_BYTES_SOFT_LIMIT;
+};
+
+export const compressCardBodyPayload = (value = {}) => {
+    const serializedPayload = inspectCardBodyPayload(value);
     if (!serializedPayload) {
         return null;
     }
@@ -55,7 +77,6 @@ export const compressCardBodyPayload = (value = {}) => {
         ...serializedPayload,
         bodyEncoding: CARD_BODY_COMPRESSION_ENCODING,
         compressedBody,
-        rawBytes: new TextEncoder().encode(serializedPayload.serialized).length,
         compressedBytes: new TextEncoder().encode(compressedBody).length
     };
 };
