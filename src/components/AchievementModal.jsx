@@ -196,7 +196,7 @@ export default function AchievementModal({
                             <div className="pt-10 w-full max-w-xs mx-auto">
                                 <div className="flex justify-between items-baseline mb-3 text-xs font-bold text-slate-400 tracking-widest">
                                     <span>PROGRESS</span>
-                                    <span>{isMystery ? '???' : fmt(tier.limit)} TOKENS</span>
+                                    <span>{isMystery ? '???' : fmt(tier.limit)} CHARACTERS</span>
                                 </div>
                                 <div className="h-1 bg-slate-200 w-full overflow-hidden rounded-full">
                                     <div

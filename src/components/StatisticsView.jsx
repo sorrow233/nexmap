@@ -139,18 +139,18 @@ export default function StatisticsView({ boardsList, user }) {
 
 
     // Planetary Logic (Lifted State & Localized)
-    const totalTokens = stats.tokenStats.totalChars;
+    const totalCharacters = stats.tokenStats.totalChars;
     const tiers = usePlanetTiers(t);
 
-    // Calculate tier based on actual user tokens
-    const calculatedTierIndex = tiers.findIndex(t => totalTokens < t.limit);
+    // Calculate tier based on actual tracked character count
+    const calculatedTierIndex = tiers.findIndex(t => totalCharacters < t.limit);
     const currentTierIndex = calculatedTierIndex === -1 ? tiers.length - 1 : calculatedTierIndex;
     const currentTier = tiers[currentTierIndex] || tiers[tiers.length - 1];
 
     // Progress for Ring
     const prevLimit = currentTierIndex > 0 ? tiers[currentTierIndex - 1].limit : 0;
     const nextLimit = currentTier.limit;
-    const progress = Math.min(100, Math.max(0, ((totalTokens - prevLimit) / (nextLimit - prevLimit)) * 100));
+    const progress = Math.min(100, Math.max(0, ((totalCharacters - prevLimit) / (nextLimit - prevLimit)) * 100));
     const radius = 185;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
@@ -246,7 +246,7 @@ export default function StatisticsView({ boardsList, user }) {
                         </div>
                     </div>
 
-                    {/* Center: Planetary System (Token Evolution) */}
+                    {/* Center: Planetary System (Character Evolution) */}
                     <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[500px]">
 
                         {/* Orbital Rings Background - Animated */}
@@ -315,10 +315,10 @@ export default function StatisticsView({ boardsList, user }) {
                                         {currentTier.name} Phase
                                     </span>
                                     <span className="block text-4xl font-black tracking-tighter">
-                                        {fmt(totalTokens)}
+                                        {fmt(totalCharacters)}
                                     </span>
                                     <span className="block text-[10px] font-bold opacity-60 mt-1 uppercase tracking-wider">
-                                        Total Tokens
+                                        Total Characters
                                     </span>
                                 </div>
                             </div>
@@ -424,7 +424,7 @@ export default function StatisticsView({ boardsList, user }) {
                 isOpen={showAchievements}
                 onClose={() => setShowAchievements(false)}
                 currentTierName={currentTier.name}
-                currentTotal={totalTokens}
+                currentTotal={totalCharacters}
                 tiers={tiers}
                 t={t}
             />
