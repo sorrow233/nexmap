@@ -58,20 +58,29 @@ export default function MessageVirtualList({
     onContinueTopic,
     onBranch
 }) {
+    const hasDetachedStreamingMessage = Boolean(
+        isStreaming &&
+        messages.length > 0 &&
+        messages[messages.length - 1]?.role === 'assistant'
+    );
+    const detachedStreamingMessage = hasDetachedStreamingMessage
+        ? messages[messages.length - 1]
+        : null;
+    const virtualizedMessages = hasDetachedStreamingMessage
+        ? messages.slice(0, -1)
+        : messages;
+
     const rowVirtualizer = useVirtualizer({
-        count: messages.length,
+        count: virtualizedMessages.length,
         getScrollElement: () => scrollContainerRef.current,
-        getItemKey: (index) => messages[index]?.id || `${cardId}-${index}`,
-        estimateSize: (index) => estimateMessageHeight(messages[index]) + ITEM_GAP_PX,
+        getItemKey: (index) => virtualizedMessages[index]?.id || `${cardId}-${index}`,
+        estimateSize: (index) => estimateMessageHeight(virtualizedMessages[index]) + ITEM_GAP_PX,
         overscan: DEFAULT_OVERSCAN
     });
 
     const virtualRows = rowVirtualizer.getVirtualItems();
     const totalMessagesHeight = rowVirtualizer.getTotalSize();
-    const tailSectionHeight = (isStreaming ? STREAMING_INDICATOR_HEIGHT : 0)
-        + (pendingCount > 0 ? PENDING_INDICATOR_HEIGHT : 0)
-        + BOTTOM_SENTINEL_HEIGHT;
-    const totalHeight = totalMessagesHeight + tailSectionHeight;
+    const showStreamingIndicator = isStreaming && !hasDetachedStreamingMessage;
 
     React.useEffect(() => {
         if (!scrollToMessageIndexRef) {
@@ -79,6 +88,14 @@ export default function MessageVirtualList({
         }
 
         scrollToMessageIndexRef.current = (index, options = {}) => {
+            if (hasDetachedStreamingMessage && index >= virtualizedMessages.length) {
+                messagesEndRef.current?.scrollIntoView({
+                    behavior: options.behavior || 'smooth',
+                    block: options.align || 'end'
+                });
+                return;
+            }
+
             rowVirtualizer.scrollToIndex(index, {
                 align: options.align || 'center'
             });
@@ -89,21 +106,16 @@ export default function MessageVirtualList({
                 scrollToMessageIndexRef.current = null;
             }
         };
-    }, [rowVirtualizer, scrollToMessageIndexRef]);
+    }, [hasDetachedStreamingMessage, messagesEndRef, rowVirtualizer, scrollToMessageIndexRef, virtualizedMessages.length]);
 
     return (
         <div className="w-full">
             <div
                 className="relative w-full"
-                style={{ height: `${totalHeight}px` }}
+                style={{ height: `${totalMessagesHeight}px` }}
             >
                 {virtualRows.map((virtualRow) => {
-                    const message = messages[virtualRow.index];
-                    const isStreamingMessage = (
-                        isStreaming &&
-                        virtualRow.index === messages.length - 1 &&
-                        message?.role === 'assistant'
-                    );
+                    const message = virtualizedMessages[virtualRow.index];
 
                     return (
                         <div
@@ -124,7 +136,7 @@ export default function MessageVirtualList({
                                     marks={marks}
                                     capturedNotes={capturedNotes}
                                     parseModelOutput={parseModelOutput}
-                                    isStreaming={isStreamingMessage}
+                                    isStreaming={false}
                                     handleRetry={handleRetry}
                                     onShare={onShare}
                                     onToggleFavorite={onToggleFavorite}
@@ -136,41 +148,52 @@ export default function MessageVirtualList({
                         </div>
                     );
                 })}
-
-                {isStreaming && (
-                    <div
-                        className="absolute left-0 flex justify-start pt-2"
-                        style={{ top: `${totalMessagesHeight}px` }}
-                    >
-                        <div className="flex gap-2 items-center text-brand-500/40 dark:text-brand-400/30">
-                            <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0s]" />
-                            <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.2s]" />
-                            <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.4s]" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] ml-2">Streaming Intelligence</span>
-                        </div>
-                    </div>
-                )}
-
-                {pendingCount > 0 && (
-                    <div
-                        className="absolute left-0"
-                        style={{
-                            top: `${totalMessagesHeight + (isStreaming ? STREAMING_INDICATOR_HEIGHT : 0)}px`
-                        }}
-                    >
-                        <PendingQueueIndicator pendingMessages={pendingMessages} />
-                    </div>
-                )}
-
-                <div
-                    ref={messagesEndRef}
-                    className="absolute left-0 w-full"
-                    style={{
-                        top: `${totalHeight - BOTTOM_SENTINEL_HEIGHT}px`,
-                        height: `${BOTTOM_SENTINEL_HEIGHT}px`
-                    }}
-                />
             </div>
+
+            {detachedStreamingMessage && (
+                <div className="pb-[64px]">
+                    <ErrorBoundary level="card">
+                        <MessageItem
+                            cardId={cardId}
+                            message={detachedStreamingMessage}
+                            index={messages.length - 1}
+                            marks={marks}
+                            capturedNotes={capturedNotes}
+                            parseModelOutput={parseModelOutput}
+                            isStreaming
+                            handleRetry={handleRetry}
+                            onShare={onShare}
+                            onToggleFavorite={onToggleFavorite}
+                            isFavorite={favoritesService.isFavorite(cardId, messages.length - 1)}
+                            onContinueTopic={onContinueTopic}
+                            onBranch={onBranch}
+                        />
+                    </ErrorBoundary>
+                </div>
+            )}
+
+            {showStreamingIndicator && (
+                <div className="flex justify-start pt-2">
+                    <div className="flex gap-2 items-center text-brand-500/40 dark:text-brand-400/30">
+                        <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0s]" />
+                        <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.2s]" />
+                        <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.4s]" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] ml-2">Streaming Intelligence</span>
+                    </div>
+                </div>
+            )}
+
+            {pendingCount > 0 && (
+                <div className={showStreamingIndicator ? 'pt-2' : ''}>
+                    <PendingQueueIndicator pendingMessages={pendingMessages} />
+                </div>
+            )}
+
+            <div
+                ref={messagesEndRef}
+                className="w-full"
+                style={{ height: `${BOTTOM_SENTINEL_HEIGHT}px` }}
+            />
         </div>
     );
 }
