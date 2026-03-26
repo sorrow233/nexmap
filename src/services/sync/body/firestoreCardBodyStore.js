@@ -112,13 +112,17 @@ const fromFirestoreBodyDoc = (cardId, data = {}) => {
         compressedBody: data?.compressedBody
     });
 
-    if (data?.bodyEncoding && !compressedPayload) {
-        console.error(`[FirestoreCardBodyStore] Failed to decompress card body ${cardId}`);
-        return null;
-    }
-
     const fallbackPayload = extractCardBodyPayload(data);
     const payload = compressedPayload || (hasCardBodyPayload(fallbackPayload) ? fallbackPayload : null);
+
+    if (data?.bodyEncoding && !compressedPayload) {
+        if (payload) {
+            console.warn(`[FirestoreCardBodyStore] Failed to decompress card body ${cardId}, falling back to legacy plain fields`);
+        } else {
+            console.error(`[FirestoreCardBodyStore] Failed to decompress card body ${cardId}`);
+            return null;
+        }
+    }
 
     return normalizeCardBodySyncEntry({
         cardId,
