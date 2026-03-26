@@ -12,6 +12,12 @@ import {
     createCardBodyRef
 } from './firestoreCardBodyPaths';
 import { normalizeCardBodySyncEntry } from './cardBodySyncProtocol';
+import {
+    compressCardBodyPayload,
+    extractCardBodyPayload,
+    hasCardBodyPayload,
+    decompressCardBodyPayload
+} from './cardBodyCompression';
 
 const WRITE_BATCH_MAX_DOCS = 6;
 const WRITE_BATCH_MAX_BYTES = 4 * 1024 * 1024;
@@ -65,6 +71,8 @@ const toFirestoreBodyDoc = (entry = {}, deviceId = '') => {
 
     if (normalizedEntry.bodyCleared === true) {
         nextDoc.bodyCleared = true;
+        nextDoc.bodyEncoding = deleteField();
+        nextDoc.compressedBody = deleteField();
         nextDoc.messages = deleteField();
         nextDoc.content = deleteField();
         nextDoc.image = deleteField();
@@ -72,34 +80,55 @@ const toFirestoreBodyDoc = (entry = {}, deviceId = '') => {
         return nextDoc;
     }
 
-    if (Object.prototype.hasOwnProperty.call(normalizedEntry, 'messages')) {
-        nextDoc.messages = normalizedEntry.messages;
+    const compressedPayload = compressCardBodyPayload(normalizedEntry);
+    if (!compressedPayload) {
+        return null;
     }
-    if (Object.prototype.hasOwnProperty.call(normalizedEntry, 'content')) {
-        nextDoc.content = normalizedEntry.content;
-    }
-    if (Object.prototype.hasOwnProperty.call(normalizedEntry, 'image')) {
-        nextDoc.image = normalizedEntry.image;
-    }
-    if (Object.prototype.hasOwnProperty.call(normalizedEntry, 'text')) {
-        nextDoc.text = normalizedEntry.text;
-    }
+
+    nextDoc.bodyEncoding = compressedPayload.bodyEncoding;
+    nextDoc.compressedBody = compressedPayload.compressedBody;
+    nextDoc.messages = deleteField();
+    nextDoc.content = deleteField();
+    nextDoc.image = deleteField();
+    nextDoc.text = deleteField();
 
     return nextDoc;
 };
 
-const fromFirestoreBodyDoc = (cardId, data = {}) => normalizeCardBodySyncEntry({
-    cardId,
-    ...(Object.prototype.hasOwnProperty.call(data || {}, 'messages') ? { messages: data.messages } : {}),
-    ...(Object.prototype.hasOwnProperty.call(data || {}, 'content') ? { content: data.content } : {}),
-    ...(Object.prototype.hasOwnProperty.call(data || {}, 'image') ? { image: data.image } : {}),
-    ...(Object.prototype.hasOwnProperty.call(data || {}, 'text') ? { text: data.text } : {}),
-    ...(data?.bodyCleared === true ? { bodyCleared: true } : {}),
-    bodyUpdatedAt: data?.bodyUpdatedAt,
-    bodyRevision: data?.bodyRevision,
-    bodyHash: data?.bodyHash,
-    lastDeviceId: data?.lastDeviceId
-});
+const fromFirestoreBodyDoc = (cardId, data = {}) => {
+    if (data?.bodyCleared === true) {
+        return normalizeCardBodySyncEntry({
+            cardId,
+            bodyCleared: true,
+            bodyUpdatedAt: data?.bodyUpdatedAt,
+            bodyRevision: data?.bodyRevision,
+            bodyHash: data?.bodyHash,
+            lastDeviceId: data?.lastDeviceId
+        });
+    }
+
+    const compressedPayload = decompressCardBodyPayload({
+        bodyEncoding: data?.bodyEncoding,
+        compressedBody: data?.compressedBody
+    });
+
+    if (data?.bodyEncoding && !compressedPayload) {
+        console.error(`[FirestoreCardBodyStore] Failed to decompress card body ${cardId}`);
+        return null;
+    }
+
+    const fallbackPayload = extractCardBodyPayload(data);
+    const payload = compressedPayload || (hasCardBodyPayload(fallbackPayload) ? fallbackPayload : null);
+
+    return normalizeCardBodySyncEntry({
+        cardId,
+        ...(payload || {}),
+        bodyUpdatedAt: data?.bodyUpdatedAt,
+        bodyRevision: data?.bodyRevision,
+        bodyHash: data?.bodyHash,
+        lastDeviceId: data?.lastDeviceId
+    });
+};
 
 export const saveCardBodyEntries = async ({
     userId,
@@ -126,10 +155,14 @@ export const saveCardBodyEntries = async ({
         while (offset < normalizedEntries.length) {
             const entry = normalizedEntries[offset];
             const nextDoc = toFirestoreBodyDoc(entry, deviceId);
+            if (!nextDoc) {
+                offset += 1;
+                continue;
+            }
             const nextBytes = estimateEntryBytes(nextDoc);
 
             if (nextBytes > MAX_CARD_BODY_DOC_BYTES) {
-                throw new Error(`Card body ${entry.cardId} exceeds Firestore safe document size`);
+                throw new Error(`Card body ${entry.cardId} exceeds Firestore safe document size after compression`);
             }
 
             if (
@@ -149,6 +182,10 @@ export const saveCardBodyEntries = async ({
             docCount += 1;
             byteLength += nextBytes;
             offset += 1;
+        }
+
+        if (docCount === 0) {
+            continue;
         }
 
         await commitWithRetry(() => batch.commit());

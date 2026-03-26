@@ -2,6 +2,7 @@ import {
     cloneSerializable,
     normalizeBoardSnapshot
 } from '../boardSnapshot';
+import { extractCardBodyPayload, hasCardBodyPayload } from './cardBodyCompression';
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 export const BODY_CLEAR_MARKER = '__bodyCleared';
@@ -15,47 +16,19 @@ const hashString = (input = '') => {
     return (hash >>> 0).toString(36);
 };
 
-const pickCardBodyData = (card = {}) => {
-    const nextData = {};
-    const cardData = card?.data && typeof card.data === 'object' ? card.data : {};
-
-    if (hasOwn(cardData, 'messages')) {
-        nextData.messages = cloneSerializable(cardData.messages);
-    }
-    if (hasOwn(cardData, 'content')) {
-        nextData.content = cloneSerializable(cardData.content);
-    }
-    if (hasOwn(cardData, 'image')) {
-        nextData.image = cloneSerializable(cardData.image);
-    }
-    if (hasOwn(cardData, 'text')) {
-        nextData.text = cloneSerializable(cardData.text);
-    }
-
-    return nextData;
-};
+const pickCardBodyData = (card = {}) => extractCardBodyPayload(card);
 
 export const buildCardBodySyncHash = (cardOrEntry = {}) => {
-    const payload = {
+    const payload = extractCardBodyPayload(cardOrEntry);
+    const hashPayload = {
         bodyCleared: Boolean(
             cardOrEntry?.bodyCleared
             || cardOrEntry?.data?.[BODY_CLEAR_MARKER]
         ),
-        messages: hasOwn(cardOrEntry, 'messages')
-            ? cardOrEntry.messages
-            : cardOrEntry?.data?.messages,
-        content: hasOwn(cardOrEntry, 'content')
-            ? cardOrEntry.content
-            : cardOrEntry?.data?.content,
-        image: hasOwn(cardOrEntry, 'image')
-            ? cardOrEntry.image
-            : cardOrEntry?.data?.image,
-        text: hasOwn(cardOrEntry, 'text')
-            ? cardOrEntry.text
-            : cardOrEntry?.data?.text
+        ...payload
     };
 
-    return hashString(JSON.stringify(payload));
+    return hashString(JSON.stringify(hashPayload));
 };
 
 export const normalizeCardBodySyncEntry = (entry = {}) => {
@@ -112,7 +85,7 @@ export const buildCardBodySyncEntry = (card = {}, metadata = {}) => {
     if (card?.data?.[BODY_CLEAR_MARKER] === true) {
         return buildCardBodyClearEntry(cardId, metadata);
     }
-    if (!hasOwn(bodyData, 'messages') && !hasOwn(bodyData, 'content') && !hasOwn(bodyData, 'image') && !hasOwn(bodyData, 'text')) {
+    if (!hasCardBodyPayload(bodyData)) {
         return null;
     }
 
