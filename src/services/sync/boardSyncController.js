@@ -275,9 +275,12 @@ export class BoardSyncController {
         }, FIREBASE_SYNC_ORIGINS.forceOverride);
 
         this.lastVersionKey = buildPersistenceVersionKey(readBoardSnapshotFromDoc(this.doc));
-        const checkpoint = await this.fireSync.saveSnapshot('manual_force_override');
+        const synced = await this.fireSync.syncSnapshotToRemote(normalized, {
+            reason: 'manual_force_override',
+            includeCheckpoint: true
+        });
         this.emitCurrentSnapshot();
-        return Boolean(checkpoint);
+        return Boolean(synced);
     }
 
     async stop() {
