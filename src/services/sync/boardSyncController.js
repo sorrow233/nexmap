@@ -110,6 +110,9 @@ export class BoardSyncController {
                 origin === FIREBASE_SYNC_ORIGINS.storeFull
                 || origin === FIREBASE_SYNC_ORIGINS.storeSkeleton
                 || origin === FIREBASE_SYNC_ORIGINS.storeBody
+                || origin === FIREBASE_SYNC_ORIGINS.firestore
+                || origin === FIREBASE_SYNC_ORIGINS.indexeddb
+                || origin === FIREBASE_SYNC_ORIGINS.forceOverride
             ) {
                 return;
             }
@@ -168,7 +171,8 @@ export class BoardSyncController {
             ? normalizeBoardSnapshot(meta.mergedSnapshot)
             : readBoardSnapshotFromDoc(this.doc);
         const versionKey = buildPersistenceVersionKey(snapshot);
-        if (versionKey === this.lastVersionKey) return;
+        const bypassVersionDedup = Boolean(meta && (meta.partialSnapshot || meta.reason || meta.lane));
+        if (!bypassVersionDedup && versionKey === this.lastVersionKey) return;
         this.lastVersionKey = versionKey;
         this.onSnapshot?.(snapshot, meta);
     }

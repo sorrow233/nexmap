@@ -36,7 +36,7 @@ import {
 } from './protocol/syncLane';
 import {
     buildBodySyncSnapshotFromEntries,
-    buildCardBodySyncEntries,
+    buildCompleteCardBodySyncEntries,
     mergeCardBodyEntriesIntoSnapshot,
     normalizeCardBodySyncEntry
 } from './body/cardBodySyncProtocol';
@@ -392,7 +392,7 @@ export class FirestoreBoardSync {
 
         const bodyJobs = Array.isArray(options.bodyJobs) && options.bodyJobs.length > 0
             ? normalizeCardBodySyncJobs(options.bodyJobs)
-            : buildCardBodySyncEntries(normalizedSnapshot.cards, {
+            : buildCompleteCardBodySyncEntries(normalizedSnapshot.cards, {
                 clientRevision: normalizedSnapshot.clientRevision,
                 updatedAt: normalizedSnapshot.updatedAt
             });
@@ -968,7 +968,7 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
             userId,
             boardId,
             deviceId,
-            entries: buildCardBodySyncEntries(normalizedSnapshot.cards, {
+            entries: buildCompleteCardBodySyncEntries(normalizedSnapshot.cards, {
                 clientRevision: normalizedSnapshot.clientRevision,
                 updatedAt: normalizedSnapshot.updatedAt
             })

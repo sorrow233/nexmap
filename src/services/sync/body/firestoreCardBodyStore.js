@@ -1,4 +1,5 @@
 import {
+    deleteField,
     getDocs,
     onSnapshot,
     serverTimestamp,
@@ -57,9 +58,19 @@ const toFirestoreBodyDoc = (entry = {}, deviceId = '') => {
         bodyUpdatedAt: normalizedEntry.bodyUpdatedAt,
         bodyRevision: normalizedEntry.bodyRevision,
         bodyHash: normalizedEntry.bodyHash,
+        bodyCleared: false,
         lastDeviceId: deviceId,
         serverUpdatedAt: serverTimestamp()
     };
+
+    if (normalizedEntry.bodyCleared === true) {
+        nextDoc.bodyCleared = true;
+        nextDoc.messages = deleteField();
+        nextDoc.content = deleteField();
+        nextDoc.image = deleteField();
+        nextDoc.text = deleteField();
+        return nextDoc;
+    }
 
     if (Object.prototype.hasOwnProperty.call(normalizedEntry, 'messages')) {
         nextDoc.messages = normalizedEntry.messages;
@@ -83,6 +94,7 @@ const fromFirestoreBodyDoc = (cardId, data = {}) => normalizeCardBodySyncEntry({
     ...(Object.prototype.hasOwnProperty.call(data || {}, 'content') ? { content: data.content } : {}),
     ...(Object.prototype.hasOwnProperty.call(data || {}, 'image') ? { image: data.image } : {}),
     ...(Object.prototype.hasOwnProperty.call(data || {}, 'text') ? { text: data.text } : {}),
+    ...(data?.bodyCleared === true ? { bodyCleared: true } : {}),
     bodyUpdatedAt: data?.bodyUpdatedAt,
     bodyRevision: data?.bodyRevision,
     bodyHash: data?.bodyHash,

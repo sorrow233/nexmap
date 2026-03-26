@@ -4,6 +4,7 @@ import {
 } from '../boardSnapshot';
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
+export const BODY_CLEAR_MARKER = '__bodyCleared';
 
 const hashString = (input = '') => {
     let hash = 2166136261;
@@ -36,6 +37,10 @@ const pickCardBodyData = (card = {}) => {
 
 export const buildCardBodySyncHash = (cardOrEntry = {}) => {
     const payload = {
+        bodyCleared: Boolean(
+            cardOrEntry?.bodyCleared
+            || cardOrEntry?.data?.[BODY_CLEAR_MARKER]
+        ),
         messages: hasOwn(cardOrEntry, 'messages')
             ? cardOrEntry.messages
             : cardOrEntry?.data?.messages,
@@ -60,6 +65,10 @@ export const normalizeCardBodySyncEntry = (entry = {}) => {
         bodyRevision: Number(entry.bodyRevision) || 0
     };
 
+    if (entry?.bodyCleared === true || entry?.data?.[BODY_CLEAR_MARKER] === true) {
+        normalizedEntry.bodyCleared = true;
+    }
+
     if (hasOwn(entry, 'messages')) {
         normalizedEntry.messages = cloneSerializable(entry.messages);
     }
@@ -80,6 +89,19 @@ export const normalizeCardBodySyncEntry = (entry = {}) => {
     return normalizedEntry.cardId ? normalizedEntry : null;
 };
 
+export const buildCardBodyClearEntry = (cardId = '', metadata = {}) => {
+    if (typeof cardId !== 'string' || !cardId) {
+        return null;
+    }
+
+    return normalizeCardBodySyncEntry({
+        cardId,
+        bodyCleared: true,
+        bodyUpdatedAt: Number(metadata.bodyUpdatedAt ?? metadata.updatedAt) || 0,
+        bodyRevision: Number(metadata.bodyRevision ?? metadata.clientRevision) || 0
+    });
+};
+
 export const buildCardBodySyncEntry = (card = {}, metadata = {}) => {
     const cardId = typeof card?.id === 'string' ? card.id : '';
     if (!cardId) {
@@ -87,6 +109,9 @@ export const buildCardBodySyncEntry = (card = {}, metadata = {}) => {
     }
 
     const bodyData = pickCardBodyData(card);
+    if (card?.data?.[BODY_CLEAR_MARKER] === true) {
+        return buildCardBodyClearEntry(cardId, metadata);
+    }
     if (!hasOwn(bodyData, 'messages') && !hasOwn(bodyData, 'content') && !hasOwn(bodyData, 'image') && !hasOwn(bodyData, 'text')) {
         return null;
     }
@@ -102,6 +127,20 @@ export const buildCardBodySyncEntry = (card = {}, metadata = {}) => {
 export const buildCardBodySyncEntries = (cards = [], metadata = {}) => (
     Array.isArray(cards)
         ? cards.map((card) => buildCardBodySyncEntry(card, metadata)).filter(Boolean)
+        : []
+);
+
+export const buildCompleteCardBodySyncEntries = (cards = [], metadata = {}) => (
+    Array.isArray(cards)
+        ? cards.map((card) => {
+            const cardId = typeof card?.id === 'string' ? card.id : '';
+            if (!cardId) {
+                return null;
+            }
+
+            return buildCardBodySyncEntry(card, metadata)
+                || buildCardBodyClearEntry(cardId, metadata);
+        }).filter(Boolean)
         : []
 );
 
@@ -121,10 +160,25 @@ export const buildChangedCardBodySyncJobs = ({
     const nextHashes = new Map();
     const jobs = [];
 
-    buildCardBodySyncEntries(cards, {
-        clientRevision,
-        updatedAt
-    }).forEach((entry) => {
+    (Array.isArray(cards) ? cards : []).forEach((card) => {
+        const cardId = typeof card?.id === 'string' ? card.id : '';
+        if (!cardId) {
+            return;
+        }
+
+        const entry = buildCardBodySyncEntry(card, {
+            clientRevision,
+            updatedAt
+        }) || (
+            previousHashes.has(cardId)
+                ? buildCardBodyClearEntry(cardId, { clientRevision, updatedAt })
+                : null
+        );
+
+        if (!entry) {
+            return;
+        }
+
         nextHashes.set(entry.cardId, entry.bodyHash);
         if (previousHashes.get(entry.cardId) !== entry.bodyHash) {
             jobs.push(entry);
@@ -143,6 +197,9 @@ export const buildBodySyncSnapshotFromEntries = (entries = [], metadata = {}) =>
         .filter(Boolean)
         .map((entry) => {
             const nextCard = { id: entry.cardId, data: {} };
+            if (entry.bodyCleared) {
+                nextCard.data[BODY_CLEAR_MARKER] = true;
+            }
             if (hasOwn(entry, 'messages')) {
                 nextCard.data.messages = cloneSerializable(entry.messages);
             }
@@ -180,6 +237,14 @@ export const mergeCardBodyEntryIntoCard = (currentCard, entry = {}) => {
     const nextData = {
         ...(currentCard.data || {})
     };
+
+    if (normalizedEntry.bodyCleared) {
+        delete nextData.messages;
+        delete nextData.content;
+        delete nextData.image;
+        delete nextData.text;
+        delete nextData[BODY_CLEAR_MARKER];
+    }
 
     if (hasOwn(normalizedEntry, 'messages')) {
         nextData.messages = cloneSerializable(normalizedEntry.messages);

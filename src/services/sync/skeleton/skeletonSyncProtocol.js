@@ -8,6 +8,7 @@ const BODY_DATA_FIELDS = new Set([
     'content',
     'image',
     'text',
+    '__bodyCleared',
     'runtimeBodyState'
 ]);
 
