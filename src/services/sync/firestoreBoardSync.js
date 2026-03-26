@@ -36,6 +36,7 @@ import {
 } from './protocol/syncLane';
 import {
     buildBodySyncSnapshotFromEntries,
+    buildCardBodySyncEntries,
     buildCompleteCardBodySyncEntries,
     mergeCardBodyEntriesIntoSnapshot,
     normalizeCardBodySyncEntry
@@ -97,6 +98,26 @@ const buildRootCheckpointKey = (rootData = {}) => {
 const buildSkeletonVersionKey = (snapshot = {}) => (
     buildPersistenceVersionKey(buildSkeletonSyncSnapshot(snapshot))
 );
+
+const buildMissingRemoteBodyEntries = (localSnapshot = {}, remoteEntries = []) => {
+    const normalizedLocalSnapshot = normalizeBoardSnapshot(localSnapshot);
+    const localEntries = buildCardBodySyncEntries(normalizedLocalSnapshot.cards, {
+        clientRevision: normalizedLocalSnapshot.clientRevision,
+        updatedAt: normalizedLocalSnapshot.updatedAt
+    });
+
+    if (localEntries.length === 0) {
+        return [];
+    }
+
+    const remoteCardIds = new Set(
+        (Array.isArray(remoteEntries) ? remoteEntries : [])
+            .map((entry) => normalizeCardBodySyncEntry(entry)?.cardId)
+            .filter(Boolean)
+    );
+
+    return localEntries.filter((entry) => !remoteCardIds.has(entry.cardId));
+};
 
 export class FirestoreBoardSync {
     constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
@@ -422,7 +443,6 @@ export class FirestoreBoardSync {
     }
 
     async connect(options = {}) {
-        void options;
         if (!db) {
             this.emitState('disabled');
             return { remoteIsEmpty: true };
@@ -446,6 +466,20 @@ export class FirestoreBoardSync {
         const loadResult = shouldRecoverFromCheckpoint
             ? await this.loadRemoteCheckpoint(rootData, { recoveryOnly: true })
             : null;
+
+        if (!shouldRecoverFromCheckpoint) {
+            const missingRemoteBodyEntries = buildMissingRemoteBodyEntries(
+                options.localSnapshot,
+                bodyEntries
+            );
+
+            if (missingRemoteBodyEntries.length > 0) {
+                await this.saveQueuedCardBodyJobs(
+                    missingRemoteBodyEntries,
+                    'connect_missing_remote_bodies_backfill'
+                );
+            }
+        }
 
         this.subscribeToRootCheckpoint();
         this.subscribeToCardBodies();
