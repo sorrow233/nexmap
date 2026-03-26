@@ -280,6 +280,7 @@ export const saveBoardCheckpoint = async ({
             ...buildAuthoritativeRootPayload({
                 id: boardId,
                 ...snapshotMetadata,
+                checkpointRole: 'recovery',
                 checkpointStorage: CHECKPOINT_STORAGE_INLINE,
                 checkpointBase64: updateBase64,
                 checkpointSetId: '',
@@ -321,6 +322,7 @@ export const saveBoardCheckpoint = async ({
         ...buildAuthoritativeRootPayload({
             id: boardId,
             ...snapshotMetadata,
+            checkpointRole: 'recovery',
             checkpointStorage: CHECKPOINT_STORAGE_CHUNKED,
             checkpointBase64: '',
             checkpointSetId: checkpointId,

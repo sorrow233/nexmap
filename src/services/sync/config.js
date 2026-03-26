@@ -7,6 +7,7 @@ export const FIREBASE_SYNC_SAFE_MODE_UPLOAD_DEBOUNCE_MS = Number(
 export const FIREBASE_SYNC_COLLECTIONS = {
     users: import.meta.env.VITE_FIREBASE_SYNC_USERS_COLLECTION || 'users',
     boards: import.meta.env.VITE_FIREBASE_SYNC_BOARDS_COLLECTION || 'boards',
+    cardBodies: import.meta.env.VITE_FIREBASE_SYNC_CARD_BODIES_COLLECTION || 'cardBodies',
     thumbnails: import.meta.env.VITE_FIREBASE_SYNC_THUMBNAILS_COLLECTION || 'board_thumbnails',
     updates: import.meta.env.VITE_FIREBASE_SYNC_UPDATES_COLLECTION || 'updates',
     snapshots: import.meta.env.VITE_FIREBASE_SYNC_SNAPSHOTS_COLLECTION || 'snapshots'

@@ -5,6 +5,10 @@ export const SYNC_LANES = Object.freeze({
     FULL: 'full'
 });
 
+export const SYNC_JOB_KINDS = Object.freeze({
+    BODY_CARD: 'body_card'
+});
+
 const VALID_SYNC_LANES = new Set(Object.values(SYNC_LANES));
 
 export const normalizeSyncLane = (value) => (
@@ -40,3 +44,11 @@ export const resolveSafeModeDebounceByLane = (lane, fallbackMs) => {
         return fallbackMs;
     }
 };
+
+export const normalizeCardBodySyncJobs = (jobs = []) => (
+    Array.isArray(jobs)
+        ? jobs.filter((job) => job && typeof job === 'object' && typeof job.cardId === 'string')
+        : []
+);
+
+export const hasCardBodySyncJobs = (jobs = []) => normalizeCardBodySyncJobs(jobs).length > 0;

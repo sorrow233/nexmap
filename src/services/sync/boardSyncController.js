@@ -145,9 +145,15 @@ export class BoardSyncController {
             expectedCardCount
         });
         if (remoteIsEmpty && !isMeaningfullyEmptyBoardSnapshot(normalizedLocal)) {
-            await this.fireSync.saveSnapshot('initial_local_seed');
+            await this.fireSync.syncSnapshotToRemote(normalizedLocal, {
+                reason: 'initial_local_seed',
+                includeCheckpoint: true
+            });
         } else if (skippedRemoteApplyReason) {
-            await this.fireSync.saveSnapshot(skippedRemoteApplyReason);
+            await this.fireSync.syncSnapshotToRemote(repairCandidateSnapshot, {
+                reason: skippedRemoteApplyReason,
+                includeCheckpoint: true
+            });
         }
 
         this.started = true;
@@ -198,8 +204,11 @@ export class BoardSyncController {
         this.applyLocalSnapshot(nextSnapshot, { lane: SYNC_LANES.SKELETON });
     }
 
-    applyLocalBodySnapshot(nextSnapshot = {}) {
-        this.applyLocalSnapshot(nextSnapshot, { lane: SYNC_LANES.BODY });
+    applyLocalBodySnapshot(nextSnapshot = {}, options = {}) {
+        this.applyLocalSnapshot(nextSnapshot, {
+            lane: SYNC_LANES.BODY,
+            ...options
+        });
     }
 
     applyLocalSnapshot(nextSnapshot = {}, options = {}) {
@@ -237,6 +246,10 @@ export class BoardSyncController {
             reason: resolution.reason,
             cursor: buildBoardCursorTrace(normalized)
         });
+
+        if (lane === SYNC_LANES.BODY && Array.isArray(options.bodyJobs) && options.bodyJobs.length > 0) {
+            this.fireSync?.queueCardBodyJobs?.(options.bodyJobs);
+        }
 
         this.doc.transact(() => {
             syncBoardSnapshotToDoc(this.doc, normalized);

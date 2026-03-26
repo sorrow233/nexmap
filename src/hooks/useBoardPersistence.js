@@ -30,6 +30,10 @@ import {
 } from '../services/sync/protocol/syncLane';
 import { isSkeletonSyncChangeType } from '../services/sync/skeleton/skeletonSync';
 import { isBodySyncChangeType } from '../services/sync/body/bodySync';
+import {
+    buildCardBodyHashMap,
+    buildChangedCardBodySyncJobs
+} from '../services/sync/body/cardBodySyncProtocol';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -181,6 +185,7 @@ export function useBoardPersistence({
     const streamingPersistenceTokenRef = useRef(toSafeRevision(streamingPersistenceToken));
     const shadowSavedStreamingTokenRef = useRef(0);
     const localSavedStreamingTokenRef = useRef(0);
+    const lastCardBodyHashesRef = useRef(new Map());
 
     useLayoutEffect(() => {
         latestBoardDataRef.current = {
@@ -317,6 +322,14 @@ export function useBoardPersistence({
         const now = Date.now();
         const persistableData = buildPersistableBoardData(data);
         const syncLane = normalizeSyncLane(options.syncLane ?? queuedLocalSyncLaneRef.current);
+        const payload = buildBoardPayload(persistableData, {
+            clientRevision: revision,
+            updatedAt: now
+        });
+        const {
+            jobs: bodyJobs,
+            nextHashes
+        } = buildChangedCardBodySyncJobs(payload, lastCardBodyHashesRef.current);
 
         applySaveStatus(setSaveStatus, 'saving');
         updateActivePersistenceCursor({
@@ -325,11 +338,6 @@ export function useBoardPersistence({
         });
 
         try {
-            const payload = buildBoardPayload(persistableData, {
-                clientRevision: revision,
-                updatedAt: now
-            });
-
             await enqueueDurableWrite(() => saveBoard(boardId, payload));
 
             if (typeof setLastSavedAt === 'function') {
@@ -363,9 +371,12 @@ export function useBoardPersistence({
                 savedAt: now,
                 source: options.reason || 'local_persist',
                 syncLane,
+                bodyJobs,
                 snapshot: payload,
                 metadata: pickBoardSyncMetadata(payload)
             });
+
+            lastCardBodyHashesRef.current = nextHashes;
 
             if (revision >= trackerRef.current.revision) {
                 queuedLocalSyncLaneRef.current = SYNC_LANES.NONE;
@@ -566,6 +577,7 @@ export function useBoardPersistence({
         const tracker = trackerRef.current;
         if (tracker.boardId !== boardId) {
             trackerRef.current = createSaveTracker(boardId);
+            lastCardBodyHashesRef.current = new Map();
             return;
         }
 
@@ -601,6 +613,7 @@ export function useBoardPersistence({
                 ...latestBoardDataRef.current,
                 clientRevision: loadedCursor.clientRevision
             };
+            lastCardBodyHashesRef.current = buildCardBodyHashMap(currentPayload.cards);
             lastHandledExternalSyncTokenRef.current = externalSyncToken;
             void persistExternalSyncSnapshot(currentPayload);
             return;
@@ -611,6 +624,7 @@ export function useBoardPersistence({
             tracker.localSavedRevision = loadedCursor.clientRevision;
             tracker.shadowSavedRevision = loadedCursor.clientRevision;
             tracker.isPrimed = true;
+            lastCardBodyHashesRef.current = buildCardBodyHashMap(currentPayload.cards);
             queuedLocalSyncLaneRef.current = SYNC_LANES.NONE;
             applySaveStatus(setSaveStatus, 'saved');
             updateActivePersistenceCursor({

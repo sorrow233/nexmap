@@ -1,4 +1,5 @@
 import { normalizeBoardSnapshot } from '../boardSnapshot';
+import { buildSkeletonSyncPayload, pickSkeletonCardFields } from './skeletonSyncProtocol';
 
 const SKELETON_CHANGE_TYPES = new Set([
     'card_move',
@@ -19,18 +20,6 @@ const SKELETON_SYNC_DELAY_MS = Object.freeze({
     group_change: 420,
     card_content: 500
 });
-
-const stripCardBodyFields = (card = {}) => {
-    if (!card || typeof card !== 'object') return card;
-
-    const nextCard = { ...card };
-    if (nextCard.data && typeof nextCard.data === 'object') {
-        const { messages, content, ...nextData } = nextCard.data;
-        nextCard.data = nextData;
-    }
-
-    return nextCard;
-};
 
 const mergeSkeletonCard = (currentCard, incomingCard) => {
     if (!currentCard) {
@@ -59,12 +48,16 @@ export const buildSkeletonSyncSnapshot = ({
     cards = [],
     connections = [],
     groups = [],
+    boardPrompts = [],
+    boardInstructionSettings,
     clientRevision = 0,
     updatedAt = 0
-} = {}) => normalizeBoardSnapshot({
-    cards: cards.map(stripCardBodyFields),
+} = {}) => buildSkeletonSyncPayload({
+    cards,
     connections,
     groups,
+    boardPrompts,
+    boardInstructionSettings,
     clientRevision,
     updatedAt
 });
@@ -101,6 +94,8 @@ export const mergeSkeletonSnapshot = (currentSnapshot = {}, incomingSnapshot = {
         cards,
         connections: incoming.connections,
         groups: incoming.groups,
+        boardPrompts: incoming.boardPrompts,
+        boardInstructionSettings: incoming.boardInstructionSettings,
         clientRevision: Math.max(
             Number(current.clientRevision) || 0,
             Number(incoming.clientRevision) || 0
@@ -111,3 +106,5 @@ export const mergeSkeletonSnapshot = (currentSnapshot = {}, incomingSnapshot = {
         )
     });
 };
+
+export { pickSkeletonCardFields };

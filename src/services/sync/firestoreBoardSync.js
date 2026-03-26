@@ -29,9 +29,28 @@ import { pickBoardSyncMetadata } from './boardSyncMetadata';
 import { buildBoardCursorTrace, logPersistenceTrace } from '../../utils/persistenceTrace';
 import { resolveCheckpointSnapshotForDoc } from './protocol/syncResolver';
 import {
+    hasCardBodySyncJobs,
+    normalizeCardBodySyncJobs,
     resolveSafeModeDebounceByLane,
     SYNC_LANES
 } from './protocol/syncLane';
+import {
+    buildCardBodySyncEntries,
+    mergeCardBodyEntriesIntoSnapshot,
+    normalizeCardBodySyncEntry
+} from './body/cardBodySyncProtocol';
+import {
+    loadCardBodyEntries,
+    saveCardBodyEntries,
+    subscribeToCardBodyEntries
+} from './body/firestoreCardBodyStore';
+import {
+    hasRemoteBoardSkeleton,
+    loadBoardSkeletonFromRoot,
+    saveBoardSkeleton
+} from './skeleton/firestoreSkeletonStore';
+import { buildPersistenceVersionKey } from '../boardPersistence/persistenceCursor';
+import { buildSkeletonSyncSnapshot, mergeSkeletonSnapshot } from './skeleton/skeletonSync';
 
 const CHECKPOINT_ONLY_MAX_PENDING_BYTES = 256 * 1024;
 const SNAPSHOT_CLEANUP_SAVE_INTERVAL = 8;
@@ -74,6 +93,10 @@ const buildRootCheckpointKey = (rootData = {}) => {
     return `inline:${savedAtMs}:${base64Length}`;
 };
 
+const buildSkeletonVersionKey = (snapshot = {}) => (
+    buildPersistenceVersionKey(buildSkeletonSyncSnapshot(snapshot))
+);
+
 export class FirestoreBoardSync {
     constructor({ boardId, userId, deviceId, doc: ydoc, onRemoteApplied, onSyncStateChange }) {
         this.boardId = boardId;
@@ -109,6 +132,12 @@ export class FirestoreBoardSync {
         };
         this.lastFlushCompletedAt = 0;
         this.pendingSyncLane = SYNC_LANES.NONE;
+        this.pendingBodyJobs = new Map();
+        this.bodyUnsubscribe = null;
+        this.latestSkeletonVersionKey = '';
+        this.latestBodyVersionKeys = new Map();
+        this.pendingRemoteBodyEntries = new Map();
+        this.checkpointRecoveryDirty = false;
 
         this.handleDocUpdate = this.handleDocUpdate.bind(this);
         this.doc.on('update', this.handleDocUpdate);
@@ -148,11 +177,14 @@ export class FirestoreBoardSync {
         }
 
         this.emitState('warning', {
-            message: `Detected conservative sync repair for ${this.boardId}, uploading protected checkpoint`
+            message: `Detected conservative sync repair for ${this.boardId}, uploading protected layered snapshot`
         });
 
         try {
-            return await this.saveSnapshot(reason);
+            return await this.syncSnapshotToRemote(readBoardSnapshotFromDoc(this.doc), {
+                reason,
+                includeCheckpoint: true
+            });
         } catch (error) {
             if (nextSourceKey && this.lastProtectedRepairSourceKey === nextSourceKey) {
                 this.lastProtectedRepairSourceKey = '';
@@ -161,9 +193,188 @@ export class FirestoreBoardSync {
         }
     }
 
+    queueCardBodyJobs(entries = []) {
+        normalizeCardBodySyncJobs(entries).forEach((entry) => {
+            const normalizedEntry = normalizeCardBodySyncEntry(entry);
+            if (!normalizedEntry) return;
+            this.pendingBodyJobs.set(normalizedEntry.cardId, normalizedEntry);
+        });
+    }
+
+    applyRemoteSkeletonSnapshot(rootData = {}) {
+        if (!hasRemoteBoardSkeleton(rootData)) {
+            return false;
+        }
+
+        const skeletonSnapshot = loadBoardSkeletonFromRoot(rootData);
+        const nextVersionKey = buildSkeletonVersionKey(skeletonSnapshot);
+        if (!nextVersionKey || nextVersionKey === this.latestSkeletonVersionKey) {
+            return false;
+        }
+
+        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const currentVersionKey = buildSkeletonVersionKey(currentSnapshot);
+        if (
+            currentVersionKey
+            && (Number(skeletonSnapshot.clientRevision) || 0) < (Number(currentSnapshot.clientRevision) || 0)
+        ) {
+            return false;
+        }
+
+        const mergedSnapshot = mergeSkeletonSnapshot(currentSnapshot, skeletonSnapshot);
+        this.doc.transact(() => {
+            syncBoardSnapshotToDoc(this.doc, mergedSnapshot);
+        }, FIREBASE_SYNC_ORIGINS.firestore);
+        this.latestSkeletonVersionKey = nextVersionKey;
+
+        if (this.pendingRemoteBodyEntries.size > 0) {
+            this.applyRemoteCardBodyEntries(Array.from(this.pendingRemoteBodyEntries.values()));
+        }
+
+        return true;
+    }
+
+    applyRemoteCardBodyEntries(entries = []) {
+        if (!Array.isArray(entries) || entries.length === 0) {
+            return false;
+        }
+
+        const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
+        const currentCardIds = new Set(
+            currentSnapshot.cards.map((card) => card?.id).filter(Boolean)
+        );
+
+        const normalizedEntries = entries
+            .map((entry) => normalizeCardBodySyncEntry(entry))
+            .filter(Boolean)
+            .filter((entry) => {
+                const nextVersionKey = `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`;
+                if (this.latestBodyVersionKeys.get(entry.cardId) === nextVersionKey) {
+                    return false;
+                }
+                return true;
+            });
+
+        if (normalizedEntries.length === 0) {
+            return false;
+        }
+
+        const applicableEntries = [];
+        normalizedEntries.forEach((entry) => {
+            if (!currentCardIds.has(entry.cardId)) {
+                this.pendingRemoteBodyEntries.set(entry.cardId, entry);
+                return;
+            }
+
+            this.pendingRemoteBodyEntries.delete(entry.cardId);
+            applicableEntries.push(entry);
+        });
+
+        if (applicableEntries.length === 0) {
+            return false;
+        }
+
+        const mergedSnapshot = mergeCardBodyEntriesIntoSnapshot(currentSnapshot, applicableEntries);
+        this.doc.transact(() => {
+            syncBoardSnapshotToDoc(this.doc, mergedSnapshot);
+        }, FIREBASE_SYNC_ORIGINS.firestore);
+
+        applicableEntries.forEach((entry) => {
+            this.latestBodyVersionKeys.set(
+                entry.cardId,
+                `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`
+            );
+        });
+
+        return true;
+    }
+
+    async saveSkeletonRootSnapshot(reason = 'skeleton_sync', sourceSnapshot = null) {
+        const liveSnapshot = sourceSnapshot
+            ? normalizeBoardSnapshot(sourceSnapshot)
+            : readBoardSnapshotFromDoc(this.doc);
+        const skeletonSnapshot = buildSkeletonSyncSnapshot(liveSnapshot);
+        const result = await saveBoardSkeleton({
+            userId: this.userId,
+            boardId: this.boardId,
+            deviceId: this.deviceId,
+            snapshot: skeletonSnapshot,
+            reason
+        });
+
+        if (result?.skeletonSnapshot) {
+            this.latestSkeletonVersionKey = buildSkeletonVersionKey(result.skeletonSnapshot);
+            logPersistenceTrace('sync:firestore-skeleton-saved', {
+                boardId: this.boardId,
+                reason,
+                safeMode: FIREBASE_SYNC_SAFE_MODE,
+                cursor: buildBoardCursorTrace(result.skeletonSnapshot)
+            });
+        }
+
+        return result;
+    }
+
+    async saveQueuedCardBodyJobs(entries = [], reason = 'body_sync') {
+        if (!hasCardBodySyncJobs(entries)) {
+            return [];
+        }
+
+        const committedCardIds = await saveCardBodyEntries({
+            userId: this.userId,
+            boardId: this.boardId,
+            deviceId: this.deviceId,
+            entries
+        });
+
+        committedCardIds.forEach((cardId) => {
+            const entry = entries.find((job) => job.cardId === cardId);
+            if (!entry) return;
+            this.latestBodyVersionKeys.set(
+                cardId,
+                `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`
+            );
+        });
+
+        logPersistenceTrace('sync:firestore-card-bodies-saved', {
+            boardId: this.boardId,
+            reason,
+            cardCount: committedCardIds.length,
+            safeMode: FIREBASE_SYNC_SAFE_MODE
+        });
+
+        return committedCardIds;
+    }
+
+    async syncSnapshotToRemote(snapshot = {}, options = {}) {
+        const normalizedSnapshot = normalizeBoardSnapshot(snapshot);
+        await this.saveSkeletonRootSnapshot(options.reason || 'manual_sync', normalizedSnapshot);
+
+        const bodyJobs = Array.isArray(options.bodyJobs) && options.bodyJobs.length > 0
+            ? normalizeCardBodySyncJobs(options.bodyJobs)
+            : buildCardBodySyncEntries(normalizedSnapshot.cards, {
+                clientRevision: normalizedSnapshot.clientRevision,
+                updatedAt: normalizedSnapshot.updatedAt
+            });
+
+        if (bodyJobs.length > 0) {
+            await this.saveQueuedCardBodyJobs(
+                bodyJobs,
+                options.reason || 'manual_sync'
+            );
+        }
+
+        if (options.includeCheckpoint !== false) {
+            await this.saveSnapshot(options.reason || 'manual_sync');
+        }
+
+        return true;
+    }
+
     hasQueuedLocalWrites() {
         return Boolean(
             this.pendingBytes > 0
+            || this.pendingBodyJobs.size > 0
             || this.pendingSyncLane !== SYNC_LANES.NONE
             || this.flushTimer
             || this.flushPromise
@@ -178,13 +389,22 @@ export class FirestoreBoardSync {
         }
 
         this.emitState('connecting');
-        const loadResult = await this.loadRemoteCheckpoint();
+        const rootRef = createBoardRootRef(this.userId, this.boardId);
+        let rootData = (await getDoc(rootRef)).data() || {};
+        this.latestRootSyncTouchedAtMs = toFirestoreMillis(rootData?.syncTouchedAtMs);
+        this.updateRemoteMetadataFromRoot(rootData);
+
+        this.applyRemoteSkeletonSnapshot(rootData);
+        const loadResult = await this.loadRemoteCheckpoint(rootData);
+        const bodyEntries = await this.loadRemoteCardBodies();
 
         this.subscribeToRootCheckpoint();
+        this.subscribeToCardBodies();
         this.connected = true;
+        this.remoteIsEmpty = !hasRemoteBoardSkeleton(rootData) && !hasRemoteCheckpoint(rootData) && bodyEntries.length === 0;
         this.emitState('connected', {
             remoteIsEmpty: this.remoteIsEmpty,
-            mode: FIREBASE_SYNC_SAFE_MODE ? 'safe_checkpoint_lane' : 'checkpoint_lane'
+            mode: FIREBASE_SYNC_SAFE_MODE ? 'safe_layered_sync' : 'layered_sync'
         });
         return {
             remoteIsEmpty: this.remoteIsEmpty,
@@ -199,6 +419,19 @@ export class FirestoreBoardSync {
             clientRevision: Number(rootData?.clientRevision) || 0,
             cardCount: Number(rootData?.cardCount) || 0
         };
+    }
+
+    async loadRemoteCardBodies() {
+        const entries = await loadCardBodyEntries({
+            userId: this.userId,
+            boardId: this.boardId
+        });
+
+        if (this.applyRemoteCardBodyEntries(entries)) {
+            this.onRemoteApplied?.();
+        }
+
+        return entries;
     }
 
     async applyLoadedCheckpoint(checkpoint, rootData) {
@@ -260,7 +493,7 @@ export class FirestoreBoardSync {
         }
 
         if (!hasRemoteCheckpoint(effectiveRootData)) {
-            this.remoteIsEmpty = true;
+            this.remoteIsEmpty = !hasRemoteBoardSkeleton(effectiveRootData);
             this.latestCheckpointServerSavedAt = null;
             this.updateRemoteMetadataFromRoot(effectiveRootData);
             return;
@@ -273,7 +506,7 @@ export class FirestoreBoardSync {
         });
 
         if (!checkpoint?.updateBase64) {
-            this.remoteIsEmpty = true;
+            this.remoteIsEmpty = !hasRemoteBoardSkeleton(effectiveRootData);
             return;
         }
 
@@ -306,12 +539,30 @@ export class FirestoreBoardSync {
         const rootRef = createBoardRootRef(this.userId, this.boardId);
         this.rootUnsubscribe = onSnapshot(rootRef, async (rootDoc) => {
             const data = rootDoc.data();
-            if (!data || !hasRemoteCheckpoint(data)) {
+            if (!data) {
                 return;
             }
 
             this.updateRemoteMetadataFromRoot(data);
             const remoteSyncTouchedAtMs = toFirestoreMillis(data.syncTouchedAtMs);
+            const appliedSkeleton = this.applyRemoteSkeletonSnapshot(data);
+
+            if (appliedSkeleton) {
+                this.remoteIsEmpty = false;
+                this.latestRootSyncTouchedAtMs = Math.max(
+                    this.latestRootSyncTouchedAtMs,
+                    remoteSyncTouchedAtMs
+                );
+                this.onRemoteApplied?.();
+            }
+
+            if (!hasRemoteCheckpoint(data)) {
+                this.latestRootSyncTouchedAtMs = Math.max(
+                    this.latestRootSyncTouchedAtMs,
+                    remoteSyncTouchedAtMs
+                );
+                return;
+            }
 
             const remoteSavedAtMs = toFirestoreMillis(data.checkpointSavedAtMs);
             const nextRootCheckpointKey = buildRootCheckpointKey(data);
@@ -374,6 +625,24 @@ export class FirestoreBoardSync {
         });
     }
 
+    subscribeToCardBodies() {
+        this.bodyUnsubscribe = subscribeToCardBodyEntries({
+            userId: this.userId,
+            boardId: this.boardId,
+            onEntries: (entries) => {
+                if (this.applyRemoteCardBodyEntries(entries)) {
+                    this.remoteIsEmpty = false;
+                    this.onRemoteApplied?.();
+                }
+            },
+            onError: (error) => {
+                this.emitState('warning', {
+                    message: error?.message || 'Card body listener failed'
+                });
+            }
+        });
+    }
+
     handleDocUpdate(update, origin) {
         if (
             origin === FIREBASE_SYNC_ORIGINS.firestore
@@ -385,6 +654,7 @@ export class FirestoreBoardSync {
 
         this.pendingBytes += update.byteLength || update.length || 0;
         this.hasUnsnapshottedChanges = true;
+        this.checkpointRecoveryDirty = true;
         this.localUpdateSequence += 1;
         const updateLane = origin === FIREBASE_SYNC_ORIGINS.storeSkeleton
             ? SYNC_LANES.SKELETON
@@ -409,7 +679,7 @@ export class FirestoreBoardSync {
             : 12000;
 
         if (this.pendingBytes >= maxPendingBytes) {
-            void this.flushPendingUpdates('size_limit');
+            void this.flushPendingUpdates('size_limit').catch(() => {});
             return;
         }
 
@@ -420,7 +690,7 @@ export class FirestoreBoardSync {
 
         this.flushTimer = setTimeout(() => {
             this.flushTimer = null;
-            void this.flushPendingUpdates('debounced');
+            void this.flushPendingUpdates('debounced').catch(() => {});
         }, debounceMs);
     }
 
@@ -441,6 +711,7 @@ export class FirestoreBoardSync {
         }
 
         this.pendingBytes = 0;
+        this.pendingBodyJobs.clear();
         this.pendingSyncLane = SYNC_LANES.NONE;
         this.flushQueuedReason = '';
         this.hasUnsnapshottedChanges = false;
@@ -463,7 +734,8 @@ export class FirestoreBoardSync {
             }
             this.flushQueuedReason = '';
 
-            if (!this.hasUnsnapshottedChanges) {
+            const currentBodyJobs = Array.from(this.pendingBodyJobs.values());
+            if (!this.hasUnsnapshottedChanges && currentBodyJobs.length === 0) {
                 this.pendingBytes = 0;
                 this.pendingSyncLane = SYNC_LANES.NONE;
                 return;
@@ -471,9 +743,32 @@ export class FirestoreBoardSync {
 
             const currentReason = nextReason || 'debounced';
             const currentSyncLane = this.pendingSyncLane;
+            const flushSequence = this.localUpdateSequence;
             this.pendingBytes = 0;
             this.pendingSyncLane = SYNC_LANES.NONE;
-            await this.saveSnapshot(`checkpoint_lane_flush:${currentSyncLane || SYNC_LANES.FULL}`);
+            this.pendingBodyJobs.clear();
+
+            try {
+                if (currentSyncLane === SYNC_LANES.SKELETON || currentSyncLane === SYNC_LANES.FULL) {
+                    await this.saveSkeletonRootSnapshot(`skeleton_lane_flush:${currentReason}`);
+                }
+
+                if (currentBodyJobs.length > 0) {
+                    await this.saveQueuedCardBodyJobs(currentBodyJobs, `body_lane_flush:${currentReason}`);
+                }
+
+                this.hasUnsnapshottedChanges = this.localUpdateSequence > flushSequence;
+            } catch (error) {
+                currentBodyJobs.forEach((entry) => {
+                    this.pendingBodyJobs.set(entry.cardId, entry);
+                });
+                this.pendingSyncLane = currentSyncLane;
+                this.hasUnsnapshottedChanges = true;
+                this.emitState('warning', {
+                    message: error?.message || 'Layered sync flush failed'
+                });
+                throw error;
+            }
         };
 
         this.flushPromise = runFlushStep().finally(() => {
@@ -530,6 +825,7 @@ export class FirestoreBoardSync {
                         this.latestCheckpointSignature = checkpoint.signature || this.latestCheckpointSignature;
                         this.remoteIsEmpty = false;
                         this.hasUnsnapshottedChanges = this.localUpdateSequence > checkpointSequence;
+                        this.checkpointRecoveryDirty = this.localUpdateSequence > checkpointSequence;
                         logPersistenceTrace('sync:firestore-checkpoint-saved', {
                             boardId: this.boardId,
                             reason: checkpointReason.reason,
@@ -581,7 +877,7 @@ export class FirestoreBoardSync {
             }
         }
 
-        if (this.connected && this.hasUnsnapshottedChanges) {
+        if (this.connected && this.checkpointRecoveryDirty) {
             await this.saveSnapshot('controller_stop');
         }
 
@@ -593,6 +889,11 @@ export class FirestoreBoardSync {
         if (this.rootUnsubscribe) {
             this.rootUnsubscribe();
             this.rootUnsubscribe = null;
+        }
+
+        if (this.bodyUnsubscribe) {
+            this.bodyUnsubscribe();
+            this.bodyUnsubscribe = null;
         }
 
         this.doc.off('update', this.handleDocUpdate);
@@ -624,7 +925,7 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
     const existingRootDoc = await getDoc(createBoardRootRef(userId, boardId));
     const existingRootData = existingRootDoc.data();
 
-    if (hasRemoteCheckpoint(existingRootData)) {
+    if (hasRemoteCheckpoint(existingRootData) || hasRemoteBoardSkeleton(existingRootData)) {
         return false;
     }
 
@@ -639,9 +940,26 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
         return false;
     }
 
-    let checkpoint = null;
     try {
-        checkpoint = await saveBoardCheckpoint({
+        await saveBoardSkeleton({
+            userId,
+            boardId,
+            deviceId,
+            snapshot: buildSkeletonSyncSnapshot(normalizedSnapshot),
+            reason: 'local_seed'
+        });
+
+        await saveCardBodyEntries({
+            userId,
+            boardId,
+            deviceId,
+            entries: buildCardBodySyncEntries(normalizedSnapshot.cards, {
+                clientRevision: normalizedSnapshot.clientRevision,
+                updatedAt: normalizedSnapshot.updatedAt
+            })
+        });
+
+        const checkpoint = await saveBoardCheckpoint({
             userId,
             boardId,
             deviceId,
@@ -649,8 +967,9 @@ export const seedLocalBoardSnapshotIfRemoteEmpty = async ({
             reason: 'local_seed',
             snapshotMetadata: pickBoardSyncMetadata(normalizedSnapshot)
         });
+        return Boolean(checkpoint);
     } catch (error) {
         console.error(`[FirebaseSync] Failed to seed local board ${boardId}:`, error);
+        return false;
     }
-    return Boolean(checkpoint);
 };

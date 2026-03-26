@@ -93,8 +93,10 @@ import { useRevisionDrivenBoardSync } from './hooks/useRevisionDrivenBoardSync';
 import { subscribeLocalSaveConfirmed } from './services/sync/localPersistedBoardSyncBridge';
 import { pickBoardSyncMetadata } from './services/sync/boardSyncMetadata';
 import {
+    hasCardBodySyncJobs,
     isBodySyncLane,
     isSkeletonSyncLane,
+    normalizeCardBodySyncJobs,
     normalizeSyncLane
 } from './services/sync/protocol/syncLane';
 import { buildSkeletonSyncSnapshot } from './services/sync/skeleton/skeletonSync';
@@ -443,6 +445,8 @@ function AppContent() {
             const boardId = typeof payload.boardId === 'string' ? payload.boardId : '';
             const snapshot = payload.snapshot ? normalizeBoardSnapshot(payload.snapshot) : null;
             const syncLane = normalizeSyncLane(payload.syncLane);
+            const bodyJobs = normalizeCardBodySyncJobs(payload.bodyJobs);
+            const bodyCardIds = bodyJobs.map((job) => job.cardId);
 
             if (boardId && snapshot) {
                 syncBoardSnapshotMetadataIntoList(boardId, snapshot);
@@ -461,16 +465,38 @@ function AppContent() {
                 boardId,
                 safeMode: FIREBASE_SYNC_SAFE_MODE,
                 lane: syncLane,
+                bodyJobCount: bodyJobs.length,
                 source: payload.source || 'local_persist',
                 cursor: buildBoardCursorTrace(snapshot)
             });
             if (isSkeletonSyncLane(syncLane)) {
                 controller.applyLocalSkeletonSnapshot(buildSkeletonSyncSnapshot(snapshot));
+                if (hasCardBodySyncJobs(bodyJobs)) {
+                    controller.applyLocalBodySnapshot(
+                        buildBodySyncSnapshot(snapshot, { cardIds: bodyCardIds }),
+                        { bodyJobs }
+                    );
+                }
                 return;
             }
 
             if (isBodySyncLane(syncLane)) {
-                controller.applyLocalBodySnapshot(buildBodySyncSnapshot(snapshot));
+                if (!hasCardBodySyncJobs(bodyJobs)) {
+                    return;
+                }
+                controller.applyLocalBodySnapshot(
+                    buildBodySyncSnapshot(snapshot, { cardIds: bodyCardIds }),
+                    { bodyJobs }
+                );
+                return;
+            }
+
+            if (hasCardBodySyncJobs(bodyJobs)) {
+                controller.applyLocalSkeletonSnapshot(buildSkeletonSyncSnapshot(snapshot));
+                controller.applyLocalBodySnapshot(
+                    buildBodySyncSnapshot(snapshot, { cardIds: bodyCardIds }),
+                    { bodyJobs }
+                );
                 return;
             }
 
