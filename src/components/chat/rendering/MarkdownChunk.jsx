@@ -6,7 +6,13 @@ import {
     parseMarkdown,
     sanitizeMarkdownHtml
 } from '../../../utils/markdownRenderer';
-import { MESSAGE_CHUNK_LAZY_ROOT_MARGIN } from './useMessageChunks';
+import { runWhenBrowserIdle } from '../../../utils/idleTask';
+import {
+    MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS,
+    MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS,
+    MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS,
+    MESSAGE_CHUNK_LAZY_ROOT_MARGIN
+} from './useMessageChunks';
 
 let codeBlockCounter = 0;
 let codeBlocks = [];
@@ -224,6 +230,37 @@ function MarkdownChunkComponent({
         return () => observer.disconnect();
     }, [isRendered]);
 
+    React.useEffect(() => {
+        if (isRendered || shouldRenderImmediately) {
+            return undefined;
+        }
+
+        const normalizedWarmupOrder = Number.isFinite(Number(chunk?.warmupOrder))
+            ? Math.max(0, Number(chunk.warmupOrder))
+            : 0;
+        const warmupDelayMs = Math.min(
+            MESSAGE_CHUNK_IDLE_WARMUP_MAX_DELAY_MS,
+            MESSAGE_CHUNK_IDLE_WARMUP_BASE_DELAY_MS + normalizedWarmupOrder * MESSAGE_CHUNK_IDLE_WARMUP_STEP_DELAY_MS
+        );
+
+        let idleCancel = null;
+        const timeoutId = window.setTimeout(() => {
+            idleCancel = runWhenBrowserIdle(() => {
+                setIsRendered(true);
+            }, {
+                timeout: 900,
+                fallbackDelay: 120
+            });
+        }, warmupDelayMs);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            if (typeof idleCancel === 'function') {
+                idleCancel();
+            }
+        };
+    }, [chunk?.warmupOrder, isRendered, shouldRenderImmediately]);
+
     const parts = React.useMemo(() => {
         if (!isRendered) {
             return [];
@@ -244,7 +281,7 @@ function MarkdownChunkComponent({
                     style={{ minHeight: `${chunk.estimatedMinHeight}px` }}
                 >
                     <div className="px-4 py-3 text-[11px] tracking-wide text-slate-400 dark:text-slate-500">
-                        滚动到这里时继续渲染...
+                        正在继续渲染长回答...
                     </div>
                 </div>
             </div>
