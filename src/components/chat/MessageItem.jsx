@@ -282,7 +282,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                 {!isUser && !isStreaming && canShareMessage && (
                     <div className="mt-4 pt-2 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                            onClick={() => onToggleFavorite && onToggleFavorite(cardId, index, textContent)}
+                            onClick={() => onToggleFavorite && onToggleFavorite(cardId, message?.id || null, index, textContent)}
                             className={`p-2 rounded-full transition-all ring-1 ring-inset ${isFavorite
                                 ? 'text-orange-500 bg-orange-50/80 ring-orange-200 dark:bg-orange-500/20 dark:ring-orange-500/40'
                                 : 'text-slate-400 hover:text-orange-500 bg-slate-50/50 hover:bg-orange-50 ring-transparent hover:ring-orange-200 dark:bg-white/5 dark:hover:bg-orange-500/10'}`}

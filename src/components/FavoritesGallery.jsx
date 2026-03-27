@@ -43,9 +43,29 @@ export default function FavoritesGallery() {
         }
     };
 
+    const normalizeFavoriteContent = (content) => {
+        if (typeof content === 'string') {
+            return content;
+        }
+
+        if (Array.isArray(content)) {
+            return content.reduce((result, part) => (
+                part?.type === 'text' && typeof part.text === 'string'
+                    ? result + part.text
+                    : result
+            ), '');
+        }
+
+        if (content == null) {
+            return '';
+        }
+
+        return String(content);
+    };
+
     const renderMarkdown = (content) => {
         if (!content) return '';
-        return renderMarkdownToHtml(content);
+        return renderMarkdownToHtml(normalizeFavoriteContent(content));
     };
 
     if (favorites.length === 0) {

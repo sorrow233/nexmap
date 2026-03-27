@@ -140,7 +140,7 @@ export default function MessageVirtualList({
                                     handleRetry={handleRetry}
                                     onShare={onShare}
                                     onToggleFavorite={onToggleFavorite}
-                                    isFavorite={favoritesService.isFavorite(cardId, virtualRow.index)}
+                                    isFavorite={favoritesService.isFavorite(cardId, message?.id || null, virtualRow.index)}
                                     onContinueTopic={onContinueTopic}
                                     onBranch={onBranch}
                                 />
@@ -164,7 +164,7 @@ export default function MessageVirtualList({
                             handleRetry={handleRetry}
                             onShare={onShare}
                             onToggleFavorite={onToggleFavorite}
-                            isFavorite={favoritesService.isFavorite(cardId, messages.length - 1)}
+                            isFavorite={favoritesService.isFavorite(cardId, detachedStreamingMessage?.id || null, messages.length - 1)}
                             onContinueTopic={onContinueTopic}
                             onBranch={onBranch}
                         />

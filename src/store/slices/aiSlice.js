@@ -286,14 +286,14 @@ export const createAISlice = (set, get) => {
             return (state.pendingMessages[cardId] || []).length;
         },
 
-        toggleFavorite: (cardId, messageIndex, messageContent) => {
+        toggleFavorite: (cardId, messageId, messageIndex, messageContent) => {
             const { cards } = get();
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
 
             const boardId = getCurrentBoardId();
             const boardTitle = document.title.split('|')[0].trim() || 'Untitled Board';
-            favoritesService.toggleFavorite(card, boardId, boardTitle, messageIndex, messageContent);
+            favoritesService.toggleFavorite(card, boardId, boardTitle, messageId, messageIndex, messageContent);
 
             // Force re-render if using a selector that depends on favorites-updated event
             set({ favoritesLastUpdate: Date.now() });
