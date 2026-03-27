@@ -43,10 +43,8 @@ export default function FavoritesGallery() {
 
     const handleShare = async (e, content) => {
         e.stopPropagation();
-        const isLatestBuild = await ensureLatestBuildOrRefresh({ force: true });
-        if (isLatestBuild) {
-            setShareContent(content);
-        }
+        await ensureLatestBuildOrRefresh({ force: true, reload: false });
+        setShareContent(content);
     };
 
     const normalizeFavoriteContent = (content) => {

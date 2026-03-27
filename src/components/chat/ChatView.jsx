@@ -523,10 +523,8 @@ export default function ChatView({
     };
 
     const handleShareOpen = async (content) => {
-        const isLatestBuild = await ensureLatestBuildOrRefresh({ force: true });
-        if (isLatestBuild) {
-            setShareContent(content);
-        }
+        await ensureLatestBuildOrRefresh({ force: true, reload: false });
+        setShareContent(content);
     };
 
     return (

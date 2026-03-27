@@ -9,7 +9,7 @@ export function useBuildVersionRefresh() {
             if (disposed || typeof document === 'undefined') return;
             if (!force && document.visibilityState === 'hidden') return;
 
-            await ensureLatestBuildOrRefresh({ force });
+            await ensureLatestBuildOrRefresh({ force, reload: false });
         };
 
         void checkForNewBuild(true);

@@ -7,12 +7,32 @@ export const CURRENT_BUILD_ID = `${CURRENT_BUILD_VERSION}@${CURRENT_BUILD_TIMEST
 const VERSION_ENDPOINT = '/version.json';
 const VERSION_CHECK_COOLDOWN_MS = 15000;
 const RELOAD_MARKER_KEY = 'nexmap-build-reload-target';
+const PENDING_BUILD_UPDATE_KEY = 'nexmap-pending-build-update';
 const FORCE_RELOAD_QUERY_KEY = '__nexmap_reload__';
 const FORCE_RELOAD_BUILD_KEY = '__nexmap_build__';
 const FORCE_RELOAD_REASON_KEY = '__nexmap_reason__';
 
 let activeVersionCheck = null;
 let lastVersionCheckAt = 0;
+
+function persistPendingBuildUpdate(latestBuild) {
+    if (typeof window === 'undefined' || !latestBuild?.buildId) return;
+
+    const payload = {
+        version: latestBuild.version,
+        builtAt: latestBuild.builtAt || null,
+        buildId: latestBuild.buildId,
+        detectedAt: Date.now()
+    };
+
+    window.localStorage.setItem(PENDING_BUILD_UPDATE_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('build-update-available', { detail: payload }));
+}
+
+function clearPendingBuildUpdate() {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(PENDING_BUILD_UPDATE_KEY);
+}
 
 async function fetchLatestBuildVersion(force = false) {
     const now = Date.now();
@@ -108,7 +128,7 @@ function canRetryReload(latestVersion) {
     }
 }
 
-export async function ensureLatestBuildOrRefresh({ force = false } = {}) {
+export async function ensureLatestBuildOrRefresh({ force = false, reload = true } = {}) {
     const latestBuild = await fetchLatestBuildVersion(force);
     const latestBuildId = latestBuild?.buildId || null;
 
@@ -116,6 +136,13 @@ export async function ensureLatestBuildOrRefresh({ force = false } = {}) {
         if (typeof window !== 'undefined') {
             window.sessionStorage.removeItem(RELOAD_MARKER_KEY);
         }
+        clearPendingBuildUpdate();
+        return true;
+    }
+
+    persistPendingBuildUpdate(latestBuild);
+
+    if (!reload) {
         return true;
     }
 

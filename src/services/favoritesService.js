@@ -24,7 +24,25 @@ const normalizeFavoriteContent = (messageContent) => {
     return String(messageContent);
 };
 
-const matchesFavoriteSource = (favorite = {}, { cardId, messageId = null, messageIndex = null } = {}) => {
+const buildFavoriteFingerprint = (messageContent) => {
+    const normalized = normalizeFavoriteContent(messageContent).trim();
+    if (!normalized) return '';
+
+    let hash = 0;
+    for (let index = 0; index < normalized.length; index += 1) {
+        hash = ((hash << 5) - hash) + normalized.charCodeAt(index);
+        hash |= 0;
+    }
+
+    return `fp_${normalized.length}_${Math.abs(hash)}`;
+};
+
+const matchesFavoriteSource = (favorite = {}, {
+    cardId,
+    messageId = null,
+    messageIndex = null,
+    messageContent = null
+} = {}) => {
     if (favorite?.source?.cardId !== cardId) {
         return false;
     }
@@ -32,6 +50,12 @@ const matchesFavoriteSource = (favorite = {}, { cardId, messageId = null, messag
     const storedMessageId = favorite?.source?.messageId;
     if (storedMessageId && messageId) {
         return storedMessageId === messageId;
+    }
+
+    const storedFingerprint = favorite?.source?.fingerprint;
+    const fingerprint = buildFavoriteFingerprint(messageContent);
+    if (storedFingerprint && fingerprint) {
+        return storedFingerprint === fingerprint;
     }
 
     return favorite?.source?.messageIndex === messageIndex;
@@ -60,22 +84,29 @@ const favoritesService = {
     },
 
     // Check if a specific message in a card is favorited
-    isFavorite: (cardId, messageId, messageIndex) => {
+    isFavorite: (cardId, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        return list.some((item) => matchesFavoriteSource(item, { cardId, messageId, messageIndex }));
+        return list.some((item) => matchesFavoriteSource(item, { cardId, messageId, messageIndex, messageContent }));
     },
 
     addFavorite: (card, boardId, boardName, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
+        const fingerprint = buildFavoriteFingerprint(messageContent);
         // Prevent duplicates
-        if (list.some((item) => matchesFavoriteSource(item, { cardId: card.id, messageId, messageIndex }))) return;
+        if (list.some((item) => matchesFavoriteSource(item, {
+            cardId: card.id,
+            messageId,
+            messageIndex,
+            messageContent
+        }))) return;
 
         const newFavorite = {
             id: `fav_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             source: {
                 cardId: card.id,
                 messageId: messageId || null,
-                messageIndex: messageIndex,
+                messageIndex,
+                fingerprint,
                 boardId: boardId
             },
             boardName: boardName,
@@ -92,10 +123,15 @@ const favoritesService = {
         favoritesService.autoCategorize(newFavorite.id, messageContent);
     },
 
-    removeFavorite: (cardId, messageId, messageIndex) => {
+    removeFavorite: (cardId, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
         // Remove by source identity
-        const newList = list.filter((item) => !matchesFavoriteSource(item, { cardId, messageId, messageIndex }));
+        const newList = list.filter((item) => !matchesFavoriteSource(item, {
+            cardId,
+            messageId,
+            messageIndex,
+            messageContent
+        }));
         saveFavorites(newList);
         runtimeLog(`[Favorites] Removed snapshot for message ${messageId || messageIndex} of card ${cardId}`);
     },
@@ -163,9 +199,14 @@ const favoritesService = {
     // Toggle function for convenience
     toggleFavorite: (card, boardId, boardName, messageId, messageIndex, messageContent) => {
         const list = getRawFavorites();
-        const exists = list.some((item) => matchesFavoriteSource(item, { cardId: card.id, messageId, messageIndex }));
+        const exists = list.some((item) => matchesFavoriteSource(item, {
+            cardId: card.id,
+            messageId,
+            messageIndex,
+            messageContent
+        }));
         if (exists) {
-            favoritesService.removeFavorite(card.id, messageId, messageIndex);
+            favoritesService.removeFavorite(card.id, messageId, messageIndex, messageContent);
             return false;
         } else {
             favoritesService.addFavorite(card, boardId, boardName, messageId, messageIndex, messageContent);

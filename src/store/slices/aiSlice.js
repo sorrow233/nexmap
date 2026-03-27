@@ -287,8 +287,8 @@ export const createAISlice = (set, get) => {
         },
 
         toggleFavorite: (cardId, messageId, messageIndex, messageContent) => {
-            const { cards } = get();
-            const card = cards.find(c => c.id === cardId);
+            const { cards, getCardById } = get();
+            const card = getCardById?.(cardId) || cards.find(c => c.id === cardId);
             if (!card) return;
 
             const boardId = getCurrentBoardId();

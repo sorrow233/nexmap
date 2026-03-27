@@ -4,6 +4,7 @@ import ErrorBoundary from '../../ErrorBoundary';
 import MessageItem from '../MessageItem';
 import PendingQueueIndicator from '../PendingQueueIndicator';
 import favoritesService from '../../../services/favoritesService';
+import { useStore } from '../../../store/useStore';
 
 const ITEM_GAP_PX = 64;
 const DEFAULT_OVERSCAN = 4;
@@ -58,6 +59,8 @@ export default function MessageVirtualList({
     onContinueTopic,
     onBranch
 }) {
+    useStore((state) => state.favoritesLastUpdate);
+
     const hasDetachedStreamingMessage = Boolean(
         isStreaming &&
         messages.length > 0 &&
@@ -140,7 +143,12 @@ export default function MessageVirtualList({
                                     handleRetry={handleRetry}
                                     onShare={onShare}
                                     onToggleFavorite={onToggleFavorite}
-                                    isFavorite={favoritesService.isFavorite(cardId, message?.id || null, virtualRow.index)}
+                                    isFavorite={favoritesService.isFavorite(
+                                        cardId,
+                                        message?.id || null,
+                                        virtualRow.index,
+                                        message?.content
+                                    )}
                                     onContinueTopic={onContinueTopic}
                                     onBranch={onBranch}
                                 />
@@ -164,7 +172,12 @@ export default function MessageVirtualList({
                             handleRetry={handleRetry}
                             onShare={onShare}
                             onToggleFavorite={onToggleFavorite}
-                            isFavorite={favoritesService.isFavorite(cardId, detachedStreamingMessage?.id || null, messages.length - 1)}
+                            isFavorite={favoritesService.isFavorite(
+                                cardId,
+                                detachedStreamingMessage?.id || null,
+                                messages.length - 1,
+                                detachedStreamingMessage?.content
+                            )}
                             onContinueTopic={onContinueTopic}
                             onBranch={onBranch}
                         />
