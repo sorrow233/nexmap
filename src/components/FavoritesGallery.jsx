@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Star, MessageSquare, ArrowRight, ExternalLink, Share2, X } from 'lucide-react';
 import favoritesService from '../services/favoritesService';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ export default function FavoritesGallery() {
     const [favorites, setFavorites] = useState([]);
     const [expandedFav, setExpandedFav] = useState(null);
     const [shareContent, setShareContent] = useState(null);
+    const expandedContentRef = useRef(null);
     const navigate = useNavigate();
     const { t } = useLanguage();
 
@@ -25,6 +27,11 @@ export default function FavoritesGallery() {
         window.addEventListener('favorites-updated', handleUpdate);
         return () => window.removeEventListener('favorites-updated', handleUpdate);
     }, []);
+
+    useEffect(() => {
+        if (!expandedFav) return;
+        expandedContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    }, [expandedFav]);
 
     const handleCardClick = (boardId) => {
         if (boardId) navigate(`/board/${boardId}`);
@@ -161,7 +168,7 @@ export default function FavoritesGallery() {
             </div>
 
             {/* Expanded Modal */}
-            {expandedFav && (
+            {expandedFav && typeof document !== 'undefined' && createPortal((
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4" style={{ perspective: '1000px' }}>
                     <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setExpandedFav(null)} />
 
@@ -192,7 +199,7 @@ export default function FavoritesGallery() {
                         </div>
 
                         {/* Content */}
-                        <div className="flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar">
+                        <div ref={expandedContentRef} className="flex-grow overflow-y-auto px-6 sm:px-10 py-12 custom-scrollbar">
                             <div className="reader-width">
                                 <div
                                     className="prose prose-slate dark:prose-invert max-w-none 
@@ -227,8 +234,9 @@ export default function FavoritesGallery() {
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                </div>,
+                document.body
+            ))}
 
             {/* Share Modal */}
             <ShareModal
