@@ -134,6 +134,9 @@ export default function GalleryPage({
     };
 
     const activeTab = getActiveTab();
+    const mainContentAnimationClass = activeTab === 'favorites'
+        ? 'animate-fade-in duration-500 delay-100'
+        : 'animate-fade-in-up duration-500 delay-100';
 
 
 
@@ -307,7 +310,7 @@ export default function GalleryPage({
                 )}
 
                 {/* Main Content Area */}
-                <main className="animate-fade-in-up duration-500 delay-100 min-h-[60vh] pb-32">
+                <main className={`${mainContentAnimationClass} min-h-[60vh] pb-32`}>
                     <Routes>
                         <Route index element={
                             <BoardGallery
