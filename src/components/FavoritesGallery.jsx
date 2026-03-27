@@ -12,6 +12,7 @@ export default function FavoritesGallery() {
     const [favorites, setFavorites] = useState([]);
     const [expandedFav, setExpandedFav] = useState(null);
     const [shareContent, setShareContent] = useState(null);
+    const [portalHost, setPortalHost] = useState(null);
     const expandedContentRef = useRef(null);
     const navigate = useNavigate();
     const { t } = useLanguage();
@@ -32,6 +33,11 @@ export default function FavoritesGallery() {
         if (!expandedFav) return;
         expandedContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
     }, [expandedFav]);
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        setPortalHost(document.body instanceof Element ? document.body : null);
+    }, []);
 
     const handleCardClick = (boardId) => {
         if (boardId) navigate(`/board/${boardId}`);
@@ -168,7 +174,7 @@ export default function FavoritesGallery() {
             </div>
 
             {/* Expanded Modal */}
-            {expandedFav && typeof document !== 'undefined' && createPortal((
+            {expandedFav && portalHost && createPortal((
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4" style={{ perspective: '1000px' }}>
                     <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-md transition-opacity" onClick={() => setExpandedFav(null)} />
 
@@ -235,7 +241,7 @@ export default function FavoritesGallery() {
                         </div>
                     </div>
                 </div>,
-                document.body
+                portalHost
             ))}
 
             {/* Share Modal */}
