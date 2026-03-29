@@ -6,6 +6,7 @@ import { isShareableMessageContent, normalizeShareContent } from '../share/share
 import { buildStreamBufferKey } from '../../store/slices/utils/streamRenderBuffer';
 import MarkdownChunk from './rendering/MarkdownChunk';
 import { useMessageChunks } from './rendering/useMessageChunks';
+import { copySelectionAsMarkdown } from '../../utils/richTextClipboard';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
@@ -153,6 +154,11 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
         }
     };
 
+    const handleRenderedCopy = (e) => {
+        if (isUser) return;
+        copySelectionAsMarkdown(e);
+    };
+
     return (
         <div
             id={`message-${index}`}
@@ -215,6 +221,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                 <div
                     className="prose prose-slate dark:prose-invert max-w-none leading-loose text-[1.05rem]"
                     onClick={handleMessageClick}
+                    onCopy={handleRenderedCopy}
                 >
                     {isUser ? (
                         <div className="font-sans break-words" style={{ overflowWrap: 'anywhere' }}>

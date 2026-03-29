@@ -20,6 +20,28 @@ export function htmlToMarkdown(input) {
     return traverse(root, { isBlock: true }).trim();
 }
 
+function isElementNode(node) {
+    return node?.nodeType === Node.ELEMENT_NODE;
+}
+
+function getKatexAnnotation(node) {
+    if (!isElementNode(node)) return null;
+    return node.querySelector('annotation[encoding="application/x-tex"]');
+}
+
+function getKatexMarkdown(node) {
+    const annotation = getKatexAnnotation(node);
+    const tex = annotation?.textContent?.trim();
+    if (!tex) return '';
+
+    const isDisplayMath = node.classList?.contains('katex-display')
+        || node.closest?.('.katex-display');
+
+    return isDisplayMath
+        ? `\n$$\n${tex}\n$$\n\n`
+        : `$${tex}$`;
+}
+
 function traverse(node, context = { depth: 0 }) {
     if (!node) return '';
 
@@ -38,6 +60,24 @@ function traverse(node, context = { depth: 0 }) {
     // Handle Element Nodes
     if (node.nodeType === Node.ELEMENT_NODE) {
         const tagName = node.tagName.toLowerCase();
+        const classList = node.classList || [];
+
+        if (classList.contains('katex-display')) {
+            return getKatexMarkdown(node);
+        }
+
+        if (classList.contains('katex')) {
+            return getKatexMarkdown(node);
+        }
+
+        if (classList.contains('katex-html') || classList.contains('katex-mathml')) {
+            return '';
+        }
+
+        if (tagName === 'annotation' && node.getAttribute('encoding') === 'application/x-tex') {
+            return '';
+        }
+
         let content = '';
 
         const isPre = tagName === 'pre' || context.isPre;
@@ -132,4 +172,3 @@ function traverse(node, context = { depth: 0 }) {
 
     return '';
 }
-

@@ -5,6 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { getColorForString } from '../../utils/colors';
 import InstructionChips from './InstructionChips';
 import { IMAGE_UPLOAD_ACCEPT } from '../../services/image/uploadImageNormalizer';
+import { handleMathRichPaste } from '../../utils/richTextClipboard';
 
 /**
  * ChatInput Component - Integrated Card Style
@@ -37,6 +38,27 @@ export default function ChatInput({
     };
 
     const textareaRef = useRef(null);
+
+    const resizeTextarea = (textarea) => {
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 80)}px`;
+    };
+
+    const handleRichPaste = (e) => {
+        if (isReadOnly) return;
+
+        const inserted = handleMathRichPaste({
+            event: e,
+            currentValue: input,
+            onChangeText: setInput,
+            onAfterInsert: resizeTextarea
+        });
+
+        if (!inserted) {
+            handlePaste?.(e);
+        }
+    };
 
     const handlePromptSelect = (text) => {
         const newText = input ? `${input} ${text}` : text;
@@ -104,7 +126,7 @@ export default function ChatInput({
                             onChange={e => !isReadOnly && setInput(e.target.value)}
                             onInput={handleTextareaInput}
                             onKeyDown={handleKeyDown}
-                            onPaste={handlePaste}
+                            onPaste={handleRichPaste}
                             onCompositionStart={() => { isComposingRef.current = true; }}
                             onCompositionEnd={() => { isComposingRef.current = false; }}
                             onFocus={() => !isReadOnly && setIsFocused(true)}

@@ -6,6 +6,7 @@ import { IMAGE_UPLOAD_ACCEPT } from '../services/image/uploadImageNormalizer';
 import { useDraggable } from '../hooks/useDraggable';
 
 import { renderCachedMarkdownToHtml } from '../utils/markdownCache';
+import { handleMathRichPaste } from '../utils/richTextClipboard';
 
 const StickyNote = React.memo(function StickyNote({
     data,
@@ -140,8 +141,18 @@ const StickyNote = React.memo(function StickyNote({
                 };
                 reader.readAsDataURL(file);
                 e.preventDefault();
+                return;
             }
         }
+
+        handleMathRichPaste({
+            event: e,
+            currentValue: data.data?.content || '',
+            onChangeText: (nextText) => onUpdate(data.id, {
+                ...data.data,
+                content: nextText
+            })
+        });
     };
 
     const glassStyle = (isSafari || isIOS)

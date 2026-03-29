@@ -1,5 +1,6 @@
 import React from 'react';
 import MessageVirtualList from './virtualized/MessageVirtualList';
+import { handleMathRichPaste } from '../../utils/richTextClipboard';
 
 const MessageList = React.memo(function MessageList({
     card,
@@ -26,6 +27,16 @@ const MessageList = React.memo(function MessageList({
     // So this component assumes it's displaying a list of messages.
 
     const messages = card.data.messages || [];
+    const handleNotePaste = (e) => {
+        handleMathRichPaste({
+            event: e,
+            currentValue: card.data.content || '',
+            onChangeText: (nextText) => onUpdate(card.id, (currentData) => ({
+                ...currentData,
+                content: nextText
+            }))
+        });
+    };
 
     return (
         <div
@@ -38,6 +49,7 @@ const MessageList = React.memo(function MessageList({
                         <textarea
                             value={card.data.content || ''}
                             onChange={(e) => onUpdate(card.id, (currentData) => ({ ...currentData, content: e.target.value }))}
+                            onPaste={handleNotePaste}
                             className="w-full bg-transparent border-none outline-none font-lxgw leading-[2.5] text-[1.1rem] text-slate-800 dark:text-slate-100 resize-none h-[calc(100vh-320px)] custom-scrollbar ios-scroll-fix touch-pan-y"
                             placeholder="Start writing..."
                         />

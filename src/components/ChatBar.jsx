@@ -6,6 +6,7 @@ import Spotlight from './shared/Spotlight';
 import InstructionChips from './chat/InstructionChips';
 import ModelSwitcher from './ModelSwitcher';
 import { IMAGE_UPLOAD_ACCEPT } from '../services/image/uploadImageNormalizer';
+import { handleMathRichPaste } from '../utils/richTextClipboard';
 
 /**
  * ChatBar Component - Integrated Card Style Redesign
@@ -44,6 +45,23 @@ const ChatBar = React.memo(function ChatBar({
         setPromptInput(e.target.value);
         e.target.style.height = 'auto';
         e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+    };
+
+    const resizeTextarea = (textarea) => {
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    };
+
+    const handlePaste = (e) => {
+        if (isReadOnly) return;
+
+        handleMathRichPaste({
+            event: e,
+            currentValue: promptInput,
+            onChangeText: setPromptInput,
+            onAfterInsert: resizeTextarea
+        });
     };
 
     const handleSubmit = () => {
@@ -271,6 +289,7 @@ const ChatBar = React.memo(function ChatBar({
                                     ref={textareaRef}
                                     value={promptInput}
                                     onInput={handleInput}
+                                    onPaste={handlePaste}
                                     onKeyDown={handleKeyDown}
                                     onCompositionStart={() => { isComposingRef.current = true; }}
                                     onCompositionEnd={() => { isComposingRef.current = false; }}
