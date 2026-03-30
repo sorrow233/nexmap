@@ -176,7 +176,8 @@ export default function ChatView({
         }
     });
 
-    const isStreaming = isDispatching || isQueueRunning || isCardGenerating;
+    const isStreaming = isDispatching || isCardGenerating;
+    const hasPendingQueue = pendingCount > 0 || isQueueRunning;
 
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
@@ -630,6 +631,7 @@ export default function ChatView({
                     removeImage={removeImage}
                     fileInputRef={fileInputRef}
                     isStreaming={isStreaming}
+                    hasPendingQueue={hasPendingQueue}
                     onStop={handleStop}
                     placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
                     instructions={instructions}
