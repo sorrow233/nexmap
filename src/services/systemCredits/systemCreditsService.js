@@ -6,6 +6,7 @@
  */
 
 import { auth } from '../firebase';
+import { settleStreamReader } from '../llm/streamTailGrace.js';
 import { drainOpenAIStreamBuffer } from './openAIStreamBuffer';
 
 const ENDPOINT = '/api/system-credits';
@@ -110,6 +111,7 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
     const decoder = new TextDecoder();
     let buffer = '';
     let fullText = ''; // Track complete response
+    let sawTerminal = false;
 
     try {
         while (true) {
@@ -123,6 +125,15 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
             const drained = drainOpenAIStreamBuffer(buffer, onToken);
             fullText += drained.emittedText;
             buffer = drained.remainingBuffer;
+            if (drained.sawTerminal) {
+                sawTerminal = true;
+                break;
+            }
+        }
+
+        if (sawTerminal) {
+            await settleStreamReader(reader);
+            return fullText;
         }
 
         const flushedTail = drainOpenAIStreamBuffer(buffer, onToken, { flushTail: true });

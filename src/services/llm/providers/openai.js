@@ -1,8 +1,10 @@
 import { LLMProvider } from './base';
 import { getKeyPool } from '../keyPoolManager';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
+import { settleStreamReader } from '../streamTailGrace.js';
 import { resolveAllImages } from '../utils';
 import { normalizeOpenAIImagePayloads } from './openai/imagePayload';
+import { parseOpenAIStreamLine } from './openai/streamProtocol.js';
 
 const hasMeaningfulText = (text) => String(text ?? '').trim().length > 0;
 const isPermanentOpenAIStatus = (statusCode) => {
@@ -252,6 +254,7 @@ export class OpenAIProvider extends LLMProvider {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
                 let buffer = '';
+                let sawTerminal = false;
 
                 // 思考过程过滤 - 基于模型名预判
                 // Thinking 模型 (Kimi-K2.5, DeepSeek-R1) 会输出 <think>...</think>
@@ -293,29 +296,46 @@ export class OpenAIProvider extends LLMProvider {
 
                         buffer += decoder.decode(value, { stream: true });
                         const lines = buffer.split('\n');
-                        buffer = lines.pop();
+                        buffer = lines.pop() || '';
 
                         for (const line of lines) {
-                            const trimmedLine = line.trim();
-                            if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
-                                try {
-                                    const json = JSON.parse(trimmedLine.substring(6));
-                                    const content = json.choices[0]?.delta?.content;
-                                    processContent(content);
-                                } catch (e) { }
+                            try {
+                                const parsed = parseOpenAIStreamLine(line);
+                                if (parsed.delta) {
+                                    processContent(parsed.delta);
+                                }
+                                if (parsed.isTerminal) {
+                                    sawTerminal = true;
+                                    break;
+                                }
+                            } catch (e) {
+                                if (!(e instanceof SyntaxError)) {
+                                    throw e;
+                                }
+                            }
+                        }
+
+                        if (sawTerminal) {
+                            break;
+                        }
+                    }
+
+                    if (!sawTerminal && buffer.trim()) {
+                        try {
+                            const parsed = parseOpenAIStreamLine(buffer);
+                            if (parsed.delta) {
+                                processContent(parsed.delta);
+                            }
+                            sawTerminal = parsed.isTerminal;
+                        } catch (e) {
+                            if (!(e instanceof SyntaxError)) {
+                                throw e;
                             }
                         }
                     }
 
-                    if (buffer.trim()) {
-                        const trimmedLine = buffer.trim();
-                        if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
-                            try {
-                                const json = JSON.parse(trimmedLine.substring(6));
-                                const content = json.choices[0]?.delta?.content;
-                                processContent(content);
-                            } catch (e) { }
-                        }
+                    if (sawTerminal) {
+                        await settleStreamReader(reader);
                     }
 
                     // 如果流结束时还有未输出的缓冲内容（非 thinking 模型），输出它

@@ -1,5 +1,6 @@
 import { isRetryableError } from './errorUtils.js';
 import { extractCandidateText } from './partUtils.js';
+import { settleStreamReader } from '../../streamTailGrace.js';
 
 /**
  * Detect whether a Gemini candidate includes grounding/search metadata.
@@ -32,6 +33,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let buffer = '';
     let usedSearch = false;
     let hasVisibleText = false;
+    let sawTerminal = false;
 
     const emitVisibleDelta = (candidate) => {
         const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
@@ -81,7 +83,11 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     // onLog('[Gemini] Detected Python byte string, auto-cleaning:', cleanLine);
                 }
 
-                if (!cleanLine || cleanLine === '[DONE]') continue;
+                if (!cleanLine) continue;
+                if (cleanLine === '[DONE]') {
+                    sawTerminal = true;
+                    break;
+                }
 
                 try {
                     const data = JSON.parse(cleanLine);
@@ -118,34 +124,46 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     // onLog('[Gemini] Line parse error:', cleanLine.substring(0, 50), jsonErr.message);
                 }
             }
+
+            if (sawTerminal) {
+                break;
+            }
         }
 
         // Process remaining buffer
-        if (buffer.trim()) {
+        if (!sawTerminal && buffer.trim()) {
             try {
                 let cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
                 if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
                     cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
                 }
-                const data = JSON.parse(cleanLine);
-                if (data.error) {
-                    const errMsg = data.error.message || JSON.stringify(data.error);
-                    if (isRetryableError(errMsg)) {
-                        throw { retryable: true, message: errMsg };
+                if (cleanLine === '[DONE]') {
+                    sawTerminal = true;
+                } else {
+                    const data = JSON.parse(cleanLine);
+                    if (data.error) {
+                        const errMsg = data.error.message || JSON.stringify(data.error);
+                        if (isRetryableError(errMsg)) {
+                            throw { retryable: true, message: errMsg };
+                        }
+                        throw new Error(errMsg);
                     }
-                    throw new Error(errMsg);
+    
+                    const candidate = data.candidates?.[0];
+                    if (didCandidateUseSearch(candidate)) {
+                        usedSearch = true;
+                    }
+    
+                    emitVisibleDelta(candidate);
                 }
-
-                const candidate = data.candidates?.[0];
-                if (didCandidateUseSearch(candidate)) {
-                    usedSearch = true;
-                }
-
-                emitVisibleDelta(candidate);
             } catch (e) {
                 if (e.retryable) throw e;
                 if (e.message && !e.message.includes('JSON')) throw e;
             }
+        }
+
+        if (sawTerminal) {
+            await settleStreamReader(reader);
         }
 
         if (!hasVisibleText && lastFallbackText) {

@@ -1,60 +1,46 @@
-const OPENAI_SSE_PREFIX = 'data: ';
-const OPENAI_SSE_DONE = '[DONE]';
-
-const parseOpenAIStreamLine = (line, onToken) => {
-    const trimmedLine = line.trim();
-    if (!trimmedLine.startsWith(OPENAI_SSE_PREFIX)) {
-        return '';
-    }
-
-    const dataStr = trimmedLine.slice(OPENAI_SSE_PREFIX.length);
-    if (!dataStr || dataStr === OPENAI_SSE_DONE) {
-        return '';
-    }
-
-    const data = JSON.parse(dataStr);
-    if (data.error) {
-        throw new Error(data.error.message || JSON.stringify(data.error));
-    }
-
-    const delta = data.choices?.[0]?.delta?.content;
-    if (typeof delta === 'string' && delta.length > 0) {
-        onToken(delta);
-        return delta;
-    }
-
-    return '';
-};
+import { parseOpenAIStreamLine } from '../llm/providers/openai/streamProtocol.js';
 
 export const drainOpenAIStreamBuffer = (buffer, onToken, options = {}) => {
     const { flushTail = false } = options;
     if (!buffer) {
         return {
             emittedText: '',
-            remainingBuffer: ''
+            remainingBuffer: '',
+            sawTerminal: false
         };
     }
 
     const segments = buffer.split('\n');
-    const remainingBuffer = flushTail ? '' : (segments.pop() || '');
+    const trailingBuffer = flushTail ? '' : (segments.pop() || '');
     const emitted = [];
+    let sawTerminal = false;
 
-    segments.forEach((line) => {
-        const delta = parseOpenAIStreamLine(line, onToken);
-        if (delta) {
-            emitted.push(delta);
+    for (const line of segments) {
+        const parsed = parseOpenAIStreamLine(line);
+        if (parsed.delta) {
+            onToken(parsed.delta);
+            emitted.push(parsed.delta);
         }
-    });
+        if (parsed.isTerminal) {
+            sawTerminal = true;
+            break;
+        }
+    }
 
-    if (flushTail && remainingBuffer) {
-        const delta = parseOpenAIStreamLine(remainingBuffer, onToken);
-        if (delta) {
-            emitted.push(delta);
+    if (flushTail && !sawTerminal && trailingBuffer) {
+        const parsed = parseOpenAIStreamLine(trailingBuffer);
+        if (parsed.delta) {
+            onToken(parsed.delta);
+            emitted.push(parsed.delta);
+        }
+        if (parsed.isTerminal) {
+            sawTerminal = true;
         }
     }
 
     return {
         emittedText: emitted.join(''),
-        remainingBuffer
+        remainingBuffer: sawTerminal ? '' : trailingBuffer,
+        sawTerminal
     };
 };
