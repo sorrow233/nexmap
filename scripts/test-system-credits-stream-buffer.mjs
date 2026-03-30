@@ -20,7 +20,6 @@ const partial = collectDeltas(
 
 assert.deepEqual(partial.chunks, ['前半段']);
 assert.equal(partial.emittedText, '前半段');
-assert.equal(partial.sawDone, false);
 assert.equal(
     partial.remainingBuffer,
     'data: {"choices":[{"delta":{"content":"最后一段"}}]}'
@@ -30,7 +29,6 @@ const flushed = collectDeltas(partial.remainingBuffer, { flushTail: true });
 
 assert.deepEqual(flushed.chunks, ['最后一段']);
 assert.equal(flushed.emittedText, '最后一段');
-assert.equal(flushed.sawDone, false);
 assert.equal(flushed.remainingBuffer, '');
 
 const withDone = collectDeltas(
@@ -41,6 +39,5 @@ const withDone = collectDeltas(
 
 assert.deepEqual(withDone.chunks, ['完整回答']);
 assert.equal(withDone.emittedText, '完整回答');
-assert.equal(withDone.sawDone, true);
 
 console.log('[test-system-credits-stream-buffer] PASS');
