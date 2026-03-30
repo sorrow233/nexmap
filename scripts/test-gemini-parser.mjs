@@ -9,14 +9,18 @@ const assert = (condition, message) => {
 
 const encode = (text) => new TextEncoder().encode(text);
 
-const createReader = (chunks) => {
+const createReader = (chunks, tracker = null) => {
     let index = 0;
     return {
         async read() {
+            if (tracker) tracker.reads += 1;
             if (index >= chunks.length) return { done: true, value: undefined };
             const value = encode(chunks[index]);
             index += 1;
             return { done: false, value };
+        },
+        async cancel() {
+            if (tracker) tracker.cancelled = true;
         },
         releaseLock() { }
     };
@@ -67,6 +71,18 @@ const runUnitChecks = async () => {
     const tokens = [];
     await parseGeminiStream(createReader(streamChunks), (chunk) => tokens.push(chunk), () => { });
     assert(tokens.join('') === '答案', `parseGeminiStream expected "答案", got "${tokens.join('')}"`);
+
+    const doneTracker = { reads: 0, cancelled: false };
+    const doneThenNoiseChunks = [
+        'data: {"candidates":[{"content":{"parts":[{"text":"已完成"}]}}]}\n',
+        'data: [DONE]\n',
+        'data: {"candidates":[{"content":{"parts":[{"text":"不该继续读取"}]}}]}\n'
+    ];
+    const doneTokens = [];
+    await parseGeminiStream(createReader(doneThenNoiseChunks, doneTracker), (chunk) => doneTokens.push(chunk), () => { });
+    assert(doneTokens.join('') === '已完成', `parseGeminiStream should stop at DONE, got "${doneTokens.join('')}"`);
+    assert(doneTracker.cancelled === true, 'parseGeminiStream should cancel reader after DONE');
+    assert(doneTracker.reads < 4, `parseGeminiStream should stop reading early, got ${doneTracker.reads} reads`);
 
     const onlyThoughtChunks = [
         'data: {"candidates":[{"content":{"parts":[{"thought":true,"text":"JUST_THINK"}]}}]}\n',
