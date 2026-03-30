@@ -110,7 +110,6 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
     const decoder = new TextDecoder();
     let buffer = '';
     let fullText = ''; // Track complete response
-    let sawDone = false;
 
     try {
         while (true) {
@@ -124,15 +123,6 @@ export async function streamWithSystemCredits(requestBody, onToken, options = {}
             const drained = drainOpenAIStreamBuffer(buffer, onToken);
             fullText += drained.emittedText;
             buffer = drained.remainingBuffer;
-            if (drained.sawDone) {
-                sawDone = true;
-                break;
-            }
-        }
-
-        if (sawDone) {
-            await reader.cancel().catch(() => { });
-            return fullText;
         }
 
         const flushedTail = drainOpenAIStreamBuffer(buffer, onToken, { flushTail: true });
