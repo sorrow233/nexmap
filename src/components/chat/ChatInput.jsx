@@ -21,7 +21,6 @@ export default function ChatInput({
     removeImage,
     fileInputRef,
     isStreaming,
-    hasPendingQueue = false,
     onStop,
     placeholder,
     instructions = [],
@@ -31,7 +30,6 @@ export default function ChatInput({
     const { t } = useLanguage();
     const [isFocused, setIsFocused] = React.useState(false);
     const isComposingRef = useRef(false); // IME 合成状态追踪
-    const isBusy = isStreaming || hasPendingQueue;
 
     // Ensure height calculation handles larger text
     const handleTextareaInput = (e) => {
@@ -192,16 +190,11 @@ export default function ChatInput({
 
                         {/* Right: Send / Stop Action */}
                         <div className="shrink-0 flex items-center gap-2">
-                            {isBusy && (
+                            {isStreaming && (
                                 <button
                                     onClick={onStop}
-                                    className={`w-10 h-10 text-white rounded-[0.8rem] flex items-center justify-center shrink-0 transition-all ${isStreaming
-                                        ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:bg-red-400 animate-pulse'
-                                        : 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:bg-amber-400'
-                                        }`}
-                                    title={isStreaming
-                                        ? (t.ai?.stopGeneration || "Stop Generation")
-                                        : (t.ai?.queueMessage || '清空队列')}
+                                    className="w-10 h-10 bg-red-500 text-white rounded-[0.8rem] shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:bg-red-400 flex items-center justify-center shrink-0 animate-pulse transition-all"
+                                    title={t.ai?.stopGeneration || "Stop Generation"}
                                 >
                                     <Square size={16} fill="currentColor" />
                                 </button>
@@ -211,12 +204,12 @@ export default function ChatInput({
                                 whileTap={(!canSend || isReadOnly) ? {} : { scale: 0.95 }}
                                 onClick={() => handleSend()}
                                 disabled={!canSend || isReadOnly}
-                                title={isBusy ? (t.ai?.queueMessage || '加入队列') : (t.chatBar?.send || 'Send')}
+                                title={isStreaming ? (t.ai?.queueMessage || '加入队列') : (t.chatBar?.send || 'Send')}
                                 className={`
                                         relative w-10 h-10 rounded-[0.8rem] flex items-center justify-center transition-all shadow-lg
                                         ${(!canSend || isReadOnly)
                                             ? 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600'
-                                            : isBusy
+                                            : isStreaming
                                                 ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.45)] hover:bg-amber-400'
                                                 : 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-400'}
                                         ${isReadOnly ? 'cursor-not-allowed' : ''}
