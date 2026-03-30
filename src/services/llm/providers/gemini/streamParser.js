@@ -32,6 +32,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let buffer = '';
     let usedSearch = false;
     let hasVisibleText = false;
+    let sawDone = false;
 
     const emitVisibleDelta = (candidate) => {
         const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
@@ -81,7 +82,11 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     // onLog('[Gemini] Detected Python byte string, auto-cleaning:', cleanLine);
                 }
 
-                if (!cleanLine || cleanLine === '[DONE]') continue;
+                if (!cleanLine) continue;
+                if (cleanLine === '[DONE]') {
+                    sawDone = true;
+                    break;
+                }
 
                 try {
                     const data = JSON.parse(cleanLine);
@@ -118,34 +123,44 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     // onLog('[Gemini] Line parse error:', cleanLine.substring(0, 50), jsonErr.message);
                 }
             }
+
+            if (sawDone) break;
         }
 
         // Process remaining buffer
-        if (buffer.trim()) {
+        if (!sawDone && buffer.trim()) {
             try {
                 let cleanLine = buffer.trim().startsWith('data: ') ? buffer.trim().substring(6) : buffer.trim();
                 if (cleanLine.startsWith("b'") || cleanLine.startsWith('b"')) {
                     cleanLine = cleanLine.replace(/^b['"]|['"]$/g, '');
                 }
-                const data = JSON.parse(cleanLine);
-                if (data.error) {
-                    const errMsg = data.error.message || JSON.stringify(data.error);
-                    if (isRetryableError(errMsg)) {
-                        throw { retryable: true, message: errMsg };
+                if (cleanLine === '[DONE]') {
+                    sawDone = true;
+                } else {
+                    const data = JSON.parse(cleanLine);
+                    if (data.error) {
+                        const errMsg = data.error.message || JSON.stringify(data.error);
+                        if (isRetryableError(errMsg)) {
+                            throw { retryable: true, message: errMsg };
+                        }
+                        throw new Error(errMsg);
                     }
-                    throw new Error(errMsg);
-                }
 
-                const candidate = data.candidates?.[0];
-                if (didCandidateUseSearch(candidate)) {
-                    usedSearch = true;
-                }
+                    const candidate = data.candidates?.[0];
+                    if (didCandidateUseSearch(candidate)) {
+                        usedSearch = true;
+                    }
 
-                emitVisibleDelta(candidate);
+                    emitVisibleDelta(candidate);
+                }
             } catch (e) {
                 if (e.retryable) throw e;
                 if (e.message && !e.message.includes('JSON')) throw e;
             }
+        }
+
+        if (sawDone && typeof reader.cancel === 'function') {
+            await reader.cancel().catch(() => { });
         }
 
         if (!hasVisibleText && lastFallbackText) {
