@@ -34,6 +34,7 @@ import {
     buildCardBodyHashMap,
     buildChangedCardBodySyncJobs
 } from '../services/sync/body/cardBodySyncProtocol';
+import { yieldToMainThread } from '../utils/scheduling';
 
 const SHADOW_SAVE_DELAY_MS = 450;
 const SHADOW_SAVE_MAX_WAIT_MS = 1500;
@@ -338,6 +339,7 @@ export function useBoardPersistence({
         });
 
         try {
+            await yieldToMainThread();
             await enqueueDurableWrite(() => saveBoard(boardId, payload));
 
             if (typeof setLastSavedAt === 'function') {
@@ -364,6 +366,7 @@ export function useBoardPersistence({
                 dirty: false
             });
 
+            await yieldToMainThread();
             emitLocalSaveConfirmed({
                 type: 'LOCAL_SAVE_CONFIRMED',
                 boardId,
