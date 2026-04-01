@@ -166,10 +166,16 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
             await settleStreamReader(reader);
         }
 
-        if (!hasVisibleText && lastFallbackText) {
-            const error = new Error('Gemini stream ended without visible text');
+        if (!hasVisibleText) {
+            const error = new Error(
+                lastFallbackText
+                    ? 'Gemini stream ended without visible text'
+                    : 'Gemini stream ended without any response text'
+            );
             error.code = 'EMPTY_VISIBLE_STREAM';
-            error.fallbackText = lastFallbackText;
+            if (lastFallbackText) {
+                error.fallbackText = lastFallbackText;
+            }
             throw error;
         }
 

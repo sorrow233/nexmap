@@ -345,6 +345,13 @@ export class GeminiProvider extends LLMProvider {
         return error;
     }
 
+    _createEmptyResponseError(message = 'Gemini returned an empty response') {
+        const error = new Error(message);
+        error.code = 'EMPTY_RESPONSE';
+        error.retryable = true;
+        return error;
+    }
+
     _isRateLimited(statusCode, errorMessage = '') {
         const code = Number(statusCode);
         if (code === 429) return true;
@@ -601,6 +608,7 @@ export class GeminiProvider extends LLMProvider {
         // 429 must NEVER be retried — retrying rate-limit errors amplifies
         // the request count and is the root cause of key-pool exhaustion.
         if (this._isRateLimited(statusCode, errorMessage)) return false;
+        if (error?.retryable === true) return true;
         if (isRetryableStatus(statusCode)) return true;
         if (isRetryableError(errorMessage)) return true;
         if (isRetryableNetworkError(error)) return true;
@@ -779,7 +787,9 @@ export class GeminiProvider extends LLMProvider {
                     if (visibleText) return visibleText;
 
                     const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
-                    return fallbackText || '';
+                    if (fallbackText) return fallbackText;
+
+                    throw this._createEmptyResponseError('Gemini returned an empty non-stream response');
                 } finally {
                     releaseConcurrencySlot?.();
                 }
