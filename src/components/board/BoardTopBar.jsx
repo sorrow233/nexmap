@@ -3,6 +3,7 @@ import { LayoutGrid, Undo2, Redo2, Sparkles, Upload } from 'lucide-react';
 import { redo as performRedo, undo as performUndo, useTemporalStore } from '../../store/useStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../services/boardTitle/metadata';
+import { getBoardChromeCopy } from './boardChromeCopy';
 
 export default function BoardTopBar({
     onBack,
@@ -15,7 +16,8 @@ export default function BoardTopBar({
 }) {
     const pastStates = useTemporalStore((state) => state.pastStates);
     const futureStates = useTemporalStore((state) => state.futureStates);
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
+    const chromeCopy = getBoardChromeCopy(language);
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleJustSaved, setTitleJustSaved] = useState(false);
@@ -26,10 +28,8 @@ export default function BoardTopBar({
     const activeInstructionCount = Number(instructionPanelSummary?.activeCount || 0);
     const untitledBoardLabel = t.gallery?.untitledBoard || 'Untitled Board';
     const displayTitle = getBoardDisplayName(board, untitledBoardLabel);
-    const forceSyncLabel = isForceSyncing ? '强推中' : '强推同步';
-    const forceSyncTitle = isForceSyncing
-        ? '正在把当前设备的画布强制覆盖到远端'
-        : '以当前设备这张画布为准，强制覆盖到所有设备';
+    const forceSyncLabel = isForceSyncing ? chromeCopy.forceSyncing : chromeCopy.forceSync;
+    const forceSyncTitle = isForceSyncing ? chromeCopy.forceSyncingTitle : chromeCopy.forceSyncTitle;
 
     useEffect(() => {
         setTitleDraft(board?.name || '');
@@ -53,7 +53,7 @@ export default function BoardTopBar({
             <div className="flex items-center gap-0 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 p-1 md:p-1.5 rounded-xl md:rounded-2xl shadow-xl">
                 <button onClick={onBack} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all">
                     <LayoutGrid size={16} className="md:w-[18px] md:h-[18px]" />
-                    <span className="hidden sm:inline text-sm">Gallery</span>
+                    <span className="hidden sm:inline text-sm">{chromeCopy.gallery}</span>
                 </button>
                 <div className="h-5 md:h-6 w-[1px] bg-slate-200 mx-1 md:mx-2" />
                 <div className="flex items-center gap-1">
@@ -61,7 +61,7 @@ export default function BoardTopBar({
                         onClick={() => performUndo()}
                         disabled={pastStates.length === 0}
                         className={`p-2 rounded-xl transition-all ${pastStates.length === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`}
-                        title="Undo (Ctrl+Z)"
+                        title={`${chromeCopy.undo} (Ctrl+Z)`}
                     >
                         <Undo2 size={18} />
                     </button>
@@ -69,7 +69,7 @@ export default function BoardTopBar({
                         onClick={() => performRedo()}
                         disabled={futureStates.length === 0}
                         className={`p-2 rounded-xl transition-all ${futureStates.length === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`}
-                        title="Redo (Ctrl+Shift+Z)"
+                        title={`${chromeCopy.redo} (Ctrl+Shift+Z)`}
                     >
                         <Redo2 size={18} />
                     </button>

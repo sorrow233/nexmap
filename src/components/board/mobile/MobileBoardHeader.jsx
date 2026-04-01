@@ -1,7 +1,9 @@
 import React from 'react';
-import { AlertCircle, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles, Upload } from 'lucide-react';
+import { AlertCircle, Clock3, HardDrive, LayoutGrid, RefreshCw, Settings2, Sparkles, Upload } from 'lucide-react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getBoardDisplayName } from '../../../services/boardTitle/metadata';
+import { useStore } from '../../../store/useStore';
+import { getBoardChromeCopy, getBoardSaveStatusMeta } from '../boardChromeCopy';
 import { getMobileBoardCopy } from './mobileBoardCopy';
 
 export default function MobileBoardHeader({
@@ -17,15 +19,22 @@ export default function MobileBoardHeader({
 }) {
     const { language } = useLanguage();
     const copy = getMobileBoardCopy(language);
+    const chromeCopy = getBoardChromeCopy(language);
+    const lastSavedAt = useStore((state) => state.lastSavedAt);
+    const saveMeta = getBoardSaveStatusMeta({
+        language,
+        saveStatus,
+        lastSavedAt
+    });
     const saveConfig = {
-        idle: { icon: HardDrive, label: copy.saveIdle, color: 'text-emerald-600 dark:text-emerald-300' },
-        saving: { icon: RefreshCw, label: copy.saving, color: 'text-cyan-600 dark:text-cyan-300', animate: true },
-        saved: { icon: HardDrive, label: copy.saveIdle, color: 'text-emerald-600 dark:text-emerald-300' },
-        local_dirty: { icon: RefreshCw, label: '本地待保存', color: 'text-amber-600 dark:text-amber-300', animate: true },
-        error: { icon: AlertCircle, label: copy.saveError, color: 'text-rose-600 dark:text-rose-300' }
+        idle: { icon: HardDrive, color: 'text-emerald-600 dark:text-emerald-300', pill: 'bg-emerald-50 dark:bg-emerald-500/10' },
+        saving: { icon: RefreshCw, color: 'text-cyan-600 dark:text-cyan-300', pill: 'bg-cyan-50 dark:bg-cyan-500/10', animate: true },
+        saved: { icon: HardDrive, color: 'text-emerald-600 dark:text-emerald-300', pill: 'bg-emerald-50 dark:bg-emerald-500/10' },
+        local_dirty: { icon: Clock3, color: 'text-amber-600 dark:text-amber-300', pill: 'bg-amber-50 dark:bg-amber-500/10' },
+        error: { icon: AlertCircle, color: 'text-rose-600 dark:text-rose-300', pill: 'bg-rose-50 dark:bg-rose-500/10' }
     };
     const displayTitle = getBoardDisplayName(board, untitledLabel);
-    const saveState = saveConfig[saveStatus] || saveConfig.idle;
+    const saveState = saveConfig[saveMeta.statusKey] || saveConfig.idle;
     const SaveIcon = saveState.icon;
     const cardCountLabel = copy.cardCount.replace('{count}', cardCount);
 
@@ -42,16 +51,24 @@ export default function MobileBoardHeader({
 
                     <div className="min-w-0 flex-1">
                         <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-                            {copy.boardLabel}
+                            {chromeCopy.mobileBoardLabel}
                         </div>
                         <div className="mt-0.5 truncate text-[1rem] font-semibold tracking-tight text-slate-900 dark:text-white">
                             {displayTitle}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="mt-0.5 flex items-center gap-2 overflow-hidden text-[11px] text-slate-500 dark:text-slate-400">
                             <span>{cardCountLabel}</span>
-                            <span className={`inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold dark:bg-white/5 ${saveState.color}`}>
+                            {saveMeta.detail && (
+                                <span className="truncate text-[10px] text-slate-400 dark:text-slate-500">
+                                    {saveMeta.detail}
+                                </span>
+                            )}
+                            <span
+                                aria-label={saveMeta.a11yLabel}
+                                className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${saveState.pill} ${saveState.color}`}
+                            >
                                 <SaveIcon size={11} className={saveState.animate ? 'animate-spin' : ''} />
-                                {saveState.label}
+                                {saveMeta.label}
                             </span>
                         </div>
                     </div>
@@ -72,7 +89,7 @@ export default function MobileBoardHeader({
                                     ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
                                     : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
                                     }`}
-                                title={isForceSyncing ? '正在强制同步这张画布' : '强制以当前设备覆盖所有设备'}
+                                title={isForceSyncing ? chromeCopy.forceSyncingTitle : chromeCopy.forceSyncTitle}
                             >
                                 <Upload size={17} className={isForceSyncing ? 'animate-pulse' : ''} />
                             </button>
