@@ -279,7 +279,10 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
                                 chunk={chunk}
                                 marks={stableMarks}
                                 capturedNotes={stableCapturedNotes}
-                                shouldRenderImmediately
+                                // Static long answers should respect the chunk budget again.
+                                // Forcing every chunk to render eagerly defeats the long-message
+                                // optimization and brings the scroll jank regression back.
+                                shouldRenderImmediately={chunk.shouldRenderImmediately}
                             />
                         ))
                     )}
