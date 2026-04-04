@@ -3,11 +3,8 @@ import {
     normalizeBoardMetadataList,
     normalizeBoardTitleMeta
 } from '../boardTitle/metadata';
-import { runWhenBrowserIdle } from '../../utils/idleTask';
 
 export const BOARDS_LIST_KEY = 'mixboard_boards_list';
-const BOARD_LIST_PERSIST_TIMEOUT_MS = 1800;
-const BOARD_LIST_FALLBACK_DELAY_MS = 180;
 
 const CORE_BOARD_METADATA_KEYS = [
     'id',
@@ -37,11 +34,6 @@ const BOARD_LIST_STORAGE_TIERS = [
 ];
 
 const ALWAYS_OMIT_KEYS = ['thumbnail'];
-let cachedBoardsList = [];
-let cachedSerializedBoardsList = null;
-let boardsListCacheHydrated = false;
-let pendingBoardsListPersist = null;
-let boardsListRuntimeBound = false;
 
 const isQuotaExceededError = (error) => (
     error?.name === 'QuotaExceededError' ||
@@ -59,64 +51,12 @@ const getApproxBytes = (value) => {
 };
 
 const readStoredBoardsListRaw = () => {
-    if (boardsListCacheHydrated) {
-        return cachedSerializedBoardsList;
-    }
-
     try {
-        const raw = localStorage.getItem(BOARDS_LIST_KEY);
-        cachedSerializedBoardsList = raw;
-        boardsListCacheHydrated = true;
-        return raw;
+        return localStorage.getItem(BOARDS_LIST_KEY);
     } catch (error) {
         debugLog.error('[Storage] Failed to read boards list from localStorage', error);
         return null;
     }
-};
-
-const cloneBoardsList = (boards = []) => (
-    (Array.isArray(boards) ? boards : []).map((board) => ({ ...board }))
-);
-
-const setBoardsListCache = (boards = [], serialized = cachedSerializedBoardsList) => {
-    cachedBoardsList = cloneBoardsList(normalizeBoardMetadataList(Array.isArray(boards) ? boards : []));
-    cachedSerializedBoardsList = typeof serialized === 'string' ? serialized : null;
-    boardsListCacheHydrated = true;
-    return cloneBoardsList(cachedBoardsList);
-};
-
-const hydrateBoardsListCacheFromRaw = (raw) => {
-    try {
-        const parsed = raw ? JSON.parse(raw) : [];
-        return setBoardsListCache(Array.isArray(parsed) ? parsed : [], raw);
-    } catch (error) {
-        debugLog.error('[Storage] Failed to parse boards list from localStorage', error);
-        return setBoardsListCache([], raw);
-    }
-};
-
-const ensureBoardsListRuntime = () => {
-    if (boardsListRuntimeBound || typeof window === 'undefined') {
-        return;
-    }
-
-    const flushOnBackground = () => {
-        void flushPendingBoardsMetadataList();
-    };
-
-    window.addEventListener('pagehide', flushOnBackground);
-    window.addEventListener('beforeunload', flushOnBackground);
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            flushOnBackground();
-        }
-    });
-    window.addEventListener('storage', (event) => {
-        if (event.key !== BOARDS_LIST_KEY) return;
-        hydrateBoardsListCacheFromRaw(event.newValue || null);
-    });
-
-    boardsListRuntimeBound = true;
 };
 
 const pickCoreBoardMetadata = (board = {}) => {
@@ -149,21 +89,20 @@ const buildBoardsForStorageTier = (boards = [], tier) => normalizeBoardMetadataL
 );
 
 export const readBoardsMetadataListFromStorage = () => {
-    ensureBoardsListRuntime();
-
-    if (!boardsListCacheHydrated) {
-        return hydrateBoardsListCacheFromRaw(readStoredBoardsListRaw());
+    const raw = readStoredBoardsListRaw();
+    try {
+        const parsed = raw ? JSON.parse(raw) : [];
+        return normalizeBoardMetadataList(Array.isArray(parsed) ? parsed : []);
+    } catch (error) {
+        debugLog.error('[Storage] Failed to parse boards list from localStorage', error);
+        return [];
     }
-
-    return cloneBoardsList(cachedBoardsList);
 };
 
-const persistBoardsMetadataListNow = (boards = [], options = {}) => {
+export const persistBoardsMetadataList = (boards = [], options = {}) => {
     const { reason = 'unknown', rethrow = false } = options;
     const normalizedBoards = normalizeBoardMetadataList(Array.isArray(boards) ? boards : []);
-    const currentSerialized = boardsListCacheHydrated
-        ? cachedSerializedBoardsList
-        : readStoredBoardsListRaw();
+    const currentSerialized = readStoredBoardsListRaw();
     let lastError = null;
 
     for (const tier of BOARD_LIST_STORAGE_TIERS) {
@@ -172,7 +111,6 @@ const persistBoardsMetadataListNow = (boards = [], options = {}) => {
         const approxBytes = getApproxBytes(serialized);
 
         if (serialized === currentSerialized) {
-            setBoardsListCache(normalizedBoards, serialized);
             return {
                 storedBoards: candidateBoards,
                 tier: tier.name,
@@ -183,7 +121,6 @@ const persistBoardsMetadataListNow = (boards = [], options = {}) => {
 
         try {
             localStorage.setItem(BOARDS_LIST_KEY, serialized);
-            setBoardsListCache(normalizedBoards, serialized);
             if (tier.name !== 'full') {
                 debugLog.warn(
                     `[Storage] Boards list persisted with compact tier "${tier.name}" during ${reason}`,
@@ -223,7 +160,6 @@ const persistBoardsMetadataListNow = (boards = [], options = {}) => {
         }
     }
 
-    setBoardsListCache(normalizedBoards, currentSerialized);
     debugLog.error(
         `[Storage] Boards list persistence failed after exhausting compact tiers during ${reason}`,
         lastError
@@ -239,65 +175,5 @@ const persistBoardsMetadataListNow = (boards = [], options = {}) => {
         skipped: false,
         failed: true,
         error: lastError
-    };
-};
-
-export const flushPendingBoardsMetadataList = async () => {
-    const pending = pendingBoardsListPersist;
-    if (!pending) {
-        return null;
-    }
-
-    pendingBoardsListPersist = null;
-    pending.cancel?.();
-    return persistBoardsMetadataListNow(pending.boards, pending.options);
-};
-
-export const persistBoardsMetadataList = (boards = [], options = {}) => {
-    const { immediate = true, reason = 'unknown' } = options;
-    const normalizedBoards = normalizeBoardMetadataList(Array.isArray(boards) ? boards : []);
-
-    ensureBoardsListRuntime();
-    setBoardsListCache(normalizedBoards, cachedSerializedBoardsList);
-
-    if (immediate) {
-        if (pendingBoardsListPersist) {
-            pendingBoardsListPersist.cancel?.();
-            pendingBoardsListPersist = null;
-        }
-
-        return persistBoardsMetadataListNow(normalizedBoards, options);
-    }
-
-    if (pendingBoardsListPersist) {
-        pendingBoardsListPersist.cancel?.();
-    }
-
-    const pendingEntry = {
-        boards: cloneBoardsList(normalizedBoards),
-        options,
-        cancel: null
-    };
-
-    pendingEntry.cancel = runWhenBrowserIdle(() => {
-        if (pendingBoardsListPersist !== pendingEntry) {
-            return;
-        }
-
-        pendingBoardsListPersist = null;
-        void persistBoardsMetadataListNow(pendingEntry.boards, pendingEntry.options);
-    }, {
-        timeout: options.timeoutMs ?? BOARD_LIST_PERSIST_TIMEOUT_MS,
-        fallbackDelay: options.fallbackDelay ?? BOARD_LIST_FALLBACK_DELAY_MS
-    });
-
-    pendingBoardsListPersist = pendingEntry;
-
-    return {
-        storedBoards: cloneBoardsList(normalizedBoards),
-        tier: 'deferred',
-        skipped: false,
-        deferred: true,
-        reason
     };
 };

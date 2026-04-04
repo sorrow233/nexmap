@@ -1,6 +1,6 @@
 const MOBILE_BOARD_COPY = {
     en: {
-        boardLabel: 'Mobile Board',
+        boardLabel: 'iPhone Board',
         filters: {
             all: 'All',
             conversation: 'Chat',
@@ -32,7 +32,7 @@ const MOBILE_BOARD_COPY = {
         cardCount: '{count} cards'
     },
     zh: {
-        boardLabel: '移动画板',
+        boardLabel: 'iPhone 画板',
         filters: {
             all: '全部',
             conversation: '对话',
@@ -64,7 +64,7 @@ const MOBILE_BOARD_COPY = {
         cardCount: '{count} 张卡片'
     },
     ja: {
-        boardLabel: 'モバイルボード',
+        boardLabel: 'iPhone Board',
         filters: {
             all: 'すべて',
             conversation: '会話',
@@ -96,7 +96,7 @@ const MOBILE_BOARD_COPY = {
         cardCount: '{count} 枚のカード'
     },
     ko: {
-        boardLabel: '모바일 보드',
+        boardLabel: 'iPhone Board',
         filters: {
             all: '전체',
             conversation: '대화',

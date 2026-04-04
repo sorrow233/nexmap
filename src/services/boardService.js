@@ -26,10 +26,6 @@ import {
     persistBoardsMetadataList,
     readBoardsMetadataListFromStorage
 } from './boardPersistence/boardsListStorage';
-import {
-    loadViewportState,
-    saveViewportState
-} from './boardPersistence/viewportStorage';
 
 const BOARD_PREFIX = 'mixboard_board_';
 const CURRENT_BOARD_ID_KEY = 'mixboard_current_board_id';
@@ -95,11 +91,6 @@ export const setCurrentBoardId = (id) => {
     else sessionStorage.removeItem(CURRENT_BOARD_ID_KEY);
 };
 
-export {
-    loadViewportState,
-    saveViewportState
-};
-
 // Emergency Synchronous Save for iOS/Safari Pagehide events
 export const emergencyLocalSave = (id, data) => {
     if (!id || !data) return false;
@@ -126,10 +117,7 @@ export const emergencyLocalSave = (id, data) => {
                 cardCount: getEffectiveBoardCardCount(data.cards),
                 clientRevision: effectiveClientRevision
             });
-            persistBoardsMetadataList(list, {
-                reason: `emergencyLocalSave:${id}`,
-                immediate: true
-            });
+            persistBoardsMetadataList(list, { reason: `emergencyLocalSave:${id}` });
         }
         debugLog.storage(`[Storage] Emergency synchronous local save for board ${id}`);
         return true;
@@ -281,10 +269,7 @@ export const saveBoard = async (id, data) => {
         }
 
         list[boardIndex] = normalizeBoardTitleMeta(nextBoardMeta);
-        persistBoardsMetadataList(list, {
-            reason: `saveBoard:${id}`,
-            immediate: false
-        });
+        persistBoardsMetadataList(list, { reason: `saveBoard:${id}` });
     }
 
     let lastError = null;
@@ -557,4 +542,33 @@ export const permanentlyDeleteBoard = async (id) => {
     await idbDel(BOARD_PREFIX + id);
     localStorage.removeItem(BOARD_PREFIX + id); // Cleanup legacy
     localStorage.removeItem(`mixboard_viewport_${id}`); // Cleanup viewport state
+};
+
+// Viewport State Management
+const VIEWPORT_PREFIX = 'mixboard_viewport_';
+
+export const saveViewportState = (boardId, viewport) => {
+    if (!boardId) return;
+    debugLog.storage(`Saving viewport for board ${boardId}`, viewport);
+    try {
+        localStorage.setItem(VIEWPORT_PREFIX + boardId, JSON.stringify(viewport));
+    } catch (e) {
+        debugLog.error(`Failed to save viewport state for board ${boardId}`, e);
+    }
+};
+
+export const loadViewportState = (boardId) => {
+    if (!boardId) return { offset: { x: 0, y: 0 }, scale: 1 };
+    debugLog.storage(`Loading viewport for board ${boardId}`);
+    try {
+        const stored = localStorage.getItem(VIEWPORT_PREFIX + boardId);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            debugLog.storage(`Viewport loaded for board ${boardId}`, parsed);
+            return parsed;
+        }
+    } catch (e) {
+        debugLog.error(`Failed to load viewport state for board ${boardId}`, e);
+    }
+    return { offset: { x: 0, y: 0 }, scale: 1 };
 };
