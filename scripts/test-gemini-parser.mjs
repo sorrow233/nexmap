@@ -69,9 +69,8 @@ const runUnitChecks = async () => {
     ];
 
     const tokens = [];
-    const streamMeta = await parseGeminiStream(createReader(streamChunks), (chunk) => tokens.push(chunk), () => { });
+    await parseGeminiStream(createReader(streamChunks), (chunk) => tokens.push(chunk), () => { });
     assert(tokens.join('') === '答案', `parseGeminiStream expected "答案", got "${tokens.join('')}"`);
-    assert(streamMeta?.hasVisibleText === true, 'parseGeminiStream should report visible text when tokens were emitted');
 
     const doneTracker = { reads: 0, cancelled: false };
     const doneThenNoiseChunks = [
@@ -80,11 +79,10 @@ const runUnitChecks = async () => {
         'data: {"candidates":[{"content":{"parts":[{"text":"不该继续读取"}]}}]}\n'
     ];
     const doneTokens = [];
-    const doneMeta = await parseGeminiStream(createReader(doneThenNoiseChunks, doneTracker), (chunk) => doneTokens.push(chunk), () => { });
+    await parseGeminiStream(createReader(doneThenNoiseChunks, doneTracker), (chunk) => doneTokens.push(chunk), () => { });
     assert(doneTokens.join('') === '已完成', `parseGeminiStream should stop at DONE, got "${doneTokens.join('')}"`);
     assert(doneTracker.cancelled === true, 'parseGeminiStream should cancel reader after grace timeout or extra tail data');
     assert(doneTracker.reads < 4, `parseGeminiStream should stop reading early, got ${doneTracker.reads} reads`);
-    assert(doneMeta?.hasVisibleText === true, 'DONE stream should still report visible text');
 
     const onlyThoughtChunks = [
         'data: {"candidates":[{"content":{"parts":[{"thought":true,"text":"JUST_THINK"}]}}]}\n',

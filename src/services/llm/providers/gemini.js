@@ -10,10 +10,6 @@ import {
     isAbortError
 } from './gemini/errorUtils.js';
 import { parseGeminiStream, didCandidateUseSearch } from './gemini/streamParser.js';
-import {
-    createGeminiEmptyResponseError,
-    shouldTreatEmptyGeminiSuccessAsRetryable
-} from './gemini/emptyResponsePolicy.js';
 import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { extractCandidateText } from './gemini/partUtils.js';
 import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
@@ -347,12 +343,6 @@ export class GeminiProvider extends LLMProvider {
         }
         error.keyAlreadyMarked = true;
         return error;
-    }
-
-    _shouldTreatEmptySuccessAsRetryable(baseUrl = '', cleanModel = '') {
-        return shouldTreatEmptyGeminiSuccessAsRetryable({
-            isOfficialGemini31PreviewRequest: this._isOfficialGemini31PreviewRequest(baseUrl, cleanModel)
-        });
     }
 
     _isRateLimited(statusCode, errorMessage = '') {
@@ -789,13 +779,7 @@ export class GeminiProvider extends LLMProvider {
                     if (visibleText) return visibleText;
 
                     const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
-                    if (fallbackText) return fallbackText;
-
-                    if (this._shouldTreatEmptySuccessAsRetryable(baseUrl, cleanModel)) {
-                        throw createGeminiEmptyResponseError('Gemini returned an empty non-stream response');
-                    }
-
-                    return '';
+                    return fallbackText || '';
                 } finally {
                     releaseConcurrencySlot?.();
                 }
@@ -827,10 +811,7 @@ export class GeminiProvider extends LLMProvider {
                     throw error;
                 }
 
-                const canRetry = attempt < maxAttempts && (
-                    error?.retryable === true ||
-                    this._shouldRetry({ statusCode, errorMessage, error })
-                );
+                const canRetry = attempt < maxAttempts && this._shouldRetry({ statusCode, errorMessage, error });
                 if (canRetry) {
                     const waitMs = this._resolveRetryWaitMs({
                         statusCode,
@@ -963,12 +944,6 @@ export class GeminiProvider extends LLMProvider {
 
                     try {
                         const streamMeta = await parseGeminiStream(reader, onToken, () => { });
-                        if (
-                            !streamMeta?.hasVisibleText &&
-                            this._shouldTreatEmptySuccessAsRetryable(baseUrl, cleanModel)
-                        ) {
-                            throw createGeminiEmptyResponseError('Gemini stream returned an empty visible response');
-                        }
                         if (typeof options.onResponseMetadata === 'function') {
                             try {
                                 options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });

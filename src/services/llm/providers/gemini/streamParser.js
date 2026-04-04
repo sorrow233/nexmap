@@ -24,7 +24,7 @@ export function didCandidateUseSearch(candidate) {
  * @param {ReadableStreamDefaultReader} reader 
  * @param {Function} onToken - Callback for new text chunks
  * @param {Function} onLog - Callback for logging (optional)
- * @returns {Promise<{ usedSearch: boolean, hasVisibleText: boolean, fallbackText: string }>}
+ * @returns {Promise<{ usedSearch: boolean }>}
  */
 export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     const decoder = new TextDecoder();
@@ -173,11 +173,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
             throw error;
         }
 
-        return {
-            usedSearch,
-            hasVisibleText,
-            fallbackText: lastFallbackText
-        };
+        return { usedSearch };
     } finally {
         // Reader release is handled by caller or automatic cleanup if properly structured, 
         // but here we just process. The caller should manage the reader lifecycle or we do it here?
