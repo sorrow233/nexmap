@@ -7,7 +7,7 @@ const MessageList = React.memo(function MessageList({
     messagesEndRef,
     scrollContainerRef,
     scrollToMessageIndexRef,
-    isStreaming,
+    isResponseStreaming,
     handleRetry,
     parseModelOutput,
     onUpdate,
@@ -61,7 +61,7 @@ const MessageList = React.memo(function MessageList({
                         scrollContainerRef={scrollContainerRef}
                         messagesEndRef={messagesEndRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        isStreaming={isStreaming}
+                        isResponseStreaming={isResponseStreaming}
                         handleRetry={handleRetry}
                         marks={card.data.marks}
                         capturedNotes={card.data.capturedNotes}
