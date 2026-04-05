@@ -3,12 +3,13 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import ErrorBoundary from '../../ErrorBoundary';
 import MessageItem from '../MessageItem';
 import PendingQueueIndicator from '../PendingQueueIndicator';
-import QueuedUserMessagePreview from '../QueuedUserMessagePreview';
 import favoritesService from '../../../services/favoritesService';
 import { useStore } from '../../../store/useStore';
 
 const ITEM_GAP_PX = 64;
 const DEFAULT_OVERSCAN = 4;
+const STREAMING_INDICATOR_HEIGHT = 64;
+const PENDING_INDICATOR_HEIGHT = 56;
 const BOTTOM_SENTINEL_HEIGHT = 128;
 
 const extractMessageTextLength = (content) => {
@@ -46,7 +47,7 @@ export default function MessageVirtualList({
     scrollContainerRef,
     messagesEndRef,
     scrollToMessageIndexRef,
-    isResponseStreaming,
+    isStreaming,
     handleRetry,
     marks,
     capturedNotes,
@@ -61,7 +62,7 @@ export default function MessageVirtualList({
     useStore((state) => state.favoritesLastUpdate);
 
     const hasDetachedStreamingMessage = Boolean(
-        isResponseStreaming &&
+        isStreaming &&
         messages.length > 0 &&
         messages[messages.length - 1]?.role === 'assistant'
     );
@@ -82,7 +83,7 @@ export default function MessageVirtualList({
 
     const virtualRows = rowVirtualizer.getVirtualItems();
     const totalMessagesHeight = rowVirtualizer.getTotalSize();
-    const showStreamingIndicator = isResponseStreaming && !hasDetachedStreamingMessage;
+    const showStreamingIndicator = isStreaming && !hasDetachedStreamingMessage;
 
     React.useEffect(() => {
         if (!scrollToMessageIndexRef) {
@@ -181,17 +182,6 @@ export default function MessageVirtualList({
                             onBranch={onBranch}
                         />
                     </ErrorBoundary>
-                </div>
-            )}
-
-            {pendingMessages.length > 0 && (
-                <div className="space-y-4 pb-6">
-                    {pendingMessages.map((pendingMessage, index) => (
-                        <QueuedUserMessagePreview
-                            key={`queued-${cardId}-${index}-${pendingMessage?.text || ''}-${pendingMessage?.images?.length || 0}`}
-                            pendingMessage={pendingMessage}
-                        />
-                    ))}
                 </div>
             )}
 
