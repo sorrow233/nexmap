@@ -31,9 +31,11 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let lastVisibleText = '';
     let lastFallbackText = '';
     let buffer = '';
+    let rawStreamText = '';
     let usedSearch = false;
     let hasVisibleText = false;
     let sawTerminal = false;
+    let parsedCandidateCount = 0;
 
     const emitVisibleDelta = (candidate) => {
         const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
@@ -56,6 +58,34 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
         }
     };
 
+    const processCandidateEnvelope = (payload) => {
+        if (!payload || typeof payload !== 'object') return;
+
+        const candidate = payload.candidates?.[0];
+        if (!candidate) return;
+
+        parsedCandidateCount += 1;
+        if (didCandidateUseSearch(candidate)) {
+            usedSearch = true;
+        }
+
+        emitVisibleDelta(candidate);
+    };
+
+    const processRawJsonFallback = () => {
+        if (parsedCandidateCount > 0 || !rawStreamText.trim()) {
+            return;
+        }
+
+        const parsed = JSON.parse(rawStreamText.trim());
+        if (Array.isArray(parsed)) {
+            parsed.forEach((item) => processCandidateEnvelope(item));
+            return;
+        }
+
+        processCandidateEnvelope(parsed);
+    };
+
     try {
         onLog('[Gemini] Stream response OK, processing chunks...');
         while (true) {
@@ -64,6 +94,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
 
             const chunkText = decoder.decode(value, { stream: true });
             buffer += chunkText;
+            rawStreamText += chunkText;
 
             const lines = buffer.split('\n');
             buffer = lines.pop(); // Keep incomplete line in buffer
@@ -104,12 +135,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                         throw new Error(errMsg);
                     }
 
-                    const candidate = data.candidates?.[0];
-                    if (didCandidateUseSearch(candidate)) {
-                        usedSearch = true;
-                    }
-
-                    emitVisibleDelta(candidate);
+                    processCandidateEnvelope(data);
                 } catch (jsonErr) {
                     // Handle retryable errors thrown above
                     if (jsonErr.retryable) {
@@ -148,17 +174,22 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                         }
                         throw new Error(errMsg);
                     }
-    
-                    const candidate = data.candidates?.[0];
-                    if (didCandidateUseSearch(candidate)) {
-                        usedSearch = true;
-                    }
-    
-                    emitVisibleDelta(candidate);
+
+                    processCandidateEnvelope(data);
                 }
             } catch (e) {
                 if (e.retryable) throw e;
                 if (e.message && !e.message.includes('JSON')) throw e;
+            }
+        }
+
+        if (!hasVisibleText) {
+            try {
+                processRawJsonFallback();
+            } catch (e) {
+                if (e?.message && !e.message.includes('JSON')) {
+                    throw e;
+                }
             }
         }
 
