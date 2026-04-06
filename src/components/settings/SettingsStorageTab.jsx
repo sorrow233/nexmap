@@ -3,6 +3,9 @@ import { RotateCcw, CheckCircle2, Database, Calendar, Clock, Trash2 } from 'luci
 import { useLanguage } from '../../contexts/LanguageContext';
 import { loadBoardsMetadata, saveBoard } from '../../services/storage';
 import {
+    cleanupScheduledBackups,
+    clearScheduledBackups,
+    getScheduledBackupStorageStats,
     getBackupHistory,
     restoreFromBackup,
     deleteBackup,
@@ -84,6 +87,16 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     const [nextBackupTime, setNextBackupTime] = useState(null);
     const [backupActionStatus, setBackupActionStatus] = useState('idle'); // idle, loading, success, error
     const [backupActionMsg, setBackupActionMsg] = useState('');
+    const [scheduledBackupStats, setScheduledBackupStats] = useState({
+        count: 0,
+        totalBytes: 0,
+        oldestTimestamp: 0,
+        latestTimestamp: 0,
+        maxBackups: 0,
+        maxTotalBytes: 0
+    });
+    const [scheduledCleanupStatus, setScheduledCleanupStatus] = useState('idle');
+    const [scheduledCleanupMsg, setScheduledCleanupMsg] = useState('');
 
     const [s3BackupStatus, setS3BackupStatus] = useState('idle'); // idle, uploading, success, error
     const [s3BackupMsg, setS3BackupMsg] = useState('');
@@ -107,15 +120,23 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
 
     const [hasBackup, setHasBackup] = useState(() => hasSafetyBackup());
 
+    const refreshScheduledBackupState = useCallback(async () => {
+        const [history, stats] = await Promise.all([
+            getBackupHistory(),
+            getScheduledBackupStorageStats()
+        ]);
+        setBackupHistory(history);
+        setScheduledBackupStats(stats);
+        setNextBackupTime(getNextBackupTime());
+    }, []);
+
     // Load backup history on mount
     useEffect(() => {
         const loadBackups = async () => {
-            const history = await getBackupHistory();
-            setBackupHistory(history);
-            setNextBackupTime(getNextBackupTime());
+            await refreshScheduledBackupState();
         };
         loadBackups();
-    }, []);
+    }, [refreshScheduledBackupState]);
 
     const loadRemoteBackups = useCallback(async (config) => {
         if (!config.bucket || !config.accessKeyId || !config.secretAccessKey) {
@@ -263,7 +284,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         if (!window.confirm('Delete this backup permanently?')) return;
         try {
             await deleteBackup(backupId);
-            setBackupHistory(prev => prev.filter(b => b.id !== backupId));
+            await refreshScheduledBackupState();
         } catch (e) {
             console.error('Delete backup failed:', e);
         }
@@ -276,17 +297,52 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             const result = await forceBackup();
             if (result.success) {
                 setBackupActionStatus('success');
-                setBackupActionMsg(`Backup created: ${result.boardCount} boards saved.`);
-                // Refresh list
-                const history = await getBackupHistory();
-                setBackupHistory(history);
-                setNextBackupTime(getNextBackupTime());
+                setBackupActionMsg(
+                    result.skipped
+                        ? '本地数据没有变化，本次没有重复写入新的定时备份。'
+                        : `Backup created: ${result.boardCount} boards saved.`
+                );
+                await refreshScheduledBackupState();
             } else {
                 throw new Error(result.error || 'Backup failed');
             }
         } catch (e) {
             setBackupActionStatus('error');
             setBackupActionMsg(e.message);
+        }
+    };
+
+    const handleTrimScheduledBackups = async () => {
+        if (!window.confirm('这只会清理本地定时备份，不会删除当前画板数据。将只保留最新 1 份定时备份，继续吗？')) {
+            return;
+        }
+
+        setScheduledCleanupStatus('loading');
+        setScheduledCleanupMsg('');
+        try {
+            const result = await clearScheduledBackups({ preserveLatest: true });
+            await refreshScheduledBackupState();
+            setScheduledCleanupStatus('success');
+            setScheduledCleanupMsg(`已删除 ${result.deletedCount} 份旧的本地定时备份，当前保留 ${result.remainingBackupCount} 份最新备份。`);
+        } catch (error) {
+            console.error('[ScheduledBackup] Trim failed:', error);
+            setScheduledCleanupStatus('error');
+            setScheduledCleanupMsg(error?.message || '清理本地定时备份失败。');
+        }
+    };
+
+    const handlePruneScheduledBackups = async () => {
+        setScheduledCleanupStatus('loading');
+        setScheduledCleanupMsg('');
+        try {
+            const result = await cleanupScheduledBackups();
+            await refreshScheduledBackupState();
+            setScheduledCleanupStatus('success');
+            setScheduledCleanupMsg(`已按新策略整理本地定时备份，删除 ${result.deletedCount} 份，当前占用 ${formatBytes(Math.max(0, result.totalBytes || 0))}。`);
+        } catch (error) {
+            console.error('[ScheduledBackup] Policy prune failed:', error);
+            setScheduledCleanupStatus('error');
+            setScheduledCleanupMsg(error?.message || '整理本地定时备份失败。');
         }
     };
 
@@ -740,7 +796,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storageConfig?.scheduledBackups || "Scheduled Backups"}</h3>
-                        <p className="text-xs text-slate-500">{t.settings.storageConfig?.scheduledDesc || "Auto backup at 3:00 AM and 4:00 PM daily (5-day history)"}</p>
+                        <p className="text-xs text-slate-500">每 30 分钟检查一次，仅在本地数据发生变化时写入新备份，并自动限制总数量与总占用。</p>
                     </div>
                     <button
                         onClick={handleForceBackup}
@@ -753,6 +809,58 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                             <><Database size={12} /> {t.settings.storageConfig?.backupNow || "Backup Now"}</>
                         )}
                     </button>
+                </div>
+
+                <div className={`mb-4 rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-4 text-xs text-[#6f604f] ${settingsDarkSurfaceMuted} dark:text-slate-300`}>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-1">
+                            <p>当前本地定时备份：{scheduledBackupStats.count} 份，约 {formatBytes(scheduledBackupStats.totalBytes)}</p>
+                            <p>策略上限：最多 {scheduledBackupStats.maxBackups || 0} 份，最多 {formatBytes(scheduledBackupStats.maxTotalBytes || 0)}</p>
+                            {scheduledBackupStats.latestTimestamp ? (
+                                <p>最新一份：{new Date(scheduledBackupStats.latestTimestamp).toLocaleString()}</p>
+                            ) : (
+                                <p>当前还没有本地定时备份。</p>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={handlePruneScheduledBackups}
+                                disabled={scheduledCleanupStatus === 'loading'}
+                                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] px-4 py-2 text-xs font-semibold text-[#6f604f] transition-all hover:bg-[#f8f2e8] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700/80 dark:text-slate-300 dark:hover:bg-[#1a2330]"
+                            >
+                                {scheduledCleanupStatus === 'loading' ? (
+                                    <>
+                                        <RotateCcw size={12} className="animate-spin" />
+                                        正在整理...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RotateCcw size={12} />
+                                        按策略整理
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleTrimScheduledBackups}
+                                disabled={scheduledCleanupStatus === 'loading' || scheduledBackupStats.count <= 1}
+                                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efb65a] px-4 py-2 text-xs font-semibold text-[#322515] transition-all hover:bg-[#f3bf6c] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <Trash2 size={12} />
+                                只保留最新 1 份
+                            </button>
+                        </div>
+                    </div>
+
+                    {scheduledCleanupStatus !== 'idle' && scheduledCleanupMsg ? (
+                        <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${scheduledCleanupStatus === 'success'
+                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                                : scheduledCleanupStatus === 'error'
+                                    ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300'
+                                    : `bg-[#f8f2e8] text-[#8d6d49] ${settingsDarkChip}`
+                            }`}>
+                            {scheduledCleanupMsg}
+                        </div>
+                    ) : null}
                 </div>
 
                 {nextBackupTime && (
@@ -791,7 +899,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                                             {backup.formattedDate}
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                            {backup.boardCount} boards
+                                            {backup.boardCount} boards · {formatBytes(backup.sizeBytes || 0)}
                                         </p>
                                     </div>
                                 </div>

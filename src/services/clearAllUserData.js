@@ -8,6 +8,7 @@
 import { idbClear } from './db/indexedDB';
 import { useStore, clearHistory } from '../store/useStore';
 import { createSafetyBackup } from './safetyBackupService';
+import { clearScheduledBackups } from './scheduledBackupService';
 
 // All localStorage keys used by the app
 const STORAGE_KEYS_TO_REMOVE = [
@@ -68,7 +69,15 @@ export async function clearAllUserData() {
     keysToRemove.forEach(key => localStorage.removeItem(key));
     console.log(`[Logout] Cleared ${STORAGE_KEYS_TO_REMOVE.length + keysToRemove.length} localStorage keys`);
 
-    // 3. Clear IndexedDB (images, board data)
+    // 3. Clear scheduled local backups while preserving the fresh safety backup.
+    try {
+        const cleanupResult = await clearScheduledBackups();
+        console.log(`[Logout] Cleared ${cleanupResult.deletedCount} scheduled backups`);
+    } catch (e) {
+        console.error('[Logout] Failed to clear scheduled backups:', e);
+    }
+
+    // 4. Clear IndexedDB (images, board data)
     try {
         await idbClear();
         console.log('[Logout] Cleared IndexedDB');
@@ -76,10 +85,10 @@ export async function clearAllUserData() {
         console.error('[Logout] Failed to clear IndexedDB:', e);
     }
 
-    // 4. Reset Redux store state
+    // 5. Reset Redux store state
     useStore.getState().resetAllState();
 
-    // 5. Clear undo/redo history
+    // 6. Clear undo/redo history
     clearHistory();
 
     console.log('[Logout] All user data cleared successfully');

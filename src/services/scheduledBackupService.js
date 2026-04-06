@@ -17,9 +17,11 @@ import { backupStoreDel, backupStoreGet, backupStoreSet } from './db/backupStore
 const BACKUP_KEY_PREFIX = 'scheduled_backup_';
 const BACKUP_INDEX_KEY = 'scheduled_backup_index';
 const LAST_BACKUP_TIME_KEY = 'scheduled_backup_last_time';
+const LAST_BACKUP_FINGERPRINT_KEY = 'scheduled_backup_last_fingerprint';
 const MAX_BACKUP_DAYS = 7;
 const BACKUP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
-const MAX_BACKUPS = MAX_BACKUP_DAYS * 24 * 2; // Max possible backups in 7 days at 30min intervals (theoretical max)
+const MAX_BACKUPS = 12;
+const MAX_TOTAL_BACKUP_BYTES = 512 * 1024 * 1024;
 
 let checkIntervalId = null;
 
@@ -28,6 +30,119 @@ let checkIntervalId = null;
  */
 const generateBackupId = (timestamp = Date.now()) => {
     return `${BACKUP_KEY_PREFIX}${timestamp}`;
+};
+
+const parseBackupTimestamp = (backupId, fallback = 0) => {
+    if (typeof backupId !== 'string') return fallback;
+    const raw = backupId.startsWith(BACKUP_KEY_PREFIX)
+        ? backupId.slice(BACKUP_KEY_PREFIX.length)
+        : '';
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const normalizeBackupIdList = (index = []) => Array.from(new Set(
+    Array.isArray(index) ? index.filter((id) => typeof id === 'string' && id.startsWith(BACKUP_KEY_PREFIX)) : []
+)).sort((a, b) => parseBackupTimestamp(a) - parseBackupTimestamp(b));
+
+const hashString = (input = '') => {
+    let hash = 2166136261;
+    for (let index = 0; index < input.length; index += 1) {
+        hash ^= input.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+};
+
+const buildBoardBackupFingerprint = (boardMeta = {}, boardData = {}) => {
+    const boardId = String(boardMeta?.id || boardData?.id || '');
+    const boardUpdatedAt = Number(boardMeta?.updatedAt) || 0;
+    const boardRevision = Number(boardMeta?.clientRevision) || 0;
+    const boardDeletedAt = Number(boardMeta?.deletedAt) || 0;
+    const boardCardCount = Number(boardMeta?.cardCount) || 0;
+    const dataUpdatedAt = Number(boardData?.updatedAt) || 0;
+    const dataRevision = Number(boardData?.clientRevision) || 0;
+    const cardsCount = Array.isArray(boardData?.cards) ? boardData.cards.length : 0;
+    const connectionsCount = Array.isArray(boardData?.connections) ? boardData.connections.length : 0;
+    const groupsCount = Array.isArray(boardData?.groups) ? boardData.groups.length : 0;
+    const backgroundLength = typeof boardData?.backgroundImage === 'string' ? boardData.backgroundImage.length : 0;
+
+    return [
+        boardId,
+        boardUpdatedAt,
+        boardRevision,
+        boardDeletedAt,
+        boardCardCount,
+        dataUpdatedAt,
+        dataRevision,
+        cardsCount,
+        connectionsCount,
+        groupsCount,
+        backgroundLength
+    ].join(':');
+};
+
+const buildBackupFingerprint = (boardsList = [], boardsData = {}, settingsSignature = '') => {
+    const boardFingerprints = boardsList
+        .map((boardMeta) => buildBoardBackupFingerprint(boardMeta, boardsData?.[boardMeta?.id]))
+        .sort()
+        .join('|');
+
+    return hashString(`${boardFingerprints}::${settingsSignature || ''}`);
+};
+
+const measureBackupSizeBytes = (backup) => {
+    try {
+        return new Blob([JSON.stringify(backup)]).size;
+    } catch (error) {
+        console.warn('[ScheduledBackup] Failed to measure backup size', error);
+        return 0;
+    }
+};
+
+const resolveBackupSizeBytes = async (backupId, backup) => {
+    const existingSize = Number(backup?.sizeBytes);
+    if (Number.isFinite(existingSize) && existingSize > 0) {
+        return existingSize;
+    }
+
+    const sizeBytes = measureBackupSizeBytes(backup);
+    if (sizeBytes > 0 && backupId && backup) {
+        try {
+            await backupStoreSet(backupId, {
+                ...backup,
+                sizeBytes
+            });
+        } catch (error) {
+            console.warn(`[ScheduledBackup] Failed to persist size metadata for ${backupId}`, error);
+        }
+    }
+    return sizeBytes;
+};
+
+const syncLatestBackupRuntimeMarkers = async (latestBackupId = '') => {
+    if (!latestBackupId) {
+        localStorage.removeItem(LAST_BACKUP_TIME_KEY);
+        localStorage.removeItem(LAST_BACKUP_FINGERPRINT_KEY);
+        return;
+    }
+
+    try {
+        const latestBackup = await backupStoreGet(latestBackupId);
+        const timestamp = Number(latestBackup?.timestamp) || parseBackupTimestamp(latestBackupId, Date.now());
+        localStorage.setItem(LAST_BACKUP_TIME_KEY, String(timestamp));
+
+        const fingerprint = typeof latestBackup?.fingerprint === 'string'
+            ? latestBackup.fingerprint.trim()
+            : '';
+        if (fingerprint) {
+            localStorage.setItem(LAST_BACKUP_FINGERPRINT_KEY, fingerprint);
+        } else {
+            localStorage.removeItem(LAST_BACKUP_FINGERPRINT_KEY);
+        }
+    } catch (error) {
+        console.warn('[ScheduledBackup] Failed to sync latest runtime markers', error);
+    }
 };
 
 /**
@@ -63,7 +178,7 @@ const shouldBackupNow = async () => {
 const getBackupIndex = async () => {
     try {
         const index = await backupStoreGet(BACKUP_INDEX_KEY);
-        return Array.isArray(index) ? index : [];
+        return normalizeBackupIdList(index);
     } catch (e) {
         console.error('[ScheduledBackup] Failed to get backup index:', e);
         return [];
@@ -75,10 +190,150 @@ const getBackupIndex = async () => {
  */
 const saveBackupIndex = async (index) => {
     try {
-        await backupStoreSet(BACKUP_INDEX_KEY, index);
+        await backupStoreSet(BACKUP_INDEX_KEY, normalizeBackupIdList(index));
     } catch (e) {
         console.error('[ScheduledBackup] Failed to save backup index:', e);
     }
+};
+
+export const cleanupScheduledBackups = async (options = {}) => {
+    const maxBackups = Number.isFinite(Number(options.maxBackups))
+        ? Math.max(0, Number(options.maxBackups))
+        : MAX_BACKUPS;
+    const maxAgeDays = Number.isFinite(Number(options.maxAgeDays))
+        ? Math.max(0, Number(options.maxAgeDays))
+        : MAX_BACKUP_DAYS;
+    const maxTotalBytes = Number.isFinite(Number(options.maxTotalBytes))
+        ? Math.max(0, Number(options.maxTotalBytes))
+        : MAX_TOTAL_BACKUP_BYTES;
+
+    let index = await getBackupIndex();
+    const deletedBackupIds = [];
+    let reclaimedBytes = 0;
+
+    const now = Date.now();
+    const retentionCutoff = maxAgeDays > 0
+        ? now - (maxAgeDays * 24 * 60 * 60 * 1000)
+        : Number.POSITIVE_INFINITY;
+
+    const retainedByAge = [];
+    for (const backupId of index) {
+        const backupTimestamp = parseBackupTimestamp(backupId);
+        if (backupTimestamp > 0 && backupTimestamp < retentionCutoff) {
+            await backupStoreDel(backupId);
+            deletedBackupIds.push(backupId);
+            continue;
+        }
+        retainedByAge.push(backupId);
+    }
+    index = retainedByAge;
+
+    while (index.length > maxBackups) {
+        const oldestId = index.shift();
+        if (!oldestId) break;
+        await backupStoreDel(oldestId);
+        deletedBackupIds.push(oldestId);
+    }
+
+    let totalBytes = 0;
+    if (maxTotalBytes > 0 && index.length > 0) {
+        const sizedBackups = [];
+        for (const backupId of index) {
+            const backup = await backupStoreGet(backupId);
+            if (!backup) {
+                await backupStoreDel(backupId);
+                deletedBackupIds.push(backupId);
+                continue;
+            }
+
+            const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
+            const sizeBytes = await resolveBackupSizeBytes(backupId, backup);
+            totalBytes += sizeBytes;
+            sizedBackups.push({
+                id: backupId,
+                timestamp,
+                sizeBytes
+            });
+        }
+
+        sizedBackups.sort((a, b) => a.timestamp - b.timestamp);
+        while (totalBytes > maxTotalBytes && sizedBackups.length > 1) {
+            const oldestBackup = sizedBackups.shift();
+            if (!oldestBackup) break;
+            await backupStoreDel(oldestBackup.id);
+            deletedBackupIds.push(oldestBackup.id);
+            reclaimedBytes += oldestBackup.sizeBytes;
+            totalBytes -= oldestBackup.sizeBytes;
+        }
+
+        index = sizedBackups.map((backup) => backup.id);
+    }
+
+    await saveBackupIndex(index);
+    await syncLatestBackupRuntimeMarkers(index[index.length - 1] || '');
+
+    return {
+        deletedBackupIds,
+        deletedCount: deletedBackupIds.length,
+        remainingBackupCount: index.length,
+        reclaimedBytes,
+        totalBytes
+    };
+};
+
+export const clearScheduledBackups = async ({ preserveLatest = false } = {}) => {
+    const index = await getBackupIndex();
+    const retainedIds = preserveLatest && index.length > 0
+        ? [index[index.length - 1]]
+        : [];
+    const idsToDelete = preserveLatest
+        ? index.slice(0, -1)
+        : index;
+
+    for (const backupId of idsToDelete) {
+        await backupStoreDel(backupId);
+    }
+
+    await saveBackupIndex(retainedIds);
+    await syncLatestBackupRuntimeMarkers(retainedIds[retainedIds.length - 1] || '');
+
+    return {
+        deletedCount: idsToDelete.length,
+        remainingBackupCount: retainedIds.length
+    };
+};
+
+export const getScheduledBackupStorageStats = async () => {
+    const index = await getBackupIndex();
+    let totalBytes = 0;
+    let oldestTimestamp = 0;
+    let latestTimestamp = 0;
+
+    for (const backupId of index) {
+        const backup = await backupStoreGet(backupId);
+        if (!backup) {
+            continue;
+        }
+        const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
+        const sizeBytes = await resolveBackupSizeBytes(backupId, backup);
+        totalBytes += sizeBytes;
+
+        if (!oldestTimestamp || timestamp < oldestTimestamp) {
+            oldestTimestamp = timestamp;
+        }
+        if (timestamp > latestTimestamp) {
+            latestTimestamp = timestamp;
+        }
+    }
+
+    return {
+        count: index.length,
+        totalBytes,
+        oldestTimestamp,
+        latestTimestamp,
+        maxBackups: MAX_BACKUPS,
+        maxTotalBytes: MAX_TOTAL_BACKUP_BYTES
+    };
 };
 
 /**
@@ -107,13 +362,23 @@ export const performScheduledBackup = async () => {
 
         // 3. Get settings
         let settings = null;
+        let settingsSignature = '';
         try {
             const settingsStr = localStorage.getItem('mixboard_settings');
             if (settingsStr) {
                 settings = JSON.parse(settingsStr);
+                settingsSignature = settingsStr;
             }
         } catch (e) {
             // Settings backup is optional
+        }
+
+        const fingerprint = buildBackupFingerprint(boardsList, boardsData, settingsSignature);
+        const lastFingerprint = localStorage.getItem(LAST_BACKUP_FINGERPRINT_KEY) || '';
+        if (lastFingerprint && fingerprint === lastFingerprint) {
+            localStorage.setItem(LAST_BACKUP_TIME_KEY, Date.now().toString());
+            debugLog.storage('[ScheduledBackup] Skipped backup because board data has not changed since the last snapshot.');
+            return { success: true, skipped: true, reason: 'unchanged' };
         }
 
         // 4. Create backup object
@@ -123,25 +388,27 @@ export const performScheduledBackup = async () => {
             boardsList: boardsList,
             boardsData: boardsData,
             settings: settings,
-            version: 1
+            version: 2,
+            fingerprint
         };
+        backup.sizeBytes = measureBackupSizeBytes(backup);
 
         // 5. Save backup
         await backupStoreSet(backupId, backup);
 
         // 6. Update last backup time
         localStorage.setItem(LAST_BACKUP_TIME_KEY, Date.now().toString());
+        localStorage.setItem(LAST_BACKUP_FINGERPRINT_KEY, fingerprint);
 
         // 7. Update index
         let index = await getBackupIndex();
         if (!index.includes(backupId)) {
             index.push(backupId);
-            index.sort(); // Keep sorted by date/time
         }
         await saveBackupIndex(index);
 
         // 8. Cleanup old backups
-        await cleanupOldBackups();
+        await cleanupScheduledBackups();
 
         debugLog.storage(`[ScheduledBackup] Backup complete: ${backupId}, boards: ${boardsList.length}`);
 
@@ -149,45 +416,6 @@ export const performScheduledBackup = async () => {
     } catch (e) {
         console.error('[ScheduledBackup] Backup failed:', e);
         return { success: false, error: e.message };
-    }
-};
-
-/**
- * Clean up backups older than MAX_BACKUP_DAYS
- */
-const cleanupOldBackups = async () => {
-    try {
-        let index = await getBackupIndex();
-
-        // If we have more than MAX_BACKUPS, remove oldest ones
-        while (index.length > MAX_BACKUPS) {
-            const oldestId = index.shift();
-            await backupStoreDel(oldestId);
-            debugLog.storage(`[ScheduledBackup] Removed old backup: ${oldestId}`);
-        }
-
-        // Also remove backups older than 7 days
-        const sevenDaysAgo = Date.now() - (MAX_BACKUP_DAYS * 24 * 60 * 60 * 1000);
-        const validBackups = [];
-
-        for (const backupId of index) {
-            try {
-                const backup = await backupStoreGet(backupId);
-                if (backup && backup.timestamp && backup.timestamp >= sevenDaysAgo) {
-                    validBackups.push(backupId);
-                } else {
-                    await backupStoreDel(backupId);
-                    debugLog.storage(`[ScheduledBackup] Removed expired backup: ${backupId}`);
-                }
-            } catch (e) {
-                // If we can't read it, try to delete it
-                await backupStoreDel(backupId);
-            }
-        }
-
-        await saveBackupIndex(validBackups);
-    } catch (e) {
-        console.error('[ScheduledBackup] Cleanup failed:', e);
     }
 };
 
@@ -203,11 +431,13 @@ export const getBackupHistory = async () => {
             try {
                 const backup = await backupStoreGet(backupId);
                 if (backup) {
+                    const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
                     backups.push({
                         id: backupId,
-                        timestamp: backup.timestamp,
+                        timestamp,
                         boardCount: backup.boardsList?.length || 0,
-                        formattedDate: new Date(backup.timestamp).toLocaleString()
+                        sizeBytes: await resolveBackupSizeBytes(backupId, backup),
+                        formattedDate: new Date(timestamp).toLocaleString()
                     });
                 }
             } catch (e) {
@@ -292,6 +522,7 @@ export const deleteBackup = async (backupId) => {
         let index = await getBackupIndex();
         index = index.filter(id => id !== backupId);
         await saveBackupIndex(index);
+        await syncLatestBackupRuntimeMarkers(index[index.length - 1] || '');
 
         debugLog.storage(`[ScheduledBackup] Deleted backup: ${backupId}`);
         return { success: true };
@@ -330,13 +561,16 @@ export const initScheduledBackup = () => {
     const nextBackup = getNextBackupTime();
     debugLog.storage(`[ScheduledBackup] Initialized. Next backup at: ${nextBackup.toLocaleString()}`);
 
-    // Perform initial check
-    checkAndPerformBackup();
+    // Prune stale backups before the first scheduled run so old devices recover space immediately.
+    void (async () => {
+        await cleanupScheduledBackups();
+        await checkAndPerformBackup();
+    })();
 
     // Check every 5 minutes if we need to backup (every 30 mins actual backup)
     // This is more reliable than scheduling exact times (handles sleep/wake, tab focus, etc.)
     checkIntervalId = setInterval(() => {
-        checkAndPerformBackup();
+        void checkAndPerformBackup();
     }, 5 * 60 * 1000); // Check every 5 minutes, backup every 30 minutes
 
     return {
