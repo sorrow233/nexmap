@@ -333,8 +333,9 @@ export const createAISlice = (set, get) => {
                     }
                 };
 
+                let nextCardsSnapshot = null;
                 set(state => ({
-                    cards: [...state.cards, newCard],
+                    cards: (nextCardsSnapshot = [...state.cards, newCard]),
                     connections: [...state.connections, ...autoConnections],
                     cardIndexMutation: nextCardIndexMutation(state.cardIndexMutation, {
                         mode: 'bulk',
@@ -343,6 +344,7 @@ export const createAISlice = (set, get) => {
                     boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
                     // NOTE: Do NOT add to generatingCardIds since we're not generating
                 }));
+                get().syncCardLookupCache?.(nextCardsSnapshot, [newCard]);
 
                 return newId;
             }
@@ -365,8 +367,9 @@ export const createAISlice = (set, get) => {
                 }
             };
 
+            let nextCardsSnapshot = null;
             set(state => ({
-                cards: [...state.cards, newCard],
+                cards: (nextCardsSnapshot = [...state.cards, newCard]),
                 connections: [...state.connections, ...autoConnections],
                 generatingCardIds: new Set(state.generatingCardIds).add(newId),
                 generatingCardTaskCounts: incrementGeneratingTaskCount(state.generatingCardTaskCounts, newId),
@@ -374,8 +377,9 @@ export const createAISlice = (set, get) => {
                     mode: 'bulk',
                     reason: 'createAICard:streaming'
                 }),
-                boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
+                    boardChangeState: bumpBoardChangeState(state.boardChangeState, 'card_add')
             }));
+            get().syncCardLookupCache?.(nextCardsSnapshot, [newCard]);
 
             if (images.length > 0) {
                 void persistCardMessageImagesToIDB({
@@ -587,6 +591,8 @@ export const createAISlice = (set, get) => {
             const flushedTailUpdates = isGenerating
                 ? new Map()
                 : streamRenderBuffer.flushCardNow(id);
+            let nextCardsSnapshot = null;
+            let updatedCardsSnapshot = [];
 
             if (isGenerating) {
                 streamRenderBuffer.cleanupKey(bufferKey);
@@ -634,6 +640,8 @@ export const createAISlice = (set, get) => {
                 };
 
                 if (nextCards !== state.cards) {
+                    nextCardsSnapshot = nextCards;
+                    updatedCardsSnapshot = updatedCards;
                     patch.cards = nextCards;
                     patch.cardIndexMutation = nextCardIndexMutation(state.cardIndexMutation, {
                         mode: 'patch',
@@ -657,6 +665,10 @@ export const createAISlice = (set, get) => {
 
                 return patch;
             });
+
+            if (nextCardsSnapshot) {
+                get().syncCardLookupCache?.(nextCardsSnapshot, updatedCardsSnapshot);
+            }
         },
 
         handleRegenerate: async () => {
@@ -669,6 +681,8 @@ export const createAISlice = (set, get) => {
 
             // Reset assistant messages without mutating card-level model binding.
             const hydratedTargets = new Map(targets.map((card) => [card.id, card]));
+            let nextCardsSnapshot = null;
+            let updatedCardsSnapshot = [];
             set(state => {
                 const updatedCards = [];
                 const nextCards = state.cards.map((c) => {
@@ -696,6 +710,8 @@ export const createAISlice = (set, get) => {
                 updatedCards.forEach((card) => {
                     cacheHydratedCardBody(card, { touch: false });
                 });
+                nextCardsSnapshot = nextCards;
+                updatedCardsSnapshot = updatedCards;
 
                 return {
                     cards: nextCards,
@@ -714,6 +730,9 @@ export const createAISlice = (set, get) => {
                     generatingCardIds: new Set([...state.generatingCardIds, ...selectedIds])
                 };
             });
+            if (nextCardsSnapshot) {
+                get().syncCardLookupCache?.(nextCardsSnapshot, updatedCardsSnapshot);
+            }
 
             // Use handleChatGenerate which now uses AIManager
             try {

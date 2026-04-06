@@ -189,6 +189,19 @@ export const createCardSlice = (set, get) => {
         rebuildCardLookup: (cards = get().cards) => {
             cardLookup.rebuild(cards || []);
         },
+        syncCardLookupCache: (cards = get().cards, updatedCards = []) => {
+            const normalizedCards = Array.isArray(cards) ? cards : [];
+            const normalizedUpdatedCards = Array.isArray(updatedCards)
+                ? updatedCards.filter(Boolean)
+                : [];
+
+            if (normalizedUpdatedCards.length > 0) {
+                cardLookup.patch(normalizedCards, normalizedUpdatedCards);
+                return;
+            }
+
+            cardLookup.rebuild(normalizedCards);
+        },
 
 	    setCards: (cardsOrUpdater, options = {}) => {
 	        const nextCards = typeof cardsOrUpdater === 'function' ? cardsOrUpdater(get().cards) : cardsOrUpdater;
