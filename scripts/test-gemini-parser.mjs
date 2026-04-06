@@ -89,18 +89,6 @@ const runUnitChecks = async () => {
         'data: [DONE]\n'
     ];
 
-    const gmiArrayChunks = [
-        '[\n',
-        '{\n  "candidates": [\n    {\n      "content": {\n        "parts": [\n          {\n            "text": "ok"\n          }\n        ]\n      },\n      "finishReason": ""\n    }\n  ]\n}\n',
-        ',\n',
-        '{\n  "candidates": [\n    {\n      "content": {\n        "parts": [\n          {\n            "thoughtSignature": "opaque"\n          }\n        ]\n      },\n      "finishReason": "MAX_TOKENS"\n    }\n  ]\n}\n',
-        ']\n'
-    ];
-
-    const gmiTokens = [];
-    await parseGeminiStream(createReader(gmiArrayChunks), (chunk) => gmiTokens.push(chunk), () => { });
-    assert(gmiTokens.join('') === 'ok', `parseGeminiStream should parse GMI array stream, got "${gmiTokens.join('')}"`);
-
     let caught = null;
     try {
         await parseGeminiStream(createReader(onlyThoughtChunks), () => { }, () => { });

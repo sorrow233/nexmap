@@ -106,11 +106,10 @@ export class GeminiProvider extends LLMProvider {
         if (options?.useSearch === true) return true;
         if (options?.useSearch === false) return false;
 
-        // Gemini chat flows share an aggressive search policy in the system
-        // prompt, and GMI native Gemini explicitly supports google_search.
-        // Keep search-on by default unless the caller opts out or injects
-        // custom tools.
-        return true;
+        // Restore the old default only for official Gemini direct providers.
+        // Proxy/GMI chains stay search-off by default to avoid reintroducing
+        // the 429/high-load amplification that previously forced this off.
+        return this._isOfficialGeminiProviderConfig(baseUrl);
     }
 
     _isGemini3FlashModel(modelName = '') {
@@ -632,7 +631,7 @@ export class GeminiProvider extends LLMProvider {
     async chat(messages, model, options = {}) {
         const keyPool = this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
-        const modelToUse = model || this.config.model || 'gemini-3.1-pro-preview';
+        const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
         const resolvedMessages = await resolveAllImages(messages);
@@ -837,7 +836,7 @@ export class GeminiProvider extends LLMProvider {
     async stream(messages, onToken, model, options = {}) {
         const keyPool = this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
-        const modelToUse = model || this.config.model || 'gemini-3.1-pro-preview';
+        const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
         const resolvedMessages = await resolveAllImages(messages);

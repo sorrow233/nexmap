@@ -44,8 +44,6 @@ export const createSelectionSlice = (set, get) => ({
 
         if (newPositions.size === 0) return;
 
-        let nextCardsSnapshot = null;
-        let updatedCardsSnapshot = [];
         set(state => {
             const nextCards = state.cards.map(card => {
                 const newPos = newPositions.get(card.id);
@@ -55,8 +53,6 @@ export const createSelectionSlice = (set, get) => ({
                 return card;
             });
             const updatedCards = nextCards.filter((card) => newPositions.has(card.id));
-            nextCardsSnapshot = nextCards;
-            updatedCardsSnapshot = updatedCards;
 
             return {
                 cards: nextCards,
@@ -71,9 +67,6 @@ export const createSelectionSlice = (set, get) => ({
                     : state.boardChangeState
             };
         });
-        if (nextCardsSnapshot) {
-            get().syncCardLookupCache?.(nextCardsSnapshot, updatedCardsSnapshot);
-        }
     },
 
     handleBatchDelete: () => {
@@ -82,8 +75,6 @@ export const createSelectionSlice = (set, get) => ({
         const selectedIdSet = new Set(selectedIds);
         const deletedAt = Date.now();
 
-        let nextCardsSnapshot = null;
-        let updatedCardsSnapshot = [];
         set(state => {
             const nextGeneratingTaskCounts = { ...(state.generatingCardTaskCounts || {}) };
             selectedIdSet.forEach((id) => {
@@ -96,8 +87,6 @@ export const createSelectionSlice = (set, get) => ({
                 updatedCards.push(updatedCard);
                 return updatedCard;
             });
-            nextCardsSnapshot = nextCards;
-            updatedCardsSnapshot = updatedCards;
 
             return {
                 cards: nextCards,
@@ -127,8 +116,5 @@ export const createSelectionSlice = (set, get) => ({
                     : state.boardChangeState
             };
         });
-        if (nextCardsSnapshot) {
-            get().syncCardLookupCache?.(nextCardsSnapshot, updatedCardsSnapshot);
-        }
     },
 });
