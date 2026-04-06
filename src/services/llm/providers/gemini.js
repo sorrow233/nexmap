@@ -106,10 +106,11 @@ export class GeminiProvider extends LLMProvider {
         if (options?.useSearch === true) return true;
         if (options?.useSearch === false) return false;
 
-        // Restore the old default only for official Gemini direct providers.
-        // Proxy/GMI chains stay search-off by default to avoid reintroducing
-        // the 429/high-load amplification that previously forced this off.
-        return this._isOfficialGeminiProviderConfig(baseUrl);
+        // Gemini chat flows share an aggressive search policy in the system
+        // prompt, and GMI native Gemini explicitly supports google_search.
+        // Keep search-on by default unless the caller opts out or injects
+        // custom tools.
+        return true;
     }
 
     _isGemini3FlashModel(modelName = '') {
