@@ -35,7 +35,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let usedSearch = false;
     let hasVisibleText = false;
     let sawTerminal = false;
-    let parsedCandidateCount = 0;
+    let parsedEnvelopeCount = 0;
 
     const emitVisibleDelta = (candidate) => {
         const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
@@ -59,12 +59,16 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     };
 
     const processCandidateEnvelope = (payload) => {
-        if (!payload || typeof payload !== 'object') return;
+        if (!payload || typeof payload !== 'object') {
+            return;
+        }
 
         const candidate = payload.candidates?.[0];
-        if (!candidate) return;
+        if (!candidate) {
+            return;
+        }
 
-        parsedCandidateCount += 1;
+        parsedEnvelopeCount += 1;
         if (didCandidateUseSearch(candidate)) {
             usedSearch = true;
         }
@@ -72,14 +76,14 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
         emitVisibleDelta(candidate);
     };
 
-    const processRawJsonFallback = () => {
-        if (parsedCandidateCount > 0 || !rawStreamText.trim()) {
+    const tryProcessRawJsonFallback = () => {
+        if (parsedEnvelopeCount > 0 || !rawStreamText.trim()) {
             return;
         }
 
         const parsed = JSON.parse(rawStreamText.trim());
         if (Array.isArray(parsed)) {
-            parsed.forEach((item) => processCandidateEnvelope(item));
+            parsed.forEach((payload) => processCandidateEnvelope(payload));
             return;
         }
 
@@ -185,7 +189,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
 
         if (!hasVisibleText) {
             try {
-                processRawJsonFallback();
+                tryProcessRawJsonFallback();
             } catch (e) {
                 if (e?.message && !e.message.includes('JSON')) {
                     throw e;
