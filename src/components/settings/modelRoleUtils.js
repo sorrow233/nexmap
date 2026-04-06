@@ -1,5 +1,5 @@
 export const FALLBACK_GLOBAL_ROLES = Object.freeze({
-    chat: { providerId: 'google', model: 'google/gemini-3-pro-preview' },
+    chat: { providerId: 'google', model: 'google/gemini-3.1-pro-preview' },
     image: { providerId: 'google', model: 'gemini-3-pro-image-preview' }
 });
 

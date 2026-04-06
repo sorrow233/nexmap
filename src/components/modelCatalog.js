@@ -3,7 +3,6 @@ import {
     Sparkles,
     Image as ImageIcon,
     MessageSquare,
-    Zap,
     Target,
     ShieldCheck,
     Globe
@@ -12,8 +11,7 @@ import { normalizeModelIdForProvider, modelsMatch } from '../utils/modelConfig';
 
 export const PRESET_MODELS = {
     chat: [
-        { id: 'google/gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'Google', providerId: 'google', icon: Sparkles, color: 'text-blue-500' },
-        { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'Google', providerId: 'google', icon: Zap, color: 'text-amber-500' },
+        { id: 'google/gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', provider: 'Google', providerId: 'google', icon: Sparkles, color: 'text-blue-500' },
         { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', providerId: 'openai', icon: Bot, color: 'text-emerald-500' },
         { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', providerId: 'anthropic', icon: Target, color: 'text-orange-500' },
         { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', providerId: 'deepseek', icon: ShieldCheck, color: 'text-cyan-600' }

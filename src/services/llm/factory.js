@@ -1,9 +1,23 @@
-import { GeminiProvider } from './providers/gemini';
-import { OpenAIProvider } from './providers/openai';
-import { SystemCreditsProvider } from './providers/systemCredits';
+import { GeminiProvider } from './providers/gemini.js';
+import { GmiProvider, isGmiBaseUrl } from './providers/gmi.js';
+import { OpenAIProvider } from './providers/openai.js';
+import { SystemCreditsProvider } from './providers/systemCredits.js';
 import { runtimeLog, runtimeWarn } from '../../utils/runtimeLogging';
 
 export class ModelFactory {
+    static hasGoogleOfficialKey(config = {}) {
+        const keys = String(config.apiKeys || config.apiKey || '')
+            .split(',')
+            .map((key) => key.trim())
+            .filter(Boolean);
+
+        return keys.some((key) => key.startsWith('AIza'));
+    }
+
+    static shouldUseGmiProvider(config = {}) {
+        return isGmiBaseUrl(config.baseUrl) && !this.hasGoogleOfficialKey(config);
+    }
+
     /**
      * Check if a model should use Gemini native protocol
      * @param {string} model - Model name
@@ -68,6 +82,9 @@ export class ModelFactory {
         if (protocol === 'gemini') {
             // Only use Gemini native protocol for actual Gemini models
             if (this.isGeminiModel(model)) {
+                if (this.shouldUseGmiProvider(config)) {
+                    return new GmiProvider(config);
+                }
                 return new GeminiProvider(config);
             } else {
                 // Non-Gemini model on Gemini provider config → use OpenAI compatible

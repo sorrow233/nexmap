@@ -111,6 +111,7 @@ export default function SettingsAISection({
         .map(key => key.trim())
         .filter(Boolean);
     const hasMultipleKeys = providerKeys.length > 1;
+    const hasGoogleOfficialKey = providerKeys.some(key => key.startsWith('AIza'));
     const currentBaseUrl = String(currentProvider?.baseUrl || '');
     const isGeminiProvider = currentProvider?.protocol === 'gemini';
 
@@ -118,10 +119,12 @@ export default function SettingsAISection({
     if (isGeminiProvider) {
         if (currentBaseUrl.includes('generativelanguage.googleapis.com')) {
             routeHint = '当前链路：Google 官方 Gemini 直连';
+        } else if (currentBaseUrl.includes('api.gmi-serving.com') && hasGoogleOfficialKey) {
+            routeHint = '当前链路：配置写的是 GMI，但运行时会自动切到 Google 官方 Gemini 直连';
         } else if (currentBaseUrl.includes('api.gmi-serving.com')) {
             routeHint = hasMultipleKeys
-                ? '当前链路：GMI 代理，多 Key 轮询已开启'
-                : '当前链路：GMI 代理';
+                ? '当前链路：GMI 代理。文本走 OpenAI 兼容 chat/completions，多 Key 轮询已开启'
+                : '当前链路：GMI 代理。文本走 OpenAI 兼容 chat/completions，图片走原生异步接口';
         } else if (currentBaseUrl) {
             routeHint = `当前链路：自定义 Gemini 地址 ${currentBaseUrl}`;
         }

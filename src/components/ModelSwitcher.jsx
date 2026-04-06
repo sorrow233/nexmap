@@ -40,7 +40,7 @@ export default function ModelSwitcher({ compact = false }) {
     const displayModel = quickChatModel
         || globalChatRole?.model
         || providers?.[displayProviderId]?.model
-        || 'google/gemini-3-pro-preview';
+        || 'google/gemini-3.1-pro-preview';
     const normalizedDisplayModel = normalizeModelIdForProvider(displayProviderId, displayModel);
     const selectedEntry = useMemo(() => {
         return userModels.find((model) => (

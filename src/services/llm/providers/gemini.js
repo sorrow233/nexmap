@@ -631,7 +631,7 @@ export class GeminiProvider extends LLMProvider {
     async chat(messages, model, options = {}) {
         const keyPool = this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
-        const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
+        const modelToUse = model || this.config.model || 'gemini-3.1-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
         const resolvedMessages = await resolveAllImages(messages);
@@ -836,7 +836,7 @@ export class GeminiProvider extends LLMProvider {
     async stream(messages, onToken, model, options = {}) {
         const keyPool = this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
-        const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
+        const modelToUse = model || this.config.model || 'gemini-3.1-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
         const resolvedMessages = await resolveAllImages(messages);

@@ -1,4 +1,5 @@
 import { DEFAULT_PROVIDERS } from '../../services/llm/registry';
+import { normalizeModelIdForProvider } from '../../utils/modelConfig';
 
 const CONFIG_KEY = 'mixboard_providers_v3';
 const QUICK_MODEL_KEY = 'mixboard_quick_models';
@@ -33,7 +34,7 @@ const loadInitialSettings = () => {
             activeId: 'google',
             lastUpdated: 0,
             globalRoles: {
-                chat: { providerId: 'google', model: 'google/gemini-3-pro-preview' },
+                chat: { providerId: 'google', model: 'google/gemini-3.1-pro-preview' },
                 image: { providerId: 'google', model: 'gemini-3-pro-image-preview' }
             }
         };
@@ -174,7 +175,7 @@ export const createSettingsSlice = (set, get) => ({
             const provider = state.providers[pId] || state.providers['google'] || {};
             return {
                 ...provider,
-                model: state.quickChatModel,
+                model: normalizeModelIdForProvider(pId, state.quickChatModel),
                 providerId: pId
             };
         }
@@ -182,17 +183,12 @@ export const createSettingsSlice = (set, get) => ({
         const roleConfig = state.globalRoles.chat;
         const providerId = roleConfig?.providerId || 'google';
         const providerConfig = state.providers[providerId] || state.providers['google'] || {};
-        const defaultModel = 'google/gemini-3-pro-preview';
-        let modelToUse = roleConfig?.model || providerConfig.model || defaultModel;
-
-        // Strip 'google/' prefix if provider is Gemini
-        if (providerId === 'google' && modelToUse.startsWith('google/')) {
-            modelToUse = modelToUse.replace('google/', '');
-        }
+        const defaultModel = 'google/gemini-3.1-pro-preview';
+        const modelToUse = roleConfig?.model || providerConfig.model || defaultModel;
 
         return {
             ...providerConfig,
-            model: modelToUse,
+            model: normalizeModelIdForProvider(providerId, modelToUse),
             providerId: providerId
         };
     },

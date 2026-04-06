@@ -1,5 +1,5 @@
-import { ModelFactory } from './llm/factory';
-import { DEFAULT_ROLES } from './llm/registry';
+import { ModelFactory } from './llm/factory.js';
+import { DEFAULT_ROLES } from './llm/registry.js';
 import { parseStringArrayFromLLMResponse, splitTextFallback } from './llm/jsonArrayParser';
 import { userStatsService } from './stats/userStatsService';
 import { AGENT_INTENT, buildStructuredNumberedPlan, classifyAgentIntent, inferDynamicCardLimit } from './ai/structuredAgentPlan';

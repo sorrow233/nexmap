@@ -36,7 +36,7 @@ export default function SettingsLLMTab({
         } else if (currentBaseUrl.includes('api.gmi-serving.com') && hasGoogleOfficialKey) {
             routeHint = '当前链路：配置写的是 GMI，但运行时会自动切到 Google 官方 Gemini 直连';
         } else if (currentBaseUrl.includes('api.gmi-serving.com')) {
-            routeHint = '当前链路：GMI 代理。这里如果填了多个 Key，会启用多 Key 轮询';
+            routeHint = '当前链路：GMI 代理。文本走 OpenAI 兼容 chat/completions，图片继续走 GMI 原生异步接口';
         } else if (currentBaseUrl) {
             routeHint = `当前链路：自定义 Gemini 基地址 ${currentBaseUrl}`;
         }

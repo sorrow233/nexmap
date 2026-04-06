@@ -39,7 +39,7 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                         type="text"
                         value={roles.chat || ''}
                         onChange={(e) => updateRole('chat', e.target.value)}
-                        placeholder={currentProvider.model || "google/gemini-3-pro-preview"}
+                        placeholder={currentProvider.model || "google/gemini-3.1-pro-preview"}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                     />
                 </div>
@@ -59,7 +59,7 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                         type="text"
                         value={roles.analysis || ''}
                         onChange={(e) => updateRole('analysis', e.target.value)}
-                        placeholder={currentProvider.model || "google/gemini-3-flash-preview"}
+                        placeholder={currentProvider.model || "google/gemini-3.1-pro-preview"}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                     />
                 </div>
@@ -79,7 +79,7 @@ export default function SettingsRolesTab({ currentProvider, handleUpdateProvider
                         type="text"
                         value={roles.image || ''}
                         onChange={(e) => updateRole('image', e.target.value)}
-                        placeholder={currentProvider.model || "google/gemini-3-pro-preview"}
+                        placeholder={currentProvider.roles?.image || "gemini-3-pro-image-preview"}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                     />
                 </div>
