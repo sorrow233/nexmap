@@ -93,7 +93,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
         oldestTimestamp: 0,
         latestTimestamp: 0,
         maxBackups: 0,
-        maxTotalBytes: 0
+        maxTotalBytes: 0,
+        maxAgeDays: 0
     });
     const [scheduledCleanupStatus, setScheduledCleanupStatus] = useState('idle');
     const [scheduledCleanupMsg, setScheduledCleanupMsg] = useState('');
@@ -133,6 +134,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     // Load backup history on mount
     useEffect(() => {
         const loadBackups = async () => {
+            await cleanupScheduledBackups();
             await refreshScheduledBackupState();
         };
         loadBackups();
@@ -255,7 +257,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
 
     // Scheduled Backup Handlers
     const handleRestoreScheduledBackup = async (backupId) => {
-        if (!window.confirm(t.settings.storageConfig?.restoreConfirm || 'Restore missing boards from this backup? Only boards you don\'t currently have will be added.')) {
+        if (!window.confirm(t.settings.storageConfig?.restoreConfirm || '要从这份本地备份恢复吗？恢复会补回这份快照里的画板内容。')) {
             return;
         }
         setBackupActionStatus('loading');
@@ -265,8 +267,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             if (result.success) {
                 setBackupActionStatus('success');
                 const msg = result.message || (result.boardCount > 0
-                    ? `Restored ${result.boardCount} missing boards. Reloading...`
-                    : 'No new boards to restore - all boards already exist');
+                    ? `已恢复 ${result.boardCount} 个画板，页面即将刷新。`
+                    : '这份备份里没有需要补回的新画板。');
                 setBackupActionMsg(msg);
                 if (result.boardCount > 0) {
                     setTimeout(() => window.location.reload(), 1500);
@@ -281,7 +283,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
     };
 
     const handleDeleteScheduledBackup = async (backupId) => {
-        if (!window.confirm('Delete this backup permanently?')) return;
+        if (!window.confirm('确认永久删除这份本地定时备份吗？这不会影响你当前正在使用的画板数据。')) return;
         try {
             await deleteBackup(backupId);
             await refreshScheduledBackupState();
@@ -300,7 +302,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 setBackupActionMsg(
                     result.skipped
                         ? '本地数据没有变化，本次没有重复写入新的定时备份。'
-                        : `Backup created: ${result.boardCount} boards saved.`
+                        : `已更新本地定时备份，当前写入 ${result.boardCount} 个画板。`
                 );
                 await refreshScheduledBackupState();
             } else {
@@ -338,7 +340,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
             const result = await cleanupScheduledBackups();
             await refreshScheduledBackupState();
             setScheduledCleanupStatus('success');
-            setScheduledCleanupMsg(`已按新策略整理本地定时备份，删除 ${result.deletedCount} 份，当前占用 ${formatBytes(Math.max(0, result.totalBytes || 0))}。`);
+            setScheduledCleanupMsg(`已按“每天 1 份、最多 3 天”策略整理本地定时备份，删除 ${result.deletedCount} 份，当前占用 ${formatBytes(Math.max(0, result.totalBytes || 0))}。`);
         } catch (error) {
             console.error('[ScheduledBackup] Policy prune failed:', error);
             setScheduledCleanupStatus('error');
@@ -796,7 +798,7 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="font-bold text-slate-800 dark:text-slate-200">{t.settings.storageConfig?.scheduledBackups || "Scheduled Backups"}</h3>
-                        <p className="text-xs text-slate-500">每 30 分钟检查一次，仅在本地数据发生变化时写入新备份，并自动限制总数量与总占用。</p>
+                        <p className="text-xs text-slate-500">每 30 分钟检查一次；只有本地数据变化时才会更新当天那 1 份备份，并且最多只保留最近 3 天。</p>
                     </div>
                     <button
                         onClick={handleForceBackup}
@@ -815,7 +817,8 @@ export default function SettingsStorageTab({ s3Config, setS3ConfigState }) {
                     <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-1">
                             <p>当前本地定时备份：{scheduledBackupStats.count} 份，约 {formatBytes(scheduledBackupStats.totalBytes)}</p>
-                            <p>策略上限：最多 {scheduledBackupStats.maxBackups || 0} 份，最多 {formatBytes(scheduledBackupStats.maxTotalBytes || 0)}</p>
+                            <p>策略上限：每天最多 1 份，最近 {scheduledBackupStats.maxAgeDays || 0} 天，最多 {scheduledBackupStats.maxBackups || 0} 份</p>
+                            <p>体积兜底：最多 {formatBytes(scheduledBackupStats.maxTotalBytes || 0)}</p>
                             {scheduledBackupStats.latestTimestamp ? (
                                 <p>最新一份：{new Date(scheduledBackupStats.latestTimestamp).toLocaleString()}</p>
                             ) : (

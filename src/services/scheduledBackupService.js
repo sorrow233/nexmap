@@ -1,8 +1,8 @@
 /**
  * Scheduled Backup Service
  * 
- * Provides automatic local backups every 30 minutes while the user is online.
- * Keeps backups for 7 days.
+ * Checks every 30 minutes while the user is online.
+ * Keeps only the latest local backup for each day, up to 3 days.
  * 
  * These backups are completely local and are not affected by login state.
  */
@@ -12,38 +12,28 @@ import { getRawBoardsList } from './boardService';
 import { debugLog } from '../utils/debugLogger';
 import { normalizeBoardMetadataList, normalizeBoardTitleMeta } from './boardTitle/metadata';
 import { persistBoardsMetadataList } from './boardPersistence/boardsListStorage';
-import { backupStoreDel, backupStoreGet, backupStoreSet } from './db/backupStore';
-
-const BACKUP_KEY_PREFIX = 'scheduled_backup_';
-const BACKUP_INDEX_KEY = 'scheduled_backup_index';
-const LAST_BACKUP_TIME_KEY = 'scheduled_backup_last_time';
-const LAST_BACKUP_FINGERPRINT_KEY = 'scheduled_backup_last_fingerprint';
-const MAX_BACKUP_DAYS = 7;
-const BACKUP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
-const MAX_BACKUPS = 12;
-const MAX_TOTAL_BACKUP_BYTES = 512 * 1024 * 1024;
+import {
+    backupStoreDel,
+    backupStoreGet,
+    backupStoreGetKeysByPrefix,
+    backupStoreSet
+} from './db/backupStore';
+import {
+    BACKUP_INDEX_KEY,
+    BACKUP_INTERVAL_MS,
+    BACKUP_KEY_PREFIX,
+    LAST_BACKUP_FINGERPRINT_KEY,
+    LAST_BACKUP_TIME_KEY,
+    MAX_BACKUP_DAYS,
+    MAX_BACKUPS,
+    MAX_TOTAL_BACKUP_BYTES,
+    generateBackupId,
+    normalizeBackupIdList,
+    parseBackupTimestamp,
+    selectRetainedBackupIds
+} from './scheduledBackupPolicy';
 
 let checkIntervalId = null;
-
-/**
- * Generate a unique backup ID based on timestamp
- */
-const generateBackupId = (timestamp = Date.now()) => {
-    return `${BACKUP_KEY_PREFIX}${timestamp}`;
-};
-
-const parseBackupTimestamp = (backupId, fallback = 0) => {
-    if (typeof backupId !== 'string') return fallback;
-    const raw = backupId.startsWith(BACKUP_KEY_PREFIX)
-        ? backupId.slice(BACKUP_KEY_PREFIX.length)
-        : '';
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const normalizeBackupIdList = (index = []) => Array.from(new Set(
-    Array.isArray(index) ? index.filter((id) => typeof id === 'string' && id.startsWith(BACKUP_KEY_PREFIX)) : []
-)).sort((a, b) => parseBackupTimestamp(a) - parseBackupTimestamp(b));
 
 const hashString = (input = '') => {
     let hash = 2166136261;
@@ -100,24 +90,13 @@ const measureBackupSizeBytes = (backup) => {
     }
 };
 
-const resolveBackupSizeBytes = async (backupId, backup) => {
+const resolveBackupSizeBytes = (backup) => {
     const existingSize = Number(backup?.sizeBytes);
     if (Number.isFinite(existingSize) && existingSize > 0) {
         return existingSize;
     }
 
-    const sizeBytes = measureBackupSizeBytes(backup);
-    if (sizeBytes > 0 && backupId && backup) {
-        try {
-            await backupStoreSet(backupId, {
-                ...backup,
-                sizeBytes
-            });
-        } catch (error) {
-            console.warn(`[ScheduledBackup] Failed to persist size metadata for ${backupId}`, error);
-        }
-    }
-    return sizeBytes;
+    return measureBackupSizeBytes(backup);
 };
 
 const syncLatestBackupRuntimeMarkers = async (latestBackupId = '') => {
@@ -196,6 +175,46 @@ const saveBackupIndex = async (index) => {
     }
 };
 
+const areBackupIdListsEqual = (left = [], right = []) => (
+    left.length === right.length
+    && left.every((backupId, index) => backupId === right[index])
+);
+
+const getStoredBackupIds = async ({ healIndex = false } = {}) => {
+    try {
+        const [index, storedKeys] = await Promise.all([
+            getBackupIndex(),
+            backupStoreGetKeysByPrefix(BACKUP_KEY_PREFIX)
+        ]);
+        const storedBackupIds = normalizeBackupIdList(storedKeys);
+
+        if (healIndex && !areBackupIdListsEqual(index, storedBackupIds)) {
+            await saveBackupIndex(storedBackupIds);
+        }
+
+        return storedBackupIds;
+    } catch (error) {
+        console.error('[ScheduledBackup] Failed to scan backup store:', error);
+        return [];
+    }
+};
+
+const readBackupSummary = async (backupId) => {
+    const backup = await backupStoreGet(backupId);
+    if (!backup) {
+        return null;
+    }
+
+    const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
+    return {
+        id: backupId,
+        timestamp,
+        boardCount: backup.boardsList?.length || 0,
+        sizeBytes: resolveBackupSizeBytes(backup),
+        formattedDate: new Date(timestamp).toLocaleString()
+    };
+};
+
 export const cleanupScheduledBackups = async (options = {}) => {
     const maxBackups = Number.isFinite(Number(options.maxBackups))
         ? Math.max(0, Number(options.maxBackups))
@@ -207,88 +226,77 @@ export const cleanupScheduledBackups = async (options = {}) => {
         ? Math.max(0, Number(options.maxTotalBytes))
         : MAX_TOTAL_BACKUP_BYTES;
 
-    let index = await getBackupIndex();
-    const deletedBackupIds = [];
+    const storedBackupIds = await getStoredBackupIds();
+    const {
+        retainedBackupIds: policyRetainedIds,
+        deletedBackupIds: policyDeletedIds
+    } = selectRetainedBackupIds(storedBackupIds, {
+        maxBackups,
+        maxAgeDays
+    });
+
+    let retainedBackupIds = [...policyRetainedIds];
+    const deletedBackupIdSet = new Set(policyDeletedIds);
     let reclaimedBytes = 0;
-
-    const now = Date.now();
-    const retentionCutoff = maxAgeDays > 0
-        ? now - (maxAgeDays * 24 * 60 * 60 * 1000)
-        : Number.POSITIVE_INFINITY;
-
-    const retainedByAge = [];
-    for (const backupId of index) {
-        const backupTimestamp = parseBackupTimestamp(backupId);
-        if (backupTimestamp > 0 && backupTimestamp < retentionCutoff) {
-            await backupStoreDel(backupId);
-            deletedBackupIds.push(backupId);
-            continue;
-        }
-        retainedByAge.push(backupId);
-    }
-    index = retainedByAge;
-
-    while (index.length > maxBackups) {
-        const oldestId = index.shift();
-        if (!oldestId) break;
-        await backupStoreDel(oldestId);
-        deletedBackupIds.push(oldestId);
-    }
-
     let totalBytes = 0;
-    if (maxTotalBytes > 0 && index.length > 0) {
+
+    if (retainedBackupIds.length > 0) {
         const sizedBackups = [];
-        for (const backupId of index) {
+        for (const backupId of retainedBackupIds) {
             const backup = await backupStoreGet(backupId);
             if (!backup) {
-                await backupStoreDel(backupId);
-                deletedBackupIds.push(backupId);
+                deletedBackupIdSet.add(backupId);
                 continue;
             }
 
-            const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
-            const sizeBytes = await resolveBackupSizeBytes(backupId, backup);
-            totalBytes += sizeBytes;
             sizedBackups.push({
                 id: backupId,
-                timestamp,
-                sizeBytes
+                timestamp: Number(backup.timestamp) || parseBackupTimestamp(backupId, 0),
+                sizeBytes: resolveBackupSizeBytes(backup)
             });
         }
 
-        sizedBackups.sort((a, b) => a.timestamp - b.timestamp);
-        while (totalBytes > maxTotalBytes && sizedBackups.length > 1) {
+        totalBytes = sizedBackups.reduce((sum, backup) => sum + backup.sizeBytes, 0);
+        sizedBackups.sort((leftBackup, rightBackup) => leftBackup.timestamp - rightBackup.timestamp);
+
+        while (maxTotalBytes > 0 && totalBytes > maxTotalBytes && sizedBackups.length > 1) {
             const oldestBackup = sizedBackups.shift();
             if (!oldestBackup) break;
-            await backupStoreDel(oldestBackup.id);
-            deletedBackupIds.push(oldestBackup.id);
+
+            deletedBackupIdSet.add(oldestBackup.id);
             reclaimedBytes += oldestBackup.sizeBytes;
             totalBytes -= oldestBackup.sizeBytes;
         }
 
-        index = sizedBackups.map((backup) => backup.id);
+        retainedBackupIds = sizedBackups.map((backup) => backup.id);
     }
 
-    await saveBackupIndex(index);
-    await syncLatestBackupRuntimeMarkers(index[index.length - 1] || '');
+    retainedBackupIds.forEach((backupId) => deletedBackupIdSet.delete(backupId));
+
+    for (const backupId of deletedBackupIdSet) {
+        await backupStoreDel(backupId);
+    }
+
+    await saveBackupIndex(retainedBackupIds);
+    await syncLatestBackupRuntimeMarkers(retainedBackupIds[retainedBackupIds.length - 1] || '');
 
     return {
-        deletedBackupIds,
-        deletedCount: deletedBackupIds.length,
-        remainingBackupCount: index.length,
+        deletedBackupIds: Array.from(deletedBackupIdSet),
+        deletedCount: deletedBackupIdSet.size,
+        remainingBackupCount: retainedBackupIds.length,
         reclaimedBytes,
         totalBytes
     };
 };
 
 export const clearScheduledBackups = async ({ preserveLatest = false } = {}) => {
-    const index = await getBackupIndex();
-    const retainedIds = preserveLatest && index.length > 0
-        ? [index[index.length - 1]]
+    const storedBackupIds = await getStoredBackupIds();
+    const retainedIds = preserveLatest && storedBackupIds.length > 0
+        ? [storedBackupIds[storedBackupIds.length - 1]]
         : [];
     const idsToDelete = preserveLatest
-        ? index.slice(0, -1)
-        : index;
+        ? storedBackupIds.slice(0, -1)
+        : storedBackupIds;
 
     for (const backupId of idsToDelete) {
         await backupStoreDel(backupId);
@@ -304,35 +312,36 @@ export const clearScheduledBackups = async ({ preserveLatest = false } = {}) => 
 };
 
 export const getScheduledBackupStorageStats = async () => {
-    const index = await getBackupIndex();
+    const backupIds = await getStoredBackupIds({ healIndex: true });
     let totalBytes = 0;
     let oldestTimestamp = 0;
     let latestTimestamp = 0;
+    let count = 0;
 
-    for (const backupId of index) {
-        const backup = await backupStoreGet(backupId);
-        if (!backup) {
+    for (const backupId of backupIds) {
+        const summary = await readBackupSummary(backupId);
+        if (!summary) {
             continue;
         }
-        const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
-        const sizeBytes = await resolveBackupSizeBytes(backupId, backup);
-        totalBytes += sizeBytes;
+        count += 1;
+        totalBytes += summary.sizeBytes;
 
-        if (!oldestTimestamp || timestamp < oldestTimestamp) {
-            oldestTimestamp = timestamp;
+        if (!oldestTimestamp || summary.timestamp < oldestTimestamp) {
+            oldestTimestamp = summary.timestamp;
         }
-        if (timestamp > latestTimestamp) {
-            latestTimestamp = timestamp;
+        if (summary.timestamp > latestTimestamp) {
+            latestTimestamp = summary.timestamp;
         }
     }
 
     return {
-        count: index.length,
+        count,
         totalBytes,
         oldestTimestamp,
         latestTimestamp,
         maxBackups: MAX_BACKUPS,
-        maxTotalBytes: MAX_TOTAL_BACKUP_BYTES
+        maxTotalBytes: MAX_TOTAL_BACKUP_BYTES,
+        maxAgeDays: MAX_BACKUP_DAYS
     };
 };
 
@@ -341,7 +350,8 @@ export const getScheduledBackupStorageStats = async () => {
  */
 export const performScheduledBackup = async () => {
     try {
-        const backupId = generateBackupId();
+        const backupTimestamp = Date.now();
+        const backupId = generateBackupId(backupTimestamp);
         debugLog.storage(`[ScheduledBackup] Starting backup: ${backupId}`);
 
         // 1. Get all board metadata
@@ -384,7 +394,7 @@ export const performScheduledBackup = async () => {
         // 4. Create backup object
         const backup = {
             id: backupId,
-            timestamp: Date.now(),
+            timestamp: backupTimestamp,
             boardsList: boardsList,
             boardsData: boardsData,
             settings: settings,
@@ -397,11 +407,11 @@ export const performScheduledBackup = async () => {
         await backupStoreSet(backupId, backup);
 
         // 6. Update last backup time
-        localStorage.setItem(LAST_BACKUP_TIME_KEY, Date.now().toString());
+        localStorage.setItem(LAST_BACKUP_TIME_KEY, backupTimestamp.toString());
         localStorage.setItem(LAST_BACKUP_FINGERPRINT_KEY, fingerprint);
 
         // 7. Update index
-        let index = await getBackupIndex();
+        let index = await getStoredBackupIds();
         if (!index.includes(backupId)) {
             index.push(backupId);
         }
@@ -424,21 +434,14 @@ export const performScheduledBackup = async () => {
  */
 export const getBackupHistory = async () => {
     try {
-        const index = await getBackupIndex();
+        const index = await getStoredBackupIds({ healIndex: true });
         const backups = [];
 
         for (const backupId of index) {
             try {
-                const backup = await backupStoreGet(backupId);
-                if (backup) {
-                    const timestamp = Number(backup.timestamp) || parseBackupTimestamp(backupId, 0);
-                    backups.push({
-                        id: backupId,
-                        timestamp,
-                        boardCount: backup.boardsList?.length || 0,
-                        sizeBytes: await resolveBackupSizeBytes(backupId, backup),
-                        formattedDate: new Date(timestamp).toLocaleString()
-                    });
+                const summary = await readBackupSummary(backupId);
+                if (summary) {
+                    backups.push(summary);
                 }
             } catch (e) {
                 // Skip unreadable backups
@@ -518,11 +521,9 @@ export const restoreFromBackup = async (backupId) => {
 export const deleteBackup = async (backupId) => {
     try {
         await backupStoreDel(backupId);
-
-        let index = await getBackupIndex();
-        index = index.filter(id => id !== backupId);
-        await saveBackupIndex(index);
-        await syncLatestBackupRuntimeMarkers(index[index.length - 1] || '');
+        const remainingBackupIds = await getStoredBackupIds();
+        await saveBackupIndex(remainingBackupIds);
+        await syncLatestBackupRuntimeMarkers(remainingBackupIds[remainingBackupIds.length - 1] || '');
 
         debugLog.storage(`[ScheduledBackup] Deleted backup: ${backupId}`);
         return { success: true };

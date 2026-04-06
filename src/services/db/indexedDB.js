@@ -109,6 +109,30 @@ export const idbGetEntriesByPrefixFromStore = async (storeName, prefix) => withS
     };
 });
 
+export const idbGetKeysByPrefixFromStore = async (storeName, prefix) => withStore(storeName, 'readonly', ({ store, resolve, reject }) => {
+    const request = store.openKeyCursor();
+    const keys = [];
+
+    request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+            resolve(keys);
+            return;
+        }
+
+        const key = cursor.key;
+        if (typeof key === 'string' && key.startsWith(prefix)) {
+            keys.push(key);
+        }
+        cursor.continue();
+    };
+
+    request.onerror = () => {
+        console.error(`[IDB] Key cursor error for prefix ${prefix} in ${storeName}:`, request.error);
+        reject(request.error);
+    };
+});
+
 export const idbGet = async (key) => {
     return idbGetFromStore(IDB_STORE, key);
 };
