@@ -1,4 +1,5 @@
 import { useStore } from '../store/useStore';
+import { getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getS3Config, saveS3Config } from './s3';
 import {
     CUSTOM_INSTRUCTIONS_KEY,
@@ -9,6 +10,11 @@ import {
     persistLinkageSettingsLocal
 } from './linkageLocalStore';
 import { normalizeLinkageSettings } from './linkageTargets';
+import { FIREBASE_SYNC_ENABLED } from './sync/config';
+import { createUserSettingsRef } from './sync/firestoreSyncPaths';
+
+const SETTINGS_SYNC_META_KEY = 'mixboard_settings_sync_meta_v1';
+const SETTINGS_DOC_SCHEMA_VERSION = 1;
 
 const readTimestampedValue = (key) => {
     const raw = localStorage.getItem(key);
@@ -47,9 +53,52 @@ const writeTimestampedValue = (key, value, lastModified = Date.now()) => {
     }));
 };
 
+const readJsonStorageValue = (key, fallback) => {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        return JSON.parse(raw);
+    } catch {
+        return fallback;
+    }
+};
+
+const readSettingsSyncMeta = () => {
+    const parsed = readJsonStorageValue(SETTINGS_SYNC_META_KEY, null);
+    return {
+        savedAt: Number(parsed?.savedAt) || 0,
+        source: typeof parsed?.source === 'string' ? parsed.source : 'unknown'
+    };
+};
+
+const writeSettingsSyncMeta = (savedAt, source = 'local') => {
+    localStorage.setItem(SETTINGS_SYNC_META_KEY, JSON.stringify({
+        savedAt: Number(savedAt) || Date.now(),
+        source: typeof source === 'string' ? source : 'local'
+    }));
+};
+
+const getLocalSettingsSavedAt = () => {
+    const meta = readSettingsSyncMeta();
+    if (meta.savedAt > 0) {
+        return meta.savedAt;
+    }
+
+    const state = useStore.getState();
+    const hasPersistedGlobalPrompts = Boolean(localStorage.getItem('mixboard_global_prompts'));
+    const customInstructionsEntry = readTimestampedValue(CUSTOM_INSTRUCTIONS_KEY);
+
+    return Math.max(
+        Number(state.lastUpdated) || 0,
+        hasPersistedGlobalPrompts ? (Number(state.globalPromptsModifiedAt) || 0) : 0,
+        customInstructionsEntry.value ? (Number(customInstructionsEntry.lastModified) || 0) : 0
+    );
+};
+
 const buildLocalSettingsSnapshot = (appUid = null) => {
     const state = useStore.getState();
     const { value: customInstructions, lastModified } = readTimestampedValue(CUSTOM_INSTRUCTIONS_KEY);
+    const settingsSavedAt = getLocalSettingsSavedAt();
 
     return {
         providers: state.providers,
@@ -62,11 +111,39 @@ const buildLocalSettingsSnapshot = (appUid = null) => {
         globalPrompts: state.globalPrompts || [],
         globalPromptsModifiedAt: state.globalPromptsModifiedAt || 0,
         ...getLocalLinkageSettings(appUid),
-        userLanguage: localStorage.getItem('userLanguage') || ''
+        userLanguage: localStorage.getItem('userLanguage') || '',
+        settingsSavedAt
     };
 };
 
-const applyLocalSettingsUpdate = (updates = {}, appUid = null) => {
+const normalizeSettingsPayload = (settings = {}, appUid = null) => {
+    const localSnapshot = buildLocalSettingsSnapshot(appUid);
+
+    return {
+        ...localSnapshot,
+        ...settings,
+        customInstructions: normalizeCustomInstructionsValue(
+            Object.prototype.hasOwnProperty.call(settings, 'customInstructions')
+                ? settings.customInstructions
+                : localSnapshot.customInstructions
+        ),
+        globalPrompts: Array.isArray(settings.globalPrompts)
+            ? settings.globalPrompts
+            : localSnapshot.globalPrompts,
+        settingsSavedAt: Number(settings.settingsSavedAt)
+            || Number(localSnapshot.settingsSavedAt)
+            || Date.now()
+    };
+};
+
+const hasRemoteSettingsDocument = (data = {}) => (
+    data
+    && typeof data === 'object'
+    && data.payload
+    && typeof data.payload === 'object'
+);
+
+const applyLocalSettingsUpdate = (updates = {}, appUid = null, options = {}) => {
     const state = useStore.getState();
     const hasConfigUpdate =
         Object.prototype.hasOwnProperty.call(updates, 'providers') ||
@@ -96,11 +173,19 @@ const applyLocalSettingsUpdate = (updates = {}, appUid = null) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(updates, 'globalPrompts') && Array.isArray(updates.globalPrompts)) {
-        state.setGlobalPrompts(updates.globalPrompts);
+        state.setGlobalPrompts(updates.globalPrompts, {
+            fromCloud: options.fromCloud === true,
+            modifiedAt: Number(updates.globalPromptsModifiedAt) || 0
+        });
     }
 
-    if (typeof updates.userLanguage === 'string' && updates.userLanguage.trim()) {
-        localStorage.setItem('userLanguage', updates.userLanguage.trim());
+    if (typeof updates.userLanguage === 'string') {
+        const normalizedLanguage = updates.userLanguage.trim();
+        if (normalizedLanguage) {
+            localStorage.setItem('userLanguage', normalizedLanguage);
+        } else {
+            localStorage.removeItem('userLanguage');
+        }
     }
 
     const linkageSnapshot = buildLocalSettingsSnapshot(appUid);
@@ -109,18 +194,173 @@ const applyLocalSettingsUpdate = (updates = {}, appUid = null) => {
         ...updates
     });
     persistLinkageSettingsLocal(nextLinkageSettings, appUid);
+
+    if (Number(updates.settingsSavedAt) > 0) {
+        writeSettingsSyncMeta(
+            Number(updates.settingsSavedAt),
+            options.fromCloud === true ? 'cloud' : (options.source || 'local')
+        );
+    }
+};
+
+const serializeRemoteSettingsDoc = (settings = {}, savedAt = Date.now()) => ({
+    schemaVersion: SETTINGS_DOC_SCHEMA_VERSION,
+    updatedAtMs: Number(savedAt) || Date.now(),
+    updatedAt: serverTimestamp(),
+    payload: {
+        ...settings,
+        settingsSavedAt: Number(savedAt) || Date.now()
+    }
+});
+const readRemoteUserSettings = async (userId) => {
+    if (!userId || !FIREBASE_SYNC_ENABLED) {
+        return null;
+    }
+
+    const snapshot = await getDoc(createUserSettingsRef(userId));
+    if (!snapshot.exists()) {
+        return null;
+    }
+
+    const data = snapshot.data() || {};
+    if (hasRemoteSettingsDocument(data)) {
+        return {
+            ...data.payload,
+            settingsSavedAt: Number(data.payload.settingsSavedAt) || Number(data.updatedAtMs) || 0,
+            updatedAtMs: Number(data.updatedAtMs) || 0
+        };
+    }
+
+    return {
+        ...data,
+        settingsSavedAt: Number(data.settingsSavedAt) || Number(data.updatedAtMs) || 0,
+        updatedAtMs: Number(data.updatedAtMs) || 0
+    };
+};
+
+const writeRemoteUserSettings = async (userId, settings) => {
+    const normalizedSettings = normalizeSettingsPayload(settings, userId);
+    const savedAt = Number(normalizedSettings.settingsSavedAt) || Date.now();
+
+    await setDoc(
+        createUserSettingsRef(userId),
+        serializeRemoteSettingsDoc(normalizedSettings, savedAt),
+        { merge: true }
+    );
+
+    return {
+        ...normalizedSettings,
+        settingsSavedAt: savedAt
+    };
 };
 
 export const saveUserSettings = async (userId, settings) => {
-    applyLocalSettingsUpdate(settings, userId);
-    return { ok: true, reason: 'local_only' };
+    const normalizedSettings = normalizeSettingsPayload(settings, userId);
+    applyLocalSettingsUpdate(normalizedSettings, userId, {
+        source: 'settings_modal'
+    });
+
+    if (!userId || !FIREBASE_SYNC_ENABLED) {
+        return { ok: true, reason: 'local_only', settings: normalizedSettings };
+    }
+
+    try {
+        const remoteSettings = await writeRemoteUserSettings(userId, normalizedSettings);
+        return { ok: true, reason: 'firestore', settings: remoteSettings };
+    } catch (error) {
+        console.error('[UserSettings] Failed to sync settings to Firestore, kept local copy only:', error);
+        return {
+            ok: true,
+            reason: 'local_only_remote_failed',
+            settings: normalizedSettings,
+            error
+        };
+    }
 };
 
 export const updateUserSettings = async (userId, updates) => {
-    applyLocalSettingsUpdate(updates, userId);
-    return { ok: true, reason: 'local_only' };
+    const mergedSettings = normalizeSettingsPayload(updates, userId);
+    return saveUserSettings(userId, mergedSettings);
 };
 
 export const loadUserSettings = async (userId) => {
-    return buildLocalSettingsSnapshot(userId);
+    if (!userId || !FIREBASE_SYNC_ENABLED) {
+        return buildLocalSettingsSnapshot(userId);
+    }
+
+    try {
+        return (await readRemoteUserSettings(userId)) || buildLocalSettingsSnapshot(userId);
+    } catch (error) {
+        console.error('[UserSettings] Failed to load remote settings, falling back to local snapshot:', error);
+        return buildLocalSettingsSnapshot(userId);
+    }
+};
+
+export const syncUserSettingsForSession = async (userId) => {
+    const localSnapshot = normalizeSettingsPayload({}, userId);
+
+    if (!userId || !FIREBASE_SYNC_ENABLED) {
+        return {
+            ok: true,
+            reason: 'local_only',
+            settings: localSnapshot
+        };
+    }
+
+    let remoteSnapshot = null;
+    try {
+        remoteSnapshot = await readRemoteUserSettings(userId);
+    } catch (error) {
+        console.error('[UserSettings] Failed to fetch remote settings during session sync:', error);
+        return {
+            ok: false,
+            reason: 'remote_read_failed',
+            settings: localSnapshot,
+            error
+        };
+    }
+
+    const localSavedAt = Number(localSnapshot.settingsSavedAt) || 0;
+    const remoteSavedAt = Number(remoteSnapshot?.settingsSavedAt) || 0;
+
+    if (remoteSnapshot && remoteSavedAt > localSavedAt) {
+        applyLocalSettingsUpdate(remoteSnapshot, userId, {
+            fromCloud: true,
+            source: 'session_sync'
+        });
+        return {
+            ok: true,
+            reason: 'pulled_remote',
+            settings: remoteSnapshot
+        };
+    }
+
+    if (!remoteSnapshot || localSavedAt > remoteSavedAt) {
+        try {
+            const pushedSnapshot = await writeRemoteUserSettings(userId, localSnapshot);
+            return {
+                ok: true,
+                reason: remoteSnapshot ? 'pushed_local' : 'seeded_remote',
+                settings: pushedSnapshot
+            };
+        } catch (error) {
+            console.error('[UserSettings] Failed to push local settings during session sync:', error);
+            return {
+                ok: false,
+                reason: 'remote_write_failed',
+                settings: localSnapshot,
+                error
+            };
+        }
+    }
+
+    applyLocalSettingsUpdate(remoteSnapshot, userId, {
+        fromCloud: true,
+        source: 'session_sync'
+    });
+    return {
+        ok: true,
+        reason: 'already_synced',
+        settings: remoteSnapshot
+    };
 };

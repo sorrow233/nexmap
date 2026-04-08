@@ -1,6 +1,6 @@
 import { collection, doc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { FIREBASE_SYNC_COLLECTIONS } from './config';
+import { FIREBASE_SYNC_COLLECTIONS, FIREBASE_SYNC_SETTINGS_DOC_ID } from './config';
 
 export const createBoardRootRef = (userId, boardId) => doc(
     db,
@@ -37,4 +37,12 @@ export const createCheckpointSetsCollectionRef = (userId, boardId) => collection
 export const createCheckpointPartsCollectionRef = (userId, boardId, checkpointId) => collection(
     createCheckpointSetRef(userId, boardId, checkpointId),
     'parts'
+);
+
+export const createUserSettingsRef = (userId) => doc(
+    db,
+    FIREBASE_SYNC_COLLECTIONS.users,
+    userId,
+    FIREBASE_SYNC_COLLECTIONS.settings,
+    FIREBASE_SYNC_SETTINGS_DOC_ID
 );

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, Cpu, Loader2, Settings, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { getS3Config, saveS3Config } from '../services/s3';
+import { getS3Config } from '../services/s3';
 import {
     CUSTOM_INSTRUCTIONS_KEY,
     normalizeCustomInstructionsValue
@@ -10,9 +10,9 @@ import {
     createEmptyLinkageSettings,
 } from '../services/linkageTargets';
 import {
-    getLocalLinkageSettings,
-    persistLinkageSettingsLocal
+    getLocalLinkageSettings
 } from '../services/linkageLocalStore';
+import { saveUserSettings } from '../services/storage';
 import { getEditableItems } from './settings/instructions/helpers';
 import SettingsBasicSection from './settings/SettingsBasicSection';
 import SettingsAISection from './settings/SettingsAISection';
@@ -34,13 +34,6 @@ const loadWithTimestamp = (key) => {
     } catch {
         return { value: raw, lastModified: 0 };
     }
-};
-
-const saveWithTimestamp = (key, value) => {
-    localStorage.setItem(key, JSON.stringify({
-        value,
-        lastModified: Date.now()
-    }));
 };
 
 export default function SettingsModal({ isOpen, onClose, user }) {
@@ -218,16 +211,24 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     if (!isOpen) return null;
 
-    const saveLocalState = (now) => {
-        useStore.getState().setFullConfig({
+    const buildSettingsPayload = (now) => {
+        const state = useStore.getState();
+        const normalizedInstructions = normalizeCustomInstructionsValue(customInstructions);
+
+        return {
             providers,
             activeId,
             globalRoles,
-            lastUpdated: now
-        });
-        saveS3Config(s3Config);
-        saveWithTimestamp(CUSTOM_INSTRUCTIONS_KEY, normalizeCustomInstructionsValue(customInstructions));
-        persistLinkageSettingsLocal(linkageSettings, user?.uid);
+            lastUpdated: now,
+            s3Config,
+            customInstructions: normalizedInstructions,
+            customInstructionsModifiedAt: now,
+            globalPrompts: state.globalPrompts || [],
+            globalPromptsModifiedAt: state.globalPromptsModifiedAt || 0,
+            userLanguage: localStorage.getItem('userLanguage') || '',
+            ...linkageSettings,
+            settingsSavedAt: now
+        };
     };
 
     const handleSave = async () => {
@@ -236,26 +237,30 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setSaveStatus({
             type: 'saving',
             title: '正在保存设置',
-            message: '正在写入本地配置...',
+            message: user?.uid ? '正在写入本地并同步到账号...' : '正在写入本地配置...',
             code: ''
         });
 
         try {
             const now = Date.now();
-            saveLocalState(now);
+            const saveResult = await saveUserSettings(user?.uid || null, buildSettingsPayload(now));
             setSaveStatus({
                 type: 'success',
-                title: '已保存到本地',
-                message: '当前设置只保存在这台设备上。',
+                title: saveResult.reason === 'firestore' ? '已同步到账号' : '已保存到本地',
+                message: saveResult.reason === 'firestore'
+                    ? '当前设置已保存到本地，并同步到你的账号。'
+                    : (saveResult.reason === 'local_only_remote_failed'
+                        ? '本地保存成功，但云端同步失败了。当前设备上的配置不会丢失。'
+                        : '当前设置已保存到这台设备上。'),
                 code: ''
             });
         } catch (error) {
             console.error('Failed to save settings:', error);
             setSaveStatus({
                 type: 'error',
-                title: '本地保存失败',
+                title: '设置保存失败',
                 message: error?.message || '请稍后重试。',
-                code: 'local_save_failed'
+                code: 'settings_save_failed'
             });
         } finally {
             setIsSaving(false);
@@ -268,6 +273,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     const confirmReset = () => {
         localStorage.removeItem('mixboard_providers_v3');
+        localStorage.removeItem('mixboard_settings_sync_meta_v1');
         window.location.reload();
     };
 

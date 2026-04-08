@@ -31,10 +31,17 @@ export const createBoardSlice = (set, get) => ({
     globalPrompts: loadGlobalPrompts(),
     globalPromptsModifiedAt: Date.now(),
 
-    setGlobalPrompts: (prompts, fromCloud = false) => {
+    setGlobalPrompts: (prompts, options = {}) => {
+        const fromCloud = options === true || options?.fromCloud === true;
+        const modifiedAt = typeof options === 'object'
+            ? (Number(options.modifiedAt) || 0)
+            : 0;
+
         set({
             globalPrompts: prompts,
-            globalPromptsModifiedAt: fromCloud ? (get().globalPromptsModifiedAt || 0) : Date.now()
+            globalPromptsModifiedAt: fromCloud
+                ? (modifiedAt || get().globalPromptsModifiedAt || 0)
+                : Date.now()
         });
         if (!fromCloud) {
             try {

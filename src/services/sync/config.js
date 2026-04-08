@@ -10,8 +10,11 @@ export const FIREBASE_SYNC_COLLECTIONS = {
     cardBodies: import.meta.env.VITE_FIREBASE_SYNC_CARD_BODIES_COLLECTION || 'cardBodies',
     thumbnails: import.meta.env.VITE_FIREBASE_SYNC_THUMBNAILS_COLLECTION || 'board_thumbnails',
     updates: import.meta.env.VITE_FIREBASE_SYNC_UPDATES_COLLECTION || 'updates',
-    snapshots: import.meta.env.VITE_FIREBASE_SYNC_SNAPSHOTS_COLLECTION || 'snapshots'
+    snapshots: import.meta.env.VITE_FIREBASE_SYNC_SNAPSHOTS_COLLECTION || 'snapshots',
+    settings: import.meta.env.VITE_FIREBASE_SYNC_SETTINGS_COLLECTION || 'settings'
 };
+
+export const FIREBASE_SYNC_SETTINGS_DOC_ID = import.meta.env.VITE_FIREBASE_SYNC_SETTINGS_DOC_ID || 'app';
 
 export const FIREBASE_SYNC_LIMITS = {
     enableDeltaUpdateLog: import.meta.env.VITE_FIREBASE_SYNC_ENABLE_DELTA_UPDATE_LOG !== 'false',

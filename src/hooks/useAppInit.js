@@ -4,7 +4,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import {
     loadBoardsMetadata,
     saveBoard,
-    cleanupExpiredTrash
+    cleanupExpiredTrash,
+    syncUserSettingsForSession
 } from '../services/storage';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { getSampleBoardsList, getSampleBoardData } from '../utils/sampleBoardsData';
@@ -111,10 +112,19 @@ export function useAppInit() {
                 return;
             }
 
-            const activeConfig = useStore.getState().getActiveConfig();
-            if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
-                useStore.getState().loadSystemCredits?.();
-            }
+            void (async () => {
+                try {
+                    const syncResult = await syncUserSettingsForSession(nextUser.uid);
+                    debugLog.auth(`[SettingsSync] ${syncResult.reason || 'unknown'} for ${nextUser.uid}`);
+                } catch (error) {
+                    debugLog.error('Failed to sync user settings on login', error);
+                } finally {
+                    const activeConfig = useStore.getState().getActiveConfig();
+                    if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                        useStore.getState().loadSystemCredits?.();
+                    }
+                }
+            })();
         });
 
         return () => unsubscribe();
