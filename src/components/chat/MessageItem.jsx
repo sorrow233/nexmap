@@ -7,6 +7,10 @@ import { buildStreamBufferKey } from '../../store/slices/utils/streamRenderBuffe
 import MarkdownChunk from './rendering/MarkdownChunk';
 import { useMessageChunks } from './rendering/useMessageChunks';
 import { copySelectionAsMarkdown } from '../../utils/richTextClipboard';
+import {
+    getActiveStreamRouteDebug,
+    logStreamRouteDebug
+} from '../../utils/streamRouteDebug';
 
 // 用户消息折叠阈值
 const USER_MSG_MAX_LENGTH = 200;
@@ -36,17 +40,63 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
         if (!cardId) return '';
         return buildStreamBufferKey(cardId, message?.id || null);
     }, [cardId, message?.id]);
-    const streamingText = useStore(React.useCallback((state) => {
-        if (!cardId) return '';
-
-        return state.streamingMessages?.[streamingBufferKey]
-            || state.streamingMessages?.[buildStreamBufferKey(cardId)]
-            || '';
-    }, [cardId, streamingBufferKey]));
+    const cardScopedStreamingBufferKey = React.useMemo(() => (
+        cardId ? buildStreamBufferKey(cardId) : ''
+    ), [cardId]);
+    const messageScopedStreamingText = useStore(React.useCallback((state) => {
+        if (!streamingBufferKey) return '';
+        return state.streamingMessages?.[streamingBufferKey] || '';
+    }, [streamingBufferKey]));
+    const cardScopedStreamingText = useStore(React.useCallback((state) => {
+        if (!cardScopedStreamingBufferKey) return '';
+        return state.streamingMessages?.[cardScopedStreamingBufferKey] || '';
+    }, [cardScopedStreamingBufferKey]));
+    const isUsingCardScopedFallback = !messageScopedStreamingText && !!cardScopedStreamingText;
+    const streamingText = messageScopedStreamingText || cardScopedStreamingText || '';
 
     // 长文本折叠状态
     const [isExpanded, setIsExpanded] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const fallbackLogSignatureRef = React.useRef('');
+
+    React.useEffect(() => {
+        if (!cardId || !message?.id || !isStreaming || !isUsingCardScopedFallback) {
+            return;
+        }
+
+        const activeRoute = getActiveStreamRouteDebug(cardId);
+        const traceId = activeRoute?.traceId || 'unknown';
+        const signature = [
+            traceId,
+            message.id,
+            messageScopedStreamingText.length,
+            cardScopedStreamingText.length
+        ].join(':');
+
+        if (fallbackLogSignatureRef.current === signature) {
+            return;
+        }
+
+        fallbackLogSignatureRef.current = signature;
+        logStreamRouteDebug(traceId, 'render_fallback_buffer_used', {
+            cardId,
+            renderedMessageId: message.id,
+            expectedAssistantMessageId: activeRoute?.assistantMessageId || null,
+            messageScopedBufferKey: streamingBufferKey,
+            messageScopedLength: messageScopedStreamingText.length,
+            cardScopedBufferKey: cardScopedStreamingBufferKey,
+            cardScopedLength: cardScopedStreamingText.length
+        });
+    }, [
+        cardId,
+        cardScopedStreamingBufferKey,
+        cardScopedStreamingText,
+        isStreaming,
+        isUsingCardScopedFallback,
+        message?.id,
+        messageScopedStreamingText,
+        streamingBufferKey
+    ]);
 
     const handleCopy = async () => {
         try {

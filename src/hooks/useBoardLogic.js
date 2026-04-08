@@ -16,6 +16,13 @@ import {
 } from '../services/customInstructionsService';
 import { getBoardDisplayName } from '../services/boardTitle/metadata';
 import { isDialogActive, isEventInsideDialog } from '../utils/dialogScope';
+import {
+    createStreamRouteTraceId,
+    findLatestAssistantMessage,
+    logStreamRouteDebug,
+    setActiveStreamRouteDebug,
+    summarizeMessagesForRouteDebug
+} from '../utils/streamRouteDebug';
 
 const isSameStringArray = (a = [], b = []) => {
     if (a.length !== b.length) return false;
@@ -403,19 +410,51 @@ export function useBoardLogic({ user, boardsList, onUpdateBoardTitle, onUpdateBo
         const userMsg = { role: 'user', content: userContent };
         const assistantMsgId = Date.now().toString(36) + Math.random().toString(36).substr(2);
         const assistantMsg = { role: 'assistant', content: '', id: assistantMsgId };
+        const routeTraceId = createStreamRouteTraceId(cardId);
+        const previousAssistantMessage = findLatestAssistantMessage(card.data.messages || []);
+
+        setActiveStreamRouteDebug(cardId, {
+            traceId: routeTraceId,
+            assistantMessageId: assistantMsgId,
+            source: 'board_chat_modal'
+        });
+        logStreamRouteDebug(routeTraceId, 'placeholder_prepare', {
+            cardId,
+            source: 'board_chat_modal',
+            previousAssistantMessageId: previousAssistantMessage?.id || null,
+            newAssistantMessageId: assistantMsgId,
+            ...summarizeMessagesForRouteDebug(card.data.messages || [])
+        });
 
         updateCardFull(cardId, (currentData) => ({
             ...currentData,
             messages: [...(currentData.messages || []), userMsg, assistantMsg]
         }));
 
+        const cardAfterPlaceholderWrite = useStore.getState().getCardById?.(cardId)
+            || useStore.getState().cards.find(c => c.id === cardId);
+        logStreamRouteDebug(routeTraceId, 'placeholder_written', {
+            cardId,
+            source: 'board_chat_modal',
+            assistantExistsAfterWrite: Boolean(
+                cardAfterPlaceholderWrite?.data?.messages?.some((message) => message.id === assistantMsgId)
+            ),
+            ...summarizeMessagesForRouteDebug(cardAfterPlaceholderWrite?.data?.messages || [])
+        });
+
         const history = [...(card.data.messages || []), userMsg];
 
         try {
             await handleChatGenerate(cardId, history, (chunk) => {
                 updateCardContent(cardId, chunk, assistantMsgId);
-            }, { assistantMessageId: assistantMsgId });
+            }, { assistantMessageId: assistantMsgId, routeTraceId });
         } catch (error) {
+            logStreamRouteDebug(routeTraceId, 'ui_layer_error', {
+                cardId,
+                source: 'board_chat_modal',
+                assistantMessageId: assistantMsgId,
+                errorMessage: error?.message || 'Unknown error in UI layer'
+            });
             console.error('[DEBUG handleChatModalGenerate] Generation failed with error:', error);
             updateCardContent(cardId, `\n\n[System Error: ${error.message || 'Unknown error in UI layer'}]`, assistantMsgId);
         }

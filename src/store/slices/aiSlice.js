@@ -27,7 +27,16 @@ import { yieldToMainThread } from '../../utils/scheduling';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
 import { bumpBoardChangeState } from './utils/boardChangeState';
 import { resolveCardChatConfig } from './utils/cardChatConfig';
-import { aiVerboseLog } from '../../utils/runtimeLogging';
+import {
+    createStreamRouteTraceId,
+    clearActiveStreamRouteDebug,
+    getActiveStreamRouteDebug,
+    getCardStreamBufferKeys,
+    logStreamRouteDebug,
+    setActiveStreamRouteDebug,
+    summarizeChunkForRouteDebug,
+    summarizeMessagesForRouteDebug
+} from '../../utils/streamRouteDebug';
 
 const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
     if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
@@ -105,16 +114,6 @@ const ERROR_MARKERS = Object.freeze([
 
 const MAX_CHAT_CONTEXT_MESSAGES = 8;
 const MAX_CHAT_CONTEXT_TOTAL_CHARS = 24_000;
-
-const createDebugTraceId = () => (
-    `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-);
-
-const previewDebugText = (text = '', limit = 180) => {
-    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
-    if (!normalized) return '';
-    return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
-};
 
 const getMessageContextText = (message = {}) => (
     extractMessageContentText(message?.content).trim()
@@ -406,8 +405,28 @@ export const createAISlice = (set, get) => {
         handleChatGenerate: async (cardId, messages, onToken, options = {}) => {
             const { setCardGenerating, updateCardContent } = get();
             const assistantMessageId = options?.assistantMessageId || null;
-            const debugTraceId = options?.debugTraceId || createDebugTraceId();
-            setCardGenerating(cardId, true, { messageId: assistantMessageId });
+            const routeTraceId = options?.routeTraceId || createStreamRouteTraceId(cardId);
+            const readLiveCard = () => (
+                get().getCardById?.(cardId) || get().cards.find(c => c.id === cardId)
+            );
+            const cardBeforeStart = readLiveCard();
+            const requestedAssistantExistsInHistory = Boolean(
+                assistantMessageId && (Array.isArray(messages) ? messages : []).some((message) => message?.id === assistantMessageId)
+            );
+
+            setActiveStreamRouteDebug(cardId, {
+                ...(getActiveStreamRouteDebug(cardId) || {}),
+                traceId: routeTraceId,
+                assistantMessageId
+            });
+            logStreamRouteDebug(routeTraceId, 'generate_start', {
+                cardId,
+                requestedAssistantMessageId: assistantMessageId,
+                requestedAssistantExistsInHistory,
+                liveCardSummary: summarizeMessagesForRouteDebug(cardBeforeStart?.data?.messages || []),
+                activeBufferKeysBeforeStart: getCardStreamBufferKeys(get().streamingMessages, cardId)
+            });
+            setCardGenerating(cardId, true, { messageId: assistantMessageId, routeTraceId });
             await yieldToMainThread();
 
             try {
@@ -433,24 +452,8 @@ export const createAISlice = (set, get) => {
                 const runProviderId = config.providerId || config.id;
                 const runProviderName = config.name || runProviderId || 'unknown';
                 const runBaseUrl = config.baseUrl || 'default';
-                const latestUserMessage = [...(cleanMessages || [])]
-                    .reverse()
-                    .find((message) => message?.role === 'user');
 
                 console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
-                console.log(`[AI][${debugTraceId}] dispatch_context`, {
-                    cardId,
-                    assistantMessageId,
-                    providerId: runProviderId,
-                    providerName: runProviderName,
-                    protocol: config.protocol || '',
-                    model: runModel,
-                    baseUrl: runBaseUrl,
-                    inputMessageCount: Array.isArray(messages) ? messages.length : 0,
-                    cleanMessageCount: cleanMessages.length,
-                    contextMessageCount: contextMessages.length,
-                    latestUserPreview: previewDebugText(getMessageContextText(latestUserMessage))
-                });
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
@@ -463,10 +466,21 @@ export const createAISlice = (set, get) => {
                 });
 
                 let firstToken = true;
+                let fallbackAssistantResolutionLogged = false;
                 const resolveLatestAssistantMessageId = () => {
                     if (assistantMessageId) return assistantMessageId;
                     const latestCard = get().getCardById?.(cardId) || get().cards.find(c => c.id === cardId);
-                    return latestCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant')?.id || null;
+                    const resolvedAssistantMessageId = latestCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant')?.id || null;
+                    if (!fallbackAssistantResolutionLogged) {
+                        fallbackAssistantResolutionLogged = true;
+                        logStreamRouteDebug(routeTraceId, 'assistant_id_fallback_used', {
+                            cardId,
+                            requestedAssistantMessageId: assistantMessageId,
+                            resolvedAssistantMessageId,
+                            liveCardSummary: summarizeMessagesForRouteDebug(latestCard?.data?.messages || [])
+                        });
+                    }
+                    return resolvedAssistantMessageId;
                 };
 
                 // Use AIManager for centralized scheduling and cancellation
@@ -479,9 +493,7 @@ export const createAISlice = (set, get) => {
                         temperature: undefined,
                         config,
                         options: {
-                            debugTraceId,
                             onResponseMetadata: (metadata = {}) => {
-                                aiVerboseLog(`[AI][${debugTraceId}] response_metadata`, metadata);
                                 const assistantMessageId = resolveLatestAssistantMessageId();
                                 if (!assistantMessageId) return;
                                 get().setAssistantMessageMeta(cardId, assistantMessageId, {
@@ -492,37 +504,45 @@ export const createAISlice = (set, get) => {
                     },
                     tags: [`card:${cardId}`], // Cancel any previous generation for this card
                     onProgress: (chunk) => {
+                        const resolvedAssistantMessageId = resolveLatestAssistantMessageId();
                         if (firstToken) {
                             perfMonitor.onFirstToken();
                             firstToken = false;
-                            aiVerboseLog(`[AI][${debugTraceId}] first_token`, {
+                            const liveCard = readLiveCard();
+                            const liveMessages = liveCard?.data?.messages || [];
+                            logStreamRouteDebug(routeTraceId, 'first_chunk_target', {
                                 cardId,
-                                assistantMessageId: resolveLatestAssistantMessageId(),
-                                chunkLength: String(chunk || '').length,
-                                chunkPreview: previewDebugText(chunk)
+                                requestedAssistantMessageId: assistantMessageId,
+                                resolvedAssistantMessageId,
+                                requestedAssistantExistsInCard: Boolean(
+                                    assistantMessageId && liveMessages.some((message) => message?.id === assistantMessageId)
+                                ),
+                                resolvedAssistantExistsInCard: Boolean(
+                                    resolvedAssistantMessageId && liveMessages.some((message) => message?.id === resolvedAssistantMessageId)
+                                ),
+                                targetBufferKey: buildStreamBufferKey(
+                                    cardId,
+                                    assistantMessageId || resolvedAssistantMessageId || null
+                                ),
+                                activeBufferKeysAtFirstChunk: getCardStreamBufferKeys(get().streamingMessages, cardId),
+                                liveCardSummary: summarizeMessagesForRouteDebug(liveMessages),
+                                ...summarizeChunkForRouteDebug(chunk)
                             });
                         }
                         perfMonitor.onChunk(chunk);
 
-                        onToken(chunk, resolveLatestAssistantMessageId());
+                        onToken(chunk, resolvedAssistantMessageId);
                     }
                 });
 
-                console.log(`[AI][${debugTraceId}] generation_complete`, {
-                    cardId,
-                    assistantMessageId: resolveLatestAssistantMessageId()
-                });
                 perfMonitor.onComplete();
             } catch (e) {
-                console.error(`Generation failed for card ${cardId}`, e);
-                console.error(`[AI][${debugTraceId}] generation_failed`, {
+                logStreamRouteDebug(routeTraceId, 'generation_failed', {
                     cardId,
                     assistantMessageId,
-                    message: e?.message || String(e),
-                    name: e?.name || 'Error',
-                    code: e?.code || '',
-                    statusCode: e?.statusCode || ''
+                    errorMessage: e?.message || 'Generation failed'
                 });
+                console.error(`Generation failed for card ${cardId}`, e);
 
                 // Localization logic
                 const lang = localStorage.getItem('userLanguage') || 'en';
@@ -596,12 +616,21 @@ export const createAISlice = (set, get) => {
                     updateCardContent(cardId, userMessage, assistantMessageId);
                 }
             } finally {
-                setCardGenerating(cardId, false, { messageId: assistantMessageId });
+                setCardGenerating(cardId, false, { messageId: assistantMessageId, routeTraceId });
             }
         },
 
         updateCardContent: (id, chunk, messageId = null) => {
             const bufferKey = buildStreamBufferKey(id, messageId);
+            const activeRoute = getActiveStreamRouteDebug(id);
+            if (activeRoute?.traceId && !messageId) {
+                logStreamRouteDebug(activeRoute.traceId, 'card_level_buffer_write', {
+                    cardId: id,
+                    expectedAssistantMessageId: activeRoute?.assistantMessageId || null,
+                    bufferKey,
+                    ...summarizeChunkForRouteDebug(chunk)
+                });
+            }
             streamRenderBuffer.enqueue(bufferKey, chunk);
         },
 
@@ -632,6 +661,8 @@ export const createAISlice = (set, get) => {
         setCardGenerating: (id, isGenerating, options = {}) => {
             if (!id) return;
             const bufferKey = buildStreamBufferKey(id, options?.messageId || null);
+            const routeTraceId = options?.routeTraceId || getActiveStreamRouteDebug(id)?.traceId || null;
+            const bufferKeysBeforeToggle = getCardStreamBufferKeys(get().streamingMessages, id);
             const flushedTailUpdates = isGenerating
                 ? new Map()
                 : streamRenderBuffer.flushCardNow(id);
@@ -705,6 +736,22 @@ export const createAISlice = (set, get) => {
 
                 return patch;
             });
+
+            if (routeTraceId) {
+                const bufferKeysAfterToggle = getCardStreamBufferKeys(get().streamingMessages, id);
+                logStreamRouteDebug(routeTraceId, isGenerating ? 'generation_flag_started' : 'generation_flag_finished', {
+                    cardId: id,
+                    assistantMessageId: options?.messageId || null,
+                    bufferKey,
+                    bufferKeysBeforeToggle,
+                    flushedTailBufferKeys: Array.from(flushedTailUpdates.keys()),
+                    bufferKeysAfterToggle
+                });
+            }
+
+            if (!isGenerating && routeTraceId) {
+                clearActiveStreamRouteDebug(id, routeTraceId);
+            }
         },
 
         handleRegenerate: async () => {

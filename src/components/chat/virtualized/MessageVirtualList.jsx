@@ -5,6 +5,10 @@ import MessageItem from '../MessageItem';
 import PendingQueueIndicator from '../PendingQueueIndicator';
 import favoritesService from '../../../services/favoritesService';
 import { useStore } from '../../../store/useStore';
+import {
+    getActiveStreamRouteDebug,
+    logStreamRouteDebug
+} from '../../../utils/streamRouteDebug';
 
 const ITEM_GAP_PX = 64;
 const DEFAULT_OVERSCAN = 4;
@@ -84,6 +88,7 @@ export default function MessageVirtualList({
     const virtualRows = rowVirtualizer.getVirtualItems();
     const totalMessagesHeight = rowVirtualizer.getTotalSize();
     const showStreamingIndicator = isStreaming && !hasDetachedStreamingMessage;
+    const renderTargetLogSignatureRef = React.useRef('');
 
     React.useEffect(() => {
         if (!scrollToMessageIndexRef) {
@@ -110,6 +115,52 @@ export default function MessageVirtualList({
             }
         };
     }, [hasDetachedStreamingMessage, messagesEndRef, rowVirtualizer, scrollToMessageIndexRef, virtualizedMessages.length]);
+
+    React.useEffect(() => {
+        if (!isStreaming || !cardId) {
+            return;
+        }
+
+        const activeRoute = getActiveStreamRouteDebug(cardId);
+        const traceId = activeRoute?.traceId || 'unknown';
+        const detachedStreamingMessageId = detachedStreamingMessage?.id || null;
+        const lastMessage = messages[messages.length - 1] || null;
+        const signature = [
+            traceId,
+            detachedStreamingMessageId || 'none',
+            activeRoute?.assistantMessageId || 'none',
+            messages.length,
+            hasDetachedStreamingMessage ? 'detached' : 'indicator'
+        ].join(':');
+
+        if (renderTargetLogSignatureRef.current === signature) {
+            return;
+        }
+
+        renderTargetLogSignatureRef.current = signature;
+        logStreamRouteDebug(traceId, 'streaming_render_target', {
+            cardId,
+            expectedAssistantMessageId: activeRoute?.assistantMessageId || null,
+            detachedStreamingMessageId,
+            hasDetachedStreamingMessage,
+            showStreamingIndicator,
+            messageCount: messages.length,
+            lastMessageId: lastMessage?.id || null,
+            lastMessageRole: lastMessage?.role || null,
+            detachedMessageMismatch: Boolean(
+                activeRoute?.assistantMessageId &&
+                detachedStreamingMessageId &&
+                activeRoute.assistantMessageId !== detachedStreamingMessageId
+            )
+        });
+    }, [
+        cardId,
+        detachedStreamingMessage?.id,
+        hasDetachedStreamingMessage,
+        isStreaming,
+        messages,
+        showStreamingIndicator
+    ]);
 
     return (
         <div className="w-full">
