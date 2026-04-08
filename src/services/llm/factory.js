@@ -1,23 +1,10 @@
-import { GeminiProvider } from './providers/gemini.js';
-import { GmiProvider, isGmiBaseUrl } from './providers/gmi.js';
-import { OpenAIProvider } from './providers/openai.js';
-import { SystemCreditsProvider } from './providers/systemCredits.js';
+import { GeminiProvider } from './providers/gemini';
+import { OpenAIProvider } from './providers/openai';
+import { SystemCreditsProvider } from './providers/systemCredits';
+import { hasUsableProviderCredentials } from './providerConfig';
 import { runtimeLog, runtimeWarn } from '../../utils/runtimeLogging';
 
 export class ModelFactory {
-    static hasGoogleOfficialKey(config = {}) {
-        const keys = String(config.apiKeys || config.apiKey || '')
-            .split(',')
-            .map((key) => key.trim())
-            .filter(Boolean);
-
-        return keys.some((key) => key.startsWith('AIza'));
-    }
-
-    static shouldUseGmiProvider(config = {}) {
-        return isGmiBaseUrl(config.baseUrl) && !this.hasGoogleOfficialKey(config);
-    }
-
     /**
      * Check if a model should use Gemini native protocol
      * @param {string} model - Model name
@@ -67,11 +54,11 @@ export class ModelFactory {
     static getProvider(config, options = {}) {
         if (!config) throw new Error("Provider configuration is missing.");
 
-        // Check if user should use system credits (no API key)
-        const hasApiKey = config.apiKey && config.apiKey.trim() !== '';
+        // Check if user should use system credits (no provider credentials)
+        const hasProviderCredentials = hasUsableProviderCredentials(config);
 
-        if (!hasApiKey && !options.skipSystemCredits) {
-            runtimeLog('[ModelFactory] No API key configured, using SystemCreditsProvider');
+        if (!hasProviderCredentials && !options.skipSystemCredits) {
+            runtimeLog('[ModelFactory] No provider credentials configured, using SystemCreditsProvider');
             return new SystemCreditsProvider();
         }
 
@@ -82,9 +69,6 @@ export class ModelFactory {
         if (protocol === 'gemini') {
             // Only use Gemini native protocol for actual Gemini models
             if (this.isGeminiModel(model)) {
-                if (this.shouldUseGmiProvider(config)) {
-                    return new GmiProvider(config);
-                }
                 return new GeminiProvider(config);
             } else {
                 // Non-Gemini model on Gemini provider config → use OpenAI compatible
@@ -108,6 +92,6 @@ export class ModelFactory {
      * Check if system credits should be used
      */
     static shouldUseSystemCredits(config) {
-        return !config?.apiKey || config.apiKey.trim() === '';
+        return !hasUsableProviderCredentials(config);
     }
 }

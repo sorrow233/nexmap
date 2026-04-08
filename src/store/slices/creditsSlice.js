@@ -6,6 +6,7 @@
 
 import { checkCredits as fetchCredits } from '../../services/systemCredits/systemCreditsService';
 import { auth } from '../../services/firebase';
+import { hasUsableProviderCredentials } from '../../services/llm/providerConfig';
 
 const INITIAL_IMAGE_CREDITS = 20;
 
@@ -64,8 +65,8 @@ export const createCreditsSlice = (set, get) => ({
                 const activeId = parsed.activeId;
                 const activeProvider = parsed.providers?.[activeId];
 
-                if (activeProvider?.apiKey && activeProvider.apiKey.length > 0) {
-                    console.log('[Credits] Custom API Key detected, skipping system credits fetch.');
+                if (hasUsableProviderCredentials(activeProvider)) {
+                    console.log('[Credits] Custom provider credentials detected, skipping system credits fetch.');
                     set({
                         systemCredits: 999999,
                         isSystemCreditsUser: false,

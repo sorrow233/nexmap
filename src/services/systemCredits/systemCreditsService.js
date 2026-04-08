@@ -6,6 +6,7 @@
  */
 
 import { auth } from '../firebase';
+import { hasUsableProviderCredentials } from '../llm/providerConfig';
 import { settleStreamReader } from '../llm/streamTailGrace.js';
 import { drainOpenAIStreamBuffer } from './openAIStreamBuffer';
 
@@ -208,9 +209,5 @@ export async function imageWithSystemCredits(prompt, options = {}) {
  * Check if user should use system credits (no API key configured)
  */
 export function shouldUseSystemCredits(providerConfig) {
-    // User has no API key configured
-    if (!providerConfig?.apiKey || providerConfig.apiKey.trim() === '') {
-        return true;
-    }
-    return false;
+    return !hasUsableProviderCredentials(providerConfig);
 }

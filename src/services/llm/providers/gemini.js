@@ -14,6 +14,10 @@ import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { extractCandidateText } from './gemini/partUtils.js';
 import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
 import { getKeyPool } from '../keyPoolManager';
+import {
+    DEFAULT_VERTEX_BASE_URL,
+    isManagedVertexServiceAccountConfig
+} from '../providerConfig';
 
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const PROXY_DEGRADE_COOLDOWN_MS = 2 * 60 * 1000;
@@ -22,6 +26,7 @@ const KEY_ACQUIRE_POLL_MAX_MS = 5000;
 const MAX_CHAT_ATTEMPTS = 2;
 const MAX_STREAM_ATTEMPTS = 2;
 const OFFICIAL_GEMINI_31_STREAM_ATTEMPTS = 4;
+const MANAGED_VERTEX_AUTH_SENTINEL = '__vertex_service_account__';
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -29,6 +34,10 @@ const transportCircuitState = {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiProvider extends LLMProvider {
+    _usesManagedVertexServiceAccount() {
+        return isManagedVertexServiceAccountConfig(this.config);
+    }
+
     _getConfiguredKeys() {
         const keysString = this.config?.apiKeys || this.config?.apiKey || '';
         return String(keysString)
@@ -106,11 +115,10 @@ export class GeminiProvider extends LLMProvider {
         if (options?.useSearch === true) return true;
         if (options?.useSearch === false) return false;
 
-        // Gemini chat flows share an aggressive search policy in the system
-        // prompt, and GMI native Gemini explicitly supports google_search.
-        // Keep search-on by default unless the caller opts out or injects
-        // custom tools.
-        return true;
+        // Restore the old default only for official Gemini direct providers.
+        // Proxy/GMI chains stay search-off by default to avoid reintroducing
+        // the 429/high-load amplification that previously forced this off.
+        return this._isOfficialGeminiProviderConfig(baseUrl);
     }
 
     _isGemini3FlashModel(modelName = '') {
@@ -287,7 +295,7 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _markKeyFailure(keyPool, apiKey, { statusCode, errorMessage = '', retryAfterMs = null } = {}) {
-        if (!apiKey) return;
+        if (!keyPool || !apiKey || apiKey === MANAGED_VERTEX_AUTH_SENTINEL) return;
 
         // 429: temporarily suspend this key (rate-limited), but do NOT mark as "failed".
         // This prevents the key-rotation loop that drains the entire pool.
@@ -380,6 +388,10 @@ export class GeminiProvider extends LLMProvider {
     _getResolvedBaseUrl() {
         const base = this.config?.baseUrl?.trim();
         const hasGoogleKey = this._hasGoogleOfficialKey();
+
+        if (this._usesManagedVertexServiceAccount()) {
+            return base || DEFAULT_VERTEX_BASE_URL;
+        }
 
         if (base && base.includes('api.gmi-serving.com') && hasGoogleKey) {
             console.warn('[Gemini] Legacy GMI baseUrl detected with Google API key, auto-switching to official Gemini endpoint');
@@ -533,7 +545,31 @@ export class GeminiProvider extends LLMProvider {
         });
     }
 
+    async _fetchManagedVertexProxy({ baseUrl, cleanModel, requestBody, stream = false, signal }) {
+        return fetch('/api/vertex-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+            body: JSON.stringify({
+                baseUrl,
+                model: cleanModel,
+                requestBody,
+                stream
+            })
+        });
+    }
+
     async _requestWithTransportFallback({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
+        if (this._usesManagedVertexServiceAccount()) {
+            return this._fetchManagedVertexProxy({
+                baseUrl,
+                cleanModel,
+                requestBody,
+                stream,
+                signal
+            });
+        }
+
         const transports = this._getTransportOrder(baseUrl, cleanModel);
 
         let lastNetworkError = null;
@@ -630,9 +666,10 @@ export class GeminiProvider extends LLMProvider {
     }
 
     async chat(messages, model, options = {}) {
-        const keyPool = this._getKeyPool();
+        const usesManagedVertexAuth = this._usesManagedVertexServiceAccount();
+        const keyPool = usesManagedVertexAuth ? null : this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
-        const modelToUse = model || this.config.model || 'gemini-3.1-pro-preview';
+        const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
         const resolvedMessages = await resolveAllImages(messages);
@@ -673,11 +710,15 @@ export class GeminiProvider extends LLMProvider {
 
         while (attempt < maxAttempts) {
             if (!activeApiKey) {
-                activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
-                    signal: options.signal
-                });
-                if (!activeApiKey) {
-                    throw this._buildNoAvailableKeyError(keyPool);
+                if (usesManagedVertexAuth) {
+                    activeApiKey = MANAGED_VERTEX_AUTH_SENTINEL;
+                } else {
+                    activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
+                        signal: options.signal
+                    });
+                    if (!activeApiKey) {
+                        throw this._buildNoAvailableKeyError(keyPool);
+                    }
                 }
             }
             const apiKey = activeApiKey;
@@ -707,7 +748,7 @@ export class GeminiProvider extends LLMProvider {
                         const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
 
                         this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                        if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        if (!usesManagedVertexAuth && this._shouldSwitchKeyOnRetry(statusCode)) {
                             activeApiKey = null;
                         }
 
@@ -740,7 +781,7 @@ export class GeminiProvider extends LLMProvider {
                         const retryDelayMs = this._extractRetryDelayMs(errorMessage);
 
                         this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                        if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        if (!usesManagedVertexAuth && this._shouldSwitchKeyOnRetry(statusCode)) {
                             activeApiKey = null;
                         }
 
@@ -798,7 +839,7 @@ export class GeminiProvider extends LLMProvider {
                 if (error?.keyAlreadyMarked !== true) {
                     this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
                 }
-                if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                if (!usesManagedVertexAuth && this._shouldSwitchKeyOnRetry(statusCode)) {
                     activeApiKey = null;
                 }
 
@@ -835,9 +876,10 @@ export class GeminiProvider extends LLMProvider {
     }
 
     async stream(messages, onToken, model, options = {}) {
-        const keyPool = this._getKeyPool();
+        const usesManagedVertexAuth = this._usesManagedVertexServiceAccount();
+        const keyPool = usesManagedVertexAuth ? null : this._getKeyPool();
         const baseUrl = this._getResolvedBaseUrl();
-        const modelToUse = model || this.config.model || 'gemini-3.1-pro-preview';
+        const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
 
         const resolvedMessages = await resolveAllImages(messages);
@@ -878,11 +920,15 @@ export class GeminiProvider extends LLMProvider {
 
         while (attempt < maxAttempts) {
             if (!activeApiKey) {
-                activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
-                    signal: options.signal
-                });
-                if (!activeApiKey) {
-                    throw this._buildNoAvailableKeyError(keyPool);
+                if (usesManagedVertexAuth) {
+                    activeApiKey = MANAGED_VERTEX_AUTH_SENTINEL;
+                } else {
+                    activeApiKey = await this._acquireApiKeyWithWait(keyPool, {
+                        signal: options.signal
+                    });
+                    if (!activeApiKey) {
+                        throw this._buildNoAvailableKeyError(keyPool);
+                    }
                 }
             }
             const apiKey = activeApiKey;
@@ -912,7 +958,7 @@ export class GeminiProvider extends LLMProvider {
                         const retryDelayMs = this._resolveRetryDelayMs({ response, errorMessage });
 
                         this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
-                        if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                        if (!usesManagedVertexAuth && this._shouldSwitchKeyOnRetry(statusCode)) {
                             activeApiKey = null;
                         }
 
@@ -973,7 +1019,7 @@ export class GeminiProvider extends LLMProvider {
                 if (error?.keyAlreadyMarked !== true) {
                     this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
                 }
-                if (this._shouldSwitchKeyOnRetry(statusCode)) {
+                if (!usesManagedVertexAuth && this._shouldSwitchKeyOnRetry(statusCode)) {
                     activeApiKey = null;
                 }
 
@@ -1049,6 +1095,10 @@ export class GeminiProvider extends LLMProvider {
      * Generate Image using GMI Cloud Async API
      */
     async generateImage(prompt, model, options = {}) {
+        if (this._usesManagedVertexServiceAccount()) {
+            throw new Error('Vertex 服务账号模式暂未接入当前图片生成链路，请为图片角色保留单独提供商');
+        }
+
         const apiKey = this._getKeyPool().getNextKey();
         return generateGeminiImage(apiKey, prompt, model, options);
     }

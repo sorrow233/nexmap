@@ -13,6 +13,7 @@ import { normalizeBoardMetadataList } from '../services/boardTitle/metadata';
 import { persistBoardsMetadataList } from '../services/boardPersistence/boardsListStorage';
 import { hydrateBoardsDisplayMetadataList } from '../services/boardPersistence/boardDisplayMetadataStorage';
 import { migrateBoardsThumbnailMetadataList } from '../services/boardPersistence/boardThumbnailMigration';
+import { hasUsableProviderCredentials } from '../services/llm/providerConfig';
 import { useStore } from '../store/useStore';
 
 const TRASH_CLEANUP_LAST_KEY = 'mixboard_last_trash_cleanup_at';
@@ -112,7 +113,7 @@ export function useAppInit() {
             }
 
             const activeConfig = useStore.getState().getActiveConfig();
-            if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+            if (!hasUsableProviderCredentials(activeConfig)) {
                 useStore.getState().loadSystemCredits?.();
             }
         });

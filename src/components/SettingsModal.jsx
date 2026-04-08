@@ -18,6 +18,14 @@ import SettingsBasicSection from './settings/SettingsBasicSection';
 import SettingsAISection from './settings/SettingsAISection';
 import SettingsAdvancedSection from './settings/SettingsAdvancedSection';
 import { cloneGlobalRoles, getSuggestedRoleModel } from './settings/modelRoleUtils';
+import {
+    DEFAULT_VERTEX_BASE_URL,
+    DEFAULT_VERTEX_CHAT_MODEL,
+    DEFAULT_VERTEX_CUSTOM_MODELS,
+    hasUsableProviderCredentials,
+    PROVIDER_AUTH_MODE_API_KEY,
+    PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT
+} from '../services/llm/providerConfig';
 import { useLanguage } from '../contexts/LanguageContext';
 import packageJson from '../../package.json';
 
@@ -146,12 +154,41 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 name: t.settings.newProvider || '新建提供商',
                 baseUrl: 'https://api.openai.com/v1',
                 apiKey: '',
+                authMode: PROVIDER_AUTH_MODE_API_KEY,
                 model: 'gpt-4o',
                 protocol: 'openai',
                 roles: { chat: '', analysis: '', image: '' }
             }
         }));
         setActiveId(newId);
+    };
+
+    const handleProviderAuthModeChange = (nextAuthMode) => {
+        const currentBaseUrl = String(currentProvider?.baseUrl || '').trim();
+        const currentModel = String(currentProvider?.model || '').trim();
+        const currentCustomModels = String(currentProvider?.customModels || '').trim();
+
+        handleUpdateProvider('authMode', nextAuthMode);
+
+        if (nextAuthMode !== PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT) {
+            return;
+        }
+
+        if (currentProvider?.protocol !== 'gemini') {
+            handleUpdateProvider('protocol', 'gemini');
+        }
+
+        if (!currentBaseUrl || currentBaseUrl.includes('api.gmi-serving.com') || currentBaseUrl.includes('generativelanguage.googleapis.com')) {
+            handleUpdateProvider('baseUrl', DEFAULT_VERTEX_BASE_URL);
+        }
+
+        if (!currentModel || currentModel.includes('gemini-3-') || currentModel.includes('google/gemini-3-')) {
+            handleUpdateProvider('model', DEFAULT_VERTEX_CHAT_MODEL);
+        }
+
+        if (!currentCustomModels) {
+            handleUpdateProvider('customModels', DEFAULT_VERTEX_CUSTOM_MODELS);
+        }
     };
 
     const handleRemoveProvider = (idToRemove) => {
@@ -194,7 +231,9 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setTestMessage('');
         try {
             const providerConfig = providers[activeId];
-            if (!providerConfig?.apiKey) throw new Error('API Key is missing');
+            if (!hasUsableProviderCredentials(providerConfig)) {
+                throw new Error('当前提供商缺少可用凭据');
+            }
 
             const testModel = activeId === globalRoles.chat.providerId
                 ? (globalRoles.chat.model || providerConfig.model || null)
@@ -509,6 +548,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     globalRoles={globalRoles}
                                     onGlobalRoleChange={handleGlobalRoleChange}
                                     handleUpdateProvider={handleUpdateProvider}
+                                    handleProviderAuthModeChange={handleProviderAuthModeChange}
                                     handleAddProvider={handleAddProvider}
                                     handleRemoveProvider={handleRemoveProvider}
                                     handleTestConnection={handleTestConnection}
