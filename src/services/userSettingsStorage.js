@@ -1,5 +1,5 @@
 import { useStore } from '../store/useStore';
-import { getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getS3Config, saveS3Config } from './s3';
 import {
     CUSTOM_INSTRUCTIONS_KEY,
@@ -212,6 +212,47 @@ const serializeRemoteSettingsDoc = (settings = {}, savedAt = Date.now()) => ({
         settingsSavedAt: Number(savedAt) || Date.now()
     }
 });
+
+const resolveRemoteSettingsUpdate = (userId, remoteSnapshot, options = {}) => {
+    if (!remoteSnapshot) {
+        return {
+            applied: false,
+            reason: 'remote_missing',
+            settings: null
+        };
+    }
+
+    const localSavedAt = Number(getLocalSettingsSavedAt()) || 0;
+    const remoteSavedAt = Number(remoteSnapshot.settingsSavedAt) || 0;
+    const allowEqual = options.allowEqual === true;
+
+    if (remoteSavedAt < localSavedAt) {
+        return {
+            applied: false,
+            reason: 'remote_older',
+            settings: remoteSnapshot
+        };
+    }
+
+    if (!allowEqual && remoteSavedAt === localSavedAt) {
+        return {
+            applied: false,
+            reason: 'same_timestamp',
+            settings: remoteSnapshot
+        };
+    }
+
+    applyLocalSettingsUpdate(remoteSnapshot, userId, {
+        fromCloud: true,
+        source: options.source || 'remote_sync'
+    });
+
+    return {
+        applied: true,
+        reason: remoteSavedAt === localSavedAt ? 'remote_equal_applied' : 'remote_newer_applied',
+        settings: remoteSnapshot
+    };
+};
 const readRemoteUserSettings = async (userId) => {
     if (!userId || !FIREBASE_SYNC_ENABLED) {
         return null;
@@ -324,8 +365,8 @@ export const syncUserSettingsForSession = async (userId) => {
     const remoteSavedAt = Number(remoteSnapshot?.settingsSavedAt) || 0;
 
     if (remoteSnapshot && remoteSavedAt > localSavedAt) {
-        applyLocalSettingsUpdate(remoteSnapshot, userId, {
-            fromCloud: true,
+        resolveRemoteSettingsUpdate(userId, remoteSnapshot, {
+            allowEqual: true,
             source: 'session_sync'
         });
         return {
@@ -354,13 +395,55 @@ export const syncUserSettingsForSession = async (userId) => {
         }
     }
 
-    applyLocalSettingsUpdate(remoteSnapshot, userId, {
-        fromCloud: true,
+    const resolvedEqualSync = resolveRemoteSettingsUpdate(userId, remoteSnapshot, {
+        allowEqual: true,
         source: 'session_sync'
     });
     return {
         ok: true,
-        reason: 'already_synced',
+        reason: resolvedEqualSync.reason || 'already_synced',
         settings: remoteSnapshot
     };
+};
+
+export const subscribeUserSettingsSync = (userId, callbacks = {}) => {
+    if (!userId || !FIREBASE_SYNC_ENABLED) {
+        return () => { };
+    }
+
+    return onSnapshot(
+        createUserSettingsRef(userId),
+        (snapshot) => {
+            if (!snapshot.exists()) {
+                callbacks.onUpdate?.({
+                    applied: false,
+                    reason: 'remote_missing',
+                    settings: null
+                });
+                return;
+            }
+
+            const remoteSnapshot = hasRemoteSettingsDocument(snapshot.data())
+                ? {
+                    ...snapshot.data().payload,
+                    settingsSavedAt: Number(snapshot.data().payload?.settingsSavedAt) || Number(snapshot.data().updatedAtMs) || 0,
+                    updatedAtMs: Number(snapshot.data().updatedAtMs) || 0
+                }
+                : {
+                    ...(snapshot.data() || {}),
+                    settingsSavedAt: Number(snapshot.data()?.settingsSavedAt) || Number(snapshot.data()?.updatedAtMs) || 0,
+                    updatedAtMs: Number(snapshot.data()?.updatedAtMs) || 0
+                };
+
+            const result = resolveRemoteSettingsUpdate(userId, remoteSnapshot, {
+                allowEqual: false,
+                source: 'live_sync'
+            });
+            callbacks.onUpdate?.(result);
+        },
+        (error) => {
+            console.error('[UserSettings] Live sync subscription failed:', error);
+            callbacks.onError?.(error);
+        }
+    );
 };

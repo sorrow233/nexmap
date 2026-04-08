@@ -38,6 +38,10 @@ const loadWithTimestamp = (key) => {
 
 export default function SettingsModal({ isOpen, onClose, user }) {
     const { t } = useLanguage();
+    const storeProviders = useStore(state => state.providers);
+    const storeActiveId = useStore(state => state.activeId);
+    const storeGlobalRoles = useStore(state => state.globalRoles);
+    const storeLastUpdated = useStore(state => state.lastUpdated);
 
     const [activeTab, setActiveTab] = useState('basic');
     const [providers, setProviders] = useState({});
@@ -53,6 +57,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         message: '',
         code: ''
     });
+    const [isDirty, setIsDirty] = useState(false);
     const [requestedAdvancedPanel, setRequestedAdvancedPanel] = useState(null);
 
     const [s3Config, setS3ConfigState] = useState({
@@ -69,8 +74,14 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         normalizeCustomInstructionsValue(null)
     );
     const [linkageSettings, setLinkageSettings] = useState(createEmptyLinkageSettings());
+    const storeSettingsSignature = useMemo(() => JSON.stringify({
+        providers: storeProviders,
+        activeId: storeActiveId,
+        globalRoles: storeGlobalRoles,
+        lastUpdated: storeLastUpdated
+    }), [storeActiveId, storeGlobalRoles, storeLastUpdated, storeProviders]);
 
-    useEffect(() => {
+    const hydrateModalStateFromStore = React.useCallback(() => {
         const state = useStore.getState();
         setProviders(JSON.parse(JSON.stringify(state.providers)));
         setActiveId(state.activeId);
@@ -82,16 +93,27 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         const { value: savedInstructions } = loadWithTimestamp(CUSTOM_INSTRUCTIONS_KEY);
         setCustomInstructions(normalizeCustomInstructionsValue(savedInstructions));
         setLinkageSettings(getLocalLinkageSettings(user?.uid));
+    }, [user?.uid]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        hydrateModalStateFromStore();
         setTestStatus('idle');
         setTestMessage('');
         setIsSaving(false);
+        setIsDirty(false);
         setSaveStatus({ type: 'idle', title: '', message: '', code: '' });
         setRequestedAdvancedPanel(null);
         setActiveTab('basic');
-    }, [isOpen, user?.uid]);
+    }, [hydrateModalStateFromStore, isOpen, user?.uid]);
+
+    useEffect(() => {
+        if (!isOpen || isSaving || isDirty) return;
+        hydrateModalStateFromStore();
+    }, [hydrateModalStateFromStore, isDirty, isOpen, isSaving, storeSettingsSignature]);
 
     const handleLinkageFieldChange = (field, value) => {
+        setIsDirty(true);
         setLinkageSettings(prev => ({
             ...prev,
             [field]: value
@@ -108,6 +130,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     }, [customInstructions]);
 
     const handleUpdateProvider = (field, value) => {
+        setIsDirty(true);
         setProviders(prev => ({
             ...prev,
             [activeId]: normalizeGeminiProviderConfig({
@@ -118,6 +141,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     const handleGlobalRoleChange = (role, providerId, model) => {
+        setIsDirty(true);
         setGlobalRoles(prev => ({
             ...prev,
             [role]: {
@@ -131,7 +155,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         }
     };
 
+    const handleSetActiveId = (nextActiveId) => {
+        setIsDirty(true);
+        setActiveId(nextActiveId);
+    };
+
     const handleAddProvider = () => {
+        setIsDirty(true);
         const newId = `custom-${Date.now()}`;
         setProviders(prev => ({
             ...prev,
@@ -149,6 +179,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     const handleRemoveProvider = (idToRemove) => {
+        setIsDirty(true);
         const remainingIds = Object.keys(providers).filter(id => id !== idToRemove);
         if (remainingIds.length === 0) return;
 
@@ -181,6 +212,20 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             }
             return nextRoles;
         });
+    };
+
+    const handleSetS3ConfigState = (nextValue) => {
+        setIsDirty(true);
+        setS3ConfigState(prev => (
+            typeof nextValue === 'function' ? nextValue(prev) : nextValue
+        ));
+    };
+
+    const handleSetCustomInstructions = (nextValue) => {
+        setIsDirty(true);
+        setCustomInstructions(prev => (
+            typeof nextValue === 'function' ? nextValue(prev) : nextValue
+        ));
     };
 
     const handleTestConnection = async () => {
@@ -254,6 +299,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                         : '当前设置已保存到这台设备上。'),
                 code: ''
             });
+            setIsDirty(false);
         } catch (error) {
             console.error('Failed to save settings:', error);
             setSaveStatus({
@@ -498,7 +544,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             {activeTab === 'basic' && (
                                 <SettingsBasicSection
                                     customInstructions={customInstructions}
-                                    setCustomInstructions={setCustomInstructions}
+                                    setCustomInstructions={handleSetCustomInstructions}
                                     advancedInstructionCount={extraInstructionCount}
                                     onOpenAdvancedInstructions={() => {
                                         setActiveTab('advanced');
@@ -511,7 +557,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                 <SettingsAISection
                                     providers={providers}
                                     activeId={activeId}
-                                    setActiveId={setActiveId}
+                                    setActiveId={handleSetActiveId}
                                     currentProvider={currentProvider}
                                     globalRoles={globalRoles}
                                     onGlobalRoleChange={handleGlobalRoleChange}
@@ -528,9 +574,9 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                             {activeTab === 'advanced' && (
                                 <SettingsAdvancedSection
                                     s3Config={s3Config}
-                                    setS3ConfigState={setS3ConfigState}
+                                    setS3ConfigState={handleSetS3ConfigState}
                                     customInstructions={customInstructions}
-                                    setCustomInstructions={setCustomInstructions}
+                                    setCustomInstructions={handleSetCustomInstructions}
                                     linkageSettings={linkageSettings}
                                     onLinkageFieldChange={handleLinkageFieldChange}
                                     appUserUid={user?.uid}

@@ -5,7 +5,8 @@ import {
     loadBoardsMetadata,
     saveBoard,
     cleanupExpiredTrash,
-    syncUserSettingsForSession
+    syncUserSettingsForSession,
+    subscribeUserSettingsSync
 } from '../services/storage';
 import { initScheduledBackup } from '../services/scheduledBackupService';
 import { getSampleBoardsList, getSampleBoardData } from '../utils/sampleBoardsData';
@@ -104,7 +105,12 @@ export function useAppInit() {
     useEffect(() => {
         if (!auth) return undefined;
 
+        let unsubscribeUserSettingsSync = () => { };
+        let disposed = false;
+
         const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+            unsubscribeUserSettingsSync();
+            unsubscribeUserSettingsSync = () => { };
             setUser(nextUser);
             debugLog.auth(nextUser ? `User logged in: ${nextUser.email}` : 'User logged out');
 
@@ -113,21 +119,39 @@ export function useAppInit() {
             }
 
             void (async () => {
+                const activeUserId = nextUser.uid;
                 try {
-                    const syncResult = await syncUserSettingsForSession(nextUser.uid);
-                    debugLog.auth(`[SettingsSync] ${syncResult.reason || 'unknown'} for ${nextUser.uid}`);
+                    const syncResult = await syncUserSettingsForSession(activeUserId);
+                    if (disposed || auth.currentUser?.uid !== activeUserId) return;
+
+                    debugLog.auth(`[SettingsSync] ${syncResult.reason || 'unknown'} for ${activeUserId}`);
+                    unsubscribeUserSettingsSync = subscribeUserSettingsSync(activeUserId, {
+                        onUpdate: (result) => {
+                            if (!result?.applied) return;
+                            debugLog.auth(`[SettingsSyncLive] ${result.reason || 'remote_update'} for ${activeUserId}`);
+                        },
+                        onError: (error) => {
+                            debugLog.error('Live user settings sync failed', error);
+                        }
+                    });
                 } catch (error) {
                     debugLog.error('Failed to sync user settings on login', error);
                 } finally {
-                    const activeConfig = useStore.getState().getActiveConfig();
-                    if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
-                        useStore.getState().loadSystemCredits?.();
+                    if (!disposed && auth.currentUser?.uid === activeUserId) {
+                        const activeConfig = useStore.getState().getActiveConfig();
+                        if (!activeConfig?.apiKey || activeConfig.apiKey.trim() === '') {
+                            useStore.getState().loadSystemCredits?.();
+                        }
                     }
                 }
             })();
         });
 
-        return () => unsubscribe();
+        return () => {
+            disposed = true;
+            unsubscribeUserSettingsSync();
+            unsubscribe();
+        };
     }, []);
 
     return { user, boardsList, setBoardsList, isInitialized, hasHydratedLocalBoardsMetadata };

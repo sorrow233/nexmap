@@ -13,7 +13,8 @@ import {
     saveUserSettings,
     loadUserSettings,
     updateUserSettings,
-    syncUserSettingsForSession
+    syncUserSettingsForSession,
+    subscribeUserSettingsSync
 } from './userSettingsStorage';
 
 import { saveImageToIDB, getImageFromIDB } from './imageStore';
@@ -23,7 +24,7 @@ export {
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
     saveViewportState, loadViewportState, loadBoardDataForSearch, emergencyLocalSave,
-    saveUserSettings, loadUserSettings, updateUserSettings, syncUserSettingsForSession,
+    saveUserSettings, loadUserSettings, updateUserSettings, syncUserSettingsForSession, subscribeUserSettingsSync,
     saveImageToIDB, getImageFromIDB
 };
 
@@ -32,7 +33,7 @@ const StorageService = {
     getCurrentBoardId, setCurrentBoardId, getBoardsList, loadBoardsMetadata,
     createBoard, updateBoardMetadata, saveBoard, loadBoard, deleteBoard,
     saveViewportState, loadViewportState, loadBoardDataForSearch, emergencyLocalSave,
-    saveUserSettings, loadUserSettings, updateUserSettings, syncUserSettingsForSession,
+    saveUserSettings, loadUserSettings, updateUserSettings, syncUserSettingsForSession, subscribeUserSettingsSync,
     getTrashBoards, restoreBoard, permanentlyDeleteBoard, cleanupExpiredTrash,
     saveImageToIDB, getImageFromIDB
 };
