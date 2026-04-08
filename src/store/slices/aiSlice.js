@@ -105,6 +105,16 @@ const ERROR_MARKERS = Object.freeze([
 const MAX_CHAT_CONTEXT_MESSAGES = 8;
 const MAX_CHAT_CONTEXT_TOTAL_CHARS = 24_000;
 
+const createDebugTraceId = () => (
+    `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+);
+
+const previewDebugText = (text = '', limit = 180) => {
+    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
+};
+
 const getMessageContextText = (message = {}) => (
     extractMessageContentText(message?.content).trim()
 );
@@ -395,6 +405,7 @@ export const createAISlice = (set, get) => {
         handleChatGenerate: async (cardId, messages, onToken, options = {}) => {
             const { setCardGenerating, updateCardContent } = get();
             const assistantMessageId = options?.assistantMessageId || null;
+            const debugTraceId = options?.debugTraceId || createDebugTraceId();
             setCardGenerating(cardId, true, { messageId: assistantMessageId });
             await yieldToMainThread();
 
@@ -421,8 +432,24 @@ export const createAISlice = (set, get) => {
                 const runProviderId = config.providerId || config.id;
                 const runProviderName = config.name || runProviderId || 'unknown';
                 const runBaseUrl = config.baseUrl || 'default';
+                const latestUserMessage = [...(cleanMessages || [])]
+                    .reverse()
+                    .find((message) => message?.role === 'user');
 
                 console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
+                console.log(`[AI][${debugTraceId}] dispatch_context`, {
+                    cardId,
+                    assistantMessageId,
+                    providerId: runProviderId,
+                    providerName: runProviderName,
+                    protocol: config.protocol || '',
+                    model: runModel,
+                    baseUrl: runBaseUrl,
+                    inputMessageCount: Array.isArray(messages) ? messages.length : 0,
+                    cleanMessageCount: cleanMessages.length,
+                    contextMessageCount: contextMessages.length,
+                    latestUserPreview: previewDebugText(getMessageContextText(latestUserMessage))
+                });
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
@@ -451,7 +478,9 @@ export const createAISlice = (set, get) => {
                         temperature: undefined,
                         config,
                         options: {
+                            debugTraceId,
                             onResponseMetadata: (metadata = {}) => {
+                                console.log(`[AI][${debugTraceId}] response_metadata`, metadata);
                                 const assistantMessageId = resolveLatestAssistantMessageId();
                                 if (!assistantMessageId) return;
                                 get().setAssistantMessageMeta(cardId, assistantMessageId, {
@@ -465,6 +494,12 @@ export const createAISlice = (set, get) => {
                         if (firstToken) {
                             perfMonitor.onFirstToken();
                             firstToken = false;
+                            console.log(`[AI][${debugTraceId}] first_token`, {
+                                cardId,
+                                assistantMessageId: resolveLatestAssistantMessageId(),
+                                chunkLength: String(chunk || '').length,
+                                chunkPreview: previewDebugText(chunk)
+                            });
                         }
                         perfMonitor.onChunk(chunk);
 
@@ -472,9 +507,21 @@ export const createAISlice = (set, get) => {
                     }
                 });
 
+                console.log(`[AI][${debugTraceId}] generation_complete`, {
+                    cardId,
+                    assistantMessageId: resolveLatestAssistantMessageId()
+                });
                 perfMonitor.onComplete();
             } catch (e) {
                 console.error(`Generation failed for card ${cardId}`, e);
+                console.error(`[AI][${debugTraceId}] generation_failed`, {
+                    cardId,
+                    assistantMessageId,
+                    message: e?.message || String(e),
+                    name: e?.name || 'Error',
+                    code: e?.code || '',
+                    statusCode: e?.statusCode || ''
+                });
 
                 // Localization logic
                 const lang = localStorage.getItem('userLanguage') || 'en';

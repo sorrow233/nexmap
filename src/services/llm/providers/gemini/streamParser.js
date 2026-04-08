@@ -2,6 +2,12 @@ import { isRetryableError } from './errorUtils.js';
 import { extractCandidateText } from './partUtils.js';
 import { settleStreamReader } from '../../streamTailGrace.js';
 
+const previewText = (text = '', limit = 220) => {
+    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
+};
+
 /**
  * Detect whether a Gemini candidate includes grounding/search metadata.
  * This indicates that web search grounding was actually invoked.
@@ -34,6 +40,9 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
     let usedSearch = false;
     let hasVisibleText = false;
     let sawTerminal = false;
+    let chunkCount = 0;
+    let envelopeCount = 0;
+    let parseErrorCount = 0;
 
     const emitVisibleDelta = (candidate) => {
         const visibleText = extractCandidateText(candidate, { includeThoughtFallback: false });
@@ -52,6 +61,12 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
         lastVisibleText = visibleText;
         if (delta) {
             hasVisibleText = true;
+            onLog('stream visible delta emitted', {
+                deltaLength: delta.length,
+                visibleLength: visibleText.length,
+                fallbackLength: fallbackText.length,
+                deltaPreview: previewText(delta)
+            });
             onToken(delta);
         }
     };
@@ -63,6 +78,14 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
             if (done) break;
 
             const chunkText = decoder.decode(value, { stream: true });
+            chunkCount += 1;
+            if (chunkCount <= 3) {
+                onLog('stream raw chunk received', {
+                    chunkIndex: chunkCount,
+                    chunkBytes: value?.byteLength || 0,
+                    chunkPreview: previewText(chunkText)
+                });
+            }
             buffer += chunkText;
 
             const lines = buffer.split('\n');
@@ -91,6 +114,7 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
 
                 try {
                     const data = JSON.parse(cleanLine);
+                    envelopeCount += 1;
 
                     // CRITICAL: Check for API errors that might be returned as JSON (even with 200 OK)
                     if (data.error) {
@@ -107,6 +131,10 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     const candidate = data.candidates?.[0];
                     if (didCandidateUseSearch(candidate)) {
                         usedSearch = true;
+                        onLog('stream candidate indicates search usage', {
+                            envelopeCount,
+                            groundingKeys: Object.keys(candidate?.groundingMetadata || {})
+                        });
                     }
 
                     emitVisibleDelta(candidate);
@@ -119,6 +147,14 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
                     // If parsing fails or we threw an error above, re-throw if it's our error
                     if (jsonErr.message && !jsonErr.message.includes('JSON')) {
                         throw jsonErr;
+                    }
+                    parseErrorCount += 1;
+                    if (parseErrorCount <= 3) {
+                        onLog('stream line parse skipped', {
+                            parseErrorCount,
+                            linePreview: previewText(cleanLine),
+                            errorMessage: jsonErr?.message || String(jsonErr)
+                        });
                     }
                     // Try to handle partial JSON or weird provider formats
                     // onLog('[Gemini] Line parse error:', cleanLine.substring(0, 50), jsonErr.message);
@@ -167,12 +203,30 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
         }
 
         if (!hasVisibleText && lastFallbackText) {
+            onLog('stream ended without visible text', {
+                chunkCount,
+                envelopeCount,
+                parseErrorCount,
+                usedSearch,
+                sawTerminal,
+                fallbackTextLength: lastFallbackText.length,
+                fallbackPreview: previewText(lastFallbackText)
+            });
             const error = new Error('Gemini stream ended without visible text');
             error.code = 'EMPTY_VISIBLE_STREAM';
             error.fallbackText = lastFallbackText;
             throw error;
         }
 
+        onLog('stream completed successfully', {
+            chunkCount,
+            envelopeCount,
+            parseErrorCount,
+            usedSearch,
+            sawTerminal,
+            visibleTextLength: lastVisibleText.length,
+            fallbackTextLength: lastFallbackText.length
+        });
         return { usedSearch };
     } finally {
         // Reader release is handled by caller or automatic cleanup if properly structured, 

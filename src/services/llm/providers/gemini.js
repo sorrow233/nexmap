@@ -29,6 +29,44 @@ const transportCircuitState = {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiProvider extends LLMProvider {
+    _createDebugTraceId() {
+        return `gem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    _previewDebugText(text = '', limit = 180) {
+        const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!normalized) return '';
+        return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
+    }
+
+    _getApiKeyKind(apiKey = '') {
+        const normalized = String(apiKey || '').trim();
+        if (!normalized) return 'missing';
+        if (normalized.startsWith('AIza')) return 'AIza';
+        if (normalized.startsWith('AQ.')) return 'AQ';
+        if (normalized.startsWith('sk-')) return 'sk';
+        return 'custom';
+    }
+
+    _summarizeTools(tools = []) {
+        if (!Array.isArray(tools) || tools.length === 0) return [];
+        return tools.map((tool) => {
+            if (tool?.google_search) return 'google_search';
+            if (tool?.googleSearch) return 'googleSearch';
+            return Object.keys(tool || {}).join(',') || 'unknown';
+        });
+    }
+
+    _createDebugLogger(debugTraceId = '') {
+        const traceId = debugTraceId || this._createDebugTraceId();
+        return {
+            traceId,
+            log: (event, payload = {}) => {
+                console.log(`[Gemini][${traceId}] ${event}`, payload);
+            }
+        };
+    }
+
     _getConfiguredKeys() {
         const keysString = this.config?.apiKeys || this.config?.apiKey || '';
         return String(keysString)
@@ -512,7 +550,7 @@ export class GeminiProvider extends LLMProvider {
         });
     }
 
-    async _fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
+    async _fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal, debugTraceId = '' }) {
         const endpoint = stream
             ? `/models/${cleanModel}:streamGenerateContent`
             : `/models/${cleanModel}:generateContent`;
@@ -527,13 +565,20 @@ export class GeminiProvider extends LLMProvider {
                 model: cleanModel,
                 endpoint,
                 requestBody,
-                stream
+                stream,
+                debugTraceId
             })
         });
     }
 
-    async _requestWithTransportFallback({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal }) {
+    async _requestWithTransportFallback({ apiKey, baseUrl, cleanModel, requestBody, stream = false, signal, debugTraceId = '', debugLog = () => {} }) {
         const transports = this._getTransportOrder(baseUrl, cleanModel);
+        debugLog('transport order resolved', {
+            transports,
+            stream,
+            baseUrl,
+            model: cleanModel
+        });
 
         let lastNetworkError = null;
 
@@ -543,9 +588,22 @@ export class GeminiProvider extends LLMProvider {
             const hasFallbackTransport = Boolean(nextTransport);
 
             try {
+                debugLog('transport attempt start', {
+                    attempt: idx + 1,
+                    transport,
+                    nextTransport,
+                    hasFallbackTransport
+                });
                 const response = transport === 'direct'
                     ? await this._fetchDirect({ apiKey, baseUrl, cleanModel, requestBody, stream, signal })
-                    : await this._fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream, signal });
+                    : await this._fetchProxy({ apiKey, baseUrl, cleanModel, requestBody, stream, signal, debugTraceId });
+
+                debugLog('transport attempt response', {
+                    transport,
+                    status: response.status,
+                    ok: response.ok,
+                    contentType: response.headers.get('content-type') || ''
+                });
 
                 if (
                     !response.ok &&
@@ -569,6 +627,11 @@ export class GeminiProvider extends LLMProvider {
                     throw error;
                 }
 
+                debugLog('transport attempt threw', {
+                    transport,
+                    message: error?.message || String(error),
+                    name: error?.name || 'Error'
+                });
                 lastNetworkError = error;
                 if (hasFallbackTransport && isRetryableNetworkError(error)) {
                     if (transport === 'proxy') {
@@ -633,6 +696,7 @@ export class GeminiProvider extends LLMProvider {
         const baseUrl = this._getResolvedBaseUrl();
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
+        const { traceId: debugTraceId, log: debugLog } = this._createDebugLogger(options.debugTraceId);
 
         const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
@@ -650,6 +714,24 @@ export class GeminiProvider extends LLMProvider {
         } else if (this._shouldAttachGoogleSearchTool(baseUrl, options)) {
             requestBody.tools = [{ google_search: {} }];
         }
+
+        debugLog('chat request prepared', {
+            providerId: this.config?.id || 'default',
+            providerName: this.config?.name || '',
+            baseUrl,
+            model: cleanModel,
+            stream: false,
+            transportOrder: this._getTransportOrder(baseUrl, cleanModel),
+            keyCount: this._getConfiguredKeyCount(),
+            keyKind: this._getApiKeyKind(this._getConfiguredKeys()[0]),
+            tools: this._summarizeTools(requestBody.tools),
+            allowNonStreamFallback: options.allowNonStreamFallback !== false,
+            lastUserPreview: this._previewDebugText(
+                Array.isArray(resolvedMessages)
+                    ? [...resolvedMessages].reverse().find((msg) => msg?.role === 'user')?.content
+                    : ''
+            )
+        });
 
         const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
             ? 'HIGH'
@@ -697,7 +779,9 @@ export class GeminiProvider extends LLMProvider {
                         cleanModel,
                         requestBody,
                         stream: false,
-                        signal: options.signal
+                        signal: options.signal,
+                        debugTraceId,
+                        debugLog
                     });
 
                     if (!response.ok) {
@@ -767,6 +851,11 @@ export class GeminiProvider extends LLMProvider {
 
                     const candidate = data.candidates?.[0];
                     const usedSearch = didCandidateUseSearch(candidate);
+                    debugLog('chat response parsed', {
+                        usedSearch,
+                        visibleTextLength: extractCandidateText(candidate, { includeThoughtFallback: false }).length,
+                        fallbackTextLength: extractCandidateText(candidate, { includeThoughtFallback: true }).length
+                    });
                     if (typeof options.onResponseMetadata === 'function') {
                         try {
                             options.onResponseMetadata({ usedSearch });
@@ -793,6 +882,14 @@ export class GeminiProvider extends LLMProvider {
                 const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
                     ? Number(error.retryDelayMs)
                     : this._extractRetryDelayMs(errorMessage);
+
+                debugLog('chat request failed', {
+                    attempt,
+                    statusCode,
+                    retryDelayMs,
+                    message: errorMessage,
+                    errorCode: error?.code || ''
+                });
 
                 if (error?.keyAlreadyMarked !== true) {
                     this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });
@@ -838,6 +935,7 @@ export class GeminiProvider extends LLMProvider {
         const baseUrl = this._getResolvedBaseUrl();
         const modelToUse = model || this.config.model || 'gemini-3-pro-preview';
         const cleanModel = modelToUse.replace('google/', '');
+        const { traceId: debugTraceId, log: debugLog } = this._createDebugLogger(options.debugTraceId);
 
         const resolvedMessages = await resolveAllImages(messages);
         const { contents, systemInstruction } = this.formatMessages(resolvedMessages);
@@ -855,6 +953,24 @@ export class GeminiProvider extends LLMProvider {
         } else if (this._shouldAttachGoogleSearchTool(baseUrl, options)) {
             requestBody.tools = [{ google_search: {} }];
         }
+
+        debugLog('stream request prepared', {
+            providerId: this.config?.id || 'default',
+            providerName: this.config?.name || '',
+            baseUrl,
+            model: cleanModel,
+            stream: true,
+            transportOrder: this._getTransportOrder(baseUrl, cleanModel),
+            keyCount: this._getConfiguredKeyCount(),
+            keyKind: this._getApiKeyKind(this._getConfiguredKeys()[0]),
+            tools: this._summarizeTools(requestBody.tools),
+            allowNonStreamFallback: options.allowNonStreamFallback !== false,
+            lastUserPreview: this._previewDebugText(
+                Array.isArray(resolvedMessages)
+                    ? [...resolvedMessages].reverse().find((msg) => msg?.role === 'user')?.content
+                    : ''
+            )
+        });
 
         const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
             ? 'HIGH'
@@ -902,7 +1018,9 @@ export class GeminiProvider extends LLMProvider {
                         cleanModel,
                         requestBody,
                         stream: true,
-                        signal: options.signal
+                        signal: options.signal,
+                        debugTraceId,
+                        debugLog
                     });
 
                     if (!response.ok) {
@@ -943,7 +1061,12 @@ export class GeminiProvider extends LLMProvider {
                     }
 
                     try {
-                        const streamMeta = await parseGeminiStream(reader, onToken, () => { });
+                        const streamMeta = await parseGeminiStream(reader, onToken, (event, payload = {}) => {
+                            debugLog(event, payload);
+                        });
+                        debugLog('stream parse complete', {
+                            usedSearch: !!streamMeta?.usedSearch
+                        });
                         if (typeof options.onResponseMetadata === 'function') {
                             try {
                                 options.onResponseMetadata({ usedSearch: !!streamMeta?.usedSearch });
@@ -968,6 +1091,16 @@ export class GeminiProvider extends LLMProvider {
                 const retryDelayMs = Number.isFinite(Number(error?.retryDelayMs)) && Number(error.retryDelayMs) > 0
                     ? Number(error.retryDelayMs)
                     : this._extractRetryDelayMs(errorMessage);
+
+                debugLog('stream request failed', {
+                    attempt,
+                    statusCode,
+                    retryDelayMs,
+                    message: errorMessage,
+                    errorCode: error?.code || '',
+                    fallbackTextPreview: this._previewDebugText(error?.fallbackText || ''),
+                    fallbackTextLength: String(error?.fallbackText || '').length
+                });
 
                 if (error?.keyAlreadyMarked !== true) {
                     this._markKeyFailure(keyPool, apiKey, { statusCode, errorMessage, retryAfterMs: retryDelayMs });

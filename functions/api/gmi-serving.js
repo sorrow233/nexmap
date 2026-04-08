@@ -23,6 +23,84 @@ const RETRYABLE_ERROR_PATTERNS = [
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+function createRequestId(explicitId = '') {
+    const normalized = String(explicitId || '').trim();
+    if (normalized) return normalized;
+    return `gmi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function previewText(text = '', limit = 220) {
+    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
+}
+
+function classifyApiKey(apiKey = '') {
+    const normalized = String(apiKey || '').trim();
+    if (!normalized) return 'missing';
+    if (normalized.startsWith('AIza')) return 'AIza';
+    if (normalized.startsWith('AQ.')) return 'AQ';
+    if (normalized.startsWith('sk-')) return 'sk';
+    return 'custom';
+}
+
+function summarizeTools(tools = []) {
+    if (!Array.isArray(tools) || tools.length === 0) return [];
+    return tools.map((tool) => {
+        if (tool?.google_search) return 'google_search';
+        if (tool?.googleSearch) return 'googleSearch';
+        return Object.keys(tool || {}).join(',') || 'unknown';
+    });
+}
+
+function summarizeRequestBody(requestBody = {}) {
+    const contents = Array.isArray(requestBody?.contents) ? requestBody.contents : [];
+    const lastUserPart = [...contents]
+        .reverse()
+        .find((item) => item?.role === 'user' && Array.isArray(item?.parts))
+        ?.parts?.find((part) => typeof part?.text === 'string');
+
+    return {
+        contentsCount: contents.length,
+        tools: summarizeTools(requestBody?.tools),
+        hasSystemInstruction: Boolean(requestBody?.systemInstruction),
+        temperature: requestBody?.generationConfig?.temperature,
+        maxOutputTokens: requestBody?.generationConfig?.maxOutputTokens,
+        thinkingLevel: requestBody?.generationConfig?.thinkingConfig?.thinkingLevel || '',
+        lastUserPreview: previewText(lastUserPart?.text || '')
+    };
+}
+
+async function logStreamPreview(stream, requestId) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let chunkCount = 0;
+    let totalBytes = 0;
+    let preview = '';
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunkCount += 1;
+            totalBytes += value?.byteLength || 0;
+            if (preview.length < 600) {
+                preview += decoder.decode(value, { stream: true });
+            }
+        }
+        preview += decoder.decode();
+        console.log(`[GMI Proxy][${requestId}] stream_preview ${JSON.stringify({
+            chunkCount,
+            totalBytes,
+            preview: previewText(preview, 600)
+        })}`);
+    } catch (error) {
+        console.error(`[GMI Proxy][${requestId}] stream_preview_error`, error);
+    } finally {
+        reader.releaseLock();
+    }
+}
+
 function computeBackoffDelay(attempt, baseMs = 700, maxMs = 8000) {
     const exp = Math.min(maxMs, baseMs * (2 ** Math.max(0, attempt - 1)));
     const jitter = Math.floor(Math.random() * 250);
@@ -169,7 +247,8 @@ export async function onRequest(context) {
 
     try {
         const body = await request.json();
-        const { apiKey, baseUrl, model, endpoint, method = 'POST', requestBody, stream = false } = body;
+        const { apiKey, baseUrl, model, endpoint, method = 'POST', requestBody, stream = false, debugTraceId } = body;
+        const requestId = createRequestId(debugTraceId);
 
         if (!apiKey || !baseUrl || !endpoint) {
             return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
@@ -202,6 +281,19 @@ export async function onRequest(context) {
             }
         }
 
+        const retryPolicy = getUpstreamRetryPolicy(stream);
+        console.log(`[GMI Proxy][${requestId}] incoming ${JSON.stringify({
+            method,
+            stream,
+            baseUrl,
+            model: cleanModel || model || '',
+            endpoint,
+            authMethod,
+            keyKind: classifyApiKey(apiKey),
+            timeoutMs: retryPolicy.timeoutMs,
+            requestBody: summarizeRequestBody(requestBody)
+        })}`);
+
         // Prepare headers - include User-Agent to help pass Cloudflare checks
         const headers = {
             'Content-Type': 'application/json',
@@ -222,22 +314,36 @@ export async function onRequest(context) {
         }
 
         // Make the upstream request
+        const upstreamStartedAt = Date.now();
         const { response: upstreamResponse, errorText } = await fetchUpstreamWithRetry(url, {
             method: method,
             headers: headers,
             body: requestBody ? JSON.stringify(requestBody) : undefined
         }, { stream });
+        const upstreamElapsedMs = Date.now() - upstreamStartedAt;
+        console.log(`[GMI Proxy][${requestId}] upstream_response ${JSON.stringify({
+            status: upstreamResponse.status,
+            ok: upstreamResponse.ok,
+            elapsedMs: upstreamElapsedMs,
+            contentType: upstreamResponse.headers.get('content-type') || '',
+            retryAfter: upstreamResponse.headers.get('retry-after') || ''
+        })}`);
 
         // Handle upstream errors immediately
         if (!upstreamResponse.ok) {
             const errText = errorText || '';
-            console.error(`[Proxy] Upstream error ${upstreamResponse.status}:`, errText);
+            console.error(`[GMI Proxy][${requestId}] upstream_error ${JSON.stringify({
+                status: upstreamResponse.status,
+                elapsedMs: upstreamElapsedMs,
+                errorText: previewText(errText, 600)
+            })}`);
             const retryAfter = upstreamResponse.headers.get('retry-after');
             const rateLimitReset = upstreamResponse.headers.get('x-ratelimit-reset');
             const responseHeaders = {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Expose-Headers': 'Retry-After, X-RateLimit-Reset'
+                'Access-Control-Expose-Headers': 'Retry-After, X-RateLimit-Reset, X-Debug-Trace-Id',
+                'X-Debug-Trace-Id': requestId
             };
             if (retryAfter) {
                 responseHeaders['Retry-After'] = retryAfter;
@@ -256,16 +362,22 @@ export async function onRequest(context) {
 
         // Handle streaming responses - DIRECT PIPE
         if (stream) {
-            const { readable, writable } = new TransformStream();
-            upstreamResponse.body.pipeTo(writable);
+            const upstreamBody = upstreamResponse.body;
+            if (!upstreamBody) {
+                throw new Error('Upstream stream body is empty');
+            }
+            const [logBody, clientBody] = upstreamBody.tee();
+            context.waitUntil(logStreamPreview(logBody, requestId));
 
-            return new Response(readable, {
+            return new Response(clientBody, {
                 status: upstreamResponse.status,
                 headers: {
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',
                     'Connection': 'keep-alive',
                     'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Expose-Headers': 'X-Debug-Trace-Id',
+                    'X-Debug-Trace-Id': requestId,
                     'X-Accel-Buffering': 'no' // Nginx hint
                 }
             });
@@ -273,11 +385,19 @@ export async function onRequest(context) {
 
         // Handle regular responses
         const data = await upstreamResponse.json();
+        console.log(`[GMI Proxy][${requestId}] upstream_json ${JSON.stringify({
+            candidateCount: Array.isArray(data?.candidates) ? data.candidates.length : 0,
+            hasError: Boolean(data?.error),
+            usedSearch: Boolean(data?.candidates?.[0]?.groundingMetadata),
+            textPreview: previewText(data?.candidates?.[0]?.content?.parts?.map((part) => part?.text || '').join(''))
+        })}`);
         return new Response(JSON.stringify(data), {
             status: upstreamResponse.status,
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Expose-Headers': 'X-Debug-Trace-Id',
+                'X-Debug-Trace-Id': requestId
             }
         });
 
