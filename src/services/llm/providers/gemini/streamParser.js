@@ -218,6 +218,20 @@ export async function parseGeminiStream(reader, onToken, onLog = console.log) {
             throw error;
         }
 
+        if (!hasVisibleText && envelopeCount > 0) {
+            onLog('stream ended without any visible payload', {
+                chunkCount,
+                envelopeCount,
+                parseErrorCount,
+                usedSearch,
+                sawTerminal
+            });
+            const error = new Error('Gemini stream ended without any visible payload');
+            error.code = 'EMPTY_VISIBLE_STREAM';
+            error.fallbackText = '';
+            throw error;
+        }
+
         onLog('stream completed successfully', {
             chunkCount,
             envelopeCount,

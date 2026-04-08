@@ -92,6 +92,10 @@ export class GeminiProvider extends LLMProvider {
         return String(baseUrl).includes('generativelanguage.googleapis.com');
     }
 
+    _isVertexExpressBaseUrl(baseUrl = '') {
+        return String(baseUrl).includes('aiplatform.googleapis.com');
+    }
+
     _isOfficialGeminiProviderConfig(baseUrl = '') {
         return this._isOfficialGeminiBaseUrl(baseUrl) && this._hasOnlyGoogleOfficialKeys();
     }
@@ -144,10 +148,10 @@ export class GeminiProvider extends LLMProvider {
         if (options?.useSearch === true) return true;
         if (options?.useSearch === false) return false;
 
-        // Restore the old default only for official Gemini direct providers.
-        // Proxy/GMI chains stay search-off by default to avoid reintroducing
-        // the 429/high-load amplification that previously forced this off.
-        return this._isOfficialGeminiProviderConfig(baseUrl);
+        // Keep implicit search limited to Google-owned direct endpoints.
+        // Third-party proxy chains stay search-off by default to avoid
+        // amplifying latency/rate-limit issues on non-Google transports.
+        return this._isOfficialGeminiProviderConfig(baseUrl) || this._isVertexExpressBaseUrl(baseUrl);
     }
 
     _isGemini3FlashModel(modelName = '') {
@@ -427,7 +431,7 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _shouldTryDirect(baseUrl = '') {
-        return String(baseUrl).includes('generativelanguage.googleapis.com');
+        return this._isOfficialGeminiBaseUrl(baseUrl) || this._isVertexExpressBaseUrl(baseUrl);
     }
 
     _isDirectPreferredModel(cleanModel = '') {
@@ -439,6 +443,14 @@ export class GeminiProvider extends LLMProvider {
     _getTransportOrder(baseUrl = '', cleanModel = '') {
         if (!this._shouldTryDirect(baseUrl)) {
             return ['proxy'];
+        }
+
+        if (this._isVertexExpressBaseUrl(baseUrl)) {
+            // Vertex Express with AQ keys is meant to hit Google's endpoint
+            // directly. Routing it through /api/gmi-serving strips the direct
+            // SSE contract and is exactly what produced the metadata-only
+            // "successful empty stream" regression seen in production logs.
+            return ['direct'];
         }
 
         // For official Gemini API keys, direct transport must be primary.
