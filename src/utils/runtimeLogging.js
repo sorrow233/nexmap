@@ -1,5 +1,6 @@
 const VERBOSE_CONSOLE_KEY = 'nexmap_verbose_console';
 const PERSISTENCE_TRACE_CONSOLE_KEY = 'nexmap_persistence_trace_console';
+const AI_VERBOSE_CONSOLE_KEY = 'nexmap_ai_verbose_console';
 const BLOCKED_RESOURCE_PATTERNS = [
     'beacon.min.js',
     '/beacon',
@@ -54,6 +55,10 @@ export const isPersistenceTraceConsoleEnabled = () => (
     isVerboseConsoleEnabled() || readRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY)
 );
 
+export const isVerboseAIConsoleEnabled = () => (
+    isVerboseConsoleEnabled() || readRuntimeFlag(AI_VERBOSE_CONSOLE_KEY)
+);
+
 export const runtimeLog = (...args) => {
     if (!isVerboseConsoleEnabled()) return;
     console.log(...args);
@@ -64,6 +69,11 @@ export const runtimeWarn = (...args) => {
     console.warn(...args);
 };
 
+export const aiVerboseLog = (...args) => {
+    if (!isVerboseAIConsoleEnabled()) return;
+    console.log(...args);
+};
+
 export const installRuntimeLoggingControls = () => {
     if (typeof window === 'undefined') return;
     if (window.__NEXMAP_RUNTIME_LOGGING_CONTROLS__ === true) return;
@@ -71,6 +81,8 @@ export const installRuntimeLoggingControls = () => {
     window.__NEXMAP_RUNTIME_LOGGING_CONTROLS__ = true;
     window.enableVerboseClientLogs = () => writeRuntimeFlag(VERBOSE_CONSOLE_KEY, true);
     window.disableVerboseClientLogs = () => writeRuntimeFlag(VERBOSE_CONSOLE_KEY, false);
+    window.enableVerboseAILogs = () => writeRuntimeFlag(AI_VERBOSE_CONSOLE_KEY, true);
+    window.disableVerboseAILogs = () => writeRuntimeFlag(AI_VERBOSE_CONSOLE_KEY, false);
     window.enablePersistenceTraceConsole = () => writeRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY, true);
     window.disablePersistenceTraceConsole = () => writeRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY, false);
 };

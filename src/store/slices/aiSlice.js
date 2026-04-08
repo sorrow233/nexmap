@@ -27,6 +27,7 @@ import { yieldToMainThread } from '../../utils/scheduling';
 import { nextCardIndexMutation } from './utils/cardIndexMutation';
 import { bumpBoardChangeState } from './utils/boardChangeState';
 import { resolveCardChatConfig } from './utils/cardChatConfig';
+import { aiVerboseLog } from '../../utils/runtimeLogging';
 
 const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
     if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
@@ -480,7 +481,7 @@ export const createAISlice = (set, get) => {
                         options: {
                             debugTraceId,
                             onResponseMetadata: (metadata = {}) => {
-                                console.log(`[AI][${debugTraceId}] response_metadata`, metadata);
+                                aiVerboseLog(`[AI][${debugTraceId}] response_metadata`, metadata);
                                 const assistantMessageId = resolveLatestAssistantMessageId();
                                 if (!assistantMessageId) return;
                                 get().setAssistantMessageMeta(cardId, assistantMessageId, {
@@ -494,7 +495,7 @@ export const createAISlice = (set, get) => {
                         if (firstToken) {
                             perfMonitor.onFirstToken();
                             firstToken = false;
-                            console.log(`[AI][${debugTraceId}] first_token`, {
+                            aiVerboseLog(`[AI][${debugTraceId}] first_token`, {
                                 cardId,
                                 assistantMessageId: resolveLatestAssistantMessageId(),
                                 chunkLength: String(chunk || '').length,
