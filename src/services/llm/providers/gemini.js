@@ -14,8 +14,14 @@ import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { extractCandidateText } from './gemini/partUtils.js';
 import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
 import { getKeyPool } from '../keyPoolManager';
+import {
+    classifyGeminiApiKey,
+    isOfficialGeminiBaseUrl,
+    isVertexExpressBaseUrl,
+    resolveGeminiBaseUrl,
+    splitGeminiApiKeys
+} from '../geminiRouting';
 
-const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const PROXY_DEGRADE_COOLDOWN_MS = 2 * 60 * 1000;
 const KEY_ACQUIRE_MAX_WAIT_MS = 75 * 1000;
 const KEY_ACQUIRE_POLL_MAX_MS = 5000;
@@ -40,12 +46,7 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _getApiKeyKind(apiKey = '') {
-        const normalized = String(apiKey || '').trim();
-        if (!normalized) return 'missing';
-        if (normalized.startsWith('AIza')) return 'AIza';
-        if (normalized.startsWith('AQ.')) return 'AQ';
-        if (normalized.startsWith('sk-')) return 'sk';
-        return 'custom';
+        return classifyGeminiApiKey(apiKey);
     }
 
     _summarizeTools(tools = []) {
@@ -68,19 +69,7 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _getConfiguredKeys() {
-        const keysString = this.config?.apiKeys || this.config?.apiKey || '';
-        return String(keysString)
-            .split(',')
-            .map(k => k.trim())
-            .filter(Boolean);
-    }
-
-    _getConfiguredKeyCount() {
-        return Math.max(1, this._getConfiguredKeys().length);
-    }
-
-    _hasGoogleOfficialKey() {
-        return this._getConfiguredKeys().some(k => k.startsWith('AIza'));
+        return splitGeminiApiKeys(this.config?.apiKeys || this.config?.apiKey || '');
     }
 
     _hasOnlyGoogleOfficialKeys() {
@@ -88,12 +77,16 @@ export class GeminiProvider extends LLMProvider {
         return keys.length > 0 && keys.every(k => k.startsWith('AIza'));
     }
 
+    _getConfiguredKeyCount() {
+        return Math.max(1, this._getConfiguredKeys().length);
+    }
+
     _isOfficialGeminiBaseUrl(baseUrl = '') {
-        return String(baseUrl).includes('generativelanguage.googleapis.com');
+        return isOfficialGeminiBaseUrl(baseUrl);
     }
 
     _isVertexExpressBaseUrl(baseUrl = '') {
-        return String(baseUrl).includes('aiplatform.googleapis.com');
+        return isVertexExpressBaseUrl(baseUrl);
     }
 
     _isOfficialGeminiProviderConfig(baseUrl = '') {
@@ -419,15 +412,14 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _getResolvedBaseUrl() {
-        const base = this.config?.baseUrl?.trim();
-        const hasGoogleKey = this._hasGoogleOfficialKey();
+        const base = this.config?.baseUrl?.trim() || '';
+        const resolvedBaseUrl = resolveGeminiBaseUrl(base, this.config?.apiKeys || this.config?.apiKey || '');
 
-        if (base && base.includes('api.gmi-serving.com') && hasGoogleKey) {
-            console.warn('[Gemini] Legacy GMI baseUrl detected with Google API key, auto-switching to official Gemini endpoint');
-            return DEFAULT_GEMINI_BASE_URL;
+        if (base && resolvedBaseUrl !== base) {
+            console.warn(`[Gemini] Auto-switching Gemini baseUrl from ${base} to ${resolvedBaseUrl} based on API key type`);
         }
 
-        return base || DEFAULT_GEMINI_BASE_URL;
+        return resolvedBaseUrl;
     }
 
     _shouldTryDirect(baseUrl = '') {
@@ -880,7 +872,17 @@ export class GeminiProvider extends LLMProvider {
                     if (visibleText) return visibleText;
 
                     const fallbackText = extractCandidateText(candidate, { includeThoughtFallback: true });
-                    return fallbackText || '';
+                    if (fallbackText) return fallbackText;
+
+                    debugLog('chat response missing visible payload', {
+                        usedSearch,
+                        finishReason: candidate?.finishReason || '',
+                        candidateHasContent: Boolean(candidate?.content),
+                        candidateKeys: Object.keys(candidate || {})
+                    });
+                    const error = new Error('Gemini response ended without visible text');
+                    error.code = 'EMPTY_VISIBLE_RESPONSE';
+                    throw error;
                 } finally {
                     releaseConcurrencySlot?.();
                 }
@@ -1193,6 +1195,11 @@ export class GeminiProvider extends LLMProvider {
      * Generate Image using GMI Cloud Async API
      */
     async generateImage(prompt, model, options = {}) {
+        const baseUrl = this._getResolvedBaseUrl();
+        if (this._isVertexExpressBaseUrl(baseUrl) || this._isOfficialGeminiBaseUrl(baseUrl)) {
+            throw new Error('当前 Vertex / Google Gemini 直连配置尚未接入图片生成链路，请把图片模型切回支持图片的提供商后再试');
+        }
+
         const apiKey = this._getKeyPool().getNextKey();
         return generateGeminiImage(apiKey, prompt, model, options);
     }

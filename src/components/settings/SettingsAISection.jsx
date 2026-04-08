@@ -17,6 +17,16 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getSuggestedRoleModel } from './modelRoleUtils';
 import {
+    classifyGeminiApiKey,
+    isLegacyGmiBaseUrl,
+    isOfficialGeminiBaseUrl,
+    isVertexExpressBaseUrl,
+    resolveGeminiBaseUrl,
+    DEFAULT_GEMINI_BASE_URL,
+    DEFAULT_OPENAI_BASE_URL,
+    DEFAULT_VERTEX_EXPRESS_BASE_URL
+} from '../../services/llm/geminiRouting';
+import {
     settingsDarkChip,
     settingsDarkField,
     settingsDarkFieldSoft,
@@ -111,19 +121,32 @@ export default function SettingsAISection({
         .map(key => key.trim())
         .filter(Boolean);
     const hasMultipleKeys = providerKeys.length > 1;
+    const firstKeyKind = classifyGeminiApiKey(providerKeys[0] || '');
     const currentBaseUrl = String(currentProvider?.baseUrl || '');
+    const resolvedGeminiBaseUrl = resolveGeminiBaseUrl(currentBaseUrl, currentProvider?.apiKey || '');
     const isGeminiProvider = currentProvider?.protocol === 'gemini';
+    const imageRoleNeedsProviderWarning = isGeminiProvider &&
+        globalRoles?.image?.providerId === activeId &&
+        (isVertexExpressBaseUrl(resolvedGeminiBaseUrl) || isOfficialGeminiBaseUrl(resolvedGeminiBaseUrl));
 
     let routeHint = '';
     if (isGeminiProvider) {
-        if (currentBaseUrl.includes('generativelanguage.googleapis.com')) {
-            routeHint = '当前链路：Google 官方 Gemini 直连';
-        } else if (currentBaseUrl.includes('api.gmi-serving.com')) {
+        if (isVertexExpressBaseUrl(resolvedGeminiBaseUrl)) {
+            routeHint = resolvedGeminiBaseUrl === currentBaseUrl
+                ? '当前链路：Vertex AI Express 直连'
+                : '当前链路：当前配置会自动切到 Vertex AI Express 直连';
+        } else if (isOfficialGeminiBaseUrl(resolvedGeminiBaseUrl)) {
+            routeHint = resolvedGeminiBaseUrl === currentBaseUrl
+                ? '当前链路：Google 官方 Gemini 直连'
+                : '当前链路：当前配置会自动切到 Google 官方 Gemini 直连';
+        } else if (isLegacyGmiBaseUrl(currentBaseUrl)) {
             routeHint = hasMultipleKeys
                 ? '当前链路：GMI 代理，多 Key 轮询已开启'
                 : '当前链路：GMI 代理';
         } else if (currentBaseUrl) {
             routeHint = `当前链路：自定义 Gemini 地址 ${currentBaseUrl}`;
+        } else {
+            routeHint = '当前链路：Google 官方 Gemini 直连';
         }
     }
 
@@ -209,7 +232,7 @@ export default function SettingsAISection({
                                     rows={3}
                                     className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
                                     placeholder={currentProvider.protocol === 'gemini'
-                                        ? (t.settings.geminiKeyPlaceholder || 'Gemini API Key')
+                                        ? (t.settings.geminiKeyPlaceholder || 'AQ... 或 AIza...')
                                         : (t.settings.openaiKeyPlaceholder || 'sk-...')}
                                 />
                             </div>
@@ -221,6 +244,12 @@ export default function SettingsAISection({
                         {routeHint && (
                             <div className={`rounded-[20px] border border-[#eadfcf] bg-[#f8f2e8] px-4 py-3 text-sm text-[#7d6b57] ${settingsDarkSurfaceStrong} dark:text-slate-200`}>
                                 {routeHint}
+                            </div>
+                        )}
+
+                        {imageRoleNeedsProviderWarning && (
+                            <div className="rounded-[20px] border border-[#f0d2c2] bg-[#fdf1ea] px-4 py-3 text-sm text-[#8c5c45] dark:border-orange-300/20 dark:bg-orange-500/10 dark:text-orange-100">
+                                当前图片角色正指向这个 Google / Vertex 直连提供商，但图片生成链路尚未接入这里。建议把图片角色切回支持图片的提供商后再使用。
                             </div>
                         )}
 
@@ -349,6 +378,9 @@ export default function SettingsAISection({
                                         value={currentProvider.baseUrl || ''}
                                         onChange={(e) => handleUpdateProvider('baseUrl', e.target.value)}
                                         className={monoFieldClassName}
+                                        placeholder={currentProvider.protocol === 'gemini'
+                                            ? (firstKeyKind === 'AQ' ? DEFAULT_VERTEX_EXPRESS_BASE_URL : DEFAULT_GEMINI_BASE_URL)
+                                            : DEFAULT_OPENAI_BASE_URL}
                                     />
                                 </div>
 

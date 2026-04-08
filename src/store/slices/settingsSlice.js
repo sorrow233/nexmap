@@ -1,23 +1,32 @@
 import { DEFAULT_PROVIDERS } from '../../services/llm/registry';
+import { normalizeGeminiProviderConfig, isLegacyGmiBaseUrl } from '../../services/llm/geminiRouting';
 
 const CONFIG_KEY = 'mixboard_providers_v3';
 const QUICK_MODEL_KEY = 'mixboard_quick_models';
 
 function normalizeProviders(providers = DEFAULT_PROVIDERS) {
-    const nextProviders = { ...providers };
-    const googleProvider = nextProviders.google;
-    if (!googleProvider) return nextProviders;
+    const nextProviders = Object.fromEntries(
+        Object.entries(providers || {}).map(([providerId, provider]) => {
+            const normalizedProvider = normalizeGeminiProviderConfig(provider);
 
-    const baseUrl = String(googleProvider.baseUrl || '');
-    const looksLikeLegacyGmiDefault = baseUrl.includes('api.gmi-serving.com');
-    const displayName = String(googleProvider.name || '').trim();
+            if (providerId !== 'google') {
+                return [providerId, normalizedProvider];
+            }
 
-    if (looksLikeLegacyGmiDefault && (!displayName || displayName === 'GMI Gemini')) {
-        nextProviders.google = {
-            ...googleProvider,
-            name: 'GMI Gemini Proxy'
-        };
-    }
+            const baseUrl = String(normalizedProvider?.baseUrl || '');
+            const looksLikeLegacyGmiDefault = isLegacyGmiBaseUrl(baseUrl);
+            const displayName = String(normalizedProvider?.name || '').trim();
+
+            if (looksLikeLegacyGmiDefault && (!displayName || displayName === 'GMI Gemini')) {
+                return [providerId, {
+                    ...normalizedProvider,
+                    name: 'GMI Gemini Proxy'
+                }];
+            }
+
+            return [providerId, normalizedProvider];
+        })
+    );
 
     return nextProviders;
 }
@@ -90,9 +99,13 @@ export const createSettingsSlice = (set, get) => ({
     // Actions
     updateProviderConfig: (providerId, updates) => {
         set(state => {
+            const nextProvider = normalizeGeminiProviderConfig({
+                ...state.providers[providerId],
+                ...updates
+            });
             const newProviders = {
                 ...state.providers,
-                [providerId]: { ...state.providers[providerId], ...updates }
+                [providerId]: nextProvider
             };
             const now = Date.now();
             const newState = { providers: newProviders, lastUpdated: now };

@@ -19,6 +19,7 @@ import SettingsAISection from './settings/SettingsAISection';
 import SettingsAdvancedSection from './settings/SettingsAdvancedSection';
 import { cloneGlobalRoles, getSuggestedRoleModel } from './settings/modelRoleUtils';
 import { useLanguage } from '../contexts/LanguageContext';
+import { normalizeGeminiProviderConfig } from '../services/llm/geminiRouting';
 import packageJson from '../../package.json';
 
 const loadWithTimestamp = (key) => {
@@ -116,10 +117,10 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     const handleUpdateProvider = (field, value) => {
         setProviders(prev => ({
             ...prev,
-            [activeId]: {
+            [activeId]: normalizeGeminiProviderConfig({
                 ...prev[activeId],
                 [field]: value
-            }
+            })
         }));
     };
 
@@ -205,7 +206,7 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
                 providerConfig,
                 testModel,
-                {}
+                { useSearch: false }
             );
             setTestStatus('success');
             setTestMessage(`${t.settings.connectionSuccess} (${testModel || 'default model'})`);

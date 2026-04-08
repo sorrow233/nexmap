@@ -2,6 +2,16 @@ import React from 'react';
 import { Key, Globe, Box, Layers, Settings, CheckCircle2, AlertCircle, RefreshCw, Plus, Trash2, Server, MessageSquare, Image as ImageIcon } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../store/useStore';
+import {
+    classifyGeminiApiKey,
+    isLegacyGmiBaseUrl,
+    isOfficialGeminiBaseUrl,
+    isVertexExpressBaseUrl,
+    resolveGeminiBaseUrl,
+    DEFAULT_GEMINI_BASE_URL,
+    DEFAULT_OPENAI_BASE_URL,
+    DEFAULT_VERTEX_EXPRESS_BASE_URL
+} from '../../services/llm/geminiRouting';
 
 export default function SettingsLLMTab({
     providers,
@@ -25,17 +35,22 @@ export default function SettingsLLMTab({
         .map(key => key.trim())
         .filter(Boolean);
     const hasMultipleKeys = providerKeys.length > 1;
-    const hasGoogleOfficialKey = providerKeys.some(key => key.startsWith('AIza'));
+    const firstKeyKind = classifyGeminiApiKey(providerKeys[0] || '');
     const currentBaseUrl = String(currentProvider?.baseUrl || '');
+    const resolvedGeminiBaseUrl = resolveGeminiBaseUrl(currentBaseUrl, currentProvider?.apiKey || '');
     const isGeminiProvider = currentProvider?.protocol === 'gemini';
 
     let routeHint = null;
     if (isGeminiProvider) {
-        if (currentBaseUrl.includes('generativelanguage.googleapis.com')) {
-            routeHint = '当前链路：Google 官方 Gemini 直连';
-        } else if (currentBaseUrl.includes('api.gmi-serving.com') && hasGoogleOfficialKey) {
-            routeHint = '当前链路：配置写的是 GMI，但运行时会自动切到 Google 官方 Gemini 直连';
-        } else if (currentBaseUrl.includes('api.gmi-serving.com')) {
+        if (isVertexExpressBaseUrl(resolvedGeminiBaseUrl)) {
+            routeHint = resolvedGeminiBaseUrl === currentBaseUrl
+                ? '当前链路：Vertex AI Express 直连'
+                : '当前链路：当前配置会自动切到 Vertex AI Express 直连';
+        } else if (isOfficialGeminiBaseUrl(resolvedGeminiBaseUrl)) {
+            routeHint = resolvedGeminiBaseUrl === currentBaseUrl
+                ? '当前链路：Google 官方 Gemini 直连'
+                : '当前链路：当前配置会自动切到 Google 官方 Gemini 直连';
+        } else if (isLegacyGmiBaseUrl(currentBaseUrl)) {
             routeHint = '当前链路：GMI 代理。这里如果填了多个 Key，会启用多 Key 轮询';
         } else if (currentBaseUrl) {
             routeHint = `当前链路：自定义 Gemini 基地址 ${currentBaseUrl}`;
@@ -208,6 +223,9 @@ export default function SettingsLLMTab({
                                 onChange={e => handleUpdateProvider('apiKey', e.target.value)}
                                 className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white resize-none"
                                 rows={2}
+                                placeholder={currentProvider.protocol === 'gemini'
+                                    ? (t.settings.geminiKeyPlaceholder || 'AQ... 或 AIza...')
+                                    : (t.settings.openaiKeyPlaceholder || 'sk-...')}
                             />
                         </div>
                     </div>
@@ -221,6 +239,9 @@ export default function SettingsLLMTab({
                                 value={currentProvider.baseUrl || ''}
                                 onChange={e => handleUpdateProvider('baseUrl', e.target.value)}
                                 className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all font-mono text-sm text-slate-800 dark:text-white"
+                                placeholder={currentProvider.protocol === 'gemini'
+                                    ? (firstKeyKind === 'AQ' ? DEFAULT_VERTEX_EXPRESS_BASE_URL : DEFAULT_GEMINI_BASE_URL)
+                                    : DEFAULT_OPENAI_BASE_URL}
                             />
                         </div>
                     </div>
