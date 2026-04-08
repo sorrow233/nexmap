@@ -23,8 +23,8 @@ import {
     DEFAULT_VERTEX_CHAT_MODEL,
     DEFAULT_VERTEX_CUSTOM_MODELS,
     hasUsableProviderCredentials,
+    normalizeVertexApiKeyProvider,
     PROVIDER_AUTH_MODE_API_KEY,
-    PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT
 } from '../services/llm/providerConfig';
 import { useLanguage } from '../contexts/LanguageContext';
 import packageJson from '../../package.json';
@@ -86,7 +86,13 @@ export default function SettingsModal({ isOpen, onClose, user }) {
 
     useEffect(() => {
         const state = useStore.getState();
-        setProviders(JSON.parse(JSON.stringify(state.providers)));
+        const normalizedProviders = Object.fromEntries(
+            Object.entries(state.providers || {}).map(([providerId, provider]) => [
+                providerId,
+                normalizeVertexApiKeyProvider(JSON.parse(JSON.stringify(provider || {})))
+            ])
+        );
+        setProviders(normalizedProviders);
         setActiveId(state.activeId);
         setGlobalRoles(cloneGlobalRoles(state.globalRoles));
 
@@ -113,6 +119,10 @@ export default function SettingsModal({ isOpen, onClose, user }) {
     };
 
     const currentProvider = providers[activeId] || {};
+    const normalizedCurrentProvider = useMemo(
+        () => normalizeVertexApiKeyProvider(currentProvider),
+        [currentProvider]
+    );
 
     const extraInstructionCount = useMemo(() => {
         const items = getEditableItems(customInstructions);
@@ -152,43 +162,20 @@ export default function SettingsModal({ isOpen, onClose, user }) {
             [newId]: {
                 id: newId,
                 name: t.settings.newProvider || '新建提供商',
-                baseUrl: 'https://api.openai.com/v1',
+                baseUrl: DEFAULT_VERTEX_BASE_URL,
                 apiKey: '',
                 authMode: PROVIDER_AUTH_MODE_API_KEY,
-                model: 'gpt-4o',
-                protocol: 'openai',
-                roles: { chat: '', analysis: '', image: '' }
+                model: DEFAULT_VERTEX_CHAT_MODEL,
+                protocol: 'gemini',
+                customModels: DEFAULT_VERTEX_CUSTOM_MODELS,
+                roles: {
+                    chat: DEFAULT_VERTEX_CHAT_MODEL,
+                    analysis: DEFAULT_VERTEX_CHAT_MODEL,
+                    image: 'gemini-3-pro-image-preview'
+                }
             }
         }));
         setActiveId(newId);
-    };
-
-    const handleProviderAuthModeChange = (nextAuthMode) => {
-        const currentBaseUrl = String(currentProvider?.baseUrl || '').trim();
-        const currentModel = String(currentProvider?.model || '').trim();
-        const currentCustomModels = String(currentProvider?.customModels || '').trim();
-
-        handleUpdateProvider('authMode', nextAuthMode);
-
-        if (nextAuthMode !== PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT) {
-            return;
-        }
-
-        if (currentProvider?.protocol !== 'gemini') {
-            handleUpdateProvider('protocol', 'gemini');
-        }
-
-        if (!currentBaseUrl || currentBaseUrl.includes('api.gmi-serving.com') || currentBaseUrl.includes('generativelanguage.googleapis.com')) {
-            handleUpdateProvider('baseUrl', DEFAULT_VERTEX_BASE_URL);
-        }
-
-        if (!currentModel || currentModel.includes('gemini-3-') || currentModel.includes('google/gemini-3-')) {
-            handleUpdateProvider('model', DEFAULT_VERTEX_CHAT_MODEL);
-        }
-
-        if (!currentCustomModels) {
-            handleUpdateProvider('customModels', DEFAULT_VERTEX_CUSTOM_MODELS);
-        }
     };
 
     const handleRemoveProvider = (idToRemove) => {
@@ -231,18 +218,18 @@ export default function SettingsModal({ isOpen, onClose, user }) {
         setTestMessage('');
         try {
             const providerConfig = providers[activeId];
-            if (!hasUsableProviderCredentials(providerConfig)) {
+            if (!hasUsableProviderCredentials(normalizedCurrentProvider)) {
                 throw new Error('当前提供商缺少可用凭据');
             }
 
             const testModel = activeId === globalRoles.chat.providerId
-                ? (globalRoles.chat.model || providerConfig.model || null)
-                : (providerConfig.model || getSuggestedRoleModel(providerConfig, 'chat'));
+                ? (globalRoles.chat.model || normalizedCurrentProvider.model || null)
+                : (normalizedCurrentProvider.model || getSuggestedRoleModel(normalizedCurrentProvider, 'chat'));
 
             const { chatCompletion } = await import('../services/llm');
             await chatCompletion(
                 [{ role: 'user', content: 'Hi, respond with OK only.' }],
-                providerConfig,
+                normalizedCurrentProvider,
                 testModel,
                 {}
             );
@@ -544,11 +531,10 @@ export default function SettingsModal({ isOpen, onClose, user }) {
                                     providers={providers}
                                     activeId={activeId}
                                     setActiveId={setActiveId}
-                                    currentProvider={currentProvider}
+                                    currentProvider={normalizedCurrentProvider}
                                     globalRoles={globalRoles}
                                     onGlobalRoleChange={handleGlobalRoleChange}
                                     handleUpdateProvider={handleUpdateProvider}
-                                    handleProviderAuthModeChange={handleProviderAuthModeChange}
                                     handleAddProvider={handleAddProvider}
                                     handleRemoveProvider={handleRemoveProvider}
                                     handleTestConnection={handleTestConnection}

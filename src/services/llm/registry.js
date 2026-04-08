@@ -1,22 +1,22 @@
 export const DEFAULT_PROVIDERS = {
     'google': {
         id: 'google',
-        name: 'GMI Gemini Proxy',
-        baseUrl: 'https://api.gmi-serving.com/v1',
+        name: 'Vertex',
+        baseUrl: 'https://aiplatform.googleapis.com/v1/publishers/google',
         apiKey: '',
         authMode: 'api-key',
-        model: 'google/gemini-3-pro-preview',
+        model: 'gemini-2.5-flash',
         protocol: 'gemini',
         roles: {
-            chat: 'google/gemini-3-pro-preview',
-            analysis: 'google/gemini-3-flash-preview',
+            chat: 'gemini-2.5-flash',
+            analysis: 'gemini-2.5-flash',
             image: 'gemini-3-pro-image-preview'
         }
     }
 };
 
 export const DEFAULT_ROLES = {
-    chat: 'google/gemini-3-pro-preview',
-    analysis: 'google/gemini-3-flash-preview',
+    chat: 'gemini-2.5-flash',
+    analysis: 'gemini-2.5-flash',
     image: 'gemini-3-pro-image-preview'
 };

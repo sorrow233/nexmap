@@ -14,6 +14,7 @@ import { resolveChatMaxOutputTokens } from '../outputTokenLimit';
 import { extractCandidateText } from './gemini/partUtils.js';
 import { acquireGeminiConcurrencySlot } from './gemini/concurrencyGate.js';
 import { getKeyPool } from '../keyPoolManager';
+import { auth } from '../../firebase';
 import {
     DEFAULT_VERTEX_BASE_URL,
     isManagedVertexServiceAccountConfig
@@ -546,9 +547,17 @@ export class GeminiProvider extends LLMProvider {
     }
 
     async _fetchManagedVertexProxy({ baseUrl, cleanModel, requestBody, stream = false, signal }) {
+        const token = await auth.currentUser?.getIdToken?.();
+        if (!token) {
+            throw new Error('请先登录后再使用 Vertex 托管代理');
+        }
+
         return fetch('/api/vertex-ai', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             signal,
             body: JSON.stringify({
                 baseUrl,

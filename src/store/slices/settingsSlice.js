@@ -1,5 +1,5 @@
 import { DEFAULT_PROVIDERS } from '../../services/llm/registry';
-import { normalizeModelIdForProvider } from '../../utils/modelConfig';
+import { normalizeVertexApiKeyProvider } from '../../services/llm/providerConfig';
 
 const CONFIG_KEY = 'mixboard_providers_v3';
 const QUICK_MODEL_KEY = 'mixboard_quick_models';
@@ -9,16 +9,10 @@ function normalizeProviders(providers = DEFAULT_PROVIDERS) {
     const googleProvider = nextProviders.google;
     if (!googleProvider) return nextProviders;
 
-    const baseUrl = String(googleProvider.baseUrl || '');
-    const looksLikeLegacyGmiDefault = baseUrl.includes('api.gmi-serving.com');
-    const displayName = String(googleProvider.name || '').trim();
-
-    if (looksLikeLegacyGmiDefault && (!displayName || displayName === 'GMI Gemini')) {
-        nextProviders.google = {
-            ...googleProvider,
-            name: 'GMI Gemini Proxy'
-        };
-    }
+    nextProviders.google = normalizeVertexApiKeyProvider({
+        ...googleProvider,
+        name: String(googleProvider.name || '').trim() || 'Vertex'
+    });
 
     return nextProviders;
 }
@@ -34,7 +28,7 @@ const loadInitialSettings = () => {
             activeId: 'google',
             lastUpdated: 0,
             globalRoles: {
-                chat: { providerId: 'google', model: 'google/gemini-3.1-pro-preview' },
+                chat: { providerId: 'google', model: 'google/gemini-3-pro-preview' },
                 image: { providerId: 'google', model: 'gemini-3-pro-image-preview' }
             }
         };
@@ -175,7 +169,7 @@ export const createSettingsSlice = (set, get) => ({
             const provider = state.providers[pId] || state.providers['google'] || {};
             return {
                 ...provider,
-                model: normalizeModelIdForProvider(pId, state.quickChatModel),
+                model: state.quickChatModel,
                 providerId: pId
             };
         }
@@ -183,12 +177,17 @@ export const createSettingsSlice = (set, get) => ({
         const roleConfig = state.globalRoles.chat;
         const providerId = roleConfig?.providerId || 'google';
         const providerConfig = state.providers[providerId] || state.providers['google'] || {};
-        const defaultModel = 'google/gemini-3.1-pro-preview';
-        const modelToUse = roleConfig?.model || providerConfig.model || defaultModel;
+        const defaultModel = 'google/gemini-3-pro-preview';
+        let modelToUse = roleConfig?.model || providerConfig.model || defaultModel;
+
+        // Strip 'google/' prefix if provider is Gemini
+        if (providerId === 'google' && modelToUse.startsWith('google/')) {
+            modelToUse = modelToUse.replace('google/', '');
+        }
 
         return {
             ...providerConfig,
-            model: normalizeModelIdForProvider(providerId, modelToUse),
+            model: modelToUse,
             providerId: providerId
         };
     },

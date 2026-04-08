@@ -1,4 +1,5 @@
 import { maybeHandleCorsPreflight, jsonResponse, buildCorsHeaders } from '../utils/http.js';
+import { readUidAllowlist, verifyFirebaseToken } from '../utils/auth.js';
 import { fetchUpstreamWithRetry } from '../utils/upstreamRetry.js';
 import { getVertexAccessToken, getVertexProjectId } from '../utils/vertexAuth.js';
 import { buildVertexGenerateUrl } from '../utils/vertexConfig.js';
@@ -25,6 +26,18 @@ export async function onRequest(context) {
     }
 
     try {
+        const authHeader = context.request.headers.get('Authorization');
+        const token = authHeader?.replace('Bearer ', '');
+        const userId = await verifyFirebaseToken(token, context.env);
+        if (!userId) {
+            return createErrorResponse(401, 'Unauthorized: 请先登录');
+        }
+
+        const allowedUids = readUidAllowlist(context.env, 'VERTEX_ALLOWED_UIDS', 'ADMIN_UIDS');
+        if (allowedUids.length === 0 || !allowedUids.includes(userId)) {
+            return createErrorResponse(403, 'Forbidden: Vertex 托管代理仅允许白名单账号使用');
+        }
+
         const body = await context.request.json();
         const {
             baseUrl,

@@ -17,9 +17,6 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
     hasUsableProviderCredentials,
-    isManagedVertexServiceAccountConfig,
-    PROVIDER_AUTH_MODE_API_KEY,
-    PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT
 } from '../../services/llm/providerConfig';
 import { getSuggestedRoleModel } from './modelRoleUtils';
 import {
@@ -98,7 +95,6 @@ export default function SettingsAISection({
     globalRoles,
     onGlobalRoleChange,
     handleUpdateProvider,
-    handleProviderAuthModeChange,
     handleAddProvider,
     handleRemoveProvider,
     handleTestConnection,
@@ -120,13 +116,12 @@ export default function SettingsAISection({
     const hasMultipleKeys = providerKeys.length > 1;
     const currentBaseUrl = String(currentProvider?.baseUrl || '');
     const isGeminiProvider = currentProvider?.protocol === 'gemini';
-    const usesManagedVertexAuth = isManagedVertexServiceAccountConfig(currentProvider);
     const hasProviderCredentials = hasUsableProviderCredentials(currentProvider);
 
     let routeHint = '';
     if (isGeminiProvider) {
-        if (usesManagedVertexAuth) {
-            routeHint = '当前链路：Cloudflare 服务端 Vertex AI（服务账号托管，不落前端私钥）';
+        if (currentBaseUrl.includes('aiplatform.googleapis.com')) {
+            routeHint = '当前链路：Vertex AI Express Mode（你本地填写自己的 Vertex API Key）';
         } else if (currentBaseUrl.includes('generativelanguage.googleapis.com')) {
             routeHint = '当前链路：Google 官方 Gemini 直连';
         } else if (currentBaseUrl.includes('api.gmi-serving.com')) {
@@ -208,52 +203,22 @@ export default function SettingsAISection({
                     <div className="mt-3 space-y-3">
                         <div>
                             <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
-                                鉴权方式
+                                {t.settings.apiKey || 'API 密钥'}
                             </label>
-                            <select
-                                value={currentProvider.authMode || PROVIDER_AUTH_MODE_API_KEY}
-                                onChange={(e) => handleProviderAuthModeChange(e.target.value)}
-                                className={fieldClassName}
-                            >
-                                <option value={PROVIDER_AUTH_MODE_API_KEY}>前端 API Key</option>
-                                <option value={PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT}>Vertex AI 服务账号（Cloudflare 托管）</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
-                                {usesManagedVertexAuth ? 'Cloudflare Secret 提示' : (t.settings.apiKey || 'API 密钥')}
-                            </label>
-                            {usesManagedVertexAuth ? (
-                                <div className={`rounded-[24px] border border-[#eadfcf] bg-[#fff7ef] px-4 py-4 text-sm leading-7 text-[#6e5945] ${settingsDarkSurfaceStrong} dark:text-slate-200`}>
-                                    前端这里不保存 `private_key`。请把下面 3 个 Secret 写到 Cloudflare Pages：
-                                    <br />
-                                    `VERTEX_PROJECT_ID`
-                                    <br />
-                                    `VERTEX_CLIENT_EMAIL`
-                                    <br />
-                                    `VERTEX_PRIVATE_KEY`
+                            <div className="relative">
+                                <div className="pointer-events-none absolute left-4 top-4 text-[#b7a895] dark:text-slate-500">
+                                    <Key size={16} />
                                 </div>
-                            ) : (
-                                <div className="relative">
-                                    <div className="pointer-events-none absolute left-4 top-4 text-[#b7a895] dark:text-slate-500">
-                                        <Key size={16} />
-                                    </div>
-                                    <textarea
-                                        value={currentProvider.apiKey || ''}
-                                        onChange={(e) => handleUpdateProvider('apiKey', e.target.value)}
-                                        rows={3}
-                                        className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
-                                        placeholder={currentProvider.protocol === 'gemini'
-                                            ? (t.settings.geminiKeyPlaceholder || 'Gemini API Key')
-                                            : (t.settings.openaiKeyPlaceholder || 'sk-...')}
-                                    />
-                                </div>
-                            )}
+                                <textarea
+                                    value={currentProvider.apiKey || ''}
+                                    onChange={(e) => handleUpdateProvider('apiKey', e.target.value)}
+                                    rows={3}
+                                    className={`w-full rounded-[24px] border border-[#eee2d6] bg-[#fffdf9] px-4 py-4 pl-11 text-sm font-mono text-[#40342a] outline-none transition-all focus:border-[#e7d4bb] focus:ring-4 focus:ring-[#f4e7d2] ${settingsDarkFieldSoft}`}
+                                    placeholder="填你自己的 Vertex API Key（AQ...）"
+                                />
+                            </div>
                             <p className="mt-2 text-xs leading-6 text-[#8d7b68] dark:text-slate-300/75">
-                                {usesManagedVertexAuth
-                                    ? '服务账号只存 Cloudflare Secrets，前端只保留模型和 Vertex 地址。'
-                                    : '不填也能用默认体验；只有你要接自己的服务时才需要这里。'}
+                                这里就按正常方式填写你自己的 Vertex API Key，不走托管私钥。
                             </p>
                         </div>
 
@@ -350,7 +315,7 @@ export default function SettingsAISection({
                         </div>
 
                         <div className="grid gap-4">
-                            <div className="grid gap-4 md:grid-cols-3">
+                            <div className="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
                                         {t.settings.providerName || '提供商名称'}
@@ -374,20 +339,6 @@ export default function SettingsAISection({
                                     >
                                         <option value="gemini">{t.settings.geminiNative || 'Gemini 原生'}</option>
                                         <option value="openai">{t.settings.openaiCompat || 'OpenAI 兼容'}</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="mb-2 block text-sm font-medium text-[#594b3d] dark:text-slate-200">
-                                        鉴权方式
-                                    </label>
-                                    <select
-                                        value={currentProvider.authMode || PROVIDER_AUTH_MODE_API_KEY}
-                                        onChange={(e) => handleProviderAuthModeChange(e.target.value)}
-                                        className={fieldClassName}
-                                    >
-                                        <option value={PROVIDER_AUTH_MODE_API_KEY}>前端 API Key</option>
-                                        <option value={PROVIDER_AUTH_MODE_VERTEX_SERVICE_ACCOUNT}>Vertex AI 服务账号（Cloudflare 托管）</option>
                                     </select>
                                 </div>
                             </div>

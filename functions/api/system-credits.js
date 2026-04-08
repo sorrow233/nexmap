@@ -116,7 +116,7 @@ export async function onRequest(context) {
         // 1. Verify user authentication
         const authHeader = request.headers.get('Authorization');
         const token = authHeader?.replace('Bearer ', '');
-        const userId = await verifyFirebaseToken(token);
+        const userId = await verifyFirebaseToken(token, env);
 
         if (!userId) {
             return new Response(JSON.stringify({
