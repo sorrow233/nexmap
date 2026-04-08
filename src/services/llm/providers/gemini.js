@@ -68,6 +68,10 @@ export class GeminiProvider extends LLMProvider {
         return this._isOfficialGeminiBaseUrl(baseUrl) && this._hasOnlyGoogleOfficialKeys();
     }
 
+    _isVertexExpressBaseUrl(baseUrl = '') {
+        return String(baseUrl).includes('aiplatform.googleapis.com');
+    }
+
     _isOfficialGemini31PreviewRequest(baseUrl = '', cleanModel = '') {
         const lowerModel = String(cleanModel || '').toLowerCase();
         return this._isOfficialGeminiProviderConfig(baseUrl) &&
@@ -403,7 +407,7 @@ export class GeminiProvider extends LLMProvider {
     }
 
     _shouldTryDirect(baseUrl = '') {
-        return String(baseUrl).includes('generativelanguage.googleapis.com');
+        return this._isOfficialGeminiBaseUrl(baseUrl) || this._isVertexExpressBaseUrl(baseUrl);
     }
 
     _isDirectPreferredModel(cleanModel = '') {
@@ -415,6 +419,13 @@ export class GeminiProvider extends LLMProvider {
     _getTransportOrder(baseUrl = '', cleanModel = '') {
         if (!this._shouldTryDirect(baseUrl)) {
             return ['proxy'];
+        }
+
+        // Vertex Express Mode must stay on Google's Vertex endpoint.
+        // Falling back to /api/gmi-serving breaks the user's expectation
+        // of "Vertex only" traffic and can introduce unrelated auth failures.
+        if (this._isVertexExpressBaseUrl(baseUrl)) {
+            return ['direct'];
         }
 
         // For official Gemini API keys, direct transport must be primary.
