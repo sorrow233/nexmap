@@ -3,6 +3,7 @@ import {
     normalizeBoardInstructionSettings
 } from '../customInstructionsService';
 import { normalizeCardsTimestamps } from '../cards/cardTimestamps';
+import { logBoardLoadStage } from '../../utils/boardLoadDebug';
 
 const DEFAULT_BOARD_SNAPSHOT = Object.freeze({
     cards: [],
@@ -33,20 +34,29 @@ const stripRuntimeBodyStateFromCard = (card = {}) => {
     };
 };
 
-export const normalizeBoardSnapshot = (snapshot = {}) => ({
-    cards: normalizeCardsTimestamps(
-        Array.isArray(snapshot.cards) ? cloneSerializable(snapshot.cards) : [],
-        { boardCreatedAt: Number(snapshot.createdAt) || 0 }
-    ).map((card) => stripRuntimeBodyStateFromCard(card)),
-    connections: Array.isArray(snapshot.connections) ? cloneSerializable(snapshot.connections) : [],
-    groups: Array.isArray(snapshot.groups) ? cloneSerializable(snapshot.groups) : [],
-    boardPrompts: Array.isArray(snapshot.boardPrompts) ? cloneSerializable(snapshot.boardPrompts) : [],
-    boardInstructionSettings: normalizeBoardInstructionSettings(
-        snapshot.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
-    ),
-    updatedAt: Number(snapshot.updatedAt) || 0,
-    clientRevision: Number(snapshot.clientRevision) || 0
-});
+export const normalizeBoardSnapshot = (snapshot = {}) => {
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const normalized = {
+        cards: normalizeCardsTimestamps(
+            Array.isArray(snapshot.cards) ? cloneSerializable(snapshot.cards) : [],
+            { boardCreatedAt: Number(snapshot.createdAt) || 0 }
+        ).map((card) => stripRuntimeBodyStateFromCard(card)),
+        connections: Array.isArray(snapshot.connections) ? cloneSerializable(snapshot.connections) : [],
+        groups: Array.isArray(snapshot.groups) ? cloneSerializable(snapshot.groups) : [],
+        boardPrompts: Array.isArray(snapshot.boardPrompts) ? cloneSerializable(snapshot.boardPrompts) : [],
+        boardInstructionSettings: normalizeBoardInstructionSettings(
+            snapshot.boardInstructionSettings || DEFAULT_BOARD_INSTRUCTION_SETTINGS
+        ),
+        updatedAt: Number(snapshot.updatedAt) || 0,
+        clientRevision: Number(snapshot.clientRevision) || 0
+    };
+
+    const finishedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    logBoardLoadStage('normalizeBoardSnapshot', normalized, {
+        durationMs: Number((finishedAt - startedAt).toFixed(2))
+    });
+    return normalized;
+};
 
 export const getEmptyBoardSnapshot = () => cloneSerializable(DEFAULT_BOARD_SNAPSHOT);
 
@@ -62,5 +72,14 @@ export const isMeaningfullyEmptyBoardSnapshot = (snapshot = {}) => {
 
 export const createBoardSnapshotFingerprint = (snapshot = {}) => {
     const normalized = normalizeBoardSnapshot(snapshot);
-    return JSON.stringify(normalized);
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const fingerprint = JSON.stringify(normalized);
+    const finishedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    logBoardLoadStage('createBoardSnapshotFingerprint', normalized, {
+        durationMs: Number((finishedAt - startedAt).toFixed(2)),
+        fingerprintChars: fingerprint.length
+    });
+
+    return fingerprint;
 };

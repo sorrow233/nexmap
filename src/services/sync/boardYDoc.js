@@ -5,6 +5,7 @@ import {
     normalizeBoardSnapshot
 } from './boardSnapshot';
 import { mergeCardSnapshots } from './protocol/syncResolver';
+import { logBoardLoadStage } from '../../utils/boardLoadDebug';
 
 const ROOT_KEYS = [
     'cards',
@@ -266,6 +267,7 @@ export const readBoardSnapshotFromDoc = (doc) => {
     ROOT_KEYS.forEach((key) => {
         next[key] = root.has(key) ? readNodeToValue(root.get(key), [key]) : getEmptyBoardSnapshot()[key];
     });
+    logBoardLoadStage('readBoardSnapshotFromDoc:raw', next);
     return normalizeBoardSnapshot(next);
 };
 

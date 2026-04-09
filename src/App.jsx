@@ -17,6 +17,7 @@ import { useBuildVersionRefresh } from './hooks/useBuildVersionRefresh';
 import { useBackgroundBoardAutoGeneration } from './hooks/useBackgroundBoardAutoGeneration';
 import { buildBoardCursorTrace, logPersistenceTrace } from './utils/persistenceTrace';
 import { runtimeLog, runtimeWarn } from './utils/runtimeLogging';
+import { logBoardLoadStage } from './utils/boardLoadDebug';
 import { aiManager } from './services/ai/AIManager';
 import { isLargeBoardCards } from './utils/boardPerformance';
 
@@ -321,6 +322,12 @@ function AppContent() {
     const buildRemoteStorePatch = useCallback((normalizedSnapshot, options = {}, mode = 'full') => {
         const targetBoardId = options.boardId || currentBoardId || '';
         const largeBoardMode = isLargeBoardCards(normalizedSnapshot.cards);
+        logBoardLoadStage('App.buildRemoteStorePatch', normalizedSnapshot, {
+            mode,
+            source: options.source || 'unknown',
+            targetBoardId,
+            largeBoardMode
+        });
         if (targetBoardId && largeBoardMode) {
             setCardBodyRuntimeBoard(targetBoardId);
             primeCardBodyRuntimeCache(targetBoardId, normalizedSnapshot.cards);

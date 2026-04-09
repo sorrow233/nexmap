@@ -1,16 +1,7 @@
-import {
-    countCardImages,
-    estimateCardInlineMediaBytes
-} from './mediaPayloadMetrics';
-
 const LARGE_BOARD_TOTAL_TEXT_CHARS = 1_000_000;
 const LARGE_BOARD_CARD_COUNT = 40;
 const LARGE_CARD_TEXT_CHARS = 30_000;
 const LARGE_BOARD_LONG_CARD_COUNT = 8;
-const LARGE_BOARD_TOTAL_MEDIA_BYTES = 8 * 1024 * 1024;
-const LARGE_CARD_MEDIA_BYTES = 2 * 1024 * 1024;
-const LARGE_BOARD_MEDIA_CARD_COUNT = 3;
-const LARGE_BOARD_IMAGE_COUNT = 12;
 
 export const extractMessageContentText = (content) => {
     if (typeof content === 'string') {
@@ -57,14 +48,6 @@ export const estimateCardTextChars = (card = {}) => {
     return title + summaryTitle + summaryBody + marks + messageChars;
 };
 
-export const estimateCardMediaBytes = (card = {}) => estimateCardInlineMediaBytes(card);
-
-export const countBoardImages = (cards = []) => (
-    Array.isArray(cards)
-        ? cards.reduce((total, card) => total + countCardImages(card), 0)
-        : 0
-);
-
 export const estimateBoardTextChars = (cards = []) => (
     Array.isArray(cards)
         ? cards.reduce((total, card) => total + estimateCardTextChars(card), 0)
@@ -86,32 +69,19 @@ export const isLargeBoardCards = (cards = []) => {
     }
 
     let totalTextChars = 0;
-    let totalMediaBytes = 0;
     let largeCardCount = 0;
-    let largeMediaCardCount = 0;
-    let imageCount = 0;
 
     for (const card of safeCards) {
         const cardChars = estimateCardTextChars(card);
-        const cardMediaBytes = estimateCardMediaBytes(card);
-        const cardImageCount = countCardImages(card);
         totalTextChars += cardChars;
-        totalMediaBytes += cardMediaBytes;
-        imageCount += cardImageCount;
 
         if (cardChars >= LARGE_CARD_TEXT_CHARS) {
             largeCardCount += 1;
         }
-        if (cardMediaBytes >= LARGE_CARD_MEDIA_BYTES) {
-            largeMediaCardCount += 1;
-        }
 
         if (
             totalTextChars >= LARGE_BOARD_TOTAL_TEXT_CHARS ||
-            largeCardCount >= LARGE_BOARD_LONG_CARD_COUNT ||
-            totalMediaBytes >= LARGE_BOARD_TOTAL_MEDIA_BYTES ||
-            largeMediaCardCount >= LARGE_BOARD_MEDIA_CARD_COUNT ||
-            imageCount >= LARGE_BOARD_IMAGE_COUNT
+            largeCardCount >= LARGE_BOARD_LONG_CARD_COUNT
         ) {
             return true;
         }
@@ -119,10 +89,7 @@ export const isLargeBoardCards = (cards = []) => {
 
     return (
         totalTextChars >= LARGE_BOARD_TOTAL_TEXT_CHARS ||
-        largeCardCount >= LARGE_BOARD_LONG_CARD_COUNT ||
-        totalMediaBytes >= LARGE_BOARD_TOTAL_MEDIA_BYTES ||
-        largeMediaCardCount >= LARGE_BOARD_MEDIA_CARD_COUNT ||
-        imageCount >= LARGE_BOARD_IMAGE_COUNT
+        largeCardCount >= LARGE_BOARD_LONG_CARD_COUNT
     );
 };
 
