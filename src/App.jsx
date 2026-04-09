@@ -343,7 +343,9 @@ function AppContent() {
             : normalizedSnapshot.cards;
         const currentCardIndexMutation = useStore.getState().cardIndexMutation;
         const currentBoardChangeState = useStore.getState().boardChangeState;
-        const integrityHash = buildBoardChangeIntegrityHash(normalizedSnapshot);
+        const integrityHash = buildBoardChangeIntegrityHash(normalizedSnapshot, {
+            normalized: true
+        });
 
         const patch = {
             cards: runtimeCards,

@@ -270,6 +270,8 @@ const reconcileBoardStateAfterHistoryAction = (changeType) => {
         groups: currentState.groups,
         boardPrompts: currentState.boardPrompts,
         boardInstructionSettings: currentState.boardInstructionSettings
+    }, {
+        normalized: true
     });
     const nextBoardChangeState = markBoardChangeStateValidated(
         bumpBoardChangeState(currentState.boardChangeState, changeType, {

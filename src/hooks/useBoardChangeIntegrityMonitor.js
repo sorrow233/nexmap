@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { runWhenBrowserIdle } from '../utils/idleTask';
-import { buildBoardChangeIntegrityHash } from '../store/slices/utils/boardChangeIntegrity';
+import {
+    buildBoardChangeIntegrityHash,
+    hasBoardChangeIntegrityHashVersion
+} from '../store/slices/utils/boardChangeIntegrity';
 import {
     createBoardChangeState,
     markBoardChangeStateValidated,
@@ -85,11 +88,17 @@ export function useBoardChangeIntegrityMonitor({
                     groups: latest.groups,
                     boardPrompts: latest.boardPrompts,
                     boardInstructionSettings: latest.boardInstructionSettings
+                }, {
+                    normalized: true
                 });
                 const validatedAt = Date.now();
+                const hasComparableIntegrityHash = hasBoardChangeIntegrityHashVersion(
+                    currentBoardChangeState.lastIntegrityHash
+                );
 
                 if (
                     currentBoardChangeState.lastValidatedRevision === currentBoardChangeState.revision &&
+                    hasComparableIntegrityHash &&
                     currentBoardChangeState.lastIntegrityHash &&
                     currentBoardChangeState.lastIntegrityHash !== integrityHash
                 ) {
