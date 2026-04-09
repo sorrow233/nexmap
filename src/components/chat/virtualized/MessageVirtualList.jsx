@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import ErrorBoundary from '../../ErrorBoundary';
 import MessageItem from '../MessageItem';
 import PendingQueueIndicator from '../PendingQueueIndicator';
+import QueuedUserMessagePreview from '../QueuedUserMessagePreview';
 import favoritesService from '../../../services/favoritesService';
 import { useStore } from '../../../store/useStore';
 import {
@@ -12,8 +13,6 @@ import {
 
 const ITEM_GAP_PX = 64;
 const DEFAULT_OVERSCAN = 4;
-const STREAMING_INDICATOR_HEIGHT = 64;
-const PENDING_INDICATOR_HEIGHT = 56;
 const BOTTOM_SENTINEL_HEIGHT = 128;
 
 const extractMessageTextLength = (content) => {
@@ -51,7 +50,7 @@ export default function MessageVirtualList({
     scrollContainerRef,
     messagesEndRef,
     scrollToMessageIndexRef,
-    isStreaming,
+    isResponseStreaming,
     handleRetry,
     marks,
     capturedNotes,
@@ -65,16 +64,21 @@ export default function MessageVirtualList({
 }) {
     useStore((state) => state.favoritesLastUpdate);
 
-    const hasDetachedStreamingMessage = Boolean(
-        isStreaming &&
-        messages.length > 0 &&
-        messages[messages.length - 1]?.role === 'assistant'
-    );
+    const activeRoute = isResponseStreaming && cardId
+        ? getActiveStreamRouteDebug(cardId)
+        : null;
+    const expectedAssistantMessageId = activeRoute?.assistantMessageId || null;
+    const detachedStreamingMessageIndex = expectedAssistantMessageId
+        ? messages.findIndex((message) => (
+            message?.id === expectedAssistantMessageId && message?.role === 'assistant'
+        ))
+        : -1;
+    const hasDetachedStreamingMessage = detachedStreamingMessageIndex >= 0;
     const detachedStreamingMessage = hasDetachedStreamingMessage
-        ? messages[messages.length - 1]
+        ? messages[detachedStreamingMessageIndex]
         : null;
     const virtualizedMessages = hasDetachedStreamingMessage
-        ? messages.slice(0, -1)
+        ? messages.filter((_, index) => index !== detachedStreamingMessageIndex)
         : messages;
 
     const rowVirtualizer = useVirtualizer({
@@ -87,7 +91,7 @@ export default function MessageVirtualList({
 
     const virtualRows = rowVirtualizer.getVirtualItems();
     const totalMessagesHeight = rowVirtualizer.getTotalSize();
-    const showStreamingIndicator = isStreaming && !hasDetachedStreamingMessage;
+    const showStreamingIndicator = isResponseStreaming && !hasDetachedStreamingMessage;
     const renderTargetLogSignatureRef = React.useRef('');
 
     React.useEffect(() => {
@@ -95,8 +99,23 @@ export default function MessageVirtualList({
             return undefined;
         }
 
+        const resolveVirtualizedIndex = (index) => {
+            if (!hasDetachedStreamingMessage) {
+                return index;
+            }
+
+            if (index === detachedStreamingMessageIndex) {
+                return null;
+            }
+
+            return index > detachedStreamingMessageIndex
+                ? index - 1
+                : index;
+        };
+
         scrollToMessageIndexRef.current = (index, options = {}) => {
-            if (hasDetachedStreamingMessage && index >= virtualizedMessages.length) {
+            const virtualizedIndex = resolveVirtualizedIndex(index);
+            if (virtualizedIndex === null) {
                 messagesEndRef.current?.scrollIntoView({
                     behavior: options.behavior || 'smooth',
                     block: options.align || 'end'
@@ -104,7 +123,7 @@ export default function MessageVirtualList({
                 return;
             }
 
-            rowVirtualizer.scrollToIndex(index, {
+            rowVirtualizer.scrollToIndex(virtualizedIndex, {
                 align: options.align || 'center'
             });
         };
@@ -114,21 +133,27 @@ export default function MessageVirtualList({
                 scrollToMessageIndexRef.current = null;
             }
         };
-    }, [hasDetachedStreamingMessage, messagesEndRef, rowVirtualizer, scrollToMessageIndexRef, virtualizedMessages.length]);
+    }, [
+        detachedStreamingMessageIndex,
+        hasDetachedStreamingMessage,
+        messagesEndRef,
+        rowVirtualizer,
+        scrollToMessageIndexRef,
+        virtualizedMessages.length
+    ]);
 
     React.useEffect(() => {
-        if (!isStreaming || !cardId) {
+        if (!isResponseStreaming || !cardId) {
             return;
         }
 
-        const activeRoute = getActiveStreamRouteDebug(cardId);
         const traceId = activeRoute?.traceId || 'unknown';
         const detachedStreamingMessageId = detachedStreamingMessage?.id || null;
         const lastMessage = messages[messages.length - 1] || null;
         const signature = [
             traceId,
             detachedStreamingMessageId || 'none',
-            activeRoute?.assistantMessageId || 'none',
+            expectedAssistantMessageId || 'none',
             messages.length,
             hasDetachedStreamingMessage ? 'detached' : 'indicator'
         ].join(':');
@@ -140,24 +165,28 @@ export default function MessageVirtualList({
         renderTargetLogSignatureRef.current = signature;
         logStreamRouteDebug(traceId, 'streaming_render_target', {
             cardId,
-            expectedAssistantMessageId: activeRoute?.assistantMessageId || null,
+            expectedAssistantMessageId,
             detachedStreamingMessageId,
+            detachedStreamingMessageIndex,
             hasDetachedStreamingMessage,
             showStreamingIndicator,
             messageCount: messages.length,
             lastMessageId: lastMessage?.id || null,
             lastMessageRole: lastMessage?.role || null,
             detachedMessageMismatch: Boolean(
-                activeRoute?.assistantMessageId &&
+                expectedAssistantMessageId &&
                 detachedStreamingMessageId &&
-                activeRoute.assistantMessageId !== detachedStreamingMessageId
+                expectedAssistantMessageId !== detachedStreamingMessageId
             )
         });
     }, [
+        activeRoute?.traceId,
         cardId,
         detachedStreamingMessage?.id,
+        detachedStreamingMessageIndex,
+        expectedAssistantMessageId,
         hasDetachedStreamingMessage,
-        isStreaming,
+        isResponseStreaming,
         messages,
         showStreamingIndicator
     ]);
@@ -215,7 +244,7 @@ export default function MessageVirtualList({
                         <MessageItem
                             cardId={cardId}
                             message={detachedStreamingMessage}
-                            index={messages.length - 1}
+                            index={detachedStreamingMessageIndex}
                             marks={marks}
                             capturedNotes={capturedNotes}
                             parseModelOutput={parseModelOutput}
@@ -226,13 +255,24 @@ export default function MessageVirtualList({
                             isFavorite={favoritesService.isFavorite(
                                 cardId,
                                 detachedStreamingMessage?.id || null,
-                                messages.length - 1,
+                                detachedStreamingMessageIndex,
                                 detachedStreamingMessage?.content
                             )}
                             onContinueTopic={onContinueTopic}
                             onBranch={onBranch}
                         />
                     </ErrorBoundary>
+                </div>
+            )}
+
+            {pendingMessages.length > 0 && (
+                <div className="space-y-4 pb-6">
+                    {pendingMessages.map((pendingMessage, index) => (
+                        <QueuedUserMessagePreview
+                            key={`queued-${cardId}-${index}-${pendingMessage?.text || ''}-${pendingMessage?.images?.length || 0}`}
+                            pendingMessage={pendingMessage}
+                        />
+                    ))}
                 </div>
             )}
 

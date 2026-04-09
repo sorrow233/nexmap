@@ -176,7 +176,9 @@ export default function ChatView({
         }
     });
 
-    const isStreaming = isDispatching || isQueueRunning || isCardGenerating;
+    const isResponseStreaming = isCardGenerating;
+    const hasPendingMessages = pendingCount > 0;
+    const isBusy = isDispatching || isQueueRunning || isCardGenerating || hasPendingMessages;
 
     // Helper to send a message from Sprout (continue topic in current card)
     const handleSendMessageFromSprout = (text) => {
@@ -261,9 +263,14 @@ export default function ChatView({
     }, [card.id, card.type, commitIsAtBottomState]);
 
     useEffect(() => {
-        if (!isStreaming) return;
+        if (!isResponseStreaming) return;
         scheduleScrollToBottom();
-    }, [isStreaming, scheduleScrollToBottom, streamingCardVersion]);
+    }, [isResponseStreaming, scheduleScrollToBottom, streamingCardVersion]);
+
+    useEffect(() => {
+        if (!hasPendingMessages) return;
+        scheduleScrollToBottom();
+    }, [hasPendingMessages, pendingCount, scheduleScrollToBottom]);
 
     // Force scroll to bottom on initial open
     useEffect(() => {
@@ -277,10 +284,10 @@ export default function ChatView({
     }, [cancelScheduledScrollToBottom, clearQueueDispatchHint]);
 
     useEffect(() => {
-        if (isAtBottom || !isStreaming) {
+        if (isAtBottom || !isBusy) {
             clearQueueDispatchHint();
         }
-    }, [clearQueueDispatchHint, isAtBottom, isStreaming]);
+    }, [clearQueueDispatchHint, isAtBottom, isBusy]);
 
     useEffect(() => {
         if (perfMountedCardIdRef.current === card.id) {
@@ -349,9 +356,9 @@ export default function ChatView({
             renderedMessageNodes: modalRef.current?.querySelectorAll?.('.chat-message-frame').length || 0,
             renderedChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="true"]').length || 0,
             pendingChunkNodes: modalRef.current?.querySelectorAll?.('.chat-message-chunk[data-rendered="false"]').length || 0,
-            streaming: isStreaming
+            streaming: isResponseStreaming
         });
-    }, [card.id, card.data.messages?.length, isStreaming]);
+    }, [card.id, card.data.messages?.length, isResponseStreaming]);
 
 
     // --- Handlers Wrapper ---
@@ -401,7 +408,7 @@ export default function ChatView({
         // Use a small timeout to let the selection stabilize (crucial for iOS)
         setTimeout(() => {
             const sel = window.getSelection();
-            if (sel && sel.toString().trim().length > 0 && !isStreaming) {
+            if (sel && sel.toString().trim().length > 0 && !isResponseStreaming) {
                 try {
                     const range = sel.getRangeAt(0);
                     const rect = range.getBoundingClientRect();
@@ -580,7 +587,7 @@ export default function ChatView({
                         messagesEndRef={messagesEndRef}
                         scrollContainerRef={scrollContainerRef}
                         scrollToMessageIndexRef={scrollToMessageIndexRef}
-                        isStreaming={isStreaming}
+                        isResponseStreaming={isResponseStreaming}
                         handleRetry={isReadOnly ? null : handleRetry}
                         parseModelOutput={parseModelOutput}
                         onUpdate={onUpdate}
@@ -629,7 +636,7 @@ export default function ChatView({
                     images={images}
                     removeImage={removeImage}
                     fileInputRef={fileInputRef}
-                    isStreaming={isStreaming}
+                    isBusy={isBusy}
                     onStop={handleStop}
                     placeholder={card.type === 'note' ? t.chat.refineNote : t.chat.refineThought}
                     instructions={instructions}
