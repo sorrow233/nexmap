@@ -1,5 +1,5 @@
 import {
-    createBoardSnapshotFingerprint,
+    areBoardSnapshotsEquivalent,
     isMeaningfullyEmptyBoardSnapshot,
     normalizeBoardSnapshot
 } from '../boardSnapshot';
@@ -164,7 +164,8 @@ export const resolveLocalSnapshotForDoc = ({
 
     if (shouldRejectEmptySnapshotOverwrite({
         currentSnapshot: normalizedCurrent,
-        incomingSnapshot: normalizedIncoming
+        incomingSnapshot: normalizedIncoming,
+        snapshotsNormalized: true
     })) {
         return {
             action: 'reject',
@@ -174,8 +175,8 @@ export const resolveLocalSnapshotForDoc = ({
     }
 
     if (
-        !isMeaningfullyEmptyBoardSnapshot(normalizedCurrent)
-        && !isIncomingSnapshotNewer(normalizedIncoming, normalizedCurrent)
+        !isMeaningfullyEmptyBoardSnapshot(normalizedCurrent, { normalized: true })
+        && !isIncomingSnapshotNewer(normalizedIncoming, normalizedCurrent, { snapshotNormalized: true })
     ) {
         return {
             action: 'reject',
@@ -185,7 +186,10 @@ export const resolveLocalSnapshotForDoc = ({
     }
 
     return {
-        action: createBoardSnapshotFingerprint(normalizedCurrent) === createBoardSnapshotFingerprint(normalizedIncoming)
+        action: areBoardSnapshotsEquivalent(normalizedCurrent, normalizedIncoming, {
+            normalizedCurrent: true,
+            normalizedIncoming: true
+        })
             ? 'noop'
             : 'apply',
         reason: 'apply_local_snapshot',
@@ -202,7 +206,8 @@ export const resolveCheckpointSnapshotForDoc = ({
 
     if (shouldRejectEmptySnapshotOverwrite({
         currentSnapshot: normalizedCurrent,
-        incomingSnapshot: normalizedIncoming
+        incomingSnapshot: normalizedIncoming,
+        snapshotsNormalized: true
     })) {
         return {
             action: 'reject',
@@ -215,21 +220,27 @@ export const resolveCheckpointSnapshotForDoc = ({
     }
 
     if (
-        !isMeaningfullyEmptyBoardSnapshot(normalizedCurrent)
-        && !isIncomingSnapshotNewer(normalizedIncoming, normalizedCurrent)
+        !isMeaningfullyEmptyBoardSnapshot(normalizedCurrent, { normalized: true })
+        && !isIncomingSnapshotNewer(normalizedIncoming, normalizedCurrent, { snapshotNormalized: true })
     ) {
         return {
             action: 'reject',
             reason: 'incoming_not_newer',
             snapshot: normalizedCurrent,
-            shouldRepairRemote: createBoardSnapshotFingerprint(normalizedCurrent) !== createBoardSnapshotFingerprint(normalizedIncoming),
+            shouldRepairRemote: !areBoardSnapshotsEquivalent(normalizedCurrent, normalizedIncoming, {
+                normalizedCurrent: true,
+                normalizedIncoming: true
+            }),
             preservedCurrentCardIds: [],
             preservedCollections: []
         };
     }
 
     const mergedResult = mergeBoardSnapshotsConservatively(normalizedCurrent, normalizedIncoming);
-    const changed = createBoardSnapshotFingerprint(normalizedCurrent) !== createBoardSnapshotFingerprint(mergedResult.snapshot);
+    const changed = !areBoardSnapshotsEquivalent(normalizedCurrent, mergedResult.snapshot, {
+        normalizedCurrent: true,
+        normalizedIncoming: true
+    });
     const shouldRepairRemote = mergedResult.preservedCurrentCardIds.length > 0;
 
     return {
@@ -270,9 +281,12 @@ export const resolveRemoteSnapshotForStore = ({
         };
     }
 
-    if (isMeaningfullyEmptyBoardSnapshot(normalizedCurrent)) {
+    if (isMeaningfullyEmptyBoardSnapshot(normalizedCurrent, { normalized: true })) {
         return {
-            action: createBoardSnapshotFingerprint(normalizedCurrent) === createBoardSnapshotFingerprint(normalizedIncoming)
+            action: areBoardSnapshotsEquivalent(normalizedCurrent, normalizedIncoming, {
+                normalizedCurrent: true,
+                normalizedIncoming: true
+            })
                 ? 'noop'
                 : 'apply',
             reason: 'apply_into_empty_store',
@@ -280,7 +294,7 @@ export const resolveRemoteSnapshotForStore = ({
         };
     }
 
-    if (!isIncomingSnapshotNewer(normalizedIncoming, currentCursor || normalizedCurrent)) {
+    if (!isIncomingSnapshotNewer(normalizedIncoming, currentCursor || normalizedCurrent, { snapshotNormalized: true })) {
         return {
             action: 'reject',
             reason: 'incoming_not_newer',
@@ -290,7 +304,10 @@ export const resolveRemoteSnapshotForStore = ({
 
     const mergedResult = mergeBoardSnapshotsConservatively(normalizedCurrent, normalizedIncoming);
     return {
-        action: createBoardSnapshotFingerprint(normalizedCurrent) === createBoardSnapshotFingerprint(mergedResult.snapshot)
+        action: areBoardSnapshotsEquivalent(normalizedCurrent, mergedResult.snapshot, {
+            normalizedCurrent: true,
+            normalizedIncoming: true
+        })
             ? 'noop'
             : 'apply',
         reason: 'apply_remote_snapshot',
@@ -319,7 +336,8 @@ const resolveRemoteLaneSnapshotForStore = ({
 
     if (shouldRejectEmptySnapshotOverwrite({
         currentSnapshot: normalizedCurrent,
-        incomingSnapshot: mergedSnapshot
+        incomingSnapshot: mergedSnapshot,
+        snapshotsNormalized: true
     })) {
         return {
             action: 'reject',
@@ -329,7 +347,10 @@ const resolveRemoteLaneSnapshotForStore = ({
     }
 
     return {
-        action: createBoardSnapshotFingerprint(normalizedCurrent) === createBoardSnapshotFingerprint(mergedSnapshot)
+        action: areBoardSnapshotsEquivalent(normalizedCurrent, mergedSnapshot, {
+            normalizedCurrent: true,
+            normalizedIncoming: true
+        })
             ? 'noop'
             : 'apply',
         reason: applyReason,

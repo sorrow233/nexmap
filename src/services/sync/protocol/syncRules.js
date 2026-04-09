@@ -34,15 +34,22 @@ export const canIncomingCardRetireCurrent = (currentCard, incomingCard) => (
 
 export const shouldRejectEmptySnapshotOverwrite = ({
     currentSnapshot,
-    incomingSnapshot
+    incomingSnapshot,
+    snapshotsNormalized = false
 } = {}) => (
-    !isMeaningfullyEmptyBoardSnapshot(normalizeBoardSnapshot(currentSnapshot))
-    && isMeaningfullyEmptyBoardSnapshot(normalizeBoardSnapshot(incomingSnapshot))
+    !isMeaningfullyEmptyBoardSnapshot(currentSnapshot, { normalized: snapshotsNormalized })
+    && isMeaningfullyEmptyBoardSnapshot(incomingSnapshot, { normalized: snapshotsNormalized })
 );
 
-export const isIncomingSnapshotNewer = (incomingSnapshot, currentSnapshotOrCursor) => (
+export const isIncomingSnapshotNewer = (
+    incomingSnapshot,
+    currentSnapshotOrCursor,
+    options = {}
+) => (
     isPersistenceSnapshotNewer(
-        normalizeBoardSnapshot(incomingSnapshot),
+        options.snapshotNormalized
+            ? incomingSnapshot
+            : normalizeBoardSnapshot(incomingSnapshot),
         currentSnapshotOrCursor
     )
 );
