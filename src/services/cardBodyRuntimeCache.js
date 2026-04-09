@@ -1,4 +1,5 @@
 import { isLargeBoardCards } from '../utils/boardPerformance';
+import { estimateDataUrlBytes, estimateMessageContentInlineMediaBytes } from '../utils/mediaPayloadMetrics';
 
 const PREVIEW_TEXT_LIMIT = 360;
 const PREVIEW_MESSAGE_LIMIT = 220;
@@ -71,7 +72,21 @@ const estimateMessageChars = (messages = []) => (
 const estimateCardBodyChars = (body = {}) => {
     const messageChars = Array.isArray(body.messages) ? estimateMessageChars(body.messages) : 0;
     const contentChars = typeof body.content === 'string' ? body.content.length : 0;
-    return messageChars + contentChars;
+    const textChars = typeof body.text === 'string' ? body.text.length : 0;
+    return messageChars + contentChars + textChars;
+};
+
+const estimateCardBodyInlineMediaBytes = (body = {}) => {
+    const messageMediaBytes = Array.isArray(body.messages)
+        ? body.messages.reduce((total, message) => (
+            total + estimateMessageContentInlineMediaBytes(message?.content)
+        ), 0)
+        : 0;
+    const noteImageBytes = typeof body.image === 'string'
+        ? estimateDataUrlBytes(body.image)
+        : 0;
+
+    return messageMediaBytes + noteImageBytes;
 };
 
 const getMessageCount = (messages = []) => (
@@ -119,14 +134,18 @@ const extractBodyFromCard = (card = {}) => {
     const data = card?.data || {};
     const hasMessages = Array.isArray(data.messages);
     const hasContent = typeof data.content === 'string';
+    const hasImage = typeof data.image === 'string' && data.image.length > 0;
+    const hasText = typeof data.text === 'string';
 
-    if (!hasMessages && !hasContent) {
+    if (!hasMessages && !hasContent && !hasImage && !hasText) {
         return null;
     }
 
     return {
         messages: hasMessages ? data.messages : undefined,
-        content: hasContent ? data.content : undefined
+        content: hasContent ? data.content : undefined,
+        image: hasImage ? data.image : undefined,
+        text: hasText ? data.text : undefined
     };
 };
 
@@ -167,7 +186,10 @@ const createBodyEntryFromCard = (card = {}) => {
         boardId: activeBoardId,
         messages: Array.isArray(body.messages) ? body.messages : undefined,
         content: typeof body.content === 'string' ? body.content : undefined,
+        image: typeof body.image === 'string' ? body.image : undefined,
+        text: typeof body.text === 'string' ? body.text : undefined,
         estimatedChars: estimateCardBodyChars(body),
+        estimatedBytes: estimateCardBodyInlineMediaBytes(body),
         messageCount: getMessageCount(body.messages),
         userMessageCount: getUserMessageCount(body.messages),
         previewText: getCardPreviewText(card, body)
@@ -263,7 +285,8 @@ export const hydrateCardBodyFromRuntimeCache = (card, options = {}) => {
             previewText: entry.previewText,
             messageCount: entry.messageCount,
             userMessageCount: entry.userMessageCount,
-            estimatedChars: entry.estimatedChars
+            estimatedChars: entry.estimatedChars,
+            estimatedBytes: entry.estimatedBytes
         })
     };
 
@@ -273,6 +296,12 @@ export const hydrateCardBodyFromRuntimeCache = (card, options = {}) => {
 
     if (typeof entry.content === 'string') {
         nextData.content = entry.content;
+    }
+    if (typeof entry.image === 'string') {
+        nextData.image = entry.image;
+    }
+    if (typeof entry.text === 'string') {
+        nextData.text = entry.text;
     }
 
     if (options.touch !== false) {
@@ -315,7 +344,8 @@ export const dehydrateCardBodyForRuntime = (card, options = {}) => {
             previewText: entry.previewText,
             messageCount: entry.messageCount,
             userMessageCount: entry.userMessageCount,
-            estimatedChars: entry.estimatedChars
+            estimatedChars: entry.estimatedChars,
+            estimatedBytes: entry.estimatedBytes
         })
     };
 
@@ -329,11 +359,19 @@ export const dehydrateCardBodyForRuntime = (card, options = {}) => {
     if (typeof entry.content === 'string') {
         nextData.content = cleanPreviewText(entry.content, PREVIEW_TEXT_LIMIT);
     }
+    if (options.stripMedia === true && typeof entry.image === 'string') {
+        delete nextData.image;
+    }
+    if (options.stripText === true && typeof entry.text === 'string') {
+        delete nextData.text;
+    }
 
     if (
         card.data?.runtimeBodyState?.hydrated === false &&
         card.data?.messages === nextData.messages &&
-        card.data?.content === nextData.content
+        card.data?.content === nextData.content &&
+        card.data?.image === nextData.image &&
+        card.data?.text === nextData.text
     ) {
         return card;
     }
@@ -421,7 +459,9 @@ export const buildHistoryCardsForRuntime = (cards = [], options = {}) => {
 
     const nextCards = buildRuntimeCardsForStore(cards, {
         ...options,
-        keepHydratedIds: []
+        keepHydratedIds: [],
+        stripMedia: true,
+        stripText: true
     }).cards;
     lastHistoryCardsInput = cards;
     lastHistoryCardsOutput = nextCards;

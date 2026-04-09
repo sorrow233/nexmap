@@ -21,6 +21,7 @@ import {
     removeCardBodyFromRuntimeCache
 } from '../../services/cardBodyRuntimeCache';
 import { isLargeBoardCards } from '../../utils/boardPerformance';
+import { hasCardBodyFieldChange } from '../../services/cardBody/bodyFieldUtils';
 
 const createCardLookupCache = () => {
     let cachedCardsRef = null;
@@ -124,13 +125,6 @@ export const createCardSlice = (set, get) => {
             cards.some((card) => card?.data?.runtimeBodyState)
             || isLargeBoardCards(cards)
         )
-    );
-
-    const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
-
-    const didCardBodyChange = (currentData = {}, updatedData = {}) => (
-        (hasOwn(updatedData, 'messages') && updatedData.messages !== currentData?.messages)
-        || (hasOwn(updatedData, 'content') && updatedData.content !== currentData?.content)
     );
 
     const syncRuntimeCacheForCards = (cards = []) => {
@@ -357,7 +351,7 @@ export const createCardSlice = (set, get) => {
             };
 
             const updatedCard = nextCards[index];
-            const changeType = didCardBodyChange(currentCard.data, updatedData)
+            const changeType = hasCardBodyFieldChange(currentCard.data, updatedData)
                 ? 'card_body_content'
                 : 'card_content';
             cardLookup.patch(nextCards, [updatedCard]);
@@ -408,7 +402,7 @@ export const createCardSlice = (set, get) => {
             };
 
             const updatedCard = nextCards[index];
-            const changeType = didCardBodyChange(currentCard.data, updatedData)
+            const changeType = hasCardBodyFieldChange(currentCard.data, updatedData)
                 ? 'card_body_content'
                 : 'card_content';
             cardLookup.patch(nextCards, [updatedCard]);

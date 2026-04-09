@@ -1,10 +1,9 @@
 import LZString from 'lz-string';
 import { cloneSerializable } from '../boardSnapshot';
+import { CARD_BODY_FIELDS } from '../../cardBody/bodyFieldUtils';
 
 export const CARD_BODY_COMPRESSION_ENCODING = 'lz-string-base64';
 export const CARD_BODY_INLINE_RAW_BYTES_SOFT_LIMIT = 512 * 1024;
-
-const CARD_BODY_FIELDS = ['messages', 'content', 'image', 'text'];
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 
