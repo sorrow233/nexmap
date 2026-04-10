@@ -112,8 +112,8 @@ const ERROR_MARKERS = Object.freeze([
     'Request Timeout'
 ]);
 
-const MAX_CHAT_CONTEXT_MESSAGES = 8;
-const MAX_CHAT_CONTEXT_TOTAL_CHARS = 24_000;
+const MAX_CHAT_CONTEXT_ASSISTANT_MESSAGES = 12;
+const MAX_CHAT_CONTEXT_ASSISTANT_TOTAL_CHARS = 24_000;
 
 const getMessageContextText = (message = {}) => (
     extractMessageContentText(message?.content).trim()
@@ -139,18 +139,44 @@ const trimConversationMessagesForContext = (messages = []) => {
             message?.role !== 'assistant' || Boolean(getMessageContextText(message))
         ));
 
-    const tailMessages = filteredMessages.slice(-MAX_CHAT_CONTEXT_MESSAGES);
-    let totalChars = tailMessages.reduce((sum, message) => (
-        sum + getMessageContextText(message).length
-    ), 0);
-    let startIndex = 0;
+    const assistantIndexes = filteredMessages
+        .map((message, index) => (message?.role === 'assistant' ? index : -1))
+        .filter((index) => index >= 0);
 
-    while ((tailMessages.length - startIndex) > 1 && totalChars > MAX_CHAT_CONTEXT_TOTAL_CHARS) {
-        totalChars -= getMessageContextText(tailMessages[startIndex]).length;
-        startIndex += 1;
+    const keptAssistantIndexes = new Set(
+        assistantIndexes.slice(-MAX_CHAT_CONTEXT_ASSISTANT_MESSAGES)
+    );
+
+    const assistantLimitedMessages = filteredMessages.filter((message, index) => (
+        message?.role !== 'assistant' || keptAssistantIndexes.has(index)
+    ));
+
+    const assistantIndexesAfterCountLimit = assistantLimitedMessages
+        .map((message, index) => (message?.role === 'assistant' ? index : -1))
+        .filter((index) => index >= 0);
+
+    let assistantChars = assistantIndexesAfterCountLimit.reduce((sum, index) => (
+        sum + getMessageContextText(assistantLimitedMessages[index]).length
+    ), 0);
+
+    if (assistantChars <= MAX_CHAT_CONTEXT_ASSISTANT_TOTAL_CHARS) {
+        return assistantLimitedMessages;
     }
 
-    return startIndex > 0 ? tailMessages.slice(startIndex) : tailMessages;
+    const droppedAssistantIndexes = new Set();
+    for (let i = 0; i < assistantIndexesAfterCountLimit.length - 1; i += 1) {
+        if (assistantChars <= MAX_CHAT_CONTEXT_ASSISTANT_TOTAL_CHARS) {
+            break;
+        }
+
+        const assistantIndex = assistantIndexesAfterCountLimit[i];
+        droppedAssistantIndexes.add(assistantIndex);
+        assistantChars -= getMessageContextText(assistantLimitedMessages[assistantIndex]).length;
+    }
+
+    return assistantLimitedMessages.filter((message, index) => (
+        message?.role !== 'assistant' || !droppedAssistantIndexes.has(index)
+    ));
 };
 
 
