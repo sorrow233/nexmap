@@ -166,6 +166,19 @@ export class GeminiProvider extends LLMProvider {
         return lower.includes('gemini-3-flash');
     }
 
+    _isGemini31ProPreviewModel(modelName = '') {
+        const lower = String(modelName).toLowerCase();
+        return lower.includes('gemini-3.1-pro-preview');
+    }
+
+    _resolveThinkingLevel(modelName = '', options = {}) {
+        if (this._isGemini3FlashModel(modelName) || this._isGemini31ProPreviewModel(modelName)) {
+            return 'HIGH';
+        }
+
+        return this._normalizeThinkingLevel(options.thinkingLevel);
+    }
+
     _normalizeThinkingLevel(level) {
         if (!level) return null;
         const normalized = String(level).trim().toUpperCase();
@@ -751,9 +764,7 @@ export class GeminiProvider extends LLMProvider {
             )
         });
 
-        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
-            ? 'HIGH'
-            : this._normalizeThinkingLevel(options.thinkingLevel);
+        const forcedThinkingLevel = this._resolveThinkingLevel(cleanModel, options);
         if (forcedThinkingLevel) {
             requestBody.generationConfig.thinkingConfig = { thinkingLevel: forcedThinkingLevel };
         }
@@ -1000,9 +1011,7 @@ export class GeminiProvider extends LLMProvider {
             )
         });
 
-        const forcedThinkingLevel = this._isGemini3FlashModel(cleanModel)
-            ? 'HIGH'
-            : this._normalizeThinkingLevel(options.thinkingLevel);
+        const forcedThinkingLevel = this._resolveThinkingLevel(cleanModel, options);
         if (forcedThinkingLevel) {
             requestBody.generationConfig.thinkingConfig = { thinkingLevel: forcedThinkingLevel };
         }
