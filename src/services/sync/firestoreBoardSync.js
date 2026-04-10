@@ -100,6 +100,17 @@ const buildSkeletonVersionKey = (snapshot = {}) => (
     buildPersistenceVersionKey(buildSkeletonSyncSnapshot(snapshot))
 );
 
+const buildBodyEntryVersionKey = (entry = {}) => (
+    `${entry?.bodyRevision || 0}:${entry?.bodyUpdatedAt || 0}:${entry?.bodyHash || ''}`
+);
+
+const buildBodyEntriesEventKey = (entries = []) => (
+    normalizeCardBodySyncJobs(entries)
+        .map((entry) => `${entry.cardId}:${buildBodyEntryVersionKey(entry)}`)
+        .sort()
+        .join('|')
+);
+
 const buildMissingRemoteBodyEntries = (localSnapshot = {}, remoteEntries = []) => {
     const normalizedLocalSnapshot = normalizeBoardSnapshot(localSnapshot);
     const localEntries = buildCardBodySyncEntries(normalizedLocalSnapshot.cards, {
@@ -224,6 +235,7 @@ export class FirestoreBoardSync {
             lane: payload.lane || SYNC_LANES.FULL,
             source: payload.source || 'remote_sync',
             reason: payload.reason || '',
+            eventKey: typeof payload.eventKey === 'string' ? payload.eventKey : '',
             partialSnapshot,
             mergedSnapshot
         });
@@ -277,6 +289,13 @@ export class FirestoreBoardSync {
 
         const currentSnapshot = readBoardSnapshotFromDoc(this.doc);
         const currentVersionKey = buildSkeletonVersionKey(currentSnapshot);
+        const remoteDeviceId = typeof rootData?.lastDeviceId === 'string'
+            ? rootData.lastDeviceId
+            : '';
+        if (remoteDeviceId && remoteDeviceId === this.deviceId && currentVersionKey === nextVersionKey) {
+            this.latestSkeletonVersionKey = nextVersionKey;
+            return null;
+        }
         if (
             currentVersionKey
             && (Number(skeletonSnapshot.clientRevision) || 0) < (Number(currentSnapshot.clientRevision) || 0)
@@ -294,6 +313,7 @@ export class FirestoreBoardSync {
             lane: SYNC_LANES.SKELETON,
             source: 'remote_skeleton',
             reason: 'remote_skeleton_applied',
+            eventKey: `skeleton:${nextVersionKey}`,
             partialSnapshot: skeletonSnapshot,
             mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
         };
@@ -323,7 +343,7 @@ export class FirestoreBoardSync {
             .map((entry) => normalizeCardBodySyncEntry(entry))
             .filter(Boolean)
             .filter((entry) => {
-                const nextVersionKey = `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`;
+                const nextVersionKey = buildBodyEntryVersionKey(entry);
                 if (this.latestBodyVersionKeys.get(entry.cardId) === nextVersionKey) {
                     return false;
                 }
@@ -357,7 +377,7 @@ export class FirestoreBoardSync {
         applicableEntries.forEach((entry) => {
             this.latestBodyVersionKeys.set(
                 entry.cardId,
-                `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`
+                buildBodyEntryVersionKey(entry)
             );
         });
 
@@ -365,6 +385,7 @@ export class FirestoreBoardSync {
             lane: SYNC_LANES.BODY,
             source: 'remote_body',
             reason: 'remote_body_applied',
+            eventKey: `body:${buildBodyEntriesEventKey(applicableEntries)}`,
             partialSnapshot: buildBodySyncSnapshotFromEntries(applicableEntries),
             mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
         };
@@ -413,7 +434,7 @@ export class FirestoreBoardSync {
             if (!entry) return;
             this.latestBodyVersionKeys.set(
                 cardId,
-                `${entry.bodyRevision}:${entry.bodyUpdatedAt}:${entry.bodyHash}`
+                buildBodyEntryVersionKey(entry)
             );
         });
 
@@ -761,6 +782,7 @@ export class FirestoreBoardSync {
                     lane: SYNC_LANES.FULL,
                     source: options.recoveryOnly ? 'checkpoint_recovery' : 'remote_checkpoint',
                     reason: options.recoveryOnly ? 'checkpoint_recovery_applied' : applyResult.reason,
+                    eventKey: `full:${buildPersistenceVersionKey(applyResult.snapshot)}:${options.recoveryOnly ? 'checkpoint_recovery' : 'remote_checkpoint'}`,
                     partialSnapshot: applyResult.snapshot,
                     mergedSnapshot: readBoardSnapshotFromDoc(this.doc)
                 });

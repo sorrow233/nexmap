@@ -52,6 +52,7 @@ export class BoardSyncController {
         this.persistence = null;
         this.fireSync = null;
         this.lastVersionKey = '';
+        this.lastEventKey = '';
         this.started = false;
         this.lastAppliedLocalLaneRevisions = {
             [SYNC_LANES.SKELETON]: 0,
@@ -171,9 +172,18 @@ export class BoardSyncController {
             ? normalizeBoardSnapshot(meta.mergedSnapshot)
             : readBoardSnapshotFromDoc(this.doc);
         const versionKey = buildPersistenceVersionKey(snapshot);
-        const bypassVersionDedup = Boolean(meta && (meta.partialSnapshot || meta.reason || meta.lane));
-        if (!bypassVersionDedup && versionKey === this.lastVersionKey) return;
+        const eventKey = typeof meta?.eventKey === 'string' ? meta.eventKey : '';
+
+        if (eventKey) {
+            if (eventKey === this.lastEventKey && versionKey === this.lastVersionKey) {
+                return;
+            }
+        } else if (versionKey === this.lastVersionKey) {
+            return;
+        }
+
         this.lastVersionKey = versionKey;
+        this.lastEventKey = eventKey;
         this.onSnapshot?.(snapshot, meta);
     }
 

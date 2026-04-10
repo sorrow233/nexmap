@@ -2,6 +2,7 @@ const DATA_URL_BASE64_MARKER_RE = /^data:.*?;base64,/i;
 const HEAVY_SNAPSHOT_MEDIA_BYTES = 2 * 1024 * 1024;
 const HEAVY_SNAPSHOT_IMAGE_COUNT = 3;
 const HEAVY_SNAPSHOT_CARD_COUNT = 12;
+const BOARD_LOAD_DEBUG_STORAGE_KEY = 'mixboard_debug_board_load';
 
 const toSafeString = (value = '') => String(value || '');
 
@@ -115,8 +116,24 @@ export const shouldLogHeavySnapshot = (metrics = {}) => (
 
 const bytesToMB = (bytes = 0) => Number(bytes / (1024 * 1024)).toFixed(2);
 
-export const logBoardLoadStage = (stage, snapshot = {}, extra = {}) => {
+const isBoardLoadDebugEnabled = () => {
     if (typeof window === 'undefined') {
+        return false;
+    }
+
+    if (window.__MIXBOARD_BOARD_LOAD_DEBUG__ === true) {
+        return true;
+    }
+
+    try {
+        return window.localStorage?.getItem(BOARD_LOAD_DEBUG_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+};
+
+export const logBoardLoadStage = (stage, snapshot = {}, extra = {}) => {
+    if (typeof window === 'undefined' || !isBoardLoadDebugEnabled()) {
         return;
     }
 
