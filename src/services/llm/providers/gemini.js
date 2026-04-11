@@ -29,16 +29,6 @@ const KEY_ACQUIRE_POLL_MAX_MS = 5000;
 const MAX_CHAT_ATTEMPTS = 2;
 const MAX_STREAM_ATTEMPTS = 2;
 const OFFICIAL_GEMINI_31_STREAM_ATTEMPTS = 4;
-const VERBOSE_GEMINI_EVENTS = new Set([
-    '[Gemini] Stream response OK, processing chunks...',
-    'chat response parsed',
-    'stream raw chunk received',
-    'stream visible delta emitted',
-    'stream candidate indicates search usage',
-    'stream line parse skipped',
-    'stream parse complete',
-    'stream completed successfully'
-]);
 const transportCircuitState = {
     proxyDegradedUntil: 0
 };
@@ -74,9 +64,7 @@ export class GeminiProvider extends LLMProvider {
         return {
             traceId,
             log: (event, payload = {}) => {
-                if (VERBOSE_GEMINI_EVENTS.has(event) && !isVerboseAIConsoleEnabled()) {
-                    return;
-                }
+                if (!isVerboseAIConsoleEnabled()) return;
                 console.log(`[Gemini][${traceId}] ${event}`, payload);
             }
         };

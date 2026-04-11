@@ -1,8 +1,14 @@
+import { isPerfProbeEnabled } from './runtimeLogging';
+
 const PERF_STORE_KEY = '__NEXMAP_PERF_PROBE__';
 const PERF_TIMERS_KEY = '__NEXMAP_PERF_PROBE_TIMERS__';
 const MAX_PERF_ENTRIES = 300;
 
 const isBrowser = typeof window !== 'undefined';
+
+const isPerfProbeActive = () => (
+    isBrowser && isPerfProbeEnabled()
+);
 
 const getPerfEntries = () => {
     if (!isBrowser) return [];
@@ -69,12 +75,12 @@ const readHeapSnapshot = () => {
 };
 
 export const captureDomCount = (root = (isBrowser ? document : null)) => {
-    if (!isBrowser || !root?.querySelectorAll) return null;
+    if (!isPerfProbeActive() || !root?.querySelectorAll) return null;
     return root.querySelectorAll('*').length;
 };
 
 const pushPerfEntry = (entry = {}) => {
-    if (!isBrowser) return entry;
+    if (!isPerfProbeActive() || !entry) return entry;
 
     const entries = getPerfEntries();
     entries.push(entry);
@@ -96,11 +102,14 @@ const createPerfEntry = (type, label, meta = {}) => ({
     ...meta
 });
 
-export const markPerfEvent = (label, meta = {}) => (
-    pushPerfEntry(createPerfEntry('mark', label, meta))
-);
+export const markPerfEvent = (label, meta = {}) => {
+    if (!isPerfProbeActive()) return null;
+    return pushPerfEntry(createPerfEntry('mark', label, meta));
+};
 
 export const startPerfMeasure = (label, meta = {}) => {
+    if (!isPerfProbeActive()) return null;
+
     const timers = getPerfTimers();
     timers.set(label, {
         startedAt: typeof performance !== 'undefined' ? performance.now() : 0,
@@ -111,6 +120,8 @@ export const startPerfMeasure = (label, meta = {}) => {
 };
 
 export const endPerfMeasure = (label, meta = {}) => {
+    if (!isPerfProbeActive()) return null;
+
     const timers = getPerfTimers();
     const timer = timers.get(label);
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -127,6 +138,7 @@ export const endPerfMeasure = (label, meta = {}) => {
     }));
 };
 
-export const capturePerfSnapshot = (label, meta = {}) => (
-    pushPerfEntry(createPerfEntry('snapshot', label, meta))
-);
+export const capturePerfSnapshot = (label, meta = {}) => {
+    if (!isPerfProbeActive()) return null;
+    return pushPerfEntry(createPerfEntry('snapshot', label, meta));
+};

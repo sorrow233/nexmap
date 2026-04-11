@@ -44,8 +44,11 @@ export default function BoardRuntimeEffects({
     );
 
     const streamingPersistenceToken = useMemo(
-        () => cards.reduce((total, card) => total + (Number(streamingCardVersions?.[card.id]) || 0), 0),
-        [cards, streamingCardVersions]
+        () => Object.values(streamingCardVersions || {}).reduce(
+            (total, version) => total + (Number(version) || 0),
+            0
+        ),
+        [streamingCardVersions]
     );
 
     useCurrentBoardAutoNaming({

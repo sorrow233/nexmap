@@ -1,3 +1,5 @@
+import { aiVerboseLog, isVerboseAIConsoleEnabled } from './runtimeLogging';
+
 const activeStreamRoutes = new Map();
 
 const toSafePreview = (value, maxLength = 80) => {
@@ -15,7 +17,9 @@ export const createStreamRouteTraceId = (cardId = '') => (
 );
 
 export const logStreamRouteDebug = (traceId, event, payload = {}) => {
-    console.log(`[StreamRoute][${traceId || 'unknown'}] ${event}`, payload);
+    if (!isVerboseAIConsoleEnabled()) return;
+    const resolvedPayload = typeof payload === 'function' ? payload() : payload;
+    aiVerboseLog(`[StreamRoute][${traceId || 'unknown'}] ${event}`, resolvedPayload);
 };
 
 export const setActiveStreamRouteDebug = (cardId, routeMeta = {}) => {

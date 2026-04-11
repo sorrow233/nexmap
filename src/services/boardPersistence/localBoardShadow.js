@@ -82,11 +82,13 @@ const withShadowOperationQueue = (boardId, scope, operation) => {
     });
 };
 
-const normalizeShadowRecord = (boardId, scope, snapshot = {}) => ({
+const normalizeShadowRecord = (boardId, scope, snapshot = {}, options = {}) => ({
     boardId,
     scope,
     savedAt: toEpochMillis(snapshot.updatedAt ?? Date.now()),
-    snapshot: buildBoardRecoverySnapshot(snapshot)
+    snapshot: buildBoardRecoverySnapshot(snapshot, {
+        normalized: Boolean(options.normalized)
+    })
 });
 
 const loadLegacyBoardShadowSnapshot = (boardId, scope = SHADOW_SCOPE_SESSION) => {
@@ -117,7 +119,9 @@ const clearLegacyBoardShadowSnapshot = (boardId, scope = SHADOW_SCOPE_BOTH) => {
 };
 
 export const buildBoardRecoverySnapshot = (payload = {}, options = {}) => {
-    const normalized = normalizeBoardSnapshot(payload);
+    const normalized = options.normalized
+        ? payload
+        : normalizeBoardSnapshot(payload);
 
     return {
         ...buildRecoverySnapshotExtras(payload),
@@ -131,7 +135,9 @@ export const persistBoardShadowSnapshot = async (boardId, payload, options = {})
     const scope = options.scope || SHADOW_SCOPE_SESSION;
     if (!boardId || !payload) return false;
 
-    const nextSnapshot = buildBoardRecoverySnapshot(payload);
+    const nextSnapshot = buildBoardRecoverySnapshot(payload, {
+        normalized: Boolean(options.normalized)
+    });
     const idbKey = getBoardShadowIdbKey(boardId, scope);
 
     return withShadowOperationQueue(boardId, scope, async () => {
@@ -141,8 +147,9 @@ export const persistBoardShadowSnapshot = async (boardId, payload, options = {})
             if (currentSnapshot && !isPersistenceSnapshotNewer(nextSnapshot, currentSnapshot)) {
                 return true;
             }
-
-            await idbSet(idbKey, normalizeShadowRecord(boardId, scope, nextSnapshot));
+            await idbSet(idbKey, normalizeShadowRecord(boardId, scope, nextSnapshot, {
+                normalized: true
+            }));
             clearLegacyBoardShadowSnapshot(boardId, scope);
             debugLog.storage(`[Storage] ${scope} shadow snapshot saved to IndexedDB for board ${boardId}`);
             return true;

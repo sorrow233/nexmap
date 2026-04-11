@@ -1,6 +1,7 @@
 const VERBOSE_CONSOLE_KEY = 'nexmap_verbose_console';
 const PERSISTENCE_TRACE_CONSOLE_KEY = 'nexmap_persistence_trace_console';
 const AI_VERBOSE_CONSOLE_KEY = 'nexmap_ai_verbose_console';
+const PERF_PROBE_KEY = 'nexmap_perf_probe';
 const BLOCKED_RESOURCE_PATTERNS = [
     'beacon.min.js',
     '/beacon',
@@ -59,6 +60,10 @@ export const isVerboseAIConsoleEnabled = () => (
     isVerboseConsoleEnabled() || readRuntimeFlag(AI_VERBOSE_CONSOLE_KEY)
 );
 
+export const isPerfProbeEnabled = () => (
+    import.meta.env.DEV || readRuntimeFlag(PERF_PROBE_KEY)
+);
+
 export const runtimeLog = (...args) => {
     if (!isVerboseConsoleEnabled()) return;
     console.log(...args);
@@ -85,6 +90,8 @@ export const installRuntimeLoggingControls = () => {
     window.disableVerboseAILogs = () => writeRuntimeFlag(AI_VERBOSE_CONSOLE_KEY, false);
     window.enablePersistenceTraceConsole = () => writeRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY, true);
     window.disablePersistenceTraceConsole = () => writeRuntimeFlag(PERSISTENCE_TRACE_CONSOLE_KEY, false);
+    window.enablePerfProbe = () => writeRuntimeFlag(PERF_PROBE_KEY, true);
+    window.disablePerfProbe = () => writeRuntimeFlag(PERF_PROBE_KEY, false);
 };
 
 const getResourceErrorDetails = (target) => {

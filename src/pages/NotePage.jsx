@@ -83,13 +83,13 @@ export default function NotePage({ onBack, isReadOnly = false }) {
             assistantMessageId: assistantMsgId,
             source: 'note_chat_modal'
         });
-        logStreamRouteDebug(routeTraceId, 'placeholder_prepare', {
+        logStreamRouteDebug(routeTraceId, 'placeholder_prepare', () => ({
             cardId,
             source: 'note_chat_modal',
             previousAssistantMessageId: previousAssistantMessage?.id || null,
             newAssistantMessageId: assistantMsgId,
             ...summarizeMessagesForRouteDebug(card.data.messages || [])
-        });
+        }));
 
         updateCardFull(cardId, (currentData) => ({
             ...currentData,
@@ -98,14 +98,14 @@ export default function NotePage({ onBack, isReadOnly = false }) {
 
         const cardAfterPlaceholderWrite = useStore.getState().getCardById?.(cardId)
             || useStore.getState().cards.find(c => c.id === cardId);
-        logStreamRouteDebug(routeTraceId, 'placeholder_written', {
+        logStreamRouteDebug(routeTraceId, 'placeholder_written', () => ({
             cardId,
             source: 'note_chat_modal',
             assistantExistsAfterWrite: Boolean(
                 cardAfterPlaceholderWrite?.data?.messages?.some((message) => message.id === assistantMsgId)
             ),
             ...summarizeMessagesForRouteDebug(cardAfterPlaceholderWrite?.data?.messages || [])
-        });
+        }));
 
         const history = [...(card.data.messages || []), userMsg];
 
@@ -115,12 +115,12 @@ export default function NotePage({ onBack, isReadOnly = false }) {
                 updateCardContent(cardId, chunk, assistantMsgId);
             }, { assistantMessageId: assistantMsgId, routeTraceId });
         } catch (error) {
-            logStreamRouteDebug(routeTraceId, 'ui_layer_error', {
+            logStreamRouteDebug(routeTraceId, 'ui_layer_error', () => ({
                 cardId,
                 source: 'note_chat_modal',
                 assistantMessageId: assistantMsgId,
                 errorMessage: error?.message || 'Unknown error in UI layer'
-            });
+            }));
             updateCardContent(cardId, `\n\n[System Error: ${error.message}]`, assistantMsgId);
         }
     };

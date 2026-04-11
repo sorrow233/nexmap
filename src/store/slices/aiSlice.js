@@ -37,6 +37,7 @@ import {
     summarizeChunkForRouteDebug,
     summarizeMessagesForRouteDebug
 } from '../../utils/streamRouteDebug';
+import { aiVerboseLog } from '../../utils/runtimeLogging';
 
 const bumpStreamingCardVersions = (currentVersions = {}, dirtyCardIds = new Set()) => {
     if (!(dirtyCardIds instanceof Set) || dirtyCardIds.size === 0) {
@@ -445,13 +446,13 @@ export const createAISlice = (set, get) => {
                 traceId: routeTraceId,
                 assistantMessageId
             });
-            logStreamRouteDebug(routeTraceId, 'generate_start', {
+            logStreamRouteDebug(routeTraceId, 'generate_start', () => ({
                 cardId,
                 requestedAssistantMessageId: assistantMessageId,
                 requestedAssistantExistsInHistory,
                 liveCardSummary: summarizeMessagesForRouteDebug(cardBeforeStart?.data?.messages || []),
                 activeBufferKeysBeforeStart: getCardStreamBufferKeys(get().streamingMessages, cardId)
-            });
+            }));
             setCardGenerating(cardId, true, { messageId: assistantMessageId, routeTraceId });
             await yieldToMainThread();
 
@@ -479,7 +480,9 @@ export const createAISlice = (set, get) => {
                 const runProviderName = config.name || runProviderId || 'unknown';
                 const runBaseUrl = config.baseUrl || 'default';
 
-                console.log(`[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`);
+                aiVerboseLog(
+                    `[AI] Dispatching task: ${cardId}, Model: ${runModel}, ProviderId: ${runProviderId}, ProviderName: ${runProviderName}, BaseUrl: ${runBaseUrl}`
+                );
 
                 // Create performance monitor
                 const perfMonitor = createPerformanceMonitor({
@@ -499,12 +502,12 @@ export const createAISlice = (set, get) => {
                     const resolvedAssistantMessageId = latestCard?.data?.messages?.slice().reverse().find(m => m.role === 'assistant')?.id || null;
                     if (!fallbackAssistantResolutionLogged) {
                         fallbackAssistantResolutionLogged = true;
-                        logStreamRouteDebug(routeTraceId, 'assistant_id_fallback_used', {
+                        logStreamRouteDebug(routeTraceId, 'assistant_id_fallback_used', () => ({
                             cardId,
                             requestedAssistantMessageId: assistantMessageId,
                             resolvedAssistantMessageId,
                             liveCardSummary: summarizeMessagesForRouteDebug(latestCard?.data?.messages || [])
-                        });
+                        }));
                     }
                     return resolvedAssistantMessageId;
                 };
@@ -536,7 +539,7 @@ export const createAISlice = (set, get) => {
                             firstToken = false;
                             const liveCard = readLiveCard();
                             const liveMessages = liveCard?.data?.messages || [];
-                            logStreamRouteDebug(routeTraceId, 'first_chunk_target', {
+                            logStreamRouteDebug(routeTraceId, 'first_chunk_target', () => ({
                                 cardId,
                                 requestedAssistantMessageId: assistantMessageId,
                                 resolvedAssistantMessageId,
@@ -553,7 +556,7 @@ export const createAISlice = (set, get) => {
                                 activeBufferKeysAtFirstChunk: getCardStreamBufferKeys(get().streamingMessages, cardId),
                                 liveCardSummary: summarizeMessagesForRouteDebug(liveMessages),
                                 ...summarizeChunkForRouteDebug(chunk)
-                            });
+                            }));
                         }
                         perfMonitor.onChunk(chunk);
 
@@ -563,11 +566,11 @@ export const createAISlice = (set, get) => {
 
                 perfMonitor.onComplete();
             } catch (e) {
-                logStreamRouteDebug(routeTraceId, 'generation_failed', {
+                logStreamRouteDebug(routeTraceId, 'generation_failed', () => ({
                     cardId,
                     assistantMessageId,
                     errorMessage: e?.message || 'Generation failed'
-                });
+                }));
                 console.error(`Generation failed for card ${cardId}`, e);
 
                 // Localization logic
@@ -650,12 +653,12 @@ export const createAISlice = (set, get) => {
             const bufferKey = buildStreamBufferKey(id, messageId);
             const activeRoute = getActiveStreamRouteDebug(id);
             if (activeRoute?.traceId && !messageId) {
-                logStreamRouteDebug(activeRoute.traceId, 'card_level_buffer_write', {
+                logStreamRouteDebug(activeRoute.traceId, 'card_level_buffer_write', () => ({
                     cardId: id,
                     expectedAssistantMessageId: activeRoute?.assistantMessageId || null,
                     bufferKey,
                     ...summarizeChunkForRouteDebug(chunk)
-                });
+                }));
             }
             streamRenderBuffer.enqueue(bufferKey, chunk);
         },
@@ -765,14 +768,14 @@ export const createAISlice = (set, get) => {
 
             if (routeTraceId) {
                 const bufferKeysAfterToggle = getCardStreamBufferKeys(get().streamingMessages, id);
-                logStreamRouteDebug(routeTraceId, isGenerating ? 'generation_flag_started' : 'generation_flag_finished', {
+                logStreamRouteDebug(routeTraceId, isGenerating ? 'generation_flag_started' : 'generation_flag_finished', () => ({
                     cardId: id,
                     assistantMessageId: options?.messageId || null,
                     bufferKey,
                     bufferKeysBeforeToggle,
                     flushedTailBufferKeys: Array.from(flushedTailUpdates.keys()),
                     bufferKeysAfterToggle
-                });
+                }));
             }
 
             if (!isGenerating && routeTraceId) {

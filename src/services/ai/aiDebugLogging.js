@@ -1,3 +1,5 @@
+import { aiVerboseLog, isVerboseAIConsoleEnabled } from '../../utils/runtimeLogging';
+
 const countMessageTextChars = (messages = []) => messages.reduce((total, message) => {
     const content = message?.content;
     if (typeof content === 'string') {
@@ -50,8 +52,9 @@ const buildTaskSummary = (task) => {
 };
 
 export const logAITaskQueued = ({ task, pendingCount, runningCount }) => {
+    if (!isVerboseAIConsoleEnabled()) return;
     const summary = buildTaskSummary(task);
-    console.log('[AI Queue] queued', {
+    aiVerboseLog('[AI Queue] queued', {
         taskId: task.id,
         type: task.type,
         cardId: task.cardId || null,
@@ -64,8 +67,9 @@ export const logAITaskQueued = ({ task, pendingCount, runningCount }) => {
 };
 
 export const logAITaskStarted = ({ task, pendingCount, runningCount, queuedForMs }) => {
+    if (!isVerboseAIConsoleEnabled()) return;
     const summary = buildTaskSummary(task);
-    console.log('[AI Queue] started', {
+    aiVerboseLog('[AI Queue] started', {
         taskId: task.id,
         type: task.type,
         cardId: task.cardId || null,
@@ -78,8 +82,9 @@ export const logAITaskStarted = ({ task, pendingCount, runningCount, queuedForMs
 };
 
 export const logAITaskFinished = ({ task, outcome, durationMs, pendingCount, runningCount, error = null }) => {
+    if (!isVerboseAIConsoleEnabled()) return;
     const summary = buildTaskSummary(task);
-    console.log('[AI Queue] finished', {
+    aiVerboseLog('[AI Queue] finished', {
         taskId: task.id,
         type: task.type,
         cardId: task.cardId || null,

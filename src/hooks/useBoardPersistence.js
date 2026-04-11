@@ -44,6 +44,7 @@ const VIEWPORT_MOVE_THRESHOLD = 24;
 const VIEWPORT_SCALE_THRESHOLD = 0.015;
 const SHADOW_RESCHEDULE_COALESCE_MS = 120;
 const LOCAL_RESCHEDULE_COALESCE_MS = 120;
+const STREAMING_SAFETY_SHADOW_DELAY_MS = 1200;
 const CRITICAL_LOCAL_FALLBACK_REASONS = new Set([
     'pagehide_flush',
     'beforeunload_flush',
@@ -167,6 +168,7 @@ export function useBoardPersistence({
     const shadowSaveTimerRef = useRef(null);
     const localSaveTimerRef = useRef(null);
     const viewportSaveTimerRef = useRef(null);
+    const streamSafetyShadowTimerRef = useRef(null);
     const queuedShadowRevisionRef = useRef(0);
     const queuedLocalRevisionRef = useRef(0);
     const lastShadowScheduleAtRef = useRef(0);
@@ -233,6 +235,10 @@ export function useBoardPersistence({
             shadowSaveTimerRef.current = null;
         }
         shadowSaveWindowStartedAtRef.current = 0;
+        if (streamSafetyShadowTimerRef.current) {
+            clearTimeout(streamSafetyShadowTimerRef.current);
+            streamSafetyShadowTimerRef.current = null;
+        }
 
         if (idleLocalSaveCancelRef.current) {
             idleLocalSaveCancelRef.current();
@@ -284,17 +290,21 @@ export function useBoardPersistence({
         if (!boardId) return false;
 
         const revision = toSafeRevision(options.revision ?? trackerRef.current.revision);
+        const updatedAt = Date.now();
         const payload = buildBoardRecoverySnapshot(buildBoardPayload(buildPersistableBoardData(data), {
             clientRevision: revision,
-            updatedAt: Date.now()
+            updatedAt
         }), {
-            updatedAt: Date.now(),
+            updatedAt,
             clientRevision: revision
         });
 
         const scopes = Array.isArray(options.scopes) ? options.scopes : ['session'];
         const results = await Promise.all(
-            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, { scope }))
+            scopes.map((scope) => persistBoardShadowSnapshot(boardId, payload, {
+                scope,
+                normalized: true
+            }))
         );
         const didPersist = results.some(Boolean);
 
@@ -476,6 +486,29 @@ export function useBoardPersistence({
         }, delayConfig.delayMs);
     }, [persistRecoverySnapshot]);
 
+    const scheduleStreamingSafetyShadowSave = useCallback((revision) => {
+        queuedShadowRevisionRef.current = Math.max(queuedShadowRevisionRef.current, revision);
+
+        if (streamSafetyShadowTimerRef.current) {
+            return;
+        }
+
+        streamSafetyShadowTimerRef.current = setTimeout(() => {
+            streamSafetyShadowTimerRef.current = null;
+            const currentStreamingToken = streamingPersistenceTokenRef.current;
+            if (currentStreamingToken <= shadowSavedStreamingTokenRef.current) {
+                return;
+            }
+
+            void persistRecoverySnapshot(latestBoardDataRef.current, {
+                revision: Math.max(queuedShadowRevisionRef.current, trackerRef.current.revision),
+                reason: 'streaming_safety_shadow',
+                scopes: ['session'],
+                streamingToken: currentStreamingToken
+            });
+        }, STREAMING_SAFETY_SHADOW_DELAY_MS);
+    }, [persistRecoverySnapshot]);
+
     const scheduleLocalSave = useCallback((revision) => {
         queuedLocalRevisionRef.current = revision;
 
@@ -532,6 +565,10 @@ export function useBoardPersistence({
             shadowSaveTimerRef.current = null;
         }
         shadowSaveWindowStartedAtRef.current = 0;
+        if (streamSafetyShadowTimerRef.current) {
+            clearTimeout(streamSafetyShadowTimerRef.current);
+            streamSafetyShadowTimerRef.current = null;
+        }
 
         void persistRecoverySnapshot(latestBoardDataRef.current, {
             revision,
@@ -661,6 +698,7 @@ export function useBoardPersistence({
                     dirty: true
                 });
             }
+            scheduleStreamingSafetyShadowSave(revision);
             return;
         }
 
@@ -686,6 +724,7 @@ export function useBoardPersistence({
         persistExternalSyncSnapshot,
         scheduleLocalSave,
         scheduleShadowSave,
+        scheduleStreamingSafetyShadowSave,
         setSaveStatus,
         updateActivePersistenceCursor
     ]);
@@ -714,13 +753,13 @@ export function useBoardPersistence({
             });
         }
 
-        scheduleShadowSave(tracker.revision);
+        scheduleStreamingSafetyShadowSave(tracker.revision);
     }, [
         boardId,
         hasGeneratingCards,
         isBoardLoading,
         isReadOnly,
-        scheduleShadowSave,
+        scheduleStreamingSafetyShadowSave,
         setSaveStatus,
         streamingPersistenceToken,
         updateActivePersistenceCursor
@@ -741,6 +780,10 @@ export function useBoardPersistence({
         shadowSavedStreamingTokenRef.current = 0;
         localSavedStreamingTokenRef.current = 0;
         streamingPersistenceTokenRef.current = 0;
+        if (streamSafetyShadowTimerRef.current) {
+            clearTimeout(streamSafetyShadowTimerRef.current);
+            streamSafetyShadowTimerRef.current = null;
+        }
         if (idleShadowSaveCancelRef.current) {
             idleShadowSaveCancelRef.current();
             idleShadowSaveCancelRef.current = null;

@@ -163,7 +163,7 @@ export default function MessageVirtualList({
         }
 
         renderTargetLogSignatureRef.current = signature;
-        logStreamRouteDebug(traceId, 'streaming_render_target', {
+        logStreamRouteDebug(traceId, 'streaming_render_target', () => ({
             cardId,
             expectedAssistantMessageId,
             detachedStreamingMessageId,
@@ -178,7 +178,7 @@ export default function MessageVirtualList({
                 detachedStreamingMessageId &&
                 expectedAssistantMessageId !== detachedStreamingMessageId
             )
-        });
+        }));
     }, [
         activeRoute?.traceId,
         cardId,

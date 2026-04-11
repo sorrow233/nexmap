@@ -78,7 +78,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
         }
 
         fallbackLogSignatureRef.current = signature;
-        logStreamRouteDebug(traceId, 'render_fallback_buffer_used', {
+        logStreamRouteDebug(traceId, 'render_fallback_buffer_used', () => ({
             cardId,
             renderedMessageId: message.id,
             expectedAssistantMessageId: activeRoute?.assistantMessageId || null,
@@ -86,7 +86,7 @@ const MessageItemComponent = ({ cardId, message, index, marks, capturedNotes, pa
             messageScopedLength: messageScopedStreamingText.length,
             cardScopedBufferKey: cardScopedStreamingBufferKey,
             cardScopedLength: cardScopedStreamingText.length
-        });
+        }));
     }, [
         cardId,
         cardScopedStreamingBufferKey,
